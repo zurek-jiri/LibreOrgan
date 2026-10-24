@@ -17,6 +17,5 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions ▲[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | RAM min [▲](INDEX-rammin-asc.md)[▼](INDEX-rammin-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---:|---|
 | [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | - | default, auxiliary |
-| [Stralsund, St. Jakobi - the Wegscheider organ](stralsund-jakobi-wegscheider/README.md) | 4 | 71 | 36 GB | - | Direct, Diffuse, Rear |
 
-2 configuration(s).
+1 configuration(s).
