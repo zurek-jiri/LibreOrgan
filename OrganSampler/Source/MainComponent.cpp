@@ -10633,6 +10633,27 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     }
 
     const auto registration = captureCurrentState();
+    if (portable && publishFiles)
+    {
+        // A published configuration opens with everything OFF (0.8.186, the user's rule:
+        // nobody wants an organ that loads with some stops, couplers or tremulants drawn):
+        // every stop, transmission, coupler and tremulant of the registration switched off.
+        auto allOff = [](const juce::var& list)
+        {
+            if (auto* array = list.getArray())
+                for (auto& item : *array)
+                    if (auto* object = item.getDynamicObject())
+                    {
+                        object->setProperty("enabled", false);
+                        if (auto* transmissions = object->getProperty("transmissions").getArray())
+                            for (auto& transmission : *transmissions)
+                                if (auto* t = transmission.getDynamicObject()) t->setProperty("enabled", false);
+                    }
+        };
+        allOff(registration.stopData);
+        allOff(registration.couplerData);
+        allOff(registration.tremulantData);
+    }
     root->setProperty("registrationMasterDb", registration.masterDb);
     root->setProperty("registrationStops", registration.stopData);
     root->setProperty("registrationCouplers", registration.couplerData);
@@ -11713,20 +11734,21 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     {
         // The RAM the program used with the whole organ loaded, measured when the
         // configuration was saved: what a reader needs to know before downloading.
+        // One figure (0.8.186, the user: two figures of the same 7 GB were absurd): the least
+        // the organ takes, with every saving option of the load box - measured when it was
+        // saved so, else estimated from the loaded samples - and the full quality roughly
+        // ten times that (Stralsund: 83 GB in float at 48 kHz against 8 GB).
         const juce::int64 ram = (juce::int64)configuration.getProperty("measuredRamBytes", 0);
+        const juce::int64 least = (juce::int64)configuration.getProperty("estimatedMinimumRamBytes", 0);
         if (ram > 0)
         {
-            const double gb = (double)ram / (1024.0 * 1024.0 * 1024.0);
-            text << "- **RAM:** about " << (gb < 10.0 ? juce::String(gb, 1) : juce::String(juce::roundToInt(gb))) << " GB with the whole organ loaded ("
-                 << configuration.getProperty("measuredRamStorage", "16-bit").toString() << " sample storage; measured by the program when this file was saved)";
-            const juce::int64 least = (juce::int64)configuration.getProperty("estimatedMinimumRamBytes", 0);
-            if (least > 0 && least < ram)
-            {
-                const double lgb = (double)least / (1024.0 * 1024.0 * 1024.0);
-                text << "; about " << (lgb < 10.0 ? juce::String(lgb, 1) : juce::String(juce::roundToInt(lgb))) << " GB at the least, with every saving option of the load box ("
-                     << configuration.getProperty("estimatedMinimumRamStorage", SamplerEngine::minimumRamStorageText).toString() << "; estimated by the program from the loaded samples)";
-            }
-            text << ".\n";
+            const bool savedSo = least <= 0 || least >= ram;   // saved with the saving options in force: the measured figure is the least
+            const juce::int64 figure = savedSo ? ram : least;
+            const double gb = (double)figure / (1024.0 * 1024.0 * 1024.0);
+            text << "- **RAM:** about " << (gb < 10.0 ? juce::String(gb, 1) : juce::String(juce::roundToInt(gb))) << " GB at the least, with every saving option of the load box ("
+                 << (savedSo ? configuration.getProperty("measuredRamStorage", "16-bit").toString() : configuration.getProperty("estimatedMinimumRamStorage", SamplerEngine::minimumRamStorageText).toString())
+                 << "; " << (savedSo ? "measured by the program when this file was saved" : "estimated by the program from the loaded samples when this file was saved")
+                 << "); at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times as much.\n";
         }
     }
     text << "- **Saved with:** OrganSampler " << version << ".\n";

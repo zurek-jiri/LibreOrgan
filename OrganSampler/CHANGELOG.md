@@ -12,8 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.185] - 2026-10-24
+## [0.8.186] - 2026-10-24
 
+### Changed
+- A published configuration's README and the list of configurations carry ONE
+  RAM figure: the least the organ takes, with every saving option of the load
+  box (measured when it was saved so, else estimated), and the note that the
+  full quality takes roughly ten times as much. Two figures of the same 7 GB
+  stood there before.
+- A published configuration opens with everything off: the portable save for
+  publishing switches every stop, transmission, coupler and tremulant of the
+  registration off.
+
+## [0.8.185] - 2026-10-24
 ### Fixed
 - After a polyphony measurement every key of every division is released in
   the engine itself (#90): keys the strokes had down could stay held there -

@@ -1089,7 +1089,12 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   title; one opening paragraph (what it is, the perspectives - they make the recording unique -, divisions, the
   number of Stop List rows) + "No samples are published here"; "The configuration" bullets Organ, Samples
   (producer, product, link, packages, WAV, perspectives, required OrganSampler version), Expects (trees), Audio
-  layout (routes, unused ones marked), RAM (measured by the program at the portable save: `measuredRamBytes` +
+  layout (routes, unused ones marked), RAM = ONE figure since 0.8.186: the least the organ takes with every saving
+  option (measured when saved so, else the estimate) + "at the full quality count on roughly ten times as much" -
+  never two figures (two columns of the same 7 GB were "absurd"); INDEX.md has the one "RAM" column the same way
+  (Rural Organ keeps its measured 1.2 GB, no estimate in its file). A PUBLISHED configuration opens with everything
+  OFF: `savePortableConfiguration` with publishFiles switches every stop, transmission, coupler and tremulant of the
+  registration off (the user's rule, 24 Oct 2026). (The old form of the line: RAM measured by the program at the portable save: `measuredRamBytes` +
   `measuredRamStorage` in the json, `processMemoryBytes()`; INDEX.md shows it as a sortable column - never typed,
   never estimated), Saved with, Author + date; "Where to put the file" (the packages are now
   known: one sentence + the tree diagram, never a made-up parent folder like `haupwerk`); last the "Stop List"

@@ -106,8 +106,11 @@ def main():
     # A Markdown table cannot be sorted by a click, so the header carries the
     # triangles as links: each opens the same table sorted by that column -
     # INDEX.md by organ ascending, INDEX-<column>-<asc|desc>.md the others.
+    # One RAM column (24 Oct 2026, the user: two columns of the same 7 GB were absurd): the
+    # least the organ takes - every saving option of the load box - and the full
+    # quality is roughly ten times that, said in the legend.
     columns = [('organ', 'Organ', lambda r: r[0].lower()), ('divisions', 'Divisions', lambda r: r[2]),
-               ('stops', 'Stops', lambda r: r[3]), ('ram', 'RAM', lambda r: r[5]), ('rammin', 'RAM min', lambda r: r[6] if r[6] > 0 else r[5]),
+               ('stops', 'Stops', lambda r: r[3]), ('ram', 'RAM', lambda r: r[6] if r[6] > 0 else r[5]),
                ('routes', 'Routes', lambda r: r[4].lower())]
     def file_for(key, descending):
         return 'INDEX.md' if (key == 'organ' and not descending) else 'INDEX-%s-%s.md' % (key, 'desc' if descending else 'asc')
@@ -124,12 +127,11 @@ def main():
             '',
             'One line per organ - the README of each (with the download of its `.json` and where to',
             'put it), the number of divisions, the rows of its Stop List (transmissions and extensions',
-            'included, the rows nested in stop folders not), the RAM the program used with the whole',
-            'organ loaded (measured by the program when the configuration was saved, 16-bit sample',
-            'storage unless the README says otherwise; `-` = saved by an older version), the least RAM',
-            'the organ can take ("RAM min": every saving option of the load box - 16-bit, 32 kHz on',
-            'loading, releases at half the rate, packed samples - estimated by the program from the',
-            'loaded samples; the price is polyphony, see the manual) and the',
+            'included, the rows nested in stop folders not), the RAM the organ takes at the least -',
+            'with every saving option of the load box (16-bit, 32 kHz on loading, releases at half the',
+            'rate, packed samples), measured or estimated by the program when the configuration was',
+            'saved; at the full quality (32-bit float, the files\' own rate, full releases, no packing)',
+            'count on roughly ten times as much; `-` = saved by an older version - and the',
             'routes - the perspectives as the configuration names them (`default` = a single',
             'perspective) and `auxiliary` when a division uses that route; what each one carries, the',
             'README of the organ says. The triangles in the header sort the table by that column.',
@@ -137,10 +139,10 @@ def main():
             'on every change; do not edit by hand. How to use and publish one: [README.md](README.md).',
             '',
             '| ' + ' | '.join(header) + ' |',
-            '|---|---:|---:|---:|---:|---|',
+            '|---|---:|---:|---:|---|',
         ]
         for title, folder, divisions, count, perspectives, ram_bytes, ram_min in ordered:
-            lines.append('| [%s](%s/README.md) | %d | %d | %s | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_bytes), ram_text(ram_min), perspectives))
+            lines.append('| [%s](%s/README.md) | %d | %d | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives))
         lines.append('')
         lines.append('%d configuration(s).' % len(ordered))
         lines.append('')
