@@ -14,6 +14,12 @@ title shows the version. Released executables are named `OrganSampler_<version>.
 
 ## [0.8.178] - 2026-10-24
 
+### Changed
+- The website and the README say what a strong computer may choose for the
+  finest listening: 32-bit float storage, every set at its own rate (96 kHz
+  stays 96 kHz), releases at the full rate, no packing, the sinc kernel for
+  every pipe, a true-stereo impulse response on every route.
+
 ### Fixed
 - The organ builders' shorthand in a folder name is read as the footage it
   means: "3" is the quint 2 2/3', "6" the 5 1/3', "12" the 10 2/3', "1 1/2"
