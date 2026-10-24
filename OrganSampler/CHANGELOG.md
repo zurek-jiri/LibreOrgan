@@ -12,8 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.179] - 2026-10-24
+## [0.8.180] - 2026-10-24
 
+### Fixed
+- The loading window's second line now says which stop is being decoded; it
+  appeared only in the short analysis and fill phases of each folder tree,
+  so a fast load looked like one line again.
+- The copy build of the filled pipes stops when the memory reserve is reached
+  (the stop's remaining pipes play the plain sample; the log says so); before
+  it went on until the system paged.
+- The "Rank count" switch of a stop folder names the count the button shows
+  ("Rank count [III]" for a Cornet of three ranks), not "[II]" always.
+- The publishing box no longer asks for a "product" - the program knows the
+  sample folders itself; it asks for the organ, the producer, the link and
+  the author.
+
+## [0.8.179] - 2026-10-24
 ### Changed
 - The golden hint arrows are four times bigger (120 px) and travel twice as far.
 - Saving a portable configuration asks once for what the README cannot know

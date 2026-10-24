@@ -57,8 +57,8 @@ configuration zipped for the upload, and `<name>.README.md`, the README -
 the perspectives, the folders the configuration expects and where to put the
 file, the routes, the version and the Stop List in the order of your grid.
 The save asks you once for what the README cannot know - the organ, the
-producer and product of the samples, the link to the page where the sample
-folders are bought or downloaded, your name - and writes them in; nothing is
+producer of the samples, the link to the page where the sample folders are
+bought or downloaded, your name - and writes them in; nothing is
 filled in by hand. Then send the two files; no knowledge of Git is needed, a
 free GitHub account is:
 

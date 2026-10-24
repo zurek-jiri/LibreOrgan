@@ -9866,6 +9866,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
             engine->notePackStats("the copies of " + stop->name);
         }
     } doneNote{ stop, this, copyCacheHits.load() };
+    std::atomic<bool> memoryShort{ false };   // the memory reserve reached by this build (0.8.180): the rest is left for later
     for (auto* rank : ranks)
     {
         // What is needed. Resampling: filled pipes whose source lies below them
@@ -10058,6 +10059,20 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
             parallelFor((int)todo.size(), [&](int index, int)
             {
                 if (buildsAborted.load(std::memory_order_acquire) || buildsInterrupted.load(std::memory_order_acquire)) return;
+                // The memory reserve (0.8.131's rule for the decoding) holds for the copies
+                // too (0.8.180): a copy build that reached it stops, the pipes left play
+                // the plain sample, the build is marked incomplete - before, it went on
+                // until the system paged (Stralsund in float: 11 700 copies, 98 GB held).
+                if (memoryShort.load(std::memory_order_relaxed)) return;
+                {
+                    juce::String why;
+                    if (memoryShortNow(&why))
+                    {
+                        if (!memoryShort.exchange(true))
+                            CrashHandler::note("Copy build of " + stop->name + " stopped for memory: " + why + " - the pipes left play the plain sample");
+                        return;
+                    }
+                }
                 const auto& task = todo[(size_t)index];
                 std::vector<std::unique_ptr<Sample>> copies(task.sources.size());
                 if (method >= 1)
@@ -10142,7 +10157,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                     "release_" + juce::String(layer.maxHoldMs) + "_" + juce::String(layer.maxVelocity));
             }
     }
-    queuedReset.completed = !buildsAborted.load(std::memory_order_acquire) && !buildsInterrupted.load(std::memory_order_acquire);
+    queuedReset.completed = !buildsAborted.load(std::memory_order_acquire) && !buildsInterrupted.load(std::memory_order_acquire) && !memoryShort.load(std::memory_order_relaxed);
 }
 
 void SamplerEngine::refillStopPipes(Stop* stop, bool keepExisting)
@@ -11773,6 +11788,10 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 if (!assignment.container) { loadMemorySkipped.addIfNotAlreadyThere(stopName); loadMemorySkippedKeys.insert(comparableFolderName(stopName)); }
                 continue;
             }
+            // The loading window's second line names the stop being decoded (0.8.180:
+            // only the analysis and fill phases of a tree reported before, so a fast
+            // load showed one line all along).
+            if (!assignment.container && loadStatusCallback) loadStatusCallback("Loading " + stopName + " ...");
             if (assignment.container)
             {
                 // No samples: the stop only carries its children (and their transmissions).

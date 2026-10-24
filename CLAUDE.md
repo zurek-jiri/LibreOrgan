@@ -561,6 +561,11 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run
   cancelled, the tag deleted and re-pushed on 5685fd9). Never chain the tag after the commit in one command: tag in
   a separate step after `git log -1` shows the new commit, on Linux as on Windows.
+  24 Oct 2026 (0.8.179): a push to main was REJECTED - the "Configurations check" index job commits to main by itself
+  after any change under configurations/ (the old Stralsund folder removed -> "INDEX.md regenerated" on origin) - and
+  the tag push went through, so v0.8.179 pointed at a commit off main (the 0.8.147 situation again). Resolved by a MERGE
+  (`git pull --no-rebase`), never a rebase, so the tag stays an ancestor of main. Always `git fetch` + `git status -sb`
+  before a push that follows a configurations/ change, and push main BEFORE tagging.
   0.8.164 FULL KERNEL FOR HIGH PIPES (the user: the foreign tone BELOW a retuned high tone is not a beat; "440 on
   is essential"; the slider must reach very low for people with CPU to spare): `Voice::fullKernel` set at every voice
   start by `wantsFullKernel(rank, pipe)` (sounding Hz from pipe + footageSemitones + sampleOffset, like fadeScale,
@@ -1001,6 +1006,16 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   comment only says where to attach the files. The slug of a published configuration = the zip's base name lower-cased
   with [^a-z0-9]+ -> "-": "Stralsund_Jakobi_Wegscheider.portable.zip" -> stralsund-jakobi-wegscheider-portable, a NEW
   folder beside an old one (the old folder must be removed by hand - done 24 Oct for stralsund-jakobi-wegscheider).
+  0.8.180 (the user: "proÄŤ se ztratilo dvouĹ™ĂˇdkovĂ© loading"): NOT a regression in the code - `git log -S` shows the
+  loader's two lines (0.8.159) and the engine's only two `loadStatusCallback` calls ("Compiling the Stop List: tuning..."
+  / "pipe fills") unchanged since the first commit; the second line existed only in those phases of each tree (a second
+  or two on Stralsund), the decoding showed one line by design. Now `loadDivisionTree` reports every stop being decoded
+  ("Loading <stop> ...") so the second line is there all along. The publishing box: no "product" field (the label "the
+  name of the sample folders" read as directory names - the folders are the program's own line in the README).
+  `buildAntiAliasCopies` checks `memoryShortNow` before every copy and stops the build (copiesIncomplete, log) - 0.8.131's
+  memory stop covered the sample decoding only. Stralsund in the user's file: 32-bit FLOAT storage (the load box's
+  choice travels with the organ), 53.9 GB of WAV -> 82 GB of samples + 11 736 copies of filled pipes (64' extensions, Vox
+  Humana Cornet [V] 432, Trompete 348 ...) -> 98 GB held; "RAM with every saving option" says 22.9 GB.
 - A configuration README is WRITTEN BY THE PROGRAM: saving a portable configuration puts `<name>.README.md`
   beside the `.json` (`MainComponent::configurationReadme`; dev: `ORGAN_SAVE_PORTABLE=<file>` with
   `ORGAN_LOAD_CONFIGURATION=<non-portable cfg>` loads and saves without the dialogs). Only the three

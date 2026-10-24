@@ -10408,10 +10408,12 @@ void MainComponent::askPublicationDetails(std::function<void()> then)
         "These lines go into the README beside the configuration (the organ's page in the list of published configurations). "
         "The link is the page where the sample folders are bought or downloaded - without it nobody can use the configuration.",
         juce::MessageBoxIconType::NoIcon, this);
+    // Four lines: the sample folders, the perspectives, the trees, the routes and
+    // the RAM the README knows by itself. (0.8.180: a "product" field asked for
+    // "the name of the sample folders" - gone; the folders are the program's.)
     alert->addTextEditor("organ", publicationOrgan, "Organ (the instrument, its builder, the place):");
-    alert->addTextEditor("producer", publicationProducer, "Samples: producer:");
-    alert->addTextEditor("product", publicationProduct, "Samples: product (the name of the sample folders):");
-    alert->addTextEditor("link", publicationLink, "Samples: link (http...):");
+    alert->addTextEditor("producer", publicationProducer, "Samples: producer (Sonus Paradisi ...):");
+    alert->addTextEditor("link", publicationLink, "Samples: link to the page where they are bought or downloaded (http...):");
     alert->addTextEditor("author", publicationAuthor, "Author (your name or GitHub name):");
     alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
     alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
@@ -10422,7 +10424,6 @@ void MainComponent::askPublicationDetails(std::function<void()> then)
         if (safeThis == nullptr || safeAlert == nullptr || result != 1) return;
         safeThis->publicationOrgan = safeAlert->getTextEditorContents("organ").trim();
         safeThis->publicationProducer = safeAlert->getTextEditorContents("producer").trim();
-        safeThis->publicationProduct = safeAlert->getTextEditorContents("product").trim();
         safeThis->publicationLink = safeAlert->getTextEditorContents("link").trim();
         safeThis->publicationAuthor = safeAlert->getTextEditorContents("author").trim();
         then();
@@ -11532,8 +11533,17 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
             "the recordings loads the whole instrument in a single step.\n\n";
     // The zip beside the README (written with it): a link with ?raw=true downloads it straight from GitHub.
     const juce::String zipName = file.getFileNameWithoutExtension() + ".zip";
-    text << "**Download:** [" << zipName << "](" << zipName.replace(" ", "%20") << "?raw=true) - unpack it, the "
-         << code(file.getFileName()) << " inside goes where the next section says.\n\n";
+    // An absolute link to the file in the repository (0.8.180): a relative link
+    // works in the folder's README only - opened from the issue, the pull request
+    // or anywhere else it gave 404. The folder is the one the publishing workflow
+    // makes from the zip's name (lower case, runs of other characters to "-").
+    juce::String slug = file.getFileNameWithoutExtension().toLowerCase();
+    for (int i = 0; i < slug.length(); ++i)
+        if (!juce::CharacterFunctions::isLetterOrDigit(slug[i]) || slug[i] > 'z') slug = slug.replaceSection(i, 1, "-");
+    while (slug.contains("--")) slug = slug.replace("--", "-");
+    slug = slug.trimCharactersAtStart("-").trimCharactersAtEnd("-");
+    text << "**Download:** [" << zipName << "](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/" << slug << "/"
+         << zipName.replace(" ", "%20") << ") - unpack it, the " << code(file.getFileName()) << " inside goes where the next section says.\n\n";
     text << "**No samples are published here.** The configuration merely names the folders it expects;\n"
             "the recordings themselves are the property of their producer and are obtained from them.\n\n";
     text << "## The configuration\n\n";
@@ -11542,7 +11552,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     if (publicationProduct.isNotEmpty()) text << ", " << publicationProduct;
     if (publicationLink.isNotEmpty()) text << " - [" << publicationLink << "](" << publicationLink << ")";
     else text << " (no link to the samples' page was given)";
-    if (!topFolders.isEmpty()) text << "; the folders " << joinWithAnd(topCodes) << ", unpacked as plain WAV files";
+    if (!topFolders.isEmpty()) text << "; the folders " << joinWithAnd(topCodes) << " (as they come, or in their RAR archives)";
     if (!perspectiveNames.isEmpty()) text << "; perspectives " << joinWithAnd(perspectiveNames);
     text << ". OrganSampler " << version << " or later.\n";
     text << "- **Expects:** library root of any name, holding the trees " << joinWithAnd(treeCodes) << ".\n";

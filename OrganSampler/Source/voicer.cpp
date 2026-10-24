@@ -875,6 +875,14 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // stop folder, or a stop with items indented under it.
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())));
+    if (rankCountToggle.isVisible())
+    {
+        // The switch names the count the button would show (0.8.180: "[II]" always before - Cornet is "[III]").
+        bool sounds = false;
+        for (int note = 0; note < 128 && !sounds; ++note) sounds = stop->hasNoteInAnyRank(note);
+        const int count = (int)childrenGetter(stop).size() + (childTransmissionsGetter ? (int)childTransmissionsGetter(stop).size() : 0) + (sounds ? 1 : 0);
+        rankCountToggle.setButtonText("Rank count [" + romanNumeral(count) + "]");
+    }
     oneShotToggle.setVisible(stopControls);
     globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);

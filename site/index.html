@@ -25,7 +25,7 @@
         <p class="intro">OrganSampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.179</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.180</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -58,8 +58,8 @@
         <button type="button" aria-pressed="false" data-view="editor">Configuration Editor</button>
       </div>
       <figure class="app-preview">
-        <a id="screenshot-link" href="assets/main.jpg" target="_blank" rel="noopener" aria-label="Open the screenshot at full size in a new tab"><img id="screenshot" src="assets/main.jpg" width="2542" height="1308" alt="The main window with the Stralsund, St. Jakobi organ: four divisions with their stop buttons, stop folders, extensions and transmissions, couplers and tremulants in the headers, pistons and the crescendo above, the polyphony display at the top right." loading="lazy"></a>
-        <figcaption><span id="screenshot-caption" aria-live="polite">The console: one column per division, the stops as buttons, couplers and tremulants in the headers, pistons and the crescendo above. Shown: Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), four divisions - with stop folders (Cornet [III], Vox Humana Cornet [V]), extensions (a 64' pedal from the 32', Montre 32', Septime 1 1/7') and transmissions (Flöte 2', Regal 16') the organ never had, all built in the Stop List from its own ranks.</span><a id="full-size" href="assets/main.jpg" target="_blank" rel="noopener">Full size &#8599;</a></figcaption>
+        <a id="screenshot-link" href="assets/main.jpg" target="_blank" rel="noopener" aria-label="Open the screenshot at full size in a new tab"><img id="screenshot" src="assets/main.jpg" width="2087" height="1056" alt="The main window with the Stralsund, St. Jakobi organ: four divisions with their stop buttons, stop folders, extensions and transmissions, the voicing bars under the stops, couplers and tremulants in the headers, the swell shutters at different positions, a combination engaged on piston 7, the crescendo and the polyphony display above." loading="lazy"></a>
+        <figcaption><span id="screenshot-caption" aria-live="polite">The console: one column per division, the stops as buttons, couplers and tremulants in the headers, pistons and the crescendo above. Shown: Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), four divisions - combination 7 drawn, the orange bars under the stops are their voicing, the swell boxes of the divisions at different positions, the Positive's tremulant on; with stop folders (Cornet [III], Vox Humana Cornet [V]), extensions (a 64' pedal from the 32', Montre 32', Septime 1 1/7') and transmissions (Flöte 2', Regal 16') the organ never had, all built in the Stop List from its own ranks.</span><a id="full-size" href="assets/main.jpg" target="_blank" rel="noopener">Full size &#8599;</a></figcaption>
       </figure>
       <div class="feature-grid">
         <article><span class="feature-number">01</span><h3>Build the organ yourself - from any sources</h3><p>Load a folder tree of samples; the program recognises the stops, their footages and pitches from the files, the microphone perspectives from the folder prefixes, and proposes the divisions. Mix stops of different sample folders and producers into one console, move them between divisions, duplicate them as transmissions and extensions (a 16' from an 8' by transposition, a mutation from a principal), merge stops, merge a second configuration into the organ, arrange the grid. A Hauptwerk organ definition opens as a configuration as well. This is what sets OrganSampler apart.</p></article>
@@ -88,7 +88,7 @@
           <a class="button primary" href="https://github.com/zurek-jiri/OrganSampler/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/USER_MANUAL.md" data-repo-path="OrganSampler/USER_MANUAL.md">Read the user manual &#8599;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.8.179</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
+          <p class="small">Version <span data-version>0.8.180</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>
@@ -136,7 +136,7 @@
             <h3>Publishing yours</h3>
             <ol>
               <li>Save it with "Portable configuration (to share with others)" ticked: no MIDI devices, no audio devices, nothing of your computer - the organ only.</li>
-              <li>The program writes the zip for the upload and the README beside it (<code>&lt;name&gt;.zip</code>, <code>&lt;name&gt;.README.md</code>): fill in the organ, the producer and product of the samples, and your name.</li>
+              <li>The program asks once for the organ, the producer of the samples, the link to their page and your name, and writes the zip for the upload and the complete README beside it (<code>&lt;name&gt;.zip</code>, <code>&lt;name&gt;.README.md</code>).</li>
               <li>Attach the two files to the form (the link below) and submit. A robot checks them and proposes them as a pull request; after the merge the organ gets its folder and its line in the list by itself. Only the zip and the README: no sample, no impulse response, nothing else is accepted, ever.</li>
             </ol>
             <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml" data-repo-suffix="/issues/new?template=organ_configuration.yml">Send a configuration &#8599;</a>
