@@ -3,14 +3,6 @@ description: Something went wrong - a crash, a dropout, a wrong sound, a dialog 
 title: "[Bug] "
 labels: ["bug"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you. A report with the program's log bundle attached is usually fixed in the next release; one without it often cannot be.
-        **The easy way:** in OrganSampler open *Configuration Editor > Report a problem...* - it fills this form in, bundles the
-        activity log, crash reports, settings, the last self-test and a description of your computer and audio devices into one zip,
-        takes screenshots of its windows and puts everything into a folder on your Desktop. Then drag the zip into "Logs" and the
-        pictures into "Screenshots" below. Screenshots can be dragged into any text field.
   - type: textarea
     id: logs
     attributes:
