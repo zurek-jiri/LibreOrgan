@@ -37,8 +37,12 @@ folders are read straight from their RAR archives: nothing to unpack, nothing
 twice on the disk. And everything is anti-aliased: pitch-shifted copies
 through a long windowed-sinc filter, a retune through a resampling bus per
 route, the high pipes through a sinc playback kernel - no foreign tone under
-a retuned pipe. The program measures the polyphony your machine reaches and
-sets its limit itself.
+a retuned pipe. And with a strong computer the same choices go the other
+way, for the finest listening: 32-bit float storage, every set kept at its
+own rate (96 kHz stays 96 kHz), the releases at the full rate, no packing,
+the sinc kernel for every pipe (*Full kernel from* 0 Hz), a true-stereo
+four-channel impulse response on every route. The program measures the
+polyphony your machine reaches and sets its limit itself.
 
 ## Try it in five minutes
 
