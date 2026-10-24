@@ -10519,12 +10519,20 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             if (least.bytesMinimum > 0 && least.samplesTested > 0)
             {
                 auto gb = [](juce::int64 b) { return juce::String((double)b / (1024.0 * 1024.0 * 1024.0), 2) + " GB"; };
-                const juce::int64 fixed = ram > (juce::int64)least.bytesNow ? ram - (juce::int64)least.bytesNow : 0;   // not jmax: juce_dsp's SIMD overload takes the explicit <int64>
-                const juce::int64 minimum = std::min<juce::int64>(ram, fixed + (juce::int64)least.bytesMinimum);
+                // What the process holds beyond the samples' bytes (0.8.182): the copy
+                // builds' working memory and the heap's slack, which GROW with the samples
+                // - Stralsund in float held 15.5 GB beside 82 GB of samples and 1 GB beside
+                // 7.4 GB with every saving option, so that part is scaled by the same ratio
+                // above a fixed 0.75 GB (the voice pool, the program). The old sum
+                // (the rest unscaled) said 22.9 GB where 8 GB was measured.
+                const juce::int64 fixedFloor = (juce::int64)(0.75 * 1024.0 * 1024.0 * 1024.0);
+                const juce::int64 rest = ram > (juce::int64)least.bytesNow ? ram - (juce::int64)least.bytesNow : 0;   // not jmax: juce_dsp's SIMD overload takes the explicit <int64>
+                const juce::int64 restScaled = rest > fixedFloor ? fixedFloor + (juce::int64)((double)(rest - fixedFloor) * least.ratio) : rest;
+                const juce::int64 minimum = std::min<juce::int64>(ram, restScaled + (juce::int64)least.bytesMinimum);
                 root->setProperty("estimatedMinimumRamBytes", minimum);
                 root->setProperty("estimatedMinimumRamStorage", SamplerEngine::minimumRamStorageText);
                 CrashHandler::note("RAM with every saving option (" + juce::String(SamplerEngine::minimumRamStorageText) + "): about " + gb(minimum)
-                    + " (now " + gb(ram) + ": samples " + gb(least.bytesNow) + " x " + juce::String(least.ratio, 3) + " + the rest " + gb(fixed) + "; "
+                    + " (now " + gb(ram) + ": samples " + gb(least.bytesNow) + " x " + juce::String(least.ratio, 3) + " + the rest " + gb(rest) + " scaled to " + gb(restScaled) + "; "
                     + juce::String(least.samplesTested) + " of " + juce::String(least.samplesTotal) + " samples tested, releases halved "
                     + juce::String(least.releasesHalved) + ", kept at the full rate " + juce::String(least.releasesKeptFull) + ", already at half " + juce::String(least.releasesAlreadyHalved) + ")");
             }

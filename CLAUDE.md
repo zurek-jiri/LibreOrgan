@@ -1032,6 +1032,14 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   window captured (%TEMP%\test_loader.ps1 finds "Loading saved divisions..." by title and crops it) - not code
   reading alone. Save Configuration (0.8.181): the four README lines sit in the box itself (PortableRow grows on the
   tick, `alert->setMessage(sameText)` re-lays the box out); the hook ORGAN_SAVE_PORTABLE never asks.
+  RAM FIGURES (0.8.182, the user: "proÄŤ se Stralsund naÄŤetlo do 8 GB? jak poÄŤĂ­tĂˇĹˇ RAM?"): the RAM GB column and
+  `measuredRamBytes` = the PROCESS (Windows max(WorkingSet, PrivateUsage)); the table's "RAM" is the figure at the
+  portable save with its storage text, "RAM min" the estimate. Stralsund: float 48 kHz 97.9 GB (82.4 GB samples + 15.5
+  GB "rest" = the copy builds' working memory and heap slack), 16-bit/32 kHz/half-rate/packed 8 GB. The estimate added
+  the rest UNSCALED (22.9 GB); now the rest above a 0.75 GB floor scales by the same ratio. The copy build is
+  parallel INSIDE a stop (parallelFor over its pipes, all cores), stops serialised by antiAliasBuildLock - several
+  stops at once would gain only the serial phases (cache read/write, swap-in), ~10-20 %; 0 cache hits after a
+  storage change is expected (the cache records carry the storage parameters).
 - A configuration README is WRITTEN BY THE PROGRAM: saving a portable configuration puts `<name>.README.md`
   beside the `.json` (`MainComponent::configurationReadme`; dev: `ORGAN_SAVE_PORTABLE=<file>` with
   `ORGAN_LOAD_CONFIGURATION=<non-portable cfg>` loads and saves without the dialogs). Only the three

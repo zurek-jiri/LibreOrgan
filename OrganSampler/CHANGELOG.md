@@ -12,8 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.181] - 2026-10-24
+## [0.8.182] - 2026-10-24
 
+### Fixed
+- The "RAM at the least, with every saving option" figure of a published
+  configuration scales the memory beside the samples (the copy builds'
+  working memory, the heap) with the samples too, above a fixed 0.75 GB: it
+  said 22.9 GB for Stralsund where 8 GB was measured with the options on.
+
+## [0.8.181] - 2026-10-24
 ### Fixed
 - The loading window keeps exactly two lines: the division's progress and
   what is loaded or done right now. Long phase texts wrapped into a third
