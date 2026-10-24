@@ -11791,7 +11791,8 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
             // The loading window's second line names the stop being decoded (0.8.180:
             // only the analysis and fill phases of a tree reported before, so a fast
             // load showed one line all along).
-            if (!assignment.container && loadStatusCallback) loadStatusCallback("Loading " + stopName + " ...");
+            if (!assignment.container && loadStatusCallback)
+                loadStatusCallback("Loading " + (stopName.length() > 44 ? stopName.substring(0, 43) + juce::String(juce::CharPointer_UTF8("\xe2\x80\xa6")) : stopName) + " ...");   // one line, never wrapped
             if (assignment.container)
             {
                 // No samples: the stop only carries its children (and their transmissions).
@@ -11859,7 +11860,9 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         // All ranks of this folder come from one organ: estimate its diapason once
         // and derive the per-note corrections to a1 = 440 Hz equal temperament.
         {
-            if (loadStatusCallback) loadStatusCallback("Compiling the Stop List: tuning, temperament and footage analysis ...");
+            // Short texts (0.8.181): the loading window's second line must never wrap -
+            // a wrapped line came and went as a flickering third line.
+            if (loadStatusCallback) loadStatusCallback("Analysing tuning, temperament and footage ...");
             std::vector<Stop*> ranks;
             for (auto* stop : newStops)
             {
@@ -11867,7 +11870,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 for (auto& rank : stop->ranks) ranks.push_back(rank.get());
             }
             computeTuning440(ranks);
-            if (loadStatusCallback) loadStatusCallback("Compiling the Stop List: pipe fills ...");
+            if (loadStatusCallback) loadStatusCallback("Filling the missing pipes ...");
             // No transmissions yet: its own division's compass. The copies of the
             // filled pipes are built in the background after the commit
             // (launchCopyBuilds), with their progress on the stop buttons.

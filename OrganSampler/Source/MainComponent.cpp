@@ -10062,21 +10062,57 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
             help.setTooltip("The manual chapter about portable configurations");
             help.onClick = [owner] { owner->showManualSection("Portable configuration (to share with others)"); };
             addAndMakeVisible(help);
-            setSize(500, 28);
+            // The four lines of the published README the program cannot know, right
+            // here once "Portable" is ticked (0.8.181: a second box asked for them
+            // before - "one dialog after another is annoying"), prefilled from the
+            // configuration (or the last ones given).
+            const char* captions[4] = { "Organ (the instrument, its builder, the place):", "Samples: producer (Sonus Paradisi ...):",
+                "Samples: link to the page where they are bought or downloaded (http...):", "Author (your name or GitHub name):" };
+            const juce::String values[4] = { o.publicationOrgan, o.publicationProducer, o.publicationLink, o.publicationAuthor };
+            for (int i = 0; i < 4; ++i)
+            {
+                captionLabels[i].setText(captions[i], juce::dontSendNotification);
+                captionLabels[i].setFont(juce::FontOptions(13.0f));
+                addChildComponent(captionLabels[i]);
+                editors[i].setMultiLine(false);
+                editors[i].setText(values[i], false);
+                addChildComponent(editors[i]);
+            }
+            toggle.onClick = [this] { showDetails(toggle.getToggleState()); };
+            setSize(560, 28);
+        }
+        void showDetails(bool on)
+        {
+            for (auto& label : captionLabels) label.setVisible(on);
+            for (auto& editor : editors) editor.setVisible(on);
+            if (on && getHeight() < 28 + 4 * 46) { setSize(560, 28 + 6 + 4 * 46); if (grown) grown(); }
         }
         void resized() override
         {
             auto area = getLocalBounds();
-            help.setBounds(area.removeFromRight(28).reduced(2));
-            area.removeFromRight(6);
-            toggle.setBounds(area);
+            auto top = area.removeFromTop(28);
+            help.setBounds(top.removeFromRight(28).reduced(2));
+            top.removeFromRight(6);
+            toggle.setBounds(top);
+            area.removeFromTop(6);
+            for (int i = 0; i < 4; ++i)
+            {
+                captionLabels[i].setBounds(area.removeFromTop(18));
+                editors[i].setBounds(area.removeFromTop(24));
+                area.removeFromTop(4);
+            }
         }
         juce::ToggleButton toggle;
         juce::TextButton help;
+        juce::Label captionLabels[4];
+        juce::TextEditor editors[4];
+        std::function<void()> grown;   // the box makes room when the row grows
     };
     auto* row = new PortableRow(*this);
     row->setName({});
     alert->addCustomComponent(row);
+    const juce::String message("The configuration will include folders, voicing, transmissions, couplers, audio routing, MIDI and all control values.");
+    row->grown = [alert, message] { alert->setMessage(message); };   // the same text: the box lays itself out again, growing to the row
     alert->addButton("Save", 1);
     alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -10085,6 +10121,13 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
         {
             const bool portable = row->toggle.getToggleState();
             const bool withMidi = !portable;
+            if (safeThis != nullptr && portable && result == 1)
+            {
+                safeThis->publicationOrgan = row->editors[0].getText().trim();
+                safeThis->publicationProducer = row->editors[1].getText().trim();
+                safeThis->publicationLink = row->editors[2].getText().trim();
+                safeThis->publicationAuthor = row->editors[3].getText().trim();
+            }
             delete row;
             if (safeThis == nullptr || result != 1) { if (then) then(false); return; }
             const auto start = safeThis->lastSettingsDirectory.isDirectory()
@@ -10103,7 +10146,9 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
                     auto file = chooser.getResult();
                     if (file == juce::File()) { if (then) then(false); return; }
                     if (!file.hasFileExtension("json")) file = file.withFileExtension("json");
+                    safeThis->publicationDetailsAsked = true;   // given in the box above (0.8.181)
                     safeThis->savePortableConfiguration(file, withMidi, portable);
+                    safeThis->publicationDetailsAsked = false;
                     if (then) then(true);
                 });
         }), true);
@@ -10432,9 +10477,11 @@ void MainComponent::askPublicationDetails(std::function<void()> then)
 
 void MainComponent::savePortableConfiguration(const juce::File& file, bool includeMidi, bool portable, bool publishFiles)
 {
-    if (portable && publishFiles && !publicationDetailsAsked)
+    if (portable && publishFiles && !publicationDetailsAsked && std::getenv("ORGAN_SAVE_PORTABLE") == nullptr)
     {
-        // The README's details first (0.8.179); Cancel saves nothing.
+        // The README's details first (0.8.179; since 0.8.181 the Save Configuration
+        // box asks for them itself - this is the fallback of other callers); Cancel
+        // saves nothing. The test hook never asks.
         juce::Component::SafePointer<MainComponent> safeThis(this);
         askPublicationDetails([safeThis, file, includeMidi, portable, publishFiles]
         {
@@ -12072,14 +12119,16 @@ public:
         // Two lines (#79, 0.8.159): the division and its percentages stay on the
         // first, what the engine does right now (the phases after decoding: the
         // analysis, the fills) comes under it - before, each overwrote the other.
-        auto show = [this] { setStatusMessage(progressLine + (workLine.isNotEmpty() ? "\n" + workLine : juce::String())); };
+        // Always exactly two lines (0.8.181): a second line that comes and goes, or a
+        // long one that wraps, made the window change its height and flicker.
+        auto show = [this] { setStatusMessage(progressLine + "\n" + (workLine.isNotEmpty() ? workLine : juce::String(" "))); };
         engine.setLoadStatusCallback([this, show](const juce::String& text) { workLine = text; show(); });
         for (size_t index = 0; index < jobs.size(); ++index)
         {
             const auto manual = jobs[index].manual;   // -1: a pool tree whose folders name their divisions
             const juce::String who = manual >= 0 && manual < SamplerEngine::maxManuals ? names[manual] : jobs[index].folder.getFileName();
             progressLine = who + ": scanning samples (folder tree " + juce::String((int)index + 1) + "/" + juce::String((int)jobs.size()) + ")...";
-            workLine.clear();
+            workLine = "Reading the folders ...";
             show();
             engine.loadManualFolder(jobs[index].folder, juce::jmax(0, manual), sampleRate,
                 [this, index, count, who, show](double localProgress)

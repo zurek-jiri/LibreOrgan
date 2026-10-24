@@ -12,8 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.180] - 2026-10-24
+## [0.8.181] - 2026-10-24
 
+### Fixed
+- The loading window keeps exactly two lines: the division's progress and
+  what is loaded or done right now. Long phase texts wrapped into a third
+  line that came and went (0.8.180), and before that the second line itself
+  came and went.
+
+### Changed
+- Save Configuration: ticking "Portable configuration" opens the four lines
+  of the published README (organ, producer, link, author) in the same box,
+  prefilled; no second box.
+
+## [0.8.180] - 2026-10-24
 ### Fixed
 - The loading window's second line now says which stop is being decoded; it
   appeared only in the short analysis and fill phases of each folder tree,

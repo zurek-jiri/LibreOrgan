@@ -1021,6 +1021,17 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   memory stop covered the sample decoding only. Stralsund in the user's file: 32-bit FLOAT storage (the load box's
   choice travels with the organ), 53.9 GB of WAV -> 82 GB of samples + 11 736 copies of filled pipes (64' extensions, Vox
   Humana Cornet [V] 432, Trompete 348 ...) -> 98 GB held; "RAM with every saving option" says 22.9 GB.
+  0.8.181 LOADER WINDOW LESSON (the user: "problikĂˇvĂˇ 3. Ĺ™Ăˇdek ... tohle je regres"): a juce::AlertWindow sizes its
+  width from the text's length (w = 300 + 2 sqrt(fontHeight x textWidth), capped) and lays the message out with
+  createLayoutWithBalancedLineLengths - a line over ~55 characters WRAPS, and setMessage grows the window only
+  (onlyIncreaseSize), so a long status text adds a line that stays as an empty gap when the next text is short =
+  "a flickering third line". The 0.8.159 two-line status flickered for the same reason (line 2 only in the compile
+  phases). Rule: the loading window's texts are SHORT (engine: "Analysing tuning, temperament and footage ...",
+  "Filling the missing pipes ...", "Loading <stop, cut at 44 chars> ..."), and the status has ALWAYS exactly two
+  lines ("Reading the folders ..." / " " when nothing else). Regression hunting for a dialog = a run with the
+  window captured (%TEMP%\test_loader.ps1 finds "Loading saved divisions..." by title and crops it) - not code
+  reading alone. Save Configuration (0.8.181): the four README lines sit in the box itself (PortableRow grows on the
+  tick, `alert->setMessage(sameText)` re-lays the box out); the hook ORGAN_SAVE_PORTABLE never asks.
 - A configuration README is WRITTEN BY THE PROGRAM: saving a portable configuration puts `<name>.README.md`
   beside the `.json` (`MainComponent::configurationReadme`; dev: `ORGAN_SAVE_PORTABLE=<file>` with
   `ORGAN_LOAD_CONFIGURATION=<non-portable cfg>` loads and saves without the dialogs). Only the three
