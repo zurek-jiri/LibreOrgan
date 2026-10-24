@@ -395,6 +395,9 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   available" box of the user's Doesburg configuration (its routes are Windows Audio) for a screenshot on Wayland, where
   nothing else can click (no xdotool). Website 0.8.151: `site/assets/main.png` = the console with Doesburg Surround
   (the user: "jen na první okno", the Stop List / Divisions / Editor pictures stay; README.md keeps console-stralsund.png).
+  24 Oct 2026 (after 0.8.178): BOTH the website's first screenshot and the README picture are the user's own
+  StrJak_Screenshot.jpg (Stralsund St. Jakobi in 0.8.178, 2542 x 1308: stop folders [III]/[V], extensions, transmissions,
+  the 64' pedal) as site/assets/main.jpg; main.png and console-stralsund.png are gone. The user makes the screenshots.
   0.8.156: the engine's `startNote` no longer checks `keyInCompass` and `keyHeldInCompass` ignores the compass - the
   compass is applied in `MainComponent::routeKeyboardNote` to the physical key only; coupled notes beyond the compass
   play the folder's pipes (001313: files 024-096 on a 36-96 manual). The voicing rows of a stop span the compass
