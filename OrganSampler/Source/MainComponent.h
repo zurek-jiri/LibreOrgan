@@ -90,6 +90,8 @@ private:
     LeftOnlyTextButton configurationEditorButton{ "Configuration Editor" };
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
+    bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
+    juce::StringArray volumeSetsAnnounced;   // multi-part archives whose other parts were announced (once per session, 0.8.176)
     LeftOnlyTextButton shutdownButton{ "Shut down PC" };   // saves, quits and shuts the computer down (hidden by default)
     LeftOnlyTextButton unpackArchiveButton{ "Unpack archive" };   // RAR sample archives unpacked by libarchive (hidden by default)
     void unpackArchiveDialog();

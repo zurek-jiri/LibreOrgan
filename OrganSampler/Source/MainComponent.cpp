@@ -10175,13 +10175,14 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     });
 }
 
-void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>& archives, bool merge)
+void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>& archivesChosen, bool merge)
 {
     // Load Configuration (or Merge) given .rar files (0.8.158; several at once
     // 0.8.159 - an organ split over archives): every archive is indexed and its
     // folder remembered, then ONE configuration or definition out of all of them
     // is chosen by the user - never the first one by itself - and loaded (or
     // merged) straight from the archives; the other archives serve its paths.
+    const std::vector<juce::File> archives = SampleFiles::firstVolumes(archivesChosen);   // every multi-part set once (0.8.176: all six parts chosen = six "definitions")
     if (archives.empty()) return;
     for (const auto& archive : archives) registerArchiveFolder(archive.getParentDirectory());
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -13352,10 +13353,11 @@ void MainComponent::loadTreesIntoDivision(const std::vector<juce::File>& trees, 
         "These folder trees are already loaded. Their folders are assigned in the Stop List.");
 }
 
-void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folders, const std::vector<juce::File>& archives, bool unpackFirst,
+void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folders, const std::vector<juce::File>& archivesChosen, bool unpackFirst,
     const juce::File& destination, int manual)
 {
     if (manual < 0 || manual > manualCount) return;
+    const std::vector<juce::File> archives = SampleFiles::firstVolumes(archivesChosen);   // every multi-part set once, from its first part (0.8.176)
     if (!archives.empty() && unpackFirst)
     {
         // The archives unpacked into the folder first, their folder trees loaded then.
@@ -13407,10 +13409,28 @@ void MainComponent::indexArchivesThen(const std::vector<juce::File>& archives, s
     auto job = std::make_shared<IndexJob>(archives, this);
     job->launchThread();
     auto poll = std::make_shared<std::function<void()>>();
-    *poll = [job, poll, then]
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    *poll = [job, poll, then, safeThis, archives]
     {
         if (job->isThreadRunning()) { juce::Timer::callAfterDelay(200, [poll] { (*poll)(); }); return; }
         juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; });   // cleared after this call returns, never while it runs
+        // A multi-part set: the user chose one part, the others were found beside it and
+        // read as one - said once per set and session (0.8.176).
+        if (safeThis != nullptr)
+        {
+            juce::StringArray sets;
+            for (const auto& archive : archives)
+            {
+                const auto volumes = SampleFiles::volumesRead(archive);
+                if (volumes.size() < 2 || safeThis->volumeSetsAnnounced.contains(archive.getFullPathName())) continue;
+                safeThis->volumeSetsAnnounced.add(archive.getFullPathName());
+                sets.add(archive.getFileName() + ": " + juce::String((int)volumes.size()) + " parts read, " + volumes.front().getFileName() + " to " + volumes.back().getFileName());
+                CrashHandler::note("Multi-part archive " + sets[sets.size() - 1]);
+            }
+            if (!sets.isEmpty())
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Multi-part archive",
+                    "The other parts of the archive were found beside it and read as one set:\n\n" + sets.joinIntoString("\n"), "OK", safeThis.getComponent());
+        }
         then();
     };
     juce::Timer::callAfterDelay(300, [poll] { if (*poll) (*poll)(); });
@@ -14812,10 +14832,15 @@ void MainComponent::showStopBuildingDialog(int)
             setup(loadFolderButton, "Load folder...", "Loads a sample folder tree; you choose the division its stops go to. "
                 "The stops enter the table by the automatic rules and can then be moved and edited.", [this] { loadFolderMenu(); });
             // An empty table: the golden sheen and the sliding arrow on "Load folder..."
-            // (0.8.175; the orange caption and the fixed arrow before), until the first click.
-            addAndMakeVisible(loadHint);
-            loadHint.follow({ &loadFolderButton }, true);
-            addMouseListener(&loadHint, true);
+            // (0.8.175; the orange caption and the fixed arrow before), until the first
+            // click - and only the first time the Stop List opens in a session (0.8.176).
+            addChildComponent(loadHint);
+            if (!owner.stopListHintShown)
+            {
+                owner.stopListHintShown = true;
+                loadHint.follow({ &loadFolderButton }, true);
+                addMouseListener(&loadHint, true);
+            }
             setup(unloadFolderButton, "Unload folder...", "Removes one of a division's folder trees (or all of them).", [this] { unloadFolderMenu(); });
             setup(swapButton, "Swap divisions...", "Exchanges the whole stop lists of two divisions (stops, pool, transmissions, "
                 "combinations, crescendo and MIDI bindings follow).", [this] { swapMenu(); });

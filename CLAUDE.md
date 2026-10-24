@@ -518,7 +518,22 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   info line at the bottom is always visible). The website fact "500 000 voices / 2009 laptop" is replaced by "Light
   on RAM, CPU and disk" + feature 07 (16-bit, 32 kHz, FLAC-like packing, half-rate releases, RAR in place, everything
   anti-aliased); README the same paragraph (the user: "to je zásadní tahák"). Projucer resave done on Windows for
-  0.8.174 ("Finished saving: Visual Studio 2026"). Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
+  0.8.174 ("Finished saving: Visual Studio 2026").
+  0.8.176 AEOLIAN-SKINNER LESSONS (E:\sonus\HW2\aeolian\FirstBeta_Unencrypted_aleSumi: Aeolian_Skinner.part01-06.rar, 42 326
+  files, 6 volumes, + Aeolian_BetaODF.CompPkg.Hauptwerk.rar = the definition alone with EMPTY OrganDefinitions/
+  OrganInstallationPackages folders): (1) "Load folder" gave a tree with 0 stops - locate() took the FIRST archive
+  of the folder (natural order: BetaODF before Skinner) holding the folder name, the empty one; now dirHasContent`n  (childDirs or a file under the key) decides, an empty folder of another archive only as the fallback (both loops of
+  locate). (2) olumesOf(partN) built a set from ANY part upwards, so part02..06 chosen = five more "archives" each
+  holding the definition ("several definitions"): irstVolumeOf (the lowest-numbered sibling of the .partNN set) in
+  indexOfLocked, irstVolumes() dedupes the chosen lists in loadChosenIntoDivision / loadConfigurationFromArchives.
+  (3) gIndexingVolume/gIndexingVolumes atomics (Walker::walkVolume) -> the progress text "(part 3 of 6)"; a
+  juce::String written by the walk thread would be a race. (4) olumesRead(archive) + MainComponent
+  olumeSetsAnnounced: indexArchivesThen shows "Multi-part archive: ... 6 parts read, part01 to part06" once per set
+  and session. (5) stopListHintShown: the Stop List's sheen/arrow on the first opening of a session only
+  (ddChildComponent(loadHint), followed only then). Test: %TEMP%\test_aeolian.ps1 (ORGAN_TEST_LOAD_ARCHIVES part01,
+  50 s, settings restored): the tree now "in the archive Aeolian_Skinner.part01.rar", 1 tree job, stops "001845 - pipes
+  - man - CH BlockFl 2" etc. with ORTF/AB/Rea perspectives, every stop auto-transposed -12 (files numbered 024 = key 36).
+  CLAUDE.md said "Linux clone commits"; on Windows: git add -u, commit -F file, tag only after git log -1. Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
   files copied over); NO Projucer resave on Linux - do it on Windows next (the VS2026 files lag 0.8.165).
   `OrganSampler/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run
@@ -992,6 +1007,9 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
+- NEXT BUILD (the user, 24 Oct 2026, after 0.8.175: "paráda", but): the hint arrows of HintSheen (UIControls.h) must be
+  about FOUR TIMES bigger - arrowLength 30 -> ~120 px, headHalf 11 -> ~44, shaftHalf 4 -> ~16, headLen 14 -> ~56, the
+  travel scaled with it (and the bounds' reach); keep the colours, the alpha and the sliding/vanishing as they are.
 - Measurements 0.8.141 (#44/#45, Ultra 7 155H, Caen, 7 routes, WASAPI 480 = 10 ms): #44 (16 threads, IR on 6 routes,
   78 buttons) 42 200 = the stimulus cap (61 keys x 16 strikes, callback 53 %, "first failing level 0") - the log says
   so even though the user disputes it; #45 (6 P cores, 32 buttons, no IR) broke at 39 239 with callback 95 %.

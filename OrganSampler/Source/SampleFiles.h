@@ -50,6 +50,12 @@ namespace SampleFiles
     std::vector<juce::File> archivesIn(const juce::File& folder);
     bool isFirstVolume(const juce::File& archive);
     std::vector<juce::File> volumesOf(const juce::File& firstVolume);
+    // A later part of a multi-part set -> its first part; the chosen archives as sets,
+    // each once (0.8.176: a user choosing part02 or all the parts gets the set once).
+    juce::File firstVolumeOf(const juce::File& file);
+    std::vector<juce::File> firstVolumes(const std::vector<juce::File>& archives);
+    // The volumes an indexed set was read from (one for a single archive).
+    std::vector<juce::File> volumesRead(const juce::File& archive);
     std::vector<juce::String> topLevelFoldersOf(const juce::File& archive);
     // Every file name (with its path inside) of an archive matching a predicate - the Hauptwerk definition search.
     std::vector<juce::String> entriesOf(const juce::File& archive, const std::function<bool(const juce::String&)>& wanted);

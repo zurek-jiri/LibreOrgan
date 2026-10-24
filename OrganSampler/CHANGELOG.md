@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.176] - 2026-10-24
+
+### Fixed
+- A folder tree loaded from a multi-part RAR set came out with no stops when a
+  second archive in the same folder (a definition-only package of 15 MB) held
+  the same folder empty: the first archive by name was taken. Now the archive
+  with something under the folder wins.
+- Any part of a multi-part set stands for the set: choosing part03, or all the
+  parts at once, reads the set once from its first part (each part was a set
+  of its own before - the one definition inside was offered six times).
+- The other parts of a chosen archive are announced once they were found and
+  read (a message, once per set and session), and the "Reading the archives"
+  window names the part being read ("part 3 of 6").
+- The Stop List's golden sheen and arrow on "Load folder..." appear on the
+  first opening of the Stop List in a session only.
+
 ## [0.8.175] - 2026-10-24
 
 ### Changed

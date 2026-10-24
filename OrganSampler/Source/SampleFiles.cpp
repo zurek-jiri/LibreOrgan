@@ -114,6 +114,7 @@ namespace
     std::mutex gMutex;
     std::atomic<int> gIndexingFiles{ -1 };   // the walk's progress: files found so far (-1 = no walk running)
     juce::String gIndexingName;             // the archive being walked (set under gMutex before the walk)
+    std::atomic<int> gIndexingVolume{ 0 }, gIndexingVolumes{ 0 };   // the part being walked and the set's size (0.8.176)
     juce::StringArray gWalking;             // archives being walked right now (keys; under gMutex) - the walk runs with the mutex released
     std::map<juce::String, std::shared_ptr<ArchiveIndex>> gIndexes;      // lower-case first-volume path -> index
     std::map<juce::String, std::vector<juce::File>> gArchivesOfFolder;   // lower-case disk folder -> its first volumes (scanned once)
@@ -230,6 +231,8 @@ namespace
         bool walkVolume(int vol)
         {
             const auto& file = index.volumes[(size_t)vol];
+            gIndexingVolume.store(vol + 1, std::memory_order_relaxed);   // the progress text names the part being read (0.8.176)
+            gIndexingVolumes.store((int)index.volumes.size(), std::memory_order_relaxed);
             juce::FileInputStream in(file);
             if (!in.openedOk()) return fail(file.getFileName() + " cannot be opened");
             juce::uint8 signature[8] = {};
@@ -582,8 +585,13 @@ namespace
         return gArchivesOfFolder[key] = list;
     }
 
-    std::shared_ptr<ArchiveIndex> indexOfLocked(const juce::File& first)
+    std::shared_ptr<ArchiveIndex> indexOfLocked(const juce::File& given)
     {
+        // A later part of a multi-part set (name.part03.rar chosen, or listed) is
+        // the set itself: its first part, read once from the start (0.8.176 - each
+        // part made a set of its own before: the parts' common definition was found
+        // six times, "several definitions").
+        const juce::File first = SampleFiles::firstVolumeOf(given);
         const auto key = lower(first.getFullPathName());
         auto found = gIndexes.find(key);
         if (found != gIndexes.end()) return found->second;
@@ -633,6 +641,15 @@ namespace
         return index;
     }
 
+    // A folder of an archive with a subfolder or a file under it (0.8.176).
+    bool dirHasContent(const ArchiveIndex& index, const juce::String& key)
+    {
+        if (index.childDirs.count(key) != 0) return true;
+        const auto prefix = key + "/";
+        const auto it = index.byPath.lower_bound(prefix);
+        return it != index.byPath.end() && it->first.startsWith(prefix);
+    }
+
     // Where a path lives: the disk, or an archive of an existing ancestor folder
     // with the path relative to that folder.
     struct Place
@@ -658,14 +675,24 @@ namespace
             if (ancestor.isDirectory())
             {
                 std::lock_guard<std::mutex> lock(gMutex);
+                // A folder held by several archives of the folder (0.8.176: the Aeolian-Skinner
+                // set and its 15 MB definition-only archive both hold "OrganInstallationPackages",
+                // the small one empty and first by name): the archive with something under it wins.
+                std::shared_ptr<ArchiveIndex> emptyDir;
                 for (const auto& archive : archivesOfFolderLocked(ancestor))
                 {
                     auto index = indexOfLocked(archive);
                     if (index == nullptr || !index->valid) continue;
                     const auto key = lower(rest);
-                    if (index->dirs.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
+                    if (index->dirs.count(key) != 0)
+                    {
+                        if (dirHasContent(*index, key)) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
+                        if (emptyDir == nullptr) emptyDir = index;
+                        continue;
+                    }
                     if (index->byPath.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isFile = true; return place; }
                 }
+                if (emptyDir != nullptr) { place.index = emptyDir; place.relative = emptyDir->spelling[lower(rest)]; place.isDir = true; return place; }
             }
             const auto parent = ancestor.getParentDirectory();
             if (parent == ancestor) break;
@@ -683,6 +710,8 @@ namespace
         for (const auto& folder : gSearchFolders)
         {
             if (!folder.isDirectory()) continue;
+            std::shared_ptr<ArchiveIndex> emptyDir;
+            juce::String emptyKey;
             for (const auto& archive : archivesOfFolderLocked(folder))
             {
                 auto index = indexOfLocked(archive);
@@ -692,10 +721,16 @@ namespace
                     juce::String key;
                     for (int i = start; i < parts.size(); ++i) key << (i > start ? "/" : "") << parts[i];
                     key = lower(key);
-                    if (index->dirs.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
+                    if (index->dirs.count(key) != 0)
+                    {
+                        if (dirHasContent(*index, key)) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
+                        if (emptyDir == nullptr) { emptyDir = index; emptyKey = key; }   // an empty folder of another archive: only when no archive has content (0.8.176)
+                        continue;
+                    }
                     if (index->byPath.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isFile = true; return place; }
                 }
             }
+            if (emptyDir != nullptr) { place.index = emptyDir; place.relative = emptyDir->spelling[emptyKey]; place.isDir = true; return place; }
         }
         return place;
     }
@@ -949,6 +984,44 @@ namespace SampleFiles
         return part < 0 || part <= 1;
     }
 
+    juce::File firstVolumeOf(const juce::File& file)
+    {
+        // name.part03.rar -> name.part01.rar (the lowest-numbered part beside it); anything else as it is.
+        const int part = partNumberOf(file);
+        if (part < 0 || part <= 1) return file;
+        const auto stem = file.getFileName().toLowerCase().dropLastCharacters(4);
+        const auto prefix = stem.substring(0, stem.lastIndexOf(".part") + 5);
+        juce::File best = file;
+        int bestNumber = part;
+        for (const auto& entry : juce::RangedDirectoryIterator(file.getParentDirectory(), false, "*.rar", juce::File::findFiles))
+        {
+            const auto candidate = entry.getFile();
+            if (!candidate.getFileName().toLowerCase().startsWith(prefix)) continue;
+            const int number = partNumberOf(candidate);
+            if (number >= 0 && number < bestNumber) { bestNumber = number; best = candidate; }
+        }
+        return best;
+    }
+
+    std::vector<juce::File> firstVolumes(const std::vector<juce::File>& archives)
+    {
+        // The chosen files as sets: every part replaced by its set's first part, each set once, the order kept.
+        std::vector<juce::File> result;
+        for (const auto& archive : archives)
+        {
+            const auto first = firstVolumeOf(archive);
+            if (std::find(result.begin(), result.end(), first) == result.end()) result.push_back(first);
+        }
+        return result;
+    }
+
+    std::vector<juce::File> volumesRead(const juce::File& archive)
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        auto index = indexOfLocked(archive);
+        return index != nullptr ? index->volumes : std::vector<juce::File>{};
+    }
+
     std::vector<juce::File> volumesOf(const juce::File& first)
     {
         std::vector<juce::File> volumes{ first };
@@ -1022,7 +1095,9 @@ namespace SampleFiles
     {
         const int files = gIndexingFiles.load(std::memory_order_relaxed);
         if (files < 0) return {};
-        return "Reading the contents of " + gIndexingName + ": " + juce::String(files) + " file(s) so far";
+        const int volume = gIndexingVolume.load(std::memory_order_relaxed), volumes = gIndexingVolumes.load(std::memory_order_relaxed);
+        return "Reading the contents of " + gIndexingName + (volumes > 1 ? " (part " + juce::String(volume) + " of " + juce::String(volumes) + ")" : juce::String())
+            + ": " + juce::String(files) + " file(s) so far";
     }
 
     juce::String archiveSummary(const juce::File& archive)
