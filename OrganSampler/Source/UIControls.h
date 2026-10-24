@@ -294,7 +294,7 @@ public:
         const float gap = 6.0f + travel * (1.0f - eased);   // the tip's distance from the button's edge
         const float dir = fromAbove ? 1.0f : -1.0f;          // +1: pointing down
         const float cx = r.getCentreX(), tipY = fromAbove ? r.getY() - gap : r.getBottom() + gap;
-        const float backY = tipY - dir * arrowLength, headBackY = tipY - dir * 14.0f, headHalf = 11.0f, shaftHalf = 4.0f;
+        const float backY = tipY - dir * arrowLength, headBackY = tipY - dir * 56.0f, headHalf = 44.0f, shaftHalf = 16.0f;   // four times the 0.8.175 size (the user: "hodně velké")
         juce::Path arrow;
         arrow.startNewSubPath(cx, tipY);
         arrow.lineTo(cx + headHalf, headBackY);
@@ -328,7 +328,7 @@ private:
         }
         repaint();
     }
-    static constexpr float travel = 90.0f, arrowLength = 30.0f;
+    static constexpr float travel = 180.0f, arrowLength = 120.0f;   // 0.8.179: four times the 0.8.175 arrow (30 px), twice the travel
     std::vector<juce::Component*> targets;
     bool fromAbove = false;
     size_t current = 0;    // the button of this sweep

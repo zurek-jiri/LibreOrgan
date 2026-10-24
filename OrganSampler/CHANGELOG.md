@@ -15,6 +15,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
 ## [0.8.179] - 2026-10-24
 
 ### Changed
+- The golden hint arrows are four times bigger (120 px) and travel twice as far.
 - Saving a portable configuration asks once for what the README cannot know
   - the organ, the producer and product of the samples, the link to their
   page, the author - keeps the answers in the configuration and writes the

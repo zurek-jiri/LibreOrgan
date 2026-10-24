@@ -1038,9 +1038,6 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
-- NEXT BUILD (the user, 24 Oct 2026, after 0.8.175: "paráda", but): the hint arrows of HintSheen (UIControls.h) must be
-  about FOUR TIMES bigger - arrowLength 30 -> ~120 px, headHalf 11 -> ~44, shaftHalf 4 -> ~16, headLen 14 -> ~56, the
-  travel scaled with it (and the bounds' reach); keep the colours, the alpha and the sliding/vanishing as they are.
 - Measurements 0.8.141 (#44/#45, Ultra 7 155H, Caen, 7 routes, WASAPI 480 = 10 ms): #44 (16 threads, IR on 6 routes,
   78 buttons) 42 200 = the stimulus cap (61 keys x 16 strikes, callback 53 %, "first failing level 0") - the log says
   so even though the user disputes it; #45 (6 P cores, 32 buttons, no IR) broke at 39 239 with callback 95 %.
