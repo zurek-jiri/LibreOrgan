@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.177] - 2026-10-24
+
+### Changed
+- Only the archives you choose are read - in Load folder, Load Configuration
+  or a merge, each with its parts - never another archive that happens to
+  lie in the same folder, and no longer every archive of the configuration's
+  own folder (0.8.157 took every archive of a folder: a definition-only
+  package beside the Aeolian-Skinner set served its empty folders). Every
+  chosen archive is written into ArchiveFolders.txt as a file line; a folder
+  line written by an older version is turned into the lines of its archives
+  once, visibly (the log says so), so an organ loaded before keeps working.
+  OrganRarPackages beside the configuration still serves with every archive
+  in it.
+
 ## [0.8.176] - 2026-10-24
 
 ### Fixed

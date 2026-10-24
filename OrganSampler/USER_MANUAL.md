@@ -499,18 +499,19 @@ as a folder, and reads the samples out of the archives.
   What you pay: the first load indexes the archive, and a compressed set
   takes the decompression time at every load - from a fast SSD an unpacked
   set loads faster.
-- **Where the archives may lie:** beside the organ's folders (the
-  configuration's paths find them there), or anywhere else the program is
-  told: the folder of every archive you choose in *Load folder...* or *Load
-  Configuration* is written into `ArchiveFolders.txt` beside the open
-  configuration (in its `OrganConfigurations` folder; without a configuration
-  into the settings folder, one path per line, editable by hand), and a
-  folder `OrganRarPackages` beside `OrganConfigurations` is always looked
-  into. A sample folder that is not on the disk is then looked for in those
-  archives by the tail of its path (`OrganInstallationPackages/002735/pipes`
-  ...). So the recommended layout is `OrganConfigurations`, `OrganRarPackages`
-  and the `Hauptwerk` folder side by side - and an archive folder on another
-  disk works just as well once it is in the list.
+- **Which archives are read:** only the archives you choose - in *Load
+  folder...*, *Load Configuration* or a merge - with their parts, never
+  another archive that happens to lie beside them. Every chosen archive is
+  written into `ArchiveFolders.txt` beside the open configuration (in its
+  `OrganConfigurations` folder; without a configuration into the settings
+  folder; one path per line, editable by hand), so the next start finds it
+  again; a line naming a folder stands for every archive in that folder, and
+  so does a folder `OrganRarPackages` beside `OrganConfigurations`. A sample
+  folder that is not on the disk is looked for in those archives by the tail
+  of its path (`OrganInstallationPackages/002735/pipes` ...). So the
+  recommended layout is `OrganConfigurations`, `OrganRarPackages` and the
+  `Hauptwerk` folder side by side - and an archive on another disk works just
+  as well once it is in the list.
 - **Unpacking in OrganSampler:** tick *Unpack the archives into a folder
   first* in the same window, choose the folder (proposed: the folder of the
   first archive; each archive's own folder tree is created inside it) and

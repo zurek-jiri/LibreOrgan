@@ -118,7 +118,8 @@ namespace
     juce::StringArray gWalking;             // archives being walked right now (keys; under gMutex) - the walk runs with the mutex released
     std::map<juce::String, std::shared_ptr<ArchiveIndex>> gIndexes;      // lower-case first-volume path -> index
     std::map<juce::String, std::vector<juce::File>> gArchivesOfFolder;   // lower-case disk folder -> its first volumes (scanned once)
-    std::vector<juce::File> gSearchFolders;   // folders whose archives serve paths elsewhere (0.8.158)
+    std::vector<juce::File> gSearchFolders;   // folders named as a whole whose archives serve paths (0.8.158; folder lines of ArchiveFolders.txt, OrganRarPackages)
+    std::vector<juce::File> gChosenArchives;  // the archives the user chose (first volumes): the only ones that serve paths otherwise (0.8.177)
 
     // ---- the RAR header walk ------------------------------------------------------------
     const juce::uint8 kSignature4[7] = { 'R', 'a', 'r', '!', 0x1a, 0x07, 0x00 };
@@ -572,17 +573,39 @@ namespace
         return block;
     }
 
-    // The archives directly in a disk folder (first volumes), scanned once.
+    // The archives of a disk folder that SERVE paths (0.8.177): the archives the user
+    // chose (Load folder, Load Configuration, Merge; the archive lines of
+    // ArchiveFolders.txt) lying in that folder - never another archive that happens
+    // to lie beside them (every .rar of the folder before: the Aeolian-Skinner set's
+    // folder also holds its 15 MB definition-only package, whose empty folder was
+    // taken) - and every archive of a folder named as a whole (a folder line of
+    // ArchiveFolders.txt, OrganRarPackages). Scanned once per folder.
     const std::vector<juce::File>& archivesOfFolderLocked(const juce::File& folder)
     {
         const auto key = lower(folder.getFullPathName());
         auto found = gArchivesOfFolder.find(key);
         if (found != gArchivesOfFolder.end()) return found->second;
         std::vector<juce::File> list;
-        for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
-            if (SampleFiles::isFirstVolume(entry.getFile())) list.push_back(entry.getFile());
+        for (const auto& archive : gChosenArchives)
+            if (archive.getParentDirectory() == folder && archive.existsAsFile()) list.push_back(archive);
+        if (std::find(gSearchFolders.begin(), gSearchFolders.end(), folder) != gSearchFolders.end())
+            for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
+                if (SampleFiles::isFirstVolume(entry.getFile()) && std::find(list.begin(), list.end(), entry.getFile()) == list.end()) list.push_back(entry.getFile());
         std::sort(list.begin(), list.end(), [](const juce::File& a, const juce::File& b) { return a.getFileName().compareNatural(b.getFileName()) < 0; });
         return gArchivesOfFolder[key] = list;
+    }
+
+    // Every archive serving paths that lie elsewhere: the chosen ones and those of the folders named as a whole.
+    std::vector<juce::File> servingArchivesLocked()
+    {
+        std::vector<juce::File> all = gChosenArchives;
+        for (const auto& folder : gSearchFolders)
+        {
+            if (!folder.isDirectory()) continue;
+            for (const auto& archive : archivesOfFolderLocked(folder))
+                if (std::find(all.begin(), all.end(), archive) == all.end()) all.push_back(archive);
+        }
+        return all;
     }
 
     std::shared_ptr<ArchiveIndex> indexOfLocked(const juce::File& given)
@@ -699,39 +722,36 @@ namespace
             rest = ancestor.getFileName() + "/" + rest;
             ancestor = parent;
         }
-        // Elsewhere (0.8.158): the archives of the search folders, by the longest
-        // tail of the path they hold (at least two parts: "002735/pipes/PE" yes,
-        // a bare folder name no).
+        // Elsewhere (0.8.158): the serving archives (the chosen ones, those of the
+        // folders named as a whole), by the longest tail of the path they hold (at
+        // least two parts: "002735/pipes/PE" yes, a bare folder name no).
         std::lock_guard<std::mutex> lock(gMutex);
-        if (gSearchFolders.empty()) return place;
+        const auto serving = servingArchivesLocked();
+        if (serving.empty()) return place;
         juce::StringArray parts = juce::StringArray::fromTokens(slashes(path.getFullPathName()), "/", "");
         parts.removeEmptyStrings();
         if (parts.size() > 0 && parts[0].endsWithChar(':')) parts.remove(0);
-        for (const auto& folder : gSearchFolders)
+        std::shared_ptr<ArchiveIndex> emptyDir;
+        juce::String emptyKey;
+        for (const auto& archive : serving)
         {
-            if (!folder.isDirectory()) continue;
-            std::shared_ptr<ArchiveIndex> emptyDir;
-            juce::String emptyKey;
-            for (const auto& archive : archivesOfFolderLocked(folder))
+            auto index = indexOfLocked(archive);
+            if (index == nullptr || !index->valid) continue;
+            for (int start = 0; start + 2 <= parts.size(); ++start)
             {
-                auto index = indexOfLocked(archive);
-                if (index == nullptr || !index->valid) continue;
-                for (int start = 0; start + 2 <= parts.size(); ++start)
+                juce::String key;
+                for (int i = start; i < parts.size(); ++i) key << (i > start ? "/" : "") << parts[i];
+                key = lower(key);
+                if (index->dirs.count(key) != 0)
                 {
-                    juce::String key;
-                    for (int i = start; i < parts.size(); ++i) key << (i > start ? "/" : "") << parts[i];
-                    key = lower(key);
-                    if (index->dirs.count(key) != 0)
-                    {
-                        if (dirHasContent(*index, key)) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
-                        if (emptyDir == nullptr) { emptyDir = index; emptyKey = key; }   // an empty folder of another archive: only when no archive has content (0.8.176)
-                        continue;
-                    }
-                    if (index->byPath.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isFile = true; return place; }
+                    if (dirHasContent(*index, key)) { place.index = index; place.relative = index->spelling[key]; place.isDir = true; return place; }
+                    if (emptyDir == nullptr) { emptyDir = index; emptyKey = key; }   // an empty folder of another archive: only when no archive has content (0.8.176)
+                    continue;
                 }
+                if (index->byPath.count(key) != 0) { place.index = index; place.relative = index->spelling[key]; place.isFile = true; return place; }
             }
-            if (emptyDir != nullptr) { place.index = emptyDir; place.relative = emptyDir->spelling[emptyKey]; place.isDir = true; return place; }
         }
+        if (emptyDir != nullptr) { place.index = emptyDir; place.relative = emptyDir->spelling[emptyKey]; place.isDir = true; return place; }
         return place;
     }
 
@@ -967,6 +987,30 @@ namespace SampleFiles
         gSearchFolders.clear();
         for (const auto& folder : folders)
             if (folder != juce::File() && std::find(gSearchFolders.begin(), gSearchFolders.end(), folder) == gSearchFolders.end()) gSearchFolders.push_back(folder);
+        gArchivesOfFolder.clear();   // the folders' serving archives are listed again
+    }
+
+    void setChosenArchives(const std::vector<juce::File>& archives)
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        gChosenArchives.clear();
+        for (const auto& archive : firstVolumes(archives))
+            if (archive.existsAsFile()) gChosenArchives.push_back(archive);
+        gArchivesOfFolder.clear();
+    }
+
+    void addChosenArchives(const std::vector<juce::File>& archives)
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        for (const auto& archive : firstVolumes(archives))
+            if (archive.existsAsFile() && std::find(gChosenArchives.begin(), gChosenArchives.end(), archive) == gChosenArchives.end()) gChosenArchives.push_back(archive);
+        gArchivesOfFolder.clear();
+    }
+
+    juce::File archiveOf(const juce::File& path)
+    {
+        const auto place = locate(path);
+        return place.onDisk || place.index == nullptr ? juce::File() : place.index->first;
     }
 
     void forgetArchives()

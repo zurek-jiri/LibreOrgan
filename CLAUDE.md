@@ -533,7 +533,21 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   (ddChildComponent(loadHint), followed only then). Test: %TEMP%\test_aeolian.ps1 (ORGAN_TEST_LOAD_ARCHIVES part01,
   50 s, settings restored): the tree now "in the archive Aeolian_Skinner.part01.rar", 1 tree job, stops "001845 - pipes
   - man - CH BlockFl 2" etc. with ORTF/AB/Rea perspectives, every stop auto-transposed -12 (files numbered 024 = key 36).
-  CLAUDE.md said "Linux clone commits"; on Windows: git add -u, commit -F file, tag only after git log -1. Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
+  CLAUDE.md said "Linux clone commits"; on Windows: git add -u, commit -F file, tag only after git log -1.
+  0.8.177 THE USER'S RULE ("On nesmí brát archivy, které člověk nevybere!"): ONLY the archives the user chose serve paths -
+  Load folder / Load Configuration / Merge (with their parts) and the ARCHIVE lines of ArchiveFolders.txt; never another
+  .rar lying beside them, and no longer every archive of the configuration's own folder. 0.8.157's design took every
+  first-volume .rar of a folder (rchivesOfFolderLocked), which the Aeolian-Skinner folder's definition-only package
+  exploited. Now gChosenArchives (SampleFiles: setChosenArchives/addChosenArchives, rchiveOf(path)),
+  rchivesOfFolderLocked(folder) = the chosen archives in it (+ every archive of a folder named as a whole: OrganRarPackages,
+  old folder lines), servingArchivesLocked() for the "elsewhere" loop; MainComponent::registerArchive(archive) (was
+  registerArchiveFolder(folder)) writes the archive's first part into ArchiveFolders.txt, the Hauptwerk import writes
+  SampleFiles::archiveOf(odf); efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives once
+  (log "the folder line X replaced by its archives: ...") - a line of another OS's path (the Linux /run/media/... line
+  in the user's Adlington list) is neither a folder nor a file here and stays as it is. The user's Adlington list had
+  the aeolian FOLDER line (written by 0.8.176's Load folder): replaced by hand with Aeolian_Skinner.part01.rar so the
+  migration would not bring the BetaODF package in. Test 0.8.177: the BetaODF archive is never opened, both trees "in
+  the archive Aeolian_Skinner.part01.rar", the settings-folder list's Adlington\10 folder line migrated to Vol0 + Vol1. Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
   files copied over); NO Projucer resave on Linux - do it on Windows next (the VS2026 files lag 0.8.165).
   `OrganSampler/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run

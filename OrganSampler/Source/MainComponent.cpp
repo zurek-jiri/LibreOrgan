@@ -10184,7 +10184,7 @@ void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>&
     // merged) straight from the archives; the other archives serve its paths.
     const std::vector<juce::File> archives = SampleFiles::firstVolumes(archivesChosen);   // every multi-part set once (0.8.176: all six parts chosen = six "definitions")
     if (archives.empty()) return;
-    for (const auto& archive : archives) registerArchiveFolder(archive.getParentDirectory());
+    for (const auto& archive : archives) registerArchive(archive);
     juce::Component::SafePointer<MainComponent> safeThis(this);
     indexArchivesThen(archives, [safeThis, archives, merge]
     {
@@ -10248,43 +10248,71 @@ void MainComponent::chooseFromList(const juce::String& title, const juce::String
 
 void MainComponent::refreshArchiveSearchFolders(const juce::File& configurationFile)
 {
-    std::vector<juce::File> folders;
-    auto addList = [&folders](const juce::File& list)
+    // The archives that serve paths (0.8.177): the archive lines of ArchiveFolders.txt
+    // (every archive the user chose is written there, see registerArchive) - never
+    // another archive lying beside them, and no longer every archive of the
+    // configuration's own folder. Folder lines (written before 0.8.177) and
+    // OrganRarPackages beside the configuration serve with every archive they hold.
+    std::vector<juce::File> folders, archives;
+    auto addList = [&archives](const juce::File& list)
     {
         if (!list.existsAsFile()) return;
-        juce::StringArray lines;
+        juce::StringArray lines, rewritten;
         lines.addLines(list.loadFileAsString());
+        bool changed = false;
         for (const auto& line : lines)
-            if (line.trim().isNotEmpty() && !line.trim().startsWithChar('#')) folders.push_back(juce::File(line.trim()));
+        {
+            const auto text = line.trim();
+            if (text.isEmpty() || text.startsWithChar('#')) { rewritten.add(line); continue; }
+            const juce::File entry(text);
+            if (entry.isDirectory())
+            {
+                // A folder line (written before 0.8.177) is turned into the lines of the
+                // archives it holds, once and visibly: the program names archives only.
+                juce::StringArray names;
+                for (const auto& found : juce::RangedDirectoryIterator(entry, false, "*.rar", juce::File::findFiles))
+                    if (SampleFiles::isFirstVolume(found.getFile())) { archives.push_back(found.getFile()); rewritten.add(found.getFile().getFullPathName()); names.add(found.getFile().getFileName()); }
+                CrashHandler::note("ArchiveFolders.txt " + list.getFullPathName() + ": the folder line " + text + " replaced by its archives: " + (names.isEmpty() ? juce::String("none") : names.joinIntoString(", ")));
+                changed = true;
+                continue;
+            }
+            rewritten.add(line);
+            if (entry.existsAsFile()) archives.push_back(entry);
+        }
+        if (changed) list.replaceWithText(rewritten.joinIntoString("\n") + "\n");
     };
     const auto own = configurationFile != juce::File() ? configurationFile.getParentDirectory() : juce::File();
     if (own != juce::File())
     {
-        folders.push_back(own);
         addList(own.getChildFile("ArchiveFolders.txt"));
         folders.push_back(own.getParentDirectory().getChildFile("OrganRarPackages"));
         folders.push_back(own.getSiblingFile("OrganRarPackages"));
     }
     addList(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("ArchiveFolders.txt"));
     SampleFiles::setSearchFolders(folders);
+    SampleFiles::setChosenArchives(archives);
 }
 
-void MainComponent::registerArchiveFolder(const juce::File& folder)
+void MainComponent::registerArchive(const juce::File& archiveChosen)
 {
-    if (!folder.isDirectory()) return;
-    // Beside the loaded configuration when there is one (its OrganConfigurations
-    // folder), else in the settings folder; one path per line, each once.
+    // An archive the user chose (0.8.177; its folder before - which let every
+    // other archive of the folder serve paths, the user never chose those): the
+    // set's first part, remembered beside the loaded configuration when there is
+    // one (its OrganConfigurations folder), else in the settings folder; one path
+    // per line, each once.
+    const auto archive = SampleFiles::firstVolumeOf(archiveChosen);
+    if (!archive.existsAsFile()) return;
+    SampleFiles::addChosenArchives({ archive });
     const juce::File list = (currentConfigurationFile != juce::File() && currentConfigurationFile.getParentDirectory().isDirectory()
         ? currentConfigurationFile.getParentDirectory()
         : juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler")).getChildFile("ArchiveFolders.txt");
     juce::StringArray lines;
     if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
-    for (const auto& line : lines) if (juce::File(line.trim()) == folder) { refreshArchiveSearchFolders(currentConfigurationFile); return; }
-    if (lines.isEmpty()) lines.add("# Folders of RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line).");
-    lines.add(folder.getFullPathName());
+    for (const auto& line : lines) if (juce::File(line.trim()) == archive) return;
+    if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
+    lines.add(archive.getFullPathName());
     list.replaceWithText(lines.joinIntoString("\n") + "\n");
-    CrashHandler::note("Archive folder remembered in " + list.getFullPathName() + ": " + folder.getFullPathName());
-    refreshArchiveSearchFolders(currentConfigurationFile);
+    CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
 }
 
 void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed)
@@ -11114,18 +11142,17 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         plan.configurationFile.getParentDirectory().createDirectory();
         if (SampleFiles::inArchive(odfFile))
         {
+            // The archive itself (0.8.177; its folder before - every other archive of the folder served then).
             const auto list = plan.configurationFile.getParentDirectory().getChildFile("ArchiveFolders.txt");
             juce::StringArray lines;
             if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
-            const auto archiveFolder = odfFile.getParentDirectory();
-            juce::File folder = archiveFolder;
-            while (folder != juce::File() && !folder.isDirectory() && folder.getParentDirectory() != folder) folder = folder.getParentDirectory();   // the disk folder holding the archive
+            const auto archive = SampleFiles::archiveOf(odfFile);
             bool known = false;
-            for (const auto& line : lines) if (juce::File(line.trim()) == folder) known = true;
-            if (!known && folder.isDirectory())
+            for (const auto& line : lines) if (juce::File(line.trim()) == archive) known = true;
+            if (!known && archive.existsAsFile())
             {
-                if (lines.isEmpty()) lines.add("# Folders of RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line).");
-                lines.add(folder.getFullPathName());
+                if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
+                lines.add(archive.getFullPathName());
                 list.replaceWithText(lines.joinIntoString("\n") + "\n");
             }
         }
@@ -13376,7 +13403,7 @@ void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folder
     // The archives' contents are read first (a walk of the headers on a thread: minutes
     // for a big set on a hard disk, cached afterwards), then they are loaded. Their
     // folders are remembered (0.8.158): the paths find the archives on the next start.
-    for (const auto& archive : archives) registerArchiveFolder(archive.getParentDirectory());
+    for (const auto& archive : archives) registerArchive(archive);
     juce::Component::SafePointer<MainComponent> safeThis(this);
     indexArchivesThen(archives, [safeThis, folders, archives, manual]
     {

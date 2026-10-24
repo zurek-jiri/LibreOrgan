@@ -416,7 +416,7 @@ private:
     // configuration's paths - its own folder, the folders in its ArchiveFolders.txt,
     // OrganRarPackages beside it, and the program-wide list in the settings folder.
     void refreshArchiveSearchFolders(const juce::File& configurationFile);
-    void registerArchiveFolder(const juce::File& folder);   // a folder of archives the user chose: remembered for the next start
+    void registerArchive(const juce::File& archive);   // an archive the user chose: serves paths and is remembered for the next start (0.8.177)
     void loadConfigurationFromArchives(const std::vector<juce::File>& archives, bool merge);   // Load Configuration / Merge given .rar files: one configuration or definition inside them, chosen
     // A choice out of a list in a proper window (centred, modal, Cancel): 'chosen' gets the index, -1 for Cancel (0.8.160).
     void chooseFromList(const juce::String& title, const juce::String& message, const juce::StringArray& items, const juce::String& okText, std::function<void(int)> chosen);

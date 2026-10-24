@@ -66,12 +66,19 @@ namespace SampleFiles
     juce::String indexingProgress();
     // "RAR 5, 17938 file(s), 27081 MB" (tests and the log).
     juce::String archiveSummary(const juce::File& archive);
-    // Folders whose archives serve paths lying ELSEWHERE (0.8.158): a path not on
-    // the disk and not in an archive beside it is looked for in these archives by
-    // the longest tail of the path they hold ("OrganInstallationPackages/002735/
-    // pipes/PE"). The owner sets them from the configuration's folder: the folder
-    // itself, the folders listed in its ArchiveFolders.txt, OrganRarPackages beside.
+    // Which archives serve paths (0.8.177): ONLY the archives the user chose - in
+    // Load folder, Load Configuration, Merge - and the archive lines of
+    // ArchiveFolders.txt (the owner writes every chosen archive there), each with
+    // its volumes; never another archive that happens to lie beside them. The
+    // folders named as a whole (folder lines of ArchiveFolders.txt written before
+    // 0.8.177, OrganRarPackages beside the configuration) serve with every
+    // archive they hold. A path not on the disk and not in a serving archive of an
+    // ancestor folder is looked for in all the serving archives by the longest
+    // tail of the path they hold ("OrganInstallationPackages/002735/pipes/PE").
     void setSearchFolders(const std::vector<juce::File>& folders);
+    void setChosenArchives(const std::vector<juce::File>& archives);   // replaces the chosen list (parts -> their first part)
+    void addChosenArchives(const std::vector<juce::File>& archives);
+    juce::File archiveOf(const juce::File& path);   // the (first volume of the) archive a path lives in; {} on the disk or nowhere
     // The folder the archive indexes are kept in (under the settings folder).
     void setIndexFolder(const juce::File& folder);
     void forgetArchives();   // drops the open cursors and the indexes in memory (the files on the disk stay)

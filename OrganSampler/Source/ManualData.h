@@ -507,18 +507,19 @@ static const char* const kManualText_part2 =
     "  What you pay: the first load indexes the archive, and a compressed set\n"
     "  takes the decompression time at every load - from a fast SSD an unpacked\n"
     "  set loads faster.\n"
-    "- **Where the archives may lie:** beside the organ's folders (the\n"
-    "  configuration's paths find them there), or anywhere else the program is\n"
-    "  told: the folder of every archive you choose in *Load folder...* or *Load\n"
-    "  Configuration* is written into `ArchiveFolders.txt` beside the open\n"
-    "  configuration (in its `OrganConfigurations` folder; without a configuration\n"
-    "  into the settings folder, one path per line, editable by hand), and a\n"
-    "  folder `OrganRarPackages` beside `OrganConfigurations` is always looked\n"
-    "  into. A sample folder that is not on the disk is then looked for in those\n"
-    "  archives by the tail of its path (`OrganInstallationPackages/002735/pipes`\n"
-    "  ...). So the recommended layout is `OrganConfigurations`, `OrganRarPackages`\n"
-    "  and the `Hauptwerk` folder side by side - and an archive folder on another\n"
-    "  disk works just as well once it is in the list.\n"
+    "- **Which archives are read:** only the archives you choose - in *Load\n"
+    "  folder...*, *Load Configuration* or a merge - with their parts, never\n"
+    "  another archive that happens to lie beside them. Every chosen archive is\n"
+    "  written into `ArchiveFolders.txt` beside the open configuration (in its\n"
+    "  `OrganConfigurations` folder; without a configuration into the settings\n"
+    "  folder; one path per line, editable by hand), so the next start finds it\n"
+    "  again; a line naming a folder stands for every archive in that folder, and\n"
+    "  so does a folder `OrganRarPackages` beside `OrganConfigurations`. A sample\n"
+    "  folder that is not on the disk is looked for in those archives by the tail\n"
+    "  of its path (`OrganInstallationPackages/002735/pipes` ...). So the\n"
+    "  recommended layout is `OrganConfigurations`, `OrganRarPackages` and the\n"
+    "  `Hauptwerk` folder side by side - and an archive on another disk works just\n"
+    "  as well once it is in the list.\n"
     "- **Unpacking in OrganSampler:** tick *Unpack the archives into a folder\n"
     "  first* in the same window, choose the folder (proposed: the folder of the\n"
     "  first archive; each archive's own folder tree is created inside it) and\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "stop goes to the division of ours whose keyboard plays its Hauptwerk\n"
     "division; a FLOATING division - one no keyboard reaches without a coupler\n"
     "(Bellevue's \"Chamade\", played from every keyboard through \"Bom-Ped/Gt/Pos/Rec\n"
-    "8\") - is placed stop by stop where the name says (\"GO. Trompette en chamade\n"
     ;
 static const char* const kManualText_part3 =
+    "8\") - is placed stop by stop where the name says (\"GO. Trompette en chamade\n"
     "8\" on the Great, \"Ped. Clairon en chamade\" on the Pedal, \"5. Tuba 16\" on V).\n"
     "A keyboard whose own division its keys reach only under a condition switch\n"
     "(Ashton: \"1. unison off\" conditions the link from the keys of 1. manual to\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "tree you no longer have. The notice goes when no tree of the division is\n"
     "missing.\n"
     "\n"
-    "Paths are stored with \"/\" and resolved on every platform; a configuration\n"
     ;
 static const char* const kManualText_part4 =
+    "Paths are stored with \"/\" and resolved on every platform; a configuration\n"
     "saved on Windows loads on Linux and macOS and the other way round.\n"
     "\n"
     "**Voicing** (everything set in the voicing rows of the stops) is saved\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "included; a child can still be switched alone to hear it by itself.\n"
     "\n"
     "## 2.6 Two program windows\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "\n"
     "*Configuration Editor > Console > Program windows* opens a second window\n"
     "(empty at first). In the Configuration Editor's division sections, *Shown in\n"
     "window* moves a division to window 1 or 2; a division is in one window only.\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "  sliders and the pipe on/off boxes of the transmission alone.\n"
     "- **Formants (filled pipes)** for the pipes only this transmission asks for\n"
     "  (beyond the stop's compass).\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
     "A pipe is one set of voices, no matter how many keys hold it: the same pipe\n"
     "reached through the stop itself, through a transmission and through a coupler\n"
     "sounds once, and stops only when no route holds it any more. While several\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "  the same device and channel a note \"Shared with ...\" appears (one key then\n"
     "  plays all of them). A keyboard plugged in while the program runs is opened\n"
     "  at once (the activity log says so) and MIDI learn hears it; open the\n"
-    "  Divisions dialog again to see it in the device list. One unplugged is let\n"
     ;
 static const char* const kManualText_part7 =
+    "  Divisions dialog again to see it in the device list. One unplugged is let\n"
     "  go and comes back when plugged in again.\n"
     "- *Ignore MIDI velocity (organ keys)*: every key is sent as full velocity.\n"
     "- *Bass octave layout*: Standard, Short octave, \"C D D# ...\", \"C D E ...\" for\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "- **Different latencies.** ASIO and WASAPI answer at different speeds, so\n"
     "  divisions on different drivers do not speak at the same moment after the\n"
     "  key is pressed. While playing this is confusing - though now and then it\n"
-    "  imitates, by accident, the different delays of the actions of a real\n"
     ;
 static const char* const kManualText_part8 =
+    "  imitates, by accident, the different delays of the actions of a real\n"
     "  organ's divisions.\n"
     "\n"
     "The best layout for the highest polyphony is therefore: one ASIO driver, all\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "  every block must be rendered in a fraction of the time. An organ does not\n"
     "  need it: the action of a real organ has its own delay, and a latency of\n"
     "  about 10 ms (512 samples at 48 kHz) is absolutely fine for organ playing -\n"
-    "  even 20 ms (1024 samples) is still perfectly comfortable. Choose the\n"
     ;
 static const char* const kManualText_part9 =
+    "  even 20 ms (1024 samples) is still perfectly comfortable. Choose the\n"
     "  larger buffer and take the polyphony.\n"
     "- **Windows Audio.** All routes on one Windows Audio device share one stream\n"
     "  and one callback, rendered by the whole pool of *Render threads* - the\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "its weakness; which one sounds best depends on the stop, the size of the shift\n"
     "and the ear. Listening tests with reeds (Trompete, Vox humana) show the\n"
     "differences most clearly; a 16' extension of an 8' reed is the typical case.\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "**Resampling (pitch and length change together).** The sample is played faster\n"
     "or slower at every key press, like a tape. Every harmonic exact, nothing added,\n"
     "nothing to build: it plays at once. Weaknesses: an octave down lasts twice as\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "later: performance and efficiency cores; Windows tells them apart) offers\n"
     "*Performance cores only* (0.8.140): a render worker on an efficiency core\n"
     "renders several times slower and the device thread waits for it - the\n"
-    "measurement's longest callback of an Ultra 7 notebook was 2.6 ms of which\n"
     ;
 static const char* const kManualText_part11 =
+    "measurement's longest callback of an Ultra 7 notebook was 2.6 ms of which\n"
     "2.4 ms waiting for the lanes; the report says so for such a processor. The\n"
     "setting belongs to the computer, never to an\n"
     "organ: a portable configuration carries none, and one of an older version that\n"
@@ -2423,9 +2424,9 @@ static const char* const kManualText_part11 =
     "stays clean; the report then says with how many stops it measured, and the\n"
     "limit found is what the computer renders cleanly whatever the stops. By hand:\n"
     "\n"
-    "1. Engage a large number of stops with long releases (a full registration of\n"
     ;
 static const char* const kManualText_part12 =
+    "1. Engage a large number of stops with long releases (a full registration of\n"
     "   wet samples).\n"
     "2. Bash the keys: play many quick staccato notes over many keys at once\n"
     "   (palm smearing - repeated fast strokes with the flat hands over the\n"
@@ -2625,9 +2626,9 @@ static const char* const kManualText_part12 =
     "\n"
     "### Wind: harmonic filter\n"
     "\n"
-    "The same shelf following the wind sag: this much high-frequency loss at the\n"
     ;
 static const char* const kManualText_part13 =
+    "The same shelf following the wind sag: this much high-frequency loss at the\n"
     "full sag (default 2 dB). Big chords starve the wind, and a starved pipe is\n"
     "duller as well as flatter.\n"
     "\n"
@@ -2827,9 +2828,9 @@ static const char* const kManualText_part13 =
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The row shows the size of the cache and the folder it lives in. *Empty the\n"
-    "cache* deletes every cached file at once - to get the disk space back, or\n"
     ;
 static const char* const kManualText_part14 =
+    "cache* deletes every cached file at once - to get the disk space back, or\n"
     "after you have replaced your sample folders. The copies are built again, and\n"
     "cached again, the next time they are needed; nothing else is lost.\n"
     "\n"
@@ -3029,9 +3030,9 @@ static const char* const kManualText_part14 =
     "\n"
     "### One-shot stops (folder contains)\n"
     "\n"
-    "Folders whose name matches one of these patterns hold samples that play once\n"
     ;
 static const char* const kManualText_part15 =
+    "Folders whose name matches one of these patterns hold samples that play once\n"
     "without looping (chiff, percussion, bells). Defaults: \"Chiff\", \"Chimes\",\n"
     "\"Tubular\", \"Celesta\", \"Harp\", \"Glockenspiel\" (a Hauptwerk import adds the\n"
     "folders of every stop the definition plays without release samples). The patterns\n"
@@ -3231,9 +3232,9 @@ static const char* const kManualText_part15 =
     "in the application-data folder; a crash writes a file beside it. When the\n"
     "window answers nothing for eight seconds the log records where it was waiting.\n"
     "That folder is what a report needs - and *Report a problem...* sends it for\n"
-    "you.\n"
     ;
 static const char* const kManualText_part16 =
+    "you.\n"
     "\n"
     "### Report a problem\n"
     "\n"
