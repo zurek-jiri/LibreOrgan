@@ -24,9 +24,21 @@ mix stops from different sample folders and different producers into one
 console, duplicate a stop as a transmission or an extension (a 16' from an
 8', a mutation from a principal), merge two configurations into one organ,
 move stops between divisions, and a Hauptwerk organ definition opens as a
-configuration too. And it runs on very old computers: a two-core laptop from
-2009 plays a village organ, the program measures the polyphony your machine
-reaches and sets its limit itself.
+configuration too.
+
+**Light on RAM, CPU and disk.** Every load offers its savings, and the choice
+travels with the organ: samples kept as 16-bit integers instead of floats
+(half the RAM), resampled to 32 kHz on loading (a third less again), packed
+losslessly in RAM like FLAC and unpacked on the fly (a further third to two
+thirds, for a little CPU), releases stored at half the rate where their
+spectrum allows it - together the samples take about a quarter of their RAM,
+measured per organ and written into every published configuration. Sample
+folders are read straight from their RAR archives: nothing to unpack, nothing
+twice on the disk. And everything is anti-aliased: pitch-shifted copies
+through a long windowed-sinc filter, a retune through a resampling bus per
+route, the high pipes through a sinc playback kernel - no foreign tone under
+a retuned pipe. The program measures the polyphony your machine reaches and
+sets its limit itself.
 
 ## Try it in five minutes
 

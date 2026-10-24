@@ -14811,6 +14811,11 @@ void MainComponent::showStopBuildingDialog(int)
             });
             setup(loadFolderButton, "Load folder...", "Loads a sample folder tree; you choose the division its stops go to. "
                 "The stops enter the table by the automatic rules and can then be moved and edited.", [this] { loadFolderMenu(); });
+            // An empty table: the golden sheen and the sliding arrow on "Load folder..."
+            // (0.8.175; the orange caption and the fixed arrow before), until the first click.
+            addAndMakeVisible(loadHint);
+            loadHint.follow({ &loadFolderButton }, true);
+            addMouseListener(&loadHint, true);
             setup(unloadFolderButton, "Unload folder...", "Removes one of a division's folder trees (or all of them).", [this] { unloadFolderMenu(); });
             setup(swapButton, "Swap divisions...", "Exchanges the whole stop lists of two divisions (stops, pool, transmissions, "
                 "combinations, crescendo and MIDI bindings follow).", [this] { swapMenu(); });
@@ -14864,31 +14869,6 @@ void MainComponent::showStopBuildingDialog(int)
 
         int neededWidth() const { return 24 + removeWidth + divisionWidth + nameWidth + aliasWidth + offsetWidth + transmissionWidth
             + (int)perspectives.size() * cellWidth + 60; }
-
-        // An empty table: a big hint with an arrow leading to "Load folder...".
-        void paintOverChildren(juce::Graphics& g) override
-        {
-            if (!rows.empty()) return;
-            const auto area = view.getBounds().toFloat();
-            const juce::String text = treeInfos.empty() ? "Start by adding folders with audio samples"
-                : "No stops yet: load another folder or add a stop";
-            const auto textArea = area.withSizeKeepingCentre(area.getWidth() - 40.0f, 44.0f).translated(0.0f, -area.getHeight() * 0.18f);
-            g.setFont(juce::FontOptions(28.0f, juce::Font::bold));
-            g.setColour(onColour());   // the same orange as the arrow
-            g.drawFittedText(text, textArea.toNearestInt(), juce::Justification::centred, 2);
-            // The arrow: from under the text down to the top of the button.
-            const auto button = loadFolderButton.getBounds().toFloat();
-            const juce::Point<float> from(textArea.getCentreX(), textArea.getBottom() + 12.0f);
-            const juce::Point<float> to(button.getCentreX(), button.getY() - 6.0f);
-            juce::Path arrow;
-            arrow.startNewSubPath(from);
-            arrow.quadraticTo({ to.x, from.y + (to.y - from.y) * 0.45f }, { to.x, to.y - 16.0f });
-            g.setColour(onColour());
-            g.strokePath(arrow, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            juce::Path head;
-            head.addTriangle(to.x - 13.0f, to.y - 20.0f, to.x + 13.0f, to.y - 20.0f, to.x, to.y);
-            g.fillPath(head);
-        }
 
     private:
         enum : int { rowHeight = 32, headerHeight = 30, removeWidth = 26, divisionWidth = 74, nameWidth = 240, aliasWidth = 150, offsetWidth = 92,
@@ -15160,6 +15140,7 @@ void MainComponent::showStopBuildingDialog(int)
         std::vector<std::unique_ptr<Row>> rows;
         juce::TextButton addStopButton, addPerspectiveButton, removeEmptyButton, aliasesButton, loadFolderButton, unloadFolderButton, swapButton,
             resetButton, applyButton, closeButton;
+        HintSheen loadHint;   // the golden sheen and arrow on "Load folder..." while the table is empty (0.8.175)
         juce::ToggleButton showTrsmButton;
         bool showTransmissions = false;   // transmission rows shown (they are always in the drafts)
         std::set<int> orderChanged;   // divisions whose rows were dragged
@@ -15494,7 +15475,8 @@ void MainComponent::showStopBuildingDialog(int)
             swapButton.setEnabled(owner.manualCount >= 1);
             resetButton.setEnabled(!treeInfos.empty());
             updateApplyState();
-            info.setVisible(!rows.empty());   // an empty table shows the big hint instead
+            loadHint.setVisible(rows.empty() && loadHint.active());   // the sheen and arrow on "Load folder..." while the table is empty
+            info.setVisible(true);
             repaint();   // the empty-table hint comes and goes with the rows
         }
 

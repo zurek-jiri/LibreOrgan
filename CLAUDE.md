@@ -510,7 +510,15 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   README.md, the release body in build.yml, configurations/README.md and the Rural Organ README said "unpack it -
   Unpack archive button" and "300 000 voices" long after 0.8.157 (RAR read in place: Load Configuration opens the
   .rar) and 0.8.146 (500 000); the README said 950 MB for a 725 MB demo. When a feature changes what the user DOES
-  (loading, unpacking, limits), grep the site, README, build.yml body and configurations/*README* in the same session. Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
+  (loading, unpacking, limits), grep the site, README, build.yml body and configurations/*README* in the same session.
+  0.8.175 (Windows): HintSheen::follow(buttons, arrowFromAbove) paints, beside the band, a golden half-transparent
+  arrow sliding 90 px towards the button (eased, alpha sin(pi p) x 0.6) - from below on the console's top row, from
+  above on the Stop List's "Load folder..." (StopListDialog::loadHint, visible while ows.empty() && active(),
+  stopped by the first click in the dialog; the orange caption + fixed arrow of paintOverChildren are gone, the
+  info line at the bottom is always visible). The website fact "500 000 voices / 2009 laptop" is replaced by "Light
+  on RAM, CPU and disk" + feature 07 (16-bit, 32 kHz, FLAC-like packing, half-rate releases, RAR in place, everything
+  anti-aliased); README the same paragraph (the user: "to je zásadní tahák"). Projucer resave done on Windows for
+  0.8.174 ("Finished saving: Visual Studio 2026"). Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
   files copied over); NO Projucer resave on Linux - do it on Windows next (the VS2026 files lag 0.8.165).
   `OrganSampler/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run

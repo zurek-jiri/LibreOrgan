@@ -251,35 +251,64 @@ private:
 };
 
 // A golden sheen that sweeps over a few buttons now and then after the start,
-// until the first click anywhere in the window: a newcomer's eye is led to
-// Stop List and Load Configuration (0.8.172). A transparent layer over the
-// buttons' area that takes no mouse; a mouse listener of the window stops it.
+// with a half-transparent golden arrow sliding towards the button and vanishing
+// (0.8.175), until the first click anywhere in the window: a newcomer's eye is
+// led to Stop List and Load Configuration (0.8.172). A transparent layer over
+// the buttons' area that takes no mouse; a mouse listener of the window stops it.
 class HintSheen final : public juce::Component, private juce::Timer   // a Component is a MouseListener already
 {
 public:
     HintSheen() { setInterceptsMouseClicks(false, false); }
-    void follow(std::vector<juce::Component*> buttons) { targets = std::move(buttons); startTimer(2000); }
+    // arrowFromAbove: the arrow comes down onto the button (room above it, the
+    // Stop List's table); otherwise it comes up from below (the console's top row).
+    void follow(std::vector<juce::Component*> buttons, bool arrowFromAbove = false)
+    {
+        targets = std::move(buttons);
+        fromAbove = arrowFromAbove;
+        startTimer(2000);
+    }
     void stop()
     {
         stopTimer();
         setVisible(false);
         if (auto* parent = getParentComponent()) parent->removeMouseListener(this);
     }
+    bool active() const { return isTimerRunning(); }   // not yet stopped by a click
     void mouseDown(const juce::MouseEvent&) override { stop(); }
     void paint(juce::Graphics& g) override
     {
         if (phase < 0.0f || targets.empty()) return;
         // One button at a time, the buttons in turn (0.8.173).
-        if (auto* button = targets[current % targets.size()]; button != nullptr && button->isShowing())
-        {
-            const auto r = getLocalArea(button, button->getLocalBounds()).toFloat();
-            const float band = r.getHeight() * 1.2f;
-            const float x = r.getX() - band + (r.getWidth() + 2.0f * band) * phase;   // the band sweeps left to right
-            juce::ColourGradient gradient(juce::Colours::transparentWhite, x - band, r.getY(), juce::Colours::transparentWhite, x + band, r.getBottom(), false);
-            gradient.addColour(0.5, juce::Colour(0xffffd36b).withAlpha(0.3f));
-            g.setGradientFill(gradient);
-            g.fillRoundedRectangle(r, 4.0f);
-        }
+        auto* button = targets[current % targets.size()];
+        if (button == nullptr || !button->isShowing()) return;
+        const auto r = getLocalArea(button, button->getLocalBounds()).toFloat();
+        const float band = r.getHeight() * 1.2f;
+        const float x = r.getX() - band + (r.getWidth() + 2.0f * band) * phase;   // the band sweeps left to right
+        juce::ColourGradient gradient(juce::Colours::transparentWhite, x - band, r.getY(), juce::Colours::transparentWhite, x + band, r.getBottom(), false);
+        gradient.addColour(0.5, juce::Colour(0xffffd36b).withAlpha(0.3f));
+        g.setGradientFill(gradient);
+        g.fillRoundedRectangle(r, 4.0f);
+        // The arrow: slides towards the button over the sweep, fades in and out.
+        const float eased = 1.0f - (1.0f - phase) * (1.0f - phase);
+        const float alpha = std::sin(phase * juce::MathConstants<float>::pi) * 0.6f;
+        const float gap = 6.0f + travel * (1.0f - eased);   // the tip's distance from the button's edge
+        const float dir = fromAbove ? 1.0f : -1.0f;          // +1: pointing down
+        const float cx = r.getCentreX(), tipY = fromAbove ? r.getY() - gap : r.getBottom() + gap;
+        const float backY = tipY - dir * arrowLength, headBackY = tipY - dir * 14.0f, headHalf = 11.0f, shaftHalf = 4.0f;
+        juce::Path arrow;
+        arrow.startNewSubPath(cx, tipY);
+        arrow.lineTo(cx + headHalf, headBackY);
+        arrow.lineTo(cx + shaftHalf, headBackY);
+        arrow.lineTo(cx + shaftHalf, backY);
+        arrow.lineTo(cx - shaftHalf, backY);
+        arrow.lineTo(cx - shaftHalf, headBackY);
+        arrow.lineTo(cx - headHalf, headBackY);
+        arrow.closeSubPath();
+        juce::ColourGradient shade(juce::Colour(0xfffff0b0).withAlpha(alpha), cx - headHalf, tipY, juce::Colour(0xffc9931a).withAlpha(alpha), cx + headHalf, backY, false);
+        g.setGradientFill(shade);
+        g.fillPath(arrow);
+        g.setColour(juce::Colour(0xff7a5a08).withAlpha(alpha * 0.8f));
+        g.strokePath(arrow, juce::PathStrokeType(1.0f));
     }
 private:
     void timerCallback() override
@@ -291,12 +320,17 @@ private:
             juce::Rectangle<int> area;
             for (auto* button : targets)
                 if (button != nullptr && button->isShowing()) area = area.getUnion(parent->getLocalArea(button, button->getLocalBounds()));
-            setBounds(area);
+            // Room for the arrow's travel on the side it comes from, within the parent.
+            const int reach = (int)(travel + arrowLength + 12.0f);
+            area = fromAbove ? area.withTop(area.getY() - reach) : area.withBottom(area.getBottom() + reach);
+            setBounds(area.getIntersection(parent->getLocalBounds()));
             toFront(false);
         }
         repaint();
     }
+    static constexpr float travel = 90.0f, arrowLength = 30.0f;
     std::vector<juce::Component*> targets;
+    bool fromAbove = false;
     size_t current = 0;    // the button of this sweep
     float phase = -1.0f;   // < 0 between the sweeps
 };

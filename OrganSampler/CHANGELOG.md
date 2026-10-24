@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.175] - 2026-10-24
+
+### Changed
+- The golden sheen over Stop List and Load Configuration comes with a moving,
+  vanishing golden arrow pointing at the button. The Stop List's empty table
+  shows the same sheen and arrow on "Load folder..." instead of the orange
+  caption and the fixed arrow; the line at the bottom says what to do.
+- The website and the README describe the RAM, CPU and disk savings (16-bit
+  storage, 32 kHz, lossless packing, half-rate releases, RAR archives read in
+  place) and the anti-aliasing of the engine instead of the voice count and
+  the 2009 laptop.
+
 ## [0.8.174] - 2026-10-24
 
 ### Changed

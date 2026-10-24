@@ -25,7 +25,7 @@
         <p class="intro">OrganSampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.174</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.175</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -44,7 +44,7 @@
     </section>
     <div class="facts"><div class="wrap fact-grid">
       <p><strong>Your own organ, from any sources</strong><span>stops of different producers in one console, duplicated as transmissions and extensions, two configurations merged into one</span></p>
-      <p><strong>Up to 500 000 voices - or a 2009 laptop</strong><span>measured on your organ by the program itself; a two-core machine plays a village organ</span></p>
+      <p><strong>Light on RAM, CPU and disk</strong><span>16-bit storage, 32 kHz, FLAC-like lossless packing in RAM, releases at half the rate, samples read straight from RAR archives - and everything anti-aliased</span></p>
       <p><strong>Any number of sound cards</strong><span>every perspective and division on its own device and channels</span></p>
       <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too; a Hauptwerk definition opens as well</span></p>
     </div></div>
@@ -68,8 +68,9 @@
         <article><span class="feature-number">04</span><h3>Missing pipes, filled</h3><p>A rank with gaps, or a stop that exists only as an 8', is completed by pitch-shifted copies of the neighbouring pipes - several transposition methods, rebuilt offline into a cache, so that nothing is interpolated on the fly and nothing is altered silently.</p></article>
         <article><span class="feature-number">05</span><h3>Fast, measured, honest</h3><p>The sound engine renders on all cores with a lock-free control thread; the polyphony display shows the real peak, the DSP field the busiest audio callback. Every start, device, load and crash is written to an activity log, and "Report a problem" in the Configuration Editor turns it into a bug report with one click.</p></article>
         <article><span class="feature-number">06</span><h3>The manual lives inside</h3><p>The complete user manual is embedded: the question mark beside every option of the Configuration Editor opens the chapter that explains it, chapter names in the text are links, and a Find box searches it. Nothing is read from beside the executable; one file is the whole program.</p></article>
+        <article><span class="feature-number">07</span><h3>Light on RAM, CPU and disk</h3><p>Every load offers its savings, and the choice travels with the organ: the samples kept as 16-bit integers instead of 32-bit floats (half the RAM), resampled to 32 kHz on loading (a third less again), packed losslessly in RAM like FLAC and unpacked on the fly (a further third to two thirds, for a little CPU), the releases stored at half the rate where their spectrum allows it. All of them together bring the samples down to about a quarter of their RAM; the figure is measured per organ and written into every published configuration. Sample folders are read straight from their RAR archives: nothing to unpack, nothing twice on the disk. And everything is anti-aliased - pitch-shifted copies through a long windowed-sinc filter, a retune through a resampling bus per route, the high pipes through a sinc playback kernel - so no foreign tone appears under a retuned pipe.</p></article>
       </div>
-      <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. Every load offers the savings - 16-bit storage, 32 kHz, lossless packing, releases at half the rate - about half the RAM with all of them, often less.</p>
+      <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. Every load offers the savings - 16-bit storage, 32 kHz, lossless packing, releases at half the rate - and the samples take about a quarter of their RAM with all of them.</p>
     </section>
 
     <section id="download" class="band">
@@ -87,7 +88,7 @@
           <a class="button primary" href="https://github.com/zurek-jiri/OrganSampler/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/USER_MANUAL.md" data-repo-path="OrganSampler/USER_MANUAL.md">Read the user manual &#8599;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.8.174</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
+          <p class="small">Version <span data-version>0.8.175</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>
