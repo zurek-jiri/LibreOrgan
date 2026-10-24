@@ -12,8 +12,46 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.182] - 2026-10-24
+## [0.8.183] - 2026-10-24
 
+A review of every change since 0.8.156 for regressions; what it found is fixed here.
+
+### Fixed
+- Save Configuration: ticking "Portable configuration" shows the four README
+  lines in the box (0.8.181 added them, but the box never grew: they stayed
+  clipped away).
+- The "Rank count [N]" switch of a stop folder's voicing names the real count
+  (0.8.180 computed it before the folder's children were known: "[II]" always).
+- A transmission's Transposition box went blank after any state update (a load,
+  a voicing applied) until its row was rebuilt (since 0.8.158).
+- A one-shot stop (chimes, harp, celesta) struck twice on the same key was silent
+  the second time until the stop was switched off (since 0.8.158).
+- A faulty pipe (beyond the retune limit) played its own sample again after a
+  reload that kept the division's samples, and the retune-limit slider no longer
+  reached it (since 0.8.165).
+- Returning a pooled stop to the grid, or adding a transmission to it, cut every
+  held tone of the whole organ (since 0.8.160; only a stop that sounds is cut).
+- Load Configuration: a cancelled load box or an invalid file no longer leaves
+  the running organ without its own archive search (since 0.8.158).
+- Load folder: the path field no longer comes prefilled with the configuration's
+  folder ("Load" without browsing took it for a sample tree, since 0.8.157); the
+  choosers still start there.
+
+### Added
+- Compress samples in RAM works with 32-bit float storage too (#87: it packed
+  16-bit samples only): a float sample is packed as 24-bit integers and played
+  from the packed form like the 16-bit ones - bit for bit when the files hold
+  such integers (24-bit or 16-bit WAV), rounded to 24 bits for real floats
+  (32-bit float WAV such as Stralsund's, a sample resampled on loading, a
+  filled pipe's copy): half a 24-bit step at most, and the log says how many
+  were rounded. The kernel test checks the float path on every platform.
+
+### Changed
+- Test hooks: ORGAN_TEST_CLICK finds buttons in every window (dialogs too) and
+  ORGAN_TEST_DIALOG_SNAPSHOT pictures the open dialogs; ORGAN_TEST_EXPAND takes a
+  delay as its third field.
+
+## [0.8.182] - 2026-10-24
 ### Fixed
 - The "RAM at the least, with every saving option" figure of a published
   configuration scales the memory beside the samples (the copy builds'

@@ -2319,7 +2319,11 @@ the piece it plays before every block, about as much work again as the
 interpolation itself, so half the polyphony is gone, up to two thirds on a
 big organ (Caen on a 16-core notebook: 60 000 to 25 000 voices) - measure it,
 the report shows the unpacking as its own figure. Use it only when an organ
-does not fit the memory otherwise; 32-bit float storage is not packed.
+does not fit the memory otherwise. 32-bit float storage is packed as 24-bit
+integers: bit for bit when the files hold such integers (24-bit or 16-bit WAV),
+rounded to 24 bits for real floats (32-bit float WAV, a sample resampled on
+loading, a filled pipe's copy) - half a 24-bit step at most, below what any
+converter resolves; the log says how many were rounded.
 Takes effect the next time a division's folders are loaded.
 
 ### Sample rate on loading

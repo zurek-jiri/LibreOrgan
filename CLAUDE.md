@@ -1040,6 +1040,46 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   parallel INSIDE a stop (parallelFor over its pipes, all cores), stops serialised by antiAliasBuildLock - several
   stops at once would gain only the serial phases (cache read/write, swap-in), ~10-20 %; 0 cache hits after a
   storage change is expected (the cache records carry the storage parameters).
+  0.8.183 REGRESSION REVIEW (the user: "regres jeden za druhĂ˝m ... porovnej kĂłdy za uplynulĂ© dny"): the diffs
+  620ea1e..HEAD (0.8.156-0.8.182) read for behaviour broken on the side. Found and fixed: (1) the Rank count
+  caption of 0.8.180 was computed in StopRow's CONSTRUCTOR (the getters are null there) - the 0.8.153 lesson
+  again; it lives in setChildrenGetter now. (2) `AlertWindow::setMessage(sameText)` is a NO-OP (it compares the
+  text first): the 0.8.181 Save box never grew, the four README lines stayed clipped - a trailing space makes
+  the text differ. (3) `updateFromStop` selected the transmission's Transposition box by the OLD ids (maxShift + 1)
+  while the list uses shift + 100 since 0.8.158 - blank after every updateStopStates. (4) 0.8.158's one-shot rule
+  (`continue` in finishNoteOff) left `speaking`/`pipeStartMs` set, so a chime struck twice was silent: the pipe's
+  bits are cleared, the voices untouched. (5) The adopt lambda of commitPendingDivisions copies every analysis
+  field but forgot `faultyPipes`/`rawTuningCents` (0.8.165). (6) `reloadStopSamples`' second killAllVoices
+  (0.8.160) ran for evenIfLoaded=false callers too (a pooled stop back on the grid cut every held tone) - now
+  under `if (evenIfLoaded)`. (7) `loadConfigurationFile` replaced the archive search before the validity check
+  and the load box. (8) The Load folder field was prefilled with lastSettingsDirectory (the configuration's
+  folder): `Panel::browseStart` starts the choosers instead. Left as designed, noted: pureDeviationCents on
+  transmissions with odd shifts (0.8.159's just intervals apply to the shared box), the sinc + shelf cost via
+  spanTmp (no dispatch*SincShelf), the double decode of the auto-transposition on the first load, stem() on
+  parent names. HOW TO KEEP REGRESSIONS OUT (the user's question): every GUI change is RUN before delivery, with
+  the hooks - `ORGAN_TEST_CLICK="<button>|<button in the dialog>..."` finds buttons in EVERY window (0.8.183;
+  the console only before) and `ORGAN_TEST_DIALOG_SNAPSHOT=<folder>` writes the open dialogs' own paint as PNG
+  (no screen capture, no mouse); `ORGAN_TEST_EXPAND="<manual>|<stop>|<delay ms>"` opens a voicing row later
+  (with ORGAN_TEST_RECORD: the row opens while the key sounds; %TEMP%\test_expand.ps1 + dropouts.py analyse
+  the WAV); %TEMP%\test_savebox.ps1 pictures the Save box with Portable ticked. A change that touches a
+  dialog, a row widget or a caption without such a run is not done. And the process name is OrganSampler_<v>:
+  `Get-Process OrganSampler*` before any test run (the user plays through the day).
+  0.8.183 PACKED FLOAT SAMPLES (#87, the user: "komprese nefunguje na 32 bitech"): `Sample::compress32` packs a
+  float sample as the INTEGERS its file held - the scale 1/32768 (16-bit) or 1/2^23 (24-bit) is the first one
+  every frame fits bit-exactly (JUCE's readers give v / 2^23 for 24-bit files, exact in float); the same block
+  format with 4-byte warm-ups and widths up to 27 (`packChannel32`/`unpackBlock32`, the 16-bit functions
+  untouched), `packScale` turns them back, `decode32`/`read32` mirror decode16/read16, `pcm32` is FREED. The
+  render window (`PackedWindow::bufF`, `region<T>()`, `decodeWindow<T>()`) serves both types; `packable` is true
+  for int16 and float. STRALSUND'S FILES ARE 32-BIT FLOAT WAV (format tag 3, checked with a header read): real
+  floats, no integers at all - the first version left every tree sample raw ("not the file's integers"). Real
+  floats (a float WAV, 32/36 kHz on loading, halved releases, a filled pipe's copy) are ROUNDED to 24 bits
+  (`packRounded`, "rounded to 24 bits" in the Packed samples line: half a 24-bit step, nothing a converter
+  resolves; the editor text and the manual say so); only a sample beyond +-2 full scale stays raw. Never promise
+  "bit for bit" for a float file. Measured: Stralsund float 48 kHz + packing 53.1 -> 19.8 GB (trees 62-66 % saved,
+  7.9-42 ns per frame of thread time), the recording through the packed float path clean (test_float.ps1 +
+  dropouts.py). Every reader outside the render path uses `read32(ch, scratch)` now - never `channel32` on a sample
+  that may be packed (the 0.8.145 rule for pcm16, the same for pcm32). `storageSignature()` says "packed" for
+  float too (a reload after this build decodes anew - right). The kerneltest has "Packed float samples: ... OK".
 - A configuration README is WRITTEN BY THE PROGRAM: saving a portable configuration puts `<name>.README.md`
   beside the `.json` (`MainComponent::configurationReadme`; dev: `ORGAN_SAVE_PORTABLE=<file>` with
   `ORGAN_LOAD_CONFIGURATION=<non-portable cfg>` loads and saves without the dialogs). Only the three
@@ -1135,6 +1175,9 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   CreateShortcut, set TargetPath + IconLocation, Save). NEVER delete, rename or recreate the shortcut: Explorer
   keeps icon positions by file name and a new file lands anywhere on the desktop. The user starts the program
   from that shortcut.
+- The Windows process is named after the exe (`OrganSampler_0.8.181`): check `Get-Process OrganSampler*`, never
+  `Get-Process OrganSampler` (it finds nothing and the 0.8.182 deploy ran while the user played - harmless only
+  because a new file name was written and the shortcut retargeted; still, check first).
 - Never build or launch the program while the user runs it. Linux test: `~/tools/linux_test.sh <exe> <seconds>`
   with `CFG=`, `ORGAN_OPEN_STOP_LIST=`, `ORGAN_JACK_BUFFER=`, `ORGAN_SAVE_PORTABLE=` hooks; the activity log is
   `~/.config/OrganSampler/CrashLogs/activity.log` (Windows: `%APPDATA%\OrganSampler\CrashLogs\activity.log`).

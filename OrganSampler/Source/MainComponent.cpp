@@ -1758,14 +1758,40 @@ MainComponent::MainComponent()
             juce::Timer::callAfterDelay(3000 + 2000 * i, [safeThis, name = names[i]]
             {
                 if (safeThis == nullptr) return;
-                for (int c = 0; c < safeThis->getNumChildComponents(); ++c)
-                    if (auto* button = dynamic_cast<juce::Button*>(safeThis->getChildComponent(c)); button != nullptr && button->getButtonText() == name)
+                // Every window on the desktop, every button inside (0.8.183: the console's
+                // own buttons only before) - a switch or button of an open dialog too.
+                std::function<juce::Button*(juce::Component*)> find = [&find, &name](juce::Component* c) -> juce::Button*
+                {
+                    if (auto* button = dynamic_cast<juce::Button*>(c); button != nullptr && button->getButtonText() == name) return button;
+                    for (int i = 0; i < c->getNumChildComponents(); ++i)
+                        if (auto* found = find(c->getChildComponent(i))) return found;
+                    return nullptr;
+                };
+                juce::Button* button = nullptr;
+                for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && button == nullptr;)
+                    button = find(juce::Desktop::getInstance().getComponent(w));
+                if (button == nullptr) { CrashHandler::note("ORGAN_TEST_CLICK: no button \"" + name + "\""); return; }
+                CrashHandler::note("ORGAN_TEST_CLICK: " + name);
+                button->triggerClick();
+                // ORGAN_TEST_DIALOG_SNAPSHOT=<folder>: 1.2 s later every window but the main
+                // one is pictured (<n>-<title>.png, the window's own paint - no screen capture).
+                if (const char* folder = std::getenv("ORGAN_TEST_DIALOG_SNAPSHOT"))
+                    juce::Timer::callAfterDelay(1200, [safeThis, dir = juce::File(juce::String::fromUTF8(folder))]
                     {
-                        CrashHandler::note("ORGAN_TEST_CLICK: " + name);
-                        button->triggerClick();
-                        return;
-                    }
-                CrashHandler::note("ORGAN_TEST_CLICK: no button \"" + name + "\"");
+                        dir.createDirectory();
+                        auto* main = safeThis != nullptr ? safeThis->getTopLevelComponent() : nullptr;
+                        for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
+                        {
+                            auto* window = juce::Desktop::getInstance().getComponent(w);
+                            if (window == nullptr || window == main || !window->isVisible()) continue;
+                            const juce::Image image = window->createComponentSnapshot(window->getLocalBounds(), false, 1.0f);
+                            const juce::File file = dir.getChildFile(juce::String(w) + "-" + juce::File::createLegalFileName(window->getName()) + ".png");
+                            file.deleteFile();
+                            juce::FileOutputStream stream(file);
+                            if (stream.openedOk()) juce::PNGImageFormat().writeImageToStream(image, stream);
+                            CrashHandler::note("ORGAN_TEST_DIALOG_SNAPSHOT: " + file.getFullPathName() + " " + juce::String(image.getWidth()) + "x" + juce::String(image.getHeight()));
+                        }
+                    });
             });
     }
     // ORGAN_OPEN_LOAD_FOLDER=<division> (tests): the Load folder window 2 s after start.
@@ -9214,10 +9240,11 @@ public:
             const int frames = (int)s->numFrames;
             out.setSize(s->numChannels, frames);
             std::vector<int16_t> scratch;
+            std::vector<float> scratch32;
             for (int ch = 0; ch < s->numChannels; ++ch)
             {
                 float* d = out.getWritePointer(ch);
-                if (s->storesFloat) std::memcpy(d, s->channel32(ch), (size_t)frames * sizeof(float));
+                if (s->storesFloat) std::memcpy(d, s->read32(ch, scratch32), (size_t)frames * sizeof(float));   // a packed float sample decoded whole (0.8.183)
                 else { const int16_t* p = s->read16(ch, scratch); for (int i = 0; i < frames; ++i) d[i] = (float)p[i] / 32768.0f; }
             }
             rate = s->sampleRate;
@@ -10112,7 +10139,10 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
     row->setName({});
     alert->addCustomComponent(row);
     const juce::String message("The configuration will include folders, voicing, transmissions, couplers, audio routing, MIDI and all control values.");
-    row->grown = [alert, message] { alert->setMessage(message); };   // the same text: the box lays itself out again, growing to the row
+    // A trailing space: AlertWindow::setMessage lays the box out again only when the
+    // text DIFFERS (0.8.183; 0.8.181 passed the same text - the box never grew and the
+    // four lines stayed clipped away).
+    row->grown = [alert, message] { alert->setMessage(message + " "); };
     alert->addButton("Save", 1);
     alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -10198,9 +10228,12 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
 {
     // The chosen configuration file (Load Configuration): parsed, checked, applied.
     if (file.existsAsFile() && ArchiveExtractor::looksLikeArchive(file)) { loadConfigurationFromArchives({ file }, false); return; }   // a .rar: what is inside (0.8.158)
-    refreshArchiveSearchFolders(file);
+    // The archive search of the running organ is replaced only once a load goes ahead
+    // (0.8.183: applyPortableConfiguration refreshes it; here it was replaced before the
+    // validity check and the load box, so a cancelled or invalid file left the running
+    // organ without its own archives).
     if (!SampleFiles::existsAsFile(file)) return;   // a Hauptwerk definition may lie inside a RAR archive (0.8.157)
-    if (HauptwerkOdf::looksLikeOdf(file)) { importHauptwerkOdf(file); return; }
+    if (HauptwerkOdf::looksLikeOdf(file)) { refreshArchiveSearchFolders(file); importHauptwerkOdf(file); return; }
     juce::String text;
     if (file.existsAsFile()) text = file.loadFileAsString();
     else if (auto in = SampleFiles::openInput(file)) text = in->readEntireStreamAsString();   // a configuration inside an archive (0.8.158)
@@ -12454,7 +12487,8 @@ void MainComponent::selectManualFolder(int manualIndex)
                 else if (SampleFiles::isDirectory(file)) { if (std::find(folders.begin(), folders.end(), file) == folders.end()) folders.push_back(file); }
             }
         }
-        Panel(MainComponent& o, int m, const juce::File& start) : owner(o), manual(m)
+        juce::File browseStart;   // where the choosers start when the field is empty (0.8.183: the configuration's folder was put INTO the field - "Load" took it for a tree)
+        Panel(MainComponent& o, int m, const juce::File& start, const juce::File& browseStartIn) : owner(o), manual(m), browseStart(browseStartIn)
         {
             pathsLabel.setText("The sample folder tree, or the RAR archive(s) of the sample folders - one path per line:", juce::dontSendNotification);
             destinationLabel.setText("Unpack into this folder:", juce::dontSendNotification);
@@ -12476,7 +12510,7 @@ void MainComponent::selectManualFolder(int manualIndex)
                 std::vector<juce::File> folders, archives;
                 chosen(folders, archives);
                 chooser = std::make_unique<juce::FileChooser>("The sample folder tree of this division",
-                    !folders.empty() ? folders.front() : (!archives.empty() ? archives.front().getParentDirectory() : juce::File()), "", true);
+                    !folders.empty() ? folders.front() : (!archives.empty() ? archives.front().getParentDirectory() : browseStart), "", true);
                 chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [this](const juce::FileChooser& c)
                 {
                     const auto folder = c.getResult();
@@ -12490,7 +12524,7 @@ void MainComponent::selectManualFolder(int manualIndex)
                 std::vector<juce::File> folders, archives;
                 chosen(folders, archives);
                 chooser = std::make_unique<juce::FileChooser>("The RAR archive(s) of the sample folders - select several with Ctrl or Shift",
-                    !archives.empty() ? archives.front() : (!folders.empty() ? folders.front() : juce::File()), ArchiveExtractor::fileFilter());
+                    !archives.empty() ? archives.front() : (!folders.empty() ? folders.front() : browseStart), ArchiveExtractor::fileFilter());
                 chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
                     [this](const juce::FileChooser& c)
                 {
@@ -12585,10 +12619,13 @@ void MainComponent::selectManualFolder(int manualIndex)
         LoadWindow() : juce::DialogWindow("Load folder", juce::Colours::darkgrey, true, true) {}
         void closeButtonPressed() override { delete this; }
     };
-    juce::File start = manualConfigs[(size_t)manualIndex].folderPath.isNotEmpty() ? juce::File(manualConfigs[(size_t)manualIndex].folderPath) : juce::File();
-    if (start == juce::File() && lastSettingsDirectory.isDirectory()) start = lastSettingsDirectory;
+    // The field holds a real tree of the division or nothing; the last folder only
+    // starts the choosers (0.8.183: it stood in the field, and "Load" without browsing
+    // loaded the configuration's folder as a sample tree).
+    const juce::File start = manualConfigs[(size_t)manualIndex].folderPath.isNotEmpty() ? juce::File(manualConfigs[(size_t)manualIndex].folderPath) : juce::File();
+    const juce::File browseStart = lastSettingsDirectory.isDirectory() ? lastSettingsDirectory : juce::File();
     auto* window = new LoadWindow();
-    auto* panel = new Panel(*this, manualIndex, start);
+    auto* panel = new Panel(*this, manualIndex, start, browseStart);
     window->setContentOwned(panel, true);
     window->setUsingNativeTitleBar(true);
     window->setResizable(true, false);
@@ -22298,7 +22335,9 @@ void MainComponent::showConfigurationEditor()
                "(the log says how much: \"Packed samples: ...\"). THE PRICE: every voice unpacks the piece it plays before every "
                "block, about as much work again as the interpolation itself - half the polyphony is gone, up to two thirds on a big organ "
                "(Caen on a 16-core notebook: 60 000 -> 25 000 voices); measure it, the report shows the unpacking as its own figure. "
-               "Use it only when an organ does not fit the memory otherwise; 32-bit float storage is not packed. "
+               "Use it only when an organ does not fit the memory otherwise. 32-bit float storage is packed as 24-bit integers: bit for bit "
+               "when the files hold such integers (24-bit or 16-bit WAV), rounded to 24 bits for real floats (32-bit float WAV, a sample resampled "
+               "on loading, a filled pipe's copy) - half a 24-bit step at most, below what any converter resolves; the log says how many were rounded. "
                "Takes effect the next time a division folder is loaded.");
             addCombo("Sample rate on loading", { "Resample everything to 48 kHz (the base rate, windowed sinc)  [default]",
                 "Resample everything to 36 kHz (content up to 17 kHz; a quarter less RAM)",

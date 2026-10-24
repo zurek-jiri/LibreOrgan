@@ -2345,7 +2345,11 @@ static const char* const kManualText_part11 =
     "interpolation itself, so half the polyphony is gone, up to two thirds on a\n"
     "big organ (Caen on a 16-core notebook: 60 000 to 25 000 voices) - measure it,\n"
     "the report shows the unpacking as its own figure. Use it only when an organ\n"
-    "does not fit the memory otherwise; 32-bit float storage is not packed.\n"
+    "does not fit the memory otherwise. 32-bit float storage is packed as 24-bit\n"
+    "integers: bit for bit when the files hold such integers (24-bit or 16-bit WAV),\n"
+    "rounded to 24 bits for real floats (32-bit float WAV, a sample resampled on\n"
+    "loading, a filled pipe's copy) - half a 24-bit step at most, below what any\n"
+    "converter resolves; the log says how many were rounded.\n"
     "Takes effect the next time a division's folders are loaded.\n"
     "\n"
     "### Sample rate on loading\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "share of its period the longest driver callback may take before the\n"
     "measurement counts a level as broken - see \"Measuring the maximum polyphony\".\n"
     "The easiest way to find the polyphony is the button below,\n"
+    ;
+static const char* const kManualText_part12 =
     "\"Measure the maximum polyphony\", once the organ is loaded and its audio\n"
     "outputs are configured. On a computer where the full registration breaks\n"
     "the sound up at the very first strike (no second stays clean), the\n"
     "measurement retreats by itself: the octave couplers go off, half of every\n"
-    ;
-static const char* const kManualText_part12 =
     "division's stops are switched off, and the climb starts again from one key -\n"
     "up to five times, down to a thirty-second of the stops - until a second\n"
     "stays clean; the report then says with how many stops it measured, and the\n"
@@ -2622,12 +2626,12 @@ static const char* const kManualText_part12 =
     "\n"
     "### Swell: harmonic filter\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "Closing the swell box does not only make the pipes quieter: it also takes away\n"
     "their brilliance. This is a high shelf above about 3 kHz that follows the\n"
     "shutters: this much loss with the box closed (0 to 12 dB, default 8). 0 dB =\n"
     "off. The\n"
-    ;
-static const char* const kManualText_part13 =
     "three harmonic filters (swell, wind, tremulant) add up, capped at 12 dB; when\n"
     "all three are 0 dB the filter costs nothing.\n"
     "\n"
@@ -2824,12 +2828,12 @@ static const char* const kManualText_part13 =
     "settings, so the build after loading takes seconds instead of minutes - the\n"
     "build of a large organ otherwise takes a minute or more at every load. One\n"
     "file per rank and folder tree, whatever the settings: a tree built with other\n"
+    ;
+static const char* const kManualText_part14 =
     "settings replaces its file, so the cache takes about as much room on disk as\n"
     "the copies in RAM (hundreds of MB for a large organ) and never plays a stale\n"
     "copy. Switch it on when the build after loading annoys you; switch it off\n"
     "when disk space is short - everything works the same without it. \"The cache\"\n"
-    ;
-static const char* const kManualText_part14 =
     "describes it in full.\n"
     "\n"
     "### Filled pipes cache: Empty the cache\n"
@@ -3026,12 +3030,12 @@ static const char* const kManualText_part14 =
     "The Temperaments dialog of the top bar does the same with one click, and\n"
     "every temperament can be switched from a MIDI control.\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved automatically. Information only; the window\n"
     "returns to where it was last time, always with its title bar on the screen.\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "## 8.5 Folder name patterns (one per line)\n"
     "\n"
@@ -3228,12 +3232,12 @@ static const char* const kManualText_part15 =
     "Tick the other divisions fed from this wind supply: they receive half of this\n"
     "division's sag, so a heavy chord on one manual disturbs the other.\n"
     "\n"
+    ;
+static const char* const kManualText_part16 =
     "---\n"
     "\n"
     "## 8.7 Keeping track: the activity log\n"
     "\n"
-    ;
-static const char* const kManualText_part16 =
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the filled pipes' copies - is noted in `CrashLogs\\activity.log`\n"
     "in the application-data folder; a crash writes a file beside it. When the\n"

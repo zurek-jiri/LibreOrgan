@@ -152,6 +152,15 @@ public:
             || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty());
         rankCountToggle.setEnabled(folder);
         rankCountToggle.setVisible(isExpanded() && !isTransmission() && folder);   // shown on stop folders only (0.8.158)
+        if (rankCountToggle.isVisible())
+        {
+            // The switch names the count the button would show (0.8.183; 0.8.180 computed
+            // it in the constructor, where the getters are still null - "[II]" stayed).
+            bool sounds = false;
+            for (int note = 0; note < 128 && !sounds; ++note) sounds = stop->hasNoteInAnyRank(note);
+            const int count = (int)childrenGetter(stop).size() + (childTransmissionsGetter ? (int)childTransmissionsGetter(stop).size() : 0) + (sounds ? 1 : 0);
+            rankCountToggle.setButtonText("Rank count [" + romanNumeral(count) + "]");
+        }
         resized();
     }
 

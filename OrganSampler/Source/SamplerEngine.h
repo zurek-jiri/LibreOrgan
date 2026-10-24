@@ -123,6 +123,17 @@ struct Sample
     // pointer of a raw sample, else decoded into the scratch given. For the readers
     // outside the render path (copy builds, cache files, analyses, the self-test).
     const int16_t* read16(int c, std::vector<int16_t>& scratch) const;
+    // Float samples (0.8.183): packed as the integers the file held - the 24-bit
+    // (or 16-bit) values a float holds exactly, found by trying the two scales and
+    // checked frame by frame. Real floats (a 32-bit float WAV, a resampled sample,
+    // a filled pipe's copy) are rounded to 24 bits first (packRounded); only a
+    // sample beyond +-2 full scale stays raw (returns 0). packScale turns the
+    // stored integers back into the floats: f = int x packScale.
+    float packScale = 0.0f;
+    bool packRounded = false;
+    size_t compress32();
+    void decode32(int c, int64_t from, int64_t to, float* out) const noexcept;
+    const float* read32(int c, std::vector<float>& scratch) const;
     // Bytes the frames take in RAM now (packed or raw, every channel).
     size_t frameBytes() const noexcept;
 
@@ -711,7 +722,7 @@ public:
     MinimumRamEstimate estimateMinimumRam() const;
     // Packing statistics since the last call: raw bytes in, packed bytes out,
     // samples packed, samples left raw because the check failed.
-    struct PackStats { int64_t rawBytes = 0, packedBytes = 0; int samples = 0, failed = 0; int64_t nanoseconds = 0; };
+    struct PackStats { int64_t rawBytes = 0, packedBytes = 0; int samples = 0, failed = 0, floatsLeftRaw = 0, floatsRounded = 0; int64_t nanoseconds = 0; };
     PackStats takePackStats() noexcept;
     // Logs the statistics taken ("Packed samples: <what>: N samples, X -> Y (Z % saved)"), nothing when none.
     void notePackStats(const juce::String& what);
@@ -1513,7 +1524,7 @@ private:
     bool releaseHalfRate = false;
     bool compressSamples = false;   // 0.8.145: pack the 16-bit samples in RAM (Sample::compress16)
     std::atomic<int64_t> packRawBytes{ 0 }, packPackedBytes{ 0 };
-    std::atomic<int> packSamples{ 0 }, packFailed{ 0 };
+    std::atomic<int> packSamples{ 0 }, packFailed{ 0 }, packFloatsLeftRaw{ 0 }, packFloatsRounded{ 0 };   // floats: beyond +-2 full scale (left raw) / rounded to 24 bits (0.8.183)
     std::atomic<int64_t> packNanoseconds{ 0 };   // thread time spent packing since the last takePackStats (0.8.153: what the option costs at the load)
     std::atomic<int> halfRateReleases{ 0 }, halfRateKeptFull{ 0 }, halfRateSincHeads{ 0 };   // 0.8.146: releases stored at half the rate / kept full for their treble
     std::function<void(const juce::String&)> loadStatusCallback;

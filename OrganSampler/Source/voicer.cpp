@@ -875,14 +875,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // stop folder, or a stop with items indented under it.
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())));
-    if (rankCountToggle.isVisible())
-    {
-        // The switch names the count the button would show (0.8.180: "[II]" always before - Cornet is "[III]").
-        bool sounds = false;
-        for (int note = 0; note < 128 && !sounds; ++note) sounds = stop->hasNoteInAnyRank(note);
-        const int count = (int)childrenGetter(stop).size() + (childTransmissionsGetter ? (int)childTransmissionsGetter(stop).size() : 0) + (sounds ? 1 : 0);
-        rankCountToggle.setButtonText("Rank count [" + romanNumeral(count) + "]");
-    }
+    // Its caption "[N]" is set in setChildrenGetter: the getters are null here (0.8.183).
     oneShotToggle.setVisible(stopControls);
     globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);
@@ -1573,7 +1566,7 @@ void StopRow::updateFromStop()
             if (auto* slider = toneSliders[note - noteMin])
                 slider->setValue(t->keyTone[(size_t)note], juce::dontSendNotification);
         }
-        shiftBox.setSelectedId(t->shift + Stop::Transmission::maxShift + 1, juce::dontSendNotification);
+        shiftBox.setSelectedId(t->shift + 100, juce::dontSendNotification);   // the ids of the constructor's list (0.8.183; the old maxShift + 1 ids blanked the box after every state update since 0.8.158)
         formantSlider.setValue(100.0 * t->formantFollow, juce::dontSendNotification);
         stopButton.setButtonText(caption());
         stopButton.setColour(juce::TextButton::buttonColourId,
@@ -1887,13 +1880,21 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
             {
                 const auto parts = juce::StringArray::fromTokens(juce::String(expand), "|", "");
                 for (auto* r : stopRows)
-                    if (parts.size() == 2 && r != nullptr && !r->isTransmission() && r->getStop() != nullptr
+                    if (parts.size() >= 2 && r != nullptr && !r->isTransmission() && r->getStop() != nullptr
                         && r->getStop()->primaryManual == parts[0].getIntValue() && r->getStop()->name.startsWith(parts[1]))
                     {
                         expandDone = true;
-                        r->getStop()->voicingExpanded = true;
-                        CrashHandler::note("ORGAN_TEST_EXPAND: " + parts[1]);
-                        juce::MessageManager::callAsync([this] { if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport); });
+                        // An optional third field: milliseconds to wait first (0.8.183) - the
+                        // expansion lands while ORGAN_TEST_RECORD holds its key.
+                        const int delayMs = parts.size() >= 3 ? parts[2].getIntValue() : 0;
+                        Stop* target = r->getStop();
+                        juce::Timer::callAfterDelay(juce::jmax(1, delayMs), [this, target, name = parts[1]]
+                        {
+                            target->voicingExpanded = true;
+                            CrashHandler::note("ORGAN_TEST_EXPAND: " + name);
+                            if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
+                        });
+                        break;
                     }
             }
             // ORGAN_TEST_OFFSET="<manual>|<stop name>|<offset>": "Files vs keys" as the voicing box would set it (once).

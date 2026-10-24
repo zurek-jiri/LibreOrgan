@@ -253,7 +253,19 @@ namespace
         bool headValid = false;
         int64_t headFrames = 0;        // the head region = main region + headFrames
         alignas(32) int16_t buf[2][2][kPackedWindow];   // [channel][main/head][frame]
+        alignas(32) float bufF[2][2][kPackedWindow];    // the same regions for a packed float sample (0.8.183)
+        template <typename T> T* region(int ch, int which) noexcept
+        {
+            if constexpr (std::is_same<T, float>::value) return bufF[ch][which];
+            else return buf[ch][which];
+        }
     };
+    // The frames [from, to) of a packed (or raw) sample as the type the kernels read.
+    template <typename T> inline void decodeWindow(const Sample& s, int ch, int64_t from, int64_t to, T* out) noexcept
+    {
+        if constexpr (std::is_same<T, float>::value) s.decode32(ch, from, to, out);
+        else s.decode16(ch, from, to, out);
+    }
    #if defined(_MSC_VER)
     #pragma warning(pop)
    #endif
@@ -754,6 +766,107 @@ namespace
         return true;
     }
 
+    // The same format for 32-bit integers (0.8.183: a float sample packed as the
+    // 24-bit or 16-bit values its file held): the warm-up frames are four bytes,
+    // the residual width up to 27 bits. The 16-bit functions above are untouched.
+    inline bool unpackBlock32(const uint8_t* in, int n, int32_t* out) noexcept
+    {
+        const int order = in[0] & kPackHeaderOrderMask;
+        const int width = (in[0] >> 2) & 31;
+        if (order > 2 || width > 27 || n <= 0) return false;
+        const uint8_t* p = in + 1;
+        int i = 0;
+        for (; i < order && i < n; ++i)
+        {
+            out[i] = (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24));
+            p += 4;
+        }
+        if (width == 0)
+        {
+            for (; i < n; ++i)
+                out[i] = order == 0 ? 0 : order == 1 ? out[i - 1] : 2 * out[i - 1] - out[i - 2];
+            return true;
+        }
+        uint64_t acc = 0;
+        int bits = 0;
+        const uint32_t mask = (1u << width) - 1u;
+        const int32_t bias = 1 << (width - 1);
+        int32_t x1 = order >= 1 ? out[order - 1] : 0, x2 = order >= 2 ? out[order - 2] : 0;
+        for (; i < n; ++i)
+        {
+            while (bits < width) { acc |= (uint64_t)*p++ << bits; bits += 8; }
+            const int32_t r = (int32_t)(acc & mask) - bias;
+            acc >>= width; bits -= width;
+            const int32_t x = order == 0 ? r : order == 1 ? r + x1 : r + 2 * x1 - x2;
+            out[i] = x;
+            x2 = x1; x1 = x;
+        }
+        return true;
+    }
+
+    void packChannel32(const int32_t* x, int64_t numFrames, Sample::PackedChannel& packed)
+    {
+        const int64_t blocks = (numFrames + Sample::kPackBlock - 1) / Sample::kPackBlock;
+        // Order 0 at 25 bits is the worst a 24-bit value takes: 4 bytes a frame + header and warm-up per block + guard.
+        packed.data.assign((size_t)numFrames * 4 + (size_t)blocks * 16 + 64, 0);
+        packed.blockOffsets.clear();
+        packed.blockOffsets.reserve((size_t)blocks + 1);
+        uint8_t* out = packed.data.data();
+        size_t pos = 0;
+        auto magnitude = [](int32_t r) noexcept { return r < 0 ? (uint32_t)(-(int64_t)r - 1) : (uint32_t)r; };
+        for (int64_t b = 0; b < blocks; ++b)
+        {
+            const int32_t* block = x + b * Sample::kPackBlock;
+            const int n = (int)juce::jmin<int64_t>(Sample::kPackBlock, numFrames - b * Sample::kPackBlock);
+            uint32_t or0 = 0, or1 = 0, or2 = 0;
+            bool nz0 = false, nz1 = false, nz2 = false;
+            int32_t x1 = 0, x2 = 0;
+            for (int i = 0; i < n; ++i)
+            {
+                const int32_t v = block[i];
+                or0 |= magnitude(v); nz0 |= v != 0;
+                if (i >= 1) { const int32_t r1 = v - x1; or1 |= magnitude(r1); nz1 |= r1 != 0; }
+                if (i >= 2) { const int32_t r2 = v - 2 * x1 + x2; or2 |= magnitude(r2); nz2 |= r2 != 0; }
+                x2 = x1; x1 = v;
+            }
+            const int widths[3] = { nz0 ? bitLength(or0) + 1 : 0, nz1 ? bitLength(or1) + 1 : 0, nz2 ? bitLength(or2) + 1 : 0 };
+            int bestOrder = 0, bestWidth = 32;
+            int64_t bestBits = std::numeric_limits<int64_t>::max();
+            for (int order = 0; order <= 2; ++order)
+            {
+                if (n <= order || widths[order] > 27) continue;
+                const int64_t bits = 8 + 32 * order + (int64_t)(n - order) * widths[order];
+                if (bits < bestBits) { bestBits = bits; bestOrder = order; bestWidth = widths[order]; }
+            }
+            packed.blockOffsets.push_back((uint32_t)pos);
+            out[pos++] = (uint8_t)(bestOrder | (bestWidth << 2));
+            for (int i = 0; i < bestOrder; ++i)
+            {
+                const uint32_t u = (uint32_t)block[i];
+                out[pos++] = (uint8_t)(u & 0xff); out[pos++] = (uint8_t)((u >> 8) & 0xff);
+                out[pos++] = (uint8_t)((u >> 16) & 0xff); out[pos++] = (uint8_t)(u >> 24);
+            }
+            if (bestWidth > 0)
+            {
+                const int32_t bias = 1 << (bestWidth - 1);
+                uint64_t acc = 0;
+                int bits = 0;
+                for (int i = bestOrder; i < n; ++i)
+                {
+                    const int32_t r = bestOrder == 0 ? block[i] : bestOrder == 1 ? block[i] - block[i - 1] : block[i] - 2 * block[i - 1] + block[i - 2];
+                    acc |= (uint64_t)(uint32_t)(r + bias) << bits;
+                    bits += bestWidth;
+                    while (bits >= 8) { out[pos++] = (uint8_t)(acc & 0xff); acc >>= 8; bits -= 8; }
+                }
+                if (bits > 0) out[pos++] = (uint8_t)(acc & 0xff);
+            }
+        }
+        packed.blockOffsets.push_back((uint32_t)pos);
+        jassert(pos + 8 <= packed.data.size());
+        packed.data.resize(pos + 8);
+        packed.data.shrink_to_fit();
+    }
+
     void packChannel(const int16_t* x, int64_t numFrames, Sample::PackedChannel& packed)
     {
         // 0.8.153: one pass over a block measures the three predictors at once (the
@@ -895,6 +1008,115 @@ const int16_t* Sample::read16(int c, std::vector<int16_t>& scratch) const
     if (!compressed) return channel16(c);
     scratch.assign((size_t)juce::jmax<int64_t>(stride, numFrames), 0);
     decode16(c, 0, numFrames, scratch.data());
+    return scratch.data();
+}
+
+size_t Sample::compress32()
+{
+    if (compressed || !storesFloat || numFrames < kPackBlock || numChannels < 1) return 0;
+    if (numFrames > (int64_t)0x7fffffff / 8) return 0;   // the offsets are 32-bit (4 bytes a frame at most)
+    // The integers the file held: 16-bit (v / 32768) or 24-bit (v / 2^23) - the
+    // first scale every frame of every channel fits exactly, bit for bit. A file
+    // of real floats (a 32-bit float WAV: Stralsund) has no such integers: its
+    // frames are ROUNDED to 24 bits (the nearest v / 2^23, half a step at most -
+    // below what any converter resolves), said by packRounded and the log.
+    float scale = 0.0f;
+    bool rounded = false;
+    for (const float candidate : { 1.0f / 32768.0f, 1.0f / 8388608.0f })
+    {
+        const float inverse = candidate == 1.0f / 32768.0f ? 32768.0f : 8388608.0f;
+        bool exact = true;
+        for (int c = 0; c < numChannels && exact; ++c)
+        {
+            const float* x = channel32(c);
+            for (int64_t i = 0; i < numFrames; ++i)
+            {
+                const float scaled = x[i] * inverse;
+                if (!(std::abs(scaled) < 16777216.0f)) { exact = false; break; }   // beyond 24 bits, or not a number
+                const int32_t v = (int32_t)scaled;
+                if ((float)v != scaled || (float)v * candidate != x[i]) { exact = false; break; }
+            }
+        }
+        if (exact) { scale = candidate; break; }
+    }
+    if (scale == 0.0f)
+    {
+        // Real floats: rounded to 24 bits - unless any frame lies beyond +-2 (a float
+        // file may exceed full scale; such a sample stays as it is).
+        for (int c = 0; c < numChannels; ++c)
+        {
+            const float* x = channel32(c);
+            for (int64_t i = 0; i < numFrames; ++i)
+                if (!(std::abs(x[i] * 8388608.0f) < 16777215.0f)) return 0;
+        }
+        scale = 1.0f / 8388608.0f;
+        rounded = true;
+    }
+    const float inverse = scale == 1.0f / 32768.0f ? 32768.0f : 8388608.0f;
+    std::vector<PackedChannel> result((size_t)numChannels);
+    std::vector<int32_t> ints((size_t)numFrames), check((size_t)numFrames);
+    for (int c = 0; c < numChannels; ++c)
+    {
+        const float* x = channel32(c);
+        for (int64_t i = 0; i < numFrames; ++i) ints[(size_t)i] = rounded ? (int32_t)std::lrint(x[i] * inverse) : (int32_t)(x[i] * inverse);
+        packChannel32(ints.data(), numFrames, result[(size_t)c]);
+        // Every frame back as it was, else the raw data stays.
+        const auto& pc = result[(size_t)c];
+        const int64_t blocks = (numFrames + kPackBlock - 1) / kPackBlock;
+        for (int64_t b = 0; b < blocks; ++b)
+        {
+            const int n = (int)juce::jmin<int64_t>(kPackBlock, numFrames - b * kPackBlock);
+            if (!unpackBlock32(pc.data.data() + pc.blockOffsets[(size_t)b], n, check.data() + b * kPackBlock)) return 0;
+        }
+        for (int64_t i = 0; i < numFrames; ++i)
+            if (rounded ? check[(size_t)i] != ints[(size_t)i] : (float)check[(size_t)i] * scale != x[i]) return 0;
+    }
+    size_t bytes = 0;
+    for (const auto& pc : result) bytes += pc.data.size() + pc.blockOffsets.size() * sizeof(uint32_t);
+    packed = std::move(result);
+    packScale = scale;
+    packRounded = rounded;
+    compressed = true;
+    pcm32.free();
+    return bytes;
+}
+
+void Sample::decode32(int c, int64_t from, int64_t to, float* out) const noexcept
+{
+    if (to <= from) return;
+    if (!compressed)
+    {
+        const float* x = storesFloat ? channel32(c) : nullptr;
+        for (int64_t i = from; i < to; ++i)
+            out[i - from] = x != nullptr && i >= 0 && i < stride ? x[i] : 0.0f;
+        return;
+    }
+    if (c < 0 || c >= (int)packed.size() || !storesFloat) { std::fill(out, out + (to - from), 0.0f); return; }
+    const auto& pc = packed[(size_t)c];
+    const int64_t blocks = (int64_t)pc.blockOffsets.size() - 1;
+    int32_t temp[kPackBlock];
+    for (int64_t i = from; i < to;)
+    {
+        if (i < 0) { const int64_t n = juce::jmin<int64_t>(-i, to - i); std::fill(out + (i - from), out + (i - from) + n, 0.0f); i += n; continue; }
+        if (i >= numFrames) { std::fill(out + (i - from), out + (to - from), 0.0f); break; }
+        const int64_t b = i / kPackBlock;
+        const int64_t blockStart = b * kPackBlock;
+        const int n = (int)juce::jmin<int64_t>(kPackBlock, numFrames - blockStart);
+        const int64_t take = juce::jmin<int64_t>(to, blockStart + n) - i;
+        if (b >= blocks) { std::fill(out + (i - from), out + (i - from) + take, 0.0f); i += take; continue; }
+        if (!unpackBlock32(pc.data.data() + pc.blockOffsets[(size_t)b], n, temp)) std::memset(temp, 0, sizeof(temp));
+        const int32_t* src = temp + (i - blockStart);
+        float* dst = out + (i - from);
+        for (int64_t k = 0; k < take; ++k) dst[k] = (float)src[k] * packScale;
+        i += take;
+    }
+}
+
+const float* Sample::read32(int c, std::vector<float>& scratch) const
+{
+    if (!compressed) return channel32(c);
+    scratch.assign((size_t)juce::jmax<int64_t>(stride, numFrames), 0.0f);
+    decode32(c, 0, numFrames, scratch.data());
     return scratch.data();
 }
 
@@ -2545,7 +2767,7 @@ namespace
         // from a window decoded into the thread's scratch, the positions made
         // relative to the window's first frame (posBase); the splice head goes
         // into the second half of the scratch, kPackedWindow frames on.
-        constexpr bool packable = std::is_same<T, int16_t>::value;
+        constexpr bool packable = std::is_same<T, int16_t>::value || std::is_same<T, float>::value;   // float since 0.8.183 (Sample::compress32)
         const bool packedSample = packable && s.compressed;
         uint64_t posBase = 0;
 
@@ -2800,7 +3022,7 @@ namespace
                     const int64_t unpackStart = prof ? profileTicks() : 0;
                     if (!haveMain)
                     {
-                        for (int ch = 0; ch < sampleChans; ++ch) s.decode16(ch, from, to, win.buf[(size_t)ch][0]);
+                        for (int ch = 0; ch < sampleChans; ++ch) decodeWindow<T>(s, ch, from, to, win.region<T>(ch, 0));
                         win.sample = &s; win.from = from; win.to = to; win.channels = sampleChans;
                         win.headValid = false;
                     }
@@ -2808,13 +3030,13 @@ namespace
                     {
                         // The head region: the window a loop length back (or ahead), frame
                         // k of it pairing with frame k of the main region.
-                        for (int ch = 0; ch < sampleChans; ++ch) s.decode16(ch, win.from + headFrames, win.to + headFrames, win.buf[(size_t)ch][1]);
+                        for (int ch = 0; ch < sampleChans; ++ch) decodeWindow<T>(s, ch, win.from + headFrames, win.to + headFrames, win.region<T>(ch, 1));
                         win.headValid = true; win.headFrames = headFrames;
                     }
                     if (prof) tlVoiceProfile.unpack += profileDelta(unpackStart, profileTicks());
                     posBase = (uint64_t)win.from << 32;
-                    src0 = (const T*)win.buf[0][0];
-                    src1 = sampleChans > 1 ? (const T*)win.buf[1][0] : src0;
+                    src0 = win.region<T>(0, 0);
+                    src1 = sampleChans > 1 ? win.region<T>(1, 0) : src0;
                     if (blend) headOffset = (int64_t)kPackedWindow << 32;   // the head region lies kPackedWindow frames on
                 }
             }
@@ -2899,14 +3121,14 @@ namespace
                             const int64_t to = juce::jmin(from + (int64_t)kPackedWindow, posFrame + (int64_t)(((uint64_t)span * (uint64_t)maxInc) >> 32) + 2 + kPackedGuard);
                             auto& win = tlPackedWindow;
                             win.sample = nullptr; win.headValid = false;
-                            s.decode16(ch, from, to, win.buf[0][0]);
+                            decodeWindow<T>(s, ch, from, to, win.region<T>(0, 0));
                             if (blend)
                             {
                                 const int64_t headFrames = headOffset / ((int64_t)1 << 32);
-                                s.decode16(ch, from + headFrames, to + headFrames, win.buf[0][1]);
+                                decodeWindow<T>(s, ch, from + headFrames, to + headFrames, win.region<T>(0, 1));
                                 head = (int64_t)kPackedWindow << 32;
                             }
-                            src = (const T*)win.buf[0][0];
+                            src = win.region<T>(0, 0);
                             p = v.pos - ((uint64_t)from << 32);
                         }
                     }
@@ -6015,10 +6237,24 @@ struct SamplerEngine::Impl
             if (onlyStop != nullptr && stop != onlyStop) continue;
             // A one-shot stop (chimes, harp) sounds each sample once through to its
             // end whenever the key goes up: nothing of it is released or faded.
-            if (stop->isOneShot && updateNoteBookkeeping) continue;
             int shiftCount;
             if (manualIndex < 0) { shifts[0] = 0; shiftCount = 1; }
             else shiftCount = collectRouteShifts(stop, manualIndex, shifts);
+            if (stop->isOneShot && updateNoteBookkeeping)
+            {
+                // The pipe is free for the next strike (0.8.183: 0.8.158 left the speaking
+                // bit set, so a chime struck twice was silent the second time until the
+                // stop was switched off); its voices sound on untouched.
+                for (int si = 0; si < shiftCount; ++si)
+                {
+                    const int pipe = midiNote + shifts[(size_t)si];
+                    if (pipe < 0 || pipe >= 128 || pipeStillHeld(stop, pipe)) continue;
+                    stop->speaking.reset((size_t)pipe);
+                    for (auto& rank : stop->ranks) rank->speaking.reset((size_t)pipe);
+                    stop->pipeStartMs[(size_t)pipe] = -1.0;
+                }
+                continue;
+            }
             stop->releasing.reset();
             for (int si = 0; si < shiftCount; ++si)
             {
@@ -7465,6 +7701,122 @@ juce::String SamplerEngine::runKernelSelfCheck()
                << (ok ? "OK" : "*** MISMATCH ***") << "\n";
     }
     {
+        // Packed float samples (0.8.183, Sample::compress32): the same stereo signal
+        // as 24-bit integers in floats (a 16-bit value plus a few low bits), packed
+        // and unpacked bit for bit, and a voice rendered through the packed float
+        // path equal to the raw one; a sample with floats that are no such integers
+        // (a resampled one) must stay raw.
+        constexpr int64_t pf = 120000;
+        auto raw = std::make_unique<Sample>(2, pf, 48000.0, true);
+        auto packedS = std::make_unique<Sample>(2, pf, 48000.0, true);
+        {
+            const auto t0 = testSignal<int16_t>((size_t)pf, 7, 1.0f), t1 = testSignal<int16_t>((size_t)pf, 13, 0.7f);
+            for (int64_t i = 0; i < pf; ++i)
+            {
+                int32_t a = t0[(size_t)i], b = t1[(size_t)i];
+                if (i >= 20000 && i < 21000) { a = 0; b = 0; }
+                if (i == 30000) { a = 32767; b = -32768; }
+                if (i >= 90000) { a /= 64; b /= 64; }
+                const float fa = (float)(a * 256 + (int)(i % 5) - 2) / 8388608.0f, fb = (float)(b * 256 - (int)(i % 3)) / 8388608.0f;   // 24-bit values
+                raw->writable32(0)[i] = fa; raw->writable32(1)[i] = fb;
+                packedS->writable32(0)[i] = fa; packedS->writable32(1)[i] = fb;
+            }
+            const std::vector<LoopPoints> loops{ { 40000, 80000 }, { 50000, 85000 } };
+            for (Sample* s : { raw.get(), packedS.get() })
+            {
+                s->finaliseLoops(loops);
+                applyCopyLoopCrossfade(*s, 0.3);
+                s->crossfadeAfterJump[0] = 0; s->crossfadeFrames[0] = 2400;
+            }
+        }
+        const size_t packedBytes = packedS->compress32();
+        bool ok = packedBytes > 0 && packedS->compressed && packedS->packScale == 1.0f / 8388608.0f;
+        int64_t windowsChecked = 0;
+        {
+            std::vector<float> a(5000), b(5000);
+            uint32_t st = 99;
+            for (int t = 0; t < 400 && ok; ++t)
+            {
+                st = st * 1664525u + 1013904223u; const int64_t from = (int64_t)(st % 130000u) - 5000;
+                st = st * 1664525u + 1013904223u; const int64_t len = 1 + (int64_t)(st % 4999u);
+                const int ch = t & 1;
+                raw->decode32(ch, from, from + len, a.data());
+                packedS->decode32(ch, from, from + len, b.data());
+                if (std::memcmp(a.data(), b.data(), (size_t)len * sizeof(float)) != 0) ok = false;
+                ++windowsChecked;
+            }
+        }
+        float worstRender = 0.0f;
+        bool positionsSame = true;
+        if (ok)
+        {
+            auto renderWith = [&](const Sample& s, bool cubic, double ratio, std::vector<float>& out0, std::vector<float>& out1, uint64_t& endPos)
+            {
+                auto v = std::make_unique<Voice>();
+                v->sample = &s; v->note = 0; v->cubic = cubic; v->loopEnabled = true; v->rng = 12345;
+                v->pos = (uint64_t)(100.0 * kFixedOne);
+                BlockContext c; c.numSamples = 480; c.outCount = 2; c.outChannels[0] = 0; c.outChannels[1] = 1; c.kernel = (int)bestKernel();
+                std::vector<float> sink((size_t)kMaxBlockFrames, 0.0f);
+                LaneOutputs lanes; lanes.numOuts = 2; lanes.sink = sink.data();
+                const int64_t inc = (int64_t)(ratio * kFixedOne);
+                std::vector<float> o0(480), o1(480);
+                for (int block = 0; block < 500 && !v->finished; ++block)
+                {
+                    std::fill(o0.begin(), o0.end(), 0.0f); std::fill(o1.begin(), o1.end(), 0.0f);
+                    lanes.out[0] = o0.data(); lanes.out[1] = o1.data();
+                    renderVoiceSpans<float>(*v, s, c, lanes, inc, inc, 0.5f, 0.5f);
+                    out0.insert(out0.end(), o0.begin(), o0.end());
+                    out1.insert(out1.end(), o1.begin(), o1.end());
+                }
+                endPos = v->pos;
+            };
+            for (const bool cubic : { false, true })
+                for (const double ratio : { 0.75, 1.0, 1.4983, 2.6 })
+                {
+                    std::vector<float> r0, r1, p0, p1;
+                    uint64_t endRaw = 0, endPacked = 0;
+                    renderWith(*raw, cubic, ratio, r0, r1, endRaw);
+                    renderWith(*packedS, cubic, ratio, p0, p1, endPacked);
+                    if (endRaw != endPacked || r0.size() != p0.size()) positionsSame = false;
+                    float peak = 1.0e-9f, diff = 0.0f;
+                    for (size_t i = 0; i < juce::jmin(r0.size(), p0.size()); ++i)
+                    {
+                        peak = juce::jmax(peak, std::abs(r0[i]), std::abs(r1[i]));
+                        diff = juce::jmax(diff, std::abs(r0[i] - p0[i]), std::abs(r1[i] - p1[i]));
+                    }
+                    worstRender = juce::jmax(worstRender, diff / peak);
+                }
+            if (!(worstRender < 1.0e-5f) || !positionsSame) ok = false;
+        }
+        // Real floats (a 32-bit float WAV, a resampled sample): rounded to 24 bits -
+        // every frame back within half a 24-bit step, marked as rounded; a sample
+        // beyond +-2 full scale stays raw.
+        bool roundedOk = false, rawStays = false;
+        float roundError = 0.0f;
+        {
+            auto other = std::make_unique<Sample>(1, 4096, 48000.0, true);
+            std::vector<float> original(4096);
+            for (int64_t i = 0; i < 4096; ++i) { original[(size_t)i] = std::sin((float)i * 0.01f) * 0.5f; other->writable32(0)[i] = original[(size_t)i]; }
+            roundedOk = other->compress32() > 0 && other->compressed && other->packRounded;
+            if (roundedOk)
+            {
+                std::vector<float> back(4096);
+                other->decode32(0, 0, 4096, back.data());
+                for (int64_t i = 0; i < 4096; ++i) roundError = juce::jmax(roundError, std::abs(back[(size_t)i] - original[(size_t)i]));
+                if (!(roundError <= 0.5f / 8388608.0f + 1.0e-9f)) roundedOk = false;
+            }
+            auto loud = std::make_unique<Sample>(1, 4096, 48000.0, true);
+            for (int64_t i = 0; i < 4096; ++i) loud->writable32(0)[i] = std::sin((float)i * 0.01f) * 3.0f;
+            rawStays = loud->compress32() == 0 && !loud->compressed;
+        }
+        if (!roundedOk || !rawStays) ok = false;
+        result << "Packed float samples: " << juce::String((double)packedBytes / (double)(pf * 8) * 100.0, 1) << " % of the raw size, "
+               << windowsChecked << " windows unpacked as stored; a voice rendered from the packed sample against the raw one (plain, splices, cubic, ratios 0.75-2.6): largest difference "
+               << juce::String(worstRender * 100.0f, 5) << " % of the peak, end positions " << (positionsSame ? "identical" : "DIFFERENT")
+               << "; real floats rounded to 24 bits " << (roundedOk ? "within half a step (" + juce::String(roundError * 8388608.0f, 3) + ")" : "WRONG")
+               << ", a sample beyond full scale " << (rawStays ? "stays raw" : "WAS PACKED") << " -> " << (ok ? "OK" : "*** MISMATCH ***") << "\n";
+    }
+    {
         // Dynamic tone shelf: the lowpass behind it must start at 1.8 kHz (about
         // -1 dB) and be down about 10 dB an octave higher (transition ~1.8 kHz wide).
         float lp[5];
@@ -8169,7 +8521,8 @@ namespace
             // Padded with the edge values so the start of the attack is not smeared into silence.
             if (source.storesFloat)
             {
-                const float* s = source.channel32(ch);
+                std::vector<float> scratch;
+                const float* s = source.read32(ch, scratch);   // a packed source decoded whole (0.8.183)
                 for (int i = 0; i < frames; ++i) in[(size_t)(i + half)] = s[i];
             }
             else
@@ -8823,9 +9176,10 @@ namespace
             auto copy = std::make_unique<Sample>(channels, juce::jmax(0, frames), source.sampleRate, source.storesFloat);
             copy->smplPitch = source.smplPitch;
             std::vector<int16_t> scratch;
+            std::vector<float> scratch32;
             for (int ch = 0; ch < channels; ++ch)
             {
-                if (source.storesFloat) std::memcpy(copy->writable32(ch), source.channel32(ch), (size_t)frames * sizeof(float));
+                if (source.storesFloat) std::memcpy(copy->writable32(ch), source.read32(ch, scratch32), (size_t)frames * sizeof(float));
                 else std::memcpy(copy->writable16(ch), source.read16(ch, scratch), (size_t)frames * sizeof(int16_t));
             }
             copy->finaliseLoops(source.loops);
@@ -8837,9 +9191,10 @@ namespace
         if (ratio > 1.0) { filtered = makeAntiAliasCopy(source, ratio); input = filtered.get(); }
         std::vector<std::vector<float>> in((size_t)channels, std::vector<float>((size_t)frames));
         std::vector<int16_t> scratch;
+        std::vector<float> scratch32;
         for (int ch = 0; ch < channels; ++ch)
         {
-            if (input->storesFloat) { const float* s = input->channel32(ch); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = s[i]; }
+            if (input->storesFloat) { const float* s = input->read32(ch, scratch32); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = s[i]; }
             else { const int16_t* s = input->read16(ch, scratch); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = (float)s[i] / 32768.0f; }
         }
         std::vector<std::vector<float>> out((size_t)channels, std::vector<float>((size_t)outFrames, 0.0f));
@@ -8987,11 +9342,12 @@ namespace
         auto copy = std::make_unique<Sample>(channels, juce::jmax(0, frames), source.sampleRate, source.storesFloat);
         copy->smplPitch = source.smplPitch;
         std::vector<int16_t> scratch;
+        std::vector<float> scratch32;
         if (unchanged)
         {
             for (int ch = 0; ch < channels; ++ch)
             {
-                if (source.storesFloat) std::memcpy(copy->writable32(ch), source.channel32(ch), (size_t)frames * sizeof(float));
+                if (source.storesFloat) std::memcpy(copy->writable32(ch), source.read32(ch, scratch32), (size_t)frames * sizeof(float));
                 else std::memcpy(copy->writable16(ch), source.read16(ch, scratch), (size_t)frames * sizeof(int16_t));
             }
             copy->finaliseLoops(source.loops);
@@ -9002,7 +9358,7 @@ namespace
         std::vector<float*> inPtr((size_t)channels), outPtr((size_t)channels);
         for (int ch = 0; ch < channels; ++ch)
         {
-            if (source.storesFloat) { const float* s = source.channel32(ch); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = s[i]; }
+            if (source.storesFloat) { const float* s = source.read32(ch, scratch32); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = s[i]; }
             else { const int16_t* s = source.read16(ch, scratch); for (int i = 0; i < frames; ++i) in[(size_t)ch][(size_t)i] = (float)s[i] / 32768.0f; }
             inPtr[(size_t)ch] = in[(size_t)ch].data();
             outPtr[(size_t)ch] = out[(size_t)ch].data();
@@ -9247,14 +9603,19 @@ void SamplerEngine::applyCopyLoopCrossfade(Sample& sample, double fraction)
 
 void SamplerEngine::packIfEnabled(Sample& sample) noexcept
 {
-    if (!compressSamples || sample.compressed || sample.storesFloat) return;
+    if (!compressSamples || sample.compressed) return;
     const int64_t raw = (int64_t)sample.frameBytes();
     size_t packedBytes = 0;
     const auto started = std::chrono::steady_clock::now();
-    try { packedBytes = sample.compress16(); }
+    try { packedBytes = sample.storesFloat ? sample.compress32() : sample.compress16(); }   // float: as the file's integers (0.8.183)
     catch (...) { packedBytes = 0; }   // out of memory for the packed copy: the raw data stays
     packNanoseconds.fetch_add((int64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - started).count(), std::memory_order_relaxed);
-    if (packedBytes == 0) { if (sample.numFrames >= Sample::kPackBlock) packFailed.fetch_add(1, std::memory_order_relaxed); return; }
+    if (packedBytes == 0)
+    {
+        if (sample.numFrames >= Sample::kPackBlock) (sample.storesFloat ? packFloatsLeftRaw : packFailed).fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    if (sample.packRounded) packFloatsRounded.fetch_add(1, std::memory_order_relaxed);
     packRawBytes.fetch_add(raw, std::memory_order_relaxed);
     packPackedBytes.fetch_add((int64_t)packedBytes, std::memory_order_relaxed);
     packSamples.fetch_add(1, std::memory_order_relaxed);
@@ -9263,11 +9624,13 @@ void SamplerEngine::packIfEnabled(Sample& sample) noexcept
 void SamplerEngine::notePackStats(const juce::String& what)
 {
     const PackStats stats = takePackStats();
-    if (stats.samples == 0 && stats.failed == 0) return;
+    if (stats.samples == 0 && stats.failed == 0 && stats.floatsLeftRaw == 0) return;
     const double saved = stats.rawBytes > 0 ? 100.0 * (1.0 - (double)stats.packedBytes / (double)stats.rawBytes) : 0.0;
     CrashHandler::note("Packed samples: " + what + ": " + juce::String(stats.samples) + " samples, "
         + juce::File::descriptionOfSizeInBytes(stats.rawBytes) + " -> " + juce::File::descriptionOfSizeInBytes(stats.packedBytes)
         + " (" + juce::String(saved, 1) + " % saved)" + (stats.failed > 0 ? ", " + juce::String(stats.failed) + " left raw (the check failed)" : juce::String())
+        + (stats.floatsRounded > 0 ? ", " + juce::String(stats.floatsRounded) + " float sample(s) rounded to 24 bits (real floats, not the file's integers)" : juce::String())
+        + (stats.floatsLeftRaw > 0 ? ", " + juce::String(stats.floatsLeftRaw) + " float sample(s) left raw (beyond +-2 full scale)" : juce::String())
         + ", " + juce::String((double)stats.nanoseconds * 1.0e-9, 1) + " s of thread time ("
         + juce::String(stats.rawBytes > 0 ? (double)stats.nanoseconds / ((double)stats.rawBytes / 2.0) : 0.0, 2) + " ns per frame and channel)");
 }
@@ -9279,6 +9642,8 @@ SamplerEngine::PackStats SamplerEngine::takePackStats() noexcept
     stats.packedBytes = packPackedBytes.exchange(0, std::memory_order_relaxed);
     stats.samples = packSamples.exchange(0, std::memory_order_relaxed);
     stats.failed = packFailed.exchange(0, std::memory_order_relaxed);
+    stats.floatsLeftRaw = packFloatsLeftRaw.exchange(0, std::memory_order_relaxed);
+    stats.floatsRounded = packFloatsRounded.exchange(0, std::memory_order_relaxed);
     stats.nanoseconds = packNanoseconds.exchange(0, std::memory_order_relaxed);
     return stats;
 }
@@ -9496,9 +9861,10 @@ namespace
         block.writeInt((int)s.loops.size());
         for (const auto& loop : s.loops) { block.writeInt64(loop.start); block.writeInt64(loop.end); }
         std::vector<int16_t> scratch;
+        std::vector<float> scratch32;
         for (int ch = 0; ch < s.numChannels; ++ch)
         {
-            if (s.storesFloat) block.write(s.channel32(ch), (size_t)s.numFrames * sizeof(float));
+            if (s.storesFloat) block.write(s.read32(ch, scratch32), (size_t)s.numFrames * sizeof(float));
             else block.write(s.read16(ch, scratch), (size_t)s.numFrames * sizeof(int16_t));   // the cache holds plain frames, packed or not
         }
         out.writeInt64((int64_t)block.getDataSize());   // so a reader can skip the variant
@@ -9931,12 +10297,14 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
             if (to <= from) return 0.0;
             double power = 0.0;
             std::vector<int16_t> scratch;
+            std::vector<float> scratch32;
             for (int ch = 0; ch < s.numChannels; ++ch)
             {
                 const int16_t* x16 = s.storesFloat ? nullptr : s.read16(ch, scratch);
+                const float* x32 = s.storesFloat ? s.read32(ch, scratch32) : nullptr;
                 for (int64_t i = from; i < to; ++i)
                 {
-                    const double v = s.storesFloat ? (double)s.channel32(ch)[i] : (double)x16[i] / 32768.0;
+                    const double v = s.storesFloat ? (double)x32[i] : (double)x16[i] / 32768.0;
                     power += v * v;
                 }
             }
@@ -12048,6 +12416,8 @@ void SamplerEngine::commitPendingDivisions()
                 rank->undulationBeats = source->undulationBeats;
                 rank->undulationManual = source->undulationManual;
                 rank->undulationCents = source->undulationCents;
+                rank->faultyPipes = source->faultyPipes;         // the retune limit's verdict travels with the samples (0.8.183:
+                rank->rawTuningCents = source->rawTuningCents;   // lost on adoption - the faulty pipe played itself again after a reload)
                 rank->samplesUnloaded = false;
                 source->samplesUnloaded = true;   // nothing left to free twice
             };
@@ -12297,7 +12667,7 @@ SamplerEngine::MinimumRamEstimate SamplerEngine::estimateMinimumRam() const
         for (int c = 0; c < s.numChannels; ++c)
         {
             float* dst = audio.getWritePointer(c);
-            if (s.storesFloat) std::memcpy(dst, s.channel32(c), (size_t)frames * sizeof(float));
+            if (s.storesFloat) { std::vector<float> scratch32; std::memcpy(dst, s.read32(c, scratch32), (size_t)frames * sizeof(float)); }
             else { const int16_t* x = s.read16(c, scratch); for (int64_t f = 0; f < frames; ++f) dst[f] = (float)x[f] / 32768.0f; }
         }
         double target = juce::jmin(s.sampleRate, lowRate);
@@ -12340,7 +12710,7 @@ juce::String SamplerEngine::storageSignature() const
 {
     return juce::String(storeSamplesAsFloat ? "32-bit float" : "16-bit") + ", "
         + (resampleOnLoad ? juce::String(juce::roundToInt(storageSampleRate / 1000.0)) + " kHz" : juce::String("the files' own rate"))
-        + (releaseHalfRate ? ", releases at half the rate" : "") + (compressSamples && !storeSamplesAsFloat ? ", packed" : "");
+        + (releaseHalfRate ? ", releases at half the rate" : "") + (compressSamples ? ", packed" : "");   // float too since 0.8.183
 }
 
 void SamplerEngine::loadRankSamples(Stop* rank)
@@ -12506,8 +12876,15 @@ void SamplerEngine::reloadStopSamples(Stop* stop, bool evenIfLoaded)
     impl->suspend();
     {
         const juce::ScopedLock sl(controlLock);
-        impl->killAllVoices();   // whatever started meanwhile (0.8.160)
-        impl->resetAllVoicesUnsafe();
+        // Whatever started meanwhile (0.8.160) - of a stop that sounded. A stop whose
+        // samples were unloaded (a pooled stop back on the grid, a transmission added to
+        // it) has no voice reading them: 0.8.183 no longer cuts every held tone of the
+        // whole organ for those callers.
+        if (evenIfLoaded)
+        {
+            impl->killAllVoices();
+            impl->resetAllVoicesUnsafe();
+        }
         for (auto& entry : staged)
         {
             Stop* live = entry.first;
@@ -12696,14 +13073,16 @@ namespace
         const int n = 1 << order;
         std::vector<float> buffer((size_t)n * 2, 0.0f);
         std::vector<int16_t> scratch;
+        std::vector<float> scratch32;
         const int16_t* x16 = sample.storesFloat ? nullptr : sample.read16(0, scratch);
+        const float* x32 = sample.storesFloat ? sample.read32(0, scratch32) : nullptr;
         for (int i = 0; i < n; ++i)   // channel 0 (every channel carries the same partials)
         {
             // Blackman-Harris window: side lobes below -92 dB, so the spectrum between
             // the harmonics shows the real noise and aliasing, not window leakage.
             const float phase = juce::MathConstants<float>::twoPi * (float)i / (float)(n - 1);
             const float w = 0.35875f - 0.48829f * std::cos(phase) + 0.14128f * std::cos(2.0f * phase) - 0.01168f * std::cos(3.0f * phase);
-            const float v = sample.storesFloat ? sample.channel32(0)[start + i] : (float)x16[start + i] / 32768.0f;
+            const float v = sample.storesFloat ? x32[start + i] : (float)x16[start + i] / 32768.0f;
             buffer[(size_t)i] = v * w;
         }
         juce::dsp::FFT fft(order);

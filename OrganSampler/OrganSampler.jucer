@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="TSAADV" name="OrganSampler" projectType="guiapp" useAppConfig="0"
-              version="0.8.182" companyName="OrganSampler" addUsingNamespaceToJuceHeader="0"
+              version="0.8.183" companyName="OrganSampler" addUsingNamespaceToJuceHeader="0"
               jucerFormatVersion="1" headerPath="../../../ASIOSDK/common;../../../ASIOSDK/host;../../../ASIOSDK/host/pc;../../../ThirdParty/signalsmith;../../../ThirdParty/libarchive/libarchive">
   <MAINGROUP id="bQGqRZ" name="OrganSampler">
     <GROUP id="{1CF4E020-5D96-48D3-C007-4FEDB9856EFD}" name="Source">
