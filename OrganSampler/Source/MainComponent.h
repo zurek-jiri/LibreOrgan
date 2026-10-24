@@ -91,6 +91,11 @@ private:
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
+    bool ramLogPending = false;            // "RAM held after the load" to be logged once the copies are built (0.8.184)
+    bool loadConfigurationAgain = false;   // the test hook ORGAN_LOAD_CONFIGURATION_AGAIN is the file to take now (0.8.184)
+    double ramLogAfterMs = 0.0;
+    int copyCacheHitsAtLoad = 0;
+    void logRamAfterLoadIfDue();
     juce::StringArray volumeSetsAnnounced;   // multi-part archives whose other parts were announced (once per session, 0.8.176)
     LeftOnlyTextButton shutdownButton{ "Shut down PC" };   // saves, quits and shuts the computer down (hidden by default)
     LeftOnlyTextButton unpackArchiveButton{ "Unpack archive" };   // RAR sample archives unpacked by libarchive (hidden by default)

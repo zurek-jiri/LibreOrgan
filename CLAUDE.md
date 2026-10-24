@@ -1117,11 +1117,31 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
-- LOG THE MEASURED RAM (the user, 24 Oct 2026: "do logů piš i naměřenou RAM, je to velmi významné"): after every
-  load, once the copy builds are over, one activity-log line with `processMemoryBytes()` (what the RAM column shows:
-  max(WorkingSet, PrivateUsage) on Windows) and the storage signature, e.g. "RAM held after the load (16-bit, 48 kHz,
-  packed): 23.1 GB" - the #87 measurements exist on the user's paper only because the log had the options and the
-  estimate but never the figure. Also in system.txt of the report. Next code version, not a docs-only push.
+- LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
+  the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
+  what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
+  `unloadManual` x 4 on the MESSAGE thread FREEING the old organ: 23 GB in ~150 000 packed vectors (packing makes
+  2 vectors per channel per sample; 36 741 samples). And the loader itself slows towards the end: the pack's
+  thread time per frame rises 5.8 -> 33 ns over the eight trees at 16-bit 48 kHz (flat 5.5 ns at 32 kHz, 8 GB), the
+  loader's CPU falls 45 -> 30 %, page faults 370 000 -> 230 000/s, disk 0 (page cache 70 GB standby): the kernel's
+  cost per fresh page grows with the working set (every sample = calloc + a worst-case pack vector + shrink_to_fit
+  copy + free = three multi-MB VirtualAlloc/Free per sample). Not a regression of a change: the price of 36 000
+  separate allocations. DONE IN 0.8.184: (1) `unloadManual` moves the stops into `removedStops` and
+  `freeRemovedStopsLater` frees them on a juce::Thread::launch thread (then `MemoryInfo::releaseFreedMemory()` =
+  _heapmin / malloc_trim / malloc_zone_pressure_relief - the user: "ať žádné haldy nezbývají"); the loader's run()
+  shows "Freeing the previous organ ..." and `waitForRemovedStopsFreed()` before the first tree, so the memory
+  counts (gSwapBaseline, memoryShortNow, warnIfMemoryShortForTrees' free figure - read on its thread after the
+  wait) see the memory free; the engine destructor waits too. (2) thread_local scratch in packChannel/packChannel32
+  and the check/ints vectors of compress16/32: parallelFor's threads die with the stop, so nothing stays held.
+  (3) NOT one outer BuildPause (a build relaunched by an inner ~BuildPause would wait on the lock while its stop is
+  removed and freed - use after free); instead `setRelaunchHeld(true/false)` around the unload loop of
+  applyPortableConfiguration: `relaunchPendingBuilds` returns at once. (4) `logRamAfterLoadIfDue` (MainComponent,
+  the once-a-second timer) writes "RAM held after the load (<storageSignature>): N GB - ... M pipe(s) of them from
+  the cache; free of installed" once `pendingBackgroundWorkers() == 0` after "Compiling the Stop List: done".
+  The user measures the #87 table anew with it; mine are not wanted. Remove a configuration: GitHub's own "Run workflow" form has two clicks (open the
+  form, then the green Run workflow) - nothing of ours asks; the 15:02 run removed the folder fine, the 14:34 one
+  failed on the name. The "13 GB" at 16-bit 48 kHz packed = read while the copies were still building (the user
+  closed the program at 18:38:31 mid-build); 23 GB is the figure with the copies.
 - The #87 table (the user's measurements, Stralsund 53.9 GB float WAV, whole program with the copies): float 48 kHz
   85 GB; float packed 30; 16-bit 48 kHz 49 / packed 23; 16-bit half releases 33 / packed 13; 16-bit 32 kHz half
   packed 8 - on the website (site/index.html `.ram-measured`) and README since 24 Oct 2026. Keep it when the text

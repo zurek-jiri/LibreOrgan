@@ -1256,6 +1256,16 @@ public:
     // pipe. The stops just remember that their copies are missing;
     // launchCopyBuilds (the last step) lifts the hold and launches them all.
     void holdCopyBuilds();
+    // The stops an unload removes are freed on a thread of their own (0.8.184): 23 GB
+    // in 150 000 packed vectors held the message thread 11 s per organ, the window
+    // dead - "the load waits for the filled pipes". A load waits for that free
+    // before it counts memory (the loader thread, with a status line).
+    void waitForRemovedStopsFreed();
+    bool removedStopsBeingFreed() const noexcept { return removedStopsFreeing.load(std::memory_order_acquire) > 0; }
+    // Load Configuration unloads every division in turn: between the unloads no build
+    // of the old organ is launched again by a BuildPause's end - the next unload
+    // would interrupt it (and a partial cache file be written for a stop about to go).
+    void setRelaunchHeld(bool held) noexcept { relaunchHeld.store(held, std::memory_order_release); }
     // The loading dialog's Cancel (0.8.139): the loading stops at the next stop (or
     // 32 files), the instrument is built from the stops loaded so far, the rest
     // is named in the message like a memory stop.
@@ -1433,6 +1443,11 @@ private:
     std::unique_ptr<Impl> impl;
     mutable juce::CriticalSection controlLock;
     juce::OwnedArray<Stop> stops;
+    juce::OwnedArray<Stop> removedStops;          // unloaded stops awaiting their free on a thread (0.8.184)
+    juce::CriticalSection removedStopsLock;
+    std::atomic<int> removedStopsFreeing{ 0 };   // free threads running
+    std::atomic<bool> relaunchHeld{ false };     // setRelaunchHeld: no relaunch of pending builds between the unloads of a load
+    void freeRemovedStopsLater();
 
     std::atomic<int> currentPolyphony{ 0 };
     std::atomic<int> peakPolyphonyDisplay{ 0 }, peakPolyphonyMeasured{ 0 };

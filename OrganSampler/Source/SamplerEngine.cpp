@@ -808,10 +808,13 @@ namespace
     {
         const int64_t blocks = (numFrames + Sample::kPackBlock - 1) / Sample::kPackBlock;
         // Order 0 at 25 bits is the worst a 24-bit value takes: 4 bytes a frame + header and warm-up per block + guard.
-        packed.data.assign((size_t)numFrames * 4 + (size_t)blocks * 16 + 64, 0);
+        // Packed into the thread's scratch first (0.8.184, see packChannel), then one allocation of the exact size.
+        thread_local std::vector<uint8_t> scratch;
+        const size_t worst = (size_t)numFrames * 4 + (size_t)blocks * 16 + 64;
+        if (scratch.size() < worst) scratch.resize(worst);
         packed.blockOffsets.clear();
         packed.blockOffsets.reserve((size_t)blocks + 1);
-        uint8_t* out = packed.data.data();
+        uint8_t* out = scratch.data();
         size_t pos = 0;
         auto magnitude = [](int32_t r) noexcept { return r < 0 ? (uint32_t)(-(int64_t)r - 1) : (uint32_t)r; };
         for (int64_t b = 0; b < blocks; ++b)
@@ -862,9 +865,9 @@ namespace
             }
         }
         packed.blockOffsets.push_back((uint32_t)pos);
-        jassert(pos + 8 <= packed.data.size());
-        packed.data.resize(pos + 8);
-        packed.data.shrink_to_fit();
+        jassert(pos + 8 <= worst);
+        std::memset(out + pos, 0, 8);   // the bit reader may fetch a few bytes past a block: zeros
+        packed.data.assign(out, out + pos + 8);
     }
 
     void packChannel(const int16_t* x, int64_t numFrames, Sample::PackedChannel& packed)
@@ -877,10 +880,17 @@ namespace
         const int64_t blocks = (numFrames + Sample::kPackBlock - 1) / Sample::kPackBlock;
         // The chosen width never exceeds 16 (a wider order-1/2 width always loses to
         // order 0 at 16 bits): 2 bytes a frame + header and warm-up per block + guard.
-        packed.data.assign((size_t)numFrames * 2 + (size_t)blocks * 8 + 64, 0);
+        // Packed into the thread's scratch (kept across the files a loader thread packs;
+        // the threads end with the stop), then ONE allocation of the exact size (0.8.184:
+        // a fresh worst-case vector and a shrink_to_fit copy per sample were two
+        // multi-MB allocations whose page faults grew dearer as the process grew -
+        // the pack went from 6 to 45 ns per frame over a 23 GB load).
+        thread_local std::vector<uint8_t> scratch;
+        const size_t worst = (size_t)numFrames * 2 + (size_t)blocks * 8 + 64;
+        if (scratch.size() < worst) scratch.resize(worst);
         packed.blockOffsets.clear();
         packed.blockOffsets.reserve((size_t)blocks + 1);
-        uint8_t* out = packed.data.data();
+        uint8_t* out = scratch.data();
         size_t pos = 0;
         for (int64_t b = 0; b < blocks; ++b)
         {
@@ -931,9 +941,9 @@ namespace
             }
         }
         packed.blockOffsets.push_back((uint32_t)pos);
-        jassert(pos + 8 <= packed.data.size());
-        packed.data.resize(pos + 8);   // the bit reader may fetch a few bytes past a block (zeros)
-        packed.data.shrink_to_fit();
+        jassert(pos + 8 <= worst);
+        std::memset(out + pos, 0, 8);   // the bit reader may fetch a few bytes past a block: zeros
+        packed.data.assign(out, out + pos + 8);
     }
 }
 
@@ -942,7 +952,8 @@ size_t Sample::compress16()
     if (compressed || storesFloat || numFrames < kPackBlock || numChannels < 1) return 0;
     if (numFrames > (int64_t)0x7fffffff / 4) return 0;   // the offsets are 32-bit (2 bytes a frame at most)
     std::vector<PackedChannel> result((size_t)numChannels);
-    std::vector<int16_t> check((size_t)numFrames);
+    thread_local std::vector<int16_t> check;   // reused across the files a loader thread packs (0.8.184)
+    if (check.size() < (size_t)numFrames) check.resize((size_t)numFrames);
     for (int c = 0; c < numChannels; ++c)
     {
         const int16_t* x = channel16(c);
@@ -1054,7 +1065,8 @@ size_t Sample::compress32()
     }
     const float inverse = scale == 1.0f / 32768.0f ? 32768.0f : 8388608.0f;
     std::vector<PackedChannel> result((size_t)numChannels);
-    std::vector<int32_t> ints((size_t)numFrames), check((size_t)numFrames);
+    thread_local std::vector<int32_t> ints, check;   // reused across the files a loader thread packs (0.8.184)
+    if (ints.size() < (size_t)numFrames) { ints.resize((size_t)numFrames); check.resize((size_t)numFrames); }
     for (int c = 0; c < numChannels; ++c)
     {
         const float* x = channel32(c);
@@ -7120,6 +7132,7 @@ void SamplerEngine::setManualCompass(int manualIndex, int lowestKey, int highest
 SamplerEngine::~SamplerEngine()
 {
     stopRecording();
+    waitForRemovedStopsFreed();   // a free thread of an unload still running touches the lists (0.8.184)
     // Background copy builds (launched threads) must be over before the stops and
     // the engine go: tell them to stop at the next pipe (a full build of a stop's
     // pitch-shifted copies takes up to a minute), wait for the ones still
@@ -9754,7 +9767,8 @@ int SamplerEngine::countMissingCopies(Stop* stop, juce::String* detail)
 
 void SamplerEngine::relaunchPendingBuilds()
 {
-    if (buildsAborted.load(std::memory_order_acquire) || buildsHeld.load(std::memory_order_acquire)) return;
+    if (buildsAborted.load(std::memory_order_acquire) || buildsHeld.load(std::memory_order_acquire)
+        || relaunchHeld.load(std::memory_order_acquire)) return;   // between the unloads of a load (0.8.184)
     for (auto* stop : stops)
         if (!stop->copiesQueued.load(std::memory_order_acquire)) buildAntiAliasCopies(stop, true);   // launches only when copies are missing
 }
@@ -12590,17 +12604,51 @@ void SamplerEngine::unloadManual(int manualIndex)
     BuildPause buildLock(*this);   // the running build stops at its next pipe instead of being waited for
     impl->clearMidi();
     impl->suspend();
+    bool removed = false;
     {
         const juce::ScopedLock sl(controlLock);
         impl->killAllVoices();
         impl->resetAllVoicesUnsafe();
+        // The stops leave the list now and are freed on a thread of their own
+        // (0.8.184): freeing 23 GB of packed samples here took 11 s per organ on
+        // the message thread.
+        const juce::ScopedLock gl(removedStopsLock);
         for (int i = stops.size(); --i >= 0;)
-            if (stops[i]->primaryManual == manualIndex) stops.remove(i);
+            if (stops[i]->primaryManual == manualIndex) { removedStops.add(stops.removeAndReturn(i)); removed = true; }
         std::array<int, maxManuals> ordinals{};
         for (auto* stop : stops)
             stop->tremulantOrdinal = ordinals[(size_t)juce::jlimit(0, maxManuals - 1, stop->primaryManual)]++;
     }
     impl->resume();
+    if (removed) freeRemovedStopsLater();
+}
+
+void SamplerEngine::freeRemovedStopsLater()
+{
+    removedStopsFreeing.fetch_add(1, std::memory_order_acq_rel);
+    juce::Thread::launch([this]
+    {
+        lowerCurrentThreadPriority();
+        juce::OwnedArray<Stop> gone;
+        {
+            const juce::ScopedLock gl(removedStopsLock);
+            gone.swapWith(removedStops);
+        }
+        const int count = gone.size();
+        const double started = juce::Time::getMillisecondCounterHiRes();
+        gone.clear();
+        MemoryInfo::releaseFreedMemory();   // the heap's freed blocks back to the system: no residue in the next RAM figure
+        if (count > 0)
+            CrashHandler::note("Freed " + juce::String(count) + " removed stop(s) on a thread of their own in "
+                + juce::String(juce::Time::getMillisecondCounterHiRes() - started, 0) + " ms");
+        removedStopsFreeing.fetch_sub(1, std::memory_order_acq_rel);
+    });
+}
+
+void SamplerEngine::waitForRemovedStopsFreed()
+{
+    for (int waited = 0; removedStopsFreeing.load(std::memory_order_acquire) > 0 && waited < 600000; waited += 10)
+        juce::Thread::sleep(10);
 }
 
 //==============================================================================

@@ -11,11 +11,15 @@
   #define PSAPI_VERSION 2   // GetProcessMemoryInfo from kernel32 (K32...), no psapi.lib
  #endif
  #include <psapi.h>
+ #include <malloc.h>   // _heapmin (releaseFreedMemory)
 #elif JUCE_MAC
  #include <mach/mach.h>
  #include <mach/mach_host.h>
  #include <mach/task_info.h>
  #include <sys/sysctl.h>
+ #include <malloc/malloc.h>   // malloc_zone_pressure_relief (releaseFreedMemory)
+#elif JUCE_LINUX
+ #include <malloc.h>   // malloc_trim (releaseFreedMemory)
 #endif
 
 //==============================================================================
@@ -60,6 +64,21 @@ namespace MemoryInfo
         }
        #endif
         return installedBytes() / 2;   // unknown: half of the installed memory
+    }
+
+    // Gives the memory the program freed back to the system (0.8.184): the heap
+    // keeps freed blocks committed, so the RAM figure of the next load carried the
+    // previous organ's residue (the user's series in one process: 23 GB where a
+    // fresh start held 14). Called once the removed stops are freed.
+    inline void releaseFreedMemory()
+    {
+       #if JUCE_WINDOWS
+        _heapmin();
+       #elif JUCE_LINUX
+        malloc_trim(0);
+       #elif JUCE_MAC
+        malloc_zone_pressure_relief(nullptr, 0);
+       #endif
     }
 
     inline juce::int64 heldBytes()

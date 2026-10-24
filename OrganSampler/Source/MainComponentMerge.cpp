@@ -50,13 +50,17 @@ void MainComponent::warnIfMemoryShortForTrees(std::vector<juce::String> trees, c
     // Measured before the load starts (the free memory is what the samples get);
     // the WAV bytes are summed on a thread of their own - a big organ has tens
     // of thousands of files - and the verdict comes back to the message thread.
-    const juce::int64 available = availablePhysicalMemoryBytes();
     const juce::int64 installed = (juce::int64)juce::SystemStats::getMemorySizeInMegabytes() * 1024 * 1024;
     const bool asFloat = sampleStorageFloat, resample = resampleOnLoad;
     const double storageRate = storageSampleRate;
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    juce::Thread::launch([trees, configurationName, available, installed, asFloat, resample, storageRate, safeThis]
+    SamplerEngine* eng = &engine;   // outlives this thread (the engine waits for its own frees in its destructor)
+    juce::Thread::launch([trees, configurationName, installed, asFloat, resample, storageRate, safeThis, eng]
     {
+        // The free memory once the previous organ is freed (0.8.184: its stops are
+        // freed on a thread of their own now, so the figure read before was short).
+        eng->waitForRemovedStopsFreed();
+        const juce::int64 available = availablePhysicalMemoryBytes();
         juce::int64 bytes = 0;
         std::vector<juce::String> done;
         // What the files turn into in memory: 16-bit storage keeps 16-bit files

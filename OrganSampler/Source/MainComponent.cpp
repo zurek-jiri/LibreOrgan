@@ -1639,6 +1639,19 @@ MainComponent::MainComponent()
     {
         juce::Component::SafePointer<MainComponent> safeThis(this);
         juce::Timer::callAfterDelay(3000, [safeThis] { if (safeThis != nullptr) safeThis->launchConfigurationLoadChooser(); });
+        // ORGAN_LOAD_CONFIGURATION_AGAIN="<file>|<seconds>" (tests, 0.8.184): a second Load
+        // Configuration that many seconds after the start, in the same process - the
+        // unload of the first organ (its free on a thread, the memory counts after it).
+        if (const char* again = std::getenv("ORGAN_LOAD_CONFIGURATION_AGAIN"))
+        {
+            const int seconds = juce::String::fromUTF8(again).fromLastOccurrenceOf("|", false, false).getIntValue();
+            juce::Timer::callAfterDelay(juce::jmax(5, seconds) * 1000, [safeThis]
+            {
+                if (safeThis == nullptr) return;
+                safeThis->loadConfigurationAgain = true;
+                safeThis->launchConfigurationLoadChooser();
+            });
+        }
     }
     // Development: ORGAN_LOAD_TREE="<division>|<folder>" loads the folder into
     // the division 25 s after start, as "Load folder..." of the Stop List would
@@ -10199,12 +10212,12 @@ void MainComponent::launchConfigurationLoadChooser()
     // ORGAN_LOAD_CONFIGURATION=<file> (tests): the file is taken as chosen, the
     // native dialog is skipped (typing a path into it is not reliable on every
     // keyboard layout); everything after the choice is the same.
-    if (const char* env = std::getenv("ORGAN_LOAD_CONFIGURATION"))
+    if (const char* env = std::getenv(loadConfigurationAgain ? "ORGAN_LOAD_CONFIGURATION_AGAIN" : "ORGAN_LOAD_CONFIGURATION"))
     {
-        const juce::File chosen(juce::String::fromUTF8(env));
+        const juce::File chosen(juce::String::fromUTF8(env).upToFirstOccurrenceOf("|", false, false));   // "<file>|<seconds>" for the second load (0.8.184)
         if (SampleFiles::existsAsFile(chosen))   // on the disk, or a definition inside a RAR archive (0.8.157)
         {
-            CrashHandler::note("Load Configuration: file taken from ORGAN_LOAD_CONFIGURATION");
+            CrashHandler::note(juce::String("Load Configuration: file taken from ") + (loadConfigurationAgain ? "ORGAN_LOAD_CONFIGURATION_AGAIN" : "ORGAN_LOAD_CONFIGURATION"));
             juce::MessageManager::callAsync([safeThis, chosen] { if (safeThis != nullptr) safeThis->loadConfigurationFile(chosen); });
             return;
         }
@@ -12029,11 +12042,13 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         frozenGrid->setVisible(false);
         addChildComponent(*frozenGrid);
     }
+    engine.setRelaunchHeld(true);   // 0.8.184: no build of the old organ launched again between its unloads
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         removePerspectiveAudioRoutesForManual(manual);
         engine.unloadManual(manual);
     }
+    engine.setRelaunchHeld(false);
     settingsFile.replaceWithText(juce::JSON::toString(configuration, true));
     loadSettings();
     manualCountBox.setSelectedId(manualCount, juce::dontSendNotification);
@@ -12164,6 +12179,15 @@ public:
         // long one that wraps, made the window change its height and flicker.
         auto show = [this] { setStatusMessage(progressLine + "\n" + (workLine.isNotEmpty() ? workLine : juce::String(" "))); };
         engine.setLoadStatusCallback([this, show](const juce::String& text) { workLine = text; show(); });
+        // The previous organ's stops are freed on a thread of their own (0.8.184): the
+        // memory counts of this load wait for that, here with the window alive.
+        if (engine.removedStopsBeingFreed())
+        {
+            progressLine = "Freeing the previous organ ...";
+            workLine = " ";
+            show();
+            engine.waitForRemovedStopsFreed();
+        }
         for (size_t index = 0; index < jobs.size(); ++index)
         {
             const auto manual = jobs[index].manual;   // -1: a pool tree whose folders name their divisions
@@ -12411,6 +12435,11 @@ void MainComponent::beginStartupFolderLoading()
                 resized();
                 showGeneratingMessage(false);
                 CrashHandler::note("Compiling the Stop List: done");
+                // The RAM held, logged once the filled pipes' copies are built (0.8.184: the
+                // #87 measurements had to be read off the screen).
+                ramLogPending = true;
+                ramLogAfterMs = juce::Time::getMillisecondCounterHiRes() + 2000.0;
+                copyCacheHitsAtLoad = engine.copyCacheHits.load();
                 // Loading writes device states, tuning and folders into the settings:
                 // that is what the configuration means, not a change to ask about.
                 if (currentConfigurationName.isNotEmpty())
@@ -17918,6 +17947,20 @@ juce::String MainComponent::missingTreeNotice(int manual, bool detail) const
           "(the stops keep their samples); \"Unload folder...\" removes the tree and its stops. The notice goes when no tree is missing.";
 }
 
+void MainComponent::logRamAfterLoadIfDue()
+{
+    // One line per load, once the filled pipes' copies are built (0.8.184): the RAM
+    // the program holds (what the RAM column shows), the storage choices, how many
+    // pipes came from the cache - the figure of the published tables.
+    if (!ramLogPending || activeFolderLoader != nullptr) return;
+    if (juce::Time::getMillisecondCounterHiRes() < ramLogAfterMs || engine.pendingBackgroundWorkers() > 0) return;
+    ramLogPending = false;
+    const auto gb = [](juce::int64 b) { return juce::String((double)b / (1024.0 * 1024.0 * 1024.0), 1) + " GB"; };
+    CrashHandler::note("RAM held after the load (" + engine.storageSignature() + "): " + gb(processMemoryBytes())
+        + " - the whole program with the filled pipes' copies, " + juce::String(engine.copyCacheHits.load() - copyCacheHitsAtLoad)
+        + " pipe(s) of them from the cache; " + gb(availablePhysicalMemoryBytes()) + " free of " + gb(MemoryInfo::installedBytes()) + " installed");
+}
+
 void MainComponent::updateMissingTreeNotices()
 {
     // Once a second: when the set of missing trees changes (a configuration from
@@ -18390,6 +18433,7 @@ void MainComponent::timerCallback()
     showPortableNoticeIfDue();
     updateEmptyHint();
     updateMissingTreeNotices();
+    logRamAfterLoadIfDue();
     // Every 2 s (every second during the start-up wait): a route whose saved
     // device is missing gets it back as soon as it appears.
     if (applicationReady.load() && ++missingDeviceWatchDivider >= (missingAudioDevicesReportPending ? 40 : 80))

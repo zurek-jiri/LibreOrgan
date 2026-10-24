@@ -12,8 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.183] - 2026-10-24
+## [0.8.184] - 2026-10-24
 
+### Fixed
+- Load Configuration starts at once: the previous organ's samples are freed on
+  a thread of their own (23 GB of packed samples held the window dead for 11 s
+  - it looked as if the load waited for the filled pipes), the loading window
+  says "Freeing the previous organ ..." meanwhile, and the memory counts of the
+  new load wait for that free. The freed memory is given back to the system,
+  so the RAM figure of a load no longer carries the previous organ's residue
+  (a series of loads in one process read 23 GB where a fresh start held 14).
+- Loading no longer slows towards the end of a big organ: the packer reuses a
+  buffer per loader thread and makes one allocation of the exact size per
+  sample (two multi-megabyte allocations per sample before, whose page faults
+  grew dearer as the process grew: 6 to 45 ns per frame over a 23 GB load).
+- No build of the old organ's filled pipes is launched again between the
+  unloads of a load (each was interrupted by the next unload, and a partial
+  cache file written for a stop about to go).
+
+### Added
+- The activity log gets one line per load once the filled pipes' copies are
+  built: "RAM held after the load (<storage choices>): N GB - the whole
+  program with the filled pipes' copies, M pipe(s) of them from the cache;
+  free / installed" - the figure of the RAM column, written down.
+
+## [0.8.183] - 2026-10-24
 A review of every change since 0.8.156 for regressions; what it found is fixed here.
 
 ### Fixed
