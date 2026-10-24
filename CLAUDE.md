@@ -1117,6 +1117,15 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
+- LOG THE MEASURED RAM (the user, 24 Oct 2026: "do logů piš i naměřenou RAM, je to velmi významné"): after every
+  load, once the copy builds are over, one activity-log line with `processMemoryBytes()` (what the RAM column shows:
+  max(WorkingSet, PrivateUsage) on Windows) and the storage signature, e.g. "RAM held after the load (16-bit, 48 kHz,
+  packed): 23.1 GB" - the #87 measurements exist on the user's paper only because the log had the options and the
+  estimate but never the figure. Also in system.txt of the report. Next code version, not a docs-only push.
+- The #87 table (the user's measurements, Stralsund 53.9 GB float WAV, whole program with the copies): float 48 kHz
+  85 GB; float packed 30; 16-bit 48 kHz 49 / packed 23; 16-bit half releases 33 / packed 13; 16-bit 32 kHz half
+  packed 8 - on the website (site/index.html `.ram-measured`) and README since 24 Oct 2026. Keep it when the text
+  changes; add a column or row only with a measured figure (never estimated).
 - Measurements 0.8.141 (#44/#45, Ultra 7 155H, Caen, 7 routes, WASAPI 480 = 10 ms): #44 (16 threads, IR on 6 routes,
   78 buttons) 42 200 = the stimulus cap (61 keys x 16 strikes, callback 53 %, "first failing level 0") - the log says
   so even though the user disputes it; #45 (6 P cores, 32 buttons, no IR) broke at 39 239 with callback 95 %.

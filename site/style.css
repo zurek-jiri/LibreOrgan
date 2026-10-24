@@ -60,6 +60,18 @@ code { font-size: .95em; color: #ffd08a; background: #2a2416; padding: .05em .35
 pre { background: #111214; border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.2rem; overflow-x: auto; font-size: .95rem; line-height: 1.5; }
 pre code { background: none; padding: 0; color: var(--ink); }
 .note { border-left: 3px solid var(--accent-dark); padding: .5rem 1.1rem; color: var(--muted); font-size: 1rem; margin: 1.4rem 0 0; }
+/* The RAM measurements of one organ loaded eight ways (24 Oct 2026): a table with the
+   extremes in the accent colour - the one-tenth figure is the point of the section. */
+.ram-measured { margin-top: 3rem; padding: 1.8rem 2rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.ram-measured h3 { margin-top: 0; font-size: 1.5rem; }
+.ram-measured p { color: var(--muted); }
+.ram-measured table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 1rem; }
+.ram-measured th, .ram-measured td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); }
+.ram-measured th { color: var(--muted); font-weight: 600; font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; }
+.ram-measured td:last-child, .ram-measured th:last-child { text-align: right; white-space: nowrap; }
+.ram-measured td strong { color: var(--accent); font-size: 1.25rem; }
+.ram-measured .small { margin-bottom: 0; }
+@media (max-width: 720px) { .ram-measured { padding: 1.2rem; } .ram-measured th, .ram-measured td { padding: .45rem .4rem; font-size: .9rem; } }
 .band { padding-block: 64px; background: var(--panel); border-block: 1px solid var(--line); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
 .card { background: var(--paper); padding: 1.8rem; border: 1px solid var(--line); border-radius: 12px; }

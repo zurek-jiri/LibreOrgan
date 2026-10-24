@@ -31,8 +31,9 @@ travels with the organ: samples kept as 16-bit integers instead of floats
 (half the RAM), resampled to 32 kHz on loading (a third less again), packed
 losslessly in RAM like FLAC and unpacked on the fly (a further third to two
 thirds, for a little CPU), releases stored at half the rate where their
-spectrum allows it - together the samples take about a quarter of their RAM,
-measured per organ and written into every published configuration. Sample
+spectrum allows it - together the organ takes one tenth of its RAM (the
+table below), measured per organ and written into every published
+configuration. Sample
 folders are read straight from their RAR archives: nothing to unpack, nothing
 twice on the disk. And everything is anti-aliased: pitch-shifted copies
 through a long windowed-sinc filter, a retune through a resampling bus per
@@ -43,6 +44,27 @@ own rate (96 kHz stays 96 kHz), the releases at the full rate, no packing,
 the sinc kernel for every pipe (*Full kernel from* 0 Hz), a true-stereo
 four-channel impulse response on every route. The program measures the
 polyphony your machine reaches and sets its limit itself.
+
+**One organ, eight ways to load it: from 85 GB down to 8 GB.** Measured on
+Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), three
+perspectives, 53.9 GB of 32-bit float WAV files at 48 kHz - the whole program
+as loaded, the filled pipes' copies included (OrganSampler 0.8.183, 24 October
+2026). The same organ, the same sound to any normal ear, one tenth of the
+memory with every saving in force:
+
+| Storage | Rate on loading | Releases | Packing in RAM | RAM |
+|---|---|---|---|---|
+| 32-bit float | 48 kHz (as the files) | full rate | off | **85 GB** |
+| 32-bit float | 48 kHz | full rate | on | 30 GB |
+| 16-bit | 48 kHz | full rate | off | 49 GB |
+| 16-bit | 48 kHz | full rate | on | 23 GB |
+| 16-bit | 48 kHz | half the rate | off | 33 GB |
+| 16-bit | 48 kHz | half the rate | on | 13 GB |
+| 16-bit | 32 kHz | half the rate | on | **8 GB** |
+
+The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit
+float file (as this organ's) is rounded to 24 bits first, half a converter
+step. Every load box offers these choices; the choice travels with the organ.
 
 ## Try it in five minutes
 
