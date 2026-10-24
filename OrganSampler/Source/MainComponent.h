@@ -942,6 +942,11 @@ private:
     float toneStartHz = 1800.0f;     // per-key tone shelf: start of the transition band
     float sincKernelFromHz = 3000.0f;   // the sinc playback kernel for pipes sounding from here up (0.8.164; 0 = all, 20000 = none); machine-specific
     float retuneLimitCents = 200.0f;   // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165); travels with the organ
+    // What the published README says about the organ (0.8.179): asked once at the portable
+    // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.
+    juce::String publicationOrgan, publicationProducer, publicationProduct, publicationLink, publicationAuthor;
+    bool publicationDetailsAsked = false;
+    void askPublicationDetails(std::function<void()> then);
     void applyAdvancedAudioSettings();
     // Harmonic filter depth (dB at full attenuation) following swell, wind and tremulant; 0 = off.
     float harmonicSwellDb = 8.0f, harmonicWindDb = 2.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths

@@ -38,6 +38,7 @@ public:
     juce::String caption() const;   // button text: alias or the automatic name
 
     void resized() override;
+    void paint(juce::Graphics& g) override;   // the field of an expanded row: a slightly darker rounded panel (0.8.179)
     void paintOverChildren(juce::Graphics& g) override;
     // Repaints while the stop's filled-pipe copies are being built (the progress
     // strip on the button) and once more when the build is over.

@@ -775,10 +775,12 @@ that form (INDEX.md's "RAM min" column; the price of those options is
 polyphony, see the storage options in the Configuration Editor chapter) -,
 the version, and the Stop List
 as a table in the order of your grid with the buttons' captions,
-transmissions and extensions included. Fill in the three
-"(fill in: ...)" places - the organ, the producer and product of the
-samples with the link to the page where the sample folders are bought or
-downloaded, your name - and send the two files: open the form
+transmissions and extensions included. The save asks you once for what
+the README cannot know - the organ (instrument, builder, place), the
+producer and product of the samples, the link to the page where the sample
+folders are bought or downloaded, your name - and keeps the answers in the
+configuration; nothing in the README is filled in by hand. Then send the
+two files: open the form
 https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
 (a free GitHub account is needed), drag the zip and the README into its
 *Files* field and submit. A robot checks them, proposes them as a pull

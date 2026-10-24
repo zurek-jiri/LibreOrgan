@@ -785,10 +785,12 @@ static const char* const kManualText_part3 =
     "polyphony, see the storage options in the Configuration Editor chapter) -,\n"
     "the version, and the Stop List\n"
     "as a table in the order of your grid with the buttons' captions,\n"
-    "transmissions and extensions included. Fill in the three\n"
-    "\"(fill in: ...)\" places - the organ, the producer and product of the\n"
-    "samples with the link to the page where the sample folders are bought or\n"
-    "downloaded, your name - and send the two files: open the form\n"
+    "transmissions and extensions included. The save asks you once for what\n"
+    "the README cannot know - the organ (instrument, builder, place), the\n"
+    "producer and product of the samples, the link to the page where the sample\n"
+    "folders are bought or downloaded, your name - and keeps the answers in the\n"
+    "configuration; nothing in the README is filled in by hand. Then send the\n"
+    "two files: open the form\n"
     "https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml\n"
     "(a free GitHub account is needed), drag the zip and the README into its\n"
     "*Files* field and submit. A robot checks them, proposes them as a pull\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "tooltip). Click it: a menu offers *Replace \"...\" with a folder on this\n"
     "computer...* for every missing tree - choose the folder where that tree is\n"
     "now, whatever its name, and the stops come alive at once, their rows keep\n"
-    "their folders - or *Open the Stop List*, where *Unload folder...* also\n"
-    "offers *Replace \"...\" with another folder...* for every tree and removes a\n"
     ;
 static const char* const kManualText_part4 =
+    "their folders - or *Open the Stop List*, where *Unload folder...* also\n"
+    "offers *Replace \"...\" with another folder...* for every tree and removes a\n"
     "tree you no longer have. The notice goes when no tree of the division is\n"
     "missing.\n"
     "\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "the IR caption of an audio tab have such menus too.\n"
     "The mouse wheel scrolls the workspace everywhere - except inside the\n"
     "rectangle of an open voicing (a stop's row with its per-key sliders), where\n"
-    "it moves the sliders; the rest of that division's column scrolls as usual.\n"
-    "The button of a stop folder switches all its children with it, their buttons\n"
     ;
 static const char* const kManualText_part5 =
+    "it moves the sliders; the rest of that division's column scrolls as usual.\n"
+    "The button of a stop folder switches all its children with it, their buttons\n"
     "included; a child can still be switched alone to hear it by itself.\n"
     "\n"
     "## 2.6 Two program windows\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "  The shifted pipe is retuned so that the new footage is a pure interval of\n"
     "  the played key (a 2 2/3' shifted by +5 gives an exact 2'), the temperament\n"
     "  follows the played key, wind, tremulant and detune stay with the pipe.\n"
-    "- **Taken from** - the source stop, its division and footage.\n"
-    "- **Volume vs. parent stop** (-10 to +10 dB), the per-key volume and treble\n"
     ;
 static const char* const kManualText_part6 =
+    "- **Taken from** - the source stop, its division and footage.\n"
+    "- **Volume vs. parent stop** (-10 to +10 dB), the per-key volume and treble\n"
     "  sliders and the pipe on/off boxes of the transmission alone.\n"
     "- **Formants (filled pipes)** for the pipes only this transmission asks for\n"
     "  (beyond the stop's compass).\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "drawing, the coupler and swell learning, and the audio tabs.\n"
     "\n"
     "## 5.1 Keyboard, MIDI and compass\n"
-    "\n"
-    "- *MIDI keyboard device* and *MIDI channel*. When another division listens to\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
+    "- *MIDI keyboard device* and *MIDI channel*. When another division listens to\n"
     "  the same device and channel a note \"Shared with ...\" appears (one key then\n"
     "  plays all of them). A keyboard plugged in while the program runs is opened\n"
     "  at once (the activity log says so) and MIDI learn hears it; open the\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "before you do it:\n"
     "\n"
     "- **Less polyphony.** Every WASAPI route renders its pipes on its own thread,\n"
-    "  separately from the ASIO routes; the processor's time is split, and the DSP\n"
-    "  load reaches 100 % sooner than with ASIO alone.\n"
     ;
 static const char* const kManualText_part8 =
+    "  separately from the ASIO routes; the processor's time is split, and the DSP\n"
+    "  load reaches 100 % sooner than with ASIO alone.\n"
     "- **Different latencies.** ASIO and WASAPI answer at different speeds, so\n"
     "  divisions on different drivers do not speak at the same moment after the\n"
     "  key is pressed. While playing this is confusing - though now and then it\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "  cores. This is the layout with the highest polyphony. The buffer size sets\n"
     "  how much time each block of audio may take: a buffer of 512 samples allows\n"
     "  twice the work of 256, at twice the latency.\n"
-    "- **The buffer size: do not chase the smallest one.** A small buffer\n"
-    "  (64 or 128 samples) cuts the reachable polyphony dramatically, because\n"
     ;
 static const char* const kManualText_part9 =
+    "- **The buffer size: do not chase the smallest one.** A small buffer\n"
+    "  (64 or 128 samples) cuts the reachable polyphony dramatically, because\n"
     "  every block must be rendered in a fraction of the time. An organ does not\n"
     "  need it: the action of a real organ has its own delay, and a latency of\n"
     "  about 10 ms (512 samples at 48 kHz) is absolutely fine for organ playing -\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "\n"
     "How the neighbour's sample gets its new pitch is *Filled pipes: transposition\n"
     "method* (Configuration Editor > Advanced global audio). The default is *Pitch\n"
-    "shift + time stretch*, which gives the best results for most stops; the phase\n"
-    "vocoder is an optional alternative for those who want it. Every method has\n"
     ;
 static const char* const kManualText_part10 =
+    "shift + time stretch*, which gives the best results for most stops; the phase\n"
+    "vocoder is an optional alternative for those who want it. Every method has\n"
     "its weakness; which one sounds best depends on the stop, the size of the shift\n"
     "and the ear. Listening tests with reeds (Trompete, Vox humana) show the\n"
     "differences most clearly; a 16' extension of an 8' reed is the typical case.\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "\"logical\" choices lower the reachable polyphony; never use them. Fewer threads\n"
     "leave room for other programs. Changing it briefly mutes the engine. The list\n"
     "holds only the choices this computer can tell apart: without hyper-threading\n"
-    "\"All logical CPUs\" is the same as \"All physical cores\" and is not shown, a\n"
-    "single core has no \"all - 1\". A hybrid processor (Intel 12th generation and\n"
     ;
 static const char* const kManualText_part11 =
+    "\"All logical CPUs\" is the same as \"All physical cores\" and is not shown, a\n"
+    "single core has no \"all - 1\". A hybrid processor (Intel 12th generation and\n"
     "later: performance and efficiency cores; Windows tells them apart) offers\n"
     "*Performance cores only* (0.8.140): a render worker on an efficiency core\n"
     "renders several times slower and the device thread waits for it - the\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "outputs are configured. On a computer where the full registration breaks\n"
     "the sound up at the very first strike (no second stays clean), the\n"
     "measurement retreats by itself: the octave couplers go off, half of every\n"
-    "division's stops are switched off, and the climb starts again from one key -\n"
-    "up to five times, down to a thirty-second of the stops - until a second\n"
     ;
 static const char* const kManualText_part12 =
+    "division's stops are switched off, and the climb starts again from one key -\n"
+    "up to five times, down to a thirty-second of the stops - until a second\n"
     "stays clean; the report then says with how many stops it measured, and the\n"
     "limit found is what the computer renders cleanly whatever the stops. By hand:\n"
     "\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "their brilliance. This is a high shelf above about 3 kHz that follows the\n"
     "shutters: this much loss with the box closed (0 to 12 dB, default 8). 0 dB =\n"
     "off. The\n"
-    "three harmonic filters (swell, wind, tremulant) add up, capped at 12 dB; when\n"
-    "all three are 0 dB the filter costs nothing.\n"
     ;
 static const char* const kManualText_part13 =
+    "three harmonic filters (swell, wind, tremulant) add up, capped at 12 dB; when\n"
+    "all three are 0 dB the filter costs nothing.\n"
     "\n"
     "### Wind: harmonic filter\n"
     "\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "the copies in RAM (hundreds of MB for a large organ) and never plays a stale\n"
     "copy. Switch it on when the build after loading annoys you; switch it off\n"
     "when disk space is short - everything works the same without it. \"The cache\"\n"
-    "describes it in full.\n"
-    "\n"
     ;
 static const char* const kManualText_part14 =
+    "describes it in full.\n"
+    "\n"
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The row shows the size of the cache and the folder it lives in. *Empty the\n"
@@ -3028,10 +3030,10 @@ static const char* const kManualText_part14 =
     "\n"
     "The size of the main window, saved automatically. Information only; the window\n"
     "returns to where it was last time, always with its title bar on the screen.\n"
-    "\n"
-    "## 8.5 Folder name patterns (one per line)\n"
     ;
 static const char* const kManualText_part15 =
+    "\n"
+    "## 8.5 Folder name patterns (one per line)\n"
     "\n"
     "### One-shot stops (folder contains)\n"
     "\n"
@@ -3230,10 +3232,10 @@ static const char* const kManualText_part15 =
     "\n"
     "## 8.7 Keeping track: the activity log\n"
     "\n"
-    "Everything the program does at a coarse level - devices opened, divisions\n"
-    "loaded, builds of the filled pipes' copies - is noted in `CrashLogs\\activity.log`\n"
     ;
 static const char* const kManualText_part16 =
+    "Everything the program does at a coarse level - devices opened, divisions\n"
+    "loaded, builds of the filled pipes' copies - is noted in `CrashLogs\\activity.log`\n"
     "in the application-data folder; a crash writes a file beside it. When the\n"
     "window answers nothing for eight seconds the log records where it was waiting.\n"
     "That folder is what a report needs - and *Report a problem...* sends it for\n"

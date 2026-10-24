@@ -1085,6 +1085,16 @@ namespace
     }
 }
 
+void StopRow::paint(juce::Graphics& g)
+{
+    // An expanded row: the whole field of this stop's voicing - the button line and
+    // the sliders under it - lies on a slightly darker rounded panel, so its extent
+    // is plain (0.8.179). Collapsed rows stay on the bare grid.
+    if (!isExpanded()) return;
+    g.setColour(juce::Colours::black.withAlpha(0.16f));
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 6.0f);
+}
+
 void StopRow::paintOverChildren(juce::Graphics& g)
 {
     // Filled-pipe copies being built for this stop: a thin orange strip along the
@@ -1391,6 +1401,13 @@ void StopRow::resized()
         x += 104;
         shiftBox.setBounds(x, 13, 250, 23);
         x += 258;
+        // The One-shot switch of a stop with pipes right after its transposition
+        // (0.8.179; it stood after the alias): what the stop IS belongs together.
+        if (!isTransmission())
+        {
+            oneShotToggle.setBounds(x, 13, 92, 23);
+            x += 96;
+        }
     }
     if (isTransmission())
     {
@@ -1423,13 +1440,8 @@ void StopRow::resized()
     x += 196;
     if (!isTransmission())
     {
-        // After the alias: the One-shot switch of a stop with pipes, and the rank
-        // count of a stop folder (0.8.158: the switches sit by the alias, at the end).
-        if (!stop->container)
-        {
-            oneShotToggle.setBounds(x, 13, 92, 23);
-            x += 96;
-        }
+        // After the alias: the rank count of a stop folder (shown for stop folders
+        // only) - it belongs to the caption, like the alias.
         if (rankCountToggle.isVisible())
         {
             rankCountToggle.setBounds(x, 13, 140, 23);

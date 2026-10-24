@@ -992,6 +992,15 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
 - Release bodies and READMEs are for humans: one bullet per system/platform, the one sentence that matters
   (how to unpack, what to download) in bold on its own line, links as links - never one long paragraph.
 
+- 0.8.179: NOTHING in the README is filled in by hand any more (the user: "tak to udÄ›lej tak, aby to bylo jednoduĹˇĹˇĂ­" - he
+  completed the bullets and missed the two places in the first paragraph; the issue check then failed and his fix came as a
+  COMMENT, which triggers nothing - the workflow runs on opened/edited of the issue BODY). `askPublicationDetails` (an
+  AlertWindow with five text editors: organ / producer / product / link (its own field, an http link) / author) runs at
+  every portable save with publishFiles, Cancel saves nothing; the values travel in the configuration as "publication"
+  {organ, producer, product, link, author} (saveSettings/parse) and `configurationReadme` writes them; the README's HTML
+  comment only says where to attach the files. The slug of a published configuration = the zip's base name lower-cased
+  with [^a-z0-9]+ -> "-": "Stralsund_Jakobi_Wegscheider.portable.zip" -> stralsund-jakobi-wegscheider-portable, a NEW
+  folder beside an old one (the old folder must be removed by hand - done 24 Oct for stralsund-jakobi-wegscheider).
 - A configuration README is WRITTEN BY THE PROGRAM: saving a portable configuration puts `<name>.README.md`
   beside the `.json` (`MainComponent::configurationReadme`; dev: `ORGAN_SAVE_PORTABLE=<file>` with
   `ORGAN_LOAD_CONFIGURATION=<non-portable cfg>` loads and saves without the dialogs). Only the three

@@ -8264,7 +8264,7 @@ void MainComponent::showTemperamentsDialog()
             void resized() override
             {
                 selectButton.setBounds(5, 0, 200, 50);
-                detailsButton.setBounds(5 + 200 - 15, 50 - 15, 13, 13);
+                detailsButton.setBounds(5 + 1, 50 - 19, 18, 18);   // the bottom-left corner, like the stop buttons' "+" (0.8.179; a 13 px disc bottom right before)
                 detailsButton.toFront(false);
                 if (!expanded) return;
                 // The description sits right of the button on the button's line and may
@@ -10398,8 +10398,52 @@ namespace
     }
 }
 
+void MainComponent::askPublicationDetails(std::function<void()> then)
+{
+    // The five things the published README cannot know (0.8.179): asked in one box,
+    // prefilled with the configuration's own values (or the last ones given), written
+    // into the configuration and the README - the user filled "(fill in: ...)"
+    // places in the README by hand before and always missed one.
+    auto* alert = new juce::AlertWindow("Publishing details",
+        "These lines go into the README beside the configuration (the organ's page in the list of published configurations). "
+        "The link is the page where the sample folders are bought or downloaded - without it nobody can use the configuration.",
+        juce::MessageBoxIconType::NoIcon, this);
+    alert->addTextEditor("organ", publicationOrgan, "Organ (the instrument, its builder, the place):");
+    alert->addTextEditor("producer", publicationProducer, "Samples: producer:");
+    alert->addTextEditor("product", publicationProduct, "Samples: product (the name of the sample folders):");
+    alert->addTextEditor("link", publicationLink, "Samples: link (http...):");
+    alert->addTextEditor("author", publicationAuthor, "Author (your name or GitHub name):");
+    alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Component::SafePointer<juce::AlertWindow> safeAlert(alert);
+    alert->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, safeAlert, then](int result)
+    {
+        if (safeThis == nullptr || safeAlert == nullptr || result != 1) return;
+        safeThis->publicationOrgan = safeAlert->getTextEditorContents("organ").trim();
+        safeThis->publicationProducer = safeAlert->getTextEditorContents("producer").trim();
+        safeThis->publicationProduct = safeAlert->getTextEditorContents("product").trim();
+        safeThis->publicationLink = safeAlert->getTextEditorContents("link").trim();
+        safeThis->publicationAuthor = safeAlert->getTextEditorContents("author").trim();
+        then();
+    }), true);
+}
+
 void MainComponent::savePortableConfiguration(const juce::File& file, bool includeMidi, bool portable, bool publishFiles)
 {
+    if (portable && publishFiles && !publicationDetailsAsked)
+    {
+        // The README's details first (0.8.179); Cancel saves nothing.
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        askPublicationDetails([safeThis, file, includeMidi, portable, publishFiles]
+        {
+            if (safeThis == nullptr) return;
+            safeThis->publicationDetailsAsked = true;
+            safeThis->savePortableConfiguration(file, includeMidi, portable, publishFiles);
+            safeThis->publicationDetailsAsked = false;
+        });
+        return;
+    }
     saveSettings();
     auto configuration = juce::JSON::parse(settingsFile.loadFileAsString());
     auto* root = configuration.getDynamicObject();
@@ -11472,16 +11516,14 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
 
     juce::String text;
     text << "# " << name << "\n\n";
-    // What the author fills in, said once at the top (an HTML comment: GitHub does
-    // not show it, so it does no harm when it stays).
-    text << "<!-- Before publishing, fill in the places marked (fill in: ...) and delete nothing else:\n"
-            "     1. the organ: the instrument, its builder, the place (first paragraph and \"Organ\");\n"
-            "     2. the samples: the producer, the product's name and THE LINK TO THE PAGE where the\n"
-            "        sample folders are bought or downloaded - without it nobody can use the configuration;\n"
-            "     3. your name or GitHub name as the author.\n"
-            "     Then attach this README and the zip beside it to the form (a free GitHub account):\n"
+    // Everything is filled in by the program (0.8.179: the publishing details are
+    // asked at the save); the one thing left to do is said in an HTML comment
+    // (GitHub does not show it, so it does no harm when it stays).
+    const auto given = [](const juce::String& s, const char* missing) { return s.isNotEmpty() ? s : juce::String(missing); };
+    const juce::String organ = given(publicationOrgan, "(the organ was not named)"), producer = given(publicationProducer, "(the producer was not named)");
+    text << "<!-- Written by OrganSampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):\n"
             "     https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->\n\n";
-    text << "A complete OrganSampler configuration of (fill in: the organ, its place), as recorded by (fill in: the producer)";
+    text << "A complete OrganSampler configuration of " << organ << ", as recorded by " << producer;
     if (!perspectives.isEmpty())
         text << " in " << (perspectives.size() == 1 ? juce::String("one perspective") : juce::String(perspectives.size()) + " perspectives")
              << ", " << joinWithAnd(perspectives) << ", each on its own audio route";
@@ -11495,8 +11537,11 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     text << "**No samples are published here.** The configuration merely names the folders it expects;\n"
             "the recordings themselves are the property of their producer and are obtained from them.\n\n";
     text << "## The configuration\n\n";
-    text << "- **Organ:** (fill in: the instrument, its builder, the place).\n";
-    text << "- **Samples:** (fill in: the producer, the product's name and the link to the page where the sample folders are bought or downloaded)";
+    text << "- **Organ:** " << organ << ".\n";
+    text << "- **Samples:** " << producer;
+    if (publicationProduct.isNotEmpty()) text << ", " << publicationProduct;
+    if (publicationLink.isNotEmpty()) text << " - [" << publicationLink << "](" << publicationLink << ")";
+    else text << " (no link to the samples' page was given)";
     if (!topFolders.isEmpty()) text << "; the folders " << joinWithAnd(topCodes) << ", unpacked as plain WAV files";
     if (!perspectiveNames.isEmpty()) text << "; perspectives " << joinWithAnd(perspectiveNames);
     text << ". OrganSampler " << version << " or later.\n";
@@ -11527,7 +11572,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
         }
     }
     text << "- **Saved with:** OrganSampler " << version << ".\n";
-    text << "- **Author:** (fill in: your name or GitHub name), " << date << ".\n\n";
+    text << "- **Author:** " << given(publicationAuthor, "(not named)") << ", " << date << ".\n\n";
     text << "## Where to put the file\n\n";
     if (topFolders.size() > 1) text << "The folders " << joinWithAnd(topCodes) << " must stand side by side in one folder. ";
     else if (topFolders.size() == 1) text << "The folder " << topCodes[0] << " lies in one folder. ";
@@ -16745,6 +16790,14 @@ void MainComponent::loadSettings()
     engine.setFillGroupSize(fillGroupSize);
     retuneLimitCents = juce::jlimit(10.0f, 1200.0f, (float)(double)parsed.getProperty("retuneLimitCents", 200.0));
     engine.setRetuneLimitCents(retuneLimitCents);
+    if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
+    {
+        publicationOrgan = publication->getProperty("organ").toString();
+        publicationProducer = publication->getProperty("producer").toString();
+        publicationProduct = publication->getProperty("product").toString();
+        publicationLink = publication->getProperty("link").toString();
+        publicationAuthor = publication->getProperty("author").toString();
+    }
     transposeQuality = juce::jlimit(0, 2, (int)parsed.getProperty("transposeQuality", 2));
     engine.setTransposeQuality(transposeQuality);
     // 0.8.17: "transposeReleaseLengthPct" replaces the shortening rule ("transposeReleaseShortenPct");
@@ -17258,6 +17311,15 @@ void MainComponent::saveSettings()
     }
     obj->setProperty("fillGroupSize", fillGroupSize);
     obj->setProperty("retuneLimitCents", retuneLimitCents);
+    {
+        auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
+        publication->setProperty("organ", publicationOrgan);
+        publication->setProperty("producer", publicationProducer);
+        publication->setProperty("product", publicationProduct);
+        publication->setProperty("link", publicationLink);
+        publication->setProperty("author", publicationAuthor);
+        obj->setProperty("publication", juce::var(publication));
+    }
     obj->setProperty("transposeQuality", transposeQuality);
     obj->setProperty("transposeMethod", transposeMethod);
     obj->setProperty("transposeReleaseLengthPct", transposeReleaseLengthPct);
@@ -22319,6 +22381,9 @@ void MainComponent::showConfigurationEditor()
                     o.saveSettings();
                 }, "Phase of the harmonic filter's oscillation behind the volume oscillation: 0 = the tone dips exactly "
                    "when the level does, 90 = a quarter cycle later, 180 = the tone dips when the level peaks.");
+            addSlider("Tremulant: volume change per cent of pitch", 0.0, 0.6, 0.001, " dB/cent", o.tremulantLevelDbPerCent, 0.187,
+                [&o](double value) { o.tremulantLevelDbPerCent = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
+                "Volume modulation of the tremulant relative to its pitch modulation.");   // with the other tremulant rows (0.8.179: it stood among the key-velocity rows)
             // --- Key velocity
             addSlider("Key velocity: fade-in at the lowest velocity", 0.0, 300.0, 1.0, " ms", o.velocityFadeInMs, 40.0,
                 [&o](double value)
@@ -22346,9 +22411,6 @@ void MainComponent::showConfigurationEditor()
                     o.engine.setVelocityShelfMs(o.velocityShelfMs);
                     o.saveSettings();
                 }, "How long the treble cut of a gentle key takes to open fully after the key goes down.");
-            addSlider("Tremulant: volume change per cent of pitch", 0.0, 0.6, 0.001, " dB/cent", o.tremulantLevelDbPerCent, 0.187,
-                [&o](double value) { o.tremulantLevelDbPerCent = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
-                "Volume modulation of the tremulant relative to its pitch modulation.");
             // --- Missing pipes
             addSlider("Missing pipes: neighbours borrowed as a group", 1.0, 12.0, 1.0, " pipes", o.fillGroupSize, 12.0,
                 [&o](double value)

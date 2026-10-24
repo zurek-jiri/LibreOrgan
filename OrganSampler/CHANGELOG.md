@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.179] - 2026-10-24
+
+### Changed
+- Saving a portable configuration asks once for what the README cannot know
+  - the organ, the producer and product of the samples, the link to their
+  page, the author - keeps the answers in the configuration and writes the
+  README complete: no "(fill in: ...)" places to find by hand any more.
+- The Temperaments dialog's expander is the same 18 px "+" at the bottom-left
+  corner of the button as on the stop buttons (a 13 px disc bottom right before).
+- An expanded voicing row lies on a slightly darker rounded panel, so the
+  field of the stop's voicing is plain to see.
+- The voicing row's line: the One-shot switch follows the Transposition box
+  (what the stop is belongs together); after the alias only the rank count
+  switch of a stop folder.
+- Configuration Editor, Advanced global audio: the tremulant's volume row
+  stands with the other tremulant rows (it stood among the key-velocity rows).
+
 ## [0.8.178] - 2026-10-24
 
 ### Changed

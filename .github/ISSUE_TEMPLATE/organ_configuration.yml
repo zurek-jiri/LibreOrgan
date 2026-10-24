@@ -7,8 +7,8 @@ body:
     attributes:
       value: |
         Save the organ with *Portable configuration (to share with others)* ticked: OrganSampler writes `<name>.zip` (the configuration
-        inside) and `<name>.README.md` beside it. In the README fill in the "(fill in: ...)" places - the organ; the producer, the product
-        and **the link to the page where the sample folders are bought or downloaded**; your name. Then attach the two files below.
+        inside) and `<name>.README.md` beside it, asking you once for the organ, the producer and product of the samples, **the link
+        to the page where the sample folders are bought or downloaded** and your name. Then attach the two files below.
         A robot checks them, puts them into the repository as a pull request and answers here; the maintainer merges it and the organ
         appears in [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md).
         If something is missing, the robot says what - edit this issue and it tries again.
