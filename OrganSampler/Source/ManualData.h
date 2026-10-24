@@ -341,7 +341,10 @@ static const char* const kManualText_part1 =
     "  \"Zimbel3\") is no such mark. A bare footage number at the end of the folder name\n"
     "  (Nasat3, Nasat_3, Nasat 3 ...) is shown with its foot mark (\"Nasat 3'\") on\n"
     "  the stop label; a mutation written without spaces (\"Nasard 223\", \"Terz\n"
-    "  135\", \"Larigot 113\") is read as 2 2/3', 1 3/5', 1 1/3'. A folder name\n"
+    "  135\", \"Larigot 113\") is read as 2 2/3', 1 3/5', 1 1/3', and the organ\n"
+    "  builders' shorthand is understood: \"3\" is the quint 2 2/3', \"6\" the 5 1/3',\n"
+    "  \"12\" the 10 2/3', \"1 1/2\" the 1 1/3' (no rank of 3' or 6' exists; the\n"
+    "  transposition is counted against the real footage). A folder name\n"
     "  without a footage is no problem: the program learns everything it can about\n"
     "  the samples from their smpl chunk (next rule), and from that it knows the\n"
     "  footage, the tuning and the temperament of the rank.\n"
@@ -401,11 +404,11 @@ static const char* const kManualText_part1 =
     "    037-C#.wav\n"
     "    ...\n"
     "    096-C.wav\n"
+    ;
+static const char* const kManualText_part2 =
     "    rel500\n"
     "        036-C.wav\n"
     "        037-C#.wav\n"
-    ;
-static const char* const kManualText_part2 =
     "        ...\n"
     "    rel1500\n"
     "        036-C.wav\n"
@@ -603,11 +606,11 @@ static const char* const kManualText_part2 =
     "borrowed into another division) - is an extension or transmission in\n"
     "Hauptwerk's terms as in ours: it is made as a transmission of the owner it\n"
     "borrows the most keys from, with that shift, not loaded a second time. A\n"
+    ;
+static const char* const kManualText_part3 =
     "stop goes to the division of ours whose keyboard plays its Hauptwerk\n"
     "division; a FLOATING division - one no keyboard reaches without a coupler\n"
     "(Bellevue's \"Chamade\", played from every keyboard through \"Bom-Ped/Gt/Pos/Rec\n"
-    ;
-static const char* const kManualText_part3 =
     "8\") - is placed stop by stop where the name says (\"GO. Trompette en chamade\n"
     "8\" on the Great, \"Ped. Clairon en chamade\" on the Pedal, \"5. Tuba 16\" on V).\n"
     "A keyboard whose own division its keys reach only under a condition switch\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "now, whatever its name, and the stops come alive at once, their rows keep\n"
     "their folders - or *Open the Stop List*, where *Unload folder...* also\n"
     "offers *Replace \"...\" with another folder...* for every tree and removes a\n"
+    ;
+static const char* const kManualText_part4 =
     "tree you no longer have. The notice goes when no tree of the division is\n"
     "missing.\n"
     "\n"
-    ;
-static const char* const kManualText_part4 =
     "Paths are stored with \"/\" and resolved on every platform; a configuration\n"
     "saved on Windows loads on Linux and macOS and the other way round.\n"
     "\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "rectangle of an open voicing (a stop's row with its per-key sliders), where\n"
     "it moves the sliders; the rest of that division's column scrolls as usual.\n"
     "The button of a stop folder switches all its children with it, their buttons\n"
+    ;
+static const char* const kManualText_part5 =
     "included; a child can still be switched alone to hear it by itself.\n"
     "\n"
     "## 2.6 Two program windows\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "*Configuration Editor > Console > Program windows* opens a second window\n"
     "(empty at first). In the Configuration Editor's division sections, *Shown in\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "  follows the played key, wind, tremulant and detune stay with the pipe.\n"
     "- **Taken from** - the source stop, its division and footage.\n"
     "- **Volume vs. parent stop** (-10 to +10 dB), the per-key volume and treble\n"
+    ;
+static const char* const kManualText_part6 =
     "  sliders and the pipe on/off boxes of the transmission alone.\n"
     "- **Formants (filled pipes)** for the pipes only this transmission asks for\n"
     "  (beyond the stop's compass).\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "A pipe is one set of voices, no matter how many keys hold it: the same pipe\n"
     "reached through the stop itself, through a transmission and through a coupler\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "## 5.1 Keyboard, MIDI and compass\n"
     "\n"
     "- *MIDI keyboard device* and *MIDI channel*. When another division listens to\n"
+    ;
+static const char* const kManualText_part7 =
     "  the same device and channel a note \"Shared with ...\" appears (one key then\n"
     "  plays all of them). A keyboard plugged in while the program runs is opened\n"
     "  at once (the activity log says so) and MIDI learn hears it; open the\n"
-    ;
-static const char* const kManualText_part7 =
     "  Divisions dialog again to see it in the device list. One unplugged is let\n"
     "  go and comes back when plugged in again.\n"
     "- *Ignore MIDI velocity (organ keys)*: every key is sent as full velocity.\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "- **Less polyphony.** Every WASAPI route renders its pipes on its own thread,\n"
     "  separately from the ASIO routes; the processor's time is split, and the DSP\n"
     "  load reaches 100 % sooner than with ASIO alone.\n"
+    ;
+static const char* const kManualText_part8 =
     "- **Different latencies.** ASIO and WASAPI answer at different speeds, so\n"
     "  divisions on different drivers do not speak at the same moment after the\n"
     "  key is pressed. While playing this is confusing - though now and then it\n"
-    ;
-static const char* const kManualText_part8 =
     "  imitates, by accident, the different delays of the actions of a real\n"
     "  organ's divisions.\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "  twice the work of 256, at twice the latency.\n"
     "- **The buffer size: do not chase the smallest one.** A small buffer\n"
     "  (64 or 128 samples) cuts the reachable polyphony dramatically, because\n"
+    ;
+static const char* const kManualText_part9 =
     "  every block must be rendered in a fraction of the time. An organ does not\n"
     "  need it: the action of a real organ has its own delay, and a latency of\n"
     "  about 10 ms (512 samples at 48 kHz) is absolutely fine for organ playing -\n"
-    ;
-static const char* const kManualText_part9 =
     "  even 20 ms (1024 samples) is still perfectly comfortable. Choose the\n"
     "  larger buffer and take the polyphony.\n"
     "- **Windows Audio.** All routes on one Windows Audio device share one stream\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "method* (Configuration Editor > Advanced global audio). The default is *Pitch\n"
     "shift + time stretch*, which gives the best results for most stops; the phase\n"
     "vocoder is an optional alternative for those who want it. Every method has\n"
+    ;
+static const char* const kManualText_part10 =
     "its weakness; which one sounds best depends on the stop, the size of the shift\n"
     "and the ear. Listening tests with reeds (Trompete, Vox humana) show the\n"
     "differences most clearly; a 16' extension of an 8' reed is the typical case.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "**Resampling (pitch and length change together).** The sample is played faster\n"
     "or slower at every key press, like a tape. Every harmonic exact, nothing added,\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "holds only the choices this computer can tell apart: without hyper-threading\n"
     "\"All logical CPUs\" is the same as \"All physical cores\" and is not shown, a\n"
     "single core has no \"all - 1\". A hybrid processor (Intel 12th generation and\n"
+    ;
+static const char* const kManualText_part11 =
     "later: performance and efficiency cores; Windows tells them apart) offers\n"
     "*Performance cores only* (0.8.140): a render worker on an efficiency core\n"
     "renders several times slower and the device thread waits for it - the\n"
-    ;
-static const char* const kManualText_part11 =
     "measurement's longest callback of an Ultra 7 notebook was 2.6 ms of which\n"
     "2.4 ms waiting for the lanes; the report says so for such a processor. The\n"
     "setting belongs to the computer, never to an\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "measurement retreats by itself: the octave couplers go off, half of every\n"
     "division's stops are switched off, and the climb starts again from one key -\n"
     "up to five times, down to a thirty-second of the stops - until a second\n"
+    ;
+static const char* const kManualText_part12 =
     "stays clean; the report then says with how many stops it measured, and the\n"
     "limit found is what the computer renders cleanly whatever the stops. By hand:\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "1. Engage a large number of stops with long releases (a full registration of\n"
     "   wet samples).\n"
     "2. Bash the keys: play many quick staccato notes over many keys at once\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "off. The\n"
     "three harmonic filters (swell, wind, tremulant) add up, capped at 12 dB; when\n"
     "all three are 0 dB the filter costs nothing.\n"
+    ;
+static const char* const kManualText_part13 =
     "\n"
     "### Wind: harmonic filter\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "The same shelf following the wind sag: this much high-frequency loss at the\n"
     "full sag (default 2 dB). Big chords starve the wind, and a starved pipe is\n"
     "duller as well as flatter.\n"
@@ -2825,11 +2828,11 @@ static const char* const kManualText_part13 =
     "when disk space is short - everything works the same without it. \"The cache\"\n"
     "describes it in full.\n"
     "\n"
+    ;
+static const char* const kManualText_part14 =
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The row shows the size of the cache and the folder it lives in. *Empty the\n"
-    ;
-static const char* const kManualText_part14 =
     "cache* deletes every cached file at once - to get the disk space back, or\n"
     "after you have replaced your sample folders. The copies are built again, and\n"
     "cached again, the next time they are needed; nothing else is lost.\n"
@@ -3027,11 +3030,11 @@ static const char* const kManualText_part14 =
     "returns to where it was last time, always with its title bar on the screen.\n"
     "\n"
     "## 8.5 Folder name patterns (one per line)\n"
+    ;
+static const char* const kManualText_part15 =
     "\n"
     "### One-shot stops (folder contains)\n"
     "\n"
-    ;
-static const char* const kManualText_part15 =
     "Folders whose name matches one of these patterns hold samples that play once\n"
     "without looping (chiff, percussion, bells). Defaults: \"Chiff\", \"Chimes\",\n"
     "\"Tubular\", \"Celesta\", \"Harp\", \"Glockenspiel\" (a Hauptwerk import adds the\n"
@@ -3229,11 +3232,11 @@ static const char* const kManualText_part15 =
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the filled pipes' copies - is noted in `CrashLogs\\activity.log`\n"
+    ;
+static const char* const kManualText_part16 =
     "in the application-data folder; a crash writes a file beside it. When the\n"
     "window answers nothing for eight seconds the log records where it was waiting.\n"
     "That folder is what a report needs - and *Report a problem...* sends it for\n"
-    ;
-static const char* const kManualText_part16 =
     "you.\n"
     "\n"
     "### Report a problem\n"

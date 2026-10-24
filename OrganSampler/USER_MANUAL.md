@@ -335,7 +335,10 @@ The rules, one by one:
   "Zimbel3") is no such mark. A bare footage number at the end of the folder name
   (Nasat3, Nasat_3, Nasat 3 ...) is shown with its foot mark ("Nasat 3'") on
   the stop label; a mutation written without spaces ("Nasard 223", "Terz
-  135", "Larigot 113") is read as 2 2/3', 1 3/5', 1 1/3'. A folder name
+  135", "Larigot 113") is read as 2 2/3', 1 3/5', 1 1/3', and the organ
+  builders' shorthand is understood: "3" is the quint 2 2/3', "6" the 5 1/3',
+  "12" the 10 2/3', "1 1/2" the 1 1/3' (no rank of 3' or 6' exists; the
+  transposition is counted against the real footage). A folder name
   without a footage is no problem: the program learns everything it can about
   the samples from their smpl chunk (next rule), and from that it knows the
   footage, the tuning and the temperament of the rank.

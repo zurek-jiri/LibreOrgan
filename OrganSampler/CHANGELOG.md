@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.178] - 2026-10-24
+
+### Fixed
+- The organ builders' shorthand in a folder name is read as the footage it
+  means: "3" is the quint 2 2/3', "6" the 5 1/3', "12" the 10 2/3', "1 1/2"
+  the 1 1/3'. "CH RohrNasat 3" was read as 3' and transposed by -14 against
+  its files sounding 1 1/3'; it is -12 now, like the other stops of the set.
+
 ## [0.8.177] - 2026-10-24
 
 ### Changed

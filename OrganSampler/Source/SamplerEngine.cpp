@@ -10661,6 +10661,14 @@ bool SamplerEngine::footageFromName(const juce::String& name, int& semitones)
     int start = 0, end = 0;
     double feet = 0.0;
     if (!findFootageToken(name, start, end, feet)) return false;
+    // The organ builders' shorthand (0.8.178, the user's rule): "3" is the quint
+    // 2 2/3', "6" the 5 1/3', "12" the 10 2/3' and "1 1/2" the 1 1/3' - no rank of
+    // 3', 6', 12' or 1 1/2' exists ("CH RohrNasat 3" of the Aeolian-Skinner set was
+    // read as 3' and transposed by -14 against its files sounding 1 1/3').
+    if (feet == 3.0) feet = 8.0 / 3.0;
+    else if (feet == 6.0) feet = 16.0 / 3.0;
+    else if (feet == 12.0) feet = 32.0 / 3.0;
+    else if (feet == 1.5) feet = 4.0 / 3.0;
     semitones = juce::roundToInt(12.0 * std::log2(8.0 / feet));
     return true;
 }

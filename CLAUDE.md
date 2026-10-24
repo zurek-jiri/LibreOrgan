@@ -547,7 +547,12 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   in the user's Adlington list) is neither a folder nor a file here and stays as it is. The user's Adlington list had
   the aeolian FOLDER line (written by 0.8.176's Load folder): replaced by hand with Aeolian_Skinner.part01.rar so the
   migration would not bring the BetaODF package in. Test 0.8.177: the BetaODF archive is never opened, both trees "in
-  the archive Aeolian_Skinner.part01.rar", the settings-folder list's Adlington\10 folder line migrated to Vol0 + Vol1. Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
+  the archive Aeolian_Skinner.part01.rar", the settings-folder list's Adlington\10 folder line migrated to Vol0 + Vol1.
+  0.8.178 FOOTAGE SHORTHAND (the user's rule): a bare "3" in a folder name is the quint 2 2/3' ("6" = 5 1/3', "12" =
+  10 2/3', "1 1/2" = 1 1/3'; no rank of 3'/6'/12' exists) - ootageFromName maps the parsed feet before the semitone
+  count; the caption still shows the name's text ("Nasat 3'") for an untransposed stop and the MEASURED footage once
+  transposed. "CH RohrNasat 3" (files sounding 1 1/3' on their numbers) got -14 before, -12 now like the rest of the
+  set (the Aeolian files are numbered 024 = key 36 on every stop). Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
   files copied over); NO Projucer resave on Linux - do it on Windows next (the VS2026 files lag 0.8.165).
   `OrganSampler/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run
