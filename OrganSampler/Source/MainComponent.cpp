@@ -1644,13 +1644,20 @@ MainComponent::MainComponent()
         // unload of the first organ (its free on a thread, the memory counts after it).
         if (const char* again = std::getenv("ORGAN_LOAD_CONFIGURATION_AGAIN"))
         {
-            const int seconds = juce::String::fromUTF8(again).fromLastOccurrenceOf("|", false, false).getIntValue();
-            juce::Timer::callAfterDelay(juce::jmax(5, seconds) * 1000, [safeThis]
+            // Several, separated by ';' ("file|seconds;file|seconds"): a series of loads in one process.
+            for (const auto& entry : juce::StringArray::fromTokens(juce::String::fromUTF8(again), ";", ""))
             {
-                if (safeThis == nullptr) return;
-                safeThis->loadConfigurationAgain = true;
-                safeThis->launchConfigurationLoadChooser();
-            });
+                const juce::File file(entry.upToFirstOccurrenceOf("|", false, false).trim());
+                const int seconds = entry.fromLastOccurrenceOf("|", false, false).getIntValue();
+                if (file == juce::File()) continue;
+                juce::Timer::callAfterDelay(juce::jmax(5, seconds) * 1000, [safeThis, file]
+                {
+                    if (safeThis == nullptr) return;
+                    safeThis->loadConfigurationAgain = true;
+                    safeThis->loadConfigurationAgainFile = file;
+                    safeThis->launchConfigurationLoadChooser();
+                });
+            }
         }
     }
     // Development: ORGAN_LOAD_TREE="<division>|<folder>" loads the folder into
@@ -1767,8 +1774,9 @@ MainComponent::MainComponent()
     {
         const auto names = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
         juce::Component::SafePointer<MainComponent> safeThis(this);
+        const int firstMs = std::getenv("ORGAN_TEST_CLICK_AT") != nullptr ? juce::jmax(1, juce::String(std::getenv("ORGAN_TEST_CLICK_AT")).getIntValue()) * 1000 : 3000;   // the first click's moment in seconds (0.8.185)
         for (int i = 0; i < names.size(); ++i)
-            juce::Timer::callAfterDelay(3000 + 2000 * i, [safeThis, name = names[i]]
+            juce::Timer::callAfterDelay(firstMs + 2000 * i, [safeThis, name = names[i]]
             {
                 if (safeThis == nullptr) return;
                 // Every window on the desktop, every button inside (0.8.183: the console's
@@ -1807,6 +1815,41 @@ MainComponent::MainComponent()
                     });
             });
     }
+    // ORGAN_TEST_NOTE="<manual>|<key>|<seconds>|<hold seconds>" (tests, 0.8.185): the key
+    // pressed through the keyboard path (routeKeyboardNote, as MIDI arrives) that many
+    // seconds after the start, the polyphony logged half a second later, released after
+    // the hold - whether a key sounds after whatever ran before (a measurement, #90).
+    if (const char* env = std::getenv("ORGAN_TEST_NOTE"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        if (parts.size() >= 4)
+        {
+            const int manual = parts[0].getIntValue(), key = parts[1].getIntValue(), holdMs = juce::jmax(100, parts[3].getIntValue() * 1000);
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::Timer::callAfterDelay(juce::jmax(1, parts[2].getIntValue()) * 1000, [safeThis, manual, key, holdMs]
+            {
+                if (safeThis == nullptr) return;
+                int on = 0;
+                for (auto* stop : safeThis->engine.getStops()) { safeThis->engine.setStopEnabled(stop, true); ++on; }   // every stop drawn: a key must sound
+                CrashHandler::note("ORGAN_TEST_NOTE: polyphony before the key " + juce::String(safeThis->engine.getCurrentPolyphony()) + "; "
+                    + juce::String(on) + " stop(s) switched on, key " + juce::String(key) + " pressed on division " + juce::String(manual)
+                    + "; engine: " + safeThis->engine.debugState() + "; audio muted " + (safeThis->audioMuted.load() ? "YES" : "no"));
+                safeThis->routeKeyboardNote(manual, key, 100, true);
+                juce::Timer::callAfterDelay(holdMs + 4000, [safeThis]
+                {
+                    if (safeThis != nullptr) CrashHandler::note("ORGAN_TEST_NOTE: polyphony 4 s after the release " + juce::String(safeThis->engine.getCurrentPolyphony()));
+                });
+                juce::Timer::callAfterDelay(500, [safeThis, manual, key]
+                {
+                    if (safeThis != nullptr)
+                        CrashHandler::note("ORGAN_TEST_NOTE: key " + juce::String(key) + " on division " + juce::String(manual) + " held, polyphony "
+                            + juce::String(safeThis->engine.getCurrentPolyphony()) + ", limit " + juce::String(safeThis->engine.getMaxPolyphony())
+                            + "; engine: " + safeThis->engine.debugState());
+                });
+                juce::Timer::callAfterDelay(holdMs, [safeThis, manual, key] { if (safeThis != nullptr) safeThis->routeKeyboardNote(manual, key, 0, false); });
+            });
+        }
+    }
     // ORGAN_OPEN_LOAD_FOLDER=<division> (tests): the Load folder window 2 s after start.
     if (const char* env = std::getenv("ORGAN_OPEN_LOAD_FOLDER"))
     {
@@ -1825,6 +1868,8 @@ MainComponent::MainComponent()
             showAfterReport(juce::URL("https://github.com/zurek-jiri/OrganSampler/issues/new/choose"), folder);
             juce::Timer::callAfterDelay(1500, [folder] { arrangeReportWindows(folder); });
             juce::Timer::callAfterDelay(4500, [folder] { arrangeReportWindows(folder); });
+            juce::Timer::callAfterDelay(9000, [folder] { arrangeReportWindows(folder); });
+            juce::Timer::callAfterDelay(15000, [folder] { arrangeReportWindows(folder); });
         });
     }
     // Development aids: ORGAN_OPEN_CONFIG_EDITOR=1 opens the editor at startup,
@@ -5145,6 +5190,8 @@ void MainComponent::showProblemReportDialog()
                 // windows exist a moment later; a second try for a slow browser start).
                 juce::Timer::callAfterDelay(1500, [folder] { MainComponent::arrangeReportWindows(folder); });
                 juce::Timer::callAfterDelay(4500, [folder] { MainComponent::arrangeReportWindows(folder); });
+                juce::Timer::callAfterDelay(9000, [folder] { MainComponent::arrangeReportWindows(folder); });    // a browser starting cold (0.8.185: it came up maximised, untouched, after the 4.5 s try)
+                juce::Timer::callAfterDelay(15000, [folder] { MainComponent::arrangeReportWindows(folder); });
             };
             addAndMakeVisible(create);
             cancel.setButtonText("Cancel");
@@ -10212,9 +10259,9 @@ void MainComponent::launchConfigurationLoadChooser()
     // ORGAN_LOAD_CONFIGURATION=<file> (tests): the file is taken as chosen, the
     // native dialog is skipped (typing a path into it is not reliable on every
     // keyboard layout); everything after the choice is the same.
-    if (const char* env = std::getenv(loadConfigurationAgain ? "ORGAN_LOAD_CONFIGURATION_AGAIN" : "ORGAN_LOAD_CONFIGURATION"))
+    if (const char* env = std::getenv("ORGAN_LOAD_CONFIGURATION"))
     {
-        const juce::File chosen(juce::String::fromUTF8(env).upToFirstOccurrenceOf("|", false, false));   // "<file>|<seconds>" for the second load (0.8.184)
+        const juce::File chosen = loadConfigurationAgain ? loadConfigurationAgainFile : juce::File(juce::String::fromUTF8(env));   // the series' file (0.8.184)
         if (SampleFiles::existsAsFile(chosen))   // on the disk, or a definition inside a RAR archive (0.8.157)
         {
             CrashHandler::note(juce::String("Load Configuration: file taken from ") + (loadConfigurationAgain ? "ORGAN_LOAD_CONFIGURATION_AGAIN" : "ORGAN_LOAD_CONFIGURATION"));
@@ -12046,7 +12093,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         removePerspectiveAudioRoutesForManual(manual);
-        engine.unloadManual(manual);
+        engine.unloadManual(manual, false);   // freed by the loader thread (0.8.185), not by threads beside this one
     }
     engine.setRelaunchHeld(false);
     settingsFile.replaceWithText(juce::JSON::toString(configuration, true));
@@ -12181,12 +12228,13 @@ public:
         engine.setLoadStatusCallback([this, show](const juce::String& text) { workLine = text; show(); });
         // The previous organ's stops are freed on a thread of their own (0.8.184): the
         // memory counts of this load wait for that, here with the window alive.
-        if (engine.removedStopsBeingFreed())
+        if (engine.hasRemovedStops() || engine.removedStopsBeingFreed())
         {
             progressLine = "Freeing the previous organ ...";
             workLine = " ";
             show();
-            engine.waitForRemovedStopsFreed();
+            engine.freeRemovedStopsNow();        // here, one at a time, the window up (0.8.185)
+            engine.waitForRemovedStopsFreed();   // a draining thread of an earlier unload, if any
         }
         for (size_t index = 0; index < jobs.size(); ++index)
         {
@@ -17387,7 +17435,14 @@ void MainComponent::loadSettings()
                 if (item.toString().trim().isNotEmpty()) patterns.push_back(item.toString());
         return patterns.empty() ? defaults : patterns;
     };
-    engine.setOneShotPatterns(readPatterns("oneShotPatterns", SamplerEngine::defaultOneShotPatterns()));
+    {
+        // A saved list that is still the old default ("Chiff" alone) takes the new default
+        // (0.8.185: "Chimes", "Tubular", "Celesta", "Harp", "Glockenspiel" came in 0.8.135 for new
+        // settings only - every older settings file kept "Chiff" for good).
+        auto oneShot = readPatterns("oneShotPatterns", SamplerEngine::defaultOneShotPatterns());
+        if (oneShot.size() == 1 && oneShot[0].equalsIgnoreCase("Chiff")) oneShot = SamplerEngine::defaultOneShotPatterns();
+        engine.setOneShotPatterns(oneShot);
+    }
     {
         // A saved list that is still the old default ("trem" alone) takes the new default ("*_tr" added).
         auto ignored = readPatterns("ignoredPatterns", SamplerEngine::defaultIgnoredPatterns());
@@ -20698,6 +20753,22 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
     // glides up to normal over three seconds from now, report or no report.
     for (int manual = 0; manual <= manualCount; ++manual)
         for (int note = 36; note <= 96; ++note) routeKeyboardNote(manual, note, 0, false);
+    // And every key of every division released in the engine itself (0.8.185, #90):
+    // after a run, keys the strokes had down stayed held there - their pipes sounded
+    // on for minutes (130 voices four minutes after a run) and a key struck again on
+    // them was silent, "the organ does not play" until a device switch killed every
+    // voice. A note-off for a key not held releases nothing; the tails ring out.
+    for (int manual = 0; manual <= manualCount; ++manual)
+        for (int note = 0; note < 128; ++note) engine.noteOff(note, manual);
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(20000, [safeThis]
+        {
+            if (safeThis != nullptr)
+                CrashHandler::note("Polyphony measurement: 20 s after the end " + juce::String(safeThis->engine.getCurrentPolyphony()) + " voice(s) still sound (the tails, nothing held); engine: "
+                    + safeThis->engine.debugState() + "; audio muted " + (safeThis->audioMuted.load() ? "YES" : "no"));
+        });
+    }
     outputGainHoldUntilMs.store(juce::Time::getMillisecondCounterHiRes() + 4000.0);   // the tails die at -52 dB first (0.8.147)
     outputGainTarget.store(1.0f);                                                       // ... then 4.5 dB a second up to normal
     engine.setAttackMinimumMs((float)state->previousAttackMinimumMs);

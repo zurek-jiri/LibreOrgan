@@ -7,7 +7,7 @@ A complete OrganSampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider,
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](Stralsund_Jakobi_Wegscheider.portable.zip?raw=true) - unpack it, the `Stralsund_Jakobi_Wegscheider.portable.json` inside goes where the next section says.
+**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/stralsund-jakobi-wegscheider-portable/Stralsund_Jakobi_Wegscheider.portable.zip) - unpack it, the `Stralsund_Jakobi_Wegscheider.portable.json` inside goes where the next section says.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,11 +15,11 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136`, unpacked as plain WAV files; perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.179 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.185 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
-- **RAM:** about 98 GB with the whole organ loaded (32-bit float, 48 kHz sample storage; measured by the program when this file was saved); about 8 GB at the least, with every saving option of the load box (16-bit, 32 kHz on loading, releases at half the rate, packed; estimated by the program from the loaded samples).
-- **Saved with:** OrganSampler 0.8.179.
+- **RAM:** about 7.0 GB with the whole organ loaded (16-bit, 32 kHz, releases at half the rate, packed sample storage; measured by the program when this file was saved).
+- **Saved with:** OrganSampler 0.8.185.
 - **Author:** Jiri Zurek, 24 October 2026.
 
 ## Where to put the file

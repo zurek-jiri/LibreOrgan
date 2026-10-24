@@ -7899,6 +7899,17 @@ void SamplerEngine::noteOffAll()
     impl->killAllVoices();
 }
 
+juce::String SamplerEngine::debugState() const
+{
+    // What a silent organ is doing (ORGAN_TEST_NOTE, #90): read without locks, a snapshot.
+    return juce::String("suspended ") + (impl->suspended.load(std::memory_order_acquire) ? "YES" : "no")
+        + ", control thread " + (impl->controlThreadRunning.load(std::memory_order_acquire) ? "running" : "STOPPED")
+        + ", MIDI commands waiting " + juce::String((int)(impl->midiTail.load(std::memory_order_acquire) - impl->midiHead.load(std::memory_order_acquire)))
+        + ", active voices " + juce::String((int)impl->controlActive.size()) + ", free voices " + juce::String((int)impl->freeList.size())
+        + ", routes " + juce::String(impl->routeCount.load(std::memory_order_acquire)) + ", stops " + juce::String(stops.size())
+        + ", limit " + juce::String(maxPolyphony.load());
+}
+
 //------------------------------------------------------------------------------
 void SamplerEngine::renderBlockForPerspective(juce::AudioBuffer<float>& buffer, float masterGain,
     int manualIndex, const juce::String& perspective, int laneLimit)
@@ -8563,10 +8574,10 @@ namespace
     // Runs fn(index, thread) for index 0..count-1 on up to 16 threads (the loader
     // decodes files with it, the copies of filled pipes are shifted with it).
     template <typename Fn>
-    void parallelFor(int count, Fn&& fn)
+    void parallelFor(int count, Fn&& fn, int maxThreads = 16)
     {
         if (count <= 0) return;
-        const int threads = juce::jlimit(1, 16, juce::jmin(count, juce::SystemStats::getNumCpus()));
+        const int threads = juce::jlimit(1, juce::jmax(1, maxThreads), juce::jmin(count, juce::SystemStats::getNumCpus()));
         if (threads == 1)
         {
             for (int i = 0; i < count; ++i) fn(i, 0);
@@ -10490,7 +10501,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                 results[(size_t)index] = std::move(copies);
                 computed.fetch_add(1, std::memory_order_relaxed);
                 stop->copiesDone.fetch_add(1, std::memory_order_relaxed);
-            });
+            }, juce::jmax(1, juce::SystemStats::getNumPhysicalCpus() - 1));   // one physical core left to the window and the mouse (0.8.185: the pointer stuttered through a build)
             for (size_t i = 0; i < todo.size(); ++i) if (!results[i].empty()) fresh[todo[i].pipe] = std::move(results[i]);
             computedCount = computed.load();
             computedAny = computedCount > 0;
@@ -12599,7 +12610,7 @@ void SamplerEngine::swapDivisions(int a, int b)
     for (auto* stop : stops) buildAntiAliasCopies(stop, true);
 }
 
-void SamplerEngine::unloadManual(int manualIndex)
+void SamplerEngine::unloadManual(int manualIndex, bool freeLater)
 {
     BuildPause buildLock(*this);   // the running build stops at its next pipe instead of being waited for
     impl->clearMidi();
@@ -12620,28 +12631,59 @@ void SamplerEngine::unloadManual(int manualIndex)
             stop->tremulantOrdinal = ordinals[(size_t)juce::jlimit(0, maxManuals - 1, stop->primaryManual)]++;
     }
     impl->resume();
-    if (removed) freeRemovedStopsLater();
+    if (removed && freeLater) freeRemovedStopsLater();   // a load frees them on its loader thread instead (freeRemovedStopsNow)
+}
+
+void SamplerEngine::freeRemovedStopsNow()
+{
+    // The removed stops freed on the calling thread, one at a time (0.8.185: the
+    // four threads of 0.8.184 freeing at once held the heap lock against the message
+    // thread for 8 s - its stack in RtlFreeHeap under a StopRow destructor, a text
+    // layout, the settings file; the loading window never came up). The heap's
+    // freed blocks go back to the system once at the end: no residue in the next
+    // RAM figure.
+    int count = 0;
+    const double started = juce::Time::getMillisecondCounterHiRes();
+    for (;;)
+    {
+        std::unique_ptr<Stop> stop;
+        {
+            const juce::ScopedLock gl(removedStopsLock);
+            if (removedStops.isEmpty()) break;
+            stop.reset(removedStops.removeAndReturn(removedStops.size() - 1));
+        }
+        stop.reset();
+        ++count;
+    }
+    if (count == 0) return;
+    MemoryInfo::releaseFreedMemory();
+    CrashHandler::note("Freed " + juce::String(count) + " removed stop(s) in " + juce::String(juce::Time::getMillisecondCounterHiRes() - started, 0) + " ms");
+}
+
+bool SamplerEngine::hasRemovedStops() const
+{
+    const juce::ScopedLock gl(removedStopsLock);
+    return !removedStops.isEmpty();
 }
 
 void SamplerEngine::freeRemovedStopsLater()
 {
-    removedStopsFreeing.fetch_add(1, std::memory_order_acq_rel);
+    // One draining thread at most: a thread already running takes the new stops too
+    // (it looks again under the lock before it ends).
+    {
+        const juce::ScopedLock gl(removedStopsLock);
+        if (removedStops.isEmpty() || removedStopsFreeing.load(std::memory_order_acquire) > 0) return;
+        removedStopsFreeing.store(1, std::memory_order_release);
+    }
     juce::Thread::launch([this]
     {
         lowerCurrentThreadPriority();
-        juce::OwnedArray<Stop> gone;
+        for (;;)
         {
+            freeRemovedStopsNow();
             const juce::ScopedLock gl(removedStopsLock);
-            gone.swapWith(removedStops);
+            if (removedStops.isEmpty()) { removedStopsFreeing.store(0, std::memory_order_release); break; }
         }
-        const int count = gone.size();
-        const double started = juce::Time::getMillisecondCounterHiRes();
-        gone.clear();
-        MemoryInfo::releaseFreedMemory();   // the heap's freed blocks back to the system: no residue in the next RAM figure
-        if (count > 0)
-            CrashHandler::note("Freed " + juce::String(count) + " removed stop(s) on a thread of their own in "
-                + juce::String(juce::Time::getMillisecondCounterHiRes() - started, 0) + " ms");
-        removedStopsFreeing.fetch_sub(1, std::memory_order_acq_rel);
     });
 }
 

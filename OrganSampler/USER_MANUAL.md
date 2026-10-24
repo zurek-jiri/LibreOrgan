@@ -2339,6 +2339,12 @@ the polyphony stays. *Keep each file's own rate* loads faster and plays by
 interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits
 whatever it holds; only the coarser grid saves. Takes effect at the next load.
 
+A word on who hears the difference. Hearing loses its top end with the
+years: past fifty, few people hear anything above 17 kHz, and past sixty the
+limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose
+nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser
+grid leaves out is already beyond reach - and saves a third of the RAM.
+
 ### IR processing
 
 How the IR reverbs of the routes are convolved. *Full* convolves every route

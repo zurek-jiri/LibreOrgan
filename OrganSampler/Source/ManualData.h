@@ -2365,6 +2365,12 @@ static const char* const kManualText_part11 =
     "interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits\n"
     "whatever it holds; only the coarser grid saves. Takes effect at the next load.\n"
     "\n"
+    "A word on who hears the difference. Hearing loses its top end with the\n"
+    "years: past fifty, few people hear anything above 17 kHz, and past sixty the\n"
+    "limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose\n"
+    "nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser\n"
+    "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
+    "\n"
     "### IR processing\n"
     "\n"
     "How the IR reverbs of the routes are convolved. *Full* convolves every route\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "reset), *DSP* (the load) and *LIMIT* (this setting).\n"
     "\n"
     "The value belongs to the organ, not to the computer alone: the number of\n"
+    ;
+static const char* const kManualText_part12 =
     "audio routes, the auxiliary routes, the IR reverbs, the drivers and the buffer\n"
     "sizes all change it (see \"Getting the most polyphony\"). It is saved with the\n"
     "configuration. Under it, *Measurement limit* (60-100 %, default 85 %) is the\n"
     "share of its period the longest driver callback may take before the\n"
     "measurement counts a level as broken - see \"Measuring the maximum polyphony\".\n"
     "The easiest way to find the polyphony is the button below,\n"
-    ;
-static const char* const kManualText_part12 =
     "\"Measure the maximum polyphony\", once the organ is loaded and its audio\n"
     "outputs are configured. On a computer where the full registration breaks\n"
     "the sound up at the very first strike (no second stays clean), the\n"
@@ -2620,14 +2626,14 @@ static const char* const kManualText_part12 =
     "default 2), varied at random by a couple of milliseconds so that a chord's\n"
     "pipes do not all speak in the same instant. Keys repeated faster than the delay\n"
     "follow each other without it, and a key struck again right after its release\n"
+    ;
+static const char* const kManualText_part13 =
     "gets only half or none of it, so fast repetitions stay crisp.\n"
     "\n"
     "## 8.3 Advanced global audio\n"
     "\n"
     "### Swell: harmonic filter\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "Closing the swell box does not only make the pipes quieter: it also takes away\n"
     "their brilliance. This is a high shelf above about 3 kHz that follows the\n"
     "shutters: this much loss with the box closed (0 to 12 dB, default 8). 0 dB =\n"
@@ -2822,14 +2828,14 @@ static const char* const kManualText_part13 =
     "with its formants moved down loses level).\n"
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
+    ;
+static const char* const kManualText_part14 =
     "\n"
     "On by default (0.8.124; off before). On: the copies of the filled pipes are written to files as\n"
     "they are built and read back the next time the same stops load with the same\n"
     "settings, so the build after loading takes seconds instead of minutes - the\n"
     "build of a large organ otherwise takes a minute or more at every load. One\n"
     "file per rank and folder tree, whatever the settings: a tree built with other\n"
-    ;
-static const char* const kManualText_part14 =
     "settings replaces its file, so the cache takes about as much room on disk as\n"
     "the copies in RAM (hundreds of MB for a large organ) and never plays a stale\n"
     "copy. Switch it on when the build after loading annoys you; switch it off\n"
@@ -3024,14 +3030,14 @@ static const char* const kManualText_part14 =
     "\n"
     "### Target temperament\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "The temperament the organ *plays* in (see \"Temperaments\"). Every pipe is retuned by the\n"
     "difference between the target and the samples' base temperament, per pitch\n"
     "class. Choosing the base temperament itself plays the samples as recorded.\n"
     "The Temperaments dialog of the top bar does the same with one click, and\n"
     "every temperament can be switched from a MIDI control.\n"
     "\n"
-    ;
-static const char* const kManualText_part15 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved automatically. Information only; the window\n"
@@ -3226,14 +3232,14 @@ static const char* const kManualText_part15 =
     "How long the wind pressure takes to settle after stops or keys change (100 to\n"
     "400 ms, default 255). The same lag governs the volume glide when a pipe held\n"
     "through several routes passes from one route to another.\n"
+    ;
+static const char* const kManualText_part16 =
     "\n"
     "### Wind: also affects divisions\n"
     "\n"
     "Tick the other divisions fed from this wind supply: they receive half of this\n"
     "division's sag, so a heavy chord on one manual disturbs the other.\n"
     "\n"
-    ;
-static const char* const kManualText_part16 =
     "---\n"
     "\n"
     "## 8.7 Keeping track: the activity log\n"

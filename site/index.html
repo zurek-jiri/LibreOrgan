@@ -25,7 +25,7 @@
         <p class="intro">OrganSampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.184</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.185</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -44,7 +44,7 @@
     </section>
     <div class="facts"><div class="wrap fact-grid">
       <p><strong>Your own organ, from any sources</strong><span>stops of different producers in one console, duplicated as transmissions and extensions, two configurations merged into one</span></p>
-      <p><strong>Light on RAM, CPU and disk</strong><span>16-bit storage, 32 kHz, FLAC-like packing in RAM, releases at half the rate - all together one tenth of the RAM, measured (85 GB &rarr; 8 GB); samples read straight from RAR archives; everything anti-aliased</span></p>
+      <p><strong>Light on RAM, CPU and disk</strong><span>16-bit storage, 32 kHz, FLAC-like packing in RAM, releases at half the rate - all together one tenth of the RAM, measured (83 GB &rarr; 8 GB); samples read straight from RAR archives; everything anti-aliased</span></p>
       <p><strong>Any number of sound cards</strong><span>every perspective and division on its own device and channels</span></p>
       <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too; a Hauptwerk definition opens as well</span></p>
     </div></div>
@@ -71,21 +71,21 @@
         <article><span class="feature-number">07</span><h3>Light on RAM, CPU and disk</h3><p>Every load offers its savings, and the choice travels with the organ: the samples kept as 16-bit integers instead of 32-bit floats (half the RAM), resampled to 32 kHz on loading (a third less again), packed losslessly in RAM like FLAC and unpacked on the fly (a further third to two thirds, for a little CPU), the releases stored at half the rate where their spectrum allows it. All of them together bring the organ down to one tenth of its RAM - measured, see the table below - and the sound stays acceptable; the figure is measured per organ and written into every published configuration. Sample folders are read straight from their RAR archives: nothing to unpack, nothing twice on the disk. And everything is anti-aliased - pitch-shifted copies through a long windowed-sinc filter, a retune through a resampling bus per route, the high pipes through a sinc playback kernel - so no foreign tone appears under a retuned pipe. With a strong computer the same choices go the other way, for the finest listening: 32-bit float storage, every set kept at its own rate (96 kHz stays 96 kHz), the releases at the full rate, no packing, the sinc kernel for every pipe (<em>Full kernel from</em> 0 Hz), a true-stereo four-channel impulse response on every route.</p></article>
       </div>
       <div class="ram-measured">
-        <h3>One organ, eight ways to load it: from 85 GB down to 8 GB</h3>
+        <h3>One organ, eight ways to load it: from 83 GB down to 8 GB</h3>
         <p>How far the savings go, measured on one organ: Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), three perspectives, 53.9 GB of 32-bit float WAV files at 48 kHz. The figure is the whole program as loaded, the filled pipes' copies included, on a 16-core computer with 128 GB. The same organ, the same sound to any normal ear - and one tenth of the memory with every saving in force. That is the difference between an organ that needs a workstation and one that runs on a laptop.</p>
         <table>
           <thead><tr><th>Storage</th><th>Rate on loading</th><th>Releases</th><th>Packing in RAM</th><th>RAM</th></tr></thead>
           <tbody>
-            <tr><td>32-bit float</td><td>48 kHz (as the files)</td><td>full rate</td><td>off</td><td><strong>85 GB</strong></td></tr>
-            <tr><td>32-bit float</td><td>48 kHz</td><td>full rate</td><td>on</td><td>30 GB</td></tr>
+            <tr><td>32-bit float</td><td>48 kHz (as the files)</td><td>full rate</td><td>off</td><td><strong>83 GB</strong></td></tr>
+            <tr><td>32-bit float</td><td>48 kHz</td><td>full rate</td><td>on</td><td>29 GB</td></tr>
             <tr><td>16-bit</td><td>48 kHz</td><td>full rate</td><td>off</td><td>49 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>full rate</td><td>on</td><td>23 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>off</td><td>33 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>on</td><td>13 GB</td></tr>
+            <tr><td>16-bit</td><td>48 kHz</td><td>full rate</td><td>on</td><td>15 GB</td></tr>
+            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>off</td><td>32 GB</td></tr>
+            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>on</td><td>12 GB</td></tr>
             <tr><td>16-bit</td><td>32 kHz</td><td>half the rate</td><td>on</td><td><strong>8 GB</strong></td></tr>
           </tbody>
         </table>
-        <p class="small">Measured with OrganSampler 0.8.184 on 24 October 2026. The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit float file (as this organ's) is rounded to 24 bits first, half a converter step. Every load box offers these choices; the choice travels with the organ.</p>
+        <p class="small">Measured with OrganSampler 0.8.185 on 24 October 2026. The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit float file (as this organ's) is rounded to 24 bits first, half a converter step. Every load box offers these choices; the choice travels with the organ.</p>
       </div>
       <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. Every load offers the savings - 16-bit storage, 32 kHz, lossless packing, releases at half the rate - and with all of them the organ takes one tenth of its RAM (the table above).</p>
     </section>
@@ -105,7 +105,7 @@
           <a class="button primary" href="https://github.com/zurek-jiri/OrganSampler/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/USER_MANUAL.md" data-repo-path="OrganSampler/USER_MANUAL.md">Read the user manual &#8599;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.8.184</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
+          <p class="small">Version <span data-version>0.8.185</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>

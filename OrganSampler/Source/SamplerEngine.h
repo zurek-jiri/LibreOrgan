@@ -792,7 +792,7 @@ public:
     static bool folderHasNumberedSamples(const juce::File& folder);
     void commitPendingDivisions();
     bool hasPendingDivisions() const;
-    void unloadManual(int manualIndex);
+    void unloadManual(int manualIndex, bool freeLater = true);   // freeLater: the stops freed on a thread of their own; false: the caller frees them (freeRemovedStopsNow)
     // Removes only the stops that came from one folder tree of the division.
     void unloadManualTree(int manualIndex, const juce::File& tree);
     // Removes one stop (its ranks, transmissions and samples) and nothing else:
@@ -992,6 +992,7 @@ public:
     bool isControlThreadRunning() const noexcept;
 
     int getCurrentPolyphony() const noexcept { return currentPolyphony.load(std::memory_order_relaxed); }
+    juce::String debugState() const;   // tests (0.8.185): suspended / control thread / MIDI queue / voices / routes in one line
     // The most voices sounding at once since the last take - kept by the control
     // thread at every change, so no peak between two readings is missed (a key
     // struck while the releases of the last stroke still sound is the peak, and
@@ -1262,6 +1263,8 @@ public:
     // before it counts memory (the loader thread, with a status line).
     void waitForRemovedStopsFreed();
     bool removedStopsBeingFreed() const noexcept { return removedStopsFreeing.load(std::memory_order_acquire) > 0; }
+    void freeRemovedStopsNow();        // frees them on the calling thread (the loader, its window up), one at a time (0.8.185)
+    bool hasRemovedStops() const;
     // Load Configuration unloads every division in turn: between the unloads no build
     // of the old organ is launched again by a BuildPause's end - the next unload
     // would interrupt it (and a partial cache file be written for a stop about to go).
@@ -1444,7 +1447,7 @@ private:
     mutable juce::CriticalSection controlLock;
     juce::OwnedArray<Stop> stops;
     juce::OwnedArray<Stop> removedStops;          // unloaded stops awaiting their free on a thread (0.8.184)
-    juce::CriticalSection removedStopsLock;
+    mutable juce::CriticalSection removedStopsLock;
     std::atomic<int> removedStopsFreeing{ 0 };   // free threads running
     std::atomic<bool> relaunchHeld{ false };     // setRelaunchHeld: no relaunch of pending builds between the unloads of a load
     void freeRemovedStopsLater();

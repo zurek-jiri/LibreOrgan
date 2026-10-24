@@ -45,21 +45,21 @@ the sinc kernel for every pipe (*Full kernel from* 0 Hz), a true-stereo
 four-channel impulse response on every route. The program measures the
 polyphony your machine reaches and sets its limit itself.
 
-**One organ, eight ways to load it: from 85 GB down to 8 GB.** Measured on
+**One organ, eight ways to load it: from 83 GB down to 8 GB.** Measured on
 Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), three
 perspectives, 53.9 GB of 32-bit float WAV files at 48 kHz - the whole program
-as loaded, the filled pipes' copies included (OrganSampler 0.8.183, 24 October
+as loaded, the filled pipes' copies included (OrganSampler 0.8.184, 24 October
 2026). The same organ, the same sound to any normal ear, one tenth of the
 memory with every saving in force:
 
 | Storage | Rate on loading | Releases | Packing in RAM | RAM |
 |---|---|---|---|---|
-| 32-bit float | 48 kHz (as the files) | full rate | off | **85 GB** |
-| 32-bit float | 48 kHz | full rate | on | 30 GB |
+| 32-bit float | 48 kHz (as the files) | full rate | off | **83 GB** |
+| 32-bit float | 48 kHz | full rate | on | 29 GB |
 | 16-bit | 48 kHz | full rate | off | 49 GB |
-| 16-bit | 48 kHz | full rate | on | 23 GB |
-| 16-bit | 48 kHz | half the rate | off | 33 GB |
-| 16-bit | 48 kHz | half the rate | on | 13 GB |
+| 16-bit | 48 kHz | full rate | on | 15 GB |
+| 16-bit | 48 kHz | half the rate | off | 32 GB |
+| 16-bit | 48 kHz | half the rate | on | 12 GB |
 | 16-bit | 32 kHz | half the rate | on | **8 GB** |
 
 The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit

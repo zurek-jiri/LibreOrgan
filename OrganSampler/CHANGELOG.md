@@ -12,8 +12,34 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.184] - 2026-10-24
+## [0.8.185] - 2026-10-24
 
+### Fixed
+- After a polyphony measurement every key of every division is released in
+  the engine itself (#90): keys the strokes had down could stay held there -
+  their pipes sounded on for minutes and a key struck on them again was
+  silent, "the organ does not play" until a device switch. The log says how
+  many voices still sound 20 s after a run.
+- The loading window comes up at once on a Load Configuration: the previous
+  organ is freed on the loader thread, one stop at a time, under the window's
+  "Freeing the previous organ ..." (0.8.184 freed it on four threads at once,
+  which held the heap lock against the window for 8 s - it looked frozen).
+- The mouse and the window stay responsive while the filled pipes are built:
+  the build leaves one physical core alone.
+- The one-shot patterns of an older settings file ("Chiff" alone, the default
+  before 0.8.135) take the current default: Chiff, Chimes, Tubular, Celesta,
+  Harp, Glockenspiel.
+- Report a problem: the browser is placed on the left half of the screen even
+  when it starts slowly (two more tries, 9 and 15 s after the launch).
+
+### Changed
+- Manual, "Sample rate on loading": who hears the difference - 36 kHz past
+  fifty, 32 kHz past sixty, nothing audible lost.
+- Test hook ORGAN_TEST_NOTE="<manual>|<key>|<seconds>|<hold>": a key through
+  the keyboard path, the polyphony logged (the silence after a measurement,
+  #90, is reproduced with it).
+
+## [0.8.184] - 2026-10-24
 ### Fixed
 - Load Configuration starts at once: the previous organ's samples are freed on
   a thread of their own (23 GB of packed samples held the window dead for 11 s

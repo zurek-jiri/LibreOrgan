@@ -1138,7 +1138,28 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   applyPortableConfiguration: `relaunchPendingBuilds` returns at once. (4) `logRamAfterLoadIfDue` (MainComponent,
   the once-a-second timer) writes "RAM held after the load (<storageSignature>): N GB - ... M pipe(s) of them from
   the cache; free of installed" once `pendingBackgroundWorkers() == 0` after "Compiling the Stop List: done".
-  The user measures the #87 table anew with it; mine are not wanted. Remove a configuration: GitHub's own "Run workflow" form has two clicks (open the
+  The user measures the #87 table anew with it; mine are not wanted. 0.8.185 LESSONS (the user's evening batch): (a)
+  the four free threads of 0.8.184 held the HEAP LOCK against the message thread (stacks: RtlEnterCriticalSection in
+  RtlFreeHeap under ~StopRow, ShapedText, replaceWithText) for 8-13 s - the loading window never came up; now
+  `unloadManual(manual, false)` in applyPortableConfiguration and the LOADER thread frees them one at a time
+  (`freeRemovedStopsNow`, "Freeing the previous organ ..." on the window), one `_heapmin` at the end; other unloads
+  launch ONE draining thread (`freeRemovedStopsLater`: a running drainer takes new stops too, checked under the lock).
+  (b) The user's series in ONE process with 0.8.184 (RAM lines): float 83.4 / packed 29.2 / 16-bit 48.8 / packed 14.8
+  / half 32.3 / half packed 11.9 / 32 kHz half packed 8.2 GB - the paper's 23 and 13 GB were the old packer's
+  fragmentation; the website/README table carries these. (c) #90 "the organ does not play after a measurement":
+  reproduced in part with ORGAN_TEST_NOTE (Rural, aggregated WASAPI): one run left ~130 voices SOUNDING for minutes
+  after the end (keys held in the engine although routeKeyboardNote released every key of 36..96), the next run not
+  - the engine's keys were stuck, so a key struck on them again is silent ("speaking" set) until a device switch's
+  killAllVoices; finishPolyphonyMeasurement now sends `engine.noteOff` for EVERY key 0..127 of every division
+  (a note-off for a key not held releases nothing) and logs the voices 20 s later. The root cause (why the engine
+  kept them) is NOT found - the logs of the next #90 will say "20 s after the end N voice(s)". `noteOffAll` is
+  clearMidi + killAllVoices (a cut), never for the end of a run. (d) The copy build's parallelFor takes physical
+  cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
+  list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
+  (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every
+  device type; the difference lies after our buffer - the Windows volume mixer's per-app session volume (per exe
+  NAME: OrganSampler_0.8.184.exe is a new app to the mixer) and the endpoint's level/enhancements; told so.
+  Remove a configuration: GitHub's own "Run workflow" form has two clicks (open the
   form, then the green Run workflow) - nothing of ours asks; the 15:02 run removed the folder fine, the 14:34 one
   failed on the name. The "13 GB" at 16-bit 48 kHz packed = read while the copies were still building (the user
   closed the program at 18:38:31 mid-build); 23 GB is the figure with the copies.

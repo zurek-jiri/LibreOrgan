@@ -93,6 +93,7 @@ private:
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
     bool ramLogPending = false;            // "RAM held after the load" to be logged once the copies are built (0.8.184)
     bool loadConfigurationAgain = false;   // the test hook ORGAN_LOAD_CONFIGURATION_AGAIN is the file to take now (0.8.184)
+    juce::File loadConfigurationAgainFile;
     double ramLogAfterMs = 0.0;
     int copyCacheHitsAtLoad = 0;
     void logRamAfterLoadIfDue();
