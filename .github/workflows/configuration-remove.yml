@@ -1,0 +1,47 @@
+# Removes a published configuration by hand, without Git: GitHub > Actions >
+# "Remove a configuration" > Run workflow > the folder's name as it stands under
+# configurations/ (the link in INDEX.md, e.g. stralsund-jakobi-wegscheider-portable).
+# The folder is deleted, INDEX.md and its sorted copies are regenerated, the
+# change is committed to main. Only people with write access can run it.
+name: Remove a configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: "The folder under configurations/ to remove (as in INDEX.md, e.g. stralsund-jakobi-wegscheider-portable)"
+        required: true
+        type: string
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove the folder and write configurations/INDEX.md
+        shell: bash
+        env:
+          FOLDER: ${{ github.event.inputs.folder }}
+        run: |
+          set -e
+          name="$(echo "$FOLDER" | tr -d '[:space:]')"
+          case "$name" in
+            ""|*/*|*..*|.*) echo "::error::\"$FOLDER\" is not a folder name under configurations/"; exit 1 ;;
+          esac
+          if [ "$name" = "rural-organ" ]; then echo "::error::the Rural Organ demo stays"; exit 1; fi
+          if [ ! -d "configurations/$name" ]; then
+            echo "::error::configurations/$name does not exist. The folders now:"
+            ls -1 configurations | grep -v '\.md$' || true
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r -q "configurations/$name"
+          python3 .github/scripts/configurations_index.py || true
+          git add -A configurations
+          git commit -m "configurations: $name removed (Remove a configuration, run by ${{ github.actor }})"
+          git push
+          echo "configurations/$name removed, INDEX.md regenerated"

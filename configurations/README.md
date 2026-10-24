@@ -76,6 +76,12 @@ the pull request themselves: `<name>.zip` and `<name>.README.md` flat in
 `configurations/`. Published configurations are under the repository's
 licence (GPLv3).
 
+**Removing one** (the maintainer, without Git): GitHub > *Actions* > *Remove a
+configuration* > *Run workflow* > the folder's name as in INDEX.md (for
+example `stralsund-jakobi-wegscheider-portable`) > *Run workflow*. The folder
+goes, INDEX.md is regenerated, both committed by the workflow. A new upload
+of the same name lands in a folder of the same name again.
+
 ## The published configurations
 
 The list is [INDEX.md](INDEX.md): one line per organ with its divisions,

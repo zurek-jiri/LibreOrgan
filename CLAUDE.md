@@ -1006,6 +1006,11 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   comment only says where to attach the files. The slug of a published configuration = the zip's base name lower-cased
   with [^a-z0-9]+ -> "-": "Stralsund_Jakobi_Wegscheider.portable.zip" -> stralsund-jakobi-wegscheider-portable, a NEW
   folder beside an old one (the old folder must be removed by hand - done 24 Oct for stralsund-jakobi-wegscheider).
+  REMOVING a published configuration (24 Oct 2026, the user: "musĂ­m mĂ­t jednoduchou moĹľnost na GitHubu"): the workflow
+  `.github/workflows/configuration-remove.yml` ("Remove a configuration", workflow_dispatch with the input `folder`):
+  Actions > Remove a configuration > Run workflow > the folder's name as in INDEX.md > Run. It `git rm`s
+  configurations/<folder>, runs configurations_index.py, commits and pushes to main (refuses rural-organ, paths with
+  "/" or "..", and a folder that does not exist - it lists the folders). Documented in configurations/README.md.
   0.8.180 (the user: "proÄŤ se ztratilo dvouĹ™ĂˇdkovĂ© loading"): NOT a regression in the code - `git log -S` shows the
   loader's two lines (0.8.159) and the engine's only two `loadStatusCallback` calls ("Compiling the Stop List: tuning..."
   / "pipe fills") unchanged since the first commit; the second line existed only in those phases of each tree (a second
