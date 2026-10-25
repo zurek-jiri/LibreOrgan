@@ -1267,7 +1267,18 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   `adoptCopyInConfigurationsFolder` overwrites with a .bak (getNonexistentSibling = a duplicate is gone). Hook path:
   import -> replace; ORGAN_TEST_COPY_INTO_CONFIGURATIONS -> copy/replace; else inPlace. Tests:
   %TEMP%\test_dupes193.ps1 (copy, same file, changed file -> replace + .bak), test_import192.ps1 -KeepFiles then
-  again (replace + .bak). juce::StringArray has no initializer_list<String> assignment: build with add(). (d) The copy build's parallelFor takes physical
+  again (replace + .bak). juce::StringArray has no initializer_list<String> assignment: build with add().
+  0.8.194 PORTABLE SAVE = EXPORT (the user: the ordinary configuration with MIDI must never be overwritten by the
+  portable one; "jako u bug reportu"): `savePortableConfiguration` writes `target` = `<folder>/Publish/<base>.portable
+  .json` (a ".portable" already in the name is not doubled) with `<base>.portable.zip` + `.README.md` beside it;
+  `currentConfigurationFile`/name/lastDir are NOT retargeted (an early return in the publish branch); the relative
+  paths are computed against the target's folder. Then `showPublishWindow(folder, zip, readme, launch)`: the
+  `AfterReportWindow` with caller-given title/text/buttons ("Publish on GitHub" = the issue form prefilled with
+  `title` and `organ` query parameters, "Open the folder"), `folder.startAsProcess()`, the browser, and the four
+  `arrangeReportWindows` retries - exactly the report path. Hook ORGAN_SAVE_PORTABLE never shows it;
+  ORGAN_TEST_PUBLISH_WINDOW=1 shows it without launching anything (pictured by ORGAN_TEST_DIALOG_SNAPSHOT after an
+  ORGAN_TEST_CLICK on "Configuration Editor" at 18 s: %TEMP%\test_publish194.ps1). The Explorer window is found by
+  the folder NAME "Publish" (CabinetWClass). (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

@@ -758,11 +758,14 @@ output channels of every route in the audio tabs, then *Measure the maximum
 polyphony* in the Configuration Editor and *Save Configuration*. Published
 configurations (see "Organ configurations" on the website) are saved this way.
 
-Beside a portable configuration the program writes two more files for
-publishing it in the project's `configurations/` folder on GitHub:
-`<name>.zip`, the configuration zipped (a zip is downloaded from GitHub with
-one click, a bare `.json` would open as text), and `<name>.README.md`, the
-README in the published form - the perspectives, the folders the
+A portable save is an export (0.8.194): it never touches the ordinary
+configuration of your configurations folder (the one with your MIDI and
+audio devices). It writes three files into the `Publish` subfolder of the
+configurations folder: `<name>.portable.json`, the portable configuration
+itself; `<name>.portable.zip`, the same zipped (a zip is downloaded from
+GitHub with one click, a bare `.json` would open as text); and
+`<name>.portable.README.md`, the README in the published form - the
+perspectives, the folders the
 configuration expects and where to put the file, the routes, the RAM as
 one bullet per figure with its storage options (0.8.189): the least the
 organ takes (16-bit, 32 kHz, releases at half the rate, packed - measured
@@ -778,10 +781,13 @@ included. The save asks you once for what the README cannot know - the
 organ (instrument, builder, place), the producer of the samples, the link
 to the page where the sample folders are bought or downloaded, your name -
 and keeps the answers in the configuration; nothing in the README is
-filled in by hand. Then send the two files: open the form
-https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
-(a free GitHub account is needed), drag the zip and the README into its
-*Files* field and submit. A robot checks them - a real organ configuration
+filled in by hand. Then the window *Publish the configuration* appears
+(0.8.194, like the one after a problem report): *Publish on GitHub* opens the
+form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
+in your browser with the title and the organ filled in (a free GitHub
+account is needed) and the `Publish` folder in the file manager, side by
+side - drag the zip and the README into the form's *Files* field, tick the
+box and submit. A robot checks them - a real organ configuration
 saved with the organ loaded, and the README written for it -, proposes them
 as a pull request and answers in the form; nothing else is needed, no
 knowledge of Git. After the merge the organ appears as a line of

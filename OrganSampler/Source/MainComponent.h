@@ -402,7 +402,11 @@ private:
     juce::File writeProblemReport(const juce::String& what, const juce::String& steps, bool windowShots,
         const juce::Array<juce::File>& extraShots, juce::URL& issueUrl);
     // After the report: the message with "Open the GitHub form" (again) and "Open the report folder".
-    static void showAfterReport(const juce::URL& url, const juce::File& folder);
+    static void showAfterReport(const juce::URL& url, const juce::File& folder, const juce::String& title = "Report a problem",
+        const juce::String& message = {}, const juce::String& formButton = "Open the GitHub form", const juce::String& folderButton = "Open the report folder");
+    // After a portable save (0.8.194): the same window as after a report - "Publish on GitHub"
+    // opens the issue form prefilled and the Publish folder with the zip and the README beside it.
+    void showPublishWindow(const juce::File& folder, const juce::File& zip, const juce::File& readme, bool launch);
     static void arrangeReportWindows(const juce::File& folder);   // the browser on the left half of the screen, the file manager with the report folder on the right (0.8.139)
     static const juce::Displays::Display* displayOfMainWindow();   // the screen the main window is on (0.8.146)
     std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> stopBuildMap(int manual) const;   // nullptr while inactive

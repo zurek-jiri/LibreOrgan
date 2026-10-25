@@ -12,8 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.193] - 2026-10-25
+## [0.8.194] - 2026-10-25
 
+### Changed
+- A portable save is an export: <name>.portable.json, its zip and its README
+  go into the Publish subfolder of the configurations folder; the ordinary
+  configuration (MIDI, devices) is never overwritten by it and stays the
+  open file. The window "Publish the configuration" follows, like the one
+  after a problem report: "Publish on GitHub" opens the form with the title
+  and the organ filled in and the Publish folder beside it.
+
+## [0.8.193] - 2026-10-25
 ### Changed
 - Never a duplicate in the configurations folder, never an unasked
   overwrite: the same file already there is loaded from there; a file of

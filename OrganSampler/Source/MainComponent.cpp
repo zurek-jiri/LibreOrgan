@@ -4942,19 +4942,23 @@ namespace
     class AfterReportWindow final : public juce::DialogWindow
     {
     public:
-        AfterReportWindow(const juce::URL& urlIn, const juce::File& folderIn)
-            : juce::DialogWindow("Report a problem", juce::Colours::darkgrey, true, true), url(urlIn), folder(folderIn)
+        // The same window after a portable save (0.8.194): "Publish on GitHub" - the
+        // title, the text and the buttons' captions are given by the caller.
+        AfterReportWindow(const juce::URL& urlIn, const juce::File& folderIn, const juce::String& title, const juce::String& message,
+                          const juce::String& formButton, const juce::String& folderButton)
+            : juce::DialogWindow(title, juce::Colours::darkgrey, true, true), url(urlIn), folder(folderIn)
         {
             auto* content = new juce::Component();
-            text.setText("The report folder " + folder.getFileName() + " (Reports in the application-data folder) opens in the file manager, the GitHub form in the browser - "
-                "put them side by side.\nDrag logs.zip into \"Logs\" and the pictures into \"Screenshots\", then \"Submit new issue\".\n"
-                "Asked to sign in first? Press \"Open the GitHub form\" again afterwards.", juce::dontSendNotification);
+            text.setText(message.isNotEmpty() ? message
+                : "The report folder " + folder.getFileName() + " (Reports in the application-data folder) opens in the file manager, the GitHub form in the browser - "
+                  "put them side by side.\nDrag logs.zip into \"Logs\" and the pictures into \"Screenshots\", then \"Submit new issue\".\n"
+                  "Asked to sign in first? Press \"Open the GitHub form\" again afterwards.", juce::dontSendNotification);
             text.setJustificationType(juce::Justification::topLeft);
             text.setFont(juce::FontOptions(15.0f));
             text.setBounds(14, 10, 612, 96);
             content->addAndMakeVisible(text);
-            openForm.setButtonText("Open the GitHub form");
-            openFolder.setButtonText("Open the report folder");
+            openForm.setButtonText(formButton);
+            openFolder.setButtonText(folderButton);
             done.setButtonText("Done");
             openForm.setBounds(14, 114, 190, 30);
             openFolder.setBounds(214, 114, 190, 30);
@@ -5094,13 +5098,14 @@ void MainComponent::arrangeReportWindows(const juce::File& folder)
    #endif
 }
 
-void MainComponent::showAfterReport(const juce::URL& url, const juce::File& folder)
+void MainComponent::showAfterReport(const juce::URL& url, const juce::File& folder, const juce::String& title, const juce::String& message,
+    const juce::String& formButton, const juce::String& folderButton)
 {
     // Stays until "Done": GitHub may ask the user to sign in (or to make a free
     // account) and then land somewhere else - the form is opened again from here,
     // filled in, as often as needed; the link is in the folder as well.
     if (gAfterReportBox != nullptr) { delete gAfterReportBox.getComponent(); gAfterReportBox = nullptr; }
-    auto* window = new AfterReportWindow(url, folder);
+    auto* window = new AfterReportWindow(url, folder, title, message, formButton, folderButton);
     window->arrange = [folder] { arrangeReportWindows(folder); };
     gAfterReportBox = window;
     // At the bottom of the screen, out of the way of the browser and the file
@@ -5123,6 +5128,27 @@ void MainComponent::showAfterReport(const juce::URL& url, const juce::File& fold
     window->setVisible(true);
     window->toFront(true);
     fitWindowOnScreenSoon(juce::Component::SafePointer<juce::Component>(window), "Report box", {});
+}
+
+void MainComponent::showPublishWindow(const juce::File& folder, const juce::File& zip, const juce::File& readme, bool launch)
+{
+    // The issue form of the configurations (organ_configuration.yml) with its title
+    // and Organ field filled in; the folder with the zip and the README beside it.
+    const juce::String organ = publicationOrgan.isNotEmpty() ? publicationOrgan : zip.getFileNameWithoutExtension();
+    const juce::URL url = juce::URL("https://github.com/zurek-jiri/OrganSampler/issues/new")
+        .withParameter("template", "organ_configuration.yml")
+        .withParameter("title", "[Configuration] " + organ)
+        .withParameter("organ", organ + (publicationProducer.isNotEmpty() ? " - " + publicationProducer : juce::String()));
+    showAfterReport(url, folder, "Publish the configuration",
+        "Ready to publish: " + zip.getFileName() + " and " + readme.getFileName() + " in the folder " + folder.getFileName()
+        + " of your configurations folder.\nThe folder opens in the file manager, the GitHub form in the browser - drag the two files into \"Files\", "
+          "tick the box, then \"Submit new issue\".\nAsked to sign in first? Press \"Publish on GitHub\" again afterwards.",
+        "Publish on GitHub", "Open the folder");
+    CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
+    if (!launch) return;
+    folder.startAsProcess();
+    url.launchInDefaultBrowser();
+    for (const int ms : { 1500, 4500, 9000, 15000 }) juce::Timer::callAfterDelay(ms, [folder] { MainComponent::arrangeReportWindows(folder); });
 }
 
 void MainComponent::showProblemReportDialog()
@@ -10709,6 +10735,17 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     auto* root = configuration.getDynamicObject();
     if (root == nullptr) return;
     if (portable) includeMidi = false;   // another computer has other keyboards
+    // The portable file is an EXPORT (0.8.194, the user: the ordinary configuration of
+    // the folder - MIDI, devices - must never be overwritten by it): <name>.portable.json
+    // in the Publish subfolder, beside its zip and README; the open file stays as it is.
+    juce::File target = file;
+    if (portable && publishFiles)
+    {
+        juce::String base = file.getFileNameWithoutExtension();
+        if (base.endsWithIgnoreCase(".portable")) base = base.dropLastCharacters(9);
+        target = file.getParentDirectory().getChildFile("Publish").getChildFile(base + ".portable.json");
+        target.getParentDirectory().createDirectory();
+    }
     root->setProperty("portableConfigurationVersion", 1);
     root->setProperty("containsMidiMappings", includeMidi);
     // The RAM this program uses now, with the organ loaded: the figure a
@@ -10824,7 +10861,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         // Where the library root lies relative to this configuration file
         // ("..\..\Samples" and the like). When the configuration travels
         // together with the library, the folders are found without asking.
-        const auto rootRelative = slashes(libraryRoot.getRelativePathFrom(file.getParentDirectory()));
+        const auto rootRelative = slashes(libraryRoot.getRelativePathFrom(target.getParentDirectory()));
         root->setProperty("sampleLibraryRootRelative",
             juce::File::isAbsolutePath(rootRelative) ? juce::String() : rootRelative);
     }
@@ -10874,7 +10911,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                         {
                             const juce::File ir(routeObject->getProperty("reverbIr").toString());
                             if (!ir.existsAsFile()) continue;
-                            const auto relative = slashes(ir.getRelativePathFrom(file.getParentDirectory()));
+                            const auto relative = slashes(ir.getRelativePathFrom(target.getParentDirectory()));
                             routeObject->setProperty("reverbIrRelative", juce::File::isAbsolutePath(relative) ? juce::String() : relative);
                             // An IR inside the sample library travels with it: its path from the
                             // library root is tried wherever the root is found (a shared package).
@@ -11003,7 +11040,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     // hint for the load, like a tree's, tried first and searched by its
                     // tail under the sample locations when it is gone.
                 }
-        CrashHandler::note("Portable configuration saved (no MIDI, no audio devices, no machine settings): " + file.getFullPathName());
+        CrashHandler::note("Portable configuration saved (no MIDI, no audio devices, no machine settings): " + target.getFullPathName());
     }
     else
     {
@@ -11034,8 +11071,8 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     }
 
     // The file being overwritten survives as "<name>.json.bak" (one generation).
-    if (file.existsAsFile()) file.copyFileTo(file.getSiblingFile(file.getFileName() + ".bak"));
-    if (!file.replaceWithText(juce::JSON::toString(configuration, true)))
+    if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
+    if (!target.replaceWithText(juce::JSON::toString(configuration, true)))
         juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
             "Save Configuration", "The configuration file could not be written.");
     else
@@ -11045,10 +11082,10 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             // For publishing in the project's configurations folder: the .json
             // zipped (a zip is downloaded from GitHub, a .json opens as text) and
             // the README, ready but for the organ, the samples and the author.
-            const auto zip = file.getSiblingFile(file.getFileNameWithoutExtension() + ".zip");
+            const auto zip = target.getSiblingFile(target.getFileNameWithoutExtension() + ".zip");
             {
                 juce::ZipFile::Builder builder;
-                builder.addFile(file, 9, file.getFileName());
+                builder.addFile(target, 9, target.getFileName());
                 if (auto stream = std::unique_ptr<juce::FileOutputStream>(zip.createOutputStream()); stream != nullptr && stream->openedOk())
                 {
                     stream->setPosition(0);
@@ -11056,9 +11093,14 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     builder.writeToStream(*stream, nullptr);
                 }
             }
-            const auto readme = file.getSiblingFile(file.getFileNameWithoutExtension() + ".README.md");
-            readme.replaceWithText(configurationReadme(configuration, file));
+            const auto readme = target.getSiblingFile(target.getFileNameWithoutExtension() + ".README.md");
+            readme.replaceWithText(configurationReadme(configuration, target));
             CrashHandler::note("Configuration zip and README written: " + zip.getFullPathName() + ", " + readme.getFullPathName());
+            // The export leaves the open file as it is (0.8.194); the window after it
+            // opens the Publish folder and the GitHub form, like the one after a report.
+            if (std::getenv("ORGAN_SAVE_PORTABLE") == nullptr) showPublishWindow(target.getParentDirectory(), zip, readme, true);
+            else if (std::getenv("ORGAN_TEST_PUBLISH_WINDOW") != nullptr) showPublishWindow(target.getParentDirectory(), zip, readme, false);
+            return;
         }
         lastSettingsDirectory = file.getParentDirectory();
         saveLastDirectory();

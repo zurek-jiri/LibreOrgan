@@ -768,11 +768,14 @@ static const char* const kManualText_part3 =
     "polyphony* in the Configuration Editor and *Save Configuration*. Published\n"
     "configurations (see \"Organ configurations\" on the website) are saved this way.\n"
     "\n"
-    "Beside a portable configuration the program writes two more files for\n"
-    "publishing it in the project's `configurations/` folder on GitHub:\n"
-    "`<name>.zip`, the configuration zipped (a zip is downloaded from GitHub with\n"
-    "one click, a bare `.json` would open as text), and `<name>.README.md`, the\n"
-    "README in the published form - the perspectives, the folders the\n"
+    "A portable save is an export (0.8.194): it never touches the ordinary\n"
+    "configuration of your configurations folder (the one with your MIDI and\n"
+    "audio devices). It writes three files into the `Publish` subfolder of the\n"
+    "configurations folder: `<name>.portable.json`, the portable configuration\n"
+    "itself; `<name>.portable.zip`, the same zipped (a zip is downloaded from\n"
+    "GitHub with one click, a bare `.json` would open as text); and\n"
+    "`<name>.portable.README.md`, the README in the published form - the\n"
+    "perspectives, the folders the\n"
     "configuration expects and where to put the file, the routes, the RAM as\n"
     "one bullet per figure with its storage options (0.8.189): the least the\n"
     "organ takes (16-bit, 32 kHz, releases at half the rate, packed - measured\n"
@@ -788,10 +791,13 @@ static const char* const kManualText_part3 =
     "organ (instrument, builder, place), the producer of the samples, the link\n"
     "to the page where the sample folders are bought or downloaded, your name -\n"
     "and keeps the answers in the configuration; nothing in the README is\n"
-    "filled in by hand. Then send the two files: open the form\n"
-    "https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml\n"
-    "(a free GitHub account is needed), drag the zip and the README into its\n"
-    "*Files* field and submit. A robot checks them - a real organ configuration\n"
+    "filled in by hand. Then the window *Publish the configuration* appears\n"
+    "(0.8.194, like the one after a problem report): *Publish on GitHub* opens the\n"
+    "form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml\n"
+    "in your browser with the title and the organ filled in (a free GitHub\n"
+    "account is needed) and the `Publish` folder in the file manager, side by\n"
+    "side - drag the zip and the README into the form's *Files* field, tick the\n"
+    "box and submit. A robot checks them - a real organ configuration\n"
     "saved with the organ loaded, and the README written for it -, proposes them\n"
     "as a pull request and answers in the form; nothing else is needed, no\n"
     "knowledge of Git. After the merge the organ appears as a line of\n"
@@ -802,14 +808,14 @@ static const char* const kManualText_part3 =
     "configuration* takes it off the list again.\n"
     "\n"
     "Paths inside a configuration are stored relative to the common folder of the\n"
+    ;
+static const char* const kManualText_part4 =
     "sample trees where possible, so a configuration kept beside its sample folders\n"
     "travels with them (another drive letter, another computer). Trees on a\n"
     "different disk get absolute paths. A configuration whose trees are not on\n"
     "this computer loads all the same, with the trees that are here: every\n"
     "division that uses a missing tree shows an orange notice under its header,\n"
     "\"Sample folder not found\", with the folder's name (the full paths are in its\n"
-    ;
-static const char* const kManualText_part4 =
     "tooltip). Click it: a menu offers *Replace \"...\" with a folder on this\n"
     "computer...* for every missing tree - choose the folder where that tree is\n"
     "now, whatever its name, and the stops come alive at once, their rows keep\n"
@@ -1004,14 +1010,14 @@ static const char* const kManualText_part4 =
     "tree that lies inside another loaded tree (the whole library and one of its\n"
     "sub-folders both loaded) is the same folders twice: the inner tree is\n"
     "dropped from the pool, its stops point into the outer tree, and a message\n"
+    ;
+static const char* const kManualText_part5 =
     "after the load names it (0.8.143) - load a tree once, whole or in parts,\n"
     "never both. A stop\n"
     "whose samples the program holds already (a reload of the same organ: the\n"
     "new load adopts them, nothing is decoded) is loaded whatever the memory\n"
     "says. The loading dialog has a *Cancel* button (0.8.139): the loading stops\n"
     "at the next stop, the instrument is built from what was loaded, the rest is\n"
-    ;
-static const char* const kManualText_part5 =
     "named like after a memory stop and stays in the pool. A stop left out of\n"
     "the load keeps its row in the Stop List and is offered in the pool of its\n"
     "division (\"Add stop\" on the grid, 0.8.142): taking it reloads the division\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "  default; saved with the configuration.\n"
     "- **Perspectives** - the microphone perspectives this stop has, each with its\n"
     "  own on/off tick box (their volumes are the routes' volumes in the Divisions\n"
+    ;
+static const char* const kManualText_part6 =
     "  dialog).\n"
     "- **Stop volume** (-24 to +12 dB, default 0) - the level of the whole stop.\n"
     "- **Velocity layers** - a tick box per layer and one for the plain files; see\n"
     "  \"Velocity layers\" below.\n"
     "- **Attack Gain** (-6 to +6 dB) - the start of every note is raised or\n"
     "  lowered by this much: more chiff, or a softer speaking, without touching the\n"
-    ;
-static const char* const kManualText_part6 =
     "  held tone.\n"
     "- **Attack Time** (0-500 ms, default 150) - how long the attack gain acts at\n"
     "  the start of the note: it holds for the first half of this time and fades\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "  transmission is also listed as a grey row of the division it plays in,\n"
     "  movable like a stop.\n"
     "- **Add stop...** adds, per division, an empty stop folder or one of the\n"
+    ;
+static const char* const kManualText_part7 =
     "  ready-made stops of the loaded trees that no division uses yet (added\n"
     "  whole, with the folders of every perspective; a stop whose folders are in\n"
     "  the table already is not offered). The x at a row's start\n"
     "  removes the stop (its folders become free). **Remove empty stops** removes\n"
     "  every row without folders that has no children.\n"
     "- **Aliases from folders** gives every stop without an alias the bare name\n"
-    ;
-static const char* const kManualText_part7 =
     "  of its sample folder: no parent folders (\"TA - fletna\" becomes \"Fletna\",\n"
     "  shown as \"Fletna 8'\"), no perspective prefix, a capital first letter, a\n"
     "  footage at the end of the folder name with its foot mark; a stop without a\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "headphones on the on-board sound chip. Which drivers there are and how to\n"
     "set them up differs by operating system: see \"Audio on Windows\", \"Audio on\n"
     "Linux\" and \"Audio on macOS\" below. Two things hold everywhere:\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "**The buffer size decides more than anything else.** Every block of audio has\n"
     "exactly its buffer's duration to be rendered: at 64 samples (1.3 ms at\n"
     "48 kHz) the sound breaks at a few hundred voices, however the routes and\n"
     "IRs are set; at 512 samples (10.7 ms, unnoticeable on an organ) the same\n"
     "computer renders tens of thousands. 512 is the default for a device opened\n"
-    ;
-static const char* const kManualText_part8 =
     "for the first time (ASIO keeps its control panel's size, JACK the server's\n"
     "shared clock), and the value to measure the polyphony with. A measurement\n"
     "that finds a buffer below 256 samples on any route says so first and asks\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "\n"
     "A menu entry with the icon, so that the program starts from the\n"
     "application menu like any other: *Install menu entry and icon* in the\n"
+    ;
+static const char* const kManualText_part9 =
     "Configuration Editor (see chapter 1).\n"
     "\n"
     "### Audio on macOS\n"
     "\n"
     "To be continued. macOS has one driver, CoreAudio, and joins several cards\n"
     "into an aggregate device itself (*Audio MIDI Setup* in the Utilities\n"
-    ;
-static const char* const kManualText_part9 =
     "folder); OrganSampler lists the CoreAudio devices and should play through\n"
     "them like through Windows Audio. The project has no Mac to test this on;\n"
     "reports are welcome. Two builds: `OrganSampler-macos.zip` for Apple silicon\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "- **The target temperament** is the temperament the organ *plays* in. A\n"
     "  **single click** on a temperament selects it (or *Target temperament* in\n"
     "  the Configuration Editor). Every pipe is then retuned by the difference\n"
+    ;
+static const char* const kManualText_part10 =
     "  between the target and the base: the recorded pitches are taken out and\n"
     "  the chosen ones put in. Choosing the recorded temperament itself as the\n"
     "  target plays the samples exactly as recorded. Every temperament can be\n"
     "  switched from a MIDI control (right-click it).\n"
     "\n"
     "**a1 = 440 Hz** (the button in the dialog) retunes every pipe from its recorded\n"
-    ;
-static const char* const kManualText_part10 =
     "pitch to a1 = 440 Hz. Its purpose is to bring the samples of different organs\n"
     "onto one pitch: organs are recorded at different temperatures and different\n"
     "diapasons (a1 = 435, 440, 442, 465 Hz ...), and an organ built from the stops\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "**The three buttons** (Configuration Editor, under the cache switch):\n"
     "\n"
     "- The row *Filled pipes cache: <size> in <folder>* shows how much the cache\n"
+    ;
+static const char* const kManualText_part11 =
     "  holds and where. Its button **Empty the cache** deletes every file. Use it\n"
     "  to get the disk space back, or after replacing the samples wholesale; the\n"
     "  copies are built again (and cached again) the next time they are needed.\n"
     "  Nothing else is lost.\n"
     "- *Filled pipes cache: files of stops not loaded now* - **Remove them**\n"
     "  deletes only the files of ranks that are not loaded at the moment: the\n"
-    ;
-static const char* const kManualText_part11 =
     "  stops of other configurations, of folders you have unloaded or deleted.\n"
     "  The files of the loaded organ stay, so its next load is still fast. This is\n"
     "  the button for routine housekeeping.\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "\n"
     "*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1\n"
     "kHz are converted once while loading with a high-quality filter, so every set\n"
+    ;
+static const char* const kManualText_part12 =
     "plays exactly like a 48 kHz one and a 96 kHz set needs half the RAM it would\n"
     "otherwise; loading takes longer. *36 kHz* and *32 kHz* (0.8.143) store every\n"
     "file at that rate: what lies above 17 or 15 kHz goes - organ pipes carry next\n"
     "to nothing there - and the RAM drops by a quarter or a third; the kernel\n"
     "interpolates from the coarser grid at the same cost, so more stops fit and\n"
     "the polyphony stays. *Keep each file's own rate* loads faster and plays by\n"
-    ;
-static const char* const kManualText_part12 =
     "interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits\n"
     "whatever it holds; only the coarser grid saves. Takes effect at the next load.\n"
     "\n"
@@ -2620,14 +2626,14 @@ static const char* const kManualText_part12 =
     "     cheap to try and the measurement tells. A buffer below 256 samples\n"
     "     gets a recommendation to try 256 or 512, nothing more.\n"
     "   On Linux the report names the CPU governor (\"performance\" keeps the\n"
+    ;
+static const char* const kManualText_part13 =
     "   clock up), on Windows the power plan; when the CPU clocks cannot be read\n"
     "   it says so. During the run the progress text shows the CPU of the render\n"
     "   cores and the lane utilisation every second. The measurement is also\n"
     "   started from the audio tab of a division's Settings (*Measure polyphony*,\n"
     "   beside *Reopen device*).\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "Then save the configuration: the value belongs to this organ. Measure again\n"
     "after changing the audio routes, the IRs, the buffer size or the samples.\n"
     "The run takes one to two minutes; *Cancel* restores everything.\n"
@@ -2822,14 +2828,14 @@ static const char* const kManualText_part13 =
     "Pitch shift method only. How long a filled pipe's release (the room decay) is,\n"
     "as a share of its source's duration (25 to 200 %, default 100). Resampling\n"
     "alone would make a release shifted two octaves down four times as long and one\n"
+    ;
+static const char* const kManualText_part14 =
     "shifted two octaves up a quarter, but the room does not grow or shrink with the\n"
     "pipe, so the decay is laid out again to this length in both directions (100 % =\n"
     "exactly the source's duration). Longer than 100 % gives a bigger room to the\n"
     "extension than to the stop; shorter dries it. Changing it rebuilds the release\n"
     "copies.\n"
     "\n"
-    ;
-static const char* const kManualText_part14 =
     "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch only. How far the attack (everything before the\n"
@@ -3024,14 +3030,14 @@ static const char* const kManualText_part14 =
     "Shows or hides the Stop-Merging button (see \"Stop-Merging\"). Hidden by\n"
     "default.\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "### Top bar: Load Voicing\n"
     "\n"
     "Shows or hides the Load Voicing button (the voicing from a file). Hidden by\n"
     "default.\n"
     "\n"
     "### Top bar: Save Voicing\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "Shows or hides the Save Voicing button. Hidden by default.\n"
     "\n"
@@ -3226,14 +3232,14 @@ static const char* const kManualText_part15 =
     "### Perspective output channels\n"
     "\n"
     "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
+    ;
+static const char* const kManualText_part16 =
     "channels of that perspective's own device.\n"
     "\n"
     "### Perspective volume\n"
     "\n"
     "The level of one perspective of this division (-31 to +6 dB, default 0); -31\n"
     "dB switches the perspective off completely and saves its voices.\n"
-    ;
-static const char* const kManualText_part16 =
     "\n"
     "### Perspective channel separation\n"
     "\n"
