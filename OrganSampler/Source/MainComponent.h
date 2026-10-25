@@ -1106,7 +1106,10 @@ private:
     // packing and the rate on loading, shown with the file's own values (else
     // this computer's last choice) - the user confirms or changes them, they go
     // into the configuration and are saved with it. Cancel abandons the load.
-    void askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed);
+    // 'file' (0.8.191): the configuration's own file - lying outside the configurations
+    // folder, the box offers to copy it there (the var gets "copyIntoConfigurationsFolder").
+    void askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file = {});
+    void adoptCopyInConfigurationsFolder(const juce::File& original);   // the copy becomes the open file; the original stays
     void chooseConfigurationToLoad();
     // portable: for another computer - no MIDI, no audio devices or channels,
     // no machine settings, no unused trees (see the manual, "Portable

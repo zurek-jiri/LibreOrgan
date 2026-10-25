@@ -3689,6 +3689,7 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
             if (!file.existsAsFile()) return;
             auto& config = safeThis->manualConfigs[(size_t)manualIndex].perspectiveAudio[key];
             config.reverbIrPath = file.getFullPathName();
+            safeThis->noteSampleLocation(file.getParentDirectory().getParentDirectory());   // 0.8.191: the IR collection's folder - the IR is found by its tail there
             safeThis->applyPerspectiveReverb(manualIndex, perspective);
             safeThis->propagateEffectsIfLinked(manualIndex, perspective);
             const auto info = safeThis->engine.getPerspectiveReverbInfo(manualIndex, perspective);
@@ -6486,7 +6487,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 else
                 {
                     text = "IR: " + irFile.getFileNameWithoutExtension();
-                    if (info.error.isNotEmpty()) text << "  (error)";
+                    if (!irFile.existsAsFile()) text << "  (FILE NOT FOUND - choose it)";   // 0.8.191: visible, not only in the log
+                    else if (info.error.isNotEmpty()) text << "  (error)";
                     else if (info.channels <= 0) text << "  (loading)";
                     else if (info.sharedWith.isNotEmpty()) text << "  (shared)";
                     const juce::String kind = info.channels >= 4 ? "true stereo (4 channels: LL LR RL RR)"
@@ -10312,8 +10314,43 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     juce::Component::SafePointer<MainComponent> safeThis(this);
     askLoadOptions(configuration, file.getFileNameWithoutExtension(), [safeThis, file](juce::var chosen)
     {
-        if (safeThis != nullptr) safeThis->resolveAndApplyPortableConfiguration(chosen, file);
-    });
+        if (safeThis == nullptr) return;
+        // The box's choice for a file outside the configurations folder (0.8.191): the
+        // paths are resolved against the original, then the copy becomes the open file.
+        bool copy = false;
+        if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("copyIntoConfigurationsFolder"))
+        {
+            copy = (bool)r->getProperty("copyIntoConfigurationsFolder");
+            r->removeProperty("copyIntoConfigurationsFolder");
+        }
+        safeThis->resolveAndApplyPortableConfiguration(chosen, file);
+        if (copy) safeThis->adoptCopyInConfigurationsFolder(file);
+    }, file);
+}
+
+void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original)
+{
+    // A configuration loaded from elsewhere (Downloads, beside the samples, inside
+    // an archive) copied into the configurations folder as it was, never
+    // overwriting a file there; the copy is the open file from now on (the next
+    // Save writes it), the original stays where it was.
+    auto target = configurationsDirectory().getChildFile(original.getFileName());
+    if (target == original) return;
+    if (target.existsAsFile()) target = target.getNonexistentSibling();
+    bool written = false;
+    if (original.existsAsFile()) written = original.copyFileTo(target);
+    else if (auto in = SampleFiles::openInput(original)) written = target.replaceWithText(in->readEntireStreamAsString());   // a json inside an archive
+    if (!written)
+    {
+        CrashHandler::note("Configuration NOT copied into the configurations folder: " + target.getFullPathName());
+        return;
+    }
+    currentConfigurationFile = target;
+    setCurrentConfigurationName(target.getFileNameWithoutExtension());
+    lastSettingsDirectory = target.getParentDirectory();
+    saveLastDirectory();
+    saveSettings();
+    CrashHandler::note("Configuration copied into the configurations folder: " + target.getFullPathName() + " (from " + original.getFullPathName() + ")");
 }
 
 void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>& archivesChosen, bool merge)
@@ -10457,7 +10494,7 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
 }
 
-void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed)
+void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file)
 {
     // The three choices that decide how the samples are held: from the file
     // when it carries them (saved there by the program), else this computer's
@@ -10470,8 +10507,11 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     const bool packed = root->hasProperty("compressSamples") ? (bool)root->getProperty("compressSamples") : compressSamples;
     const bool resample = root->hasProperty("resampleOnLoad") ? (bool)root->getProperty("resampleOnLoad") : resampleOnLoad;
     const double rate = root->hasProperty("storageSampleRate") ? (double)root->getProperty("storageSampleRate") : storageSampleRate;
+    // A file outside the configurations folder (0.8.191): copied there by default.
+    const bool offerCopy = file != juce::File() && file.getParentDirectory() != configurationsDirectory();
     if (std::getenv("ORGAN_LOAD_CONFIGURATION") != nullptr || std::getenv("ORGAN_MERGE_ON_START") != nullptr)
     {
+        if (offerCopy && std::getenv("ORGAN_TEST_COPY_INTO_CONFIGURATIONS") != nullptr) root->setProperty("copyIntoConfigurationsFolder", true);   // the test's "yes"
         proceed(configuration);
         return;
     }
@@ -10489,17 +10529,26 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     window->addComboBox("rate", { "Resample everything to 48 kHz  [default]", "Resample everything to 36 kHz (content up to 17 kHz; a quarter less RAM)",
         "Resample everything to 32 kHz (content up to 15 kHz; a third less RAM)", "Keep each file's own rate (faster loading, played by interpolation)" }, "Sample rate on loading");
     window->getComboBoxComponent("rate")->setSelectedItemIndex(!resample ? 3 : rate < 34000.0 ? 2 : rate < 42000.0 ? 1 : 0, juce::dontSendNotification);
+    if (offerCopy)
+    {
+        window->addComboBox("copy", { "Copy it into the configurations folder (" + configurationsDirectory().getFullPathName() + ")  [default]",
+            "Load it where it is (" + file.getParentDirectory().getFullPathName() + ")" }, "This file");
+        window->getComboBoxComponent("copy")->setSelectedItemIndex(0, juce::dontSendNotification);
+    }
     window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::Component::SafePointer<juce::AlertWindow> box(window);
-    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed](int result) mutable
+    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, offerCopy](int result) mutable
     {
         if (safeThis == nullptr || box == nullptr) return;
         if (result != 1) { CrashHandler::note("Load Configuration \"" + what + "\": cancelled at the sample storage choices"); return; }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
+        if (offerCopy)
+            if (auto* r = configuration.getDynamicObject())
+                r->setProperty("copyIntoConfigurationsFolder", box->getComboBoxComponent("copy")->getSelectedItemIndex() == 0);
         auto& o = *safeThis;
         o.sampleStorageFloat = storage == 0;
         o.releaseHalfRate = storage == 2;
@@ -10884,12 +10933,9 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 if (auto* item = itemVar.getDynamicObject())
                 {
                     if (item->getProperty("folderRelativePath").toString().isNotEmpty()) item->setProperty("folderPath", "");
-                    if (auto* routes = item->getProperty("perspectiveAudio").getArray())
-                        for (auto& routeVar : *routes)
-                            if (auto* routeObject = routeVar.getDynamicObject())
-                                if (routeObject->getProperty("reverbIrLibraryRelative").toString().isNotEmpty()
-                                    || routeObject->getProperty("reverbIrRelative").toString().isNotEmpty())
-                                    routeObject->removeProperty("reverbIr");
+                    // The IR's absolute path stays beside the relative ones (0.8.191): a
+                    // hint for the load, like a tree's, tried first and searched by its
+                    // tail under the sample locations when it is gone.
                 }
         CrashHandler::note("Portable configuration saved (no MIDI, no audio devices, no machine settings): " + file.getFullPathName());
     }
@@ -10917,12 +10963,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 if (auto* item = itemVar.getDynamicObject())
                 {
                     if (item->getProperty("folderRelativePath").toString().isNotEmpty()) item->setProperty("folderPath", "");
-                    if (auto* routes = item->getProperty("perspectiveAudio").getArray())
-                        for (auto& routeVar : *routes)
-                            if (auto* routeObject = routeVar.getDynamicObject())
-                                if (routeObject->getProperty("reverbIrLibraryRelative").toString().isNotEmpty()
-                                    || routeObject->getProperty("reverbIrRelative").toString().isNotEmpty())
-                                    routeObject->removeProperty("reverbIr");
+                    // The IR's absolute path stays (0.8.191), see above.
                 }
     }
 
@@ -12046,6 +12087,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
             {
                 const auto absolute = item->getProperty("folderPath").toString();
                 const auto relative = item->getProperty("folderRelativePath").toString();
+                juce::File resolvedRoot;   // the library root as found through the division's tree (0.8.191: the IRs inside it are looked for there)
                 if (relative.isNotEmpty())
                 {
                     const auto candidates = portableFolderCandidates(configuration, configurationFile, libraryRoot, relative, absolute);
@@ -12062,7 +12104,10 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                         for (int n = parts.size(); n > 0 && rootFound != juce::File(); --n) rootFound = rootFound.getParentDirectory();
                         const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
                         if (rootFound != juce::File())
+                        {
+                            resolvedRoot = rootFound;
                             noteSampleLocation(rootName.isNotEmpty() && rootFound.getFileName().equalsIgnoreCase(rootName) ? rootFound.getParentDirectory() : rootFound);
+                        }
                     }
                     // Not here: the path where the configuration expects it (beside the
                     // file), so the division's tree list names it and the notice can say so.
@@ -12099,28 +12144,59 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                     item->setProperty("extraFolderPaths", resolved);
                 }
                 // Impulse responses: the path relative to the configuration file wins
-                // when it exists, otherwise the absolute path the file still carries.
+                // when it exists, then the library root (the one just found through the
+                // tree, the one pointed to, the ones beside the file), the absolute path
+                // the file carries, then every sample location (0.8.191, like the trees:
+                // the root by its name, the IR's path, the tail of its absolute path).
                 if (auto* routes = item->getProperty("perspectiveAudio").getArray())
                     for (auto& routeVar : *routes)
                         if (auto* routeObject = routeVar.getDynamicObject())
                         {
                             const auto irRelative = slashes(routeObject->getProperty("reverbIrRelative").toString());
                             const auto irLibraryRelative = slashes(routeObject->getProperty("reverbIrLibraryRelative").toString());
+                            const auto irAbsolute = routeObject->getProperty("reverbIr").toString();
                             const auto configDir = configurationFile.getParentDirectory();
                             juce::Array<juce::File> candidates;
                             if (irRelative.isNotEmpty()) candidates.add(configDir.getChildFile(irRelative));
+                            const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
                             if (irLibraryRelative.isNotEmpty())
                             {
                                 // Where the library root may be, as for the folder trees.
-                                const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
                                 const auto rootRelative = slashes(configuration.getProperty("sampleLibraryRootRelative", "").toString());
+                                if (resolvedRoot != juce::File()) candidates.add(resolvedRoot.getChildFile(irLibraryRelative));
                                 if (libraryRoot != juce::File()) candidates.add(libraryRoot.getChildFile(irLibraryRelative));
                                 if (rootRelative.isNotEmpty()) candidates.add(configDir.getChildFile(rootRelative).getChildFile(irLibraryRelative));
                                 if (rootName.isNotEmpty()) candidates.add(configDir.getChildFile(rootName).getChildFile(irLibraryRelative));
                                 candidates.add(configDir.getChildFile(irLibraryRelative));
                             }
+                            if (irAbsolute.isNotEmpty()) candidates.add(juce::File(irAbsolute));
+                            for (const auto& location : sampleLocations)
+                            {
+                                const juce::File folder(location);
+                                if (irLibraryRelative.isNotEmpty())
+                                {
+                                    if (rootName.isNotEmpty()) candidates.add(folder.getChildFile(rootName).getChildFile(irLibraryRelative));
+                                    candidates.add(folder.getChildFile(irLibraryRelative));
+                                }
+                                if (irAbsolute.isNotEmpty())
+                                {
+                                    juce::StringArray parts;
+                                    parts.addTokens(irAbsolute.replaceCharacter('/', '\\'), "\\", "");
+                                    parts.removeEmptyStrings();
+                                    for (int keep = 1; keep <= 3 && keep <= parts.size(); ++keep)
+                                    {
+                                        juce::File candidate = folder;
+                                        for (int i = parts.size() - keep; i < parts.size(); ++i) candidate = candidate.getChildFile(parts[i]);
+                                        candidates.add(candidate);
+                                    }
+                                }
+                            }
+                            bool found = false;
                             for (const auto& candidate : candidates)
-                                if (candidate.existsAsFile()) { routeObject->setProperty("reverbIr", candidate.getFullPathName()); break; }
+                                if (candidate.existsAsFile()) { routeObject->setProperty("reverbIr", candidate.getFullPathName()); found = true; break; }
+                            if (!found && (irAbsolute.isNotEmpty() || irRelative.isNotEmpty() || irLibraryRelative.isNotEmpty()))
+                                CrashHandler::note("Impulse response not found for division " + juce::String(manual) + " route " + routeObject->getProperty("name").toString()
+                                    + ": " + (irAbsolute.isNotEmpty() ? irAbsolute : irLibraryRelative.isNotEmpty() ? irLibraryRelative : irRelative) + " (the route shows it; choose the file there)");
                         }
             }
 
@@ -23124,7 +23200,7 @@ void MainComponent::showConfigurationEditor()
                    "there, Save Configuration and Load Configuration start there. Documents/OrganSampler/Configurations by default. "
                    "The folder can be moved or chosen anew at any time - the sample folders are found through the sample locations below.",
                 "Where configurations and samples live");
-            addButton("Sample locations: " + (o.sampleLocations.isEmpty() ? juce::String("none yet") : juce::String(o.sampleLocations.size()) + " folder(s)"), "Add folder...", [&o]
+            addButton("Sample and IR locations: " + (o.sampleLocations.isEmpty() ? juce::String("none yet") : juce::String(o.sampleLocations.size()) + " folder(s)"), "Add folder...", [&o]
                 {
                     o.sampleLocationChooser = std::make_unique<juce::FileChooser>("A folder under which sample folders or archives lie", juce::File());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -23138,12 +23214,13 @@ void MainComponent::showConfigurationEditor()
                             safeThis->saveSettings();
                             safeThis->refreshConfigurationEditor();
                         });
-                }, "Folders under which your sample folders and archives lie" + (o.sampleLocations.isEmpty() ? juce::String() : ": " + o.sampleLocations.joinIntoString("; "))
-                   + ". A sample folder tree a configuration names is looked for under each of them - by the name of the library root and by "
-                   "the tree's own path - before you are asked for it. The program adds them by itself: the folder above the library root "
-                   "at a portable save, the root found at a load, the folder of every archive you choose; add one by hand when samples live elsewhere.",
+                }, "Folders under which your sample folders, archives and impulse responses lie" + (o.sampleLocations.isEmpty() ? juce::String() : ": " + o.sampleLocations.joinIntoString("; "))
+                   + ". A sample folder tree or an IR a configuration names is looked for under each of them - by the name of the library root, "
+                   "by its own path, by the tail of its old path - before you are asked for it. The program adds them by itself: the folder above "
+                   "the library root at a portable save, the root found at a load, the folder of every archive you choose, the collection of every "
+                   "IR you choose; add one by hand when samples or IRs live elsewhere.",
                 "Where configurations and samples live");
-            addButton("Sample locations: forget them all", "Forget", [&o]
+            addButton("Sample and IR locations: forget them all", "Forget", [&o]
                 {
                     o.sampleLocations.clear();
                     gSampleLocations.clear();

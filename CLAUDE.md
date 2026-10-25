@@ -1232,7 +1232,21 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   last configuration at startup", help section "Where configurations and samples live" (manual chapter of that name,
   with the user's "nightmare" paragraph). README "Where to put the file" = the configurations folder + the trees
   expected under a sample location (no json line in the diagram). Test: %TEMP%\test_locations190.ps1 (Rural saved
-  portable into %TEMP%\cfgtest, then loaded from there: found through the location). (d) The copy build's parallelFor takes physical
+  portable into %TEMP%\cfgtest, then loaded from there: found through the location). LESSON: a location noted inside
+  applyPortableConfiguration must ALSO go into the configuration var ("sampleLocations") - its machine keys were
+  copied from the settings read at the top and the parse after put the old list back (found by the test).
+  0.8.191: `askLoadOptions(..., file)` adds the combo "This file" (copy into the configurations folder [default] /
+  load it where it is) for a file outside the folder; the choice travels as the transient var property
+  "copyIntoConfigurationsFolder", read and removed in loadConfigurationFile's lambda; the paths are resolved against
+  the ORIGINAL, then `adoptCopyInConfigurationsFolder` copies the original bytes (or the archive's text) to a
+  non-existent sibling in the folder and makes the copy the open file (currentConfigurationFile, name, lastDir,
+  saveSettings). Hook ORGAN_TEST_COPY_INTO_CONFIGURATIONS=1 says yes on the hook path (the box is skipped there).
+  IRs: `reverbIr` (absolute) is NO LONGER removed at a portable save; the load tries configDir/reverbIrRelative,
+  `resolvedRoot` (the library root found through the division's tree)/reverbIrLibraryRelative, the pointed-to root,
+  the config-dir forms, the absolute path, then every sample location (root by name, the IR path, tails of the
+  absolute path) - "Impulse response not found ..." in the log and "IR: name (FILE NOT FOUND - choose it)" on the
+  route caption; `chooseReverbIr` notes the IR's grandparent folder (the collection). The Editor row reads "Sample
+  and IR locations". (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

@@ -828,26 +828,35 @@ static const char* const kManualText_part4 =
     "default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),\n"
     "chosen anew in the Configuration Editor (*Configurations folder* > Choose).\n"
     "The Hauptwerk and RAR imports write there, *Save Configuration* and *Load\n"
-    "Configuration* start there, a downloaded configuration goes there. The\n"
-    "folder can be moved: nothing in it points at its own place. (Up to 0.8.189\n"
-    "the imports made an `OrganConfigurations` folder beside every sample set,\n"
-    "which nobody found again.) The setting belongs to the computer, never to a\n"
-    "configuration file.\n"
+    "Configuration* start there. A configuration loaded from anywhere else\n"
+    "(Downloads, beside the samples, inside an archive) is offered a copy into\n"
+    "the folder in the load box (0.8.191, *This file*: copy it, or load it where\n"
+    "it is); the copy becomes the open file, the original stays. The folder can\n"
+    "be moved: nothing in it points at its own place. (Up to 0.8.189 the imports\n"
+    "made an `OrganConfigurations` folder beside every sample set, which nobody\n"
+    "found again.) The setting belongs to the computer, never to a configuration\n"
+    "file.\n"
     "\n"
-    "The samples are found through the **sample locations**: the folders under\n"
-    "which your sample libraries and archives lie (`D:\\Hauptwerk\\HauptwerkSampleSetsAndComponents`,\n"
-    "`E:\\sonus`, a USB disk). A configuration names its trees relative to its\n"
-    "library root (`OrganInstallationPackages/003135/pipe/HW`) with the root's\n"
-    "name; at a load each tree is looked for at the path it had, then under every\n"
-    "sample location - `<location>/<root name>/<tree>` and `<location>/<tree>` -\n"
-    "and taken silently when found, so a sample set moved within a known location\n"
-    "is found by its name. The program fills the list by itself: the folder above\n"
+    "The samples and the impulse responses are found through the **sample and\n"
+    "IR locations**: the folders under which your sample libraries, archives and\n"
+    "IR collections lie (`D:\\Hauptwerk\\HauptwerkSampleSetsAndComponents`,\n"
+    "`E:\\sonus`, `D:\\IR`, a USB disk). A configuration names its trees relative\n"
+    "to its library root (`OrganInstallationPackages/003135/pipe/HW`) with the\n"
+    "root's name, and an IR by its path inside the library (an IR packed with\n"
+    "the organ, as in the Rural Organ) or by its full path (an IR of a\n"
+    "collection elsewhere); at a load each is looked for at the path it had, then\n"
+    "under every location - `<location>/<root name>/<path>`, `<location>/<path>`\n"
+    "and the last one to three parts of the old path - and taken silently when\n"
+    "found, so a sample set or a collection moved within a known location is\n"
+    "found by its name. The program fills the list by itself: the folder above\n"
     "the library root at every portable save, the root where it was found at a\n"
-    "load, the folder of every archive you choose, the folder you point to when a\n"
-    "tree is asked for. The Configuration Editor shows the list (*Sample\n"
-    "locations*), adds a folder by hand and forgets them all. A tree found\n"
-    "nowhere is asked for once, with the \"Sample folder not found\" notice under\n"
-    "the division; the answer joins the locations.\n"
+    "load, the folder of every archive you choose, the collection of every IR you\n"
+    "choose, the folder you point to when a tree is asked for. The Configuration\n"
+    "Editor shows the list (*Sample and IR locations*), adds a folder by hand and\n"
+    "forgets them all. A tree found nowhere is asked for once, with the \"Sample\n"
+    "folder not found\" notice under the division; an IR found nowhere shows\n"
+    "\"FILE NOT FOUND - choose it\" on its route in the Divisions dialog; the\n"
+    "answer joins the locations.\n"
     "\n"
     "A word to the user: keeping track of where the sample folders and archives\n"
     "are is a nightmare for the programmer, and every move of a sample set is a\n"
@@ -1001,6 +1010,8 @@ static const char* const kManualText_part4 =
     "\n"
     "The report also profiles the device thread (0.8.137): per route callback,\n"
     "in microseconds, how much went into this thread's own rendering of voices,\n"
+    ;
+static const char* const kManualText_part5 =
     "into waiting for the other lanes and merging their output, into the mixing\n"
     "(block context, harmonic shelf, channel separation, safety clip), into the\n"
     "IR hand-over (and of it, waiting for the convolution task) and into the\n"
@@ -1010,8 +1021,6 @@ static const char* const kManualText_part4 =
     "sound breaks on such a peak, never on the average, and how late a lane\n"
     "joined a job after it opened. It is what tells, on a\n"
     "computer whose render cores are not full when the sound breaks, where the\n"
-    ;
-static const char* const kManualText_part5 =
     "time goes. Since 0.8.143 the render workers wake ahead of every period\n"
     "(the cadence is known) instead of being woken by the job, and the device\n"
     "thread takes no more voices at the tail of a job when the lanes still at\n"
@@ -1203,6 +1212,8 @@ static const char* const kManualText_part5 =
     "- **Random pitch error** (0-40 cents, default 4) - every pipe gets its own\n"
     "  small random detune at every note, as real pipes never speak twice alike.\n"
     "  The division's *Random tuning error of pipes* switch must be on.\n"
+    ;
+static const char* const kManualText_part6 =
     "- **Undulation (beats/s at a1)** - for celestes: the stop beats this many\n"
     "  times per second against an in-tune rank at a1 (negative = flat). A rank\n"
     "  recorded sharp or flat throughout is recognised as a celeste and starts with\n"
@@ -1212,8 +1223,6 @@ static const char* const kManualText_part5 =
     "  has not been retuned to a1 = 440 Hz yet (Temperaments dialog).\n"
     "- **Formants (filled pipes)** (0-100 %, default 30) - the timbre of the pipes\n"
     "  this stop lacks and borrows from neighbours with a pitch shift: see \"The\n"
-    ;
-static const char* const kManualText_part6 =
     "  settings that go with the methods\".\n"
     "- **Orig. Pitch / temperament** - a line of information: the recorded pitch\n"
     "  (a1 = ... Hz), the footage read from the samples (with the sounding footage\n"
@@ -1405,6 +1414,8 @@ static const char* const kManualText_part6 =
     "  one); the x right after the perspective's name in the column header\n"
     "  removes it. \"default\" is the route of folders without a perspective prefix.\n"
     "- **Swap divisions...** exchanges the whole stop lists of two divisions, as if\n"
+    ;
+static const char* const kManualText_part7 =
     "  their folders had been swapped (combinations and MIDI bindings follow).\n"
     "  **Reset division...** forgets one division's table.\n"
     "- **Name:** derived from the folders; a typed name is kept until the field is\n"
@@ -1414,8 +1425,6 @@ static const char* const kManualText_part6 =
     "  their own numbers; a pure interval: -12 puts the file 024 on key 36 (an\n"
     "  octave down: Doesburg's stops, a 16' made of files that sound 8'), +12 an\n"
     "  octave up, +7 a fifth. Empty (\"auto\"): found by the program from the\n"
-    ;
-static const char* const kManualText_part7 =
     "  samples' pitch and the footage in the folder's name, or from a Hauptwerk\n"
     "  definition, and written here once found. The voicing of every stop offers\n"
     "  the same setting (with the footage each step gives) and applies it at once;\n"
@@ -1607,6 +1616,8 @@ static const char* const kManualText_part7 =
     "device, and the devices of one organ may run at different rates and buffer\n"
     "sizes - the program does not stop you. The samples are loaded at 48 kHz (see\n"
     "\"Sample rate on loading\"): a device at 44.1 or 96 kHz gets its route's pipes\n"
+    ;
+static const char* const kManualText_part8 =
     "read at the matching speed, through the same interpolation as a transposed\n"
     "pipe, which costs a little more per voice and is a step below the quality of\n"
     "the resampling on load. So give every device 48 kHz and the same buffer size.\n"
@@ -1616,8 +1627,6 @@ static const char* const kManualText_part7 =
     "route keeps the rate the route ran at when it offers it; a portable\n"
     "configuration carries the rate and buffer of every route with it. *Set for\n"
     "all* copies the rate the device of that tab really runs at - look at the\n"
-    ;
-static const char* const kManualText_part8 =
     "rate box before you copy it.\n"
     "\n"
     "### Audio on Windows: many sound cards at once\n"
@@ -1809,6 +1818,8 @@ static const char* const kManualText_part8 =
     "newest system Apple offers for it, 10.13 High Sierra for the 2010 models).\n"
     "\n"
     "## 5.7 Audio devices not ready when OrganSampler starts\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "Devices that cannot be opened at start-up (unplugged, driver missing, or merely\n"
     "late - an RME interface registers a few seconds after it switches its sample\n"
@@ -1818,8 +1829,6 @@ static const char* const kManualText_part8 =
     "reopen by themselves. A device you choose yourself is never swapped back.\n"
     "\n"
     "## 5.8 Getting the most polyphony\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "Every sounding pipe is one **voice** per audio route of its division. A\n"
     "division with three perspectives (Direct, Diffuse, Rear) renders every pipe\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "*Undulation* line reads \"needs 440 Hz\" until this is done. A large retune\n"
     "(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -\n"
     "or a big global Pitch) is not played by speeding every pipe up: the common\n"
+    ;
+static const char* const kManualText_part10 =
     "part of it is applied once to the mixed output of every route with a proper\n"
     "resampler (0.8.163), so the pipes keep their recorded speed; only the\n"
     "cents of temperament and detune stay in the pipes themselves, and the high\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "## 6.4 MIDI learn\n"
     "\n"
     "Everything that can be played from a console can be learned: stops,\n"
-    ;
-static const char* const kManualText_part10 =
     "transmissions, couplers, tremulants, pistons and the stepping buttons, the\n"
     "crescendo (a continuous controller), the swell of every division (the swell\n"
     "bar in the header), every global slider, every top-bar button, the keyboards\n"
@@ -2213,6 +2222,8 @@ static const char* const kManualText_part10 =
     "  samples; the files built so far are moved there, so nothing has to be\n"
     "  rebuilt.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "The cache is a convenience, not a necessity: with it off everything works the\n"
     "same, only the build after each load takes its full time.\n"
     "\n"
@@ -2222,8 +2233,6 @@ static const char* const kManualText_part10 =
     "\n"
     "*Configuration Editor* (top bar) holds every setting of the program in one\n"
     "scrolling dialog, in sections: Engine, Global sound, Advanced global audio\n"
-    ;
-static const char* const kManualText_part11 =
     "(collapsed by default: click its title), Console, Folder name patterns, and\n"
     "one section per division (collapsed by default). The folding is remembered.\n"
     "The \"?\" beside every option opens this manual at the option's chapter below.\n"
@@ -2415,6 +2424,8 @@ static const char* const kManualText_part11 =
     "nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser\n"
     "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "### IR processing\n"
     "\n"
     "How the IR reverbs of the routes are convolved. *Full* convolves every route\n"
@@ -2424,8 +2435,6 @@ static const char* const kManualText_part11 =
     "more than 3 GB/s through the partitioned convolutions, and a weak computer -\n"
     "an old laptop, a Core 2 Duo - cannot render the pipes beside it; it crackles\n"
     "at a few dozen voices whatever the buffer size. *Light* runs the convolution\n"
-    ;
-static const char* const kManualText_part12 =
     "at a quarter of the sample rate (half when the high cut of the wet signal\n"
     "lies above 2.5 kHz, so that the wet band stays intact), trims the IR where\n"
     "its energy has fallen 60 dB below the whole (a church IR of 7 s is there\n"
@@ -2617,6 +2626,8 @@ static const char* const kManualText_part12 =
     "Every slider of this section has a checkbox that shows it on the main panel\n"
     "too (the shown sliders share a row with the polyphony display). All are\n"
     "MIDI-learnable (right-click the slider on the main panel).\n"
+    ;
+static const char* const kManualText_part13 =
     "\n"
     "### Master volume\n"
     "\n"
@@ -2626,8 +2637,6 @@ static const char* const kManualText_part12 =
     "\n"
     "### Global pitch\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "Shifts the whole organ by -200 to +200 cents (default 0) on top of the\n"
     "temperament, for playing with instruments tuned elsewhere than a1 = 440 Hz.\n"
     "\n"
@@ -2819,6 +2828,8 @@ static const char* const kManualText_part13 =
     "half way on a logarithmic scale (two octaves down: twice as slow, which the ear\n"
     "accepts where four times is too much). Applies to shifts downwards; upwards the\n"
     "attack stays as resampled. Higher values fray the attack more (see \"The\n"
+    ;
+static const char* const kManualText_part14 =
     "transposition methods\"); lower\n"
     "the slider for a stop whose speaking turns rough. Changing it rebuilds the\n"
     "copies.\n"
@@ -2828,8 +2839,6 @@ static const char* const kManualText_part13 =
     "Pitch shift + time stretch: how far the release is stretched back from the\n"
     "resampled length towards the source's, in both directions (0 to 100 %, default\n"
     "55). 100 % gives it the source's duration (a 32' extension's room decay as long\n"
-    ;
-static const char* const kManualText_part14 =
     "as the 8' pipe's), 0 % leaves it as resampled, 55 % lies between on a\n"
     "logarithmic scale. Phase vocoder (the label then reads \"upwards\"): a release\n"
     "shifted upwards keeps the source's length, too long for a smaller pipe, and is\n"
@@ -3021,6 +3030,8 @@ static const char* const kManualText_part14 =
     "Hauptwerk organ definition - see \"Loading a Hauptwerk organ definition\").\n"
     "Right-click: merge another configuration into the loaded organ.\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "### Top bar: Save Configuration\n"
     "\n"
     "Shows or hides the Save Configuration button.\n"
@@ -3030,8 +3041,6 @@ static const char* const kManualText_part14 =
     "Shows or hides the Shut down PC button (see \"Top bar buttons\"): save, quit and shut the\n"
     "computer down without any question. Hidden by default. A hidden button still\n"
     "fires from its learned MIDI control, which is how a headless console uses it.\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "### Top bar: Unpack archive\n"
     "\n"
@@ -3223,6 +3232,8 @@ static const char* const kManualText_part15 =
     "\n"
     "### Random tuning error of pipes\n"
     "\n"
+    ;
+static const char* const kManualText_part16 =
     "(The Divisions dialog names it *Allow Random Tuning Error*.)\n"
     "On: the pipes of this division get the small random detune set per stop\n"
     "(*Random pitch error* in the voicing). Off: every pipe speaks exactly at its\n"
@@ -3232,8 +3243,6 @@ static const char* const kManualText_part15 =
     "\n"
     "(The Divisions dialog names it *Allow Pipe Coupling*.)\n"
     "On: pipes of the same pitch sounding together pull each other into tune a\n"
-    ;
-static const char* const kManualText_part16 =
     "little, as neighbouring pipes on one chest do. Off: every pipe keeps its own\n"
     "detune.\n"
     "\n"

@@ -816,26 +816,35 @@ the **configurations folder**: `Documents\OrganSampler\Configurations` by
 default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),
 chosen anew in the Configuration Editor (*Configurations folder* > Choose).
 The Hauptwerk and RAR imports write there, *Save Configuration* and *Load
-Configuration* start there, a downloaded configuration goes there. The
-folder can be moved: nothing in it points at its own place. (Up to 0.8.189
-the imports made an `OrganConfigurations` folder beside every sample set,
-which nobody found again.) The setting belongs to the computer, never to a
-configuration file.
+Configuration* start there. A configuration loaded from anywhere else
+(Downloads, beside the samples, inside an archive) is offered a copy into
+the folder in the load box (0.8.191, *This file*: copy it, or load it where
+it is); the copy becomes the open file, the original stays. The folder can
+be moved: nothing in it points at its own place. (Up to 0.8.189 the imports
+made an `OrganConfigurations` folder beside every sample set, which nobody
+found again.) The setting belongs to the computer, never to a configuration
+file.
 
-The samples are found through the **sample locations**: the folders under
-which your sample libraries and archives lie (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents`,
-`E:\sonus`, a USB disk). A configuration names its trees relative to its
-library root (`OrganInstallationPackages/003135/pipe/HW`) with the root's
-name; at a load each tree is looked for at the path it had, then under every
-sample location - `<location>/<root name>/<tree>` and `<location>/<tree>` -
-and taken silently when found, so a sample set moved within a known location
-is found by its name. The program fills the list by itself: the folder above
+The samples and the impulse responses are found through the **sample and
+IR locations**: the folders under which your sample libraries, archives and
+IR collections lie (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents`,
+`E:\sonus`, `D:\IR`, a USB disk). A configuration names its trees relative
+to its library root (`OrganInstallationPackages/003135/pipe/HW`) with the
+root's name, and an IR by its path inside the library (an IR packed with
+the organ, as in the Rural Organ) or by its full path (an IR of a
+collection elsewhere); at a load each is looked for at the path it had, then
+under every location - `<location>/<root name>/<path>`, `<location>/<path>`
+and the last one to three parts of the old path - and taken silently when
+found, so a sample set or a collection moved within a known location is
+found by its name. The program fills the list by itself: the folder above
 the library root at every portable save, the root where it was found at a
-load, the folder of every archive you choose, the folder you point to when a
-tree is asked for. The Configuration Editor shows the list (*Sample
-locations*), adds a folder by hand and forgets them all. A tree found
-nowhere is asked for once, with the "Sample folder not found" notice under
-the division; the answer joins the locations.
+load, the folder of every archive you choose, the collection of every IR you
+choose, the folder you point to when a tree is asked for. The Configuration
+Editor shows the list (*Sample and IR locations*), adds a folder by hand and
+forgets them all. A tree found nowhere is asked for once, with the "Sample
+folder not found" notice under the division; an IR found nowhere shows
+"FILE NOT FOUND - choose it" on its route in the Divisions dialog; the
+answer joins the locations.
 
 A word to the user: keeping track of where the sample folders and archives
 are is a nightmare for the programmer, and every move of a sample set is a

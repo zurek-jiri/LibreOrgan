@@ -12,8 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.190] - 2026-10-25
+## [0.8.191] - 2026-10-25
 
+### Changed
+- The load box offers to copy a configuration loaded from outside the
+  configurations folder into it (the default); the copy becomes the open
+  file, the original stays.
+- Impulse responses are found like the sample folders: at their old path,
+  through the library root found for the organ, and under every sample and
+  IR location (the root by its name, the IR's path, the tail of its old
+  path). The collection of every IR chosen joins the locations by itself;
+  the absolute path of an IR stays in a portable configuration as a hint.
+  An IR found nowhere says "FILE NOT FOUND - choose it" on its route.
+
+## [0.8.190] - 2026-10-25
 ### Changed
 - One configurations folder per computer (Configuration Editor >
   Configurations folder; Documents/OrganSampler/Configurations by default):
