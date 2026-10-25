@@ -85,9 +85,10 @@ licence (GPLv3).
 organ by the name given at the save (`publication` in the configuration),
 whatever the file is called: after the merge the new files replace the
 published folder, and a folder of another name holding the same organ goes
-with it. Only the publisher (recorded in the README as an invisible HTML
-comment, `published by @login`) or the maintainer can send a new version;
-anybody else is refused in the issue.
+with it. The publisher is recorded in the README as an invisible HTML
+comment (`published by @login`); a new version from another account is
+proposed all the same, with that said in the pull request and the issue -
+the maintainer's merge decides.
 
 **Removing one**, without Git:
 

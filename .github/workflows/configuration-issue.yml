@@ -10,8 +10,9 @@ name: Configuration from issue
 # proposed as a pull request that closes the issue. The maintainer merges it;
 # the index job then sorts the pair into the organ's folder (named after the
 # organ given at the save) and updates INDEX.md. A new version of an organ
-# already published replaces its folder - sent by its publisher (recorded in
-# the README as an HTML comment) or by the repository's owner.
+# already published replaces its folder; when it comes from somebody else
+# than its publisher (recorded in the README as an HTML comment) the pull
+# request and the issue say so - the maintainer's merge is the authorisation.
 on:
   issues:
     types: [ opened, edited ]
@@ -67,6 +68,7 @@ jobs:
           base="${{ steps.files.outputs.base }}"
           slug="${{ steps.files.outputs.slug }}"
           replaces="${{ steps.files.outputs.replaces }}"
+          warning="${{ steps.files.outputs.warning }}"
           branch="configuration/issue-$ISSUE_NUMBER"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -75,8 +77,8 @@ jobs:
           git commit -m "Configuration from issue #$ISSUE_NUMBER: $base (by @$ISSUE_AUTHOR)"
           git push -f origin "$branch"
           if [ -n "$replaces" ]; then
-            what="A new version of the organ in \`configurations/$slug/\`: after the merge it replaces the published one ($replaces)."
-            tell="a new version of the published organ - after the merge it replaces \`configurations/$replaces\`"
+            what="A new version of the organ in \`configurations/$slug/\`: after the merge it replaces the published one ($replaces).${warning:+ **$warning**}"
+            tell="a new version of the published organ - after the merge it replaces \`configurations/$replaces\`${warning:+ (note for the maintainer: $warning)}"
           else
             what="After the merge the organ gets its folder \`configurations/$slug/\` and its line in \`configurations/INDEX.md\` automatically."
             tell="the organ appears in configurations/INDEX.md as \`$slug\`"
