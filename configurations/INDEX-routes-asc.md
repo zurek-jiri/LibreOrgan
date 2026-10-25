@@ -25,6 +25,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes ▲[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---|
 | [Altenbruch, Klapmeyer Organ](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default |
+| [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear |
 | [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
 
-4 configuration(s).
+5 configuration(s).
