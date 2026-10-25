@@ -18,12 +18,12 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes ▲[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---|
 | [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
+| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear |
 
 ## All the others
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes ▲[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---|
 | [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
-| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear |
 
 3 configuration(s).
