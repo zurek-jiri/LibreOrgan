@@ -7,7 +7,7 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Drag logs.zip from the report folder on your Desktop here first (it holds activity.log, crash logs, settings.json, selftest.txt and system.txt - no sample data). GitHub takes files only this way - no program can attach them for you. Or zip the CrashLogs folder of the application-data folder by hand.
+      description: Drag logs.zip from the report folder the program opened (Reports in its application-data folder) here first (it holds activity.log, crash logs, settings.json, selftest.txt and system.txt - no sample data). GitHub takes files only this way - no program can attach them for you. Or zip the CrashLogs folder of the application-data folder by hand.
       placeholder: Drag the zip file into this field.
     validations:
       required: true

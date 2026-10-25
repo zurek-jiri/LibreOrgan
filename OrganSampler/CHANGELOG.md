@@ -12,8 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.187] - 2026-10-25
+## [0.8.188] - 2026-10-25
 
+### Changed
+- Publishing a configuration: the organ's folder on GitHub is named after the
+  organ as named at the save, whatever the file is called, so a new version
+  sent with the same form replaces the published one by itself (an older
+  folder holding the same organ goes with it); only its publisher or the
+  maintainer can send one. The form "Remove my configuration" takes an organ
+  off the list by any part of its name; the maintainer's "Remove a
+  configuration" workflow takes any part of the name too and lists the
+  candidates when several match. The robot checks what is sent: the zip
+  must hold a real organ configuration of OrganSampler saved portable with
+  the organ loaded, and the README must be the one written for it.
+- The README of a portable configuration saved at other than the least
+  storage carries the measured RAM figure with the options it was loaded
+  with beside the estimate of the least.
+- Report a problem writes its folder into Reports in the application-data
+  folder, not onto the Desktop; the folder is opened as before.
+
+### Fixed
+- A configuration without publishing details (organ, producer, link) no
+  longer keeps those of the organ loaded before: the Rural Organ saved after
+  Stralsund was named "Stralsund" in its README.
+
+## [0.8.187] - 2026-10-25
 ### Fixed
 - No sound after "measure the polyphony, switch the audio driver, measure
   again" (#90, #91, #92, Windows and Linux alike): a measurement started

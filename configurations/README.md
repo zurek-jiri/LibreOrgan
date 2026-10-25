@@ -38,14 +38,15 @@ samples. Then *Save Configuration* to keep the paths.
 
 ## Publishing a configuration
 
-One folder per organ, named after the organ, holding the two files (the
-robot described below makes the folder by itself):
+One folder per organ, named after the organ as you name it at the save
+(lower case, other characters as `-`), holding the two files (the robot
+described below makes the folder by itself):
 
 ```
 configurations/
-└── stralsund-jakobi-wegscheider/
+└── stralsund-st-jakobi-kr-wegscheider/
     ├── README.md
-    └── Stralsund-Jakobi-Wegscheider.zip      <- the configuration .json, zipped
+    └── Stralsund_Jakobi_Wegscheider.zip      <- the configuration .json, zipped
 ```
 
 Save the configuration with **Portable configuration (to share with
@@ -67,27 +68,50 @@ free GitHub account is:
 2. Drag `<name>.zip` and `<name>.README.md` into its *Files* field, tick the
    publication box, press **Submit**.
 
-A robot takes the two files from the issue, checks them and proposes them
-as a pull request; it answers in the issue, and when something is missing it
-says what (edit the issue and it tries again). The maintainer merges the
-pull request, and the organ gets its own folder under `configurations/` and
-a line of [INDEX.md](INDEX.md) - automatically. Those who know Git may open
-the pull request themselves: `<name>.zip` and `<name>.README.md` flat in
+A robot takes the two files from the issue, checks them - the zip must hold
+one `.json` that really is an organ configuration of OrganSampler, saved
+portable with the organ loaded (divisions, sample folder trees, stops, the
+RAM figure), and the README must be the one the program wrote for that zip
+(title, trees, divisions, Stop List table) - and proposes them as a pull
+request; it answers in the issue, and when something is wrong it says what
+(edit the issue and it tries again). The maintainer merges the pull request,
+and the organ gets its own folder under `configurations/` and a line of
+[INDEX.md](INDEX.md) - automatically. Those who know Git may open the pull
+request themselves: `<name>.zip` and `<name>.README.md` flat in
 `configurations/`. Published configurations are under the repository's
 licence (GPLv3).
 
-**Removing one** (the maintainer, without Git): GitHub > *Actions* > *Remove a
-configuration* > *Run workflow* > the folder's name as in INDEX.md (for
-example `stralsund-jakobi-wegscheider-portable`) > *Run workflow*. The folder
-goes, INDEX.md is regenerated, both committed by the workflow. A new upload
-of the same name lands in a folder of the same name again.
+**A new version of an organ** is sent the same way. The robot knows the
+organ by the name given at the save (`publication` in the configuration),
+whatever the file is called: after the merge the new files replace the
+published folder, and a folder of another name holding the same organ goes
+with it. Only the publisher (recorded in the README as an invisible HTML
+comment, `published by @login`) or the maintainer can send a new version;
+anybody else is refused in the issue.
+
+**Removing one**, without Git:
+
+- Anybody who published an organ: the form
+  https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml
+  with any part of the organ's name. The robot removes the folder when the
+  issue's author is the publisher (or the maintainer), answers and closes the
+  issue; when several organs match it lists them - edit the issue with more
+  of the name.
+- The maintainer: GitHub > *Actions* > *Remove a configuration* > *Run
+  workflow* > any part of the organ's name (the folder, the README title or
+  the organ as named at the save; case does not matter) > *Run workflow*. One
+  match: the folder goes, INDEX.md is regenerated, both committed by the
+  workflow; several: they are listed in the job and nothing happens.
+
+The Rural Organ demo is never replaced or removed by the robots.
 
 ## The published configurations
 
 The list is [INDEX.md](INDEX.md): one line per organ with its divisions,
-Stop List rows, RAM (as measured with the organ loaded, and the least it can
-take with every saving option of the load box - 16-bit, 32 kHz on loading,
-releases at half the rate, packed samples) and perspectives, written
+Stop List rows, RAM (the least the organ takes, with every saving option of
+the load box - 16-bit, 32 kHz on loading, releases at half the rate, packed
+samples - measured or estimated at the save; the full quality takes roughly
+ten times as much) and perspectives, written
 automatically from the configuration files. The README of each organ says how
 to download its `.json`.
 

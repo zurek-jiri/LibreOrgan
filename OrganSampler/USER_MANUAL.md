@@ -764,29 +764,33 @@ publishing it in the project's `configurations/` folder on GitHub:
 `<name>.zip`, the configuration zipped (a zip is downloaded from GitHub with
 one click, a bare `.json` would open as text), and `<name>.README.md`, the
 README in the published form - the perspectives, the folders the
-configuration expects and where to put the file, the routes, the RAM the
-program used with the whole organ loaded (measured at the moment of saving
-and stored in the configuration as well; `configurations/INDEX.md` shows it
-as a column, the figure readers need most) together with the least the
-organ can take - the RAM with every saving option of the load box (16-bit,
-32 kHz on loading, releases at half the rate, packed samples), estimated by
-the program at the save from a share of the loaded samples brought into
-that form (INDEX.md's "RAM min" column; the price of those options is
-polyphony, see the storage options in the Configuration Editor chapter) -,
-the version, and the Stop List
-as a table in the order of your grid with the buttons' captions,
-transmissions and extensions included. The save asks you once for what
-the README cannot know - the organ (instrument, builder, place), the
-producer of the samples, the link to the page where the sample folders are
-bought or downloaded, your name - and keeps the answers in the
-configuration; nothing in the README is filled in by hand. Then send the
-two files: open the form
+configuration expects and where to put the file, the routes, the RAM: the
+least the organ takes, with every saving option of the load box (16-bit,
+32 kHz on loading, releases at half the rate, packed samples) - measured
+when the organ was loaded so, else estimated by the program at the save
+from a share of the loaded samples brought into that form, with the
+measured figure and the options it was loaded with beside it (0.8.188) -
+and the note that the full quality takes roughly ten times as much
+(`configurations/INDEX.md` shows the least as its RAM column; the price of
+those options is polyphony, see the storage options in the Configuration
+Editor chapter), the version, and the Stop List as a table in the order of
+your grid with the buttons' captions, transmissions and extensions
+included. The save asks you once for what the README cannot know - the
+organ (instrument, builder, place), the producer of the samples, the link
+to the page where the sample folders are bought or downloaded, your name -
+and keeps the answers in the configuration; nothing in the README is
+filled in by hand. Then send the two files: open the form
 https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
 (a free GitHub account is needed), drag the zip and the README into its
-*Files* field and submit. A robot checks them, proposes them as a pull
-request and answers in the form; nothing else is needed, no knowledge of
-Git. After the merge the organ appears as a line of
-`configurations/INDEX.md`, the list of all published organs.
+*Files* field and submit. A robot checks them - a real organ configuration
+saved with the organ loaded, and the README written for it -, proposes them
+as a pull request and answers in the form; nothing else is needed, no
+knowledge of Git. After the merge the organ appears as a line of
+`configurations/INDEX.md`, the list of all published organs, in a folder
+named after the organ as you named it at the save. A new version is sent
+the same way and replaces the old one by itself (0.8.188: the organ is known
+by that name, whatever the file is called); the form *Remove my
+configuration* takes it off the list again.
 
 Paths inside a configuration are stored relative to the common folder of the
 sample trees where possible, so a configuration kept beside its sample folders
@@ -3224,7 +3228,8 @@ you.
 *Report a problem...* at the top of the Configuration Editor opens a dialog
 for what happened and how to reproduce it. When you press *Create the report
 and open GitHub*, the program writes a folder `OrganSampler-report-<date>`
-onto your Desktop with `logs.zip` (the activity log, the crash reports,
+into `Reports` in its application-data folder (0.8.188; nothing goes onto
+your Desktop) with `logs.zip` (the activity log, the crash reports,
 `settings.json`, the last self-test report and `system.txt` - the version,
 the computer, every audio route with its device, buffer, rate and channels;
 no samples, no voicing, no combinations) and PNG screenshots of every window

@@ -25,9 +25,12 @@ jobs:
         run: bash .github/scripts/configurations_check.sh
 
   # After a merge into main: an uploaded pair "<Name>.zip" + "<Name>.README.md"
-  # moves into its own folder configurations/<name>/ (README.md + the zip), then
-  # the list of the published configurations, configurations/INDEX.md (one line
-  # per organ: README link, divisions, Stop List rows, routes) with its sorted
+  # moves into the organ's folder configurations/<organ>/ (README.md + the zip;
+  # the folder is named after the organ given at the save, the zip's name when
+  # none - configuration_tools.py slug), any other folder holding the same organ
+  # (an older version, whatever its file was called) is removed, then the list
+  # of the published configurations, configurations/INDEX.md (one line per
+  # organ: README link, divisions, Stop List rows, routes) with its sorted
   # copies INDEX-<column>-<asc|desc>.md (the triangles in the header), is written
   # from the configuration files; both are committed back when anything changed.
   index:
@@ -50,9 +53,15 @@ jobs:
             base="$(basename "$zip" .zip)"
             readme="configurations/$base.README.md"
             if [ ! -f "$readme" ]; then echo "::warning file=$zip::no $base.README.md beside it - left where it is"; continue; fi
-            slug="$(echo "$base" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+            slug="$(python3 .github/scripts/configuration_tools.py slug "$zip")"
             [ -n "$slug" ] || slug="organ-$(date +%s)"
-            if [ -e "configurations/$slug" ]; then echo "::warning file=$zip::configurations/$slug exists already - the upload replaces its files"; fi
+            # The same organ published before (the folder of its name, or one of
+            # another name holding the same organ): its files go, the new ones replace them.
+            for old in $(python3 .github/scripts/configuration_tools.py same-organ "$zip"); do
+              [ -d "configurations/$old" ] || continue
+              echo "configurations/$old held this organ already - replaced by $base"
+              git rm -r -q "configurations/$old"
+            done
             mkdir -p "configurations/$slug"
             git mv -f "$zip" "configurations/$slug/$base.zip"
             git mv -f "$readme" "configurations/$slug/README.md"

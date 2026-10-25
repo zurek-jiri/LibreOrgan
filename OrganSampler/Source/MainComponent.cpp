@@ -4728,13 +4728,15 @@ int MainComponent::fillAliasesFromFolders()
 juce::File MainComponent::writeProblemReport(const juce::String& what, const juce::String& steps, bool windowShots,
     const juce::Array<juce::File>& extraShots, juce::URL& issueUrl)
 {
-    // The report folder on the Desktop: logs.zip (activity log, crash reports,
-    // settings, self-test report, system.txt) and the screenshots as PNG files,
-    // so each goes into its field of the GitHub form by drag and drop.
+    // The report folder: Reports\OrganSampler-report-<date> in the application-data
+    // folder (0.8.188, the user: nothing is written onto the Desktop; the folder is
+    // opened for the drag) with logs.zip (activity log, crash reports, settings,
+    // self-test report, system.txt) and the screenshots as PNG files, so each goes
+    // into its field of the GitHub form by drag and drop.
     const auto stamp = juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M");
-    auto desktop = juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
-    if (!desktop.isDirectory()) desktop = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
-    const auto folder = desktop.getChildFile("OrganSampler-report-" + stamp);
+    const auto reports = settingsFile.getParentDirectory().getChildFile("Reports");
+    reports.createDirectory();
+    const auto folder = reports.getChildFile("OrganSampler-report-" + stamp);
     folder.createDirectory();
 
     // The computer, the program and the audio devices as they are now.
@@ -4942,7 +4944,7 @@ namespace
             : juce::DialogWindow("Report a problem", juce::Colours::darkgrey, true, true), url(urlIn), folder(folderIn)
         {
             auto* content = new juce::Component();
-            text.setText("The report folder " + folder.getFileName() + " (on your Desktop) opens in the file manager, the GitHub form in the browser - "
+            text.setText("The report folder " + folder.getFileName() + " (Reports in the application-data folder) opens in the file manager, the GitHub form in the browser - "
                 "put them side by side.\nDrag logs.zip into \"Logs\" and the pictures into \"Screenshots\", then \"Submit new issue\".\n"
                 "Asked to sign in first? Press \"Open the GitHub form\" again afterwards.", juce::dontSendNotification);
             text.setJustificationType(juce::Justification::topLeft);
@@ -11709,8 +11711,11 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     // An absolute link to the file in the repository (0.8.180): a relative link
     // works in the folder's README only - opened from the issue, the pull request
     // or anywhere else it gave 404. The folder is the one the publishing workflow
-    // makes from the zip's name (lower case, runs of other characters to "-").
-    juce::String slug = file.getFileNameWithoutExtension().toLowerCase();
+    // makes from the ORGAN'S NAME given at the save (0.8.188; the zip's name when
+    // no organ was named): lower case, runs of other characters to "-" - the same
+    // rule as .github/scripts/configuration_tools.py, so a new version of the
+    // organ, whatever its file is called, replaces the published folder.
+    juce::String slug = (publicationOrgan.isNotEmpty() ? publicationOrgan : file.getFileNameWithoutExtension()).toLowerCase();
     for (int i = 0; i < slug.length(); ++i)
         if (!juce::CharacterFunctions::isLetterOrDigit(slug[i]) || slug[i] > 'z') slug = slug.replaceSection(i, 1, "-");
     while (slug.contains("--")) slug = slug.replace("--", "-");
@@ -11748,11 +11753,21 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
         {
             const bool savedSo = least <= 0 || least >= ram;   // saved with the saving options in force: the measured figure is the least
             const juce::int64 figure = savedSo ? ram : least;
-            const double gb = (double)figure / (1024.0 * 1024.0 * 1024.0);
-            text << "- **RAM:** about " << (gb < 10.0 ? juce::String(gb, 1) : juce::String(juce::roundToInt(gb))) << " GB at the least, with every saving option of the load box ("
+            auto gbText = [](juce::int64 bytes)
+            {
+                const double gb = (double)bytes / (1024.0 * 1024.0 * 1024.0);
+                return gb < 10.0 ? juce::String(gb, 1) : juce::String(juce::roundToInt(gb));
+            };
+            text << "- **RAM:** about " << gbText(figure) << " GB at the least, with every saving option of the load box ("
                  << (savedSo ? configuration.getProperty("measuredRamStorage", "16-bit").toString() : configuration.getProperty("estimatedMinimumRamStorage", SamplerEngine::minimumRamStorageText).toString())
-                 << "; " << (savedSo ? "measured by the program when this file was saved" : "estimated by the program from the loaded samples when this file was saved")
-                 << "); at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times as much.\n";
+                 << "; " << (savedSo ? "measured by the program when this file was saved" : "estimated by the program from the loaded samples when this file was saved") << ")";
+            // Not saved at the least: the measured figure and the options it was loaded with
+            // go beside the estimate (0.8.188, the user: an estimate without the measurement
+            // and its loading options says nothing).
+            if (!savedSo)
+                text << "; measured " << gbText(ram) << " GB when this file was saved, the organ loaded as "
+                     << configuration.getProperty("measuredRamStorage", "16-bit").toString();
+            text << "; at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times the least.\n";
         }
     }
     text << "- **Saved with:** OrganSampler " << version << ".\n";
@@ -17005,6 +17020,18 @@ void MainComponent::loadSettings()
         publicationLink = publication->getProperty("link").toString();
         publicationAuthor = publication->getProperty("author").toString();
     }
+    else
+    {
+        // A file without the details clears them (0.8.188): they stayed from the
+        // organ loaded before, and the Rural Organ saved after Stralsund was named
+        // "Stralsund" in its README - with the folder named after the organ that
+        // would have replaced the published Stralsund. The author stays: it is the
+        // user's own name, the same for every organ.
+        publicationOrgan.clear();
+        publicationProducer.clear();
+        publicationProduct.clear();
+        publicationLink.clear();
+    }
     transposeQuality = juce::jlimit(0, 2, (int)parsed.getProperty("transposeQuality", 2));
     engine.setTransposeQuality(transposeQuality);
     // 0.8.17: "transposeReleaseLengthPct" replaces the shortening rule ("transposeReleaseShortenPct");
@@ -21989,8 +22016,8 @@ void MainComponent::showConfigurationEditor()
             licences.onClick = [this] { this->owner.showAboutDialog(); };
             addAndMakeVisible(licences);
             report.setButtonText("Report a problem...");
-            report.setTooltip("Bundles the activity log, crash reports, settings and screenshots into a folder on your Desktop "
-                "and opens the GitHub bug report with the fields filled in.");
+            report.setTooltip("Bundles the activity log, crash reports, settings and screenshots into a report folder (Reports in the "
+                "application-data folder, opened for you) and opens the GitHub bug report with the fields filled in.");
             report.onClick = [this] { this->owner.showProblemReportDialog(); };
             addAndMakeVisible(report);
            #if JUCE_LINUX

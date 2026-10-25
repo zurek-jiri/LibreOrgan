@@ -1175,7 +1175,39 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   ASIO" (the user, 25 Oct): the load figure code is from the first commit; WASAPI shared mode is driven by the
   Windows audio engine's 10 ms pump - after a late wake JUCE's WASAPI thread fills two periods back to back (two
   renders counted in one period = a 2x peak), ASIO calls once per period from the driver. No background program of
-  mine ran during his runs (06:17-07:04; my last build 24 Oct, test runs only with his program closed). (d) The copy build's parallelFor takes physical
+  mine ran during his runs (06:17-07:04; my last build 24 Oct, test runs only with his program closed).
+  25 Oct 2026 README LESSON: the user's "README from a cache, Echo Principal missing, 98 GB" was a STALE EDITOR
+  TAB (Cursor) showing yesterday's file; the disk file was right (checked with ReadAllLines + Recent .lnk). Before
+  blaming the save, read the file on disk and the log lines "RAM with every saving option" / "Configuration zip and
+  README written" of that save - both are written anew at EVERY portable save from the live grid and a fresh
+  measurement. The copy of HW Quinte 6 moved to III was the user's own "Echo Principal" (alias + shift -7), not an
+  import's transmission: `tr:<source manual>:<stop>[#ordinal]` keys say nothing about who made it.
+  0.8.188 PUBLISHING MECHANISM (the user: "mazání a nové uploadování je kravina"): an organ is identified by
+  `publication.organ` of the json (`configuration_tools.py slugify`: lower case, [^a-z0-9]+ -> "-"; the program's
+  `configurationReadme` writes the Download link with the same rule from `publicationOrgan`, the zip's name when none)
+  - the folder `configurations/<organ slug>/`; `same-organ` = folders of that slug or whose json has the same organ;
+  the index job (`configurations.yml`) `git rm`s them before moving the new pair in, so a new version REPLACES the
+  old folder whatever the file was called (stralsund-jakobi-wegscheider-portable -> stralsund-st-jakobi-kr-wegscheider
+  at the next publish). The issue workflow appends `<!-- published by @login (issue #n, date) -->` to the flat README;
+  `publisher_of_folder` reads it: a new version or a removal by anybody else than the publisher or the repository
+  owner is refused in the issue (a folder without the comment: the owner only). Removal: `configuration-remove.yml`
+  runs on workflow_dispatch (input `organ` = ANY PART of the name: folder, README title or organ, case-insensitive,
+  `find`; one match removes, several are listed) and on issues labelled `configuration-remove` (form
+  `organ_configuration_remove.yml`; the label must exist - created 25 Oct via the API). `validate` (called by
+  `configurations_check.sh` for every zip: full checks for an upload pair, json-only for a folder so old READMEs pass):
+  one .json that parses to an object with portableConfigurationVersion, divisions, a sample tree, voicing stops,
+  measuredRamBytes > 0, no MIDI mappings; the README's title = the zip's name, "Written by OrganSampler", no "(fill
+  in:", a Stop List table whose cells equal the "N rows" claim, the divisions, every `sampleTrees` entry named, the
+  organ, the Download link's folder = the slug (an older README is refused: "save it again with 0.8.188"). Tested
+  on the user's new pair (valid, slug stralsund-st-jakobi-kr-wegscheider, replaces the old folder), both published
+  folders, a zip of config.js (refused). README RAM line 0.8.188: not saved at the least -> "; measured N GB when this
+  file was saved, the organ loaded as <measuredRamStorage>" beside the estimate. Report folder 0.8.188:
+  `settingsFile.getParentDirectory()/Reports/OrganSampler-report-<stamp>` (never the Desktop again). FOUND BY THE
+  HOOK TEST (test_save188.ps1, Rural saved after Stralsund): the `publication` members (organ, producer, product,
+  link) stayed from the organ loaded before when the next file had no block - the Rural README said "Stralsund" and
+  the organ-named folder would have REPLACED the published Stralsund; the parse now clears them (the author stays).
+  Every change of the README or the publishing path is run through ORGAN_LOAD_CONFIGURATION + ORGAN_SAVE_PORTABLE
+  and `configuration_tools.py validate` on the pair before delivery. (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

@@ -7,18 +7,12 @@
 # anything above 40 MB. Run from the repository root; exit 1 on any error.
 set -e
 fail=0
+# The content (0.8.188): the zip holds one .json that IS an organ configuration of
+# OrganSampler, saved portable with the organ loaded; an upload pair's README is
+# the one the program wrote for that zip (configuration_tools.py validate). An
+# organ's folder is checked for its zip's content only (its README may be older).
 zipcheck() {
-  python3 - "$1" <<'EOF'
-import sys, zipfile
-path = sys.argv[1]
-try:
-    names = zipfile.ZipFile(path).namelist()
-except zipfile.BadZipFile:
-    print("::error file=%s::not a zip file" % path); sys.exit(1)
-files = [n for n in names if not n.endswith('/')]
-if len(files) != 1 or not files[0].lower().endswith('.json'):
-    print("::error file=%s::the zip must hold exactly one configuration .json and nothing else (found: %s)" % (path, ', '.join(files))); sys.exit(1)
-EOF
+  python3 .github/scripts/configuration_tools.py validate "$1" "$2" "${3:-pair}"
 }
 while IFS= read -r -d '' f; do
   name="$(basename "$f")"
@@ -30,7 +24,7 @@ while IFS= read -r -d '' f; do
       # An organ's folder: README.md and the zip.
       case "$lower" in
         readme.md) ;;
-        *.zip) zipcheck "$f" || fail=1 ;;
+        *.zip) zipcheck "$f" "$(dirname "$f")/README.md" folder || fail=1 ;;
         *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip OrganSampler writes beside a portable configuration"; fail=1 ;;
         *) echo "::error file=$f::only the zipped configuration and its README.md belong in an organ's folder ($name) - no samples, no impulse responses (they are part of the sample folders), nothing else"; fail=1 ;;
       esac ;;
@@ -41,9 +35,9 @@ while IFS= read -r -d '' f; do
           base="${f%.README.md}"
           [ -f "$base.zip" ] || { echo "::error file=$f::no $(basename "$base").zip beside this README - both files OrganSampler wrote are needed"; fail=1; } ;;
         *.zip)
-          zipcheck "$f" || fail=1
           base="${f%.zip}"
-          [ -f "$base.README.md" ] || { echo "::error file=$f::no $(basename "$base").README.md beside this zip - both files OrganSampler wrote are needed"; fail=1; } ;;
+          if [ -f "$base.README.md" ]; then zipcheck "$f" "$base.README.md" pair || fail=1
+          else echo "::error file=$f::no $(basename "$base").README.md beside this zip - both files OrganSampler wrote are needed"; fail=1; fi ;;
         *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip OrganSampler writes beside a portable configuration"; fail=1 ;;
         *) echo "::error file=$f::only <Name>.zip and <Name>.README.md belong here ($name)"; fail=1 ;;
       esac ;;

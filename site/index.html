@@ -25,7 +25,7 @@
         <p class="intro">OrganSampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.187</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.188</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -85,7 +85,7 @@
             <tr><td>16-bit</td><td>32 kHz</td><td>half the rate</td><td>on</td><td><strong>8 GB</strong></td></tr>
           </tbody>
         </table>
-        <p class="small">Measured with OrganSampler 0.8.187 on 24 October 2026. The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit float file (as this organ's) is rounded to 24 bits first, half a converter step. Every load box offers these choices; the choice travels with the organ.</p>
+        <p class="small">Measured with OrganSampler 0.8.188 on 24 October 2026. The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit float file (as this organ's) is rounded to 24 bits first, half a converter step. Every load box offers these choices; the choice travels with the organ.</p>
       </div>
       <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. Every load offers the savings - 16-bit storage, 32 kHz, lossless packing, releases at half the rate - and with all of them the organ takes one tenth of its RAM (the table above).</p>
     </section>
@@ -105,7 +105,7 @@
           <a class="button primary" href="https://github.com/zurek-jiri/OrganSampler/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/USER_MANUAL.md" data-repo-path="OrganSampler/USER_MANUAL.md">Read the user manual &#8599;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.8.187</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
+          <p class="small">Version <span data-version>0.8.188</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>
@@ -154,7 +154,7 @@
             <ol>
               <li>Save it with "Portable configuration (to share with others)" ticked: no MIDI devices, no audio devices, nothing of your computer - the organ only.</li>
               <li>The program asks once for the organ, the producer of the samples, the link to their page and your name, and writes the zip for the upload and the complete README beside it (<code>&lt;name&gt;.zip</code>, <code>&lt;name&gt;.README.md</code>).</li>
-              <li>Attach the two files to the form (the link below) and submit. A robot checks them and proposes them as a pull request; after the merge the organ gets its folder and its line in the list by itself. Only the zip and the README: no sample, no impulse response, nothing else is accepted, ever.</li>
+              <li>Attach the two files to the form (the link below) and submit. A robot checks them (a real organ configuration, saved with the organ loaded, and the README written for it) and proposes them as a pull request; after the merge the organ gets its folder and its line in the list by itself. A new version sent the same way replaces the old one; the "Remove my configuration" form takes it off the list. Only the zip and the README: no sample, no impulse response, nothing else is accepted, ever.</li>
             </ol>
             <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml" data-repo-suffix="/issues/new?template=organ_configuration.yml">Send a configuration &#8599;</a>
           </div>
@@ -169,7 +169,7 @@
           <details open><summary>Reporting a bug</summary>
             <ol>
               <li>In the program: <em>Configuration Editor &rarr; Report a problem...</em> Describe what happened and how to reproduce it; the program bundles its activity log, crash reports, settings, the last self-test and a description of the computer and the audio devices into one zip, takes screenshots of its own windows (recommended - keep the dialog in question open), and lets you add screenshot files of your own.</li>
-              <li>It then opens the GitHub bug report in your browser with the fields filled in and the report folder on your Desktop: drag the zip into "Logs", the pictures into "Screenshots", and submit. A free GitHub account is needed to submit.</li>
+              <li>It then opens the GitHub bug report in your browser with the fields filled in and the report folder (in the program's application-data folder) beside it: drag the zip into "Logs", the pictures into "Screenshots", and submit. A free GitHub account is needed to submit.</li>
             </ol>
             <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/issues/new/choose" data-repo-suffix="/issues/new/choose">Open a report &#8599;</a>
           </details>

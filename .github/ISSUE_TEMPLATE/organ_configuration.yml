@@ -9,9 +9,12 @@ body:
         Save the organ with *Portable configuration (to share with others)* ticked: OrganSampler writes `<name>.zip` (the configuration
         inside) and `<name>.README.md` beside it, asking you once for the organ, the producer of the samples, **the link to the
         page where the sample folders are bought or downloaded** and your name. Then attach the two files below.
-        A robot checks them, puts them into the repository as a pull request and answers here; the maintainer merges it and the organ
+        A robot checks them (a real organ configuration of OrganSampler, saved with the organ loaded, and the README written for it),
+        puts them into the repository as a pull request and answers here; the maintainer merges it and the organ
         appears in [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md).
         If something is missing, the robot says what - edit this issue and it tries again.
+        **A new version of an organ you published:** send it the same way - it replaces the old one by itself (the organ is known
+        by the name you gave at the save, whatever the file is called). To take one off the list, use the "Remove my configuration" form.
         **Never attach samples or impulse responses.** They are bought or downloaded elsewhere (Sonus Paradisi); a configuration only names the folders it needs.
   - type: input
     id: organ
