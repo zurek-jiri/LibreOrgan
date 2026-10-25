@@ -17,5 +17,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 |---|---:|---:|---:|---|
 | [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear |
 | [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
+| [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
 
-2 configuration(s).
+3 configuration(s).
