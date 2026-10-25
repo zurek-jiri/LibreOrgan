@@ -1302,6 +1302,11 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   a plain `folder.startAsProcess()` became a tab of an open Explorer window on Windows 11 - the probe showed the
   window titled after the folder) and `arrangeReportWindows` logs "Report windows: the file manager window ...
   found/NOT found; the foreground window ...".
+  0.8.200 CAPITALS (the user: "i po značce stroje HW, BW, RW, BP, Pos., Réc., GO, G.O., CH."):
+  `StopNames::capitaliseAfterDivisionPrefix` takes a CHAIN of marked pieces ("G.O.", "R.P."), a bare token of 2-5
+  CAPITALS, or a known word (pos rec réc ped pd man gr gt go hw ow uw bw rw sw ch bp rp pedal recit récit swell
+  great choir solo echo positif, any case) before the space; "Flute 8"/"A trumpet"/"Mixtur IV" untouched.
+  `StopNames::selfCheck()` (20 cases) is appended to the --kerneltest report: a MISMATCH fails the CI.
   404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
   issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
   keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):

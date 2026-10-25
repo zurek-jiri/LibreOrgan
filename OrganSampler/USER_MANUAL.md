@@ -666,8 +666,12 @@ and the configuration starts with the default Ignored Patterns; OrganSampler
 has its own tremulant. (A stop the definition plays from folders named TREM
 only - Billerbeck's "Grosse flute 32" - is taken as Hauptwerk has it, and the
 import's report says so.) Names and aliases the import makes put a capital
-after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8"); so do the
-row names of every tree scan. Encrypted sample sets (`.hbw` files) cannot be
+after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8") and, since
+0.8.200, after a manual's mark as well - "HW Trombone 8", "RW Gedact 8",
+"G.O. Trompette 8", "Pos Flute 4", "Réc. Hautbois 8" (a mark is a token of
+up to five capitals, a known word like Pos/Rec/Ped/Man/Gt, or anything
+ending in "." or ":"); so do the row names of every tree scan. Encrypted
+sample sets (`.hbw` files) cannot be
 played and the import says so.
 
 The samples must lie where Hauptwerk keeps them: the definition in

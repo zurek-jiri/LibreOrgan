@@ -676,8 +676,12 @@ static const char* const kManualText_part3 =
     "has its own tremulant. (A stop the definition plays from folders named TREM\n"
     "only - Billerbeck's \"Grosse flute 32\" - is taken as Hauptwerk has it, and the\n"
     "import's report says so.) Names and aliases the import makes put a capital\n"
-    "after a division abbreviation (\"P. Trombone 16\", \"3 Geigenpr 8\"); so do the\n"
-    "row names of every tree scan. Encrypted sample sets (`.hbw` files) cannot be\n"
+    "after a division abbreviation (\"P. Trombone 16\", \"3 Geigenpr 8\") and, since\n"
+    "0.8.200, after a manual's mark as well - \"HW Trombone 8\", \"RW Gedact 8\",\n"
+    "\"G.O. Trompette 8\", \"Pos Flute 4\", \"R\xC3\xA9""c. Hautbois 8\" (a mark is a token of\n"
+    "up to five capitals, a known word like Pos/Rec/Ped/Man/Gt, or anything\n"
+    "ending in \".\" or \":\"); so do the row names of every tree scan. Encrypted\n"
+    "sample sets (`.hbw` files) cannot be\n"
     "played and the import says so.\n"
     "\n"
     "The samples must lie where Hauptwerk keeps them: the definition in\n"
@@ -804,12 +808,12 @@ static const char* const kManualText_part3 =
     "`configurations/INDEX.md`, the list of all published organs, in a folder\n"
     "named after the organ as you named it at the save. A new version is sent\n"
     "the same way and replaces the old one by itself (0.8.188: the organ is known\n"
+    ;
+static const char* const kManualText_part4 =
     "by that name, whatever the file is called); the form *Remove my\n"
     "configuration* takes it off the list again.\n"
     "\n"
     "Paths inside a configuration are stored relative to the common folder of the\n"
-    ;
-static const char* const kManualText_part4 =
     "sample trees where possible, so a configuration kept beside its sample folders\n"
     "travels with them (another drive letter, another computer). Trees on a\n"
     "different disk get absolute paths. A configuration whose trees are not on\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "kernel reporting memory pressure. The stops loaded so far make the\n"
     "instrument; a stop cut in the middle of its files, or with one perspective\n"
     "loaded and another not, is dropped whole, and every stop left out is named\n"
+    ;
+static const char* const kManualText_part5 =
     "once in the message and stays in the pool of the Stop List - nothing stands\n"
     "on the grid half loaded. The polyphony report then says the loading stopped\n"
     "on purpose; it never claims the system is paging when it is not. A folder\n"
     "tree that lies inside another loaded tree (the whole library and one of its\n"
-    ;
-static const char* const kManualText_part5 =
     "sub-folders both loaded) is the same folders twice: the inner tree is\n"
     "dropped from the pool, its stops point into the outer tree, and a message\n"
     "after the load names it (0.8.143) - load a tree once, whole or in parts,\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "  celesta): nothing of it is cut or faded by the key going up. The switch\n"
     "  starts as the *One-shot Patterns* say for the folder's name and overrides\n"
     "  them for this stop once touched; saved with the voicing.\n"
+    ;
+static const char* const kManualText_part6 =
     "- **Rank count [II]** (after the alias; shown on stop folders only, and on a\n"
     "  stop with items indented under it) - whether the button carries the Roman\n"
     "  numeral of the ranks that sound with it. Off: the name alone. On by\n"
     "  default; saved with the configuration.\n"
-    ;
-static const char* const kManualText_part6 =
     "- **Perspectives** - the microphone perspectives this stop has, each with its\n"
     "  own on/off tick box (their volumes are the routes' volumes in the Divisions\n"
     "  dialog).\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "  loaded trees (a folder serves one cell only); the small x beside a cell\n"
     "  frees its folder. A cell can also be dragged onto another cell (empty: takes\n"
     "  the folder; occupied: swaps). The whole path appears in a tip while the\n"
+    ;
+static const char* const kManualText_part7 =
     "  mouse rests on the cell.\n"
     "- **Transmissions:** the cell shows where the stop's transmissions go\n"
     "  (division and transposition); click it to add one into any division (its\n"
     "  own included, as often as wanted) or to remove one. Transmissions act at\n"
-    ;
-static const char* const kManualText_part7 =
     "  once; they need no Apply. With **Show Trsm.** (bottom bar) every\n"
     "  transmission is also listed as a grey row of the division it plays in,\n"
     "  movable like a stop.\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "\n"
     "## 5.6 Audio drivers: many sound cards at once\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "OrganSampler can play through **several sound cards at the same time** - every\n"
     "division, every perspective, every auxiliary route on the device you choose -\n"
     "and it can even **mix different kinds of driver** in one organ. An organ can\n"
     "spread over every output of every interface in the room: the Hauptwerk\n"
-    ;
-static const char* const kManualText_part8 =
     "division on an RME, the R\xC3\xBC""ckpositiv on a second card, the pedal on a third,\n"
     "headphones on the on-board sound chip. Which drivers there are and how to\n"
     "set them up differs by operating system: see \"Audio on Windows\", \"Audio on\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "  template entries (surround 4.0 ... 7.1, front, rear, dmix) are never\n"
     "  shown. When the list is made every device is tried, and one that cannot be\n"
     "  opened at that moment (held by PipeWire or another program) is left out,\n"
+    ;
+static const char* const kManualText_part9 =
     "  with the reason in the activity log; a card PipeWire holds for one of this\n"
     "  program's own JACK routes stays listed. *List unusable devices too* in\n"
     "  the audio tab (where Windows has the driver control panel button) lists\n"
     "  everything regardless; the same switch is in the settings editor as *Audio\n"
-    ;
-static const char* const kManualText_part9 =
     "  devices: list also the ALSA devices that cannot be opened*.\n"
     "\n"
     "A menu entry with the icon, so that the program starts from the\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "  temperament it is chosen by itself (\"Base temperament set from the\n"
     "  samples\" in the activity log) - for most sample folders you never touch it. When the\n"
     "  ranks disagree, or when the set has no smpl pitches, choose it by hand:\n"
+    ;
+static const char* const kManualText_part10 =
     "  **double-click** the temperament in the dialog (or pick it in\n"
     "  *Configuration Editor > Console > Samples' base temperament*). The voicing\n"
     "  row of every stop reports what its own ranks were found to be in\n"
     "  (\"temperament = ...\"), which helps the choice. \"Equal\" is reported whenever\n"
-    ;
-static const char* const kManualText_part10 =
     "  the recording matches equal temperament.\n"
     "- **The target temperament** is the temperament the organ *plays* in. A\n"
     "  **single click** on a temperament selects it (or *Target temperament* in\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "stop), whatever the settings. The settings a file was built with are written\n"
     "inside it; a file built with other settings is simply replaced by the new\n"
     "build, so the cache never holds two versions of the same copies and never\n"
+    ;
+static const char* const kManualText_part11 =
     "plays a stale one. The cache therefore takes about as much room on disk as\n"
     "the copies take in RAM: tens of MB for a small set, hundreds of MB to a few GB\n"
     "for a large organ with many extensions. Files of an older cache format are\n"
     "removed by themselves.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "**The three buttons** (Configuration Editor, under the cache switch):\n"
     "\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "converter resolves; the log says how many were rounded. **Loading takes\n"
     "markedly longer with packing on** (every sample is packed and verified frame\n"
     "by frame while it loads: about 2.5 times the decoding), and longer again with\n"
+    ;
+static const char* const kManualText_part12 =
     "*releases at half the rate* (every release is resampled through the sinc\n"
     "filter): a big organ that loads in a minute at 16-bit, 48 kHz takes several\n"
     "with both on. Takes effect the next time a division's folders are loaded.\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1\n"
@@ -2622,12 +2626,12 @@ static const char* const kManualText_part12 =
     "     the bookkeeping (commands, pitch, gains, tone targets), the span logic\n"
     "     (loops, splices, envelopes), the interpolation kernel and the per-key\n"
     "     tone filtering - timed on the lanes themselves while the run went;\n"
+    ;
+static const char* const kManualText_part13 =
     "   - the callback time of the run split into a fixed part per block (the\n"
     "     hand-over, the IR heads, the bookkeeping) and a part per voice. The\n"
     "     report does not forecast other buffer sizes: on a two-core laptop a\n"
     "     doubled buffer gave 17 % more voices, on a Ryzen a quarter of the\n"
-    ;
-static const char* const kManualText_part13 =
     "     buffer still gave 62 % of the voices - no model fits, the buffer is\n"
     "     cheap to try and the measurement tells. A buffer below 256 samples\n"
     "     gets a recommendation to try 256 or 512, nothing more.\n"
@@ -2824,12 +2828,12 @@ static const char* const kManualText_part13 =
     "organ and takes effect at once (the fills and the copies of the stops are\n"
     "rebuilt).\n"
     "\n"
+    ;
+static const char* const kManualText_part14 =
     "### Filled pipes: transposition method\n"
     "\n"
     "How a pipe beyond the compass (or in a gap) gets its pitch from a neighbour's\n"
     "sample: *Resampling*, *Pitch shift (resampling + timbre correction)*, *Pitch\n"
-    ;
-static const char* const kManualText_part14 =
     "shift + time stretch (attack and release)* (the default) or *Phase vocoder\n"
     "(Signalsmith Stretch)* (optional, for those who prefer it). \"The\n"
     "transposition methods\" describes each with its strengths and weaknesses. Switching the method rebuilds the copies of every\n"
@@ -3026,12 +3030,12 @@ static const char* const kManualText_part14 =
     "\n"
     "### Top bar: Perspective Patterns\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "Shows or hides the button editing the perspective prefixes (the same list as\n"
     "*Folder name patterns > Perspective prefixes*).\n"
     "\n"
     "### Top bar: Ignored Patterns\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "Shows or hides the button editing the ignored folders list.\n"
     "\n"
@@ -3228,12 +3232,12 @@ static const char* const kManualText_part15 =
     "\n"
     "The level of the whole division, -60 to +12 dB (default 0), for balancing the\n"
     "divisions against each other.\n"
+    ;
+static const char* const kManualText_part16 =
     "\n"
     "### Audio output channels (default perspective)\n"
     "\n"
     "The channels of the division's audio device that the default perspective\n"
-    ;
-static const char* const kManualText_part16 =
     "plays on, as numbers separated by commas (the same channels the Divisions\n"
     "dialog shows as a list of tick boxes on the audio tab; either place changes\n"
     "the other). Press Enter or click outside to apply. How mono and stereo\n"

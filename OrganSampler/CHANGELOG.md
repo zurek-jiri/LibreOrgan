@@ -12,8 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.199] - 2026-10-25
+## [0.8.200] - 2026-10-25
 
+### Changed
+- The automatic capital in stop names and aliases comes after a manual's
+  mark as well, not only after a division abbreviation: "HW Trombone 8",
+  "RW Gedact 8", "G.O. Trompette 8", "Pos Flute 4", "RĂ©c. Hautbois 8" (a
+  token of up to five capitals, a known word such as Pos/Rec/Ped/Man/Gt, or
+  anything ending in "." or ":"). The kernel self-test checks the rule.
+
+## [0.8.199] - 2026-10-25
 ### Fixed
 - The Save Configuration chooser of a portable save starts in the Publish
   folder with the ".portable" name (it opened in the configurations folder).

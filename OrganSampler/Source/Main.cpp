@@ -12,6 +12,7 @@
 #include "PlatformAudio.h"
 #include "UIScale.h"
 #include "EngineSelfTest.h"
+#include "StopNames.h"
 
 #if JUCE_MSVC
  #pragma comment(lib, "dbghelp.lib")
@@ -71,7 +72,7 @@ public:
             // their speed (also kerneltest.txt beside the settings): the CI runs
             // it on every platform - Apple silicon included, where the NEON kernel
             // cannot be tried by hand here.
-            const auto report = SamplerEngine::runKernelSelfCheck();
+            const auto report = SamplerEngine::runKernelSelfCheck() + "\n" + StopNames::selfCheck();   // the name rule too (0.8.200)
             juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("kerneltest.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);
             std::fflush(stdout);
