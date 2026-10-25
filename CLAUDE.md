@@ -1283,7 +1283,12 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   `arrangeReportWindows` retries - exactly the report path. Hook ORGAN_SAVE_PORTABLE never shows it;
   ORGAN_TEST_PUBLISH_WINDOW=1 shows it without launching anything (pictured by ORGAN_TEST_DIALOG_SNAPSHOT after an
   ORGAN_TEST_CLICK on "Configuration Editor" at 18 s: %TEMP%\test_publish194.ps1). The Explorer window is found by
-  the folder NAME "Publish" (CabinetWClass).
+  the folder NAME "Publish" (CabinetWClass). 0.8.197: Publish is ALWAYS `configurationsDirectory()/Publish`,
+  wherever the Save box's file was asked for (0.8.194 put it beside the chosen file: the user saved into his own
+  subfolder Portable_Sharing, got Portable_Sharing/Publish and asked "kde je ten podadresář"); the log says
+  "Publish folder ... opened in the file manager, the GitHub form opened in the browser". The import's own save
+  (`applyHauptwerkVoicing` -> savePortableConfiguration(..., publishFiles=false)) logs "Portable configuration
+  saved" too but is the ordinary <organ>.json in the configurations folder, NOT an export.
   404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
   issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
   keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):

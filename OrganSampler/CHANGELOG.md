@@ -12,8 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.196] - 2026-10-25
+## [0.8.197] - 2026-10-25
 
+### Changed
+- The export of a portable configuration always goes into the one Publish
+  folder of the configurations folder, wherever the file was asked for
+  (0.8.194 made a Publish folder beside the chosen file). The log says when
+  the Publish folder and the GitHub form were opened.
+
+## [0.8.196] - 2026-10-25
 ### Changed
 - Key velocity: a new setting "full strike from velocity" (default 80) -
   from there up a stroke is a full one, the fade-in and the treble cut ramp

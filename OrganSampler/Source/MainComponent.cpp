@@ -5149,8 +5149,9 @@ void MainComponent::showPublishWindow(const juce::File& folder, const juce::File
         "Publish on GitHub", "Open the folder");
     CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
     if (!launch) return;
-    folder.startAsProcess();
+    const bool opened = folder.startAsProcess();
     url.launchInDefaultBrowser();
+    CrashHandler::note("Publish folder " + folder.getFullPathName() + (opened ? " opened in the file manager" : " could NOT be opened") + ", the GitHub form opened in the browser");
     for (const int ms : { 1500, 4500, 9000, 15000 }) juce::Timer::callAfterDelay(ms, [folder] { MainComponent::arrangeReportWindows(folder); });
 }
 
@@ -10775,7 +10776,10 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         // The name stays as the user typed it, spaces included (0.8.195, the user): GitHub
         // turns an attachment's spaces into dots, and the publishing robot names the
         // files after the .json inside the zip, so the README's link reaches the zip.
-        target = file.getParentDirectory().getChildFile("Publish").getChildFile(base + ".portable.json");
+        // ONE Publish folder, in the configurations folder, wherever the file was asked
+        // for (0.8.197; 0.8.194 made a Publish beside the chosen file - a subfolder of
+        // the user's own got one he did not find).
+        target = configurationsDirectory().getChildFile("Publish").getChildFile(base + ".portable.json");
         target.getParentDirectory().createDirectory();
     }
     root->setProperty("portableConfigurationVersion", 1);
