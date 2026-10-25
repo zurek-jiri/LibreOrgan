@@ -1216,7 +1216,23 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   "  - **N GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*" / the measurement with ALL four
   options spelt out from the json's sampleStorageFloat/resampleOnLoad/storageSampleRate/releaseHalfRate/
   compressSamples ("16-bit, 48 kHz, full releases, no packing; *measured*") / the full quality = 10 x the least
-  "*estimated*" (left out when the measurement was float + full releases + no packing). Never a sentence there. (d) The copy build's parallelFor takes physical
+  "*estimated*" (left out when the measurement was float + full releases + no packing). Never a sentence there.
+  0.8.190 WHERE CONFIGURATIONS AND SAMPLES LIVE (the user: "je nepřijatelné, že si to všude píše OrganConfigurations
+  foldery"; symlinks/shortcuts rejected - privileges on Windows, not on exFAT, Finder aliases, and a link is an absolute
+  path in disguise; "beside the binary" rejected - /Applications, Program Files): `configurationsFolder` (machine-
+  specific key; `configurationsDirectory()` = it or Documents/OrganSampler/Configurations, created on demand) - the
+  Hauptwerk import retargets `plan.configurationFile` there (HauptwerkOdf::configurationFolderFor still computes the
+  old default, unused by MainComponent), Save/Load/Merge choosers start there. `sampleLocations` (machine-specific
+  StringArray, mirrored into the anonymous-namespace `gSampleLocations` for `portableFolderCandidates`, which appends
+  `<location>/<rootName>/<relative>` and `<location>/<relative>` after the old candidates, and the absolute-only
+  tails under every location). Filled by `noteSampleLocation`: the root's parent at a portable save, the root found at
+  a load (`found` minus the relative path's depth; its parent when named like the root), the folder of a chosen
+  archive (registerArchive), the first mismatch from the end between the old and the new path in the "Replace ... with
+  a folder" chooser; Editor rows "Configurations folder" / "Sample locations" (Add folder..., Forget) after "Load the
+  last configuration at startup", help section "Where configurations and samples live" (manual chapter of that name,
+  with the user's "nightmare" paragraph). README "Where to put the file" = the configurations folder + the trees
+  expected under a sample location (no json line in the diagram). Test: %TEMP%\test_locations190.ps1 (Rural saved
+  portable into %TEMP%\cfgtest, then loaded from there: found through the location). (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

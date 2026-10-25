@@ -505,16 +505,16 @@ as a folder, and reads the samples out of the archives.
 - **Which archives are read:** only the archives you choose - in *Load
   folder...*, *Load Configuration* or a merge - with their parts, never
   another archive that happens to lie beside them. Every chosen archive is
-  written into `ArchiveFolders.txt` beside the open configuration (in its
-  `OrganConfigurations` folder; without a configuration into the settings
-  folder; one path per line, editable by hand), so the next start finds it
-  again; a line naming a folder stands for every archive in that folder, and
-  so does a folder `OrganRarPackages` beside `OrganConfigurations`. A sample
-  folder that is not on the disk is looked for in those archives by the tail
-  of its path (`OrganInstallationPackages/002735/pipes` ...). So the
-  recommended layout is `OrganConfigurations`, `OrganRarPackages` and the
-  `Hauptwerk` folder side by side - and an archive on another disk works just
-  as well once it is in the list.
+  written into `ArchiveFolders.txt` beside the open configuration (in the
+  configurations folder, see "Where configurations and samples live";
+  without a configuration into the settings folder; one path per line,
+  editable by hand), so the next start finds it again; a line naming a
+  folder stands for every archive in that folder, and so does a folder
+  `OrganRarPackages` beside the configurations folder. A sample folder that
+  is not on the disk is looked for in those archives by the tail of its path
+  (`OrganInstallationPackages/002735/pipes` ...). The folder of every chosen
+  archive is also remembered as a sample location, so an unpacked set beside
+  its archives is found as well.
 - **Unpacking in OrganSampler:** tick *Unpack the archives into a folder
   first* in the same window, choose the folder (proposed: the folder of the
   first archive; each archive's own folder tree is created inside it) and
@@ -675,16 +675,15 @@ The samples must lie where Hauptwerk keeps them: the definition in
 id>` beside it (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents\...` on a
 usual installation) - or in the RAR archives the set came in, read without
 unpacking (see "Sample archives (RAR)"). The configuration is written as
-`<organ name>.json` into an `OrganConfigurations` folder OUTSIDE the
-Hauptwerk folders: beside the folder that holds
-`HauptwerkSampleSetsAndComponents` (`D:\OrganConfigurations` for the usual
-`D:\Hauptwerk\...`; made when it is not there), so nothing of ours lands
-inside Hauptwerk's tree and all your organs are found in one place, the
-unpacked and the archived ones alike. The `OrganInstallationPackages` folder
-is its library root, reached by a relative path
-(`../Hauptwerk/HauptwerkSampleSetsAndComponents/OrganInstallationPackages`),
-so the file works from that folder and from any other place the root is
-known. Versions 0.8.125-0.8.157 wrote the file beside `OrganDefinitions`,
+`<organ name>.json` into your configurations folder (0.8.190, see "Where
+configurations and samples live"; `Documents\OrganSampler\Configurations`
+by default), so nothing of ours lands inside Hauptwerk's tree and all your
+organs are in one place, the unpacked and the archived ones alike. The
+`OrganInstallationPackages` folder is its library root; the folder above it
+is remembered as a sample location, so the file works from anywhere.
+Versions 0.8.158-0.8.189 wrote the file into an `OrganConfigurations` folder
+beside the folder that holds `HauptwerkSampleSetsAndComponents`
+(`D:\OrganConfigurations` for the usual `D:\Hauptwerk\...`), 0.8.125-0.8.157 beside `OrganDefinitions`,
 earlier ones into the numbered package; those files keep working where they
 are. The transpositions the definition implies (its pipe notes against the
 sample file names) are taken as they are, and every stop plays the keys of
@@ -809,6 +808,43 @@ missing.
 
 Paths are stored with "/" and resolved on every platform; a configuration
 saved on Windows loads on Linux and macOS and the other way round.
+
+## Where configurations and samples live
+
+Since 0.8.190 every organ configuration of a computer lives in ONE folder,
+the **configurations folder**: `Documents\OrganSampler\Configurations` by
+default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),
+chosen anew in the Configuration Editor (*Configurations folder* > Choose).
+The Hauptwerk and RAR imports write there, *Save Configuration* and *Load
+Configuration* start there, a downloaded configuration goes there. The
+folder can be moved: nothing in it points at its own place. (Up to 0.8.189
+the imports made an `OrganConfigurations` folder beside every sample set,
+which nobody found again.) The setting belongs to the computer, never to a
+configuration file.
+
+The samples are found through the **sample locations**: the folders under
+which your sample libraries and archives lie (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents`,
+`E:\sonus`, a USB disk). A configuration names its trees relative to its
+library root (`OrganInstallationPackages/003135/pipe/HW`) with the root's
+name; at a load each tree is looked for at the path it had, then under every
+sample location - `<location>/<root name>/<tree>` and `<location>/<tree>` -
+and taken silently when found, so a sample set moved within a known location
+is found by its name. The program fills the list by itself: the folder above
+the library root at every portable save, the root where it was found at a
+load, the folder of every archive you choose, the folder you point to when a
+tree is asked for. The Configuration Editor shows the list (*Sample
+locations*), adds a folder by hand and forgets them all. A tree found
+nowhere is asked for once, with the "Sample folder not found" notice under
+the division; the answer joins the locations.
+
+A word to the user: keeping track of where the sample folders and archives
+are is a nightmare for the programmer, and every move of a sample set is a
+question to you. Think well about where your sample folders go before you
+put them there, so that you never have to move them again - one disk, one
+folder for the libraries, the archives beside them.
+
+The filled pipes cache has its own folder in the same way (*Filled pipes
+cache folder* in the Configuration Editor), a setting of the computer.
 
 **Voicing** (everything set in the voicing rows of the stops) is saved
 automatically and also with the configuration; *Save Voicing* and *Load

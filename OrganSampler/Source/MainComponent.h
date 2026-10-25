@@ -977,6 +977,18 @@ private:
     bool transposeKeepLoudness = true;          // pitch shift: copies at the loudness of their source
     bool copyCacheEnabled = true;               // the generated copies kept on disk (FilledPipesCache in the application data); on by default since 0.8.124
     juce::File copyCacheDirectory() const;      // copyCacheFolder when set and usable, else the default
+    // The one folder for the organ configurations of this computer (0.8.190; machine-specific):
+    // every import writes there, Save and Load start there. Empty = Documents/OrganSampler/Configurations.
+    juce::String configurationsFolder;
+    juce::File configurationsDirectory() const;   // created on demand
+    std::unique_ptr<juce::FileChooser> configurationsFolderChooser, sampleLocationChooser;
+    // Folders under which sample trees and archives live (0.8.190; machine-specific): a
+    // tree a configuration names is looked for under each (<location>/<library root
+    // name>/<relative path>, <location>/<relative path>) before anybody is asked.
+    // Filled by the program: the library root's parent at a portable save, the root
+    // found at a load, the folder of a chosen archive; and by hand in the Editor.
+    juce::StringArray sampleLocations;
+    void noteSampleLocation(const juce::File& folder);   // remembered once, saved with the settings
     bool loadLastConfigurationAtStartup = false;   // re-open the last configuration file when the program starts
     // Remembered UI folding: Configuration Editor sections (title -> collapsed) and
     // the Division dialog's "Tremulant +" / "Wind model +" groups.

@@ -181,8 +181,7 @@ juce::String MainComponent::powerSettingDescription()
 
 void MainComponent::mergeConfigurationDialog()
 {
-    const auto start = lastSettingsDirectory.isDirectory() ? lastSettingsDirectory
-        : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    const auto start = configurationsDirectory();   // 0.8.190: the one folder of the configurations
     juce::Component::SafePointer<MainComponent> safeThis(this);
     configurationFileChooser = std::make_unique<juce::FileChooser>(
         "Merge another configuration into the loaded one (OrganSampler .json, a Hauptwerk organ definition, or RAR archives holding one)", start, "*.json;*.Organ_Hauptwerk_xml;*.xml;*.rar");

@@ -12,8 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.189] - 2026-10-25
+## [0.8.190] - 2026-10-25
 
+### Changed
+- One configurations folder per computer (Configuration Editor >
+  Configurations folder; Documents/OrganSampler/Configurations by default):
+  the Hauptwerk and RAR imports write there, Save Configuration and Load
+  Configuration start there. The imports no longer make an
+  OrganConfigurations folder beside every sample set.
+- Sample locations (Configuration Editor): the folders above the sample
+  libraries, filled by the program - at a portable save, at a load, with
+  every chosen archive, with every folder given for a missing tree - and by
+  hand. A tree a configuration names is looked for under each of them (by
+  the library root's name and by its own path) before anybody is asked, so
+  a configuration kept away from the samples finds them, and a sample set
+  moved within a known location is found by its name.
+- The README of a published configuration says to put the file into the
+  configurations folder; its diagram shows the folders expected under a
+  sample location. Manual: "Where configurations and samples live".
+
+## [0.8.189] - 2026-10-25
 ### Changed
 - The README of a portable configuration: the title is the organ as named at
   the save (a file without a name: its name less "portable"); the RAM is one

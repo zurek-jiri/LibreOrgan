@@ -23,18 +23,22 @@ refuses anything else.
    which and where from).
 2. Find the organ in [INDEX.md](INDEX.md), open its README and click its
    **Download** link: a zip with the `.json` inside. Unpack it and put the
-   `.json` **beside the samples** - in the folder that contains their top
-   folders, as the README shows. A configuration stores its
-   sample paths relative to that folder (the "library root"), so the samples
-   are found by themselves.
+   `.json` into your **configurations folder** (Configuration Editor >
+   *Configurations folder*; `Documents\OrganSampler\Configurations` by
+   default - since 0.8.190 every configuration lives there, away from the
+   samples).
 3. In OrganSampler: *Load Configuration* in the top bar, choose the file.
+   The sample folders are found in your *sample locations* (the folders
+   above your sample libraries, which the program remembers by itself and
+   lists in the Configuration Editor); the README shows the folder tree
+   expected under one of them.
 
-If the samples lie elsewhere, the configuration loads all the same with the
-trees that are found; every division that misses a tree shows an orange
-notice "Sample folder not found: <folder>" under its header. Open the Stop
-List, *Load folder...* and choose the folder of that name wherever it is on
-your computer: it takes the missing tree's place and the stops keep their
-samples. Then *Save Configuration* to keep the paths.
+If a tree is not found, the configuration loads all the same with the trees
+that are; every division that misses a tree shows an orange notice "Sample
+folder not found: <folder>" under its header. Click it and choose the folder
+where that tree is now: it takes the missing tree's place, the stops keep
+their samples, and the folder above it is remembered as a sample location.
+Then *Save Configuration* to keep the paths.
 
 ## Publishing a configuration
 

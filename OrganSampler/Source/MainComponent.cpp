@@ -10223,10 +10223,11 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
             }
             delete row;
             if (safeThis == nullptr || result != 1) { if (then) then(false); return; }
-            const auto start = safeThis->lastSettingsDirectory.isDirectory()
-                ? safeThis->lastSettingsDirectory.getChildFile("Organ configuration.json")
-                : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-                    .getChildFile("Organ configuration.json");
+            // The configurations folder (0.8.190), with the open file's name when it lies there.
+            const auto folder = safeThis->configurationsDirectory();
+            const auto start = safeThis->currentConfigurationFile != juce::File() && safeThis->currentConfigurationFile.getParentDirectory() == folder
+                ? safeThis->currentConfigurationFile
+                : folder.getChildFile(safeThis->currentConfigurationFile != juce::File() ? safeThis->currentConfigurationFile.getFileName() : juce::String("Organ configuration.json"));
             safeThis->configurationFileChooser = std::make_unique<juce::FileChooser>(
                 "Save portable organ configuration", start, "*.json");
             safeThis->configurationFileChooser->launchAsync(
@@ -10256,8 +10257,7 @@ void MainComponent::chooseConfigurationToLoad()
 
 void MainComponent::launchConfigurationLoadChooser()
 {
-    const auto start = lastSettingsDirectory.isDirectory() ? lastSettingsDirectory
-        : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    const auto start = configurationsDirectory();   // 0.8.190: the one folder of the configurations
     juce::Component::SafePointer<MainComponent> safeThis(this);
     // ORGAN_LOAD_CONFIGURATION=<file> (tests): the file is taken as chosen, the
     // native dialog is skipped (typing a path into it is not reliable on every
@@ -10444,6 +10444,7 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     const auto archive = SampleFiles::firstVolumeOf(archiveChosen);
     if (!archive.existsAsFile()) return;
     SampleFiles::addChosenArchives({ archive });
+    noteSampleLocation(archive.getParentDirectory());   // 0.8.190: an unpacked set beside its archives is found there
     const juce::File list = (currentConfigurationFile != juce::File() && currentConfigurationFile.getParentDirectory().isDirectory()
         ? currentConfigurationFile.getParentDirectory()
         : juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler")).getChildFile("ArchiveFolders.txt");
@@ -10534,7 +10535,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -10704,6 +10705,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             }
         }
         root->setProperty("sampleLibraryRootName", libraryRoot.getFileName());
+        noteSampleLocation(libraryRoot.getParentDirectory());   // 0.8.190: the next load finds the root by its name here
         // Where the library root lies relative to this configuration file
         // ("..\..\Samples" and the like). When the configuration travels
         // together with the library, the folders are found without asking.
@@ -11355,10 +11357,12 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 [safeThis, odf] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, {}, {}, false); });
             return;
         }
-        // Written into OrganConfigurations outside the Hauptwerk folders (0.8.158;
-        // 0.8.125 beside OrganDefinitions, the installation package before) and
-        // loaded from there; the Hauptwerk folders stay untouched. A definition read
-        // out of an archive: the archive's folder is noted beside the configuration.
+        // Written into THE configurations folder of this computer (0.8.190; 0.8.158
+        // an OrganConfigurations folder outside the Hauptwerk folders, 0.8.125 beside
+        // OrganDefinitions, the installation package before) and loaded from there;
+        // the Hauptwerk folders stay untouched. A definition read out of an archive:
+        // the archive is noted beside the configuration.
+        plan.configurationFile = safeThis->configurationsDirectory().getChildFile(plan.configurationFile.getFileName());
         plan.configurationFile.getParentDirectory().createDirectory();
         if (SampleFiles::inArchive(odfFile))
         {
@@ -11805,10 +11809,16 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     text << "- **Saved with:** OrganSampler " << version << ".\n";
     text << "- **Author:** " << given(publicationAuthor, "(not named)") << ", " << date << ".\n\n";
     text << "## Where to put the file\n\n";
-    if (topFolders.size() > 1) text << "The folders " << joinWithAnd(topCodes) << " must stand side by side in one folder. ";
-    else if (topFolders.size() == 1) text << "The folder " << topCodes[0] << " lies in one folder. ";
-    text << "Place " << code(file.getFileName()) << " in that folder:\n\n```\n<any folder>\\\n";
-    text << "├── " << file.getFileName() << "\n";
+    // 0.8.190: the configuration goes into the configurations folder, away from the
+    // samples; the program finds the sample folders through its sample locations
+    // (or asks once). The diagram shows the folders expected, not the file's place.
+    text << "Put " << code(file.getFileName()) << " into your configurations folder (Configuration Editor > *Configurations folder*; "
+            "`Documents\\OrganSampler\\Configurations` by default) and load it from there. The sample folders are found in your "
+            "sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration "
+            "Editor); one not found is asked for once. ";
+    if (topFolders.size() > 1) text << "The folders " << joinWithAnd(topCodes) << " must stand side by side in one folder:";
+    else if (topFolders.size() == 1) text << "The folder " << topCodes[0] << " is expected like this:";
+    text << "\n\n```\n<a sample location>\\\n";
     for (int i = 0; i < topFolders.size(); ++i)
     {
         const bool lastTop = i == topFolders.size() - 1;
@@ -11831,6 +11841,10 @@ namespace
     // under the library root the user pointed to, under the root recorded
     // relative to the configuration file (".." segments included), next to the
     // configuration file, or at the absolute path the file still carries.
+    // The sample locations of this computer (MainComponent::sampleLocations, 0.8.190),
+    // for the candidates below: set whenever the settings are read or a location noted.
+    juce::StringArray gSampleLocations;
+
     juce::Array<juce::File> portableFolderCandidates(const juce::var& configuration, const juce::File& configurationFile,
         const juce::File& selectedLibraryRoot, const juce::String& relativeIn, const juce::String& absolute)
     {
@@ -11839,24 +11853,28 @@ namespace
         const auto rootRelative = slashes(configuration.getProperty("sampleLibraryRootRelative", "").toString());
         const auto configDir = configurationFile.getParentDirectory();
         juce::Array<juce::File> candidates;
+        // The tail of an absolute path (its last one, two or three components) under a root.
+        auto tailsUnder = [&candidates, &absolute](const juce::File& root)
+        {
+            juce::StringArray parts;
+            parts.addTokens(absolute.replaceCharacter('/', '\\'), "\\", "");
+            parts.removeEmptyStrings();
+            for (int keep = 1; keep <= 3 && keep <= parts.size(); ++keep)
+            {
+                juce::File candidate = root;
+                for (int i = parts.size() - keep; i < parts.size(); ++i) candidate = candidate.getChildFile(parts[i]);
+                candidates.add(candidate);
+            }
+        };
         if (relative.isEmpty())
         {
             // A tree saved with an absolute path only (it lay outside the library
             // root): the path itself, then the tail of that path under the root the
-            // user pointed to (its last one, two or three components).
+            // user pointed to, then under every sample location (0.8.190).
             if (absolute.isNotEmpty()) candidates.add(juce::File(absolute));
-            if (selectedLibraryRoot != juce::File() && absolute.isNotEmpty())
-            {
-                juce::StringArray parts;
-                parts.addTokens(absolute.replaceCharacter('/', '\\'), "\\", "");
-                parts.removeEmptyStrings();
-                for (int keep = 1; keep <= 3 && keep <= parts.size(); ++keep)
-                {
-                    juce::File candidate = selectedLibraryRoot;
-                    for (int i = parts.size() - keep; i < parts.size(); ++i) candidate = candidate.getChildFile(parts[i]);
-                    candidates.add(candidate);
-                }
-            }
+            if (selectedLibraryRoot != juce::File() && absolute.isNotEmpty()) tailsUnder(selectedLibraryRoot);
+            if (absolute.isNotEmpty())
+                for (const auto& location : gSampleLocations) tailsUnder(juce::File(location));
             return candidates;
         }
         if (selectedLibraryRoot != juce::File())
@@ -11871,6 +11889,15 @@ namespace
             if (rootName.isNotEmpty()) candidates.add(configDir.getChildFile(rootName).getChildFile(relative));
             candidates.add(configDir.getChildFile(relative));
             if (absolute.isNotEmpty()) candidates.add(juce::File(absolute));
+        }
+        // The sample locations of this computer (0.8.190): the library root by its
+        // name under each, and each as the root itself - a configuration kept in the
+        // configurations folder, away from the samples, finds them this way.
+        for (const auto& location : gSampleLocations)
+        {
+            const juce::File folder(location);
+            if (rootName.isNotEmpty()) candidates.add(folder.getChildFile(rootName).getChildFile(relative));
+            candidates.add(folder.getChildFile(relative));
         }
         return candidates;
     }
@@ -12023,7 +12050,20 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                 {
                     const auto candidates = portableFolderCandidates(configuration, configurationFile, libraryRoot, relative, absolute);
                     const auto found = firstExistingDirectory(candidates);
-                    if (found != juce::File()) item->setProperty("folderPath", found.getFullPathName());
+                    if (found != juce::File())
+                    {
+                        item->setProperty("folderPath", found.getFullPathName());
+                        // Where the library root turned out to be: its parent (or the root
+                        // itself when it is not named) joins the sample locations (0.8.190).
+                        juce::File rootFound = found;
+                        juce::StringArray parts;
+                        parts.addTokens(slashes(relative), "/", "");
+                        parts.removeEmptyStrings();
+                        for (int n = parts.size(); n > 0 && rootFound != juce::File(); --n) rootFound = rootFound.getParentDirectory();
+                        const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+                        if (rootFound != juce::File())
+                            noteSampleLocation(rootName.isNotEmpty() && rootFound.getFileName().equalsIgnoreCase(rootName) ? rootFound.getParentDirectory() : rootFound);
+                    }
                     // Not here: the path where the configuration expects it (beside the
                     // file), so the division's tree list names it and the notice can say so.
                     else if (absolute.isEmpty() && !candidates.isEmpty()) item->setProperty("folderPath", candidates.getFirst().getFullPathName());
@@ -12083,6 +12123,15 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                                 if (candidate.existsAsFile()) { routeObject->setProperty("reverbIr", candidate.getFullPathName()); break; }
                         }
             }
+
+    // The sample locations noted above go into this configuration's var as well
+    // (0.8.190): its machine-specific keys were copied from the settings read at
+    // the top, and the parse that follows would put the old list back.
+    {
+        juce::Array<juce::var> locations;
+        for (const auto& location : sampleLocations) locations.add(location);
+        root->setProperty("sampleLocations", locations);
+    }
 
     // The pool of a portable configuration: trees relative to the library root
     // (or paths of another computer) become this computer's paths, found like
@@ -13534,10 +13583,20 @@ void MainComponent::showMissingTreesMenu(int manual)
             "The folder that replaces \"" + old.getFileName() + "\" (the stop folders of the tree lie in it)",
             juce::File::getSpecialLocation(juce::File::userHomeDirectory), "", true);
         safeThis->folderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
-            [safeThis, index](const juce::FileChooser& chooser)
+            [safeThis, index, old](const juce::FileChooser& chooser)
             {
                 const auto folder = chooser.getResult();
-                if (safeThis != nullptr && folder.isDirectory()) safeThis->relocateTree(index, folder);
+                if (safeThis == nullptr || !folder.isDirectory()) return;
+                // The place to remember (0.8.190): where the new path stops matching the
+                // old one from its end - the folder above the moved set.
+                juce::File a = folder, b = old;
+                while (a.getParentDirectory() != a && b.getParentDirectory() != b && a.getFileName().equalsIgnoreCase(b.getFileName()))
+                {
+                    a = a.getParentDirectory();
+                    b = b.getParentDirectory();
+                }
+                safeThis->noteSampleLocation(a);
+                safeThis->relocateTree(index, folder);
             });
     });
 }
@@ -17091,6 +17150,11 @@ void MainComponent::loadSettings()
     copyCacheEnabled = parsed.getProperty("copyCacheEnabled", true);   // on by default (0.8.124): a reload of a big organ computed every filled pipe again
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
+    configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
+    sampleLocations.clear();
+    if (auto* locations = parsed.getProperty("sampleLocations", juce::var()).getArray())
+        for (const auto& location : *locations) if (location.toString().isNotEmpty()) sampleLocations.addIfNotAlreadyThere(location.toString());
+    gSampleLocations = sampleLocations;
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
     if (auto* folded = parsed.getProperty("configEditorCollapsed", juce::var()).getDynamicObject())
@@ -17605,6 +17669,12 @@ void MainComponent::saveSettings()
     obj->setProperty("transposeReleaseTrimMs", transposeReleaseTrimMs);
     obj->setProperty("transposeReleaseLevelMatch", transposeReleaseLevelMatch);
     obj->setProperty("loadLastConfigurationAtStartup", loadLastConfigurationAtStartup);
+    obj->setProperty("configurationsFolder", configurationsFolder);   // 0.8.190
+    {
+        juce::Array<juce::var> locations;
+        for (const auto& location : sampleLocations) locations.add(location);
+        obj->setProperty("sampleLocations", locations);
+    }
     {
         juce::DynamicObject::Ptr folded = new juce::DynamicObject();
         for (const auto& entry : configEditorCollapsed) folded->setProperty(juce::Identifier(entry.first), entry.second);
@@ -18117,6 +18187,27 @@ void MainComponent::updateMissingTreeNotices()
     const bool wasAny = lastMissingTreeSummary.contains("not found"), isAny = summary.contains("not found");
     lastMissingTreeSummary = summary;
     if ((wasAny || isAny) && voicer) voicer->rebuildUI(stopsContent, stopsViewport);
+}
+
+juce::File MainComponent::configurationsDirectory() const
+{
+    // The folder chosen in the Editor when it is usable, else Documents/OrganSampler/
+    // Configurations (0.8.190: ONE place for every configuration - the imports wrote
+    // OrganConfigurations folders beside every sample set before, which nobody found).
+    juce::File folder(configurationsFolder.isNotEmpty() ? juce::File(configurationsFolder) : juce::File());
+    if (folder == juce::File() || !(folder.isDirectory() || folder.getParentDirectory().isDirectory()))
+        folder = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("OrganSampler").getChildFile("Configurations");
+    folder.createDirectory();
+    return folder;
+}
+
+void MainComponent::noteSampleLocation(const juce::File& folder)
+{
+    if (folder == juce::File() || !folder.isDirectory()) return;
+    for (const auto& known : sampleLocations) if (juce::File(known) == folder) return;
+    sampleLocations.add(folder.getFullPathName());
+    gSampleLocations = sampleLocations;
+    CrashHandler::note("Sample location remembered: " + folder.getFullPathName());
 }
 
 juce::File MainComponent::copyCacheDirectory() const
@@ -23013,6 +23104,54 @@ void MainComponent::showConfigurationEditor()
             { o.melodyBassGraceTime = state; o.saveSettings(); });
             addToggle("Load the last configuration at startup", o.loadLastConfigurationAtStartup, [&o](bool state)
             { o.loadLastConfigurationAtStartup = state; o.saveSettings(); });
+            // Where the configurations and the samples live (0.8.190).
+            addButton("Configurations folder: " + o.configurationsDirectory().getFullPathName(), "Choose...", [&o]
+                {
+                    o.configurationsFolderChooser = std::make_unique<juce::FileChooser>("The folder for your organ configurations", o.configurationsDirectory());
+                    juce::Component::SafePointer<MainComponent> safeThis(&o);
+                    o.configurationsFolderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                        [safeThis](const juce::FileChooser& chooser)
+                        {
+                            if (safeThis == nullptr) return;
+                            const auto folder = chooser.getResult();
+                            if (!folder.isDirectory()) return;
+                            safeThis->configurationsFolder = folder.getFullPathName();
+                            CrashHandler::note("Configurations folder: " + folder.getFullPathName());
+                            safeThis->saveSettings();
+                            safeThis->refreshConfigurationEditor();
+                        });
+                }, "The one folder where every organ configuration (.json) of this computer lives: the Hauptwerk and RAR imports write "
+                   "there, Save Configuration and Load Configuration start there. Documents/OrganSampler/Configurations by default. "
+                   "The folder can be moved or chosen anew at any time - the sample folders are found through the sample locations below.",
+                "Where configurations and samples live");
+            addButton("Sample locations: " + (o.sampleLocations.isEmpty() ? juce::String("none yet") : juce::String(o.sampleLocations.size()) + " folder(s)"), "Add folder...", [&o]
+                {
+                    o.sampleLocationChooser = std::make_unique<juce::FileChooser>("A folder under which sample folders or archives lie", juce::File());
+                    juce::Component::SafePointer<MainComponent> safeThis(&o);
+                    o.sampleLocationChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                        [safeThis](const juce::FileChooser& chooser)
+                        {
+                            if (safeThis == nullptr) return;
+                            const auto folder = chooser.getResult();
+                            if (!folder.isDirectory()) return;
+                            safeThis->noteSampleLocation(folder);
+                            safeThis->saveSettings();
+                            safeThis->refreshConfigurationEditor();
+                        });
+                }, "Folders under which your sample folders and archives lie" + (o.sampleLocations.isEmpty() ? juce::String() : ": " + o.sampleLocations.joinIntoString("; "))
+                   + ". A sample folder tree a configuration names is looked for under each of them - by the name of the library root and by "
+                   "the tree's own path - before you are asked for it. The program adds them by itself: the folder above the library root "
+                   "at a portable save, the root found at a load, the folder of every archive you choose; add one by hand when samples live elsewhere.",
+                "Where configurations and samples live");
+            addButton("Sample locations: forget them all", "Forget", [&o]
+                {
+                    o.sampleLocations.clear();
+                    gSampleLocations.clear();
+                    CrashHandler::note("Sample locations forgotten");
+                    o.saveSettings();
+                    o.refreshConfigurationEditor();
+                }, "Empties the list of sample locations; the program fills it again as organs are saved, loaded and archives chosen.",
+                "Where configurations and samples live", !o.sampleLocations.isEmpty());
             {
                 juce::StringArray names;
                 int baseIndex = 0, selectedIndex = 0;
