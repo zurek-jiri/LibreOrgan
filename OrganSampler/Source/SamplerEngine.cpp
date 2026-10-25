@@ -6163,10 +6163,12 @@ struct SamplerEngine::Impl
                     // Organ keys: the velocity never changes the volume. A rank without
                     // velocity layers softens a gentle stroke with a short fade-in instead:
                     // velocityFadeInMs at the lowest velocity, shrinking linearly to nothing
-                    // at 127 (ignoring MIDI velocity sends 127, so no fade at all).
-                    if (rank->velocityLayers.empty() && velocity < 127)
+                    // at the full-strike velocity (velocityFullFrom, default 80 - 0.8.196: a
+                    // normal stroke is a full one; ignoring MIDI velocity sends 127, so no fade).
+                    const int fullFrom = owner.velocityFullFrom.load(std::memory_order_relaxed);
+                    if (rank->velocityLayers.empty() && velocity < fullFrom)
                     {
-                        const float gentle = (float)(127 - velocity) / 126.0f;   // 1 at the lowest velocity, 0 at 127
+                        const float gentle = (float)(fullFrom - velocity) / (float)juce::jmax(1, fullFrom - 1);   // 1 at the lowest velocity, 0 from fullFrom up
                         const float ms = owner.velocityFadeInMs.load(std::memory_order_relaxed) * gentle;
                         v.fadeInTotal = v.fadeInRemaining = (uint32_t)juce::jmax(0.0, ms * 0.001 * rate);
                         // ... and the chiff blunted: an extra high-shelf cut that opens over velocityShelfMs.

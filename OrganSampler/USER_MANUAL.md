@@ -1295,12 +1295,14 @@ never changes the volume of the held note. What it does depends on the stop:
 - A stop **without velocity layers** softens the attack of a gentle stroke,
   in volume and in colour, over its first few tens of milliseconds: the note
   starts with a short fade-in (*Key velocity: fade-in at the lowest
-  velocity*, default 40 ms at the lowest velocity) and with its treble cut
+  velocity*, default 100 ms at the lowest velocity) and with its treble cut
   (*Key velocity: treble cut on the attack at the lowest velocity*, default
   9 dB), which opens up again over *Key velocity: treble cut opens over*
-  (default 80 ms). Both effects are strongest at velocity 1 and shrink to
-  nothing at velocity 127; the held tone is not touched. The result is a
-  chiff that is blunted by a gentle touch, as on a tracker action.
+  (default 180 ms). Both effects are strongest at velocity 1 and shrink to
+  nothing at the full-strike velocity (*Key velocity: full strike from
+  velocity*, default 80 - from there up every stroke is a full one, 0.8.196);
+  the held tone is not touched. The result is a chiff that is blunted by a
+  gentle touch, as on a tracker action.
 
 A sample file is a velocity layer when its name ends in "_NNN" (two or three
 digits, 1 to 127, after an underscore): `060-C4_070.wav` plays for key
@@ -2729,26 +2731,34 @@ default 90): 0 = the tone dips exactly when the level does, 90 = a quarter cycle
 later, 180 = the tone dips when the level peaks. Real tremulants differ here;
 listen with a soft flute.
 
+### Key velocity: full strike from velocity
+
+From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut
+(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127,
+0.8.196). The ramp of the two settings below runs from velocity 1, the
+gentlest stroke, to this value.
+
 ### Key velocity: fade-in at the lowest velocity
 
 An organ key never plays softer when it is struck gently. Instead, a gentle
 stroke on a stop without velocity layers starts the note with a short fade-in:
-this long at the lowest velocity (default 40 ms), shrinking linearly to nothing
-at velocity 127. Stops with velocity layers pick the layer instead and get no
-fade-in. With *Ignore MIDI velocity* on for a division there is never any. See
-"Velocity layers".
+this long at the lowest velocity (default 100 ms), shrinking linearly to
+nothing at the full-strike velocity. Stops with velocity layers pick the layer
+instead and get no fade-in. With *Ignore MIDI velocity* on for a division
+there is never any. See "Velocity layers".
 
 ### Key velocity: treble cut on the attack at the lowest velocity
 
 The chiff of a gently struck key is blunted: the pipe starts with this much
 high-frequency loss (a high shelf above the treble start frequency) at velocity
-1, less for firmer strokes, none at 127 (default 9 dB). The level itself stays
-normal. Stops with velocity layers are not touched.
+1, less for firmer strokes, none from the full-strike velocity up (default
+9 dB). The level itself stays normal. Stops with velocity layers are not
+touched.
 
 ### Key velocity: treble cut opens over
 
 How long the treble cut of a gentle key takes to open fully after the key goes
-down (5 to 1000 ms, default 80).
+down (5 to 1000 ms, default 180).
 
 ### Tremulant: volume change per cent of pitch
 

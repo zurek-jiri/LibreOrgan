@@ -962,10 +962,11 @@ private:
     // Harmonic filter depth (dB at full attenuation) following swell, wind and tremulant; 0 = off.
     float harmonicSwellDb = 8.0f, harmonicWindDb = 2.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths
     float tremulantShelfPhaseDegrees = 90.0f;   // the tremulant's tone oscillation behind its volume oscillation
-    float velocityFadeInMs = 40.0f;             // key velocity on stops without velocity layers: fade-in at the lowest velocity
+    float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
+    int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)
     bool velocityPlainStrict = false;           // velocity layers: an unticked "_128" never plays (0.8.192; off = the plain files fill the gaps)
     float velocityShelfDb = 9.0f;               // ... and the high-shelf cut on the attack at the lowest velocity (the chiff blunted)
-    float velocityShelfMs = 80.0f;              // ... opening to nothing over this time
+    float velocityShelfMs = 180.0f;             // ... opening to nothing over this time (0.8.196: 180 ms, was 80)
     int fillGroupSize = 12;   // missing pipes: how many adjacent pipes are borrowed as a group (1..12)
     int transposeQuality = 2; // resampling of filled pipes: 0 linear, 1 cubic, 2 cubic + anti-alias copies
     int uiScalePercent = 100; // interface size (UIScale.h); 0 in the settings = not chosen yet, the screen's estimate is used

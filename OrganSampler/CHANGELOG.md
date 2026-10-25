@@ -12,8 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.195] - 2026-10-25
+## [0.8.196] - 2026-10-25
 
+### Changed
+- Key velocity: a new setting "full strike from velocity" (default 80) -
+  from there up a stroke is a full one, the fade-in and the treble cut ramp
+  from velocity 1 to it (to 127 before). New defaults: fade-in 100 ms (was
+  40), treble cut opens over 180 ms (was 80). The Key velocity rows of the
+  Configuration Editor stand together; the velocity-layer switch follows them.
+- The Hauptwerk import report names the tremulants found in the definition
+  and the rate set on each division (or says none was found).
+
+## [0.8.195] - 2026-10-25
 ### Changed
 - Load Configuration opens a published .zip as downloaded from GitHub: the
   configuration inside is read as it is, nothing to unpack, and the load box

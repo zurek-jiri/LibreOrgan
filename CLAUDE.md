@@ -981,6 +981,10 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   `setGridItemEnabled()` - the polyphony measurement, its retreat and every "N stops" text do (0.8.111).
 
 ## Dialogs and layout
+- THE ROWS OF ONE SUBJECT STAY TOGETHER (the user's rule, 25 Oct 2026, "to si zapiš jako pravidlo na vždycky"): a
+  new Editor row, slider, toggle or button goes INTO the group it belongs to (every "Key velocity: ..." row in one
+  run, every tremulant row in one run), never between the rows of another subject. 0.8.179 and 0.8.192 both broke
+  it (a tremulant row among the key-velocity rows; the "_128" switch between two "Key velocity" sliders).
 - Every window and dialog must be wholly visible: title bar (draggable) and bottom edge included, with 2 % of
   the screen height free above and below AFTER the taskbar/dock/panel is taken off (`workAreaWithMargins`,
   `fitWindowOnScreen` + `fitWindowOnScreenSoon` retries at 150/700/2000 ms - window managers place a window

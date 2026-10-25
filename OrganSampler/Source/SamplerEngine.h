@@ -1392,16 +1392,20 @@ public:
     void setReleaseFadeOutMs(float ms) { releaseFadeOutMs.store(juce::jlimit(1.0f, 2000.0f, ms)); }
     void setReleaseFadeInMs(float ms) { releaseFadeInMs.store(juce::jlimit(0.0f, 2000.0f, ms)); }
     // Key velocity on a rank without velocity layers: the start fade-in at the
-    // lowest velocity (default 40 ms), linearly down to none at velocity 127.
+    // lowest velocity (default 100 ms), linearly down to none at the full-strike
+    // velocity (velocityFullFrom, default 80 - 0.8.196; 127 before): from there up
+    // every stroke is a full one.
     void setVelocityFadeInMs(float ms) { velocityFadeInMs.store(juce::jlimit(0.0f, 500.0f, ms)); }
     float getVelocityFadeInMs() const noexcept { return velocityFadeInMs.load(std::memory_order_relaxed); }
+    void setVelocityFullFrom(int velocity) { velocityFullFrom.store(juce::jlimit(2, 127, velocity)); }
+    int getVelocityFullFrom() const noexcept { return velocityFullFrom.load(std::memory_order_relaxed); }
     // Velocity layers (0.8.192, the user's option): an unticked "_128" (the plain files)
     // never plays - a key with no ticked layer stays silent. Off by default: the plain
     // files play when no ticked layer has the note (no gaps).
     void setVelocityPlainStrict(bool strict) { velocityPlainStrict.store(strict); }
     bool getVelocityPlainStrict() const noexcept { return velocityPlainStrict.load(std::memory_order_relaxed); }
     // ... and the chiff blunted by an extra high-shelf cut at the start: this many dB
-    // at the lowest velocity (default 9), opening to nothing over velocityShelfMs (default 80).
+    // at the lowest velocity (default 9), opening to nothing over velocityShelfMs (default 180).
     void setVelocityShelfDb(float db) { velocityShelfDb.store(juce::jlimit(0.0f, 24.0f, db)); }
     float getVelocityShelfDb() const noexcept { return velocityShelfDb.load(std::memory_order_relaxed); }
     void setVelocityShelfMs(float ms) { velocityShelfMs.store(juce::jlimit(5.0f, 1000.0f, ms)); }
@@ -1537,10 +1541,11 @@ private:
     std::atomic<double> defaultSampleRate{ 48000.0 };
     std::atomic<float> releaseFadeOutMs{ 70.0f };
     std::atomic<float> releaseFadeInMs{ 20.0f };
-    std::atomic<float> velocityFadeInMs{ 40.0f };
+    std::atomic<float> velocityFadeInMs{ 100.0f };
+    std::atomic<int> velocityFullFrom{ 80 };
     std::atomic<bool> velocityPlainStrict{ false };
     std::atomic<float> velocityShelfDb{ 9.0f };
-    std::atomic<float> velocityShelfMs{ 80.0f };
+    std::atomic<float> velocityShelfMs{ 180.0f };
     std::atomic<float> releaseScalingGain{ 1.0f };
     std::atomic<float> attackMinimumMs{ 80.0f };
     std::atomic<float> attackMinimumDelayMs{ 2.0f };

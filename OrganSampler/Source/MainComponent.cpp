@@ -3481,6 +3481,7 @@ void MainComponent::applyAdvancedAudioSettings()
     engine.setTremulantLevelDbPerCent(tremulantLevelDbPerCent);
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    engine.setVelocityFullFrom(velocityFullFrom);
     engine.setVelocityPlainStrict(velocityPlainStrict);
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
@@ -11588,6 +11589,17 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             summary << "\nCouplers: " << (int)plan.couplers.size() << " of the definition made as ours (" << labels.joinIntoString(", ") << ")"
                     << (plan.couplersUnmapped > 0 ? " - " + juce::String(plan.couplersUnmapped) + " without a coupler of ours, see below" : juce::String()) << ".";
         }
+        {
+            // The definition's tremulants (0.8.196, the user: the report must say what was found
+            // and how it was set): the speed per division becomes the division's tremulant rate.
+            juce::StringArray tremulants;
+            for (size_t i = 0; i < plan.divisions.size(); ++i)
+                if (plan.divisions[i].tremulantRateHz > 0.0f)
+                    tremulants.add((i == 0 ? juce::String("P.") : romanNumeral((int)i) + ".") + " " + plan.divisions[i].name + " " + juce::String(juce::jlimit(0.5f, 12.0f, plan.divisions[i].tremulantRateHz), 2) + " Hz");
+            summary << "\nTremulants: " << (tremulants.isEmpty()
+                ? juce::String("none found in the definition - every division keeps OrganSampler's own tremulant at its default rate.")
+                : tremulants.joinIntoString(", ") + " - the definition's speed is set as the division's tremulant rate (Divisions dialog); its tremmed ranks are left out, OrganSampler's tremulant plays the plain ranks.");
+        }
         if (plan.stopsWithoutSamples > 0) summary << "\nStops without playable pipes (couplers, tremulants, toys): " << plan.stopsWithoutSamples << ".";
         for (const auto& note : plan.notes) summary << "\n" << note;
         CrashHandler::note("Hauptwerk import plan: " + summary.replaceCharacters("\n", " ") + "; configuration " + plan.configurationFile.getFullPathName());
@@ -17441,12 +17453,14 @@ void MainComponent::loadSettings()
     tremulantLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("tremulantLevelDbPerCent", 0.187));
     tremulantShelfPhaseDegrees = juce::jlimit(0.0f, 360.0f, (float)(double)parsed.getProperty("tremulantShelfPhaseDegrees", 90.0));
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
-    velocityFadeInMs = juce::jlimit(0.0f, 500.0f, (float)(double)parsed.getProperty("velocityFadeInMs", 40.0));
+    velocityFadeInMs = juce::jlimit(0.0f, 500.0f, (float)(double)parsed.getProperty("velocityFadeInMs", 100.0));
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    velocityFullFrom = juce::jlimit(2, 127, (int)parsed.getProperty("velocityFullFrom", 80));   // 0.8.196
+    engine.setVelocityFullFrom(velocityFullFrom);
     velocityPlainStrict = (bool)parsed.getProperty("velocityPlainStrict", false);   // 0.8.192
     engine.setVelocityPlainStrict(velocityPlainStrict);
     velocityShelfDb = juce::jlimit(0.0f, 24.0f, (float)(double)parsed.getProperty("velocityShelfDb", 9.0));
-    velocityShelfMs = juce::jlimit(5.0f, 1000.0f, (float)(double)parsed.getProperty("velocityShelfMs", 80.0));
+    velocityShelfMs = juce::jlimit(5.0f, 1000.0f, (float)(double)parsed.getProperty("velocityShelfMs", 180.0));
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
     // Interface size: Main.cpp applied it before this window existed; a first
@@ -17967,6 +17981,7 @@ void MainComponent::saveSettings()
     obj->setProperty("harmonicTremulantDb", harmonicTremulantDb);
     obj->setProperty("tremulantShelfPhaseDegrees", tremulantShelfPhaseDegrees);
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
+    obj->setProperty("velocityFullFrom", velocityFullFrom);
     obj->setProperty("velocityPlainStrict", velocityPlainStrict);
     obj->setProperty("velocityShelfDb", velocityShelfDb);
     obj->setProperty("velocityShelfMs", velocityShelfMs);
@@ -19929,11 +19944,13 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     engine.setMaxPolyphony(30000);
     engine.setReleaseFadeOutMs(70.0f);
     engine.setReleaseFadeInMs(70.0f);
-    velocityFadeInMs = 40.0f;
+    velocityFadeInMs = 100.0f;
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    velocityFullFrom = 80;
+    engine.setVelocityFullFrom(80);
     velocityPlainStrict = false;
     engine.setVelocityPlainStrict(false);
-    velocityShelfDb = 9.0f; velocityShelfMs = 80.0f;
+    velocityShelfDb = 9.0f; velocityShelfMs = 180.0f;
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
     engine.setReleaseScalingDb(0.0f);
@@ -23050,8 +23067,16 @@ void MainComponent::showConfigurationEditor()
             addSlider("Tremulant: volume change per cent of pitch", 0.0, 0.6, 0.001, " dB/cent", o.tremulantLevelDbPerCent, 0.187,
                 [&o](double value) { o.tremulantLevelDbPerCent = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "Volume modulation of the tremulant relative to its pitch modulation.");   // with the other tremulant rows (0.8.179: it stood among the key-velocity rows)
-            // --- Key velocity
-            addSlider("Key velocity: fade-in at the lowest velocity", 0.0, 300.0, 1.0, " ms", o.velocityFadeInMs, 40.0,
+            // --- Key velocity (the rows of one subject stay TOGETHER - the user's rule, 0.8.196)
+            addSlider("Key velocity: full strike from velocity", 2.0, 127.0, 1.0, "", (double)o.velocityFullFrom, 80.0,
+                [&o](double value)
+                {
+                    o.velocityFullFrom = juce::jlimit(2, 127, juce::roundToInt(value));
+                    o.engine.setVelocityFullFrom(o.velocityFullFrom);
+                    o.saveSettings();
+                }, "From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut. The ramp of the two rows below runs "
+                   "from velocity 1 (the gentlest stroke) to here (0.8.196; default 80 - a normal stroke on most keyboards sends 80-127).");
+            addSlider("Key velocity: fade-in at the lowest velocity", 0.0, 300.0, 1.0, " ms", o.velocityFadeInMs, 100.0,
                 [&o](double value)
                 {
                     o.velocityFadeInMs = (float)value;
@@ -23059,7 +23084,7 @@ void MainComponent::showConfigurationEditor()
                     o.saveSettings();
                 }, "Organ keys never play softer when struck gently. A stop without velocity layers (\"_070\" files) softens a "
                    "gentle stroke with a short fade-in instead: this long at the lowest velocity, shrinking linearly to nothing "
-                   "at velocity 127. Stops with velocity layers pick the layer and get no fade-in. With \"Ignore MIDI velocity\" "
+                   "at the full-strike velocity above. Stops with velocity layers pick the layer and get no fade-in. With \"Ignore MIDI velocity\" "
                    "on for a division there is never any fade-in.");
             addSlider("Key velocity: treble cut on the attack at the lowest velocity", 0.0, 24.0, 0.5, " dB", o.velocityShelfDb, 9.0,
                 [&o](double value)
@@ -23068,8 +23093,16 @@ void MainComponent::showConfigurationEditor()
                     o.engine.setVelocityShelfDb(o.velocityShelfDb);
                     o.saveSettings();
                 }, "The chiff of a gently struck key is blunted: the pipe starts with this much high-frequency loss (a high "
-                   "shelf above the tone start frequency, like \"Treble per key\") at velocity 1, less for firmer strokes, none at "
-                   "127; the loss opens to nothing over the time below. Stops with velocity layers are not touched.");
+                   "shelf above the tone start frequency, like \"Treble per key\") at velocity 1, less for firmer strokes, none from "
+                   "the full-strike velocity up; the loss opens to nothing over the time below. Stops with velocity layers are not touched.");
+            addSlider("Key velocity: treble cut opens over", 5.0, 1000.0, 1.0, " ms", o.velocityShelfMs, 180.0,
+                [&o](double value)
+                {
+                    o.velocityShelfMs = (float)value;
+                    o.engine.setVelocityShelfMs(o.velocityShelfMs);
+                    o.saveSettings();
+                }, "How long the treble cut of a gentle key takes to open fully after the key goes down.");
+            // --- Velocity layers
             addToggle("Velocity layers: an unticked _128 never plays", o.velocityPlainStrict, [&o](bool state)
                 {
                     o.velocityPlainStrict = state;
@@ -23077,13 +23110,6 @@ void MainComponent::showConfigurationEditor()
                     o.saveSettings();
                 }, "Off (default): a key whose velocity reaches no ticked layer plays the plain files (\"_128\") even when their box is "
                    "unticked, so no key falls silent. On: an unticked _128 never plays - such a key stays silent (0.8.192).");
-            addSlider("Key velocity: treble cut opens over", 5.0, 1000.0, 1.0, " ms", o.velocityShelfMs, 80.0,
-                [&o](double value)
-                {
-                    o.velocityShelfMs = (float)value;
-                    o.engine.setVelocityShelfMs(o.velocityShelfMs);
-                    o.saveSettings();
-                }, "How long the treble cut of a gentle key takes to open fully after the key goes down.");
             // --- Missing pipes
             addSlider("Missing pipes: neighbours borrowed as a group", 1.0, 12.0, 1.0, " pipes", o.fillGroupSize, 12.0,
                 [&o](double value)

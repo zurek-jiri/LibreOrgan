@@ -1311,12 +1311,14 @@ static const char* const kManualText_part6 =
     "- A stop **without velocity layers** softens the attack of a gentle stroke,\n"
     "  in volume and in colour, over its first few tens of milliseconds: the note\n"
     "  starts with a short fade-in (*Key velocity: fade-in at the lowest\n"
-    "  velocity*, default 40 ms at the lowest velocity) and with its treble cut\n"
+    "  velocity*, default 100 ms at the lowest velocity) and with its treble cut\n"
     "  (*Key velocity: treble cut on the attack at the lowest velocity*, default\n"
     "  9 dB), which opens up again over *Key velocity: treble cut opens over*\n"
-    "  (default 80 ms). Both effects are strongest at velocity 1 and shrink to\n"
-    "  nothing at velocity 127; the held tone is not touched. The result is a\n"
-    "  chiff that is blunted by a gentle touch, as on a tracker action.\n"
+    "  (default 180 ms). Both effects are strongest at velocity 1 and shrink to\n"
+    "  nothing at the full-strike velocity (*Key velocity: full strike from\n"
+    "  velocity*, default 80 - from there up every stroke is a full one, 0.8.196);\n"
+    "  the held tone is not touched. The result is a chiff that is blunted by a\n"
+    "  gentle touch, as on a tracker action.\n"
     "\n"
     "A sample file is a velocity layer when its name ends in \"_NNN\" (two or three\n"
     "digits, 1 to 127, after an underscore): `060-C4_070.wav` plays for key\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "- **Transmissions:** the cell shows where the stop's transmissions go\n"
     "  (division and transposition); click it to add one into any division (its\n"
     "  own included, as often as wanted) or to remove one. Transmissions act at\n"
-    "  once; they need no Apply. With **Show Trsm.** (bottom bar) every\n"
-    "  transmission is also listed as a grey row of the division it plays in,\n"
     ;
 static const char* const kManualText_part7 =
+    "  once; they need no Apply. With **Show Trsm.** (bottom bar) every\n"
+    "  transmission is also listed as a grey row of the division it plays in,\n"
     "  movable like a stop.\n"
     "- **Add stop...** adds, per division, an empty stop folder or one of the\n"
     "  ready-made stops of the loaded trees that no division uses yet (added\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "division, every perspective, every auxiliary route on the device you choose -\n"
     "and it can even **mix different kinds of driver** in one organ. An organ can\n"
     "spread over every output of every interface in the room: the Hauptwerk\n"
-    "division on an RME, the R\xC3\xBC""ckpositiv on a second card, the pedal on a third,\n"
-    "headphones on the on-board sound chip. Which drivers there are and how to\n"
     ;
 static const char* const kManualText_part8 =
+    "division on an RME, the R\xC3\xBC""ckpositiv on a second card, the pedal on a third,\n"
+    "headphones on the on-board sound chip. Which drivers there are and how to\n"
     "set them up differs by operating system: see \"Audio on Windows\", \"Audio on\n"
     "Linux\" and \"Audio on macOS\" below. Two things hold everywhere:\n"
     "\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "  program's own JACK routes stays listed. *List unusable devices too* in\n"
     "  the audio tab (where Windows has the driver control panel button) lists\n"
     "  everything regardless; the same switch is in the settings editor as *Audio\n"
-    "  devices: list also the ALSA devices that cannot be opened*.\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "  devices: list also the ALSA devices that cannot be opened*.\n"
+    "\n"
     "A menu entry with the icon, so that the program starts from the\n"
     "application menu like any other: *Install menu entry and icon* in the\n"
     "Configuration Editor (see chapter 1).\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "  *Configuration Editor > Console > Samples' base temperament*). The voicing\n"
     "  row of every stop reports what its own ranks were found to be in\n"
     "  (\"temperament = ...\"), which helps the choice. \"Equal\" is reported whenever\n"
-    "  the recording matches equal temperament.\n"
-    "- **The target temperament** is the temperament the organ *plays* in. A\n"
     ;
 static const char* const kManualText_part10 =
+    "  the recording matches equal temperament.\n"
+    "- **The target temperament** is the temperament the organ *plays* in. A\n"
     "  **single click** on a temperament selects it (or *Target temperament* in\n"
     "  the Configuration Editor). Every pipe is then retuned by the difference\n"
     "  between the target and the base: the recorded pitches are taken out and\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "the copies take in RAM: tens of MB for a small set, hundreds of MB to a few GB\n"
     "for a large organ with many extensions. Files of an older cache format are\n"
     "removed by themselves.\n"
-    "\n"
-    "**The three buttons** (Configuration Editor, under the cache switch):\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
+    "**The three buttons** (Configuration Editor, under the cache switch):\n"
     "\n"
     "- The row *Filled pipes cache: <size> in <folder>* shows how much the cache\n"
     "  holds and where. Its button **Empty the cache** deletes every file. Use it\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "filter): a big organ that loads in a minute at 16-bit, 48 kHz takes several\n"
     "with both on. Takes effect the next time a division's folders are loaded.\n"
     "\n"
-    "### Sample rate on loading\n"
-    "\n"
     ;
 static const char* const kManualText_part12 =
+    "### Sample rate on loading\n"
+    "\n"
     "*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1\n"
     "kHz are converted once while loading with a high-quality filter, so every set\n"
     "plays exactly like a 48 kHz one and a 96 kHz set needs half the RAM it would\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "     hand-over, the IR heads, the bookkeeping) and a part per voice. The\n"
     "     report does not forecast other buffer sizes: on a two-core laptop a\n"
     "     doubled buffer gave 17 % more voices, on a Ryzen a quarter of the\n"
-    "     buffer still gave 62 % of the voices - no model fits, the buffer is\n"
-    "     cheap to try and the measurement tells. A buffer below 256 samples\n"
     ;
 static const char* const kManualText_part13 =
+    "     buffer still gave 62 % of the voices - no model fits, the buffer is\n"
+    "     cheap to try and the measurement tells. A buffer below 256 samples\n"
     "     gets a recommendation to try 256 or 512, nothing more.\n"
     "   On Linux the report names the CPU governor (\"performance\" keeps the\n"
     "   clock up), on Windows the power plan; when the CPU clocks cannot be read\n"
@@ -2759,26 +2761,34 @@ static const char* const kManualText_part13 =
     "later, 180 = the tone dips when the level peaks. Real tremulants differ here;\n"
     "listen with a soft flute.\n"
     "\n"
+    "### Key velocity: full strike from velocity\n"
+    "\n"
+    "From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut\n"
+    "(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127,\n"
+    "0.8.196). The ramp of the two settings below runs from velocity 1, the\n"
+    "gentlest stroke, to this value.\n"
+    "\n"
     "### Key velocity: fade-in at the lowest velocity\n"
     "\n"
     "An organ key never plays softer when it is struck gently. Instead, a gentle\n"
     "stroke on a stop without velocity layers starts the note with a short fade-in:\n"
-    "this long at the lowest velocity (default 40 ms), shrinking linearly to nothing\n"
-    "at velocity 127. Stops with velocity layers pick the layer instead and get no\n"
-    "fade-in. With *Ignore MIDI velocity* on for a division there is never any. See\n"
-    "\"Velocity layers\".\n"
+    "this long at the lowest velocity (default 100 ms), shrinking linearly to\n"
+    "nothing at the full-strike velocity. Stops with velocity layers pick the layer\n"
+    "instead and get no fade-in. With *Ignore MIDI velocity* on for a division\n"
+    "there is never any. See \"Velocity layers\".\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
     "The chiff of a gently struck key is blunted: the pipe starts with this much\n"
     "high-frequency loss (a high shelf above the treble start frequency) at velocity\n"
-    "1, less for firmer strokes, none at 127 (default 9 dB). The level itself stays\n"
-    "normal. Stops with velocity layers are not touched.\n"
+    "1, less for firmer strokes, none from the full-strike velocity up (default\n"
+    "9 dB). The level itself stays normal. Stops with velocity layers are not\n"
+    "touched.\n"
     "\n"
     "### Key velocity: treble cut opens over\n"
     "\n"
     "How long the treble cut of a gentle key takes to open fully after the key goes\n"
-    "down (5 to 1000 ms, default 80).\n"
+    "down (5 to 1000 ms, default 180).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
     "\n"
@@ -2818,6 +2828,8 @@ static const char* const kManualText_part13 =
     "\n"
     "How a pipe beyond the compass (or in a gap) gets its pitch from a neighbour's\n"
     "sample: *Resampling*, *Pitch shift (resampling + timbre correction)*, *Pitch\n"
+    ;
+static const char* const kManualText_part14 =
     "shift + time stretch (attack and release)* (the default) or *Phase vocoder\n"
     "(Signalsmith Stretch)* (optional, for those who prefer it). \"The\n"
     "transposition methods\" describes each with its strengths and weaknesses. Switching the method rebuilds the copies of every\n"
@@ -2828,8 +2840,6 @@ static const char* const kManualText_part13 =
     "### Filled pipes: release length (pitch shift)\n"
     "\n"
     "Pitch shift method only. How long a filled pipe's release (the room decay) is,\n"
-    ;
-static const char* const kManualText_part14 =
     "as a share of its source's duration (25 to 200 %, default 100). Resampling\n"
     "alone would make a release shifted two octaves down four times as long and one\n"
     "shifted two octaves up a quarter, but the room does not grow or shrink with the\n"
@@ -3020,6 +3030,8 @@ static const char* const kManualText_part14 =
     "*Folder name patterns > Perspective prefixes*).\n"
     "\n"
     "### Top bar: Ignored Patterns\n"
+    ;
+static const char* const kManualText_part15 =
     "\n"
     "Shows or hides the button editing the ignored folders list.\n"
     "\n"
@@ -3030,8 +3042,6 @@ static const char* const kManualText_part14 =
     "### Top bar: Stop-Merging\n"
     "\n"
     "Shows or hides the Stop-Merging button (see \"Stop-Merging\"). Hidden by\n"
-    ;
-static const char* const kManualText_part15 =
     "default.\n"
     "\n"
     "### Top bar: Load Voicing\n"
@@ -3222,6 +3232,8 @@ static const char* const kManualText_part15 =
     "### Audio output channels (default perspective)\n"
     "\n"
     "The channels of the division's audio device that the default perspective\n"
+    ;
+static const char* const kManualText_part16 =
     "plays on, as numbers separated by commas (the same channels the Divisions\n"
     "dialog shows as a list of tick boxes on the audio tab; either place changes\n"
     "the other). Press Enter or click outside to apply. How mono and stereo\n"
@@ -3232,8 +3244,6 @@ static const char* const kManualText_part15 =
     "sound cards at once\" and \"The auxiliary route\".\n"
     "\n"
     "### Perspective output channels\n"
-    ;
-static const char* const kManualText_part16 =
     "\n"
     "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
     "channels of that perspective's own device.\n"
