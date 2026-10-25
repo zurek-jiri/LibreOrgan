@@ -9,8 +9,8 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION  0,8,198,0
-PRODUCTVERSION  0,8,198,0
+FILEVERSION  0,8,199,0
+PRODUCTVERSION  0,8,199,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -18,9 +18,9 @@ BEGIN
     BEGIN
       VALUE "CompanyName",  "OrganSampler\0"
       VALUE "FileDescription",  "OrganSampler\0"
-      VALUE "FileVersion",  "0.8.198\0"
+      VALUE "FileVersion",  "0.8.199\0"
       VALUE "ProductName",  "OrganSampler\0"
-      VALUE "ProductVersion",  "0.8.198\0"
+      VALUE "ProductVersion",  "0.8.199\0"
     END
   END
 

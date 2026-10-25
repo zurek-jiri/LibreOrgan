@@ -12,8 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.198] - 2026-10-25
+## [0.8.199] - 2026-10-25
 
+### Fixed
+- The Save Configuration chooser of a portable save starts in the Publish
+  folder with the ".portable" name (it opened in the configurations folder).
+- After a portable save the Publish folder opens in a NEW Explorer window
+  with the zip selected (Windows); a plain open became a tab of an Explorer
+  window already open, behind everything. The log says which windows the
+  side-by-side placement found.
+
+## [0.8.198] - 2026-10-25
 ### Fixed
 - A Hauptwerk import keeps the Ignored patterns in force (the user's own
   patterns were reset to the defaults by every import); the defaults are

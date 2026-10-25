@@ -5046,6 +5046,13 @@ void MainComponent::arrangeReportWindows(const juce::File& folder)
     HWND foreground = GetForegroundWindow();
     DWORD pid = 0;
     if (foreground != nullptr) GetWindowThreadProcessId(foreground, &pid);
+    {
+        // What was found (0.8.199): the next "the folder did not open" report says why.
+        wchar_t title[256]{};
+        if (foreground != nullptr) GetWindowTextW(foreground, title, 255);
+        CrashHandler::note("Report windows: the file manager window \"" + folder.getFileName() + "\" " + (explorer.found != nullptr ? "found and placed right" : "NOT found")
+            + "; the foreground window \"" + juce::String(title) + "\"" + (foreground != nullptr && foreground != explorer.found && pid != GetCurrentProcessId() ? " placed left" : " left alone"));
+    }
     if (foreground != nullptr && foreground != explorer.found && pid != GetCurrentProcessId()) placeNativeWindow(foreground, leftPx);
     // The browser in front (the next thing the user does is in it), the folder visible beside it.
     if (explorer.found != nullptr) BringWindowToTop(explorer.found);
@@ -5149,9 +5156,17 @@ void MainComponent::showPublishWindow(const juce::File& folder, const juce::File
         "Publish on GitHub", "Open the folder");
     CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
     if (!launch) return;
+    // A NEW Explorer window with the zip selected (0.8.199): "explorer /select" - a
+    // plain open of the folder became a tab of an Explorer window already open on
+    // Windows 11, behind everything, and the user looked for the folder by hand.
+   #if JUCE_WINDOWS
+    const juce::File explorer = juce::File::getSpecialLocation(juce::File::windowsSystemDirectory).getParentDirectory().getChildFile("explorer.exe");
+    const bool opened = explorer.existsAsFile() ? explorer.startAsProcess("/select,\"" + zip.getFullPathName() + "\"") : folder.startAsProcess();
+   #else
     const bool opened = folder.startAsProcess();
+   #endif
     url.launchInDefaultBrowser();
-    CrashHandler::note("Publish folder " + folder.getFullPathName() + (opened ? " opened in the file manager" : " could NOT be opened") + ", the GitHub form opened in the browser");
+    CrashHandler::note("Publish folder " + folder.getFullPathName() + (opened ? " opened in the file manager (the zip selected)" : " could NOT be opened") + ", the GitHub form opened in the browser");
     for (const int ms : { 1500, 4500, 9000, 15000 }) juce::Timer::callAfterDelay(ms, [folder] { MainComponent::arrangeReportWindows(folder); });
 }
 
@@ -10256,11 +10271,23 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
             }
             delete row;
             if (safeThis == nullptr || result != 1) { if (then) then(false); return; }
-            // The configurations folder (0.8.190), with the open file's name when it lies there.
+            // The configurations folder (0.8.190), with the open file's name when it lies there;
+            // a portable save (an export, 0.8.194) starts in its Publish folder with the
+            // ".portable" name (0.8.199, the user: the chooser opened in Configurations).
             const auto folder = safeThis->configurationsDirectory();
-            const auto start = safeThis->currentConfigurationFile != juce::File() && safeThis->currentConfigurationFile.getParentDirectory() == folder
-                ? safeThis->currentConfigurationFile
-                : folder.getChildFile(safeThis->currentConfigurationFile != juce::File() ? safeThis->currentConfigurationFile.getFileName() : juce::String("Organ configuration.json"));
+            juce::File start;
+            if (portable)
+            {
+                juce::String base = safeThis->currentConfigurationFile != juce::File() ? safeThis->currentConfigurationFile.getFileNameWithoutExtension() : juce::String("Organ configuration");
+                if (base.endsWithIgnoreCase(".portable")) base = base.dropLastCharacters(9);
+                const auto publish = folder.getChildFile("Publish");
+                publish.createDirectory();
+                start = publish.getChildFile(base + ".portable.json");
+            }
+            else
+                start = safeThis->currentConfigurationFile != juce::File() && safeThis->currentConfigurationFile.getParentDirectory() == folder
+                    ? safeThis->currentConfigurationFile
+                    : folder.getChildFile(safeThis->currentConfigurationFile != juce::File() ? safeThis->currentConfigurationFile.getFileName() : juce::String("Organ configuration.json"));
             safeThis->configurationFileChooser = std::make_unique<juce::FileChooser>(
                 "Save portable organ configuration", start, "*.json");
             safeThis->configurationFileChooser->launchAsync(

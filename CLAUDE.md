@@ -1296,6 +1296,12 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   `isTremmedVariantFolder` also takes the suffix "trrp" (Altenbruch: "03-ortf_RP_BlockFl2TRRP" beside
   "03-ortf_RP_BlockFl2", "Dulcian16trRP"). `folderNameMatchesPattern`: no star = contains, "*x" = ends with,
   "x*" = starts with, case-insensitive. Test: %TEMP%\test_patterns198.ps1 ("*zzztest" in settings survives an import).
+  0.8.199 (the user: "když dám uložit, otevře se to v Configurations, nikoli v Publish"): the Save chooser of a
+  PORTABLE save starts in `Configurations/Publish/<base>.portable.json` (the toggle's state is known before the
+  chooser opens); the Publish folder is opened with `explorer.exe /select,"<zip>"` (a NEW window, the zip selected;
+  a plain `folder.startAsProcess()` became a tab of an open Explorer window on Windows 11 - the probe showed the
+  window titled after the folder) and `arrangeReportWindows` logs "Report windows: the file manager window ...
+  found/NOT found; the foreground window ...".
   404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
   issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
   keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):
