@@ -11421,8 +11421,12 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         // sibling folders ending in "_TR" (II_TR beside II) or "tr"/"TREM" after
         // the stop's own name (the scan skips those by itself): the defaults.
         {
+            // The patterns in force stay (0.8.198, the user: "nesmí mizet, co si uživatel do
+            // patternů zadá" - an import reset them to the defaults and his "*trrp" was gone);
+            // the defaults are added where they are missing.
             juce::Array<juce::var> ignored;
-            for (const auto& pattern : SamplerEngine::defaultIgnoredPatterns()) ignored.add(pattern);
+            for (const auto& pattern : safeThis->engine.getIgnoredPatterns()) if (pattern.trim().isNotEmpty()) ignored.add(pattern);
+            for (const auto& pattern : SamplerEngine::defaultIgnoredPatterns()) if (!ignored.contains(juce::var(pattern))) ignored.add(pattern);
             rootObject->setProperty("ignoredPatterns", ignored);
             // One-shot stops: the defaults plus every stop folder the definition
             // plays without release samples (a carillon, chimes: the plan found them).

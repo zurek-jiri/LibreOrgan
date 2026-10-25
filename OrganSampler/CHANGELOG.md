@@ -12,8 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.197] - 2026-10-25
+## [0.8.198] - 2026-10-25
 
+### Fixed
+- A Hauptwerk import keeps the Ignored patterns in force (the user's own
+  patterns were reset to the defaults by every import); the defaults are
+  added where they are missing.
+- Tremmed sibling folders ending in "TRRP" / "trRP" (Altenbruch) are skipped
+  by the folder scan like those ending in "tr" / "trem".
+
+## [0.8.197] - 2026-10-25
 ### Changed
 - The export of a portable configuration always goes into the one Publish
   folder of the configurations folder, wherever the file was asked for

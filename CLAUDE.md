@@ -1289,6 +1289,13 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   "Publish folder ... opened in the file manager, the GitHub form opened in the browser". The import's own save
   (`applyHauptwerkVoicing` -> savePortableConfiguration(..., publishFiles=false)) logs "Portable configuration
   saved" too but is the ordinary <organ>.json in the configurations folder, NOT an export.
+  0.8.198 IGNORED PATTERNS (the user: "nesmí mizet, co si uživatel do patternů zadá"): the Hauptwerk import wrote
+  `ignoredPatterns` = the defaults into its configuration, so the user's "*trrp" vanished with every import; now the
+  import writes the patterns IN FORCE (`engine.getIgnoredPatterns()`) plus the missing defaults. The patterns are a
+  configuration key (they travel with the organ) - a configuration loaded from another file brings its own list.
+  `isTremmedVariantFolder` also takes the suffix "trrp" (Altenbruch: "03-ortf_RP_BlockFl2TRRP" beside
+  "03-ortf_RP_BlockFl2", "Dulcian16trRP"). `folderNameMatchesPattern`: no star = contains, "*x" = ends with,
+  "x*" = starts with, case-insensitive. Test: %TEMP%\test_patterns198.ps1 ("*zzztest" in settings survives an import).
   404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
   issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
   keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):

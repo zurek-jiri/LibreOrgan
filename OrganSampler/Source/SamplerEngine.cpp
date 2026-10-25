@@ -469,6 +469,7 @@ namespace
         const auto name = folder.getFileName().toLowerCase();
         juce::String base;
         if (name.endsWith("trem")) base = name.dropLastCharacters(4);
+        else if (name.endsWith("trrp")) base = name.dropLastCharacters(4);   // 0.8.198: Altenbruch "RP_BlockFl2TRRP" / "Dulcian16trRP" beside "RP_BlockFl2"
         else if (name.endsWith("tr")) base = name.dropLastCharacters(2);
         else return false;
         base = base.trimCharactersAtEnd("-_ ");
