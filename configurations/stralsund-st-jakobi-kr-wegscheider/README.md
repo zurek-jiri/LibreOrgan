@@ -3,11 +3,11 @@
 <!-- Written by OrganSampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):
      https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->
 
-A complete OrganSampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 71 rows in the Stop List, transmissions and
+A complete OrganSampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 72 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/stralsund-jakobi-wegscheider-portable/Stralsund_Jakobi_Wegscheider.portable.zip) - unpack it, the `Stralsund_Jakobi_Wegscheider.portable.json` inside goes where the next section says.
+**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/stralsund-st-jakobi-kr-wegscheider/Stralsund_Jakobi_Wegscheider.portable.zip) - unpack it, the `Stralsund_Jakobi_Wegscheider.portable.json` inside goes where the next section says.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,12 +15,12 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.186 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.188 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
-- **RAM:** about 7.2 GB at the least, with every saving option of the load box (16-bit, 32 kHz, releases at half the rate, packed; measured by the program when this file was saved); at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times as much.
-- **Saved with:** OrganSampler 0.8.186.
-- **Author:** Jiri Zurek, 24 October 2026.
+- **RAM:** about 8.1 GB at the least, with every saving option of the load box (16-bit, 32 kHz on loading, releases at half the rate, packed; estimated by the program from the loaded samples when this file was saved); measured 43 GB when this file was saved, the organ loaded as 16-bit, 48 kHz; at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times the least.
+- **Saved with:** OrganSampler 0.8.188.
+- **Author:** Jiri Zurek, 25 October 2026.
 
 ## Where to put the file
 
@@ -57,11 +57,13 @@ The folders `003135` and `003136` must stand side by side in one folder. Place `
 | Ped Posaune 16' | UW Tertia 1 3/5' | HW Quinte 3' | OW Sesquialtera 2 2/3' |
 | Ped Fagot 16' | UW Mixtur 1' | HW Mixtur 2' | OW Trompete 8' |
 | Ped Trompete 8' | UW Hautbois 8' | HW Tromp 16' | OW VoxHumana 8' |
-| Ped Schalmey 4' | UW Gedackt 16' (Ext.) | HW Zimbel 1' | Vox Humana Cornet [V] |
+| Ped Schalmey 4' | UW Gedackt 16' (Ext.) | HW Zimbel 1' | Echo Principal 8' (Trsm.) |
 | Ped Principalbass 64' (Ext.) | UW Gedackt 4' (Ext.) | HW Cornet 8' | Bombarde 16' (Ext.) |
-| Cornet [III] | UW Octave 2' (Ext.) | HW Rohrflote 16' (Ext.) | Clairon 4' (Ext.) |
-| Ped Posaune 64' (Ext.) | UW Gedackt 2' (Ext.) | Montre 32' (Ext.) |  |
+| Cornet [III] | UW Octave 2' (Ext.) | HW Rohrflote 16' (Ext.) | Vox Humana Cornet [V] |
+| Ped Posaune 64' (Ext.) | UW Gedackt 2' (Ext.) | Montre 32' (Ext.) | Clairon 4' (Ext.) |
 | BauernFlöte 2' (Trsm.) | Regal 16' (Trsm.) | HW Gamba 16' (Ext.) |  |
 | Ped ContraPos 64' (Ext.) | Septime 1 1/7' (Ext.) | HW Tromp 8' (Ext.) |  |
 |  |  | Flöte 2' (Trsm.) |  |
 |  |  | HW Tromp 4' (Ext.) |  |
+
+<!-- published by @zurek-jiri (issue #94, 2026-10-25) -->

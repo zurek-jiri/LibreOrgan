@@ -15,7 +15,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)▼ | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---|
-| [Stralsund_Jakobi_Wegscheider.portable](stralsund-jakobi-wegscheider-portable/README.md) | 4 | 71 | 7.2 GB | Direct, Diffuse, Rear |
+| [Stralsund_Jakobi_Wegscheider.portable](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear |
 | [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
 
 2 configuration(s).
