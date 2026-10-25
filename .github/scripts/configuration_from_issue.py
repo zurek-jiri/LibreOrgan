@@ -52,7 +52,16 @@ def main():
               'the two files OrganSampler wrote beside the portable configuration. Found: %d zip, %d .md.'
               % (len(zips), len(readmes)))
         return 1
-    base = os.path.basename(zips[0])[:-4]
+    # The files' names: GitHub turns the spaces of an attachment's name into dots
+    # ("Adlington.Surround.portable.zip"), and the README's download link - written
+    # by the program - names the file with its spaces: the zip got a name no link
+    # reached (404 on every name with a space). The .json inside the zip keeps the
+    # original name: both files are named after it.
+    cfg, inner = tools.read_config(zips[0])
+    if cfg is None:
+        print('The attached zip cannot be used: %s' % inner)
+        return 1
+    base = os.path.basename(inner)[:-5] if inner.lower().endswith('.json') else os.path.basename(zips[0])[:-4]
     zip_target = os.path.join('configurations', base + '.zip')
     readme_target = os.path.join('configurations', base + '.README.md')
     os.replace(zips[0], zip_target)
