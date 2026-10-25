@@ -12,8 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.192] - 2026-10-25
+## [0.8.193] - 2026-10-25
 
+### Changed
+- Never a duplicate in the configurations folder, never an unasked
+  overwrite: the same file already there is loaded from there; a file of
+  the same name with other content makes the load box ask - keep the one in
+  the folder and load it, replace it with this file (the old one kept as
+  .json.bak), or load this file from its own folder. A Hauptwerk import of
+  an organ already in the folder asks the same way: replace it with the
+  import, or keep the existing configuration and load it without importing
+  (before, the import overwrote it unasked).
+
+## [0.8.192] - 2026-10-25
 ### Changed
 - The Hauptwerk import writes its report - the plan at once, the voicing
   result when it is applied - into ImportReports/<organ>-<date>.txt in the

@@ -1255,7 +1255,19 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   jinak jsou tam mezery" - `velocityLayerFor` is the first commit's again (the plain files play when no ticked layer
   has the note); the strict rule lives behind the engine atomic `velocityPlainStrict` (configuration key
   "velocityPlainStrict", Editor toggle "Velocity layers: an unticked _128 never plays", default off), applied at
-  the startNote call site only. The self-test expects the plain files to sound with nothing ticked. (d) The copy build's parallelFor takes physical
+  the startNote call site only. The self-test expects the plain files to sound with nothing ticked.
+  0.8.193 NO DUPLICATES (the user: "Nechceme duplikáty, proboha!!! ... musí se zeptat, jestli ho chce přepsat"):
+  `askLoadOptions(..., file, importing)` puts the combo "fileChoice" into the box: a file outside the folder ->
+  "copy" [default] / "inPlace" ("Load this file from its own folder: ..."); one of its name already there with other
+  content -> "keepExisting" [default] / "replace" (.json.bak kept) / "inPlace"; an import whose <organ>.json exists
+  -> "replace" [default] / "keepExisting" (import nothing, load the folder's file, the voicing not applied, noted in
+  the import report). The SAME file already in the folder is loaded from there before the box (text compared).
+  The import's plan-time write moved INTO the box callback (it overwrote the user's file unasked before, since
+  0.8.158); `copyLoadOptions(from, to)` carries the five storage keys into the var parsed from the kept file;
+  `adoptCopyInConfigurationsFolder` overwrites with a .bak (getNonexistentSibling = a duplicate is gone). Hook path:
+  import -> replace; ORGAN_TEST_COPY_INTO_CONFIGURATIONS -> copy/replace; else inPlace. Tests:
+  %TEMP%\test_dupes193.ps1 (copy, same file, changed file -> replace + .bak), test_import192.ps1 -KeepFiles then
+  again (replace + .bak). juce::StringArray has no initializer_list<String> assignment: build with add(). (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

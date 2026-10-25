@@ -10312,32 +10312,61 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
             "Load Configuration", "The selected file is not a valid OrganSampler configuration.");
         return;
     }
+    // The same file already in the configurations folder (0.8.193): loaded from there,
+    // nothing copied, nothing asked - never a duplicate.
+    juce::File source = file;
+    if (file.getParentDirectory() != configurationsDirectory())
+    {
+        const auto existing = configurationsDirectory().getChildFile(file.getFileName());
+        if (existing.existsAsFile() && existing.loadFileAsString() == text)
+        {
+            CrashHandler::note("Load Configuration: " + file.getFullPathName() + " is the same file as " + existing.getFullPathName() + " - loaded from the configurations folder");
+            source = existing;
+        }
+    }
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    askLoadOptions(configuration, file.getFileNameWithoutExtension(), [safeThis, file](juce::var chosen)
+    askLoadOptions(configuration, source.getFileNameWithoutExtension(), [safeThis, source](juce::var chosen)
     {
         if (safeThis == nullptr) return;
-        // The box's choice for a file outside the configurations folder (0.8.191): the
-        // paths are resolved against the original, then the copy becomes the open file.
-        bool copy = false;
-        if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("copyIntoConfigurationsFolder"))
+        // The box's choice for a file outside the configurations folder (0.8.191/0.8.193):
+        // the paths are resolved against the original, then the copy (or the replaced
+        // file) becomes the open file; "keepExisting" loads the folder's own file.
+        juce::String choice;
+        if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("fileChoice")) { choice = r->getProperty("fileChoice").toString(); r->removeProperty("fileChoice"); }
+        if (choice == "keepExisting")
         {
-            copy = (bool)r->getProperty("copyIntoConfigurationsFolder");
-            r->removeProperty("copyIntoConfigurationsFolder");
+            const auto existing = safeThis->configurationsDirectory().getChildFile(source.getFileName());
+            auto kept = juce::JSON::parse(existing.loadFileAsString());
+            if (!kept.isObject()) return;
+            copyLoadOptions(chosen, kept);
+            CrashHandler::note("Load Configuration: the configuration already in the configurations folder loaded instead - " + existing.getFullPathName());
+            safeThis->resolveAndApplyPortableConfiguration(kept, existing);
+            return;
         }
-        safeThis->resolveAndApplyPortableConfiguration(chosen, file);
-        if (copy) safeThis->adoptCopyInConfigurationsFolder(file);
-    }, file);
+        safeThis->resolveAndApplyPortableConfiguration(chosen, source);
+        if (choice == "copy" || choice == "replace") safeThis->adoptCopyInConfigurationsFolder(source);
+    }, source);
+}
+
+void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
+{
+    // The load box's storage choices carried over to another var of the same organ (0.8.193).
+    auto* target = to.getDynamicObject();
+    if (target == nullptr) return;
+    for (const auto* key : { "sampleStorageFloat", "releaseHalfRate", "compressSamples", "resampleOnLoad", "storageSampleRate" })
+        if (from.hasProperty(key)) target->setProperty(key, from.getProperty(key, juce::var()));
 }
 
 void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original)
 {
     // A configuration loaded from elsewhere (Downloads, beside the samples, inside
-    // an archive) copied into the configurations folder as it was, never
-    // overwriting a file there; the copy is the open file from now on (the next
+    // an archive) copied into the configurations folder as it was; a file of that
+    // name there is replaced (the load box asked; the old one survives as .json.bak,
+    // 0.8.193: never a duplicate); the copy is the open file from now on (the next
     // Save writes it), the original stays where it was.
     auto target = configurationsDirectory().getChildFile(original.getFileName());
     if (target == original) return;
-    if (target.existsAsFile()) target = target.getNonexistentSibling();
+    if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
     bool written = false;
     if (original.existsAsFile()) written = original.copyFileTo(target);
     else if (auto in = SampleFiles::openInput(original)) written = target.replaceWithText(in->readEntireStreamAsString());   // a json inside an archive
@@ -10495,7 +10524,7 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
 }
 
-void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file)
+void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file, bool importing)
 {
     // The three choices that decide how the samples are held: from the file
     // when it carries them (saved there by the program), else this computer's
@@ -10508,11 +10537,22 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     const bool packed = root->hasProperty("compressSamples") ? (bool)root->getProperty("compressSamples") : compressSamples;
     const bool resample = root->hasProperty("resampleOnLoad") ? (bool)root->getProperty("resampleOnLoad") : resampleOnLoad;
     const double rate = root->hasProperty("storageSampleRate") ? (double)root->getProperty("storageSampleRate") : storageSampleRate;
-    // A file outside the configurations folder (0.8.191): copied there by default.
-    const bool offerCopy = file != juce::File() && file.getParentDirectory() != configurationsDirectory();
+    // Where the file goes (0.8.191, 0.8.193 - the user: never a duplicate, never an
+    // unasked overwrite): "fileChoice" in the var - a file outside the configurations
+    // folder is copied there ("copy") or loaded from its own folder ("inPlace"); one of
+    // its name already in the folder is replaced ("replace", the old one kept as
+    // .bak) or kept and loaded instead ("keepExisting"); an import of an organ already
+    // in the folder: "replace" or "keepExisting".
+    const bool outside = file != juce::File() && file.getParentDirectory() != configurationsDirectory();
+    const juce::File existing = file != juce::File() ? configurationsDirectory().getChildFile(file.getFileName()) : juce::File();
+    const bool exists = existing != juce::File() && existing.existsAsFile();
+    const bool offerChoice = importing ? exists : outside;
     if (std::getenv("ORGAN_LOAD_CONFIGURATION") != nullptr || std::getenv("ORGAN_MERGE_ON_START") != nullptr)
     {
-        if (offerCopy && std::getenv("ORGAN_TEST_COPY_INTO_CONFIGURATIONS") != nullptr) root->setProperty("copyIntoConfigurationsFolder", true);   // the test's "yes"
+        // The tests: an import replaces; a file from elsewhere is copied/replaces with
+        // ORGAN_TEST_COPY_INTO_CONFIGURATIONS set, else loaded from its own folder.
+        if (offerChoice)
+            root->setProperty("fileChoice", importing ? "replace" : std::getenv("ORGAN_TEST_COPY_INTO_CONFIGURATIONS") != nullptr ? (exists ? "replace" : "copy") : "inPlace");
         proceed(configuration);
         return;
     }
@@ -10530,26 +10570,51 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     window->addComboBox("rate", { "Resample everything to 48 kHz  [default]", "Resample everything to 36 kHz (content up to 17 kHz; a quarter less RAM)",
         "Resample everything to 32 kHz (content up to 15 kHz; a third less RAM)", "Keep each file's own rate (faster loading, played by interpolation)" }, "Sample rate on loading");
     window->getComboBoxComponent("rate")->setSelectedItemIndex(!resample ? 3 : rate < 34000.0 ? 2 : rate < 42000.0 ? 1 : 0, juce::dontSendNotification);
-    if (offerCopy)
+    juce::StringArray choiceIds;
+    if (offerChoice)
     {
-        window->addComboBox("copy", { "Copy it into the configurations folder (" + configurationsDirectory().getFullPathName() + ")  [default]",
-            "Load it where it is (" + file.getParentDirectory().getFullPathName() + ")" }, "This file");
-        window->getComboBoxComponent("copy")->setSelectedItemIndex(0, juce::dontSendNotification);
+        juce::StringArray items;
+        juce::String label;
+        if (importing)
+        {
+            label = "This organ is already in the configurations folder as " + existing.getFileName();
+            items.add("Replace it with this import  [default]  (the old file is kept as " + existing.getFileName() + ".bak)");  choiceIds.add("replace");
+            items.add("Keep the existing configuration and load it - import nothing");                                          choiceIds.add("keepExisting");
+        }
+        else if (exists)
+        {
+            label = "A configuration of this name is already in the configurations folder, with other content";
+            items.add("Keep the one in the configurations folder and load it  [default]");                                       choiceIds.add("keepExisting");
+            items.add("Replace it with this file  (the old one is kept as " + existing.getFileName() + ".bak)");                 choiceIds.add("replace");
+            items.add("Load this file from its own folder: " + file.getParentDirectory().getFullPathName());                     choiceIds.add("inPlace");
+        }
+        else
+        {
+            label = "This file lies outside the configurations folder";
+            items.add("Copy it into the configurations folder  [default]  (" + configurationsDirectory().getFullPathName() + ")"); choiceIds.add("copy");
+            items.add("Load this file from its own folder: " + file.getParentDirectory().getFullPathName());                     choiceIds.add("inPlace");
+        }
+        window->addComboBox("fileChoice", items, label);
+        window->getComboBoxComponent("fileChoice")->setSelectedItemIndex(0, juce::dontSendNotification);
     }
     window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::Component::SafePointer<juce::AlertWindow> box(window);
-    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, offerCopy](int result) mutable
+    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds](int result) mutable
     {
         if (safeThis == nullptr || box == nullptr) return;
         if (result != 1) { CrashHandler::note("Load Configuration \"" + what + "\": cancelled at the sample storage choices"); return; }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
-        if (offerCopy)
+        if (!choiceIds.isEmpty())
             if (auto* r = configuration.getDynamicObject())
-                r->setProperty("copyIntoConfigurationsFolder", box->getComboBoxComponent("copy")->getSelectedItemIndex() == 0);
+            {
+                const int index = juce::jlimit(0, choiceIds.size() - 1, box->getComboBoxComponent("fileChoice")->getSelectedItemIndex());
+                r->setProperty("fileChoice", choiceIds[index]);
+                CrashHandler::note("Load Configuration \"" + what + "\": the file " + choiceIds[index]);
+            }
         auto& o = *safeThis;
         o.sampleStorageFloat = storage == 0;
         o.releaseHalfRate = storage == 2;
@@ -11422,12 +11487,9 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 list.replaceWithText(lines.joinIntoString("\n") + "\n");
             }
         }
-        if (!plan.configurationFile.replaceWithText(juce::JSON::toString(configuration, true)))
-        {
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition",
-                "The configuration could not be written beside the Hauptwerk folders:\n" + plan.configurationFile.getFullPathName(), "OK", safeThis.getComponent());
-            return;
-        }
+        // The configuration file is written in the load box's callback below (0.8.193):
+        // a file of the organ's name already in the configurations folder is replaced
+        // only when the box says so - never overwritten unasked, never duplicated.
         juce::String summary;
         summary << plan.organName << " - " << (int)plan.divisions.size() << " division(s):";
         for (size_t i = 0; i < plan.divisions.size(); ++i)
@@ -11470,13 +11532,38 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             CrashHandler::note("Hauptwerk import report: " + safeThis->hauptwerkImportReport.getFullPathName());
         }
         safeThis->hauptwerkImport = odf;
-        safeThis->runWhenLoaded([safeThis, odf, file = plan.configurationFile, summary] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, file, summary); });
         safeThis->suppressPortableNotice = true;   // made here and now: no "from another computer" notice, the import's own report follows
         const juce::File configurationFile = plan.configurationFile;
-        safeThis->askLoadOptions(configuration, configurationFile.getFileNameWithoutExtension(), [safeThis, configurationFile](juce::var chosen)
+        safeThis->askLoadOptions(configuration, configurationFile.getFileNameWithoutExtension(), [safeThis, odf, configurationFile, summary](juce::var chosen)
         {
-            if (safeThis != nullptr) safeThis->resolveAndApplyPortableConfiguration(chosen, configurationFile);
-        });
+            if (safeThis == nullptr) return;
+            juce::String choice;
+            if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("fileChoice")) { choice = r->getProperty("fileChoice").toString(); r->removeProperty("fileChoice"); }
+            if (choice == "keepExisting")
+            {
+                // The configuration already in the folder is loaded instead; nothing imported,
+                // no voicing from the definition (the file carries its own).
+                safeThis->hauptwerkImport = nullptr;
+                safeThis->hauptwerkImportReport.appendText("\nNot imported: the configuration " + configurationFile.getFullPathName()
+                    + " already in the configurations folder was kept and loaded instead (the load box's choice).\n");
+                CrashHandler::note("Hauptwerk import: the existing configuration kept and loaded instead - " + configurationFile.getFullPathName());
+                auto existing = juce::JSON::parse(configurationFile.loadFileAsString());
+                if (!existing.isObject()) return;
+                copyLoadOptions(chosen, existing);
+                safeThis->resolveAndApplyPortableConfiguration(existing, configurationFile);
+                return;
+            }
+            if (configurationFile.existsAsFile())   // replaced: the old file survives as .json.bak (one generation)
+                configurationFile.copyFileTo(configurationFile.getSiblingFile(configurationFile.getFileName() + ".bak"));
+            if (!configurationFile.replaceWithText(juce::JSON::toString(chosen, true)))
+            {
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition",
+                    "The configuration could not be written into the configurations folder:\n" + configurationFile.getFullPathName(), "OK", safeThis.getComponent());
+                return;
+            }
+            safeThis->runWhenLoaded([safeThis, odf, configurationFile, summary] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, configurationFile, summary); });
+            safeThis->resolveAndApplyPortableConfiguration(chosen, configurationFile);
+        }, configurationFile, true);
     };
     juce::Timer::callAfterDelay(300, [poll] { if (*poll) (*poll)(); });
 }

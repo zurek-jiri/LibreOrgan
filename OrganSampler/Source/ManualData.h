@@ -829,9 +829,16 @@ static const char* const kManualText_part4 =
     "chosen anew in the Configuration Editor (*Configurations folder* > Choose).\n"
     "The Hauptwerk and RAR imports write there, *Save Configuration* and *Load\n"
     "Configuration* start there. A configuration loaded from anywhere else\n"
-    "(Downloads, beside the samples, inside an archive) is offered a copy into\n"
-    "the folder in the load box (0.8.191, *This file*: copy it, or load it where\n"
-    "it is); the copy becomes the open file, the original stays. The folder can\n"
+    "(Downloads, beside the samples, inside an archive) is copied into the\n"
+    "folder by the load box (0.8.191; or loaded from its own folder, the second\n"
+    "choice); the copy becomes the open file, the original stays. Never a\n"
+    "duplicate (0.8.193): the same file already in the folder is simply loaded\n"
+    "from there; a file of the same name with other content makes the box ask -\n"
+    "keep the one in the folder and load it, replace it with this file (the old\n"
+    "one survives as `.json.bak`), or load this file from its own folder. A\n"
+    "Hauptwerk import of an organ whose configuration is in the folder already\n"
+    "asks the same way: replace it with the import, or keep the existing\n"
+    "configuration and load it without importing. The folder can\n"
     "be moved: nothing in it points at its own place. (Up to 0.8.189 the imports\n"
     "made an `OrganConfigurations` folder beside every sample set, which nobody\n"
     "found again.) The setting belongs to the computer, never to a configuration\n"
@@ -1003,6 +1010,8 @@ static const char* const kManualText_part4 =
     "new load adopts them, nothing is decoded) is loaded whatever the memory\n"
     "says. The loading dialog has a *Cancel* button (0.8.139): the loading stops\n"
     "at the next stop, the instrument is built from what was loaded, the rest is\n"
+    ;
+static const char* const kManualText_part5 =
     "named like after a memory stop and stays in the pool. A stop left out of\n"
     "the load keeps its row in the Stop List and is offered in the pool of its\n"
     "division (\"Add stop\" on the grid, 0.8.142): taking it reloads the division\n"
@@ -1010,8 +1019,6 @@ static const char* const kManualText_part4 =
     "\n"
     "The report also profiles the device thread (0.8.137): per route callback,\n"
     "in microseconds, how much went into this thread's own rendering of voices,\n"
-    ;
-static const char* const kManualText_part5 =
     "into waiting for the other lanes and merging their output, into the mixing\n"
     "(block context, harmonic shelf, channel separation, safety clip), into the\n"
     "IR hand-over (and of it, waiting for the convolution task) and into the\n"
@@ -1205,6 +1212,8 @@ static const char* const kManualText_part5 =
     "  \"Velocity layers\" below.\n"
     "- **Attack Gain** (-6 to +6 dB) - the start of every note is raised or\n"
     "  lowered by this much: more chiff, or a softer speaking, without touching the\n"
+    ;
+static const char* const kManualText_part6 =
     "  held tone.\n"
     "- **Attack Time** (0-500 ms, default 150) - how long the attack gain acts at\n"
     "  the start of the note: it holds for the first half of this time and fades\n"
@@ -1212,8 +1221,6 @@ static const char* const kManualText_part5 =
     "- **Random pitch error** (0-40 cents, default 4) - every pipe gets its own\n"
     "  small random detune at every note, as real pipes never speak twice alike.\n"
     "  The division's *Random tuning error of pipes* switch must be on.\n"
-    ;
-static const char* const kManualText_part6 =
     "- **Undulation (beats/s at a1)** - for celestes: the stop beats this many\n"
     "  times per second against an in-tune rank at a1 (negative = flat). A rank\n"
     "  recorded sharp or flat throughout is recognised as a celeste and starts with\n"
@@ -1407,6 +1414,8 @@ static const char* const kManualText_part6 =
     "  removes the stop (its folders become free). **Remove empty stops** removes\n"
     "  every row without folders that has no children.\n"
     "- **Aliases from folders** gives every stop without an alias the bare name\n"
+    ;
+static const char* const kManualText_part7 =
     "  of its sample folder: no parent folders (\"TA - fletna\" becomes \"Fletna\",\n"
     "  shown as \"Fletna 8'\"), no perspective prefix, a capital first letter, a\n"
     "  footage at the end of the folder name with its foot mark; a stop without a\n"
@@ -1414,8 +1423,6 @@ static const char* const kManualText_part6 =
     "  harmonic). Aliases you typed stay. Applied with *Apply and reload*.\n"
     "- **Add perspective...** adds a column (a known perspective name or a new\n"
     "  one); the x right after the perspective's name in the column header\n"
-    ;
-static const char* const kManualText_part7 =
     "  removes it. \"default\" is the route of folders without a perspective prefix.\n"
     "- **Swap divisions...** exchanges the whole stop lists of two divisions, as if\n"
     "  their folders had been swapped (combinations and MIDI bindings follow).\n"
@@ -1609,6 +1616,8 @@ static const char* const kManualText_part7 =
     "48 kHz) the sound breaks at a few hundred voices, however the routes and\n"
     "IRs are set; at 512 samples (10.7 ms, unnoticeable on an organ) the same\n"
     "computer renders tens of thousands. 512 is the default for a device opened\n"
+    ;
+static const char* const kManualText_part8 =
     "for the first time (ASIO keeps its control panel's size, JACK the server's\n"
     "shared clock), and the value to measure the polyphony with. A measurement\n"
     "that finds a buffer below 256 samples on any route says so first and asks\n"
@@ -1616,8 +1625,6 @@ static const char* const kManualText_part7 =
     "\n"
     "**One rate for every device.** Every audio route renders at the rate of its\n"
     "device, and the devices of one organ may run at different rates and buffer\n"
-    ;
-static const char* const kManualText_part8 =
     "sizes - the program does not stop you. The samples are loaded at 48 kHz (see\n"
     "\"Sample rate on loading\"): a device at 44.1 or 96 kHz gets its route's pipes\n"
     "read at the matching speed, through the same interpolation as a transposed\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "To be continued. macOS has one driver, CoreAudio, and joins several cards\n"
     "into an aggregate device itself (*Audio MIDI Setup* in the Utilities\n"
+    ;
+static const char* const kManualText_part9 =
     "folder); OrganSampler lists the CoreAudio devices and should play through\n"
     "them like through Windows Audio. The project has no Mac to test this on;\n"
     "reports are welcome. Two builds: `OrganSampler-macos.zip` for Apple silicon\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "for Intel Macs on **macOS 10.11 El Capitan or newer** (10.11 is the oldest\n"
     "system the framework allows; a Mac on 10.10 needs the free upgrade to the\n"
     "newest system Apple offers for it, 10.13 High Sierra for the 2010 models).\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "## 5.7 Audio devices not ready when OrganSampler starts\n"
     "\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "  switched from a MIDI control (right-click it).\n"
     "\n"
     "**a1 = 440 Hz** (the button in the dialog) retunes every pipe from its recorded\n"
+    ;
+static const char* const kManualText_part10 =
     "pitch to a1 = 440 Hz. Its purpose is to bring the samples of different organs\n"
     "onto one pitch: organs are recorded at different temperatures and different\n"
     "diapasons (a1 = 435, 440, 442, 465 Hz ...), and an organ built from the stops\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "the stops agree, and celeste beats and the global *Pitch* slider (Global\n"
     "sound, cents on top of everything) mean what they say. The voicing row's\n"
     "*Undulation* line reads \"needs 440 Hz\" until this is done. A large retune\n"
-    ;
-static const char* const kManualText_part10 =
     "(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -\n"
     "or a big global Pitch) is not played by speeding every pipe up: the common\n"
     "part of it is applied once to the mixed output of every route with a proper\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "  Nothing else is lost.\n"
     "- *Filled pipes cache: files of stops not loaded now* - **Remove them**\n"
     "  deletes only the files of ranks that are not loaded at the moment: the\n"
+    ;
+static const char* const kManualText_part11 =
     "  stops of other configurations, of folders you have unloaded or deleted.\n"
     "  The files of the loaded organ stay, so its next load is still fast. This is\n"
     "  the button for routine housekeeping.\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "  cache (the default is `FilledPipesCache` in the application-data folder,\n"
     "  usually on the system drive). Choose a big drive, for example beside the\n"
     "  samples; the files built so far are moved there, so nothing has to be\n"
-    ;
-static const char* const kManualText_part11 =
     "  rebuilt.\n"
     "\n"
     "The cache is a convenience, not a necessity: with it off everything works the\n"
@@ -2417,6 +2424,8 @@ static const char* const kManualText_part11 =
     "to nothing there - and the RAM drops by a quarter or a third; the kernel\n"
     "interpolates from the coarser grid at the same cost, so more stops fit and\n"
     "the polyphony stays. *Keep each file's own rate* loads faster and plays by\n"
+    ;
+static const char* const kManualText_part12 =
     "interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits\n"
     "whatever it holds; only the coarser grid saves. Takes effect at the next load.\n"
     "\n"
@@ -2424,8 +2433,6 @@ static const char* const kManualText_part11 =
     "years: past fifty, few people hear anything above 17 kHz, and past sixty the\n"
     "limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose\n"
     "nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser\n"
-    ;
-static const char* const kManualText_part12 =
     "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
     "\n"
     "### IR processing\n"
@@ -2619,6 +2626,8 @@ static const char* const kManualText_part12 =
     "   started from the audio tab of a division's Settings (*Measure polyphony*,\n"
     "   beside *Reopen device*).\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "Then save the configuration: the value belongs to this organ. Measure again\n"
     "after changing the audio routes, the IRs, the buffer size or the samples.\n"
     "The run takes one to two minutes; *Cancel* restores everything.\n"
@@ -2626,8 +2635,6 @@ static const char* const kManualText_part12 =
     "## 8.2 Global sound\n"
     "\n"
     "Every slider of this section has a checkbox that shows it on the main panel\n"
-    ;
-static const char* const kManualText_part13 =
     "too (the shown sliders share a row with the polyphony display). All are\n"
     "MIDI-learnable (right-click the slider on the main panel).\n"
     "\n"
@@ -2821,6 +2828,8 @@ static const char* const kManualText_part13 =
     "extension than to the stop; shorter dries it. Changing it rebuilds the release\n"
     "copies.\n"
     "\n"
+    ;
+static const char* const kManualText_part14 =
     "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch only. How far the attack (everything before the\n"
@@ -2828,8 +2837,6 @@ static const char* const kManualText_part13 =
     "(0 to 100 %, default 50). 0 % leaves it as resampled - two octaves down the\n"
     "attack is four times as slow; 100 % gives it the source's duration; 50 % is\n"
     "half way on a logarithmic scale (two octaves down: twice as slow, which the ear\n"
-    ;
-static const char* const kManualText_part14 =
     "accepts where four times is too much). Applies to shifts downwards; upwards the\n"
     "attack stays as resampled. Higher values fray the attack more (see \"The\n"
     "transposition methods\"); lower\n"
@@ -3023,6 +3030,8 @@ static const char* const kManualText_part14 =
     "default.\n"
     "\n"
     "### Top bar: Save Voicing\n"
+    ;
+static const char* const kManualText_part15 =
     "\n"
     "Shows or hides the Save Voicing button. Hidden by default.\n"
     "\n"
@@ -3030,8 +3039,6 @@ static const char* const kManualText_part14 =
     "\n"
     "Shows or hides the Load Configuration button (an OrganSampler `.json`, or a\n"
     "Hauptwerk organ definition - see \"Loading a Hauptwerk organ definition\").\n"
-    ;
-static const char* const kManualText_part15 =
     "Right-click: merge another configuration into the loaded organ.\n"
     "\n"
     "### Top bar: Save Configuration\n"
@@ -3225,6 +3232,8 @@ static const char* const kManualText_part15 =
     "\n"
     "The level of one perspective of this division (-31 to +6 dB, default 0); -31\n"
     "dB switches the perspective off completely and saves its voices.\n"
+    ;
+static const char* const kManualText_part16 =
     "\n"
     "### Perspective channel separation\n"
     "\n"
@@ -3232,8 +3241,6 @@ static const char* const kManualText_part15 =
     "perspective; less lets the other channels carry that share of it too; 0 % = all\n"
     "channels carry the same sum.\n"
     "\n"
-    ;
-static const char* const kManualText_part16 =
     "### Random tuning error of pipes\n"
     "\n"
     "(The Divisions dialog names it *Allow Random Tuning Error*.)\n"
