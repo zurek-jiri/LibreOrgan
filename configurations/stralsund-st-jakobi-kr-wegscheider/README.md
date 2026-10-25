@@ -1,4 +1,4 @@
-# Stralsund_Jakobi_Wegscheider.portable
+# Stralsund, St. Jakobi, Kr. Wegscheider
 
 <!-- Written by OrganSampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):
      https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->
@@ -15,11 +15,14 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.188 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.189 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
-- **RAM:** about 8.1 GB at the least, with every saving option of the load box (16-bit, 32 kHz on loading, releases at half the rate, packed; estimated by the program from the loaded samples when this file was saved); measured 43 GB when this file was saved, the organ loaded as 16-bit, 48 kHz; at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times the least.
-- **Saved with:** OrganSampler 0.8.188.
+- **RAM:**
+  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **43 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
+  - **81 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** OrganSampler 0.8.189.
 - **Author:** Jiri Zurek, 25 October 2026.
 
 ## Where to put the file
@@ -66,4 +69,4 @@ The folders `003135` and `003136` must stand side by side in one folder. Place `
 |  |  | Flöte 2' (Trsm.) |  |
 |  |  | HW Tromp 4' (Ext.) |  |
 
-<!-- published by @zurek-jiri (issue #94, 2026-10-25) -->
+<!-- published by @zurekjiri (issue #93, 2026-10-25) -->
