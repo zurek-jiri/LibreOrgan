@@ -1189,8 +1189,11 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   the index job (`configurations.yml`) `git rm`s them before moving the new pair in, so a new version REPLACES the
   old folder whatever the file was called (stralsund-jakobi-wegscheider-portable -> stralsund-st-jakobi-kr-wegscheider
   at the next publish). The issue workflow appends `<!-- published by @login (issue #n, date) -->` to the flat README;
-  `publisher_of_folder` reads it: a new version or a removal by anybody else than the publisher or the repository
-  owner is refused in the issue (a folder without the comment: the owner only). Removal: `configuration-remove.yml`
+  `publisher_of_folder` reads it: a REMOVAL by anybody else than the publisher or the repository owner is refused
+  in the issue; a NEW VERSION from another account is proposed all the same with the note "published by @x; this
+  version comes from @y - merge it only if that is right" in the PR and the issue (the user has TWO accounts,
+  zurek-jiri = owner and zurekjiri; #93 from the second was refused by the first rule - the merge is the
+  authorisation, never refuse an upload for the author). Removal: `configuration-remove.yml`
   runs on workflow_dispatch (input `organ` = ANY PART of the name: folder, README title or organ, case-insensitive,
   `find`; one match removes, several are listed) and on issues labelled `configuration-remove` (form
   `organ_configuration_remove.yml`; the label must exist - created 25 Oct via the API). `validate` (called by
