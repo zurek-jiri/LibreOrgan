@@ -21,7 +21,7 @@ the recordings themselves are the property of their producer and are obtained fr
 - **RAM:**
   - **1.9 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
   - **2.7 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **19 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+  - **12 GB** - 32-bit float, the files' own rate, full releases, no packing; *measured*
 - **Saved with:** OrganSampler 0.8.198.
 - **Author:** Jiri Zurek, 25 October 2026.
 
