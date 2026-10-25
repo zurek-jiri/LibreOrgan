@@ -670,7 +670,10 @@ after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8") and, since
 0.8.200, after a manual's mark as well - "HW Trombone 8", "RW Gedact 8",
 "G.O. Trompette 8", "Pos Flute 4", "Réc. Hautbois 8" (a mark is a token of
 up to five capitals, a known word like Pos/Rec/Ped/Man/Gt, or anything
-ending in "." or ":"); so do the row names of every tree scan. Encrypted
+ending in "." or ":"), and since 0.8.201 the mark itself starts with a
+capital too ("ped subbass 16" -> "Ped Subbass 16", "g.o." -> "G.O.", a
+roman numeral whole: "ii." -> "II."); so do the row names of every tree
+scan. Encrypted
 sample sets (`.hbw` files) cannot be
 played and the import says so.
 
@@ -831,7 +834,11 @@ Configuration* start there. A configuration loaded from anywhere else
 as downloaded from GitHub - *Load Configuration* opens it as it is, 0.8.195)
 is copied into the folder by the load box (0.8.191; or loaded from its own
 folder, the second choice); the copy becomes the open file, the original
-stays. Never a
+stays. The copy of a portable file drops the `.portable` of its name
+(0.8.201: `Arnstadt Surround.portable.json` becomes `Arnstadt Surround.json`
+- it is the configuration you edit on this computer now, no export any
+more; a file of that name already in the folder makes the box ask, as
+below). Never a
 duplicate (0.8.193): the same file already in the folder is simply loaded
 from there; a file of the same name with other content makes the box ask -
 keep the one in the folder and load it, replace it with this file (the old

@@ -1431,8 +1431,12 @@ void StopRow::resized()
             x += sliderSpacing;
         }
         const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(diapasonLabel.getFont(), diapasonLabel.getText()));
-        const int diapasonWidth = juce::jlimit(120, 900, textWidth + 12);
+        // The pitch text takes what is left of the line after the alias and the rank
+        // count switch (0.8.201): a narrow division column cut the alias off instead.
+        const int afterPitch = 10 + 48 + 196 + (rankCountToggle.isVisible() ? 146 : 0) + margin;
+        const int diapasonWidth = juce::jlimit(120, 900, juce::jmin(textWidth + 12, getWidth() - x - afterPitch));
         diapasonLabel.setBounds(x, 13, diapasonWidth, 23);   // "Orig. Pitch: a1 = ...; temperament = ..."
+        diapasonLabel.setTooltip(diapasonWidth < textWidth + 12 ? diapasonLabel.getText() : juce::String());   // the whole text when cut
         x += diapasonWidth + 10;
     }
     aliasLabel.setBounds(x, 13, 46, 23);
@@ -2564,8 +2568,14 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     for (auto* stop : engine.getStops())
         if (stop->voicingExpanded)
             widestRankCount = juce::jmax(widestRankCount, 1 + (int)stop->ranks.size());
-    // Two lines of controls: the wider one decides the expanded width.
-    const int line1Width = margin + 200 + 8 + 55 + widestRankCount * 82 + 8 + 200 + 320 + 8 + 240 + margin;   // ... + alias
+    // Two lines of controls: the wider one decides the expanded width. Line 1 as
+    // StopRow::resized lays it out (0.8.201: the old sum dated from before the
+    // Transposition box, the One-shot switch and the Rank count switch, so a
+    // division with a small compass - a pedal - cut the Alias box and everything
+    // after it off): button, transposition label + box, One-shot, "Ranks" + the
+    // rank boxes, the pitch text at its minimum (it shrinks to what is left, the
+    // tooltip keeps the whole), "Alias" + its box, the Rank count switch.
+    const int line1Width = margin + 200 + 8 + 104 + 258 + 96 + 92 + widestRankCount * 82 + 8 + 120 + 10 + 48 + 196 + 146 + margin;
     const int line2Width = margin + 150 + 8 + 210 + 8 + 210 + 8 + 210 + 8 + 230 + 8 + 250 + margin;
     const int topControlsWidth = juce::jmax(line1Width, line2Width);
     int widestCompass = noteMax - noteMin + 1;

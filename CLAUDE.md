@@ -1307,6 +1307,29 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   CAPITALS, or a known word (pos rec réc ped pd man gr gt go hw ow uw bw rw sw ch bp rp pedal recit récit swell
   great choir solo echo positif, any case) before the space; "Flute 8"/"A trumpet"/"Mixtur IV" untouched.
   `StopNames::selfCheck()` (20 cases) is appended to the --kerneltest report: a MISMATCH fails the CI.
+  0.8.201 MARK CAPITALS (the user: "i první písmeno označující stroj by mělo být vždy velké, ped > Ped"):
+  `capitaliseAfterDivisionPrefix` capitalises the first letter of every piece of the mark too ("g.o." -> "G.O.",
+  "ped" -> "Ped", "hw" -> "Hw" - the first letter only, as asked) and a roman numeral whole ("ii." -> "II.");
+  the self-check has 26 cases.
+  0.8.201 ALIASES LOST (the user: "portable konfigurace si nezapamatovala mnou upravené Aliasy", Arnstadt): an
+  alias typed in the VOICING row sets `stop->alias` only; the Stop List table (`manualConfigs[m].stopBuild.entries[]
+  .alias`) was synced from the stops only when the Stop List dialog opened, and at every load the table's alias
+  OVERRIDES the voicing state's (the "Compiling the Stop List: voicing state" phase and applyStopBuild) - the saved
+  file had "Ped Subbass" in voicingSettings and "ped Subbass" in the table, the load showed the table's. Now
+  `saveSettings` syncs the table's aliases from the engine's stops before writing (transmission rows skipped).
+  Diagnosis script: %TEMP%\sb_dump.py <cfg.json> (table aliases) + aliases_cmp.py (voicing vs table). Hook
+  `ORGAN_TEST_ALIAS="<manual>|<stop prefix>|<alias>"` (inside the ORGAN_SAVE_PORTABLE lambda) sets an alias as the
+  row does; %TEMP%\test_alias201.ps1 = save + reload + Stop List dump. COPY NAME (the user: "když se portable
+  nakopíruje do Konfigurací, musí ztratit příponu portable"): `configurationsCopyOf(file)` = the configurations
+  folder + the name less ".portable" - used by adoptCopyInConfigurationsFolder, the same-file check, keepExisting and
+  askLoadOptions' "exists" (so "X.portable.json" loaded with "X.json" in the folder asks keep/replace/inPlace).
+  0.8.201 VOICING ROW WIDTH (the user: a pedal's voicing row cut the Alias box off): `Voicer::rebuildUI`'s
+  `line1Width` must mirror `StopRow::resized` line 1 - it was the sum of 0.8.135 and never followed the Transposition
+  box (104 + 258), One-shot (96) and Rank count (146) additions, so the expanded column = the compass width on a
+  27-key pedal; now the real sum with the pitch text at its 120 px minimum, and `resized` clamps the pitch label to
+  what is left before the alias (tooltip = the whole text when cut). RULE: a new widget on line 1 of StopRow goes
+  into BOTH places. Test: %TEMP%\test_row201.ps1 (ORGAN_TEST_EXPAND on "TA - subbass" of Rural + ORGAN_TEST_SNAPSHOT
+  -> grid.png.row.png of the expanded row).
   404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
   issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
   keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):

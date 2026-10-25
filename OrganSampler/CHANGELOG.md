@@ -12,8 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.200] - 2026-10-25
+## [0.8.201] - 2026-10-25
 
+### Fixed
+- The voicing row of a division with a small compass (a pedal) cut the
+  Alias box and everything after it off: the division's expanded width is
+  sized for the whole first line again (the transposition box, the one-shot
+  and rank-count switches came after that sum was last changed), and the
+  pitch text shrinks to what is left of the line, its tooltip keeping the
+  whole text.
+- An alias changed in the voicing row was lost by the next load of the saved
+  configuration (Arnstadt): the file carried the new alias in the voicing
+  state and the old one in the Stop List table, and the table wins at a load.
+  Every save now brings the table's aliases up to date from the stops.
+
+### Changed
+- A configuration copied into the configurations folder by the load box
+  drops the ".portable" of its name: "Arnstadt Surround.portable.json"
+  becomes "Arnstadt Surround.json" - the configuration you edit on this
+  computer, no export any more (a file of that name already there makes the
+  box ask as before).
+- The mark of a division or manual in a name the program makes starts with
+  a capital too: "ped subbass 16" -> "Ped Subbass 16", "g.o." -> "G.O.", a
+  roman numeral whole ("ii." -> "II.").
+
+## [0.8.200] - 2026-10-25
 ### Changed
 - The automatic capital in stop names and aliases comes after a manual's
   mark as well, not only after a division abbreviation: "HW Trombone 8",

@@ -17,7 +17,10 @@ namespace StopNames
     // GO, G.O., CH. a tak podobně"), a bare mark of a manual: a token of two
     // to five CAPITAL letters ("HW" "BW" "RW" "BP" "GO" "CH" "SW" "OW" "UW" "RP"
     // "GT" "PED") or a known word in any case ("Pos", "Rec", "Réc", "Ped", "Man",
-    // "Gr", "Gt", "Hw", "Sw" ...) - followed by a space.
+    // "Gr", "Gt", "Hw", "Sw" ...) - followed by a space. 0.8.201 (the user:
+    // "i první písmeno označující stroj by mělo být vždy velké, ped > Ped"): the
+    // mark's own first letter is a capital too, every piece of a chain ("g.o."
+    // -> "G.O."), a roman numeral as a whole ("ii." -> "II.").
     inline juce::String capitaliseAfterDivisionPrefix(juce::String name)
     {
         const int length = name.length();
@@ -25,12 +28,15 @@ namespace StopNames
         while (i < length && name[i] == ' ') ++i;
         bool marked = false;
         juce::String stem;
+        int pieceStart[8] = {}, pieceEnd[8] = {};
+        int pieces = 0;
         for (;;)
         {
             const int start = i;
             while (i < length && juce::CharacterFunctions::isLetterOrDigit(name[i])) ++i;
             stem = name.substring(start, i);
             if (stem.isEmpty() || stem.length() > 5) return name;
+            if (pieces < 8) { pieceStart[pieces] = start; pieceEnd[pieces] = i; ++pieces; }
             if (i < length && (name[i] == '.' || name[i] == ':'))
             {
                 marked = true;
@@ -55,9 +61,20 @@ namespace StopNames
         }
         while (i < length && name[i] == ' ') ++i;
         if (i >= length) return name;
+        juce::String result = name;
+        for (int p = 0; p < pieces; ++p)
+        {
+            const juce::String piece = name.substring(pieceStart[p], pieceEnd[p]);
+            const auto lower = piece.toLowerCase();
+            if (lower.containsOnly("ivx") && lower.length() <= 4)
+                result = result.substring(0, pieceStart[p]) + piece.toUpperCase() + result.substring(pieceEnd[p]);
+            else if (juce::CharacterFunctions::isLowerCase(piece[0]))
+                result = result.substring(0, pieceStart[p]) + juce::String::charToString(juce::CharacterFunctions::toUpperCase(piece[0])) + result.substring(pieceStart[p] + 1);
+        }
         const juce::juce_wchar c = name[i];
-        if (!juce::CharacterFunctions::isLowerCase(c)) return name;
-        return name.substring(0, i) + juce::String::charToString(juce::CharacterFunctions::toUpperCase(c)) + name.substring(i + 1);
+        if (juce::CharacterFunctions::isLowerCase(c))
+            result = result.substring(0, i) + juce::String::charToString(juce::CharacterFunctions::toUpperCase(c)) + result.substring(i + 1);
+        return result;
     }
 
     // The rule tried on known names (--kerneltest prints it; "MISMATCH" fails the CI).
@@ -68,9 +85,11 @@ namespace StopNames
             { "P. trombone 16", "P. Trombone 16" }, { "3 geigenpr 8", "3 Geigenpr 8" }, { "Rec: hautbois 8", "Rec: Hautbois 8" },
             { "HW trombone 8", "HW Trombone 8" }, { "RW gedact 8", "RW Gedact 8" }, { "BP cornet", "BP Cornet" },
             { "G.O. trompette 8", "G.O. Trompette 8" }, { "CH. flute 4", "CH. Flute 4" }, { "Pos flute 4", "Pos Flute 4" },
-            { "R\xc3\xa9" "c. hautbois 8", "R\xc3\xa9" "c. Hautbois 8" }, { "II. principal 8", "II. Principal 8" }, { "hw flute 8", "hw Flute 8" },
+            { "R\xc3\xa9" "c. hautbois 8", "R\xc3\xa9" "c. Hautbois 8" }, { "II. principal 8", "II. Principal 8" }, { "hw flute 8", "Hw Flute 8" },
             { "Flute 8", "Flute 8" }, { "flute 8", "flute 8" }, { "Bourdon 16", "Bourdon 16" }, { "Terz 1 3/5", "Terz 1 3/5" },
-            { "A trumpet", "A trumpet" }, { "P.trombone", "P.trombone" }, { "Mixtur IV", "Mixtur IV" }, { "HW", "HW" }
+            { "A trumpet", "A trumpet" }, { "P.trombone", "P.trombone" }, { "Mixtur IV", "Mixtur IV" }, { "HW", "HW" },
+            { "ped. trombone 16", "Ped. Trombone 16" }, { "ped subbass 16", "Ped Subbass 16" }, { "ii. principal 8", "II. Principal 8" },
+            { "g.o. trompette 8", "G.O. Trompette 8" }, { "r\xc3\xa9" "c: Hautbois 8", "R\xc3\xa9" "c: Hautbois 8" }, { "ii principal 8", "II Principal 8" }
         };
         juce::String report;
         int bad = 0;

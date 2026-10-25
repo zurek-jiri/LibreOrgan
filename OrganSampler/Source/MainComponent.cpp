@@ -1615,6 +1615,16 @@ MainComponent::MainComponent()
         runWhenLoaded([safeThis, target]
         {
             if (safeThis == nullptr) return;
+            // ORGAN_TEST_ALIAS="<manual>|<stop prefix>|<alias>" (tests, 0.8.201): the alias
+            // set as the voicing row's Alias box sets it, right before the save.
+            if (const char* test = std::getenv("ORGAN_TEST_ALIAS"))
+            {
+                const auto parts = juce::StringArray::fromTokens(juce::String(test), "|", "");
+                juce::ScopedLock sl(safeThis->engine.getLock());
+                for (auto* stop : safeThis->engine.getStops())
+                    if (parts.size() == 3 && stop->primaryManual == parts[0].getIntValue() && stop->name.startsWith(parts[1]))
+                    { stop->alias = parts[2]; CrashHandler::note("ORGAN_TEST_ALIAS: " + stop->name + " -> " + parts[2]); break; }
+            }
             safeThis->savePortableConfiguration(target, false, true);
             CrashHandler::note("ORGAN_SAVE_PORTABLE: written " + target.getFullPathName());
         });
@@ -10396,7 +10406,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     juce::File source = jsonFile;
     if (jsonFile.getParentDirectory() != configurationsDirectory())
     {
-        const auto existing = configurationsDirectory().getChildFile(jsonFile.getFileName());
+        const auto existing = configurationsCopyOf(jsonFile);
         if (existing.existsAsFile() && existing.loadFileAsString() == text)
         {
             CrashHandler::note("Load Configuration: " + file.getFullPathName() + " is the same file as " + existing.getFullPathName() + " - loaded from the configurations folder");
@@ -10415,7 +10425,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
         if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("fileChoice")) { choice = r->getProperty("fileChoice").toString(); r->removeProperty("fileChoice"); }
         if (choice == "keepExisting")
         {
-            const auto existing = safeThis->configurationsDirectory().getChildFile(source.getFileName());
+            const auto existing = safeThis->configurationsCopyOf(source);
             auto kept = juce::JSON::parse(existing.loadFileAsString());
             if (!kept.isObject()) return;
             copyLoadOptions(chosen, kept);
@@ -10439,6 +10449,17 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
         if (from.hasProperty(key)) target->setProperty(key, from.getProperty(key, juce::var()));
 }
 
+juce::File MainComponent::configurationsCopyOf(const juce::File& file) const
+{
+    // The file's place in the configurations folder: without the ".portable" of an
+    // export (0.8.201, the user: a copied configuration is the one the user edits on
+    // this computer, no longer a portable one) - "Arnstadt Surround.portable.json"
+    // -> "Arnstadt Surround.json".
+    juce::String base = file.getFileNameWithoutExtension();
+    if (base.endsWithIgnoreCase(".portable")) base = base.dropLastCharacters(9);
+    return configurationsDirectory().getChildFile(base + file.getFileExtension());
+}
+
 void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip)
 {
     // A configuration loaded from elsewhere (Downloads, beside the samples, inside
@@ -10446,7 +10467,7 @@ void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, 
     // name there is replaced (the load box asked; the old one survives as .json.bak,
     // 0.8.193: never a duplicate); the copy is the open file from now on (the next
     // Save writes it), the original stays where it was.
-    auto target = configurationsDirectory().getChildFile(original.getFileName());
+    auto target = configurationsCopyOf(original);
     if (target == original) return;
     if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
     bool written = false;
@@ -10627,7 +10648,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     // .bak) or kept and loaded instead ("keepExisting"); an import of an organ already
     // in the folder: "replace" or "keepExisting".
     const bool outside = file != juce::File() && file.getParentDirectory() != configurationsDirectory();
-    const juce::File existing = file != juce::File() ? configurationsDirectory().getChildFile(file.getFileName()) : juce::File();
+    const juce::File existing = file != juce::File() ? configurationsCopyOf(file) : juce::File();
     const bool exists = existing != juce::File() && existing.existsAsFile();
     const bool offerChoice = importing ? exists : outside;
     if (std::getenv("ORGAN_LOAD_CONFIGURATION") != nullptr || std::getenv("ORGAN_MERGE_ON_START") != nullptr)
@@ -18104,6 +18125,23 @@ void MainComponent::saveSettings()
         if (retainedVoicing.isObject()) obj->setProperty("voicingSettings", retainedVoicing);
     }
 
+    // The alias of a stop is edited in the voicing row as well (0.8.201, Arnstadt: the
+    // user's aliases vanished from the portable file): the engine's stop carries the
+    // current one, the Stop List table of its division may be behind it - and at a
+    // load the table's alias overrides the voicing state's. Synced here as the Stop
+    // List dialog syncs its drafts when it opens.
+    for (size_t manual = 0; manual < manualConfigs.size() && (int)manual <= manualCount; ++manual)
+    {
+        auto& build = manualConfigs[manual].stopBuild;
+        if (!build.active) continue;
+        for (auto& entry : build.entries)
+        {
+            if (entry.isTransmission()) continue;
+            for (auto* stop : engine.getStops())
+                if (stop != nullptr && stop->primaryManual == (int)manual && stopBuildKey(stop->name) == stopBuildKey(entry.name))
+                { entry.alias = stop->alias; break; }
+        }
+    }
     juce::Array<juce::var> manualsArray;
     for (const auto& config : manualConfigs)
     {
