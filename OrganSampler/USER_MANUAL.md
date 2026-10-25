@@ -1251,8 +1251,8 @@ The voicing row of a stop with layers shows a tick box per layer, named by the
 suffix ("_070"), and one for the plain files, the top layer (its box reads
 "_128"). Unticked, a
 layer's velocities use the next layer up or the plain samples; the plain layer
-unticked sends its velocities to the highest ticked layer. When nothing is
-ticked the plain files play anyway - a key never falls silent. The choice is
+unticked sends its velocities to the highest ticked layer and the plain files
+never play (0.8.187). When nothing is ticked, nothing plays. The choice is
 saved with the voicing. The keyboard drawing of the Divisions dialog shows the
 MIDI velocity of the key pressed last in a small badge, so you can see which
 layer a stroke reaches. The special use the tick boxes are there for: some
@@ -2323,8 +2323,12 @@ does not fit the memory otherwise. 32-bit float storage is packed as 24-bit
 integers: bit for bit when the files hold such integers (24-bit or 16-bit WAV),
 rounded to 24 bits for real floats (32-bit float WAV, a sample resampled on
 loading, a filled pipe's copy) - half a 24-bit step at most, below what any
-converter resolves; the log says how many were rounded.
-Takes effect the next time a division's folders are loaded.
+converter resolves; the log says how many were rounded. **Loading takes
+markedly longer with packing on** (every sample is packed and verified frame
+by frame while it loads: about 2.5 times the decoding), and longer again with
+*releases at half the rate* (every release is resampled through the sinc
+filter): a big organ that loads in a minute at 16-bit, 48 kHz takes several
+with both on. Takes effect the next time a division's folders are loaded.
 
 ### Sample rate on loading
 

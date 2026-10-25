@@ -12,8 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.186] - 2026-10-24
+## [0.8.187] - 2026-10-25
 
+### Fixed
+- No sound after "measure the polyphony, switch the audio driver, measure
+  again" (#90, #91, #92, Windows and Linux alike): a measurement started
+  within the 1.5 s a device change keeps the audio muted remembered that mute
+  and put it back at its end, for good - every callback returned silence and
+  the voices froze. A device change's mute is not remembered any more.
+- After a polyphony measurement the level comes back at once: 26 dB a second
+  from -52 dB, full level two seconds after the report appears (there was a
+  4 s hold and 4.5 dB a second, 16 s in all).
+- The velocity layer "_128" (the plain files) plays only when it is ticked:
+  unticked, its velocities play the highest ticked layer and the plain files
+  never; nothing ticked, nothing plays.
+
+### Changed
+- A portable configuration is saved with every swell shutter fully open.
+- Manual: loading takes markedly longer with packing on and with releases at
+  half the rate.
+
+## [0.8.186] - 2026-10-24
 ### Changed
 - A published configuration's README and the list of configurations carry ONE
   RAM figure: the least the organ takes, with every saving option of the load

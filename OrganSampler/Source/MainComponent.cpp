@@ -520,9 +520,10 @@ public:
         if (gainStart != target)
         {
             // Down in 50 ms (before the first strike of the measurement). Up (0.8.147):
-            // held at the low level while outputGainHoldUntilMs says so (the run's
-            // release tails die away at -52 dB first), then 4.5 dB a second - a
-            // glide in decibels, from -52 dB to 0 dB in about twelve seconds. A
+            // held at the low level while outputGainHoldUntilMs says so (0 since
+            // 0.8.187: no hold), then 26 dB a second - a glide in decibels, from
+            // -52 dB to 0 dB in two seconds (the user's rule, 0.8.187: full level
+            // within 2 s of the report; 4.5 dB/s after a 4 s hold took 16 s). A
             // linear glide (0.8.146, "3 s") was at -20 dB after a third of a second:
             // a jump to the ear, with thousands of tails sounding.
             const double rate = expectedRate.load(std::memory_order_relaxed);
@@ -536,7 +537,7 @@ public:
                 gainEnd = gainStart;
             else
             {
-                const float factor = (float)std::pow(10.0, 4.5 * blockSeconds / 20.0);
+                const float factor = (float)std::pow(10.0, 26.0 * blockSeconds / 20.0);
                 gainEnd = juce::jmin(target, juce::jmax(gainStart, 0.0025f) * factor);
             }
         }
@@ -10717,6 +10718,9 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         for (int manual = 0; manual < array->size(); ++manual)
             if (auto* item = array->getReference(manual).getDynamicObject())
             {
+                // A portable configuration opens with every swell shutter fully open
+                // (0.8.187, the user's rule); the live position stays this computer's.
+                if (portable) item->setProperty("expressionPosition", 1.0);
                 const juce::File folder(item->getProperty("folderPath").toString());
                 bool folderRelativeWritten = false;
                 item->removeProperty("folderRelativePath");
@@ -19962,7 +19966,13 @@ void MainComponent::startPolyphonyMeasurement()
     state->registration = captureCurrentState();
     state->previousLimit = engine.getMaxPolyphony();
     state->shareLimit = juce::jlimit(0.6f, 1.0f, measurementShareLimit);
-    state->previousMuted = audioMuted.load();
+    // The mute of a device change made a moment ago (its unmute timer still pending)
+    // is NOT remembered for the end (0.8.187, #90-#92: measure, switch the driver,
+    // measure again - the second run started within the 1.5 s the "apply to all
+    // routes" step mutes, the timer unmuted during the run and the end put the mute
+    // back for good: every callback returned silence and the voices froze, "no
+    // sound" until the next device switch).
+    state->previousMuted = audioMuted.load() && audioDeviceSelectionUnmuteAt <= 0.0;
     engine.setMaxPolyphony(SamplerEngine::maxVoices);   // out of the way while measuring
     // The safety net: the strokes run on the message thread; should it stall
     // (starved by the real-time threads on a two-core machine, #15), the
@@ -20791,8 +20801,8 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
                     + safeThis->engine.debugState() + "; audio muted " + (safeThis->audioMuted.load() ? "YES" : "no"));
         });
     }
-    outputGainHoldUntilMs.store(juce::Time::getMillisecondCounterHiRes() + 4000.0);   // the tails die at -52 dB first (0.8.147)
-    outputGainTarget.store(1.0f);                                                       // ... then 4.5 dB a second up to normal
+    outputGainHoldUntilMs.store(0.0);   // no hold (0.8.187, the user: full level within 2 s of the report)
+    outputGainTarget.store(1.0f);       // ... 26 dB a second up to normal, in decibels
     engine.setAttackMinimumMs((float)state->previousAttackMinimumMs);
     engine.setAttackMinimumDelayMs((float)state->previousAttackDelayMs);
     applyRegistrationState(state->registration, false);

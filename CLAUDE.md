@@ -1156,9 +1156,26 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   after the end (keys held in the engine although routeKeyboardNote released every key of 36..96), the next run not
   - the engine's keys were stuck, so a key struck on them again is silent ("speaking" set) until a device switch's
   killAllVoices; finishPolyphonyMeasurement now sends `engine.noteOff` for EVERY key 0..127 of every division
-  (a note-off for a key not held releases nothing) and logs the voices 20 s later. The root cause (why the engine
-  kept them) is NOT found - the logs of the next #90 will say "20 s after the end N voice(s)". `noteOffAll` is
-  clearMidi + killAllVoices (a cut), never for the end of a run. (d) The copy build's parallelFor takes physical
+  (a note-off for a key not held releases nothing) and logs the voices 20 s later. `noteOffAll` is
+  clearMidi + killAllVoices (a cut), never for the end of a run. THE ROOT CAUSE, FOUND 0.8.187 (#90-#92, Windows and
+  Linux, the user's repro "measure, switch the driver, measure again, play: no sound"): the 20 s line of both logs
+  said "audio muted YES". A driver switch mutes (`audioMuted` true) and its "Applying audio device X to all routes"
+  step ends with `audioDeviceSelectionUnmuteAt = now + 1500`; the user started the second run within that 1.5 s,
+  `startPolyphonyMeasurement` stored `previousMuted = true`, the timer unmuted during the run, and the end's
+  `audioMuted.store(previousMuted)` muted for good - RouteCallback returns silence BEFORE rendering, so the voices
+  never advance either ("4000 voice(s) still sound" frozen, DSP shown, polyphony counted, no sound) until the next
+  device switch. Fix: `previousMuted = audioMuted.load() && audioDeviceSelectionUnmuteAt <= 0.0` (a pending device
+  change's mute is the timer's business). Never restore a mute captured while an unmute timer is pending. 0.8.187
+  also: the level after a run glides 26 dB/s from -52 dB with NO hold (full within 2 s of the report; was 4 s hold +
+  4.5 dB/s = 16 s, the user: "jakoby se volume vracel až když se zase začne hrát"); a portable save writes
+  `expressionPosition` 1.0 on every division (every shutter open); velocity layer "_128" (the plain files) unticked
+  NEVER plays - `velocityLayerFor(..., bool& silent)` sets `silent` when no enabled layer has the note and startNote
+  returns (the user: "když uživatel všecko odškrtá, nehraje mu nic, to je očekávané"; the self-test checks both);
+  manual: loading markedly slower with packing and half-rate releases. DSP peaks "2x the average on WASAPI, not
+  ASIO" (the user, 25 Oct): the load figure code is from the first commit; WASAPI shared mode is driven by the
+  Windows audio engine's 10 ms pump - after a late wake JUCE's WASAPI thread fills two periods back to back (two
+  renders counted in one period = a 2x peak), ASIO calls once per period from the driver. No background program of
+  mine ran during his runs (06:17-07:04; my last build 24 Oct, test runs only with his program closed). (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

@@ -248,16 +248,20 @@ struct Stop
     // Layers switched off in the voicing, by maxVelocity (logical stop; ranks
     // follow it). Bit 'plainLayerBit' (0, no file layer can have it) stands for the
     // plain samples, the top layer "_128": switched off, the velocities above the
-    // highest file layer play the highest enabled layer instead.
+    // highest file layer play the highest enabled layer instead - and nothing when
+    // no layer is enabled (0.8.187).
     static constexpr size_t plainLayerBit = 0;
     std::bitset<128> velocityLayerDisabled;
     bool plainLayerDisabled() const noexcept { return velocityLayerDisabled.test(plainLayerBit); }
     // The layer that plays 'note' at 'velocity': the lowest enabled layer covering
     // the velocity; above every layer the plain samples (nullptr) - unless they are
-    // switched off, then the highest enabled layer that has the note. Nothing
-    // enabled at all: the plain samples, so a key never falls silent.
-    VelocityLayer* velocityLayerFor(int note, int velocity, const std::bitset<128>& disabled) noexcept
+    // switched off, then the highest enabled layer that has the note. The plain
+    // samples unticked play NEVER (0.8.187, the user's rule): no enabled layer with
+    // the note -> 'silent' is set and the key stays quiet (everything unticked =
+    // nothing plays, as expected). Before, they played anyway.
+    VelocityLayer* velocityLayerFor(int note, int velocity, const std::bitset<128>& disabled, bool& silent) noexcept
     {
+        silent = false;
         if (note < 0 || note >= 128) return nullptr;
         for (auto& layer : velocityLayers)
         {
@@ -267,6 +271,7 @@ struct Stop
         if (!disabled.test(plainLayerBit)) return nullptr;   // the plain samples
         for (auto it = velocityLayers.rbegin(); it != velocityLayers.rend(); ++it)
             if (!disabled.test((size_t)juce::jlimit(0, 127, it->maxVelocity)) && !it->samplesByNote[(size_t)note].empty()) return &*it;
+        silent = true;
         return nullptr;
     }
     VelocityLayer& getOrCreateVelocityLayer(int maxVelocity)
@@ -1165,7 +1170,8 @@ public:
     // Velocity layer "_NNN" (files for key velocities up to NNN) on or off in the
     // stop's voicing: off, those velocities play the next layer up or the plain
     // samples. maxVelocity 128 = the plain samples themselves ("_128"): off, the
-    // velocities above the highest file layer play the highest enabled layer.
+    // velocities above the highest file layer play the highest enabled layer, and
+    // nothing at all when no layer is enabled (0.8.187).
     void setVelocityLayerEnabled(Stop* stop, int maxVelocity, bool enabled);
     // A key of one transmission on or off (its own voicing row): the stop's own
     // pipes and its other transmissions are not affected. Message thread only.

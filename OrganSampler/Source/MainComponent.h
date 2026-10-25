@@ -536,7 +536,7 @@ private:
     // callbacks glide to this target over about two seconds, so neither the
     // start nor the end (after the report's OK) jumps in level.
     std::atomic<float> outputGainTarget{ 1.0f };
-    std::atomic<double> outputGainHoldUntilMs{ 0.0 };   // the level stays down until then after a measurement (0.8.147), then glides up 4.5 dB a second
+    std::atomic<double> outputGainHoldUntilMs{ 0.0 };   // the level stays down until then after a measurement (0.8.147; 0 = no hold since 0.8.187), then glides up 26 dB a second
     // One clock per audio device: the routes of a device are called one after
     // another inside one driver callback, so the first route of each callback
     // marks when the driver really called. A driver callback later than half a

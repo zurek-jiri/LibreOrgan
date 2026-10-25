@@ -1267,8 +1267,8 @@ static const char* const kManualText_part6 =
     "suffix (\"_070\"), and one for the plain files, the top layer (its box reads\n"
     "\"_128\"). Unticked, a\n"
     "layer's velocities use the next layer up or the plain samples; the plain layer\n"
-    "unticked sends its velocities to the highest ticked layer. When nothing is\n"
-    "ticked the plain files play anyway - a key never falls silent. The choice is\n"
+    "unticked sends its velocities to the highest ticked layer and the plain files\n"
+    "never play (0.8.187). When nothing is ticked, nothing plays. The choice is\n"
     "saved with the voicing. The keyboard drawing of the Divisions dialog shows the\n"
     "MIDI velocity of the key pressed last in a small badge, so you can see which\n"
     "layer a stroke reaches. The special use the tick boxes are there for: some\n"
@@ -2349,8 +2349,12 @@ static const char* const kManualText_part11 =
     "integers: bit for bit when the files hold such integers (24-bit or 16-bit WAV),\n"
     "rounded to 24 bits for real floats (32-bit float WAV, a sample resampled on\n"
     "loading, a filled pipe's copy) - half a 24-bit step at most, below what any\n"
-    "converter resolves; the log says how many were rounded.\n"
-    "Takes effect the next time a division's folders are loaded.\n"
+    "converter resolves; the log says how many were rounded. **Loading takes\n"
+    "markedly longer with packing on** (every sample is packed and verified frame\n"
+    "by frame while it loads: about 2.5 times the decoding), and longer again with\n"
+    "*releases at half the rate* (every release is resampled through the sinc\n"
+    "filter): a big organ that loads in a minute at 16-bit, 48 kHz takes several\n"
+    "with both on. Takes effect the next time a division's folders are loaded.\n"
     "\n"
     "### Sample rate on loading\n"
     "\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "computer can render so that an overload fades old voices rather than crackles:\n"
     "set the maximum polyphony so that the *DSP* value never exceeds 100 %, to\n"
     "avoid cracks and dropouts. The polyphony display of the main window shows\n"
+    ;
+static const char* const kManualText_part12 =
     "*NOW* (the voices sounding), *PEAK* (the most that sounded since the last\n"
     "reset), *DSP* (the load) and *LIMIT* (this setting).\n"
     "\n"
     "The value belongs to the organ, not to the computer alone: the number of\n"
-    ;
-static const char* const kManualText_part12 =
     "audio routes, the auxiliary routes, the IR reverbs, the drivers and the buffer\n"
     "sizes all change it (see \"Getting the most polyphony\"). It is saved with the\n"
     "configuration. Under it, *Measurement limit* (60-100 %, default 85 %) is the\n"
@@ -2622,12 +2626,12 @@ static const char* const kManualText_part12 =
     "\n"
     "### Attack minimum delay\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "A small pause between the key press and the start of the pipe (0 to 500 ms,\n"
     "default 2), varied at random by a couple of milliseconds so that a chord's\n"
     "pipes do not all speak in the same instant. Keys repeated faster than the delay\n"
     "follow each other without it, and a key struck again right after its release\n"
-    ;
-static const char* const kManualText_part13 =
     "gets only half or none of it, so fast repetitions stay crisp.\n"
     "\n"
     "## 8.3 Advanced global audio\n"
@@ -2824,12 +2828,12 @@ static const char* const kManualText_part13 =
     "\n"
     "Pitch shift methods. On (default): every shifted copy is brought to the\n"
     "loudness of its source sample, so a filled pipe is as strong as the pipe it was\n"
+    ;
+static const char* const kManualText_part14 =
     "made from. Off: the copy keeps whatever level the shift left it with (a copy\n"
     "with its formants moved down loses level).\n"
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
-    ;
-static const char* const kManualText_part14 =
     "\n"
     "On by default (0.8.124; off before). On: the copies of the filled pipes are written to files as\n"
     "they are built and read back the next time the same stops load with the same\n"
@@ -3026,12 +3030,12 @@ static const char* const kManualText_part14 =
     "smpl pitches - the voicing row of every stop reports what its ranks were found\n"
     "to be in. Every pipe's retuning to the target temperament starts from here;\n"
     "a wrong base temperament puts the whole organ slightly out of tune. See\n"
+    ;
+static const char* const kManualText_part15 =
     "\"Temperaments\".\n"
     "\n"
     "### Target temperament\n"
     "\n"
-    ;
-static const char* const kManualText_part15 =
     "The temperament the organ *plays* in (see \"Temperaments\"). Every pipe is retuned by the\n"
     "difference between the target and the samples' base temperament, per pitch\n"
     "class. Choosing the base temperament itself plays the samples as recorded.\n"
@@ -3228,12 +3232,12 @@ static const char* const kManualText_part15 =
     "twice the impulse of 50 %, and the sag ceiling grows with it.\n"
     "\n"
     "### Wind: sag settling lag\n"
+    ;
+static const char* const kManualText_part16 =
     "\n"
     "How long the wind pressure takes to settle after stops or keys change (100 to\n"
     "400 ms, default 255). The same lag governs the volume glide when a pipe held\n"
     "through several routes passes from one route to another.\n"
-    ;
-static const char* const kManualText_part16 =
     "\n"
     "### Wind: also affects divisions\n"
     "\n"

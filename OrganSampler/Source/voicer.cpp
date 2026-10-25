@@ -318,7 +318,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             button->setToggleState(!stop->plainLayerDisabled(), juce::dontSendNotification);
             button->setTooltip("The sample files without a \"_NNN\" suffix: the top velocity layer, played for key velocities above "
                 + juce::String(layers.back()) + ". Unticked, those velocities play the highest layer that is ticked instead (its "
-                "release too). When nothing is ticked the plain files play anyway - a key never falls silent.");
+                "release too); the plain files never play then. When nothing is ticked, nothing plays.");
             button->onClick = [this, button]
             {
                 this->engine.setVelocityLayerEnabled(this->stop, 128, button->getToggleState());
