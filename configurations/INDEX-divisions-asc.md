@@ -9,14 +9,21 @@ saved; at the full quality (32-bit float, the files' own rate, full releases, no
 count on roughly ten times as much; `-` = saved by an older version - and the
 routes - the perspectives as the configuration names them (`default` = a single
 perspective) and `auxiliary` when a division uses that route; what each one carries, the
-README of the organ says. The triangles in the header sort the table by that column.
+README of the organ says. The triangles in the header sort the tables by that column.
 Written by the `Configurations check` workflow from the configuration files themselves
 on every change; do not edit by hand. How to use and publish one: [README.md](README.md).
+
+## Featured
+
+| Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions ▲[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
+|---|---:|---:|---:|---|
+| [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
+
+## All the others
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions ▲[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
 |---|---:|---:|---:|---|
 | [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
-| [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
 | [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear |
 
 3 configuration(s).

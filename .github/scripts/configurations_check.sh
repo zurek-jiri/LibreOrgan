@@ -19,7 +19,7 @@ while IFS= read -r -d '' f; do
   lower="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
   size=$(stat -c %s "$f")
   case "$f" in
-    configurations/README.md|configurations/INDEX*.md) continue ;;
+    configurations/README.md|configurations/INDEX*.md|configurations/FEATURED.txt) continue ;;
     configurations/*/*)
       # An organ's folder: README.md and the zip.
       case "$lower" in

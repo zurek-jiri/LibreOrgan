@@ -1296,7 +1296,13 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   the chooser filter has *.zip. "THE PROGRAM CRASHED AT A SAVE" (13:03, no crash file, no WER event, the routes
   stopped in order one second after the save's RAM line): a QUIT with "Save" in the unsaved-changes prompt is the
   only path that saves and then ends in order - the log now says "Quit requested" and "Unsaved changes (quit):
-  Save chosen"; read those lines before calling a save a crash. (d) The copy build's parallelFor takes physical
+  Save chosen"; read those lines before calling a save a crash.
+  FEATURED (25 Oct 2026, the user: two tables, "Featured" and the others, Rural by default, easy in/out):
+  `configurations/FEATURED.txt` = folder names one per line ("#" comments); `configurations_index.py` renders
+  "## Featured" + "## All the others" (one table when nothing is featured) in INDEX.md and every sorted copy;
+  `configurations_check.sh` skips FEATURED.txt; the workflow `configuration-feature.yml` (workflow_dispatch:
+  organ = any part of the name via `find`, action feature/unfeature) edits the file, regenerates INDEX, commits
+  to main. Editing FEATURED.txt on GitHub by hand does the same (the index job regenerates on the push). (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

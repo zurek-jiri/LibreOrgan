@@ -114,6 +114,19 @@ def main():
                ('routes', 'Routes', lambda r: r[4].lower())]
     def file_for(key, descending):
         return 'INDEX.md' if (key == 'organ' and not descending) else 'INDEX-%s-%s.md' % (key, 'desc' if descending else 'asc')
+    # Two tables (25 Oct 2026, the user): "Featured" - the folders listed in
+    # configurations/FEATURED.txt (one folder name per line, as in the README links;
+    # "#" lines are comments; the Rural Organ demo by default) - and all the others.
+    # The maintainer edits FEATURED.txt on GitHub, or runs the "Feature a
+    # configuration" workflow with any part of the organ's name.
+    featured = []
+    featured_file = os.path.join(ROOT, 'FEATURED.txt')
+    if os.path.exists(featured_file):
+        with open(featured_file, encoding='utf-8') as f:
+            for line in f:
+                name = line.strip()
+                if name and not name.startswith('#'):
+                    featured.append(name.lower())
     def render(sort_key, descending):
         ordered = sorted(rows, key=lambda r: r[0].lower())
         ordered.sort(key=dict((k, f) for k, _, f in columns)[sort_key], reverse=descending)
@@ -134,16 +147,28 @@ def main():
             'count on roughly ten times as much; `-` = saved by an older version - and the',
             'routes - the perspectives as the configuration names them (`default` = a single',
             'perspective) and `auxiliary` when a division uses that route; what each one carries, the',
-            'README of the organ says. The triangles in the header sort the table by that column.',
+            'README of the organ says. The triangles in the header sort the tables by that column.',
             'Written by the `Configurations check` workflow from the configuration files themselves',
             'on every change; do not edit by hand. How to use and publish one: [README.md](README.md).',
             '',
-            '| ' + ' | '.join(header) + ' |',
-            '|---|---:|---:|---:|---|',
         ]
-        for title, folder, divisions, count, perspectives, ram_bytes, ram_min in ordered:
-            lines.append('| [%s](%s/README.md) | %d | %d | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives))
-        lines.append('')
+        def table(entries):
+            out = ['| ' + ' | '.join(header) + ' |', '|---|---:|---:|---:|---|']
+            for title, folder, divisions, count, perspectives, ram_bytes, ram_min in entries:
+                out.append('| [%s](%s/README.md) | %d | %d | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives))
+            return out
+        top = [r for r in ordered if r[1].lower() in featured]
+        rest = [r for r in ordered if r[1].lower() not in featured]
+        if top:
+            lines.append('## Featured')
+            lines.append('')
+            lines += table(top)
+            lines.append('')
+            lines.append('## All the others')
+            lines.append('')
+        if rest or not top:
+            lines += table(rest)
+            lines.append('')
         lines.append('%d configuration(s).' % len(ordered))
         lines.append('')
         return '\n'.join(lines)

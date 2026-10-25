@@ -113,6 +113,14 @@ the maintainer's merge decides.
 
 The Rural Organ demo is never replaced or removed by the robots.
 
+**Featured organs.** [INDEX.md](INDEX.md) has two tables: *Featured* and
+*All the others*. The featured ones are the folder names listed in
+[FEATURED.txt](FEATURED.txt) (one per line; the Rural Organ demo by
+default). To put an organ there or take it out: edit `FEATURED.txt` on
+GitHub (the pencil; INDEX.md follows by itself), or GitHub > *Actions* >
+*Feature a configuration* > *Run workflow* > any part of the organ's name +
+*feature* / *unfeature* > *Run workflow*.
+
 ## The published configurations
 
 The list is [INDEX.md](INDEX.md): one line per organ with its divisions,
