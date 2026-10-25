@@ -788,6 +788,7 @@ private:
     std::unique_ptr<juce::FileChooser> combinationsFileChooser;
     std::unique_ptr<juce::FileChooser> configurationFileChooser;
     std::shared_ptr<HauptwerkOdf> hauptwerkImport;   // the organ definition being imported (until its voicing is applied)
+    juce::File hauptwerkImportReport;                // ImportReports/<organ>-<date>.txt in the application data (0.8.192): the plan, then the voicing result
     // The extensions/transmissions of the definition (stops playing another
     // stop's ranks shifted): made as transmissions once the owner stops are loaded.
     struct HauptwerkExtension { int manual = 0, ownerManual = 0; juce::String ownerName; int shift = 0; juce::String alias; int column = -1, row = -1; int lowKey = -1, highKey = -1; };   // column/row: the grid cell from the jamb page (0.8.142), -1 none; lowKey/highKey: the keys of its rows (0.8.159)
@@ -958,6 +959,7 @@ private:
     float harmonicSwellDb = 8.0f, harmonicWindDb = 2.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths
     float tremulantShelfPhaseDegrees = 90.0f;   // the tremulant's tone oscillation behind its volume oscillation
     float velocityFadeInMs = 40.0f;             // key velocity on stops without velocity layers: fade-in at the lowest velocity
+    bool velocityPlainStrict = false;           // velocity layers: an unticked "_128" never plays (0.8.192; off = the plain files fill the gaps)
     float velocityShelfDb = 9.0f;               // ... and the high-shelf cut on the attack at the lowest velocity (the chiff blunted)
     float velocityShelfMs = 80.0f;              // ... opening to nothing over this time
     int fillGroupSize = 12;   // missing pipes: how many adjacent pipes are borrowed as a group (1..12)

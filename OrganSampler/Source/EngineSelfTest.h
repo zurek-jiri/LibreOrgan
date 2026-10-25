@@ -1822,18 +1822,19 @@ namespace EngineSelfTest
                            << ", at 127 = " << juce::String(loud, 4) << ", at " << maxVelocity << " with the layer off = " << juce::String(softPlain, 4)
                            << (differs ? " (another sample)" : " (same level)") << ", on again = " << juce::String(softAgain, 4) << "  -> "
                            << (soft > 0.0f && loud > 0.0f && softPlain > 0.0f && softAgain > 0.0f ? "OK" : "*** WRONG ***") << "\n";
-                    // The plain files ("_128") unticked never play (0.8.187): velocity 127 plays
-                    // the highest ticked layer; with nothing ticked nothing plays at all.
+                    // The plain files ("_128") unticked: velocity 127 plays the highest ticked
+                    // layer; with nothing ticked the plain files play anyway (0.8.192: a key
+                    // never falls silent - the 0.8.187 silence left gaps).
                     engine.setVelocityLayerEnabled(layered, 128, false);
                     const float loudNoPlain = peakFor(127);
                     for (const auto& layer : layered->velocityLayers) engine.setVelocityLayerEnabled(layered, layer.maxVelocity, false);
                     engine.noteOffAll();
                     { BlockStats quiet; renderBlocks(10, quiet); }
-                    const float nothing = peakFor(127);
+                    const float nothingTicked = peakFor(127);
                     for (const auto& layer : layered->velocityLayers) engine.setVelocityLayerEnabled(layered, layer.maxVelocity, true);
                     engine.setVelocityLayerEnabled(layered, 128, true);
                     report << "  plain files unticked: peak at 127 = " << juce::String(loudNoPlain, 4) << " (the highest layer); nothing ticked: "
-                           << juce::String(nothing, 6) << "  -> " << (loudNoPlain > 0.0f && nothing <= 1.0e-6f ? "OK" : "*** WRONG ***") << "\n";
+                           << juce::String(nothingTicked, 4) << " (the plain files)  -> " << (loudNoPlain > 0.0f && nothingTicked > 0.0f ? "OK" : "*** WRONG ***") << "\n";
                     // Releases follow the attack's layer: with velocity-layered release files
                     // the soft key's release differs from the loud key's.
                     bool layeredReleases = false;

@@ -248,20 +248,18 @@ struct Stop
     // Layers switched off in the voicing, by maxVelocity (logical stop; ranks
     // follow it). Bit 'plainLayerBit' (0, no file layer can have it) stands for the
     // plain samples, the top layer "_128": switched off, the velocities above the
-    // highest file layer play the highest enabled layer instead - and nothing when
-    // no layer is enabled (0.8.187).
+    // highest file layer play the highest enabled layer instead.
     static constexpr size_t plainLayerBit = 0;
     std::bitset<128> velocityLayerDisabled;
     bool plainLayerDisabled() const noexcept { return velocityLayerDisabled.test(plainLayerBit); }
     // The layer that plays 'note' at 'velocity': the lowest enabled layer covering
     // the velocity; above every layer the plain samples (nullptr) - unless they are
-    // switched off, then the highest enabled layer that has the note. The plain
-    // samples unticked play NEVER (0.8.187, the user's rule): no enabled layer with
-    // the note -> 'silent' is set and the key stays quiet (everything unticked =
-    // nothing plays, as expected). Before, they played anyway.
-    VelocityLayer* velocityLayerFor(int note, int velocity, const std::bitset<128>& disabled, bool& silent) noexcept
+    // switched off, then the highest enabled layer that has the note. Nothing
+    // enabled at all: the plain samples, so a key never falls silent (0.8.192: the
+    // 0.8.187 rule "unticked _128 never plays" left gaps - the user's own words -
+    // and is gone again; this is the rule of the first commit).
+    VelocityLayer* velocityLayerFor(int note, int velocity, const std::bitset<128>& disabled) noexcept
     {
-        silent = false;
         if (note < 0 || note >= 128) return nullptr;
         for (auto& layer : velocityLayers)
         {
@@ -271,7 +269,6 @@ struct Stop
         if (!disabled.test(plainLayerBit)) return nullptr;   // the plain samples
         for (auto it = velocityLayers.rbegin(); it != velocityLayers.rend(); ++it)
             if (!disabled.test((size_t)juce::jlimit(0, 127, it->maxVelocity)) && !it->samplesByNote[(size_t)note].empty()) return &*it;
-        silent = true;
         return nullptr;
     }
     VelocityLayer& getOrCreateVelocityLayer(int maxVelocity)
@@ -1170,8 +1167,7 @@ public:
     // Velocity layer "_NNN" (files for key velocities up to NNN) on or off in the
     // stop's voicing: off, those velocities play the next layer up or the plain
     // samples. maxVelocity 128 = the plain samples themselves ("_128"): off, the
-    // velocities above the highest file layer play the highest enabled layer, and
-    // nothing at all when no layer is enabled (0.8.187).
+    // velocities above the highest file layer play the highest enabled layer.
     void setVelocityLayerEnabled(Stop* stop, int maxVelocity, bool enabled);
     // A key of one transmission on or off (its own voicing row): the stop's own
     // pipes and its other transmissions are not affected. Message thread only.
@@ -1399,6 +1395,11 @@ public:
     // lowest velocity (default 40 ms), linearly down to none at velocity 127.
     void setVelocityFadeInMs(float ms) { velocityFadeInMs.store(juce::jlimit(0.0f, 500.0f, ms)); }
     float getVelocityFadeInMs() const noexcept { return velocityFadeInMs.load(std::memory_order_relaxed); }
+    // Velocity layers (0.8.192, the user's option): an unticked "_128" (the plain files)
+    // never plays - a key with no ticked layer stays silent. Off by default: the plain
+    // files play when no ticked layer has the note (no gaps).
+    void setVelocityPlainStrict(bool strict) { velocityPlainStrict.store(strict); }
+    bool getVelocityPlainStrict() const noexcept { return velocityPlainStrict.load(std::memory_order_relaxed); }
     // ... and the chiff blunted by an extra high-shelf cut at the start: this many dB
     // at the lowest velocity (default 9), opening to nothing over velocityShelfMs (default 80).
     void setVelocityShelfDb(float db) { velocityShelfDb.store(juce::jlimit(0.0f, 24.0f, db)); }
@@ -1537,6 +1538,7 @@ private:
     std::atomic<float> releaseFadeOutMs{ 70.0f };
     std::atomic<float> releaseFadeInMs{ 20.0f };
     std::atomic<float> velocityFadeInMs{ 40.0f };
+    std::atomic<bool> velocityPlainStrict{ false };
     std::atomic<float> velocityShelfDb{ 9.0f };
     std::atomic<float> velocityShelfMs{ 80.0f };
     std::atomic<float> releaseScalingGain{ 1.0f };

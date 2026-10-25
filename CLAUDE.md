@@ -1246,7 +1246,16 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   the config-dir forms, the absolute path, then every sample location (root by name, the IR path, tails of the
   absolute path) - "Impulse response not found ..." in the log and "IR: name (FILE NOT FOUND - choose it)" on the
   route caption; `chooseReverbIr` notes the IR's grandparent folder (the collection). The Editor row reads "Sample
-  and IR locations". (d) The copy build's parallelFor takes physical
+  and IR locations".
+  0.8.192: the Hauptwerk import DIALOG is gone (it came minutes after the organ played: `runWhenLoaded` polls every
+  5 s and wants two quiet polls after the loader, then the voicing itself runs on the message thread first);
+  `hauptwerkImportReport` = `<appdata>/ImportReports/<organ>-<date>.txt`, written with the plan summary at plan
+  time, the voicing text appended at the end of `applyHauptwerkVoicing` ("Hauptwerk import report completed: ..."
+  in the log). VELOCITY LAYERS: the 0.8.187 rule ("_128 unticked never plays") is REVERTED - the user: "moje chyba,
+  jinak jsou tam mezery" - `velocityLayerFor` is the first commit's again (the plain files play when no ticked layer
+  has the note); the strict rule lives behind the engine atomic `velocityPlainStrict` (configuration key
+  "velocityPlainStrict", Editor toggle "Velocity layers: an unticked _128 never plays", default off), applied at
+  the startNote call site only. The self-test expects the plain files to sound with nothing ticked. (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

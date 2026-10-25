@@ -6099,15 +6099,15 @@ struct SamplerEngine::Impl
                     bool preShifted = false;
                     // Velocity layers ("_070" files): the lowest enabled layer covering this
                     // velocity decides - its copy for a filled pipe, else its sample; no
-                    // layer -> the plain samples (and their copies). The plain samples
-                    // unticked with no enabled layer for the note: nothing plays (0.8.187).
-                    bool layerSilent = false;
-                    if (auto* layer = rank->velocityLayerFor(sampleNote, velocity, stop->velocityLayerDisabled, layerSilent))
+                    // layer -> the plain samples (and their copies).
+                    if (auto* layer = rank->velocityLayerFor(sampleNote, velocity, stop->velocityLayerDisabled))
                     {
                         if (wantsCopy) { sampleToPlay = layer->nextAliasFree(pipe); preShifted = pitchShiftMethod && sampleToPlay != nullptr; }
                         if (sampleToPlay == nullptr) sampleToPlay = Stop::pickRoundRobin(layer->samplesByNote, layer->nextSampleIndex, sampleNote);
                     }
-                    else if (layerSilent) return;
+                    // The option (0.8.192): an unticked "_128" never plays - no ticked layer has
+                    // the note (the plain files would be the fallback) -> nothing sounds.
+                    else if (stop->plainLayerDisabled() && !rank->velocityLayers.empty() && owner.velocityPlainStrict.load(std::memory_order_relaxed)) return;
                     if (sampleToPlay == nullptr && wantsCopy) { sampleToPlay = rank->getNextAliasFreeSample(pipe); preShifted = pitchShiftMethod && sampleToPlay != nullptr; }
                     if (sampleToPlay == nullptr) sampleToPlay = rank->getNextSample(sampleNote);
                     if (sampleToPlay == nullptr) return;

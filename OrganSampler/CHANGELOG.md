@@ -12,8 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.191] - 2026-10-25
+## [0.8.192] - 2026-10-25
 
+### Changed
+- The Hauptwerk import writes its report - the plan at once, the voicing
+  result when it is applied - into ImportReports/<organ>-<date>.txt in the
+  application-data folder; the dialog that came minutes after the organ
+  played is gone.
+- Velocity layers: an unticked "_128" plays again when no ticked layer has
+  the note (the 0.8.187 silence left gaps); the switch "Velocity layers: an
+  unticked _128 never plays" in the Configuration Editor gives the silence
+  to those who want it.
+
+## [0.8.191] - 2026-10-25
 ### Changed
 - The load box offers to copy a configuration loaded from outside the
   configurations folder into it (the default); the copy becomes the open

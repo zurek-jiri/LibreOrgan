@@ -1316,8 +1316,10 @@ static const char* const kManualText_part6 =
     "suffix (\"_070\"), and one for the plain files, the top layer (its box reads\n"
     "\"_128\"). Unticked, a\n"
     "layer's velocities use the next layer up or the plain samples; the plain layer\n"
-    "unticked sends its velocities to the highest ticked layer and the plain files\n"
-    "never play (0.8.187). When nothing is ticked, nothing plays. The choice is\n"
+    "unticked sends its velocities to the highest ticked layer. When nothing is\n"
+    "ticked the plain files play anyway - a key never falls silent (the switch\n"
+    "*Velocity layers: an unticked _128 never plays* in the Configuration Editor,\n"
+    "0.8.192, makes such a key silent instead). The choice is\n"
     "saved with the voicing. The keyboard drawing of the Divisions dialog shows the\n"
     "MIDI velocity of the key pressed last in a small badge, so you can see which\n"
     "layer a stroke reaches. The special use the tick boxes are there for: some\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "  harmonic). Aliases you typed stay. Applied with *Apply and reload*.\n"
     "- **Add perspective...** adds a column (a known perspective name or a new\n"
     "  one); the x right after the perspective's name in the column header\n"
-    "  removes it. \"default\" is the route of folders without a perspective prefix.\n"
-    "- **Swap divisions...** exchanges the whole stop lists of two divisions, as if\n"
     ;
 static const char* const kManualText_part7 =
+    "  removes it. \"default\" is the route of folders without a perspective prefix.\n"
+    "- **Swap divisions...** exchanges the whole stop lists of two divisions, as if\n"
     "  their folders had been swapped (combinations and MIDI bindings follow).\n"
     "  **Reset division...** forgets one division's table.\n"
     "- **Name:** derived from the folders; a typed name is kept until the field is\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "\n"
     "**One rate for every device.** Every audio route renders at the rate of its\n"
     "device, and the devices of one organ may run at different rates and buffer\n"
-    "sizes - the program does not stop you. The samples are loaded at 48 kHz (see\n"
-    "\"Sample rate on loading\"): a device at 44.1 or 96 kHz gets its route's pipes\n"
     ;
 static const char* const kManualText_part8 =
+    "sizes - the program does not stop you. The samples are loaded at 48 kHz (see\n"
+    "\"Sample rate on loading\"): a device at 44.1 or 96 kHz gets its route's pipes\n"
     "read at the matching speed, through the same interpolation as a transposed\n"
     "pipe, which costs a little more per voice and is a step below the quality of\n"
     "the resampling on load. So give every device 48 kHz and the same buffer size.\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "for Intel Macs on **macOS 10.11 El Capitan or newer** (10.11 is the oldest\n"
     "system the framework allows; a Mac on 10.10 needs the free upgrade to the\n"
     "newest system Apple offers for it, 10.13 High Sierra for the 2010 models).\n"
-    "\n"
-    "## 5.7 Audio devices not ready when OrganSampler starts\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
+    "## 5.7 Audio devices not ready when OrganSampler starts\n"
     "\n"
     "Devices that cannot be opened at start-up (unplugged, driver missing, or merely\n"
     "late - an RME interface registers a few seconds after it switches its sample\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "the stops agree, and celeste beats and the global *Pitch* slider (Global\n"
     "sound, cents on top of everything) mean what they say. The voicing row's\n"
     "*Undulation* line reads \"needs 440 Hz\" until this is done. A large retune\n"
-    "(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -\n"
-    "or a big global Pitch) is not played by speeding every pipe up: the common\n"
     ;
 static const char* const kManualText_part10 =
+    "(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -\n"
+    "or a big global Pitch) is not played by speeding every pipe up: the common\n"
     "part of it is applied once to the mixed output of every route with a proper\n"
     "resampler (0.8.163), so the pipes keep their recorded speed; only the\n"
     "cents of temperament and detune stay in the pipes themselves, and the high\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "  cache (the default is `FilledPipesCache` in the application-data folder,\n"
     "  usually on the system drive). Choose a big drive, for example beside the\n"
     "  samples; the files built so far are moved there, so nothing has to be\n"
-    "  rebuilt.\n"
-    "\n"
     ;
 static const char* const kManualText_part11 =
+    "  rebuilt.\n"
+    "\n"
     "The cache is a convenience, not a necessity: with it off everything works the\n"
     "same, only the build after each load takes its full time.\n"
     "\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "years: past fifty, few people hear anything above 17 kHz, and past sixty the\n"
     "limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose\n"
     "nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser\n"
-    "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
-    "\n"
     ;
 static const char* const kManualText_part12 =
+    "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
+    "\n"
     "### IR processing\n"
     "\n"
     "How the IR reverbs of the routes are convolved. *Full* convolves every route\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "## 8.2 Global sound\n"
     "\n"
     "Every slider of this section has a checkbox that shows it on the main panel\n"
-    "too (the shown sliders share a row with the polyphony display). All are\n"
-    "MIDI-learnable (right-click the slider on the main panel).\n"
     ;
 static const char* const kManualText_part13 =
+    "too (the shown sliders share a row with the polyphony display). All are\n"
+    "MIDI-learnable (right-click the slider on the main panel).\n"
     "\n"
     "### Master volume\n"
     "\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "(0 to 100 %, default 50). 0 % leaves it as resampled - two octaves down the\n"
     "attack is four times as slow; 100 % gives it the source's duration; 50 % is\n"
     "half way on a logarithmic scale (two octaves down: twice as slow, which the ear\n"
-    "accepts where four times is too much). Applies to shifts downwards; upwards the\n"
-    "attack stays as resampled. Higher values fray the attack more (see \"The\n"
     ;
 static const char* const kManualText_part14 =
+    "accepts where four times is too much). Applies to shifts downwards; upwards the\n"
+    "attack stays as resampled. Higher values fray the attack more (see \"The\n"
     "transposition methods\"); lower\n"
     "the slider for a stop whose speaking turns rough. Changing it rebuilds the\n"
     "copies.\n"
@@ -3028,10 +3030,10 @@ static const char* const kManualText_part14 =
     "\n"
     "Shows or hides the Load Configuration button (an OrganSampler `.json`, or a\n"
     "Hauptwerk organ definition - see \"Loading a Hauptwerk organ definition\").\n"
-    "Right-click: merge another configuration into the loaded organ.\n"
-    "\n"
     ;
 static const char* const kManualText_part15 =
+    "Right-click: merge another configuration into the loaded organ.\n"
+    "\n"
     "### Top bar: Save Configuration\n"
     "\n"
     "Shows or hides the Save Configuration button.\n"
@@ -3230,10 +3232,10 @@ static const char* const kManualText_part15 =
     "perspective; less lets the other channels carry that share of it too; 0 % = all\n"
     "channels carry the same sum.\n"
     "\n"
-    "### Random tuning error of pipes\n"
-    "\n"
     ;
 static const char* const kManualText_part16 =
+    "### Random tuning error of pipes\n"
+    "\n"
     "(The Divisions dialog names it *Allow Random Tuning Error*.)\n"
     "On: the pipes of this division get the small random detune set per stop\n"
     "(*Random pitch error* in the voicing). Off: every pipe speaks exactly at its\n"

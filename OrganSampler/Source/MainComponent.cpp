@@ -3479,6 +3479,7 @@ void MainComponent::applyAdvancedAudioSettings()
     engine.setTremulantLevelDbPerCent(tremulantLevelDbPerCent);
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    engine.setVelocityPlainStrict(velocityPlainStrict);
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
     engine.setWindShares(windOneStopShare, windOnePipeShare, windTwoPipesShare);
@@ -11455,6 +11456,19 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         if (plan.stopsWithoutSamples > 0) summary << "\nStops without playable pipes (couplers, tremulants, toys): " << plan.stopsWithoutSamples << ".";
         for (const auto& note : plan.notes) summary << "\n" << note;
         CrashHandler::note("Hauptwerk import plan: " + summary.replaceCharacters("\n", " ") + "; configuration " + plan.configurationFile.getFullPathName());
+        // The import report as a file (0.8.192, the user: the dialog came minutes after the
+        // organ played, and nobody hunts the plan in a long log): ImportReports/<organ>-<date>.txt
+        // in the application-data folder - the plan now, the voicing result appended later.
+        {
+            juce::String fileName = plan.organName;
+            for (const auto c : juce::String("\\/:*?\"<>|")) fileName = fileName.replaceCharacter(c, '-');
+            const auto reports = safeThis->settingsFile.getParentDirectory().getChildFile("ImportReports");
+            reports.createDirectory();
+            safeThis->hauptwerkImportReport = reports.getChildFile(fileName.trim() + "-" + juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M") + ".txt");
+            safeThis->hauptwerkImportReport.replaceWithText("Hauptwerk organ definition imported: " + odfFile.getFullPathName() + "\n"
+                + juce::Time::getCurrentTime().toString(true, true, true, true) + ", OrganSampler " + ProjectInfo::versionString + "\n\n" + summary + "\n");
+            CrashHandler::note("Hauptwerk import report: " + safeThis->hauptwerkImportReport.getFullPathName());
+        }
         safeThis->hauptwerkImport = odf;
         safeThis->runWhenLoaded([safeThis, odf, file = plan.configurationFile, summary] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, file, summary); });
         safeThis->suppressPortableNotice = true;   // made here and now: no "from another computer" notice, the import's own report follows
@@ -11619,8 +11633,11 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     // paths relative to OrganInstallationPackages; no zip and README - those are
     // for publishing, Save Configuration makes them when wanted).
     savePortableConfiguration(configurationFile, false, true, false);
-    juce::String text = summary;
-    text << "\n\nVoicing: " << voicedStops << " stop(s) with the Hauptwerk pipe levels in three steps - the median of a division's perspective as that route's volume ("
+    // The voicing result goes into the import report file (0.8.192); the dialog that
+    // used to show the whole text here - minutes after the organ played - is gone.
+    juce::ignoreUnused(summary);
+    juce::String text;
+    text << "\nVoicing: " << voicedStops << " stop(s) with the Hauptwerk pipe levels in three steps - the median of a division's perspective as that route's volume ("
          << routeVolumesSet.joinIntoString(", ") << "), the median of the rest as the stop's volume, the remainder per pipe.";
     if (compassStops > 0)
         text << "\nCompass: " << compassStops << " stop(s) play fewer keys than their division in the definition (a Cornet from c1 up): "
@@ -11630,8 +11647,13 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     text
          << "\n\nThe configuration is saved as\n" << configurationFile.getFullPathName()
          << "\n\nEverything else of the organ definition (combinations, displays, wind, noises) was ignored: the folder structure decides the organ in OrganSampler. "
-            "Check the Stop List, the audio routes of the perspectives and the MIDI keyboards, then Save Configuration.";
-    showLongMessage("Hauptwerk organ definition imported", text);   // longer than an alert box shows (0.8.136)
+            "Check the Stop List, the audio routes of the perspectives and the MIDI keyboards, then Save Configuration.\n";
+    if (hauptwerkImportReport != juce::File() && hauptwerkImportReport.getParentDirectory().isDirectory())
+    {
+        hauptwerkImportReport.appendText(text);
+        CrashHandler::note("Hauptwerk import report completed: " + hauptwerkImportReport.getFullPathName());
+    }
+    else CrashHandler::note("Hauptwerk import result: " + text.replaceCharacters("\n", " "));
 }
 
 void MainComponent::runWhenLoaded(std::function<void()> action)
@@ -17261,6 +17283,8 @@ void MainComponent::loadSettings()
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
     velocityFadeInMs = juce::jlimit(0.0f, 500.0f, (float)(double)parsed.getProperty("velocityFadeInMs", 40.0));
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    velocityPlainStrict = (bool)parsed.getProperty("velocityPlainStrict", false);   // 0.8.192
+    engine.setVelocityPlainStrict(velocityPlainStrict);
     velocityShelfDb = juce::jlimit(0.0f, 24.0f, (float)(double)parsed.getProperty("velocityShelfDb", 9.0));
     velocityShelfMs = juce::jlimit(5.0f, 1000.0f, (float)(double)parsed.getProperty("velocityShelfMs", 80.0));
     engine.setVelocityShelfDb(velocityShelfDb);
@@ -17783,6 +17807,7 @@ void MainComponent::saveSettings()
     obj->setProperty("harmonicTremulantDb", harmonicTremulantDb);
     obj->setProperty("tremulantShelfPhaseDegrees", tremulantShelfPhaseDegrees);
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
+    obj->setProperty("velocityPlainStrict", velocityPlainStrict);
     obj->setProperty("velocityShelfDb", velocityShelfDb);
     obj->setProperty("velocityShelfMs", velocityShelfMs);
     obj->setProperty("uiScalePercent", uiScalePercent);
@@ -19746,6 +19771,8 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     engine.setReleaseFadeInMs(70.0f);
     velocityFadeInMs = 40.0f;
     engine.setVelocityFadeInMs(velocityFadeInMs);
+    velocityPlainStrict = false;
+    engine.setVelocityPlainStrict(false);
     velocityShelfDb = 9.0f; velocityShelfMs = 80.0f;
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
@@ -22883,6 +22910,13 @@ void MainComponent::showConfigurationEditor()
                 }, "The chiff of a gently struck key is blunted: the pipe starts with this much high-frequency loss (a high "
                    "shelf above the tone start frequency, like \"Treble per key\") at velocity 1, less for firmer strokes, none at "
                    "127; the loss opens to nothing over the time below. Stops with velocity layers are not touched.");
+            addToggle("Velocity layers: an unticked _128 never plays", o.velocityPlainStrict, [&o](bool state)
+                {
+                    o.velocityPlainStrict = state;
+                    o.engine.setVelocityPlainStrict(state);
+                    o.saveSettings();
+                }, "Off (default): a key whose velocity reaches no ticked layer plays the plain files (\"_128\") even when their box is "
+                   "unticked, so no key falls silent. On: an unticked _128 never plays - such a key stays silent (0.8.192).");
             addSlider("Key velocity: treble cut opens over", 5.0, 1000.0, 1.0, " ms", o.velocityShelfMs, 80.0,
                 [&o](double value)
                 {
