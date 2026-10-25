@@ -2,3 +2,4 @@
 # These stand in the "Featured" table of INDEX.md, every other organ in "All the others".
 # Edit this file on GitHub, or run Actions > "Feature a configuration" with any part of the organ's name.
 rural-organ
+stralsund-st-jakobi-kr-wegscheider
