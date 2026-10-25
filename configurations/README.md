@@ -22,13 +22,13 @@ refuses anything else.
 1. Get the sample folders the configuration was made for (its README says
    which and where from).
 2. Find the organ in [INDEX.md](INDEX.md), open its README and click its
-   **Download** link: a zip with the `.json` inside. Unpack it and put the
-   `.json` into your **configurations folder** (Configuration Editor >
+   **Download** link: a zip with the `.json` inside.
+3. In OrganSampler: *Load Configuration* in the top bar, choose the zip as
+   it is (0.8.195; nothing to unpack) - the load box copies the
+   configuration into your **configurations folder** (Configuration Editor >
    *Configurations folder*; `Documents\OrganSampler\Configurations` by
    default - since 0.8.190 every configuration lives there, away from the
-   samples).
-3. In OrganSampler: *Load Configuration* in the top bar, choose the file.
-   The sample folders are found in your *sample locations* (the folders
+   samples). The sample folders are found in your *sample locations* (the folders
    above your sample libraries, which the program remembers by itself and
    lists in the Configuration Editor); the README shows the folder tree
    expected under one of them.

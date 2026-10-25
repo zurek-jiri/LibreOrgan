@@ -835,9 +835,11 @@ static const char* const kManualText_part4 =
     "chosen anew in the Configuration Editor (*Configurations folder* > Choose).\n"
     "The Hauptwerk and RAR imports write there, *Save Configuration* and *Load\n"
     "Configuration* start there. A configuration loaded from anywhere else\n"
-    "(Downloads, beside the samples, inside an archive) is copied into the\n"
-    "folder by the load box (0.8.191; or loaded from its own folder, the second\n"
-    "choice); the copy becomes the open file, the original stays. Never a\n"
+    "(Downloads, beside the samples, inside an archive, or the published `.zip`\n"
+    "as downloaded from GitHub - *Load Configuration* opens it as it is, 0.8.195)\n"
+    "is copied into the folder by the load box (0.8.191; or loaded from its own\n"
+    "folder, the second choice); the copy becomes the open file, the original\n"
+    "stays. Never a\n"
     "duplicate (0.8.193): the same file already in the folder is simply loaded\n"
     "from there; a file of the same name with other content makes the box ask -\n"
     "keep the one in the folder and load it, replace it with this file (the old\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "on the grid half loaded. The polyphony report then says the loading stopped\n"
     "on purpose; it never claims the system is paging when it is not. A folder\n"
     "tree that lies inside another loaded tree (the whole library and one of its\n"
-    "sub-folders both loaded) is the same folders twice: the inner tree is\n"
-    "dropped from the pool, its stops point into the outer tree, and a message\n"
     ;
 static const char* const kManualText_part5 =
+    "sub-folders both loaded) is the same folders twice: the inner tree is\n"
+    "dropped from the pool, its stops point into the outer tree, and a message\n"
     "after the load names it (0.8.143) - load a tree once, whole or in parts,\n"
     "never both. A stop\n"
     "whose samples the program holds already (a reload of the same organ: the\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "  stop with items indented under it) - whether the button carries the Roman\n"
     "  numeral of the ranks that sound with it. Off: the name alone. On by\n"
     "  default; saved with the configuration.\n"
-    "- **Perspectives** - the microphone perspectives this stop has, each with its\n"
-    "  own on/off tick box (their volumes are the routes' volumes in the Divisions\n"
     ;
 static const char* const kManualText_part6 =
+    "- **Perspectives** - the microphone perspectives this stop has, each with its\n"
+    "  own on/off tick box (their volumes are the routes' volumes in the Divisions\n"
     "  dialog).\n"
     "- **Stop volume** (-24 to +12 dB, default 0) - the level of the whole stop.\n"
     "- **Velocity layers** - a tick box per layer and one for the plain files; see\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "  own included, as often as wanted) or to remove one. Transmissions act at\n"
     "  once; they need no Apply. With **Show Trsm.** (bottom bar) every\n"
     "  transmission is also listed as a grey row of the division it plays in,\n"
-    "  movable like a stop.\n"
-    "- **Add stop...** adds, per division, an empty stop folder or one of the\n"
     ;
 static const char* const kManualText_part7 =
+    "  movable like a stop.\n"
+    "- **Add stop...** adds, per division, an empty stop folder or one of the\n"
     "  ready-made stops of the loaded trees that no division uses yet (added\n"
     "  whole, with the folders of every perspective; a stop whose folders are in\n"
     "  the table already is not offered). The x at a row's start\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "spread over every output of every interface in the room: the Hauptwerk\n"
     "division on an RME, the R\xC3\xBC""ckpositiv on a second card, the pedal on a third,\n"
     "headphones on the on-board sound chip. Which drivers there are and how to\n"
-    "set them up differs by operating system: see \"Audio on Windows\", \"Audio on\n"
-    "Linux\" and \"Audio on macOS\" below. Two things hold everywhere:\n"
     ;
 static const char* const kManualText_part8 =
+    "set them up differs by operating system: see \"Audio on Windows\", \"Audio on\n"
+    "Linux\" and \"Audio on macOS\" below. Two things hold everywhere:\n"
     "\n"
     "**The buffer size decides more than anything else.** Every block of audio has\n"
     "exactly its buffer's duration to be rendered: at 64 samples (1.3 ms at\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "  everything regardless; the same switch is in the settings editor as *Audio\n"
     "  devices: list also the ALSA devices that cannot be opened*.\n"
     "\n"
-    "A menu entry with the icon, so that the program starts from the\n"
-    "application menu like any other: *Install menu entry and icon* in the\n"
     ;
 static const char* const kManualText_part9 =
+    "A menu entry with the icon, so that the program starts from the\n"
+    "application menu like any other: *Install menu entry and icon* in the\n"
     "Configuration Editor (see chapter 1).\n"
     "\n"
     "### Audio on macOS\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "  (\"temperament = ...\"), which helps the choice. \"Equal\" is reported whenever\n"
     "  the recording matches equal temperament.\n"
     "- **The target temperament** is the temperament the organ *plays* in. A\n"
-    "  **single click** on a temperament selects it (or *Target temperament* in\n"
-    "  the Configuration Editor). Every pipe is then retuned by the difference\n"
     ;
 static const char* const kManualText_part10 =
+    "  **single click** on a temperament selects it (or *Target temperament* in\n"
+    "  the Configuration Editor). Every pipe is then retuned by the difference\n"
     "  between the target and the base: the recorded pitches are taken out and\n"
     "  the chosen ones put in. Choosing the recorded temperament itself as the\n"
     "  target plays the samples exactly as recorded. Every temperament can be\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "removed by themselves.\n"
     "\n"
     "**The three buttons** (Configuration Editor, under the cache switch):\n"
-    "\n"
-    "- The row *Filled pipes cache: <size> in <folder>* shows how much the cache\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
+    "- The row *Filled pipes cache: <size> in <folder>* shows how much the cache\n"
     "  holds and where. Its button **Empty the cache** deletes every file. Use it\n"
     "  to get the disk space back, or after replacing the samples wholesale; the\n"
     "  copies are built again (and cached again) the next time they are needed.\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "\n"
     "### Sample rate on loading\n"
     "\n"
-    "*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1\n"
-    "kHz are converted once while loading with a high-quality filter, so every set\n"
     ;
 static const char* const kManualText_part12 =
+    "*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1\n"
+    "kHz are converted once while loading with a high-quality filter, so every set\n"
     "plays exactly like a 48 kHz one and a 96 kHz set needs half the RAM it would\n"
     "otherwise; loading takes longer. *36 kHz* and *32 kHz* (0.8.143) store every\n"
     "file at that rate: what lies above 17 or 15 kHz goes - organ pipes carry next\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "     doubled buffer gave 17 % more voices, on a Ryzen a quarter of the\n"
     "     buffer still gave 62 % of the voices - no model fits, the buffer is\n"
     "     cheap to try and the measurement tells. A buffer below 256 samples\n"
-    "     gets a recommendation to try 256 or 512, nothing more.\n"
-    "   On Linux the report names the CPU governor (\"performance\" keeps the\n"
     ;
 static const char* const kManualText_part13 =
+    "     gets a recommendation to try 256 or 512, nothing more.\n"
+    "   On Linux the report names the CPU governor (\"performance\" keeps the\n"
     "   clock up), on Windows the power plan; when the CPU clocks cannot be read\n"
     "   it says so. During the run the progress text shows the CPU of the render\n"
     "   cores and the lane utilisation every second. The measurement is also\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "### Filled pipes: release length (pitch shift)\n"
     "\n"
     "Pitch shift method only. How long a filled pipe's release (the room decay) is,\n"
-    "as a share of its source's duration (25 to 200 %, default 100). Resampling\n"
-    "alone would make a release shifted two octaves down four times as long and one\n"
     ;
 static const char* const kManualText_part14 =
+    "as a share of its source's duration (25 to 200 %, default 100). Resampling\n"
+    "alone would make a release shifted two octaves down four times as long and one\n"
     "shifted two octaves up a quarter, but the room does not grow or shrink with the\n"
     "pipe, so the decay is laid out again to this length in both directions (100 % =\n"
     "exactly the source's duration). Longer than 100 % gives a bigger room to the\n"
@@ -3028,10 +3030,10 @@ static const char* const kManualText_part14 =
     "### Top bar: Stop-Merging\n"
     "\n"
     "Shows or hides the Stop-Merging button (see \"Stop-Merging\"). Hidden by\n"
-    "default.\n"
-    "\n"
     ;
 static const char* const kManualText_part15 =
+    "default.\n"
+    "\n"
     "### Top bar: Load Voicing\n"
     "\n"
     "Shows or hides the Load Voicing button (the voicing from a file). Hidden by\n"
@@ -3230,10 +3232,10 @@ static const char* const kManualText_part15 =
     "sound cards at once\" and \"The auxiliary route\".\n"
     "\n"
     "### Perspective output channels\n"
-    "\n"
-    "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
     ;
 static const char* const kManualText_part16 =
+    "\n"
+    "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
     "channels of that perspective's own device.\n"
     "\n"
     "### Perspective volume\n"

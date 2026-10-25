@@ -12,8 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.194] - 2026-10-25
+## [0.8.195] - 2026-10-25
 
+### Changed
+- Load Configuration opens a published .zip as downloaded from GitHub: the
+  configuration inside is read as it is, nothing to unpack, and the load box
+  copies it into the configurations folder.
+- The publishing robot names the uploaded zip and README after the
+  configuration inside the zip: GitHub turned an attachment's spaces into
+  dots, and the README's download link found nothing (404 on every name
+  with a space). The names stay as typed, spaces included.
+- The activity log says when a quit was requested and what the unsaved
+  changes prompt was answered (a save followed by the quit is no crash).
+
+## [0.8.194] - 2026-10-25
 ### Changed
 - A portable save is an export: <name>.portable.json, its zip and its README
   go into the Publish subfolder of the configurations folder; the ordinary

@@ -2133,6 +2133,7 @@ MainComponent::MainComponent()
 
 void MainComponent::requestQuit(std::function<void()> proceed)
 {
+    CrashHandler::note("Quit requested" + juce::String(configurationDirty ? " (the configuration has unsaved changes: asked)" : ""));   // 0.8.195: a save followed by the quit is not a crash
     saveSettings();
     askToKeepChanges("Quit OrganSampler", "quit", std::move(proceed));
 }
@@ -2201,9 +2202,10 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
         .withButton("Save")
         .withButton("Don't Save")
         .withButton("Cancel"), this,
-        [safeThis, proceed](int result)
+        [safeThis, proceed, continueVerb](int result)
         {
-            if (safeThis == nullptr || result == 0) return;
+            if (safeThis == nullptr || result == 0) { CrashHandler::note("Unsaved changes (" + continueVerb + "): cancelled"); return; }
+            CrashHandler::note("Unsaved changes (" + continueVerb + "): " + (result == 1 ? "Save" : "Don't Save") + " chosen");
             if (result == 1) safeThis->savePortableConfiguration(safeThis->currentConfigurationFile, true);
             if (proceed) proceed();
         });
@@ -10302,7 +10304,7 @@ void MainComponent::launchConfigurationLoadChooser()
         }
     }
     configurationFileChooser = std::make_unique<juce::FileChooser>(
-        "Load organ configuration (OrganSampler .json, a Hauptwerk organ definition, or a RAR archive holding one)", start, "*.json;*.Organ_Hauptwerk_xml;*.xml;*.rar");
+        "Load organ configuration (OrganSampler .json, a published .zip, a Hauptwerk organ definition, or a RAR archive holding one)", start, "*.json;*.zip;*.Organ_Hauptwerk_xml;*.xml;*.rar");
     configurationFileChooser->launchAsync(juce::FileBrowserComponent::openMode
         | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
         [safeThis](const juce::FileChooser& chooser)
@@ -10327,7 +10329,29 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     if (!SampleFiles::existsAsFile(file)) return;   // a Hauptwerk definition may lie inside a RAR archive (0.8.157)
     if (HauptwerkOdf::looksLikeOdf(file)) { refreshArchiveSearchFolders(file); importHauptwerkOdf(file); return; }
     juce::String text;
-    if (file.existsAsFile()) text = file.loadFileAsString();
+    bool fromZip = false;
+    juce::File jsonFile = file;   // the .json the text belongs to (a published zip: the one inside, as if beside the zip)
+    if (file.hasFileExtension("zip"))
+    {
+        // A published configuration as downloaded from GitHub (0.8.195): the one .json
+        // inside is read straight from the zip - nothing to unpack; the load box then
+        // copies it into the configurations folder (its name, beside the zip's, decides
+        // whether the organ is there already).
+        juce::ZipFile zip(file);
+        const juce::ZipFile::ZipEntry* entry = nullptr;
+        for (int i = 0; i < zip.getNumEntries() && entry == nullptr; ++i)
+            if (zip.getEntry(i)->filename.endsWithIgnoreCase(".json")) entry = zip.getEntry(i);
+        if (entry == nullptr)
+        {
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Load Configuration", "The zip holds no configuration (.json).");
+            return;
+        }
+        if (auto in = std::unique_ptr<juce::InputStream>(zip.createStreamForEntry(*entry))) text = in->readEntireStreamAsString();
+        jsonFile = file.getSiblingFile(juce::File(entry->filename).getFileName());
+        fromZip = true;
+        CrashHandler::note("Load Configuration: " + juce::File(entry->filename).getFileName() + " read from the zip " + file.getFullPathName());
+    }
+    else if (file.existsAsFile()) text = file.loadFileAsString();
     else if (auto in = SampleFiles::openInput(file)) text = in->readEntireStreamAsString();   // a configuration inside an archive (0.8.158)
     else return;
     auto configuration = juce::JSON::parse(text);
@@ -10340,18 +10364,19 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     }
     // The same file already in the configurations folder (0.8.193): loaded from there,
     // nothing copied, nothing asked - never a duplicate.
-    juce::File source = file;
-    if (file.getParentDirectory() != configurationsDirectory())
+    juce::File source = jsonFile;
+    if (jsonFile.getParentDirectory() != configurationsDirectory())
     {
-        const auto existing = configurationsDirectory().getChildFile(file.getFileName());
+        const auto existing = configurationsDirectory().getChildFile(jsonFile.getFileName());
         if (existing.existsAsFile() && existing.loadFileAsString() == text)
         {
             CrashHandler::note("Load Configuration: " + file.getFullPathName() + " is the same file as " + existing.getFullPathName() + " - loaded from the configurations folder");
             source = existing;
+            fromZip = false;
         }
     }
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    askLoadOptions(configuration, source.getFileNameWithoutExtension(), [safeThis, source](juce::var chosen)
+    askLoadOptions(configuration, source.getFileNameWithoutExtension(), [safeThis, source, fromZip, text](juce::var chosen)
     {
         if (safeThis == nullptr) return;
         // The box's choice for a file outside the configurations folder (0.8.191/0.8.193):
@@ -10369,8 +10394,10 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
             safeThis->resolveAndApplyPortableConfiguration(kept, existing);
             return;
         }
+        // A zip has no .json on the disk to load in place: it is copied (0.8.195).
+        if (fromZip && choice != "replace") choice = "copy";
         safeThis->resolveAndApplyPortableConfiguration(chosen, source);
-        if (choice == "copy" || choice == "replace") safeThis->adoptCopyInConfigurationsFolder(source);
+        if (choice == "copy" || choice == "replace") safeThis->adoptCopyInConfigurationsFolder(source, fromZip ? text : juce::String());
     }, source);
 }
 
@@ -10383,7 +10410,7 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
         if (from.hasProperty(key)) target->setProperty(key, from.getProperty(key, juce::var()));
 }
 
-void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original)
+void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip)
 {
     // A configuration loaded from elsewhere (Downloads, beside the samples, inside
     // an archive) copied into the configurations folder as it was; a file of that
@@ -10394,7 +10421,8 @@ void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original)
     if (target == original) return;
     if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
     bool written = false;
-    if (original.existsAsFile()) written = original.copyFileTo(target);
+    if (textFromZip.isNotEmpty()) written = target.replaceWithText(textFromZip);   // the .json read out of a published zip (0.8.195)
+    else if (original.existsAsFile()) written = original.copyFileTo(target);
     else if (auto in = SampleFiles::openInput(original)) written = target.replaceWithText(in->readEntireStreamAsString());   // a json inside an archive
     if (!written)
     {
@@ -10743,6 +10771,9 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     {
         juce::String base = file.getFileNameWithoutExtension();
         if (base.endsWithIgnoreCase(".portable")) base = base.dropLastCharacters(9);
+        // The name stays as the user typed it, spaces included (0.8.195, the user): GitHub
+        // turns an attachment's spaces into dots, and the publishing robot names the
+        // files after the .json inside the zip, so the README's link reaches the zip.
         target = file.getParentDirectory().getChildFile("Publish").getChildFile(base + ".portable.json");
         target.getParentDirectory().createDirectory();
     }
@@ -11935,7 +11966,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     while (slug.contains("--")) slug = slug.replace("--", "-");
     slug = slug.trimCharactersAtStart("-").trimCharactersAtEnd("-");
     text << "**Download:** [" << zipName << "](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/" << slug << "/"
-         << zipName.replace(" ", "%20") << ") - unpack it, the " << code(file.getFileName()) << " inside goes where the next section says.\n\n";
+         << zipName.replace(" ", "%20") << ") - *Load Configuration* in OrganSampler opens the zip as it is (0.8.195) and copies the configuration into your configurations folder; or unpack it and put the " << code(file.getFileName()) << " there yourself.\n\n";
     text << "**No samples are published here.** The configuration merely names the folders it expects;\n"
             "the recordings themselves are the property of their producer and are obtained from them.\n\n";
     text << "## The configuration\n\n";

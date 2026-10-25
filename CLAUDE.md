@@ -1110,8 +1110,9 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   pre-sorted copies `INDEX-<column>-<asc|desc>.md`, all generated), written by `.github/scripts/configurations_index.py` in the
   `Configurations check` workflow (job `index`) and committed back - never a list on the website, never a
   release for configurations, never a list in `configurations/README.md` (there will be thousands). The
-  website section and the release body only link to INDEX.md. Name configuration files WITHOUT spaces;
-  the README's Download line is `https://zurek-jiri.github.io/OrganSampler/configurations/<name>.zip`.
+  website section and the release body only link to INDEX.md. Configuration file names may have spaces (0.8.195:
+  the robot names the pair after the .json inside the zip, whatever GitHub did to the attachment's name); the
+  README's Download line is `https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/<organ slug>/<name>.zip`.
 - Stop List counting: every row counts - stops, stop folders, transmissions and extensions (transmissions
   are rows of their receiving division, `transmissions[]` with `manual`) - except the rows nested in a stop
   folder (`groupMaster` set). The table is NEVER typed by hand: it comes from the program, in grid order (row by
@@ -1278,7 +1279,20 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   `arrangeReportWindows` retries - exactly the report path. Hook ORGAN_SAVE_PORTABLE never shows it;
   ORGAN_TEST_PUBLISH_WINDOW=1 shows it without launching anything (pictured by ORGAN_TEST_DIALOG_SNAPSHOT after an
   ORGAN_TEST_CLICK on "Configuration Editor" at 18 s: %TEMP%\test_publish194.ps1). The Explorer window is found by
-  the folder NAME "Publish" (CabinetWClass). (d) The copy build's parallelFor takes physical
+  the folder NAME "Publish" (CabinetWClass).
+  404 ON THE DOWNLOAD LINK (the user, 25 Oct: "Adlington Surround.portable.zip" 404): GitHub turns the SPACES of an
+  issue attachment's name into DOTS ("Adlington.Surround.portable.zip"), the README's link (written by the program)
+  keeps the spaces -> the index job's folder held a zip no link reached. Fixed in the robot (commit c7cc01c):
+  `configuration_from_issue.py` names the pair after the .json INSIDE the zip (`read_config` returns its name), and
+  `validate` refuses a README whose link names another file; the published Adlington zip was `git mv`ed to the name
+  with spaces. The export keeps the name AS TYPED, spaces included (the user: "adlington_surround" looks bad; the
+  robot copes - the old rule "name configuration files without spaces" is gone). 0.8.195: Load Configuration opens a
+  .zip (the one .json inside read with juce::ZipFile; `jsonFile` = the json's name beside the zip, `fromZip` -> the
+  load box's "inPlace" becomes "copy", `adoptCopyInConfigurationsFolder(original, textFromZip)` writes the text),
+  the chooser filter has *.zip. "THE PROGRAM CRASHED AT A SAVE" (13:03, no crash file, no WER event, the routes
+  stopped in order one second after the save's RAM line): a QUIT with "Save" in the unsaved-changes prompt is the
+  only path that saves and then ends in order - the log now says "Quit requested" and "Unsaved changes (quit):
+  Save chosen"; read those lines before calling a save a crash. (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

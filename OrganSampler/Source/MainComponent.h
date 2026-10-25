@@ -1116,7 +1116,7 @@ private:
     // folder, the box offers to copy it there (the var gets "copyIntoConfigurationsFolder").
     // 'importing' (0.8.193): the file is the import's target in the folder - exists it, the box asks replace / keep.
     void askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file = {}, bool importing = false);
-    void adoptCopyInConfigurationsFolder(const juce::File& original);   // the copy becomes the open file; the original stays
+    void adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip = {});   // the copy becomes the open file; the original stays (a zip: its .json text)
     static void copyLoadOptions(const juce::var& from, juce::var& to);   // the five storage choices of the load box
     void chooseConfigurationToLoad();
     // portable: for another computer - no MIDI, no audio devices or channels,

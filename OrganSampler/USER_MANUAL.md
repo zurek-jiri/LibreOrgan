@@ -823,9 +823,11 @@ default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),
 chosen anew in the Configuration Editor (*Configurations folder* > Choose).
 The Hauptwerk and RAR imports write there, *Save Configuration* and *Load
 Configuration* start there. A configuration loaded from anywhere else
-(Downloads, beside the samples, inside an archive) is copied into the
-folder by the load box (0.8.191; or loaded from its own folder, the second
-choice); the copy becomes the open file, the original stays. Never a
+(Downloads, beside the samples, inside an archive, or the published `.zip`
+as downloaded from GitHub - *Load Configuration* opens it as it is, 0.8.195)
+is copied into the folder by the load box (0.8.191; or loaded from its own
+folder, the second choice); the copy becomes the open file, the original
+stays. Never a
 duplicate (0.8.193): the same file already in the folder is simply loaded
 from there; a file of the same name with other content makes the box ask -
 keep the one in the folder and load it, replace it with this file (the old
