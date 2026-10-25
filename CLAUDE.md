@@ -1207,7 +1207,13 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   link) stayed from the organ loaded before when the next file had no block - the Rural README said "Stralsund" and
   the organ-named folder would have REPLACED the published Stralsund; the parse now clears them (the author stays).
   Every change of the README or the publishing path is run through ORGAN_LOAD_CONFIGURATION + ORGAN_SAVE_PORTABLE
-  and `configuration_tools.py validate` on the pair before delivery. (d) The copy build's parallelFor takes physical
+  and `configuration_tools.py validate` on the pair before delivery. 0.8.189 (the user: "žádná próza, cifry na
+  začátku"): README title = `publicationOrgan` (else the file name less "portable" + its separators,
+  `title_from_base` in Python = the C++ loop); RAM = "- **RAM:**" + one sub-bullet per figure ascending
+  "  - **N GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*" / the measurement with ALL four
+  options spelt out from the json's sampleStorageFloat/resampleOnLoad/storageSampleRate/releaseHalfRate/
+  compressSamples ("16-bit, 48 kHz, full releases, no packing; *measured*") / the full quality = 10 x the least
+  "*estimated*" (left out when the measurement was float + full releases + no packing). Never a sentence there. (d) The copy build's parallelFor takes physical
   cores - 1 (the mouse stuttered through a build); (e) one-shot "Chiff" alone -> the new default (as the ignored
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every

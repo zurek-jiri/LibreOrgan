@@ -12,8 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.188] - 2026-10-25
+## [0.8.189] - 2026-10-25
 
+### Changed
+- The README of a portable configuration: the title is the organ as named at
+  the save (a file without a name: its name less "portable"); the RAM is one
+  bullet per figure, the figure first, every storage option spelt out with
+  the packing - the least (estimated or measured), the measurement at the
+  save, the full quality (roughly ten times the least). The robot accepts
+  READMEs of this form only.
+
+## [0.8.188] - 2026-10-25
 ### Changed
 - Publishing a configuration: the organ's folder on GitHub is named after the
   organ as named at the save, whatever the file is called, so a new version

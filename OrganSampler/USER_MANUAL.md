@@ -764,13 +764,13 @@ publishing it in the project's `configurations/` folder on GitHub:
 `<name>.zip`, the configuration zipped (a zip is downloaded from GitHub with
 one click, a bare `.json` would open as text), and `<name>.README.md`, the
 README in the published form - the perspectives, the folders the
-configuration expects and where to put the file, the routes, the RAM: the
-least the organ takes, with every saving option of the load box (16-bit,
-32 kHz on loading, releases at half the rate, packed samples) - measured
-when the organ was loaded so, else estimated by the program at the save
-from a share of the loaded samples brought into that form, with the
-measured figure and the options it was loaded with beside it (0.8.188) -
-and the note that the full quality takes roughly ten times as much
+configuration expects and where to put the file, the routes, the RAM as
+one bullet per figure with its storage options (0.8.189): the least the
+organ takes (16-bit, 32 kHz, releases at half the rate, packed - measured
+when it was loaded so, else estimated at the save from a share of the
+loaded samples), the figure measured at the save with the options the organ
+was loaded with, and the full quality (32-bit float, the files' own rate,
+full releases, no packing - roughly ten times the least)
 (`configurations/INDEX.md` shows the least as its RAM column; the price of
 those options is polyphony, see the storage options in the Configuration
 Editor chapter), the version, and the Stop List as a table in the order of

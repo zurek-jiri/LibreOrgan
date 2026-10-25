@@ -11691,7 +11691,25 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     const juce::String date = juce::String(now.getDayOfMonth()) + " " + now.getMonthName(false) + " " + juce::String(now.getYear());
 
     juce::String text;
-    text << "# " << name << "\n\n";
+    // The title (0.8.189): the organ as named at the save; a file without a name
+    // gives its own name less "portable" (every published configuration is
+    // portable - the user). The file keeps its name; the download link names it.
+    juce::String title = publicationOrgan.trim();
+    if (title.isEmpty())
+    {
+        title = name;
+        for (int at = title.toLowerCase().indexOf("portable"); at >= 0; at = title.toLowerCase().indexOf("portable"))
+        {
+            int start = at, end = at + 8;
+            auto separator = [](juce::juce_wchar c) { return c == '.' || c == '_' || c == '-' || c == ' '; };
+            while (start > 0 && separator(title[start - 1])) --start;
+            while (end < title.length() && separator(title[end])) ++end;
+            title = title.substring(0, start) + (start > 0 && end < title.length() ? juce::String(" ") : juce::String()) + title.substring(end);
+        }
+        title = title.trim();
+        if (title.isEmpty()) title = name;
+    }
+    text << "# " << title << "\n\n";
     // Everything is filled in by the program (0.8.179: the publishing details are
     // asked at the save); the one thing left to do is said in an HTML comment
     // (GitHub does not show it, so it does no harm when it stays).
@@ -11752,22 +11770,36 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
         if (ram > 0)
         {
             const bool savedSo = least <= 0 || least >= ram;   // saved with the saving options in force: the measured figure is the least
-            const juce::int64 figure = savedSo ? ram : least;
             auto gbText = [](juce::int64 bytes)
             {
                 const double gb = (double)bytes / (1024.0 * 1024.0 * 1024.0);
                 return gb < 10.0 ? juce::String(gb, 1) : juce::String(juce::roundToInt(gb));
             };
-            text << "- **RAM:** about " << gbText(figure) << " GB at the least, with every saving option of the load box ("
-                 << (savedSo ? configuration.getProperty("measuredRamStorage", "16-bit").toString() : configuration.getProperty("estimatedMinimumRamStorage", SamplerEngine::minimumRamStorageText).toString())
-                 << "; " << (savedSo ? "measured by the program when this file was saved" : "estimated by the program from the loaded samples when this file was saved") << ")";
-            // Not saved at the least: the measured figure and the options it was loaded with
-            // go beside the estimate (0.8.188, the user: an estimate without the measurement
-            // and its loading options says nothing).
-            if (!savedSo)
-                text << "; measured " << gbText(ram) << " GB when this file was saved, the organ loaded as "
-                     << configuration.getProperty("measuredRamStorage", "16-bit").toString();
-            text << "; at the full quality (32-bit float, the files' own rate, full releases, no packing) count on roughly ten times the least.\n";
+            // One bullet per figure, the figure first, every storage option spelt
+            // out - packing included (0.8.189, the user: no prose, the digits at the
+            // start): the least, the measurement, the full quality, ascending.
+            const bool asFloat = (bool)configuration.getProperty("sampleStorageFloat", true);
+            const bool halfRate = (bool)configuration.getProperty("releaseHalfRate", false);
+            const bool packed = (bool)configuration.getProperty("compressSamples", false);
+            const bool resample = (bool)configuration.getProperty("resampleOnLoad", true);
+            const double rate = (double)configuration.getProperty("storageSampleRate", 48000.0);
+            const juce::String measuredText = configuration.hasProperty("sampleStorageFloat")
+                ? juce::String(asFloat ? "32-bit float" : "16-bit") + ", " + (resample ? juce::String(juce::roundToInt(rate / 1000.0)) + " kHz" : juce::String("the files' own rate"))
+                    + ", " + (halfRate ? "releases at half the rate" : "full releases") + ", " + (packed ? "packed" : "no packing")
+                : configuration.getProperty("measuredRamStorage", "16-bit").toString();
+            const bool fullQuality = asFloat && !halfRate && !packed;   // the measurement was at the full quality already
+            struct Line { juce::int64 bytes; juce::String what; };
+            std::vector<Line> lines;
+            if (savedSo) lines.push_back({ ram, measuredText + "; *measured*" });
+            else
+            {
+                lines.push_back({ least, "16-bit, 32 kHz, releases at half the rate, packed; *estimated*" });
+                lines.push_back({ ram, measuredText + "; *measured*" });
+            }
+            if (!fullQuality) lines.push_back({ (savedSo ? ram : least) * 10, "32-bit float, the files' own rate, full releases, no packing; *estimated*" });
+            std::sort(lines.begin(), lines.end(), [](const Line& a, const Line& b) { return a.bytes < b.bytes; });
+            text << "- **RAM:**\n";
+            for (const auto& line : lines) text << "  - **" << gbText(line.bytes) << " GB** - " << line.what << "\n";
         }
     }
     text << "- **Saved with:** OrganSampler " << version << ".\n";

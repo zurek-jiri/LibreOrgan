@@ -47,6 +47,23 @@ def read_config(zip_path):
     return cfg, files[0]
 
 
+def title_from_base(base):
+    """The file's name less "portable" and the separators around it (the program's rule)."""
+    out = base
+    while True:
+        m = re.search(r'portable', out, flags=re.I)
+        if not m:
+            break
+        start, end = m.start(), m.end()
+        while start > 0 and out[start - 1] in '._- ':
+            start -= 1
+        while end < len(out) and out[end] in '._- ':
+            end += 1
+        out = out[:start] + (' ' if start > 0 and end < len(out) else '') + out[end:]
+    out = out.strip()
+    return out or base
+
+
 def organ_of(cfg):
     publication = cfg.get('publication') if isinstance(cfg, dict) else None
     if isinstance(publication, dict):
@@ -200,8 +217,11 @@ def validate_readme(readme_path, zip_path, cfg):
     except (OSError, UnicodeDecodeError) as e:
         return ['the README cannot be read as UTF-8 text (%s)' % e]
     first = next((line.strip() for line in text.splitlines() if line.strip()), '')
-    if first != '# ' + base:
-        problems.append('the README is not the one written for %s.zip (its title is "%s", expected "# %s")' % (base, first, base))
+    # The title (0.8.189): the organ as named at the save, else the file's name less "portable".
+    organ_name = organ_of(cfg) if cfg is not None else ''
+    expected = organ_name or title_from_base(base)
+    if first != '# ' + expected:
+        problems.append('the README is not the one written for %s.zip (its title is "%s", expected "# %s" - save it again with OrganSampler 0.8.189 or later)' % (base, first, expected))
     if 'Written by OrganSampler' not in text:
         problems.append('the README was not written by OrganSampler (save the configuration with "Portable configuration" ticked and send the README it writes)')
     left = re.findall(r'\(fill in:[^)]*\)', text)
