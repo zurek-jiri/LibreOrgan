@@ -12,6 +12,44 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.213] - 2026-10-26
+
+### Fixed
+- The one-shot, ignored and perspective patterns the user added were lost
+  when an organ was reloaded or another one loaded: the loaded file's lists
+  replaced them. The three lists now belong to this computer as well -
+  `Patterns.json` beside the settings keeps every pattern ever added here,
+  each loaded organ merges its own lists with it, and the lists in force are
+  written back at every load and unload. An edit in the Patterns dialogs or
+  the Configuration Editor sets the file as the list stands (a removed
+  pattern is removed there too); the manual says so (8.5).
+- The manual opened seconds after the first "?" of a session: its text was
+  built into a text editor that laid the whole text out again at every
+  paragraph. The manual is now its own text component, laid out block by
+  block and prepared a few seconds after the program's start, so it opens at
+  once; the orange progress strip of the filled-pipes build no longer stays
+  on the last stops built.
+
+### Added
+- The manual's text can be made larger or smaller: "A-" / "A+" beside the
+  Find box, or Ctrl + the mouse wheel over the text; the size is remembered
+  on this computer.
+- The guided tour has a step on Load Configuration (the right click merges
+  another configuration into the loaded organ), and its stop-folder step
+  points at the Cornet [III] of the second manual.
+- The manual says that percussion and bell-like stops (Chimes, Glockenspiel,
+  Celesta, Harp) sound wrong once retuned or filled by transposition, and
+  what to do about it (7.1).
+
+### Changed
+- The glow of a pressed button / a dragged stop is off by default
+  (Configuration Editor "Glow ...").
+- A portable export's zip holds the README as well: the GitHub form takes
+  the one zip (the README beside it stays for reading); the robot takes the
+  README out of the zip and publishes README.md + the zip with the
+  configuration alone, as before. Older exports (zip + README attached) are
+  still accepted.
+
 ## [0.8.212] - 2026-10-26
 
 ### Fixed

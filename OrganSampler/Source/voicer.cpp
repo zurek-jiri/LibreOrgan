@@ -1733,6 +1733,16 @@ Voicer::Voicer(SamplerEngine& engine, std::function<void(const juce::String&)> m
         void timerCallback() override
         {
             for (auto* row : voicer.stopRows) row->pollBuildProgress();
+            // The moment the last background worker ends (0.8.213): every row painted
+            // whole once more - the last stop built kept a half-way orange strip until
+            // a mouse-over although its copies were long built (the user, 26 Oct).
+            const int workers = voicer.engine.pendingBackgroundWorkers();
+            if (workersSeen > 0 && workers == 0)
+            {
+                for (auto* row : voicer.stopRows) row->repaint();
+                CrashHandler::note("Copy builds ended: every stop row repainted");
+            }
+            workersSeen = workers;
             // Every five seconds, when no build runs: a build that ended before its
             // last pipe and was not launched again is resumed, so that no filled
             // pipe stays without its copy.
@@ -1743,7 +1753,7 @@ Voicer::Voicer(SamplerEngine& engine, std::function<void(const juce::String&)> m
             }
         }
         Voicer& voicer;
-        int tick = 0;
+        int tick = 0, workersSeen = 0;
     };
     progressAnimator = std::make_unique<ProgressAnimator>(*this);
     progressAnimator->startTimerHz(5);
@@ -1757,7 +1767,8 @@ void StopRow::pollBuildProgress()
     // could still fall on the flags being cleared, and the last stop built kept a
     // half-way orange strip until a mouse-over repainted it (the user, 26 Oct).
     if (building) buildingSeen = 5;
-    if (building || buildingSeen > 0) repaint(stopButton.getBounds());
+    else if (buildingSeen > 0) repaint();   // 0.8.213: the whole row once the build ended, not the button's rectangle alone
+    if (building) repaint(stopButton.getBounds());
     if (!building && buildingSeen > 0) --buildingSeen;
 }
 

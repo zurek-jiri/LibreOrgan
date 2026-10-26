@@ -64,8 +64,9 @@ only - no MIDI devices, no audio devices or channels, nothing of your
 computer (the manual chapter of the same name explains it). OrganSampler
 writes it as an export into the `Publish` subfolder of your configurations
 folder (0.8.194; your ordinary configuration stays untouched):
-`<name>.portable.json`, `<name>.portable.zip` (the configuration zipped for
-the upload) and `<name>.portable.README.md`, the README - the perspectives,
+`<name>.portable.json`, `<name>.portable.zip` (the configuration and its
+README zipped for the upload) and `<name>.portable.README.md`, the README
+for reading - the perspectives,
 the folders the configuration expects, the routes, the RAM, the version and
 the Stop List in the order of your grid. The save asks you once for what the
 README cannot know - the organ, the producer of the samples, the link to the
@@ -77,14 +78,15 @@ account is:
 
 1. Press **Publish on GitHub** (or open the form yourself:
    https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml).
-2. Drag `<name>.portable.zip` and `<name>.portable.README.md` into its
-   *Files* field, tick the publication box, press **Submit**.
+2. Drag `<name>.portable.zip` into its *Files* field, tick the publication
+   box, press **Submit**.
 
-A robot takes the two files from the issue, checks them - the zip must hold
-one `.json` that really is an organ configuration of OrganSampler, saved
-portable with the organ loaded (divisions, sample folder trees, stops, the
-RAM figure), and the README must be the one the program wrote for that zip
-(title, trees, divisions, Stop List table) - and proposes them as a pull
+A robot takes the zip from the issue, takes the README out of it and checks
+them - the zip must hold one `.json` that really is an organ configuration
+of OrganSampler, saved portable with the organ loaded (divisions, sample
+folder trees, stops, the RAM figure), and the README must be the one the
+program wrote for that zip (title, trees, divisions, Stop List table) - and
+proposes them as a pull
 request; it answers in the issue, and when something is wrong it says what
 (edit the issue and it tries again). The maintainer merges the pull request,
 and the organ gets its own folder under `configurations/` and a line of

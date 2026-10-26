@@ -46,7 +46,7 @@ jobs:
           status=$?
           cat result.txt
           if [ $status -ne 0 ]; then
-            gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$(printf 'Thank you! The files could not be taken over:\n\n```\n%s\n```\nPlease attach the two files OrganSampler wrote beside the portable configuration - `<name>.zip` and `<name>.README.md`, saved with the organ loaded - by editing this issue; the check runs again on every edit.' "$(cat result.txt)")"
+            gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$(printf 'Thank you! The files could not be taken over:\n\n```\n%s\n```\nPlease attach the zip OrganSampler wrote beside the portable configuration - `<name>.zip`, the configuration and its README inside, saved with the organ loaded - by editing this issue; the check runs again on every edit.' "$(cat result.txt)")"
             exit 1
           fi
       - name: Check them as a push would

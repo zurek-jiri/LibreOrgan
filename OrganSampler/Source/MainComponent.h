@@ -92,7 +92,7 @@ private:
     LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
-    bool consoleGlow = true;
+    bool consoleGlow = false;   // 0.8.213: off by default (the user)
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
     bool ramLogPending = false;            // "RAM held after the load" to be logged once the copies are built (0.8.184)
     bool loadConfigurationAgain = false;   // the test hook ORGAN_LOAD_CONFIGURATION_AGAIN is the file to take now (0.8.184)
@@ -655,8 +655,12 @@ private:
     // embedded (Source/ManualData.h, Source/LicencesData.h). With a manual section
     // the dialog opens on the manual, scrolled to that heading, the heading orange.
     void showAboutDialog(const juce::String& manualSection = {}, const juce::String& fallbackSection = {});
+    void prepareManual();   // 0.8.213: the manual's text parsed and laid out (the dialog's content) - a few seconds after the start, or at the first "?"
+    std::unique_ptr<juce::Component> aboutContent;   // the prepared content until the window takes it
     std::unique_ptr<juce::DialogWindow> aboutWindow;
     std::function<void(const juce::String&, const juce::String&)> aboutOpenChapter;   // 0.8.212: the kept manual window jumps to a chapter
+    std::function<void()> aboutRescroll;   // the chapter at the top again once the window has its final size
+    float manualFontScale = 1.0f;          // 0.8.213: the reader's font size in the manual (machine-specific key "manualFontScale")
 
     // "Set for all perspectives & divisions" in the audio tab: the source
     // route's audio device is copied everywhere; any other device choice cancels it.
@@ -1274,6 +1278,10 @@ private:
     void mergeStops();
     void loadSettings();
     void saveSettings();
+    // 0.8.213: the application's own lists of folder-name patterns (Patterns.json beside settings.json).
+    juce::File applicationPatternsFile() const;
+    void rememberPatterns(bool exact);        // the engine's lists into the file: merged (a load/unload) or as they are (the user's edit)
+    void mergeApplicationPatterns();          // the loaded organ's lists joined with the file's
     void handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) override;
     void reopenMidiInputs();
     juce::AudioDeviceSelectorComponent* getAudioSettingsForManual(int manualIndex);

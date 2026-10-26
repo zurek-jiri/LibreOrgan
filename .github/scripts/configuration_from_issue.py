@@ -4,8 +4,9 @@ configurations/ as the upload pair "<Name>.zip" + "<Name>.README.md".
 
 The issue body (environment variable ISSUE_BODY) holds the attachments as
 GitHub links (https://github.com/user-attachments/files/<id>/<name> or the older
-https://github.com/<owner>/<repo>/files/<id>/<name>). Exactly one .zip (the
-configuration .json inside) and one .md (the README) are expected; GitHub puts
+https://github.com/<owner>/<repo>/files/<id>/<name>). Exactly one .zip is
+expected - the configuration .json and its README inside (0.8.213; an older
+export attaches the README .md beside the zip, still accepted); GitHub puts
 dots for spaces in attachment names, so the README is renamed after the zip.
 The pair is validated (configuration_tools.py: an organ configuration of
 OrganSampler, saved portable with the organ loaded, and the README the program
@@ -23,6 +24,32 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import configuration_tools as tools  # noqa: E402
+
+
+def split_readme_out(zip_path):
+    """A README (.md) inside the zip is written beside it and removed from the zip
+    (the zip is rewritten with its other members); returns the README's path or None."""
+    import shutil
+    import zipfile
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            members = [n for n in z.namelist() if not n.endswith('/')]
+            readmes = [n for n in members if n.lower().endswith('.md')]
+            if not readmes:
+                return None
+            readme_path = os.path.join(os.path.dirname(zip_path), os.path.basename(readmes[0]))
+            with open(readme_path, 'wb') as out:
+                out.write(z.read(readmes[0]))
+            rest = [(n, z.read(n)) for n in members if n not in readmes]
+    except (zipfile.BadZipFile, OSError):
+        return None
+    tmp = zip_path + '.tmp'
+    with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as out:
+        for name, data in rest:
+            out.writestr(name, data)
+    shutil.move(tmp, zip_path)
+    print('README taken out of the zip: %s' % os.path.basename(readme_path))
+    return readme_path
 
 
 def main():
@@ -47,10 +74,18 @@ def main():
         with urllib.request.urlopen(request, timeout=60) as response, open(target, 'wb') as out:
             out.write(response.read())
         (zips if lower.endswith('.zip') else readmes).append(target)
+    # Since 0.8.213 the zip holds the README as well: the upload is the one zip. The
+    # README is taken OUT of it here (an attached README beside the zip is still
+    # accepted: older exports), and the zip is written anew with the .json alone -
+    # the published zip holds nothing else.
+    if len(zips) == 1:
+        inner_readme = split_readme_out(zips[0])
+        if inner_readme and not readmes:
+            readmes.append(inner_readme)
     if len(zips) != 1 or len(readmes) != 1:
-        print('The issue must carry exactly one zip (the configuration .json inside) and one README .md - '
-              'the two files OrganSampler wrote beside the portable configuration. Found: %d zip, %d .md.'
-              % (len(zips), len(readmes)))
+        print('The issue must carry exactly one zip - the one OrganSampler wrote beside the portable configuration, '
+              'the configuration .json and its README inside (an older export: the zip and the README .md beside it). '
+              'Found: %d zip, %d .md.' % (len(zips), len(readmes)))
         return 1
     # The files' names: GitHub turns the spaces of an attachment's name into dots
     # ("Adlington.Surround.portable.zip"), and the README's download link - written

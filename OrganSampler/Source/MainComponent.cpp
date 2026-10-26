@@ -64,6 +64,7 @@ namespace
 #include "LicencesData.h"       // the licence texts embedded (GenerateLicencesData.ps1)
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
 #include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
+#include "ManualView.h"         // the manual's text laid out block by block (0.8.213)
 #include "UIScale.h"
 
 namespace
@@ -1532,6 +1533,13 @@ MainComponent::MainComponent()
         setSize(size.getWidth(), size.getHeight());
     }
     startTimerHz(40);
+    // The manual's text laid out a few seconds after the start (0.8.213), so that the
+    // first "?" or tour link opens it at once (the console is up by then, the
+    // loader runs on its own thread).
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(4000, [safeThis] { if (safeThis != nullptr) safeThis->prepareManual(); });
+    }
     engine.noteOffAll();
     suppressKeyboardStateNotesTL = true;
     for (auto& state : manualKeyboardStates) state.allNotesOff(0);
@@ -5257,8 +5265,8 @@ void MainComponent::showPublishWindow(const juce::File& folder, const juce::File
         .withParameter("title", "[Configuration] " + organ)
         .withParameter("organ", organ + (publicationProducer.isNotEmpty() ? " - " + publicationProducer : juce::String()));
     showAfterReport(url, folder, "Publish the configuration",
-        "Ready to publish: " + zip.getFileName() + " and " + readme.getFileName() + " in the folder " + folder.getFileName()
-        + " of your configurations folder.\nThe folder opens in the file manager, the GitHub form in the browser - drag the two files into \"Files\", "
+        "Ready to publish: " + zip.getFileName() + " (the configuration and its README inside) in the folder " + folder.getFileName()
+        + " of your configurations folder; " + readme.getFileName() + " beside it is for reading.\nThe folder opens in the file manager, the GitHub form in the browser - drag the zip into \"Files\", "
           "tick the box, then \"Submit new issue\".\nAsked to sign in first? Press \"Publish on GitHub\" again afterwards.",
         "Publish on GitHub", "Open the folder");
     CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
@@ -10863,7 +10871,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -11276,9 +11284,14 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             // zipped (a zip is downloaded from GitHub, a .json opens as text) and
             // the README, ready but for the organ, the samples and the author.
             const auto zip = target.getSiblingFile(target.getFileNameWithoutExtension() + ".zip");
+            const auto readme = target.getSiblingFile(target.getFileNameWithoutExtension() + ".README.md");
+            readme.replaceWithText(configurationReadme(configuration, target));
             {
+                // The README goes INTO the zip as well (0.8.213): the upload is the one zip,
+                // the robot takes the README out of it (the README beside it stays for reading).
                 juce::ZipFile::Builder builder;
                 builder.addFile(target, 9, target.getFileName());
+                builder.addFile(readme, 9, readme.getFileName());
                 if (auto stream = std::unique_ptr<juce::FileOutputStream>(zip.createOutputStream()); stream != nullptr && stream->openedOk())
                 {
                     stream->setPosition(0);
@@ -11286,9 +11299,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     builder.writeToStream(*stream, nullptr);
                 }
             }
-            const auto readme = target.getSiblingFile(target.getFileNameWithoutExtension() + ".README.md");
-            readme.replaceWithText(configurationReadme(configuration, target));
-            CrashHandler::note("Configuration zip and README written: " + zip.getFullPathName() + ", " + readme.getFullPathName());
+            CrashHandler::note("Configuration zip (the .json and the README inside) and README written: " + zip.getFullPathName() + ", " + readme.getFullPathName());
             // The export leaves the open file as it is (0.8.194); the window after it
             // opens the Publish folder and the GitHub form, like the one after a report.
             if (std::getenv("ORGAN_SAVE_PORTABLE") == nullptr) showPublishWindow(target.getParentDirectory(), zip, readme, true);
@@ -12119,7 +12130,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     // (GitHub does not show it, so it does no harm when it stays).
     const auto given = [](const juce::String& s, const char* missing) { return s.isNotEmpty() ? s : juce::String(missing); };
     const juce::String organ = given(publicationOrgan, "(the organ was not named)"), producer = given(publicationProducer, "(the producer was not named)");
-    text << "<!-- Written by OrganSampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):\n"
+    text << "<!-- Written by OrganSampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):\n"
             "     https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->\n\n";
     text << "A complete OrganSampler configuration of " << organ << ", as recorded by " << producer;
     if (!perspectives.isEmpty())
@@ -12730,6 +12741,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         frozenGrid->setVisible(false);
         addChildComponent(*frozenGrid);
     }
+    rememberPatterns(false);   // 0.8.213: the lists in force kept on this computer before the organ goes
     engine.setRelaunchHeld(true);   // 0.8.184: no build of the old organ launched again between its unloads
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
@@ -14449,7 +14461,12 @@ void MainComponent::startGuidedTour()
     steps.push_back({ [this, plainStop]() -> juce::Component* { auto* row = voicer->findRow(plainStop(1)); return row != nullptr ? &row->voicingToggleComponent() : nullptr; },
         "The small corner button opens the voicing row of a stop: its alias (the caption of the button - type any name), "
         "the transposition, the stop volume, the attack, and one slider per pipe for volume and treble. \"-\" folds it again.", "The voicing row" });
-    steps.push_back({ [rowButton] { return rowButton([](const StopRow& r) { return !r.isTransmission() && r.getStop()->groupMaster.isEmpty() && (r.getStop()->container || r.caption().contains("[")); }); },
+    // The stop-folder step points at the Cornet [III] of manual II when there is one (0.8.213, the user:
+    // a real folder of three ranks is the better example than Unda Maris), else at the first stop folder.
+    auto stopFolder = [](const StopRow& r) { return !r.isTransmission() && r.getStop()->groupMaster.isEmpty() && (r.getStop()->container || r.caption().contains("[")); };
+    steps.push_back({ [this, rowButton, stopFolder]() -> juce::Component* {
+            auto* cornet = voicer->findRow([stopFolder](const StopRow& r) { return stopFolder(r) && r.getStop()->primaryManual == 2 && r.caption().containsIgnoreCase("Cornet"); });
+            return cornet != nullptr ? &cornet->buttonComponent() : rowButton(stopFolder); },
         "A button with [II] or [III] is a stop folder: several ranks indented under one button - a Cornet, a celeste. Open its "
         "voicing and each rank appears with its own button and voicing row, so the ranks are voiced one at a time and drawn together. "
         "To make one: in arrange mode (a two-second press on a stop) let a dragged stop rest over another stop's button until an "
@@ -14474,6 +14491,11 @@ void MainComponent::startGuidedTour()
     steps.push_back({ [this]() -> juce::Component* { return &temperamentsButton; },
         "Temperaments: retune the organ to a1 = 440 Hz, or to a historical temperament - Werckmeister, Kirnberger, "
         "meantone and many more.", "Temperaments" });
+    steps.push_back({ [this]() -> juce::Component* { return &loadConfigurationButton; },
+        "Load Configuration opens another organ: an OrganSampler configuration (a .json, or the zip from GitHub as it is), "
+        "a RAR set of sample folders, or a Hauptwerk organ definition. Right-click it to MERGE another configuration into "
+        "the organ you have: its divisions join yours, pedal to pedal, manual to manual - two organs, or the next volume of "
+        "this one, under your hands at once.", "Merging another configuration into the loaded organ" });
     steps.push_back({ [this]() -> juce::Component* { return &saveConfigurationButton; },
         "Save Configuration keeps all of it in one file: folders, stops, voicing, couplers, combinations, audio and MIDI. "
         "Tick \"Portable\" to share the organ with others on GitHub. That is the tour - the \"?\" buttons of the "
@@ -19287,8 +19309,9 @@ void MainComponent::loadSettings()
     copyCacheFolder = parsed.getProperty("copyCacheFolder", "").toString();
     copyCacheEnabled = parsed.getProperty("copyCacheEnabled", true);   // on by default (0.8.124): a reload of a big organ computed every filled pipe again
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
-    consoleGlow = parsed.getProperty("consoleGlow", true);   // 0.8.206: the glow of a pressed button / a dragged stop
+    consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
+    manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
     configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
     sampleLocations.clear();
@@ -19746,7 +19769,97 @@ void MainComponent::loadSettings()
         engine.setIgnoredPatterns(ignored);
     }
     engine.setPerspectivePatterns(readPatterns("perspectivePatterns", SamplerEngine::defaultPerspectivePatterns()));
+    mergeApplicationPatterns();   // 0.8.213: what this computer's user added stays, whatever the file carries
     // ========== KONEC NOVÉ ČÁSTI ==========
+}
+
+// 0.8.213: the one-shot, ignored and perspective patterns belong to the organ (they travel
+// in its configuration) AND to this computer: Patterns.json beside settings.json holds
+// every pattern the user ever added here. Each organ loaded merges its own lists with
+// the file's, and the lists in force are written back at every load and unload - so a
+// pattern added for one organ is never lost when the organ is reloaded or another one
+// loaded (the user: "repeatedly the patterns get lost after a reload"). An edit in the
+// Patterns dialogs or the Editor is the user's will: the file then takes the lists as
+// they are (a removed pattern is removed there too).
+namespace
+{
+    juce::String patternKey(const juce::String& pattern, bool byLabel)
+    {
+        return (byLabel ? pattern.upToFirstOccurrenceOf(";", false, false) : pattern).trim();
+    }
+    bool hasPattern(const std::vector<juce::String>& list, const juce::String& pattern, bool byLabel)
+    {
+        const auto key = patternKey(pattern, byLabel);
+        for (const auto& item : list)
+            if (patternKey(item, byLabel).equalsIgnoreCase(key)) return true;
+        return false;
+    }
+    // base first (deduplicated), then what `added` brings that base has not: one-shot and
+    // ignored patterns by the pattern itself, perspective lines by their label (the first entry).
+    std::vector<juce::String> mergedPatterns(const std::vector<juce::String>& base, const std::vector<juce::String>& added,
+        bool byLabel, int* addedCount = nullptr)
+    {
+        std::vector<juce::String> result;
+        for (const auto& p : base)
+            if (p.trim().isNotEmpty() && !hasPattern(result, p, byLabel)) result.push_back(p);
+        int count = 0;
+        for (const auto& p : added)
+            if (p.trim().isNotEmpty() && !hasPattern(result, p, byLabel)) { result.push_back(p); ++count; }
+        if (addedCount != nullptr) *addedCount = count;
+        return result;
+    }
+    std::vector<juce::String> patternsOf(const juce::var& object, const char* key)
+    {
+        std::vector<juce::String> list;
+        if (auto* array = object.getProperty(key, juce::var()).getArray())
+            for (const auto& item : *array)
+                if (item.toString().trim().isNotEmpty()) list.push_back(item.toString());
+        return list;
+    }
+    juce::var patternsVar(const std::vector<juce::String>& list)
+    {
+        juce::Array<juce::var> array;
+        for (const auto& p : list) array.add(p);
+        return array;
+    }
+}
+
+juce::File MainComponent::applicationPatternsFile() const
+{
+    return settingsFile.getSiblingFile("Patterns.json");
+}
+
+void MainComponent::rememberPatterns(bool exact)
+{
+    const auto file = applicationPatternsFile();
+    const auto stored = file.existsAsFile() ? juce::JSON::parse(file.loadFileAsString()) : juce::var();
+    auto lists = [&](const char* key, const std::vector<juce::String>& current, bool byLabel)
+    {
+        return patternsVar(mergedPatterns(current, exact ? std::vector<juce::String>{} : patternsOf(stored, key), byLabel));
+    };
+    juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+    obj->setProperty("oneShotPatterns", lists("oneShotPatterns", engine.getOneShotPatterns(), false));
+    obj->setProperty("ignoredPatterns", lists("ignoredPatterns", engine.getIgnoredPatterns(), false));
+    obj->setProperty("perspectivePatterns", lists("perspectivePatterns", engine.getPerspectivePatterns(), true));
+    file.replaceWithText(juce::JSON::toString(juce::var(obj.get()), true));
+}
+
+void MainComponent::mergeApplicationPatterns()
+{
+    const auto file = applicationPatternsFile();
+    const auto stored = file.existsAsFile() ? juce::JSON::parse(file.loadFileAsString()) : juce::var();
+    int addedOneShot = 0, addedIgnored = 0, addedPerspective = 0;
+    if (stored.isObject())
+    {
+        engine.setOneShotPatterns(mergedPatterns(engine.getOneShotPatterns(), patternsOf(stored, "oneShotPatterns"), false, &addedOneShot));
+        engine.setIgnoredPatterns(mergedPatterns(engine.getIgnoredPatterns(), patternsOf(stored, "ignoredPatterns"), false, &addedIgnored));
+        engine.setPerspectivePatterns(mergedPatterns(engine.getPerspectivePatterns(), patternsOf(stored, "perspectivePatterns"), true, &addedPerspective));
+    }
+    rememberPatterns(false);   // the organ's own patterns join the file as well
+    CrashHandler::note("Patterns in force: " + juce::String((int)engine.getOneShotPatterns().size()) + " one-shot, "
+        + juce::String((int)engine.getIgnoredPatterns().size()) + " ignored, " + juce::String((int)engine.getPerspectivePatterns().size())
+        + " perspective line(s); from this computer's Patterns.json: " + juce::String(addedOneShot) + " / " + juce::String(addedIgnored)
+        + " / " + juce::String(addedPerspective) + " added");
 }
 
 void MainComponent::saveSettings()
@@ -19812,6 +19925,7 @@ void MainComponent::saveSettings()
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
+    obj->setProperty("manualFontScale", (double)manualFontScale);
     obj->setProperty("transposeAttackTimingPct", transposeAttackTimingPct);
     obj->setProperty("transposeReleaseTimingPct", transposeReleaseTimingPct);
     obj->setProperty("transposeReleaseTrimMs", transposeReleaseTrimMs);
@@ -21979,6 +22093,7 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
         engine.setOneShotPatterns(SamplerEngine::defaultOneShotPatterns());
         engine.setIgnoredPatterns(SamplerEngine::defaultIgnoredPatterns());
         engine.setPerspectivePatterns(SamplerEngine::defaultPerspectivePatterns());
+        rememberPatterns(true);   // 0.8.213: the user's reset clears this computer's list too
     }
     allVoicingVisible = false;
     toggleAllVoicingButton.setButtonText("Hide all voicing");
@@ -23687,6 +23802,7 @@ void MainComponent::editOneShotPatterns()
         {
             engine.setOneShotPatterns(newPatterns);
             saveSettings();
+            rememberPatterns(true);
 
             if (topFolder != juce::File() && voicer != nullptr)
             {
@@ -23744,7 +23860,7 @@ void MainComponent::applyRenderThreadSetting()
     engine.setRenderThreadCount(renderThreads > 0 ? juce::jlimit(0, 62, renderThreads - 1) : workersForCurrentPreset(), true);
 }
 
-void MainComponent::showAboutDialog(const juce::String& manualSection, const juce::String& fallbackSection)
+void MainComponent::prepareManual()
 {
     // The user manual and the licences of the program and of everything it
     // contains, embedded in the executable (Source/ManualData.h from USER_MANUAL.md,
@@ -23752,8 +23868,14 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
     // on the right. Nothing is read from disk. The manual has a chapter box above
     // its text (every heading of the manual); choosing a chapter - or the "?" of
     // an option - scrolls the text so that the heading is at the top and paints
-    // the heading orange. The scrolling is done once the window is on screen (a
-    // TextEditor lays its text out at its final width only then).
+    // the heading orange. 0.8.213: the text is a ManualView (one TextLayout per
+    // block, see ManualView.h) built HERE, once, a few seconds after the program's
+    // start (the content alone - a DialogWindow is shown by its birth, so the window
+    // is made at the first showAboutDialog and kept), so every opening is instant;
+    // the reader scales the font ("A-" / "A+", Ctrl + wheel), remembered on this
+    // computer (manualFontScale).
+    if (aboutContent != nullptr || aboutWindow != nullptr) return;
+    const double startedMs = juce::Time::getMillisecondCounterHiRes();
     struct Entry { const char* title; const char* const* parts; int partCount; };
     static const Entry entries[]
     {
@@ -23767,40 +23889,16 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
         { "Signalsmith Linear - MIT", kLicenceSignalsmithLinearParts, kLicenceSignalsmithLinearPartCount },
         { "libarchive 3.8.9 - BSD", kLicenceLibarchiveParts, kLicenceLibarchivePartCount },
     };
-    // The manual's text with hyperlinks: a click on a link (a chapter named in
-    // the text) jumps to that chapter; the mouse shows a hand over it.
-    class LinkedText final : public juce::TextEditor
-    {
-    public:
-        struct Link { int start = 0, end = 0, chapter = -1; };
-        std::vector<Link> links;
-        std::function<void(int)> onLinkClicked;
-        int linkAt(const juce::MouseEvent& e) const
-        {
-            const int index = getTextIndexAt(e.x, e.y);
-            for (const auto& link : links)
-                if (index >= link.start && index < link.end) return link.chapter;
-            return -1;
-        }
-        void mouseMove(const juce::MouseEvent& e) override
-        {
-            juce::TextEditor::mouseMove(e);
-            setMouseCursor(linkAt(e) >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::IBeamCursor);
-        }
-        void mouseUp(const juce::MouseEvent& e) override
-        {
-            juce::TextEditor::mouseUp(e);
-            if (e.mouseWasDraggedSinceMouseDown() || e.mods.isPopupMenu()) return;
-            const int chapter = linkAt(e);
-            if (chapter >= 0 && onLinkClicked) onLinkClicked(chapter);
-        }
-    };
     class AboutComponent final : public juce::Component, private juce::ListBoxModel
     {
     public:
-        AboutComponent()
+        AboutComponent(float fontScale, std::function<void(float)> scaleChanged) : onScaleChanged(std::move(scaleChanged))
         {
-            text.onLinkClicked = [this](int chapter) { showChapter(chapter); };
+            entryBlocks.resize(std::size(entries));
+            view.setHighlightColour(onColour());
+            view.setScale(fontScale);
+            view.onLinkClicked = [this](int chapter) { showChapter(chapter); };
+            view.onScaleWheel = [this](float delta) { setScale(view.getScale() + delta); };
             // The program's palette: the dark grey dialog, the list and the text on
             // the same ground as the combo boxes of the Configuration Editor, no
             // outlines, the chosen entry in the orange "on" colour, white text.
@@ -23811,16 +23909,10 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             list.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
             list.setOutlineThickness(0);
             addAndMakeVisible(list);
-            text.setMultiLine(true, true);   // word wrap: the manual's paragraphs are one line each
-            text.setReadOnly(true);
-            text.setScrollbarsShown(true);
-            text.setCaretVisible(false);
-            text.setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
-            text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-            text.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
-            text.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
-            text.setLineSpacing(1.2f);
-            addAndMakeVisible(text);
+            viewport.setViewedComponent(&view, false);
+            viewport.setScrollBarsShown(true, false);
+            viewport.setScrollBarThickness(10);
+            addAndMakeVisible(viewport);
             // The manual (markdown) laid out for reading: headings as blocks of their
             // own (bold, larger), paragraphs and list items joined into one line each
             // so that they wrap at the window's width, a blank line after every
@@ -23830,12 +23922,14 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 for (int i = 0; i < kManualTextPartCount; ++i) manual += juce::String(juce::CharPointer_UTF8(kManualTextParts[i]));
                 juce::StringArray lines;
                 lines.addLines(manual);
+                struct Raw { juce::String text; int level = 0; int chapter = -1; };
+                std::vector<Raw> raws;
                 juce::String paragraph;
                 auto clean = [](const juce::String& s) { return s.removeCharacters("*`"); };
                 auto flush = [&]
                 {
                     // Paragraphs keep their markers: the emphasis and the quotes mark the links.
-                    if (paragraph.isNotEmpty()) blocks.push_back({ paragraph, 0, -1 });
+                    if (paragraph.isNotEmpty()) raws.push_back({ paragraph, 0, -1 });
                     paragraph.clear();
                 };
                 bool inCode = false;
@@ -23847,7 +23941,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                     // A fenced code block (```): kept line by line, monospaced - the folder trees.
                     if (trimmed.startsWith("```"))
                     {
-                        if (inCode) { blocks.push_back({ code, -1, -1 }); code.clear(); }
+                        if (inCode) { raws.push_back({ code, -1, -1 }); code.clear(); }
                         else flush();
                         inCode = !inCode;
                         continue;
@@ -23860,8 +23954,8 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                         chapter.level = 0;
                         while (chapter.level < trimmed.length() && trimmed[chapter.level] == '#') ++chapter.level;
                         chapter.heading = trimmed.trimCharactersAtStart("#").trim();
-                        chapter.block = (int)blocks.size();
-                        blocks.push_back({ clean(chapter.heading), juce::jlimit(1, 3, chapter.level), (int)chapters.size() });
+                        chapter.block = (int)raws.size();
+                        raws.push_back({ clean(chapter.heading), juce::jlimit(1, 3, chapter.level), (int)chapters.size() });
                         chapters.push_back(chapter);
                     }
                     else if (trimmed.isEmpty() || trimmed == "---") flush();
@@ -23871,6 +23965,21 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                     else paragraph = paragraph.isEmpty() ? line.trimCharactersAtStart(" \t") : paragraph + " " + trimmed;   // a no-break-space indent (the contents) is kept
                 }
                 flush();
+                // The blocks with their links, now that every chapter is known.
+                auto& blocks = entryBlocks[0];
+                blocks.reserve(raws.size());
+                for (const auto& raw : raws)
+                {
+                    if (raw.level == 0) blocks.push_back(makeParagraph(raw.text));
+                    else
+                    {
+                        ManualView::Block b;
+                        b.text = raw.text;
+                        b.level = raw.level;
+                        b.chapter = raw.chapter;
+                        blocks.push_back(std::move(b));
+                    }
+                }
                 chapterLabel.setText("Chapter:", juce::dontSendNotification);
                 addChildComponent(chapterLabel);
                 backButton.setButtonText("< Back");
@@ -23888,6 +23997,15 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 chapterBox.onChange = [this] { if (chapterBox.getSelectedId() > 0) showChapter(chapterBox.getSelectedId() - 1); };
                 addChildComponent(chapterBox);
             }
+            // The font size (0.8.213): "A-" / "A+" (Ctrl + wheel over the text does the same).
+            smaller.setButtonText("A-");
+            smaller.setTooltip("Smaller text (Ctrl + mouse wheel over the text does the same)");
+            smaller.onClick = [this] { setScale(view.getScale() - 0.1f); };
+            addAndMakeVisible(smaller);
+            larger.setButtonText("A+");
+            larger.setTooltip("Larger text (Ctrl + mouse wheel over the text does the same)");
+            larger.onClick = [this] { setScale(view.getScale() + 0.1f); };
+            addAndMakeVisible(larger);
             // Search in the shown text: Enter or "Next" finds the next occurrence
             // (round the end), "Previous" the one before; the match is selected and
             // brought into view.
@@ -23903,13 +24021,17 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             findPrevious.setButtonText("Previous");
             findPrevious.onClick = [this] { findText(false); };
             addAndMakeVisible(findPrevious);
-            text.setColour(juce::TextEditor::highlightColourId, onColour().withAlpha(0.6f));
-            text.setColour(juce::TextEditor::highlightedTextColourId, juce::Colours::white);
             close.setButtonText("Close");
             close.onClick = [this] { if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->closeButtonPressed(); };
             addAndMakeVisible(close);
+            setSize(1100, 760);   // the view takes its width here: the manual's blocks are laid out now, once
             list.selectRow(0);
-            setSize(1100, 760);
+        }
+        void setScale(float scale)
+        {
+            view.setScale(scale);
+            if (onScaleChanged) onScaleChanged(view.getScale());
+            if (shownRow == 0 && highlightedChapter >= 0) scrollToChapter(highlightedChapter);
         }
         // The chapter of an option: the heading named exactly like it, else a heading
         // containing its name, else the heading of the option's section.
@@ -23940,12 +24062,14 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             list.setBounds(area.removeFromLeft(330).reduced(3));
             area.removeFromLeft(8);
             {
-                // The top line: the chapter box (manual only) and, at the right, the search.
+                // The top line: the chapter box (manual only), the font size and, at the right, the search.
                 auto top = area.removeFromTop(32);
                 findPrevious.setBounds(top.removeFromRight(84).reduced(3));
                 findNext.setBounds(top.removeFromRight(64).reduced(3));
                 findBox.setBounds(top.removeFromRight(200).reduced(3));
                 findLabel.setBounds(top.removeFromRight(44).reduced(3));
+                larger.setBounds(top.removeFromRight(40).reduced(3));
+                smaller.setBounds(top.removeFromRight(40).reduced(3));
                 if (chapterBox.isVisible())
                 {
                     backButton.setBounds(top.removeFromLeft(70).reduced(3));
@@ -23954,15 +24078,13 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 }
                 area.removeFromTop(4);
             }
-            text.setBounds(area.reduced(3));
-            // The window has its final size now: scroll to the chapter asked for.
-            if (pendingChapter >= 0 && text.getWidth() > 0)
-            {
-                const int chapter = pendingChapter;
-                pendingChapter = -1;
-                juce::Component::SafePointer<AboutComponent> safeThis(this);
-                juce::MessageManager::callAsync([safeThis, chapter] { if (safeThis != nullptr) safeThis->scrollToChapter(chapter); });
-            }
+            viewport.setBounds(area.reduced(3));
+            // The view follows the viewport's width (the vertical bar taken off); its
+            // height is the text's own.
+            const int width = juce::jmax(40, viewport.getMaximumVisibleWidth());
+            if (width != view.getWidth()) view.setSize(width, view.getHeight());
+            // The window has its final size now: the chapter asked for at the top again.
+            if (highlightedChapter >= 0 && shownRow == 0) scrollToChapter(highlightedChapter);
         }
         void paint(juce::Graphics& g) override
         {
@@ -23970,7 +24092,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             // list and the text (which sit 3 px inside, clear of the rounded corners).
             const auto ground = getLookAndFeel().findColour(juce::ComboBox::backgroundColourId);
             const auto outline = getLookAndFeel().findColour(juce::ComboBox::outlineColourId);
-            for (const auto& box : { list.getBounds(), text.getBounds() })
+            for (const auto& box : { list.getBounds(), viewport.getBounds() })
             {
                 const auto frame = box.toFloat().expanded(3.0f);
                 g.setColour(ground);
@@ -23988,31 +24110,47 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             g.setFont(juce::FontOptions(14.0f));
             g.drawText(entries[row].title, 8, 0, width - 12, height, juce::Justification::centredLeft, true);
         }
+        // The find: block by block from the current selection on (round the end /
+        // the start); the match is selected and shown a third down the view.
         void findText(bool forward)
         {
             const auto needle = findBox.getText().trim();
-            if (needle.isEmpty()) return;
-            const auto haystack = text.getText();
-            const auto selected = text.getHighlightedRegion();
-            int position = -1;
+            if (needle.isEmpty() || shownRow < 0) return;
+            auto& blocks = entryBlocks[(size_t)shownRow];
+            const int count = (int)blocks.size();
+            if (count == 0) return;
+            const auto selected = view.getSelection();
+            ManualView::Selection found;
             if (forward)
             {
-                const int from = selected.isEmpty() ? text.getCaretPosition() : selected.getEnd();
-                position = haystack.indexOfIgnoreCase(from, needle);
-                if (position < 0) position = haystack.indexOfIgnoreCase(0, needle);   // round the end
+                int block = selected.isEmpty() ? view.blockAt((float)viewport.getViewPositionY()) : selected.block;
+                int from = selected.isEmpty() ? 0 : selected.end;
+                for (int n = 0; n <= count && found.isEmpty(); ++n)
+                {
+                    const int i = (block + n) % count;
+                    const int at = blocks[(size_t)i].text.indexOfIgnoreCase(n == 0 ? from : 0, needle);
+                    if (at >= 0) found = { i, at, at + needle.length() };
+                }
             }
             else
             {
-                const int before = selected.isEmpty() ? text.getCaretPosition() : selected.getStart();
-                position = haystack.substring(0, juce::jmax(0, before)).lastIndexOfIgnoreCase(needle);
-                if (position < 0) position = haystack.lastIndexOfIgnoreCase(needle);   // round the start
+                int block = selected.isEmpty() ? view.blockAt((float)viewport.getViewPositionY()) : selected.block;
+                int before = selected.isEmpty() ? blocks[(size_t)juce::jmax(0, block)].text.length() : selected.start;
+                for (int n = 0; n <= count && found.isEmpty(); ++n)
+                {
+                    const int i = ((block - n) % count + count) % count;
+                    const auto& text = blocks[(size_t)i].text;
+                    const int at = text.substring(0, n == 0 ? juce::jmax(0, before) : text.length()).lastIndexOfIgnoreCase(needle);
+                    if (at >= 0) found = { i, at, at + needle.length() };
+                }
             }
-            findBox.setColour(juce::TextEditor::textColourId, position < 0 ? juce::Colours::orange : juce::Colours::white);
-            findBox.applyColourToAllText(position < 0 ? juce::Colours::orange : juce::Colours::white);
-            if (position < 0) return;
-            text.setCaretPosition(position);
-            text.scrollEditorToPositionCaret(0, text.getHeight() / 3);   // the match a third down the window
-            text.setHighlightedRegion({ position, position + needle.length() });
+            findBox.setColour(juce::TextEditor::textColourId, found.isEmpty() ? juce::Colours::orange : juce::Colours::white);
+            findBox.applyColourToAllText(found.isEmpty() ? juce::Colours::orange : juce::Colours::white);
+            if (found.isEmpty()) return;
+            view.setSelection(found);
+            const auto rects = view.selectionRects();
+            const int y = rects.empty() ? (int)view.blockTop(found.block) : (int)rects.front().getY();
+            viewport.setViewPosition(0, juce::jmax(0, y - viewport.getHeight() / 3));   // the match a third down the window
         }
         void selectedRowsChanged(int row) override
         {
@@ -24029,15 +24167,15 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             shownRow = row;
             highlightedChapter = -1;
             chapterBox.setSelectedId(0, juce::dontSendNotification);
-            setTextWithHighlight(row, -1);
-            text.moveCaretToTop(false);
+            view.setBlocks(&blocksFor(row));
+            viewport.setViewPosition(0, 0);
         }
-        // Where the reader is now (the manual only): the text index at the top of the
-        // view, so that "Back" can return there after a jump.
+        // Where the reader is now (the manual only): the scroll position, so that
+        // "Back" can return there after a jump.
         void rememberPlace()
         {
-            if (shownRow != 0 || text.getWidth() <= 0) return;
-            history.push_back({ text.getTextIndexAt(4, 4), highlightedChapter });
+            if (shownRow != 0) return;
+            history.push_back({ viewport.getViewPositionY(), highlightedChapter });
             if (history.size() > 50) history.erase(history.begin());
             backButton.setEnabled(true);
         }
@@ -24051,10 +24189,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             if (shownRow != 0) selectedRowsChanged(0);
             highlightChapter(place.second);
             chapterBox.setSelectedId(place.second + 1, juce::dontSendNotification);
-            pendingIndex = place.first;
-            scrollToIndex(place.first);
-            juce::Component::SafePointer<AboutComponent> safeThis(this);
-            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr && safeThis->pendingIndex >= 0) { safeThis->scrollToIndex(safeThis->pendingIndex); safeThis->pendingIndex = -1; } });
+            viewport.setViewPosition(0, place.first);
         }
         void showChapter(int chapter)
         {
@@ -24063,30 +24198,17 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             if (list.getSelectedRow() != 0) list.selectRow(0);
             if (shownRow != 0) selectedRowsChanged(0);
             chapterBox.setSelectedId(chapter + 1, juce::dontSendNotification);
-            highlightChapter(chapter);   // 0.8.212: the heading selected, no second build of the whole text (seconds per "?")
-            if (text.getWidth() > 0) scrollToChapter(chapter);
-            // The text's layout (its height) is settled only after this message:
-            // scroll again then, otherwise the view is clamped to the old height.
-            pendingChapter = chapter;
-            juce::Component::SafePointer<AboutComponent> safeThis(this);
-            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->rescroll(); });
+            highlightChapter(chapter);
+            scrollToChapter(chapter);
         }
         // Once the window is on screen: the chapter asked for at the top again (the
         // text may have been laid out anew when the window took its final size).
         void rescroll()
         {
-            if (pendingChapter >= 0 && text.getWidth() > 0) { scrollToChapter(pendingChapter); pendingChapter = -1; }
-            else if (highlightedChapter >= 0) scrollToChapter(highlightedChapter);
+            if (highlightedChapter >= 0 && shownRow == 0) scrollToChapter(highlightedChapter);
         }
     private:
-        struct Chapter { juce::String heading; int level = 1, block = 0, start = 0; };
-        struct Block { juce::String text; int level = 0; int chapter = -1; };   // level 0: paragraph; 1-3: heading
-        // The text of an entry. The manual is inserted block by block with its font
-        // (headings bold and larger); the heading of 'chapter' is painted orange
-        // (the "on" colour of the stops). Licences keep a monospaced font.
-        // The chapter a piece of text names: a heading equal to it, else (for a
-        // long enough text) a heading beginning with it ("Filled pipes: release
-        // length" names "Filled pipes: release length (pitch shift)").
+        struct Chapter { juce::String heading; int level = 1, block = 0; };
         // A heading without its outline number ("2.3 The crescendo" -> "The crescendo").
         static juce::String unnumbered(const juce::String& heading)
         {
@@ -24094,6 +24216,9 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             while (i < heading.length() && (juce::CharacterFunctions::isDigit(heading[i]) || heading[i] == '.')) ++i;
             return i > 0 && i < heading.length() && heading[i] == ' ' ? heading.substring(i + 1) : heading;
         }
+        // The chapter a piece of text names: a heading equal to it, else (for a
+        // long enough text) a heading beginning with it ("Filled pipes: release
+        // length" names "Filled pipes: release length (pitch shift)").
         int chapterNamed(const juce::String& name) const
         {
             const auto wanted = name.trimCharactersAtStart(juce::String(juce::CharPointer_UTF8(" \t\xC2\xA0"))).trimEnd();
@@ -24112,21 +24237,17 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 if (chapters[(size_t)i].level == 1 && chapters[(size_t)i].heading.startsWith(prefix)) return i;
             return -1;
         }
-        void insertLink(const juce::String& shown, int chapter, const juce::Font& body)
+        static void addLink(ManualView::Block& b, const juce::String& shown, int chapter)
         {
-            LinkedText::Link link;
-            link.start = text.getTotalNumChars();
+            ManualView::Link link;
+            link.start = b.text.length();
             link.end = link.start + shown.length();
             link.chapter = chapter;
-            text.links.push_back(link);
-            text.setFont(juce::Font(juce::FontOptions(body.getHeight(), juce::Font::underlined)));
-            text.setColour(juce::TextEditor::textColourId, juce::Colours::lightskyblue);
-            text.insertTextAtCaret(shown);
-            text.setFont(body);
-            text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+            b.links.push_back(link);
+            b.text += shown;
         }
         // Plain text, with every "part N" turned into a link to that part.
-        void insertPlain(const juce::String& plain, const juce::Font& body)
+        void addPlain(ManualView::Block& b, const juce::String& plain) const
         {
             int from = 0;
             while (from < plain.length())
@@ -24141,25 +24262,18 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                     if (wordStart && digit >= '1' && digit <= '9' && !juce::CharacterFunctions::isLetterOrDigit(after)) { part = partChapter((int)(digit - '0')); if (part >= 0) break; }
                     at = plain.indexOfIgnoreCase(at + 5, "part ");
                 }
-                if (at < 0 || part < 0)
-                {
-                    text.setFont(body);
-                    text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-                    text.insertTextAtCaret(plain.substring(from));
-                    return;
-                }
-                text.setFont(body);
-                text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-                text.insertTextAtCaret(plain.substring(from, at));
-                insertLink(plain.substring(at, at + 6), part, body);
+                if (at < 0 || part < 0) { b.text += plain.substring(from); return; }
+                b.text += plain.substring(from, at);
+                addLink(b, plain.substring(at, at + 6), part);
                 from = at + 6;
             }
         }
         // A paragraph of the manual: a chapter name in quotes or in emphasis (*...*)
         // becomes a link (the quotes stay, the emphasis marks go); a paragraph that
         // is a chapter name itself (the contents) is one link; "part N" links too.
-        void insertParagraph(const juce::String& raw, const juce::Font& body)
+        ManualView::Block makeParagraph(const juce::String& raw) const
         {
+            ManualView::Block b;
             // No trim() here: JUCE's trim() also strips the no-break spaces that
             // indent the contents entries (iswspace counts U+00A0 as a space).
             const auto whole = raw.removeCharacters("*`").trimCharactersAtStart(" \t").trimEnd();
@@ -24169,12 +24283,12 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             if (wholeChapter >= 0)
             {
                 // The indent as plain text (not underlined), then the link.
-                if (entry.length() < whole.length()) insertPlain(whole.substring(0, whole.length() - entry.length()), body);
-                insertLink(entry, wholeChapter, body);
-                return;
+                if (entry.length() < whole.length()) addPlain(b, whole.substring(0, whole.length() - entry.length()));
+                addLink(b, entry, wholeChapter);
+                return b;
             }
             juce::String plain;
-            auto flushPlain = [&] { if (plain.isNotEmpty()) { insertPlain(plain.removeCharacters("`"), body); plain.clear(); } };
+            auto flushPlain = [&] { if (plain.isNotEmpty()) { addPlain(b, plain.removeCharacters("`")); plain.clear(); } };
             int i = 0;
             while (i < raw.length())
             {
@@ -24190,7 +24304,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                         {
                             if (c == '"') plain += c;
                             flushPlain();
-                            insertLink(inner, chapter, body);
+                            addLink(b, inner, chapter);
                             if (c == '"') plain += c;
                             i = end + 1;
                             continue;
@@ -24201,108 +24315,96 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 ++i;
             }
             flushPlain();
+            return b;
         }
-        // The chapter read now: its heading selected (the orange highlight), the text left as it is. Before 0.8.212 the
-        // whole manual was built anew with the heading in orange - thousands of coloured inserts into the TextEditor,
-        // each laying the text out again: seconds at every "?" and tour link, twice at the first opening.
-        void highlightChapter(int chapter)
+        // The blocks of an entry: the manual's from the constructor, a licence's
+        // built when first shown (one monospaced line per block).
+        std::vector<ManualView::Block>& blocksFor(int row)
         {
-            highlightedChapter = chapter;
-            if (shownRow != 0 || chapter < 0 || chapter >= (int)chapters.size()) return;
-            const int start = chapters[(size_t)chapter].start;
-            text.setHighlightedRegion({ start, start + chapters[(size_t)chapter].heading.length() });
-        }
-        void setTextWithHighlight(int row, int chapter)
-        {
-            const double startedMs = juce::Time::getMillisecondCounterHiRes();
-            text.clear();
-            text.links.clear();
-            text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-            if (row == 0)
-            {
-                const juce::Font body(juce::FontOptions(16.0f));
-                for (const auto& block : blocks)
-                {
-                    if (block.level < 0)
-                    {
-                        // A code block: monospaced, line by line (the folder trees).
-                        text.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 14.0f, juce::Font::plain)));
-                        text.insertTextAtCaret(block.text);
-                    }
-                    else if (block.level > 0)
-                    {
-                        const float size = block.level == 1 ? 24.0f : block.level == 2 ? 20.0f : 17.0f;
-                        text.setFont(juce::Font(juce::FontOptions(size, juce::Font::bold)));
-                        if (block.chapter >= 0) chapters[(size_t)block.chapter].start = text.getTotalNumChars();
-                        text.setColour(juce::TextEditor::textColourId, block.chapter == chapter ? onColour() : juce::Colours::white);
-                        text.insertTextAtCaret(block.text);
-                        text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-                    }
-                    else insertParagraph(block.text, body);
-                    text.setFont(body);
-                    text.insertTextAtCaret("\n\n");
-                }
-            }
-            else
+            auto& blocks = entryBlocks[(size_t)row];
+            if (row > 0 && blocks.empty())
             {
                 juce::String joined;
                 for (int i = 0; i < entries[row].partCount; ++i) joined += juce::String(juce::CharPointer_UTF8(entries[row].parts[i]));
-                text.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 13.0f, juce::Font::plain)));
-                text.insertTextAtCaret(joined);
+                juce::StringArray lines;
+                lines.addLines(joined);
+                blocks.reserve((size_t)lines.size());
+                for (const auto& line : lines)
+                {
+                    ManualView::Block b;
+                    b.text = line.isEmpty() ? juce::String(" ") : line;
+                    b.level = -2;
+                    blocks.push_back(std::move(b));
+                }
             }
-            highlightedChapter = row == 0 ? chapter : -1;
-            CrashHandler::note("Manual: text of entry " + juce::String(row) + " built in " + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms");
+            return blocks;
+        }
+        void highlightChapter(int chapter)
+        {
+            highlightedChapter = chapter;
+            if (shownRow != 0) return;
+            view.setHighlightedBlock(chapter >= 0 && chapter < (int)chapters.size() ? chapters[(size_t)chapter].block : -1);
         }
         void scrollToChapter(int chapter)
         {
-            if (chapter < 0 || chapter >= (int)chapters.size()) return;
-            scrollToIndex(chapters[(size_t)chapter].start);   // the heading at the top of the text
-        }
-        void scrollToIndex(int index)
-        {
-            text.setCaretPosition(juce::jlimit(0, text.getTotalNumChars(), index));
-            text.scrollEditorToPositionCaret(0, 0);
+            if (chapter < 0 || chapter >= (int)chapters.size() || shownRow != 0) return;
+            viewport.setViewPosition(0, juce::jmax(0, (int)view.blockTop(chapters[(size_t)chapter].block) - 4));   // the heading at the top of the text
         }
         juce::ListBox list;
-        LinkedText text;
-        juce::TextButton close;
+        juce::Viewport viewport;
+        ManualView view;
+        std::vector<std::vector<ManualView::Block>> entryBlocks;
+        juce::TextButton close, smaller, larger;
         juce::Label chapterLabel;
         juce::ComboBox chapterBox;
         juce::Label findLabel;
         juce::TextEditor findBox;
         juce::TextButton findNext, findPrevious;
         std::vector<Chapter> chapters;
-        std::vector<Block> blocks;
         juce::TextButton backButton;
-        std::vector<std::pair<int, int>> history;   // (text index at the top of the view, highlighted chapter)
-        int shownRow = -1, highlightedChapter = -1, pendingChapter = -1, pendingIndex = -1;
+        std::vector<std::pair<int, int>> history;   // (scroll position, highlighted chapter)
+        std::function<void(float)> onScaleChanged;
+        int shownRow = -1, highlightedChapter = -1;
     };
-    // The window and its text are kept (0.8.212): a second "?" shows the window and jumps - no new window, no build.
-    if (aboutWindow != nullptr && aboutOpenChapter)
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto* content = new AboutComponent(manualFontScale, [safeThis](float scale)
     {
-        const double startedMs = juce::Time::getMillisecondCounterHiRes();
-        aboutWindow->setVisible(true);
-        aboutWindow->toFront(true);
-        if (manualSection.isNotEmpty()) aboutOpenChapter(manualSection, fallbackSection);
-        CrashHandler::note("Manual: shown again at \"" + manualSection + "\" in " + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms (no rebuild)");
-        return;
-    }
-    auto* content = new AboutComponent();
-    if (manualSection.isNotEmpty()) content->openChapter(manualSection, fallbackSection);
-    juce::Component::SafePointer<AboutComponent> safeForLater(content);
-    aboutOpenChapter = [safeForLater](const juce::String& section, const juce::String& fallback) { if (safeForLater != nullptr) safeForLater->openChapter(section, fallback); };
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ScrollableContent(content));
-    options.dialogTitle = "About OrganSampler, user manual & licences";
-    options.dialogBackgroundColour = juce::Colours::darkgrey;   // like every other dialog of the program
-    options.componentToCentreAround = this;
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    aboutWindow.reset(options.create());
-    aboutWindow->setVisible(true);
+        if (safeThis == nullptr || std::abs(safeThis->manualFontScale - scale) < 0.001f) return;
+        safeThis->manualFontScale = scale;
+        safeThis->saveSettings();
+    });
     juce::Component::SafePointer<AboutComponent> safeContent(content);
-    juce::MessageManager::callAsync([safeContent] { if (safeContent != nullptr) safeContent->rescroll(); });
+    aboutOpenChapter = [safeContent](const juce::String& section, const juce::String& fallback) { if (safeContent != nullptr) safeContent->openChapter(section, fallback); };
+    aboutRescroll = [safeContent] { if (safeContent != nullptr) safeContent->rescroll(); };
+    aboutContent.reset(new ScrollableContent(content));
+    CrashHandler::note("Manual: prepared in " + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms (the text parsed and laid out)");
+}
+
+void MainComponent::showAboutDialog(const juce::String& manualSection, const juce::String& fallbackSection)
+{
+    const double startedMs = juce::Time::getMillisecondCounterHiRes();
+    const bool prepared = aboutWindow != nullptr || aboutContent != nullptr;
+    if (aboutWindow == nullptr)
+    {
+        prepareManual();
+        if (aboutContent == nullptr) return;
+        juce::DialogWindow::LaunchOptions options;
+        options.content.setOwned(aboutContent.release());
+        options.dialogTitle = "About OrganSampler, user manual & licences";
+        options.dialogBackgroundColour = juce::Colours::darkgrey;   // like every other dialog of the program
+        options.componentToCentreAround = this;
+        options.escapeKeyTriggersCloseButton = true;
+        options.useNativeTitleBar = true;
+        options.resizable = true;
+        aboutWindow.reset(options.create());   // kept from now on: closing hides it (0.8.212)
+    }
+    aboutWindow->setVisible(true);
+    aboutWindow->toFront(true);
+    if (manualSection.isNotEmpty() && aboutOpenChapter) aboutOpenChapter(manualSection, fallbackSection);
+    // The window's final size is settled after this message: the chapter at the top again then.
+    if (aboutRescroll) juce::MessageManager::callAsync([rescroll = aboutRescroll] { rescroll(); });
+    CrashHandler::note("Manual: shown" + (manualSection.isNotEmpty() ? " at \"" + manualSection + "\"" : juce::String()) + " in "
+        + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms" + (prepared ? " (prepared at the start)" : " (built now)"));
 }
 
 void MainComponent::showConfigurationEditor()
@@ -25398,13 +25500,14 @@ void MainComponent::showConfigurationEditor()
             {
                 o.engine.setOneShotPatterns(textToPatterns(text));
                 o.saveSettings();
+                o.rememberPatterns(true);
                 if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);
             }, "Samples in these folders play once without looping (e.g. chiff, percussion).");
             addText("Ignored folders (folder contains)", patternsToText(engine.getIgnoredPatterns()), true,
-                [&o](const juce::String& text) { o.engine.setIgnoredPatterns(textToPatterns(text)); o.saveSettings(); },
+                [&o](const juce::String& text) { o.engine.setIgnoredPatterns(textToPatterns(text)); o.saveSettings(); o.rememberPatterns(true); },
                 "Folders containing these words are not loaded. Applies to the next folder load.");
             addText("Perspective prefixes", patternsToText(engine.getPerspectivePatterns()), true,
-                [&o](const juce::String& text) { o.engine.setPerspectivePatterns(textToPatterns(text)); o.saveSettings(); },
+                [&o](const juce::String& text) { o.engine.setPerspectivePatterns(textToPatterns(text)); o.saveSettings(); o.rememberPatterns(true); },
                 "Folder name prefixes that mark a microphone perspective (e.g. dir-, dif-, rear-). Applies to the next folder load.");
 
             //---------------------------------------------------------------- Divisions
@@ -25752,6 +25855,7 @@ void MainComponent::editFolderPatterns(bool perspectives)
             if (perspectives) engine.setPerspectivePatterns(newPatterns);
             else engine.setIgnoredPatterns(newPatterns);
             saveSettings();
+            rememberPatterns(true);
         });
     if (perspectives) content->instructionHeight = 66;
 

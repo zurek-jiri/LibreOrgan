@@ -1,5 +1,5 @@
 name: Organ configuration
-description: Publish your organ configuration - attach the zip and the README OrganSampler wrote, a robot proposes them, the maintainer merges.
+description: Publish your organ configuration - attach the zip OrganSampler wrote (the README is inside), a robot proposes it, the maintainer merges.
 title: "[Configuration] "
 labels: ["configuration"]
 body:
@@ -7,9 +7,9 @@ body:
     attributes:
       value: |
         Save the organ with *Portable configuration (to share with others)* ticked: OrganSampler writes `<name>.zip` (the configuration
-        inside) and `<name>.README.md` beside it, asking you once for the organ, the producer of the samples, **the link to the
-        page where the sample folders are bought or downloaded** and your name. Then attach the two files below.
-        A robot checks them (a real organ configuration of OrganSampler, saved with the organ loaded, and the README written for it),
+        and its README inside) and `<name>.README.md` beside it for reading, asking you once for the organ, the producer of the samples,
+        **the link to the page where the sample folders are bought or downloaded** and your name. Then attach the zip below.
+        A robot checks it (a real organ configuration of OrganSampler, saved with the organ loaded, and the README written for it),
         puts them into the repository as a pull request and answers here; the maintainer merges it and the organ
         appears in [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md).
         If something is missing, the robot says what - edit this issue and it tries again.
@@ -28,8 +28,8 @@ body:
     id: files
     attributes:
       label: Files
-      description: Drag `<name>.zip` and `<name>.README.md` here (the two files OrganSampler wrote beside the portable configuration). Nothing else.
-      placeholder: Drop the two files here.
+      description: Drag `<name>.zip` here (the file OrganSampler wrote beside the portable configuration, the README inside it). Nothing else.
+      placeholder: Drop the zip here.
     validations:
       required: true
   - type: checkboxes

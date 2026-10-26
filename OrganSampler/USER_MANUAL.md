@@ -14,7 +14,9 @@ licences...* shows it as the first entry of the dialog, with a chapter box
 above the text that jumps to any chapter and a *Find* box that searches the
 text (type a word, press Enter for the next occurrence, *Previous* for the one
 before). Chapter names in the text, and "part N", are links: click them to
-go there. The "?" button beside every option of the Configuration Editor
+go there. *A-* and *A+* beside the Find box make the text smaller or larger
+(Ctrl + the mouse wheel over the text does the same); the size is remembered
+on this computer. The "?" button beside every option of the Configuration Editor
 opens the same dialog at the chapter of that very option (part 8, the
 reference), the heading painted orange. Parts 1 to 7 explain the program
 feature by feature. When the program starts with an empty instrument, the stop
@@ -776,9 +778,10 @@ A portable save is an export (0.8.194): it never touches the ordinary
 configuration of your configurations folder (the one with your MIDI and
 audio devices). It writes three files into the `Publish` subfolder of the
 configurations folder: `<name>.portable.json`, the portable configuration
-itself; `<name>.portable.zip`, the same zipped (a zip is downloaded from
-GitHub with one click, a bare `.json` would open as text); and
-`<name>.portable.README.md`, the README in the published form - the
+itself; `<name>.portable.zip`, the same zipped together with the README (a
+zip is downloaded from GitHub with one click, a bare `.json` would open as
+text; the one zip is the whole upload since 0.8.213); and
+`<name>.portable.README.md`, the README in the published form, for reading - the
 perspectives, the folders the
 configuration expects and where to put the file, the routes, the RAM as
 one bullet per figure with its storage options (0.8.189): the least the
@@ -800,9 +803,10 @@ filled in by hand. Then the window *Publish the configuration* appears
 form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
 in your browser with the title and the organ filled in (a free GitHub
 account is needed) and the `Publish` folder in the file manager, side by
-side - drag the zip and the README into the form's *Files* field, tick the
-box and submit. A robot checks them - a real organ configuration
-saved with the organ loaded, and the README written for it -, proposes them
+side - drag the zip into the form's *Files* field, tick the
+box and submit. A robot takes the README out of the zip and checks them - a
+real organ configuration saved with the organ loaded, and the README written
+for it -, proposes them
 as a pull request and answers in the form; nothing else is needed, no
 knowledge of Git. After the merge the organ appears as a line of
 `configurations/INDEX.md`, the list of all published organs, in a folder
@@ -2218,6 +2222,16 @@ kept. A rank's fill map is sticky: when the compass grows (a new transmission)
 the pipes already filled keep their source, so their copies are never built
 again.
 
+Not every stop takes this well. Percussion and bell-like stops - Chimes,
+Glockenspiel, Celesta, Harp, a Carillon - have inharmonic partials and a
+timbre that does not move with the pitch on the real instrument: a pipe of
+theirs transposed by any of the methods below sounds plainly wrong, and so
+does the whole stop once it is retuned (a temperament, a retune to a1 =
+440 Hz, a transposition in the voicing row). For a stop of that kind leave the
+transposition at 0, keep the tuning as the recording has it, and switch off
+the keys it does not have in its voicing row rather than fill them (a key
+switched off is never filled) - or accept the sound as it comes.
+
 ## 7.2 The transposition methods
 
 How the neighbour's sample gets its new pitch is *Filled pipes: transposition
@@ -3224,7 +3238,7 @@ nothing is loaded until you ask.
 
 ### Glow: a pressed button and a dragged stop glow for a moment
 
-On by default. Every button pressed with the left mouse button - a stop, a
+Off by default. On: every button pressed with the left mouse button - a stop, a
 coupler, a piston, a tremulant, a button of the top bar - and every stop being
 dragged glows for a moment with the golden halo of the instruction video. Off:
 the console as it was, with no halo at all. The setting belongs to this
@@ -3254,6 +3268,16 @@ The size of the main window, saved automatically. Information only; the window
 returns to where it was last time, always with its title bar on the screen.
 
 ## 8.5 Folder name patterns (one per line)
+
+The three lists travel with the organ (they are part of its configuration)
+and they belong to this computer as well: every pattern you ever add here is
+kept in `Patterns.json` beside the settings, each organ you load merges its
+own lists with that file, and the lists in force are written back whenever an
+organ is loaded or unloaded. A pattern added for one organ is therefore never
+lost when the organ is reloaded or another one loaded. Editing a list in these
+rows or in the top-bar dialogs sets the file as the list stands - a pattern
+you remove is removed there too; GLOBAL RESET with the patterns ticked clears
+it to the defaults.
 
 ### One-shot stops (folder contains)
 

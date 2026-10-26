@@ -3,6 +3,11 @@
 The user writes Czech; answer in Czech; append a closing report to `OrganSampler/CLAUDE_REPORTS.md`
 (the copy on the NTFS disk: `F:\JUCE_PROJEKTY\OrganSamplerC` = `/mnt/pracovni/JUCE_PROJEKTY/OrganSamplerC`).
 
+## "go" and the to-do list
+- THE USER'S RULE (26 Oct 2026): "go" means "continue, I have topped up the money" - never "do this one item now".
+  "todo:" messages are collected (CLAUDE.md pending list); when he says to do them, ALL of them go into one build and
+  one version. 0.8.213 was first built from one to-do alone because a message ended with "go" - wrong.
+
 ## Never change what you need not change
 - The user's rule (23 Oct 2026, "Nikdy neměň něco, co nemusíš!"): a fix touches the lines of the fault and nothing
   else - no renaming, no "while I am here" rewrites, no new defaults, no changed texts or separators. When a change
@@ -1233,6 +1238,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
   indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
   gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
+  0.8.213 (the user's evening batch of 26 Oct, ALL to-dos in one build): (1) PATTERNS KEPT: `Patterns.json` beside
+  settings.json (`applicationPatternsFile`, `rememberPatterns(exact)`, `mergeApplicationPatterns()` at the end of
+  loadSettings, `rememberPatterns(false)` in applyPortableConfiguration before the unload): the loaded file's lists
+  (else the defaults) are merged with the file's - one-shot/ignored by the pattern, perspectives by their LABEL (the
+  file's line wins) -, written back merged at every load/unload, EXACTLY (a removed pattern removed) after an edit in
+  the Patterns dialogs / the Editor / the GLOBAL RESET; log "Patterns in force: ... from this computer's Patterns.json:
+  a / b / c added". Before, loadSettings took the lists of whatever file was parsed and the user's additions vanished
+  with every load (his complaint, three times). Test %TEMP%\test_patterns213.ps1 (zzztest213 survives Rural ->
+  TestingOrgan -> Rural). (2) MANUAL = `Source/ManualView.h` (header-only, like GuidedTour.h): one juce::TextLayout
+  per block (paragraph/heading/code/licence line) in a Viewport, links as runs of lightskyblue underlined (hit test
+  by run x-range), the find's selection drawn from the glyph rectangles (char index = run.stringRange.start +
+  glyph index), the chapter heading highlighted by relaying that one block, `scale` for the font (A-/A+, Ctrl +
+  wheel; `manualFontScale` machine-specific key). `MainComponent::prepareManual()` (Timer::callAfterDelay 4000 ms
+  in the constructor, or at the first "?") parses the manual and lays it out = the former AboutComponent's constructor
+  (500 ms on the Ryzen, logged "Manual: prepared in N ms"); the DialogWindow is made at the first showAboutDialog
+  from `aboutContent` and KEPT (a DialogWindow is shown by its birth - never create it hidden at the start), log
+  "Manual: shown at ... in N ms (prepared at the start)": 130 ms the first time, 9 ms after. No text selection /
+  copy in the manual any more (the TextEditor had it) - say so if asked. A juce::TextEditor must never hold a long
+  formatted text again (every insert = a full relayout). (3) The copy-build strip: `ProgressAnimator` repaints every
+  row once when `pendingBackgroundWorkers()` falls to 0 ("Copy builds ended: every stop row repainted") and
+  pollBuildProgress repaints the whole row after a build - not verified on the user's organ (the cause was never
+  reproduced here). (4) Tour: step 3 = the Cornet [III] of manual II when there is one (`findRow` with primaryManual
+  == 2 and "Cornet" in the caption), a new step on Load Configuration before Save (the right click = merge, chapter
+  "Merging another configuration into the loaded organ"); ORGAN_TEST_CLICK LESSON: "Next" and "Close" exist in the
+  manual window too (Find > Next) - close the manual before clicking the tour's Next, or the clicks go there.
+  (5) Manual 7.1: percussion/bell stops sound wrong retuned or filled. (6) `consoleGlow` default OFF. (7) ONE ZIP:
+  the export's zip holds the .json AND the README (the README beside it stays); `configuration_from_issue.py
+  split_readme_out` takes the README out of the attached zip and rewrites the zip with the rest, an attached README
+  beside the zip still accepted; the form, configurations/README.md, the manual, the site and the publish window say
+  "the zip". Test: %TEMP%\test_zip213.ps1 + zip213\robot\check.py (members before/after, read_config, validate -
+  the hook's export fails validate only for the unnamed organ, as expected). Origin moved meanwhile by the user's
+  publish of Bellevue (issue #107, the old two-file way - still accepted): a rejected notes push (2>$null hid it)
+  was found by `git status -sb` "behind 3" - resolved by `git pull --no-rebase` (a merge) before the 0.8.213 push.
   0.8.212 THE MANUAL OPENS SLOWLY (the user: "po kliknutí na rozevření kapitoly manuálu to trvá několik sekund"):
   MEASURED with ORGAN_TEST_CLICK "Guided tour|Manual: Stop buttons|Close|Manual: Stop buttons" (the tour's button
   text is "Manual: <chapter>"): `AboutComponent::setTextWithHighlight` builds the WHOLE manual into the TextEditor
@@ -1286,68 +1324,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
-- PRE-BUILT MANUAL (the user, 26 Oct 2026 evening, after 0.8.212: "postavit v paměti formátovaný manuál hned po
-  načtení aplikace, ať je předpřipravený"): the first opening of the manual still costs the one build of the text
-  (2.7 s on the Ryzen, `AboutComponent::setTextWithHighlight`, a juce::TextEditor filled block by block - every insert
-  lays the whole text out again, so the cost grows with the length). The way: build the `AboutComponent` (and its
-  hidden `aboutWindow`) in the background of the MESSAGE thread after the organ has loaded (`runWhenLoaded`), IN
-  SLICES - a timer inserting a handful of blocks per tick (~40 ms each) so the console never freezes; the "?" and the
-  tour then only show the window (the 0.8.212 reuse path, 57 ms). A worker thread cannot do it (JUCE components and
-  the TextEditor are message-thread only). THE USER'S DECISION (26 Oct 2026, later the same evening): make OUR OWN
-  TEXT COMPONENT WITH ITS LAYOUT ("udělat textovou komponentu s rozvržením, která se připraví hned po startu
-  aplikace") - a TextLayout per block (headings, paragraphs, code blocks, links = the manual's `Block` list), laid out
-  once right after the start (the layouts can be prepared off the message thread; only the painting component is
-  message-thread), scrolled in a Viewport, chapter highlight + find + links as the TextEditor had them - not the
-  slices. The stop-folder gesture on the grid: the user confirms it works in 0.8.211/0.8.212 ("grid už teď šel dobře").
-- TOUR STEP 3 (the user, 26 Oct 2026 evening): the stop-folder step should point at the Rural "Cornet [III]" of the
-  SECOND manual (II.), not at Unda Maris of I. - a real stop folder of three ranks is the better example. In
-  `startGuidedTour` the step's finder takes the first row with `container` or "[" in the caption over the grid;
-  prefer a row of manual 2 whose caption contains "Cornet" (then any stop folder as the fallback).
-- MANUAL FONT SIZE (the user, 26 Oct 2026 evening): the manual's text must be enlargeable and reducible by the
-  user (the font size, "podle přání uživatele") - a +/- pair or a size combo in the manual window, Ctrl+wheel too,
-  remembered as a machine-specific setting; part of the own text component above (one scale over every block's
-  TextLayout, relaid out on a change).
-- DISK READ 358 MB/s (the user, 26 Oct 2026 evening): the loading dialog's "Reading from the disk at N MB/s" line
-  showed only 358 MB/s on his load - find out why. Check first WHICH disk and organ (the log's per-tree line "Tree X:
-  N GB of sample files read in T s = M MB/s" and the "Load Configuration" line with the storage options): D: is the
-  Samsung 870 QVO SATA (~500-530 MB/s ceiling measured 0.8.204, 400 MB/s cold in 0.8.154), E: the Toshiba HDD
-  (~200 MB/s), a RAR set reads through the archive path (100-120 MB/s per thread packed). Then whether the figure
-  is the disk or OUR ceiling: the figure counts `loadBytesRead` over 5 s windows (0.8.205) - decoding, packing
-  (2.5x the cost), the 32 kHz sinc (4x) and the memory counting run on the same loader threads, so with packing on
-  the readers wait on the CPU and the "disk" figure is really the loader's throughput; compare the same load with
-  packing/resampling off, the Task Manager's disk graph during the load, and a plain parallel read test
-  (%TEMP% python, 4 MB reads, 8 threads, uncached files) of the same folder. Name the line's meaning in the dialog or
-  the manual accordingly ("read and decoded") if the CPU is the limit; raise the reader parallelism or decouple
-  reading from decoding only after the measurement says so.
-- MANUAL: RETUNED STOPS THAT SOUND BAD (the user, 26 Oct 2026 evening): write into the manual, in the place that
-  speaks of the filled pipes (the copies made by resampling - manual 3.x "Missing pipes" / the voicing chapter's
-  filled-pipes paragraph), that some stops sound very bad once retuned or filled by resampling - percussion and
-  bell-like stops above all (Chimes, Glockenspiel, Celesta, Harp: inharmonic partials, the formant moves with the
-  pitch, the attack is stretched), so for such a stop keep the transposition at 0, the retune off (the one-shot
-  patterns) and the missing keys unfilled, or accept it. Regenerate ManualData.h after the edit.
-- GLOW DEFAULT OFF (the user, 26 Oct 2026 evening): `consoleGlow` defaults to OFF (MainComponent.h `consoleGlow =
-  true` -> false; the Editor toggle and the manual's Glow section say "off by default"; a settings.json without the
-  key = off).
-- ONE ZIP FOR THE UPLOAD (the user, 26 Oct 2026 evening: "portable zip by se měl vytvořit jako zip včetně readme v
-  něm ... upload by měl pouze zip"): GitHub itself reads nothing out of a zip - but OUR robot does: the issue
-  workflow (`configuration_from_issue.py`) downloads the attachment, so it can take `<name>.README.md` from INSIDE the
-  zip. Plan: `savePortableConfiguration` with publishFiles writes the zip with the .json AND the README inside (the
-  README still beside it on disk for the user to read, nothing to fill in since 0.8.179); the issue form
-  `organ_configuration.yml` asks for ONE attachment (the zip) and its text says so; the robot unzips, takes the README
-  out (an attached README beside the zip still accepted for old exports), validates the pair as now and publishes
-  `configurations/<slug>/README.md` + the zip WITHOUT the README inside (the folder rule "exactly two files" and the
-  check's "one .json in the zip" stay - re-zip the json alone, or let `validate` accept a README member and the
-  index job strip it). Load Configuration of a zip (0.8.195, "the one .json inside") must ignore a README member.
-  Update configurations/README.md, the site's "Using one"/publishing text, the manual's publishing chapter and the
-  publish window's text ("attach the zip"). Test: the robot script on a new export (python -I) + validate.
-- FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
-  the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
-  (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
-  measure first: which flag the strip reads (`Stop::copiesBuilding`/progress fields), when the LAST stop's flags are
-  cleared relative to the poll (the build thread ends after the poll stopped?), and whether the poll timer stops when
-  `pendingBackgroundWorkers()` drops to 0 before the last stop's repaint; a repaint of every row once at the end of
-  the whole build (the "Compiling the Stop List: done" / RAM-after-load moment) is the simplest sure cure. Test with
-  ORGAN_TEST_SNAPSHOT a few seconds after the build ends (Rural: the copy build is short).
+- DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
+  N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only
+  the later loads of the day: every per-tree line says 1 300-3 900 MB/s (Stralsund from the page cache), nothing
+  at 358. To settle it: the "Tree X: N GB of sample files read in T s = M MB/s" lines of THAT load (which disk, which
+  organ, cold or warm), then whether the figure is the disk or the loader: the figure counts `loadBytesRead` per
+  5 s window, and decoding, packing (2.5x the cost), the 32 kHz sinc (4x) and the memory counting run on the same
+  loader threads - with packing on the readers wait for the CPU and the "disk" figure is the loader's throughput.
+  Compare the same load with packing/resampling off, the Task Manager's disk graph, and a plain parallel read
+  (8 threads, 4 MB reads, files not read recently) of the same folder; name the line "read and decoded" if the CPU
+  is the limit; decouple reading from decoding only after the measurement says so.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
