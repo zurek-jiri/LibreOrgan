@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.208] - 2026-10-26
+
+### Fixed
+- A recording (the Record button, the instruction video) came out shorter than
+  the time it covered: while the audio device restarted (a division reloaded,
+  a route or device changed) nothing was written and the sound after the pause
+  followed the sound before it at once - the video's organ ran seconds ahead
+  of its picture. The file now keeps wall time: such a pause is silence in it.
+- The instruction video re-made with the recording in step with the picture,
+  the Alias box glowing when the alias is typed.
 ## [0.8.207] - 2026-10-26
 
 ### Fixed

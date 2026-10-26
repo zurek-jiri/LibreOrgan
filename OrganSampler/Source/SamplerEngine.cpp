@@ -1490,6 +1490,7 @@ namespace
         double sampleRate = 48000.0;
         uint32_t epoch = 1;
         juce::File file;
+        double wallStartMs = 0.0;   // 0.8.208: the file keeps wall time - a device restart (a division reloaded, a route changed) is silence in it, not a cut
     };
 
     struct WindTransient
@@ -4326,6 +4327,17 @@ struct SamplerEngine::Impl
             target = final ? juce::jmax(target, published) : (target < 0 ? published : juce::jmin(target, published));
         }
         int64_t flushed = rec->flushed.load(std::memory_order_acquire);
+        // 0.8.208: the file follows the wall clock. While the audio device restarts (a division reloaded, a route
+        // or a device changed) no route renders, the positions stand still and the sound after the pause landed
+        // right after the sound before it - the recording came out shorter than the time it covered (the video's
+        // organ ran 7 s ahead of its picture by the end). Now the writer flushes silence up to the wall time (a
+        // 300 ms margin behind it, the routes publish a block late) and the routes that come back are "left
+        // behind" (recPos < flushed) and continue from there: the pause is silence in the file, as it was in the room.
+        if (!final && rec->wallStartMs > 0.0)
+        {
+            const int64_t expected = (int64_t)((now - rec->wallStartMs) / 1000.0 * rec->sampleRate) - (int64_t)(0.3 * rec->sampleRate);
+            if (expected > target) target = expected;
+        }
         const int64_t fadeFrames = juce::jmax<int64_t>(1, rec->fadeFrames);
         const int64_t fadeOutStart = rec->fadeOutStart.load(std::memory_order_acquire);
         if (fadeOutStart >= 0) target = juce::jmin(target, fadeOutStart + fadeFrames);   // the file ends there
@@ -7222,6 +7234,7 @@ bool SamplerEngine::startRecording(const juce::File& file)
     }
     catch (const std::bad_alloc&) { return false; }
     rec->epoch = (uint32_t)(juce::Time::getMillisecondCounter() | 1u);
+    rec->wallStartMs = nowMs();
     for (int i = 0; i < count; ++i)
     {
         auto& r = *impl->routes[(size_t)i];
@@ -7281,6 +7294,9 @@ void SamplerEngine::stopRecording()
     impl->flushRecording(true);
     if (impl->recorder != nullptr)
     {
+        const double wallSeconds = impl->recorder->wallStartMs > 0.0 ? (nowMs() - impl->recorder->wallStartMs) / 1000.0 : 0.0;
+        const double fileSeconds = (double)impl->recorder->flushed.load(std::memory_order_acquire) / juce::jmax(1.0, impl->recorder->sampleRate);
+        CrashHandler::note("Recording stopped: " + juce::String(fileSeconds, 1) + " s in the file over " + juce::String(wallSeconds, 1) + " s of time");
         impl->recorder->writer.reset();   // finalises the WAV header
         impl->recorder.reset();
     }

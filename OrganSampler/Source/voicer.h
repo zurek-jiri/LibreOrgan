@@ -79,6 +79,7 @@ public:
     juce::Slider* keySliderComponent(int note) noexcept                                          // the volume slider of one key (video script)
     { const int idx = note - noteMin; return idx >= 0 && idx < keySliders.size() ? keySliders[idx] : nullptr; }
     juce::ComboBox& shiftBoxComponent() noexcept { return shiftBox; }                           // the Transposition box (video script)
+    juce::ComboBox& aliasBoxComponent() noexcept { return aliasBox; }                           // the Alias box (video script)
     juce::Component& volumeHeaderComponent() noexcept { return volumeHeader; }                  // the "Volume per key" header (video script)
     void openVolumeRow() { if (!volumeRowShown() && toggleSection) toggleSection(0); }          // unfolds the per-key volume sliders (video script)
     juce::Component& toneHeaderComponent() noexcept { return toneHeader; }                      // the "Treble per key" header (video script)

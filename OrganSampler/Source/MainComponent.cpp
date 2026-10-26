@@ -14532,7 +14532,7 @@ struct MainComponent::VideoScript final : private juce::Timer
         // The keyboard symbol of a division the script plays on blinks red, as it does with MIDI notes (120 ms pulses every 300 ms).
         for (size_t m = 0; m < blinkUntil.size(); ++m)
             if (now < blinkUntil[m] && owner.voicer != nullptr && std::fmod(now, 300.0) < 40.0) owner.voicer->pulseManualActivity((int)m);
-        if (!done) refreshOverlay(now);
+        if (!done) { keepDialogsInFrame(); refreshOverlay(now); }
         int guard = 0;
         while (!done && now >= nextAt && index < lines.size() && guard++ < 50) step(lines[index++]);
         if (!done && index >= lines.size() && pending.empty()) finish();
@@ -14729,6 +14729,7 @@ struct MainComponent::VideoScript final : private juce::Timer
                     }
                     else if (!open) owner.stopsViewport.setViewPosition(0, owner.stopsViewport.getViewPositionY());
                 }, now);
+                reglowRow(manual, what, [](StopRow& r) -> juce::Component* { return &r.voicingToggleComponent(); }, 1100.0, 1600.0);   // the "+" of the rebuilt row
             }
         }
         else if (cmd == "alias")
@@ -14736,7 +14737,25 @@ struct MainComponent::VideoScript final : private juce::Timer
             if (auto* row = findRow(part(0).getIntValue(), part(1)))
             {
                 const int manual = part(0).getIntValue(); const juce::String what = part(1), text = part(2);
-                actOn(&row->buttonComponent(), [this, manual, what, text] { if (auto* r = findRow(manual, what)) r->applyAlias(text); }, now);
+                // The Alias box of the open row is pressed and glows, the name appears letter by letter as if typed
+                // (the user: "písmenko po písmenku, imitace zadávání z klávesnice, combobox by měl blikat"), then it applies.
+                const double perLetter = 110.0, typingStart = 1100.0;
+                actOn(&row->aliasBoxComponent(), [this, manual, what, text, perLetter]
+                {
+                    if (auto* r = findRow(manual, what))
+                    {
+                        r->aliasBoxComponent().setText({}, juce::dontSendNotification);
+                        glowTarget = &r->aliasBoxComponent();
+                        glowUntil = juce::Time::getMillisecondCounterHiRes() + 1200.0 + perLetter * text.length();
+                    }
+                }, now);
+                for (int i = 1; i <= text.length(); ++i)
+                    pending.push_back({ now + typingStart + perLetter * i, [this, manual, what, partial = text.substring(0, i)]
+                        { if (auto* r = findRow(manual, what)) r->aliasBoxComponent().setText(partial, juce::dontSendNotification); } });
+                pending.push_back({ now + typingStart + perLetter * text.length() + 500.0, [this, manual, what, text]
+                    { if (auto* r = findRow(manual, what)) r->applyAlias(text); } });
+                reglowRow(manual, what, [](StopRow& r) -> juce::Component* { return &r.aliasBoxComponent(); }, typingStart + perLetter * text.length() + 800.0, 1800.0);
+                nextAt = juce::jmax(nextAt, now + typingStart + perLetter * text.length() + 1000.0);
             }
         }
         else if (cmd == "volume")
@@ -14927,6 +14946,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int manual = part(0).getIntValue();
             const juce::String what = part(1);
             actOn(&row->volumeHeaderComponent(), [this, manual, what] { if (auto* r = findRow(manual, what)) r->openVolumeRow(); }, now, 500.0);
+            reglowRow(manual, what, [](StopRow& r) -> juce::Component* { return &r.volumeHeaderComponent(); }, 1100.0, 1600.0);
         }
         else if (cmd == "learnkeyboard")
         {
@@ -14977,8 +14997,9 @@ struct MainComponent::VideoScript final : private juce::Timer
         {
             // settings crescendo | settings swell M | settings tremulant M: the right click on the control, its menu
             // replica, the "... settings..." item pressed, the settings dialog opens (closed by "closedialog").
-            const juce::String what = part(0);
-            const int manual = part(1).getIntValue();
+            const auto words = juce::StringArray::fromTokens(arg, " |", "");   // "settings swell 1" or "settings swell|1"
+            const juce::String what = words.size() > 0 ? words[0].trim() : juce::String();
+            const int manual = words.size() > 1 ? words[1].getIntValue() : 0;
             if (what == "crescendo" && owner.crescendoDisplay != nullptr)
                 rightClickMenu(owner.crescendoDisplay->getScreenBounds(), { "Learn MIDI continuous controller", "Clear MIDI assignment", {}, "Crescendo settings..." },
                     [this] { owner.showCrescendoDialog(); }, now, 3);
@@ -15024,6 +15045,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int manual = part(0).getIntValue();
             const juce::String what = part(1);
             actOn(&row->toneHeaderComponent(), [this, manual, what] { if (auto* r = findRow(manual, what)) r->openToneRow(); }, now, 500.0);
+            reglowRow(manual, what, [](StopRow& r) -> juce::Component* { return &r.toneHeaderComponent(); }, 1100.0, 1600.0);
         }
         else if (cmd == "paint")
         {
@@ -15060,6 +15082,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             {
                 if (auto* r = findRow(manual, what)) r->shiftBoxComponent().setSelectedId(semitones + 100, juce::sendNotificationSync);
             }, now, 600.0);
+            reglowRow(manual, what, [](StopRow& r) -> juce::Component* { return &r.shiftBoxComponent(); }, 1300.0, 2200.0);   // the row is rebuilt by the change
         }
         else if (cmd == "combination")
         {
@@ -15278,10 +15301,9 @@ struct MainComponent::VideoScript final : private juce::Timer
         const auto origin = top->getScreenPosition();
         if (!baseFrame.isValid() || now - lastBaseMs >= 99.0)
         {
-            suppressOverlay = true;   // the screen overlay is a child of the window: not into the base picture (the frame draws its own)
+            suppressOverlay = true;   // the screen overlays are children of the windows: not into the base picture (the frame draws its own)
             baseFrame = top->createComponentSnapshot(top->getLocalBounds(), false, 1.0f);
-            suppressOverlay = false;
-            if (!baseFrame.isValid()) return;
+            if (!baseFrame.isValid()) { suppressOverlay = false; return; }
             lastBaseMs = now;
             juce::Graphics gb(baseFrame);
             // The other windows of ours (dialogs, menus) at their places over the main window.
@@ -15293,10 +15315,11 @@ struct MainComponent::VideoScript final : private juce::Timer
                 const auto at = window->getScreenPosition() - origin;
                 gb.drawImageAt(image, at.x, at.y);
             }
+            suppressOverlay = false;
         }
         juce::Image frame = baseFrame.createCopy();
         juce::Graphics g(frame);
-        drawOverlays(g, frame.getWidth(), frame.getHeight(), now, origin);
+        drawOverlays(g, frame.getWidth(), frame.getHeight(), now, origin, true);
         const int number = ++frames;
         const juce::File file = folder.getChildFile(juce::String::formatted("f%05d.png", number));
         times.push_back(now - t0);
@@ -15318,7 +15341,7 @@ struct MainComponent::VideoScript final : private juce::Timer
     // The overlays of a frame - drawn into every recorded frame AND on the screen (the Overlay child of the main
     // window, the user: "chci to vidět"): glow, the red "!", the golden frame, the travelling button, the cursor,
     // the caption bar. Coordinates are the top-level window's (origin = its screen position).
-    void drawOverlays(juce::Graphics& g, int width, int height, double now, juce::Point<int> origin) const
+    void drawOverlays(juce::Graphics& g, int width, int height, double now, juce::Point<int> origin, bool withCaption = true) const
     {
         // The glow of a stop taken for a drag or of a button about to be switched: a soft golden halo.
         if (glowTarget != nullptr && glowTarget->isShowing() && now < glowUntil)
@@ -15390,7 +15413,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             g.strokePath(arrow, juce::PathStrokeType(1.6f));
         }
         // The caption bar.
-        if (caption.isNotEmpty())
+        if (withCaption && caption.isNotEmpty())
         {
             const int barHeight = juce::jmax(84, height / 13);   // the frames may be a whole 2560 px screen: the bar and its text scale with them
             const auto bar = juce::Rectangle<int>(0, height - barHeight, width, barHeight);
@@ -15419,27 +15442,68 @@ struct MainComponent::VideoScript final : private juce::Timer
     }
     struct Overlay final : public juce::Component
     {
-        explicit Overlay(VideoScript& s) : script(s) { setInterceptsMouseClicks(false, false); setOpaque(false); }
+        Overlay(VideoScript& s, bool caption) : script(s), withCaption(caption) { setInterceptsMouseClicks(false, false); setOpaque(false); }
         void paint(juce::Graphics& g) override
         {
             if (script.suppressOverlay) return;
             auto* top = getParentComponent();
-            script.drawOverlays(g, getWidth(), getHeight(), juce::Time::getMillisecondCounterHiRes(), top != nullptr ? top->getScreenPosition() : juce::Point<int>());
+            script.drawOverlays(g, getWidth(), getHeight(), juce::Time::getMillisecondCounterHiRes(), top != nullptr ? top->getScreenPosition() : juce::Point<int>(), withCaption);
         }
         VideoScript& script;
+        bool withCaption;
+        juce::Rectangle<int> lastArea;
     };
+    // A dialog that opened outside the main window (a remembered place on the second screen: the crescendo
+    // settings) is nowhere in the frames - moved over the main window's centre (video runs only).
+    void keepDialogsInFrame()
+    {
+        auto* top = owner.getTopLevelComponent();
+        if (top == nullptr) return;
+        const auto frame = top->getScreenBounds();
+        for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
+        {
+            auto* window = juce::Desktop::getInstance().getComponent(w);
+            if (window == nullptr || window == top || !window->isShowing() || window->getName() == "menu") continue;
+            if (dynamic_cast<juce::ResizableWindow*>(window) == nullptr && dynamic_cast<juce::AlertWindow*>(window) == nullptr) continue;
+            const auto bounds = window->getScreenBounds();
+            if (frame.contains(bounds) || frame.getIntersection(bounds).getWidth() * frame.getIntersection(bounds).getHeight() > bounds.getWidth() * bounds.getHeight() * 0.9) continue;
+            auto moved = bounds.withCentre(frame.getCentre());
+            moved.setX(juce::jlimit(frame.getX(), juce::jmax(frame.getX(), frame.getRight() - moved.getWidth()), moved.getX()));
+            moved.setY(juce::jlimit(frame.getY(), juce::jmax(frame.getY(), frame.getBottom() - moved.getHeight()), moved.getY()));
+            window->setBounds(moved);
+            CrashHandler::note("Video: the window \"" + window->getName() + "\" moved into the frame");
+        }
+    }
+    // After an action that rebuilds the voicing rows (expand, alias, transposition) the element pressed is gone
+    // with its glow: the glow and the frame are put on the element of the rebuilt row.
+    void reglowRow(int manual, const juce::String& what, std::function<juce::Component*(StopRow&)> pick, double delayMs, double ms)
+    {
+        pending.push_back({ juce::Time::getMillisecondCounterHiRes() + delayMs, [this, manual, what, pick, ms]
+        {
+            auto* r = findRow(manual, what);
+            if (r == nullptr) return;
+            auto* c = pick(*r);
+            if (c == nullptr || !c->isShowing()) return;
+            const double t = juce::Time::getMillisecondCounterHiRes();
+            glowTarget = c; glowUntil = t + ms;
+            highlight(c, ms);
+        } });
+    }
+    // The dialogs' own overlays (the user: the glow in the Stop List was swallowed by the main window under it):
+    // every other window of ours gets a transparent layer on top, drawn with the same overlays in its own coordinates.
+    std::vector<std::pair<juce::Component::SafePointer<juce::Component>, std::unique_ptr<Overlay>>> windowOverlays;
     void refreshOverlay(double now)
     {
         auto* top = owner.getTopLevelComponent();
         if (top == nullptr) return;
         if (overlay == nullptr)
         {
-            overlay = std::make_unique<Overlay>(*this);
+            overlay = std::make_unique<Overlay>(*this, true);
             top->addAndMakeVisible(*overlay);
         }
         if (overlay->getBounds() != top->getLocalBounds()) overlay->setBounds(top->getLocalBounds());
         overlay->toFront(false);
-        const auto area = overlayArea(now, top->getScreenPosition());
+        const auto area = overlayArea(now, top->getScreenPosition());   // in the main window's coordinates
         const auto dirty = lastOverlayArea.isEmpty() ? area : (area.isEmpty() ? lastOverlayArea : area.getUnion(lastOverlayArea));
         if (!dirty.isEmpty()) overlay->repaint(dirty);
         lastOverlayArea = area;
@@ -15448,6 +15512,30 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int barHeight = juce::jmax(84, overlay->getHeight() / 13);
             overlay->repaint(0, overlay->getHeight() - barHeight, overlay->getWidth(), barHeight);
             captionOnScreen = caption;
+        }
+        // The other windows: an overlay each while they show, repainted where the overlays are.
+        for (auto it = windowOverlays.begin(); it != windowOverlays.end();)
+            if (it->first == nullptr || !it->first->isShowing()) it = windowOverlays.erase(it); else ++it;
+        const auto areaScreen = area + top->getScreenPosition();
+        for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
+        {
+            auto* window = juce::Desktop::getInstance().getComponent(w);
+            if (window == nullptr || window == top || !window->isShowing() || window->getWidth() <= 0 || window->getName() == "menu") continue;
+            Overlay* layer = nullptr;
+            for (auto& entry : windowOverlays) if (entry.first == window) { layer = entry.second.get(); break; }
+            if (layer == nullptr)
+            {
+                auto made = std::make_unique<Overlay>(*this, false);
+                layer = made.get();
+                window->addAndMakeVisible(*layer);
+                windowOverlays.push_back({ window, std::move(made) });
+            }
+            if (layer->getBounds() != window->getLocalBounds()) layer->setBounds(window->getLocalBounds());
+            layer->toFront(false);
+            const auto local = (areaScreen - window->getScreenPosition()).getIntersection(window->getLocalBounds());
+            const auto d = layer->lastArea.isEmpty() ? local : (local.isEmpty() ? layer->lastArea : local.getUnion(layer->lastArea));
+            if (!d.isEmpty()) layer->repaint(d);
+            layer->lastArea = local;
         }
     }
 

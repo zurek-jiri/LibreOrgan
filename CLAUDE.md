@@ -538,6 +538,16 @@ ows.empty() && active(),
   50 s, settings restored): the tree now "in the archive Aeolian_Skinner.part01.rar", 1 tree job, stops "001845 - pipes
   - man - CH BlockFl 2" etc. with ORTF/AB/Rea perspectives, every stop auto-transposed -12 (files numbered 024 = key 36).
   CLAUDE.md said "Linux clone commits"; on Windows: git add -u, commit -F file, tag only after git log -1.
+  0.8.208 RECORDING vs WALL TIME (the user: "zvuk píšťal se postupně víc a víc předbíhá"): out17's audio.wav was
+  380.1 s for 387.4 s of frames. The recorder flushes up to the slowest LIVE route; while a device restarts (the OW
+  reload after the folder chooser, a coupler rail rebuild, a route change) no route is live, nothing is written, and
+  the routes resume at their OLD positions - the pause vanished from the file and everything after it came early.
+  `Recorder::wallStartMs` + flushRecording(final=false): target = max(target, wall frames - 300 ms) - the pause is
+  silence, the returning routes are "left behind" (recPos < flushed) and continue after it; "Recording stopped: X s
+  in the file over Y s of time" in the log (the two must agree within a second). New routes already get rings
+  (ensureRoute). Never judge sync by the mp4 alone: compare audio.wav seconds with the frames' span first.
+  GITHUB VIDEO: a README renders a player only for a video uploaded through GitHub's web UI (user-attachments URL);
+  a repo file or a Pages URL is a link - the user drags the mp4 into an issue comment and gives the URL.
   0.8.207 REGRESSION (the user: the Rural Organ demo RuralOrgan.rar downloaded into Downloads, Load Configuration of
   the rar, "load it where it is" -> "Sample folder not found: Downloads\Rural Organ\Samply" under every division, IRs
   "FILE NOT FOUND"): `registerArchive` wrote the chosen archive's line beside the configuration OPEN AT THE TIME
@@ -1211,6 +1221,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the real settings dialog (showCrescendoDialog / showFeatureSettings); `dialogslider "Tremulant settings"|0|HZ|MS`
   drags the Rate slider of the open dialog (the engine follows); `glow M|STOP|MS` frames a caption that changed
   (the transmission stays at +12 = "HW Tromp 8' (Trsm.)", the Cornet's [V]); every `actOn` press glows too.
+  `keepDialogsInFrame()` (every tick): a dialog outside the main window's bounds (a remembered place on the second
+  screen - the crescendo settings) is moved over it, else it is nowhere in the frames. `reglowRow(manual, what, pick,
+  delay, ms)`: an action that rebuilds the voicing rows (expand, alias, Transposition, the Volume/Treble headers)
+  deletes the pressed element and its glow with it - the glow is put on the rebuilt row's element after the delay.
+  Dialog overlays (`windowOverlays`): every other window gets an Overlay child (no caption) so the glow shows on
+  screen in the Stop List / Couplers dialogs too; `settings` parses "settings swell 1" (space or "|").
   GLOW IN THE PROGRAM (the user: "dej do configuration volbu, jestli uživatel chce ty různé glow vidět"):
   `GlowLayer` (UIControls.h after HintSheen) = a transparent child of MainComponent over everything (bounds and
   toFront in resized), a recursive mouse listener (`addMouseListener(&glowLayer, true)`): a left press on any
