@@ -1348,7 +1348,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   volume, sharing) linked by its quoted heading from 1.3 step 4, the RAR section, 1.5, "Where configurations...",
   4.1 and the ODF section; site "Using one" and configurations/README.md rewritten (they still said "put the .json
   beside the samples" since 0.8.190). The "same disk" idea: a configuration looks beside ITSELF (configDir forms)
-  and in the locations - never over a disk; told the user. Test: ~/tools/test_relocate.sh (below).
+  and in the locations - never over a disk; told the user. 0.8.203 LESSON (found by the Rural test): a pool path
+  saved on Windows and read on Linux/macOS ("F:\Suchy_rejstrik\Kobrle\Samply", kept when the file carries an
+  absolute folderPath) is ONE component to juce::File there (cwd-relative, backslashes inside) - getParentDirectory/
+  getFileName lie on it; everything about old pool paths goes through `pathParts` (split on both separators): the
+  prefix of the other missing trees = oldParts less the matched tail, the location = `ancestorOf(found, below + 1)`
+  where below = the tree's parts under the common folder of the MISSING trees' parents (the portable save's root
+  rule: one tree -> its parent; Rural -> Suchy_rejstrik, Hauptwerk -> HauptwerkSampleSetsAndComponents). Tests
+  (~/tools/test_relocate_any.sh <exe> <cfg> <tail> <chosen> '<locations json>' [s]; the CI Linux binary in
+  ~/Downloads/OrganSampler): Rural copy in /tmp/rt with Kobrle chosen -> Samply found (14/14 row folders), a
+  neighbour Tabor chosen -> corrected to Samply, /tmp/rt2 chosen -> refused (0 of 14); location one level too
+  deep -> found at load; Altenbruch (002067+002068) with 002067 chosen -> 4 trees, location HSSC, 35 rows; the
+  published Arnstadt with the whole OrganInstallationPackages chosen -> 6 trees, 21 rows; Altenbruch with only
+  the wrong location .../002067 known -> found at load. Rural's Samply/20 and /19 trees do not exist on the
+  Linux disk (still missing is right there).
   0.8.201 VOICING ROW WIDTH (the user: a pedal's voicing row cut the Alias box off): `Voicer::rebuildUI`'s
   `line1Width` must mirror `StopRow::resized` line 1 - it was the sum of 0.8.135 and never followed the Transposition
   box (104 + 258), One-shot (96) and Rank count (146) additions, so the expanded column = the compass width on a
