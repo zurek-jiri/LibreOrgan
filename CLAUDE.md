@@ -1293,9 +1293,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   hidden `aboutWindow`) in the background of the MESSAGE thread after the organ has loaded (`runWhenLoaded`), IN
   SLICES - a timer inserting a handful of blocks per tick (~40 ms each) so the console never freezes; the "?" and the
   tour then only show the window (the 0.8.212 reuse path, 57 ms). A worker thread cannot do it (JUCE components and
-  the TextEditor are message-thread only); the real cure for the cost itself would be our own text component with a
-  TextLayout per block (laid out once), which a thread could prepare - the bigger change, only if the slices are not
-  enough. The stop-folder gesture on the grid: the user confirms it works in 0.8.211/0.8.212 ("grid už teď šel dobře").
+  the TextEditor are message-thread only). THE USER'S DECISION (26 Oct 2026, later the same evening): make OUR OWN
+  TEXT COMPONENT WITH ITS LAYOUT ("udělat textovou komponentu s rozvržením, která se připraví hned po startu
+  aplikace") - a TextLayout per block (headings, paragraphs, code blocks, links = the manual's `Block` list), laid out
+  once right after the start (the layouts can be prepared off the message thread; only the painting component is
+  message-thread), scrolled in a Viewport, chapter highlight + find + links as the TextEditor had them - not the
+  slices. The stop-folder gesture on the grid: the user confirms it works in 0.8.211/0.8.212 ("grid už teď šel dobře").
+- FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
+  the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
+  (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
+  measure first: which flag the strip reads (`Stop::copiesBuilding`/progress fields), when the LAST stop's flags are
+  cleared relative to the poll (the build thread ends after the poll stopped?), and whether the poll timer stops when
+  `pendingBackgroundWorkers()` drops to 0 before the last stop's repaint; a repaint of every row once at the end of
+  the whole build (the "Compiling the Stop List: done" / RAM-after-load moment) is the simplest sure cure. Test with
+  ORGAN_TEST_SNAPSHOT a few seconds after the build ends (Rural: the copy build is short).
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
