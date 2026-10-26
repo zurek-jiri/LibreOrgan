@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.210] - 2026-10-26
+
+### Fixed
+- Guided tour: the caption box stands above the element when there is room, so
+  an opened voicing row or the ranks of a stop folder below it stay in view; the
+  stop-folder step tells how a folder is made on the grid.
+- Making a stop folder on the grid: the orange bar under the stop rested on
+  appears after half a second (was 0.8 s) and a pull of 8 px arms it; a drop
+  over a stop's button without the gesture is explained in the activity log.
+  Dev hook ORGAN_TEST_INDENT; every refused indent is logged with its reason.
 ## [0.8.209] - 2026-10-26
 
 ### Changed

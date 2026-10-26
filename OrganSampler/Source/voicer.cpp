@@ -3364,12 +3364,12 @@ void Voicer::updateIndentIndicator(int manual, const juce::String& key, juce::Po
     {
         // Still moving across the button: the rest starts again.
         if (screenPosition.getDistanceFrom(dwell.anchor) > 6) { dwell.since = now; dwell.anchor = screenPosition; }
-        if (now - dwell.since < 800.0) { if (indentMarker != nullptr) indentMarker->setVisible(false); return; }
+        if (now - dwell.since < 500.0) { if (indentMarker != nullptr) indentMarker->setVisible(false); return; }   // 0.8.210: half a second (was 0.8 s - the user never saw the bar)
         dwell.shown = true;
         dwell.anchor = screenPosition;
     }
     const int pulledDown = screenPosition.y - dwell.anchor.y;
-    if (!dwell.armed && pulledDown >= 12) dwell.armed = true;
+    if (!dwell.armed && pulledDown >= 8) dwell.armed = true;
     else if (dwell.armed && pulledDown <= 4) dwell.armed = false;
     showMarker(candidate, dwell.armed);
 }
@@ -3528,6 +3528,13 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
     hoverCopy = duplicate;
     StopRow* masterRow = indentTargetAt(manual, key, screenPosition);
     if (masterRow == nullptr && dwell.armed) masterRow = dwell.row.getComponent();
+    else if (masterRow == nullptr)
+    {
+        // Dropped over another stop's button without the gesture: said in the log (0.8.210, the user's "the stop
+        // folder is not made, the stop jumps back") - the drop then goes on to the cells as before.
+        if (auto* over = dwellCandidateAt(manual, key, screenPosition))
+            CrashHandler::note("Grid drop over the button of \"" + over->getStop()->name + "\" without the indent gesture (rest there until the orange bar shows, pull down onto it): no stop folder - the cells decide");
+    }
     resetDwell();
     lastHover.active = false;
     if (masterRow != nullptr)

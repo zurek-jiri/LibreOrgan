@@ -1697,6 +1697,33 @@ MainComponent::MainComponent()
     // missing pool tree whose path ends with the tail is given the folder as the
     // notice's chooser would (relocateTreeSmart), 25 s after start by default; the
     // "holds none of the stop folders" box is logged as a refusal instead of shown.
+    // ORGAN_TEST_INDENT="<manual>|<stop prefix>|<master manual>|<master prefix>[|seconds]" (0.8.210): the stop indented
+    // under the master as the arrange-mode gesture does it (indentStopUnder), N s after the start; the log says what happened.
+    if (const char* indent = std::getenv("ORGAN_TEST_INDENT"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(indent), "|", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(parts.size() > 4 ? juce::jmax(1, parts[4].getIntValue()) * 1000 : 20000, [safeThis, parts]
+        {
+            if (safeThis == nullptr || parts.size() < 4) return;
+            auto find = [&](int manual, const juce::String& prefix) -> Stop*
+            {
+                for (auto* s : safeThis->engine.getStops())
+                    if (s->primaryManual == manual && s->groupMaster.isEmpty() && s->name.startsWith(prefix)) return s;
+                return nullptr;
+            };
+            Stop* stop = find(parts[0].getIntValue(), parts[1]);
+            Stop* master = find(parts[2].getIntValue(), parts[3]);
+            CrashHandler::note("ORGAN_TEST_INDENT: stop " + (stop != nullptr ? stop->name : juce::String("NOT FOUND")) + " under " + (master != nullptr ? master->name : juce::String("NOT FOUND")));
+            if (stop != nullptr && master != nullptr) safeThis->indentStopUnder(stop, master);
+            juce::Timer::callAfterDelay(4000, [safeThis]
+            {
+                if (safeThis == nullptr || safeThis->voicer == nullptr) return;
+                for (auto* s : safeThis->engine.getStops())
+                    if (s->groupMaster.isNotEmpty()) CrashHandler::note("ORGAN_TEST_INDENT: \"" + s->name + "\" is a child of \"" + s->groupMaster + "\" in division " + juce::String(s->primaryManual));
+            });
+        });
+    }
     if (const char* relocate = std::getenv("ORGAN_TEST_RELOCATE"))
     {
         const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(relocate), "|", "");
@@ -14416,7 +14443,9 @@ void MainComponent::startGuidedTour()
         "the transposition, the stop volume, the attack, and one slider per pipe for volume and treble. \"-\" folds it again.", "The voicing row" });
     steps.push_back({ [rowButton] { return rowButton([](const StopRow& r) { return !r.isTransmission() && r.getStop()->groupMaster.isEmpty() && (r.getStop()->container || r.caption().contains("[")); }); },
         "A button with [II] or [III] is a stop folder: several ranks indented under one button - a Cornet, a celeste. Open its "
-        "voicing and each rank appears with its own button and voicing row, so the ranks are voiced one at a time and drawn together.", "Stop buttons" });
+        "voicing and each rank appears with its own button and voicing row, so the ranks are voiced one at a time and drawn together. "
+        "To make one: in arrange mode (a two-second press on a stop) let a dragged stop rest over another stop's button until an "
+        "orange bar appears under it, pull it down onto the bar and drop - from any manual.", "Stop buttons" });
     steps.push_back({ [rowButton] { return rowButton([](const StopRow& r) { return r.isTransmission(); }); },
         "(Trsm.) and (Ext.): a transmission plays the pipes of another stop here - on another manual, or in its own division "
         "at another footage (a 16' extension of an 8' stop). Its voicing row sets the transposition and its own volume.", "Transmissions and extensions" });
@@ -16344,9 +16373,13 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
 
 void MainComponent::indentStopUnder(Stop* stop, Stop* master)
 {
-    if (stop == nullptr || master == nullptr || stop == master || activeFolderLoader != nullptr) return;
+    if (stop == nullptr || master == nullptr || stop == master) return;
+    // Every way out is logged (0.8.210, the user: "stop folder opět nefunguje ... stop skočí zpět") - a silent return
+    // left the grid snapping back with no word of why.
+    auto refused = [&](const juce::String& why) { CrashHandler::note("Indent of \"" + stop->name + "\" under \"" + master->name + "\" refused: " + why); };
+    if (activeFolderLoader != nullptr) { refused("a load is in progress"); return; }
     const int source = stop->primaryManual, target = master->primaryManual;
-    if (source < 0 || source > manualCount || target < 0 || target > manualCount) return;
+    if (source < 0 || source > manualCount || target < 0 || target > manualCount) { refused("division out of range"); return; }
     for (int m : { source, target })
     {
         auto& config = manualConfigs[(size_t)m];
@@ -16355,14 +16388,14 @@ void MainComponent::indentStopUnder(Stop* stop, Stop* master)
     auto& from = manualConfigs[(size_t)source].stopBuild.entries;
     size_t i = 0;
     while (i < from.size() && stopBuildKey(from[i].name) != stopBuildKey(stop->name)) ++i;
-    if (i >= from.size()) return;
-    if (!from[i].child && i + 1 < from.size() && from[i + 1].child) return;   // a stop folder keeps its own children
+    if (i >= from.size()) { refused("the stop is not a row of the Stop List of division " + juce::String(source)); return; }
+    if (!from[i].child && i + 1 < from.size() && from[i + 1].child) { refused("the stop is a stop folder with children of its own"); return; }   // a stop folder keeps its own children
     ManualConfig::StopBuild::Entry entry = from[i];
     from.erase(from.begin() + (long)i);
     auto& to = manualConfigs[(size_t)target].stopBuild.entries;
     size_t masterIndex = 0;
     while (masterIndex < to.size() && (to[masterIndex].child || stopBuildKey(to[masterIndex].name) != stopBuildKey(master->name))) ++masterIndex;
-    if (masterIndex >= to.size()) { from.insert(from.begin() + (long)i, entry); return; }
+    if (masterIndex >= to.size()) { from.insert(from.begin() + (long)i, entry); refused("the master is not a top row of the Stop List of division " + juce::String(target)); return; }
     size_t after = masterIndex + 1;
     while (after < to.size() && to[after].child) ++after;
     entry.child = true;

@@ -1225,6 +1225,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the real settings dialog (showCrescendoDialog / showFeatureSettings); `dialogslider "Tremulant settings"|0|HZ|MS`
   drags the Rate slider of the open dialog (the engine follows); `glow M|STOP|MS` frames a caption that changed
   (the transmission stays at +12 = "HW Tromp 8' (Trsm.)", the Cornet's [V]); every `actOn` press glows too.
+  0.8.210 STOP FOLDER ON THE GRID (the user: "když pod stop I. manuálu podsunu rejstřík z jiného manuálu, stop
+  folder se neudělá a stop skočí zpět"): the mechanics WORK - `ORGAN_TEST_INDENT="0|TA - violon|1|TA - Principal 8|18"`
+  on Rural indents across divisions (indentStopUnder -> moveStopToDivision), `ORGAN_TEST_DROP="0|TA - violon|1|0|5"`
+  moves into a cell of I. - what fails is the GESTURE: the bar under the master shows only after a rest (0.8 s ->
+  0.5 s now) and arms on a pull down (12 -> 8 px); a plain drop over a button goes to the cells (the occupied cell
+  swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
+  indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
+  gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
   0.8.209: THE VIDEO BEGINS WITH THE LOADING - make_video.ps1 sets NO ORGAN_LOAD_CONFIGURATION when the script has a
   "load " line (and turns loadLastConfigurationAtStartup off in the backed-up settings for the run); the hook then
   starts the script 1.5 s after the start on the empty console; `load FILE` presses Load Configuration and calls

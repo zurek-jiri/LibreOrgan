@@ -175,9 +175,11 @@ private:
         if (target != nullptr && target->isShowing())
         {
             const auto t = getLocalArea(target, target->getLocalBounds());
-            // Below the element when there is room, else above it, else beside it; always inside.
-            if (t.getBottom() + 40 + height <= getHeight()) r.setPosition(t.getCentreX() - boxWidth / 2, t.getBottom() + 40);
-            else if (t.getY() - 40 - height >= 0) r.setPosition(t.getCentreX() - boxWidth / 2, t.getY() - 40 - height);
+            // Above the element when there is room (what the step speaks of - a voicing row, the ranks of a
+            // stop folder - unfolds BELOW the element and must stay in view; the user: "tipy zezhora"), else
+            // below it, else beside it; always inside.
+            if (t.getY() - 40 - height >= 0) r.setPosition(t.getCentreX() - boxWidth / 2, t.getY() - 40 - height);
+            else if (t.getBottom() + 40 + height <= getHeight()) r.setPosition(t.getCentreX() - boxWidth / 2, t.getBottom() + 40);
             else r.setPosition(t.getRight() + 40, t.getCentreY() - height / 2);
         }
         else r.setPosition((getWidth() - boxWidth) / 2, (getHeight() - height) / 2);
