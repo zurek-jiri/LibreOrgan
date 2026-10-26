@@ -1286,6 +1286,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
+- PRE-BUILT MANUAL (the user, 26 Oct 2026 evening, after 0.8.212: "postavit v paměti formátovaný manuál hned po
+  načtení aplikace, ať je předpřipravený"): the first opening of the manual still costs the one build of the text
+  (2.7 s on the Ryzen, `AboutComponent::setTextWithHighlight`, a juce::TextEditor filled block by block - every insert
+  lays the whole text out again, so the cost grows with the length). The way: build the `AboutComponent` (and its
+  hidden `aboutWindow`) in the background of the MESSAGE thread after the organ has loaded (`runWhenLoaded`), IN
+  SLICES - a timer inserting a handful of blocks per tick (~40 ms each) so the console never freezes; the "?" and the
+  tour then only show the window (the 0.8.212 reuse path, 57 ms). A worker thread cannot do it (JUCE components and
+  the TextEditor are message-thread only); the real cure for the cost itself would be our own text component with a
+  TextLayout per block (laid out once), which a thread could prepare - the bigger change, only if the slices are not
+  enough. The stop-folder gesture on the grid: the user confirms it works in 0.8.211/0.8.212 ("grid už teď šel dobře").
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
