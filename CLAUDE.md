@@ -1319,6 +1319,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (%TEMP% python, 4 MB reads, 8 threads, uncached files) of the same folder. Name the line's meaning in the dialog or
   the manual accordingly ("read and decoded") if the CPU is the limit; raise the reader parallelism or decouple
   reading from decoding only after the measurement says so.
+- MANUAL: RETUNED STOPS THAT SOUND BAD (the user, 26 Oct 2026 evening): write into the manual, in the place that
+  speaks of the filled pipes (the copies made by resampling - manual 3.x "Missing pipes" / the voicing chapter's
+  filled-pipes paragraph), that some stops sound very bad once retuned or filled by resampling - percussion and
+  bell-like stops above all (Chimes, Glockenspiel, Celesta, Harp: inharmonic partials, the formant moves with the
+  pitch, the attack is stretched), so for such a stop keep the transposition at 0, the retune off (the one-shot
+  patterns) and the missing keys unfilled, or accept it. Regenerate ManualData.h after the edit.
 - FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
   the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
   (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
