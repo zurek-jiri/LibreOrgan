@@ -1587,7 +1587,13 @@ the table) - nothing is lost by the close button alone.
 ## 4.4 What the loading dialog shows
 
 Loading is quick, so the dialog is rarely looked at: it shows the samples being
-read per division and in total, then *Compiling the Stop List*, the steps that
+read per division and in total, under it what the program does right now (the
+stop being decoded, the tuning analysis, the pipe fills), and on a third line
+the reading speed, "Reading from the disk at N MB/s", refreshed every five
+seconds (0.8.205) - a big organ loads as fast as the disk delivers it: about
+500 MB/s from a SATA SSD, several times that from an NVMe one, far less from
+a hard disk or over USB; the log keeps one line per folder tree with the
+gigabytes read and the speed. Then *Compiling the Stop List*, the steps that
 build the console, each with its percentage. Opening an ASIO driver is a step
 of its own and can take a few seconds. Only when the dialog closes are the
 copies of the filled pipes (see "The transposition methods") built in the

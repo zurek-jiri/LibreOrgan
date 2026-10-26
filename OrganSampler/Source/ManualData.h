@@ -1605,19 +1605,25 @@ static const char* const kManualText_part7 =
     "## 4.4 What the loading dialog shows\n"
     "\n"
     "Loading is quick, so the dialog is rarely looked at: it shows the samples being\n"
-    "read per division and in total, then *Compiling the Stop List*, the steps that\n"
+    "read per division and in total, under it what the program does right now (the\n"
+    "stop being decoded, the tuning analysis, the pipe fills), and on a third line\n"
+    "the reading speed, \"Reading from the disk at N MB/s\", refreshed every five\n"
+    "seconds (0.8.205) - a big organ loads as fast as the disk delivers it: about\n"
+    "500 MB/s from a SATA SSD, several times that from an NVMe one, far less from\n"
+    "a hard disk or over USB; the log keeps one line per folder tree with the\n"
+    "gigabytes read and the speed. Then *Compiling the Stop List*, the steps that\n"
     "build the console, each with its percentage. Opening an ASIO driver is a step\n"
     "of its own and can take a few seconds. Only when the dialog closes are the\n"
     "copies of the filled pipes (see \"The transposition methods\") built in the\n"
     "background: a dark track\n"
+    ;
+static const char* const kManualText_part8 =
     "along the bottom of a stop button means the stop still waits, an orange fill\n"
     "shows the pipes done. The organ can be played at once; a filled pipe plays in\n"
     "a simpler way until its copy exists.\n"
     "\n"
     "---\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "# 5. The Divisions dialog\n"
     "\n"
     "*Settings* in a division header opens the dialog at that division; the\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "  opens - exactly those, on every path (loading a configuration, *Set for\n"
     "  all*, a switch of the type, a reopen). A device that cannot be opened (an\n"
     "  unplugged interface, a digital output with no cable) is refused: its\n"
+    ;
+static const char* const kManualText_part9 =
     "  channels are set to none, the list shows them unticked with the reason\n"
     "  after their names, and the activity log names them - the same as the\n"
     "  Windows Audio type, which refuses such a device outright. No ticked\n"
     "  channel means none: the route is silent until you tick some. Every\n"
     "  aggregated route is its own stream with its own thread (see \"Render\n"
     "  threads for Aggregated WASAPI\"). Keep its buffer at 480 samples or more\n"
-    ;
-static const char* const kManualText_part9 =
     "  (the default): the Windows audio engine feeds a shared stream in 10 ms\n"
     "  packets of 480 samples at 48 kHz, so a smaller buffer only splits each\n"
     "  packet into shorter deadlines - an IR's tail FFT alone can exceed a block\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "  auxiliary route\").\n"
     "- **IR reverb.** The convolution of an impulse response is heavy and its\n"
     "  cost does not depend on how many pipes sound: it is paid on every route\n"
+    ;
+static const char* const kManualText_part10 =
     "  that has an IR, at every audio period. The convolutions run on the render\n"
     "  workers, in parallel, one buffer behind the dry signal (that buffer is\n"
     "  part of the pre-delay), so they take render time away from the pipes but\n"
     "  do not pile up on the audio thread. A true stereo IR (four channels)\n"
     "  costs twice as much as a stereo one, a long IR more than a short one\n"
     "  (*Decay* shortens it). A route that has been silent for longer than its\n"
-    ;
-static const char* const kManualText_part10 =
     "  IR switches the convolution off until the next sound, so idle\n"
     "  perspectives cost nothing. Dry/wet at 0 %, or *Clear*, removes the cost\n"
     "  entirely.\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "top or bottom keys are missing, and gaps inside the compass. Only the pipes\n"
     "that a stop can be asked to play are filled: the compass of its own division and, for\n"
     "every transmission, the compass of the receiving division shifted by the\n"
+    ;
+static const char* const kManualText_part11 =
     "transposition. A filled pipe keeps everything a real pipe has: its own voicing\n"
     "slider, random detune, wind and tremulant behaviour, release samples (from the\n"
     "same neighbour, treated the same way); it costs nothing while silent.\n"
     "\n"
     "Which real pipe serves a missing one is decided by *Missing pipes: neighbours\n"
     "borrowed as a group*: with the default 12, every missing pipe is the\n"
-    ;
-static const char* const kManualText_part11 =
     "octave transposition of a real one, so the chromatic variety of the rank is\n"
     "kept. A rank's fill map is sticky: when the compass grows (a new transmission)\n"
     "the pipes already filled keep their source, so their copies are never built\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "\n"
     "The processor, its physical cores and logical CPUs, and the RAM. Information\n"
     "only; it tells what the thread settings below can use.\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "### Render threads\n"
     "\n"
     "How many CPU threads render pipes for ASIO routes, the audio driver's own\n"
     "thread included. (The note bookkeeping - MIDI commands, attacks and releases,\n"
     "the return of finished voices - runs on a thread of its own beside them, so\n"
-    ;
-static const char* const kManualText_part12 =
     "the audio callback only renders; before 0.8.45 it took up to a third of every\n"
     "period inside the callback.) Default: all physical cores - keep it there. Hyper-threads\n"
     "(the logical CPUs) share a core's execution units and memory pipeline: measured\n"
@@ -2620,14 +2626,14 @@ static const char* const kManualText_part12 =
     "the same and the work is paid once per group: Rural Organ's three divisions on\n"
     "one device, each with its default and its auxiliary route, run two\n"
     "convolutions instead of six. The IR caption of a route that rides on\n"
+    ;
+static const char* const kManualText_part13 =
     "another's convolution says *(shared)* and its tooltip names the route; a\n"
     "route whose settings differ in anything keeps its own convolution. Nothing\n"
     "needs to be set: the grouping follows the settings and the devices.\n"
     "\n"
     "### Maximum polyphony\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "The number of voices that may sound at once (64 to 500000, default 30000).\n"
     "The ceiling is far above what a computer of 2026 renders - a 16-core machine\n"
     "manages 25 000 to 30 000 voices of a wet set with three perspectives at a\n"
@@ -2822,14 +2828,14 @@ static const char* const kManualText_part13 =
     "position \"-inf\" silences them. Quieter releases make a drier organ without\n"
     "losing the room entirely.\n"
     "\n"
+    ;
+static const char* const kManualText_part14 =
     "### Release cutting\n"
     "\n"
     "Release samples are faded out over this share of their length and end there\n"
     "(5 to 100 %, default 100 = the full release). Shorter releases free polyphony\n"
     "sooner on a weak computer and dry a wet set.\n"
     "\n"
-    ;
-static const char* const kManualText_part14 =
     "### Attack minimum time\n"
     "\n"
     "The shortest time a pipe sounds once it has started (0 to 500 ms, default\n"
@@ -3024,14 +3030,14 @@ static const char* const kManualText_part14 =
     "\n"
     "### Filled pipes: release level matched to the source\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "Every pitch-shift method. On: a filled pipe's release copy is played at the\n"
     "level relation the source pipe's release has to its sustain (measured when the\n"
     "copy was built), so the step at the key release is the real pipe's. Off\n"
     "(default): the copy plays at its own level. Applied at playback, nothing is\n"
     "rebuilt; switch it on when the releases of an extension are clearly louder or\n"
     "softer than those of the real pipes beside them.\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "### Filled pipes: loop crossfade\n"
     "\n"
@@ -3226,14 +3232,14 @@ static const char* const kManualText_part15 =
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held; when that key is released the coupler does not\n"
+    ;
+static const char* const kManualText_part16 =
     "fall back to the next one. Off: the coupled note always follows the highest\n"
     "(lowest) key currently held.\n"
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
     "On: when the highest key changes in legato playing, the melody coupler waits a\n"
-    ;
-static const char* const kManualText_part16 =
     "moment before moving to the new key, so a brief overlap of two keys does not\n"
     "make the solo stop jump. Off: it follows at once.\n"
     "\n"
@@ -3428,14 +3434,14 @@ static const char* const kManualText_part16 =
     "\n"
     "How far the ranks of the division drift apart in the tremulant's cycle (0 to\n"
     "360 degrees, default 260): with 0 every stop dips at the same moment, with a\n"
+    ;
+static const char* const kManualText_part17 =
     "large value the stops of a full registration shimmer rather than pulse.\n"
     "\n"
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
     "How far the pitch sags with the wind at its lowest (0 to 50 cents, default 8).\n"
     "The sag is reached with many stops engaged and many keys held, the shares being\n"
-    ;
-static const char* const kManualText_part17 =
     "set in Advanced global audio. 0 switches the wind model off for this division.\n"
     "\n"
     "### Wind: oscillation frequency\n"

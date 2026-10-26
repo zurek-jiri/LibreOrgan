@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.205] - 2026-10-26
+
+### Added
+- The loading window has a third line, "Reading from the disk at N MB/s",
+  refreshed every 5 seconds from the bytes of sample files read (the user's
+  wish: to see that the disk is the limit). Always three lines: nothing jumps.
+
 ## [0.8.204] - 2026-10-26
 
 ### Fixed

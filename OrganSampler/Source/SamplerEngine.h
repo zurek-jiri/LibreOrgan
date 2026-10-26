@@ -752,6 +752,9 @@ public:
     // Text for the loading window about the phases after the samples are decoded
     // (tuning and footage analysis, pipe fills): called on the loading thread.
     void setLoadStatusCallback(std::function<void(const juce::String&)> callback) { loadStatusCallback = std::move(callback); }
+    // The bytes of sample files read so far by every load of this run (0.8.205): the
+    // loading window shows the reading speed from the differences.
+    juce::int64 bytesReadByLoads() const noexcept { return loadBytesRead.load(std::memory_order_relaxed); }
 
     // Loading runs on any (background) thread and prepares a division without
     // touching the live engine.  commitPendingDivisions() must then be called
@@ -1559,6 +1562,7 @@ private:
     std::atomic<int64_t> packNanoseconds{ 0 };   // thread time spent packing since the last takePackStats (0.8.153: what the option costs at the load)
     std::atomic<int> halfRateReleases{ 0 }, halfRateKeptFull{ 0 }, halfRateSincHeads{ 0 };   // 0.8.146: releases stored at half the rate / kept full for their treble
     std::function<void(const juce::String&)> loadStatusCallback;
+    std::atomic<juce::int64> loadBytesRead { 0 };
     bool tuneAllTo440 = false;
 
     std::vector<juce::String> oneShotPatterns = defaultOneShotPatterns();

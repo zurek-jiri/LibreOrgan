@@ -11674,6 +11674,10 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
             decoded[(size_t)index] = decodeSampleFile(entries[(size_t)index].file, *manager, asFloat,
                 parseSmpl(entries[(size_t)index].file, entries[(size_t)index].data), resample || baseRate < kBaseSampleRate - 0.5, baseRate,
                 halfRate ? storageSampleRate : 0.0, &keptFull, entries[(size_t)index].data);
+            // The bytes read for this file (0.8.205: the loading window's "Reading from
+            // the disk at N MB/s" line): the archive entry's bytes, else the file's size.
+            loadBytesRead.fetch_add(entries[(size_t)index].data != nullptr ? (juce::int64)entries[(size_t)index].data->getSize()
+                : entries[(size_t)index].file.getSize(), std::memory_order_relaxed);
             entries[(size_t)index].data.reset();   // the archive bytes go as soon as the sample is decoded
             if (halfRate && decoded[(size_t)index] != nullptr)
             {

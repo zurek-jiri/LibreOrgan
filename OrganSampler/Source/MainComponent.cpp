@@ -12727,6 +12727,9 @@ public:
     }
     std::vector<Phase> phases;   // set by the owner before launchThread()
     juce::String progressLine, workLine;   // the two lines of the status (#79)
+    juce::String diskLine;                 // the third: the reading speed from the disk, every 5 s (0.8.205)
+    double diskAtMs = 0.0;                 // when the speed was last taken
+    juce::int64 diskBytes = 0;             // ... and the engine's byte count then
     // Runs right after the commit, before anything can paint: a reload retires
     // the old stops there, and the grid's rows must stop pointing at them.
     std::function<void()> afterCommit;
@@ -12747,7 +12750,21 @@ public:
         // analysis, the fills) comes under it - before, each overwrote the other.
         // Always exactly two lines (0.8.181): a second line that comes and goes, or a
         // long one that wraps, made the window change its height and flicker.
-        auto show = [this] { setStatusMessage(progressLine + "\n" + (workLine.isNotEmpty() ? workLine : juce::String(" "))); };
+        // A third line with the reading speed (0.8.205, the user: so that one sees the
+        // disk is the limit), taken every 5 s from the engine's byte count; " " before
+        // the first figure - always exactly three lines.
+        auto show = [this] { setStatusMessage(progressLine + "\n" + (workLine.isNotEmpty() ? workLine : juce::String(" ")) + "\n" + (diskLine.isNotEmpty() ? diskLine : juce::String(" "))); };
+        auto diskSpeed = [this]
+        {
+            const double now = juce::Time::getMillisecondCounterHiRes();
+            const juce::int64 bytes = engine.bytesReadByLoads();
+            if (diskAtMs <= 0.0) { diskAtMs = now; diskBytes = bytes; return; }
+            if (now - diskAtMs < 5000.0) return;
+            const double mbPerSecond = (double)(bytes - diskBytes) / 1.0e6 / ((now - diskAtMs) / 1000.0);
+            diskLine = "Reading from the disk at " + juce::String(juce::roundToInt(mbPerSecond)) + " MB/s";
+            diskAtMs = now;
+            diskBytes = bytes;
+        };
         engine.setLoadStatusCallback([this, show](const juce::String& text) { workLine = text; show(); });
         // The previous organ's stops are freed on a thread of their own (0.8.184): the
         // memory counts of this load wait for that, here with the window alive.
@@ -12766,15 +12783,27 @@ public:
             progressLine = who + ": scanning samples (folder tree " + juce::String((int)index + 1) + "/" + juce::String((int)jobs.size()) + ")...";
             workLine = "Reading the folders ...";
             show();
+            const double treeStartMs = juce::Time::getMillisecondCounterHiRes();
+            const juce::int64 treeStartBytes = engine.bytesReadByLoads();
             engine.loadManualFolder(jobs[index].folder, juce::jmax(0, manual), sampleRate,
-                [this, index, count, who, show](double localProgress)
+                [this, index, count, who, show, diskSpeed](double localProgress)
                 {
                     if (threadShouldExit()) engine.cancelLoading();   // the dialog's Cancel (0.8.139): the engine stops at the next stop, the rest compiles as usual
                     const double overall = ((double)index + localProgress) / count;
                     setProgress(overall);
                     progressLine = who + ": " + juce::String(juce::roundToInt(localProgress * 100.0)) + "%   |   total " + juce::String(juce::roundToInt(overall * 100.0)) + "%";
+                    diskSpeed();
                     show();
                 }, jobs[index].append, jobs[index].map.get(), jobs[index].replacing.get());
+            // One line per tree for the log (0.8.205): what was read and how fast - the
+            // figure to judge "loading is slow" by (a SATA SSD gives about 500 MB/s).
+            {
+                const double seconds = (juce::Time::getMillisecondCounterHiRes() - treeStartMs) / 1000.0;
+                const juce::int64 bytes = engine.bytesReadByLoads() - treeStartBytes;
+                if (bytes > 0 && seconds > 0.0)
+                    CrashHandler::note("Tree " + jobs[index].folder.getFileName() + ": " + juce::String((double)bytes / 1.0e9, 2) + " GB of sample files read in "
+                        + juce::String(seconds, 1) + " s = " + juce::String(juce::roundToInt((double)bytes / 1.0e6 / seconds)) + " MB/s");
+            }
         }
         setProgress(1.0);
         setStatusMessage("Compiling the Stop List ...");
