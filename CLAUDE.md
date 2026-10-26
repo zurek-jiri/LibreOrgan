@@ -547,7 +547,11 @@ ows.empty() && active(),
   in the file over Y s of time" in the log (the two must agree within a second). New routes already get rings
   (ensureRoute). Never judge sync by the mp4 alone: compare audio.wav seconds with the frames' span first.
   GITHUB VIDEO: a README renders a player only for a video uploaded through GitHub's web UI (user-attachments URL);
-  a repo file or a Pages URL is a link - the user drags the mp4 into an issue comment and gives the URL.
+  a repo file or a Pages URL is a link - the user drags the mp4 into an issue comment and gives the URL. A free
+  account takes videos up to 10 MB ("Failed to upload" above): make_video's organsampler-github.mp4 (1280 px, crf 30,
+  64 kbps AAC, 7.1 MB) is the one to upload; the README holds
+  https://github.com/user-attachments/assets/28361fcc-1bc5-4f94-ba3f-d0d28406af0a (the out20 video, 26 Oct 2026) on a
+  line of its own; the GIF is gone from the repo (15 MB, no longer shown).
   0.8.207 REGRESSION (the user: the Rural Organ demo RuralOrgan.rar downloaded into Downloads, Load Configuration of
   the rar, "load it where it is" -> "Sample folder not found: Downloads\Rural Organ\Samply" under every division, IRs
   "FILE NOT FOUND"): `registerArchive` wrote the chosen archive's line beside the configuration OPEN AT THE TIME
@@ -1221,6 +1225,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the real settings dialog (showCrescendoDialog / showFeatureSettings); `dialogslider "Tremulant settings"|0|HZ|MS`
   drags the Rate slider of the open dialog (the engine follows); `glow M|STOP|MS` frames a caption that changed
   (the transmission stays at +12 = "HW Tromp 8' (Trsm.)", the Cornet's [V]); every `actOn` press glows too.
+  0.8.209: THE VIDEO BEGINS WITH THE LOADING - make_video.ps1 sets NO ORGAN_LOAD_CONFIGURATION when the script has a
+  "load " line (and turns loadLastConfigurationAtStartup off in the backed-up settings for the run); the hook then
+  starts the script 1.5 s after the start on the empty console; `load FILE` presses Load Configuration and calls
+  loadConfigurationFile (the load box appears - a real AlertWindow), `loadbox own folder` picks the "This file" combo
+  item by a text part (in place, no copy into the user's Configurations), `click Load`, `waitload MAXMS` waits while
+  a window named "Loading ..." shows (+1.5 s). `holdarrange M|STOP` = the 2 s press that enters arrange mode (manual
+  3.2) before the first drag; the mode stays through the transmission drag. LEVELS: no loudnorm (it delays and cut the
+  last words): ebur128 integrated loudness measured in make_video.ps1, plain gains to organ -18 LUFS / voice -21 LUFS
+  (the user: the voice 6 dB lower), apad + amix longest + alimiter, the video's end cuts the mix. Transmission = a
+  right-button OR Shift drag (voicer.cpp arrangeDuplicate; manual 3.2) - say both.
   `keepDialogsInFrame()` (every tick): a dialog outside the main window's bounds (a remembered place on the second
   screen - the crescendo settings) is moved over it, else it is nowhere in the frames. `reglowRow(manual, what, pick,
   delay, ms)`: an action that rebuilds the voicing rows (expand, alias, Transposition, the Volume/Treble headers)

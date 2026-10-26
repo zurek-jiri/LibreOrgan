@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.209] - 2026-10-26
+
+### Changed
+- The instruction video begins with the loading of the organ (Load
+  Configuration, the load box, the loading window), shows the two-second press
+  that enters arrange mode, the narration sits 6 dB lower under the organ and
+  is never cut at the end; the transmission is described as a right-button or
+  Shift drag, as the manual has it.
 ## [0.8.208] - 2026-10-26
 
 ### Fixed

@@ -1727,7 +1727,25 @@ MainComponent::MainComponent()
         hintSheen.stop();             // no golden hint arrows from the first moment of a video run (the user: "vypni si ty šipky")
         stopListHintShown = true;     // ... nor the Stop List's "Load folder..." arrow when the script opens it
         juce::Component::SafePointer<MainComponent> safeThis(this);
-        runWhenLoaded([safeThis, file, out] { if (safeThis != nullptr) safeThis->startVideoScript(file, out); });
+        // The window at the script's size from the first moment (its "window W H" line), not 1.5 s later.
+        juce::StringArray lines;
+        lines.addLines(file.loadFileAsString());
+        for (const auto& line : lines)
+            if (line.trim().startsWith("window "))
+            {
+                const auto wh = juce::StringArray::fromTokens(line.trim().fromFirstOccurrenceOf(" ", false, false), " ", "");
+                if (wh.size() >= 2)
+                    juce::Timer::callAfterDelay(300, [safeThis, w = wh[0].getIntValue(), h = wh[1].getIntValue()]
+                    {
+                        if (safeThis == nullptr) return;
+                        if (auto* window = dynamic_cast<juce::ResizableWindow*>(safeThis->getTopLevelComponent())) { window->setFullScreen(false); window->setBounds(0, 0, w, h); }
+                    });
+                break;
+            }
+        if (std::getenv("ORGAN_LOAD_CONFIGURATION") == nullptr)
+            juce::Timer::callAfterDelay(1500, [safeThis, file, out] { if (safeThis != nullptr) safeThis->startVideoScript(file, out); });   // the script loads the organ itself ("load FILE"): the video begins with the loading
+        else
+            runWhenLoaded([safeThis, file, out] { if (safeThis != nullptr) safeThis->startVideoScript(file, out); });
     }
     // ORGAN_TEST_ARCHIVE=<rar> (tests, 0.8.157): the volumes, the index and the
     // top-level folders of a RAR archive of sample folders, logged 2 s after start.
@@ -14671,6 +14689,37 @@ struct MainComponent::VideoScript final : private juce::Timer
             nextAt = now + 600.0;
         }
         else if (cmd == "wait") nextAt = now + juce::jmax(0, arg.getIntValue());
+        else if (cmd == "load")
+        {
+            // load FILE: the cursor presses Load Configuration, the file is loaded as the chooser would give it (the load box follows).
+            const juce::File file(arg);
+            actOn(findButton("Load Configuration"), [this, file] { owner.loadConfigurationFile(file); }, now, 400.0);
+        }
+        else if (cmd == "loadbox")
+        {
+            // loadbox TEXT PART: in the open load box the "This file" combo item whose text holds TEXT PART is chosen (the cursor on the combo).
+            juce::ComboBox* combo = nullptr;
+            for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && combo == nullptr;)
+                if (auto* box = dynamic_cast<juce::AlertWindow*>(juce::Desktop::getInstance().getComponent(w)); box != nullptr && box->isShowing())
+                    combo = box->getComboBoxComponent("fileChoice");
+            if (combo == nullptr) { CrashHandler::note("Video: loadbox - no load box with the file choice"); return; }
+            int item = -1;
+            for (int i = 0; i < combo->getNumItems(); ++i) if (combo->getItemText(i).containsIgnoreCase(arg)) { item = i; break; }
+            if (item < 0) { CrashHandler::note("Video: loadbox - no item with \"" + arg + "\""); return; }
+            actOn(combo, [combo, item] { combo->setSelectedItemIndex(item, juce::sendNotificationSync); }, now, 300.0);
+        }
+        else if (cmd == "waitload")
+        {
+            // waitload MAXMS: the script waits while a loading window ("Loading ...") shows, MAXMS at most, then 1.5 s more.
+            if (waitForStart <= 0.0) waitForStart = now;
+            bool loading = false;
+            for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0;)
+                if (auto* window = juce::Desktop::getInstance().getComponent(w); window != nullptr && window->isShowing() && window->getName().containsIgnoreCase("Loading")) loading = true;
+            const bool timeUp = now - waitForStart > juce::jmax(1000.0, part(0).getDoubleValue());
+            if (loading && !timeUp) { --index; nextAt = now + 200.0; }
+            else if (now - waitForStart < 2000.0 && !timeUp) { --index; nextAt = now + 200.0; }   // the window has not come up yet
+            else { waitForStart = 0.0; nextAt = now + 1500.0; }
+        }
         else if (cmd == "waitfor")
         {
             // waitfor BUTTON|MAXMS: the script waits until a button of that text shows (the box after a reload), MAXMS at most.
@@ -14810,6 +14859,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int manual = part(0).getIntValue();
             const bool on = part(2).equalsIgnoreCase("on");
             owner.routeKeyboardNote(manual, part(1).getIntValue(), 100, on);
+            if (owner.voicer) owner.voicer->setNoteActive(part(1).getIntValue(), on);   // the key's slider lights green, as a MIDI note does it
             if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = on ? 1.0e12 : 0.0;   // the keyboard symbol blinks while the script plays
         }
         else if (cmd == "chord")
@@ -14817,10 +14867,58 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int manual = part(0).getIntValue();
             const auto keys = juce::StringArray::fromTokens(part(1), ",", "");
             const double holdMs = juce::jmax(100, part(2).getIntValue());
-            for (const auto& k : keys) owner.routeKeyboardNote(manual, k.getIntValue(), 100, true);
+            for (const auto& k : keys) { owner.routeKeyboardNote(manual, k.getIntValue(), 100, true); if (owner.voicer) owner.voicer->setNoteActive(k.getIntValue(), true); }
             if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = now + holdMs;
             MainComponent* o = &owner;
-            pending.push_back({ now + holdMs, [o, manual, keys] { for (const auto& k : keys) o->routeKeyboardNote(manual, k.getIntValue(), 0, false); } });
+            pending.push_back({ now + holdMs, [o, manual, keys]
+            {
+                for (const auto& k : keys) { o->routeKeyboardNote(manual, k.getIntValue(), 0, false); if (o->voicer) o->voicer->setNoteActive(k.getIntValue(), false); }
+            } });
+        }
+        else if (cmd == "glowcoupler")
+        {
+            // glowcoupler ID|MS: the coupler's button under its keyboard's header glows (a coupler just added in the dialog).
+            juce::Component* button = nullptr;
+            {
+                const juce::ScopedLock lock(owner.couplerLock);
+                if (auto* coupler = owner.findCoupler(part(0)); coupler != nullptr && owner.voicer) button = owner.voicer->headerButton(coupler->sourceManual, coupler->label);
+            }
+            if (button == nullptr) { CrashHandler::note("Video: glowcoupler - no button for " + arg); return; }
+            const double ms = juce::jmax(800.0, part(1).getDoubleValue());
+            cursorTo(frameCentreOf(button), 600.0, now);
+            glowTarget = button; glowUntil = now + 600.0 + ms;
+            highlight(button, 600.0 + ms);
+            nextAt = juce::jmax(nextAt, now + 600.0 + ms);
+        }
+        else if (cmd == "pointkey")
+        {
+            // pointkey M|STOP|NOTE|MS: the cursor goes to the key's slider of the open voicing row and it glows (the green thumbs = filled pipes).
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            juce::Slider* slider = row != nullptr ? row->keySliderComponent(part(2).getIntValue()) : nullptr;
+            if (slider == nullptr || !slider->isShowing()) { CrashHandler::note("Video: pointkey - no slider for " + arg); return; }
+            const double ms = juce::jmax(800.0, part(3).getDoubleValue());
+            cursorTo(frameCentreOf(slider), 700.0, now);
+            glowTarget = slider; glowUntil = now + 700.0 + ms;
+            highlight(slider, 700.0 + ms);
+            nextAt = juce::jmax(nextAt, now + 700.0 + ms);
+        }
+        else if (cmd == "holdarrange")
+        {
+            // holdarrange M|STOP: the cursor presses the stop and holds it two seconds, releases - the console enters
+            // arrange mode as the manual says (3.2: "Press a stop button for two seconds, release").
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            if (row == nullptr) { CrashHandler::note("Video: holdarrange - no row " + arg); return; }
+            const int manual = part(0).getIntValue();
+            cursorTo(frameCentreOf(&row->buttonComponent()), 700.0, now);
+            juce::Component::SafePointer<juce::Component> safeButton(&row->buttonComponent());
+            pending.push_back({ now + 760.0, [this, safeButton] { cursor.pressed = true; if (safeButton != nullptr) { glowTarget = safeButton; glowUntil = juce::Time::getMillisecondCounterHiRes() + 2400.0; } } });
+            pending.push_back({ now + 2900.0, [this, manual]
+            {
+                cursor.pressed = false;
+                pressedUntil = juce::Time::getMillisecondCounterHiRes() + 200.0;
+                if (owner.voicer != nullptr) owner.voicer->scriptArrange(manual, true);
+            } });
+            nextAt = juce::jmax(nextAt, now + 3400.0);
         }
         else if (cmd == "arrange")
         {

@@ -40,11 +40,16 @@ def synth_with_retries(text, path):
         time.sleep(2.0 + attempt)
     raise RuntimeError('no speech for: ' + text[:60])
 
+def spoken_form(text):
+    # The voice makes almost no pause at a colon (the user: "po dvojtečce malinká odmlka"): spoken as a full stop,
+    # which the neural voice follows with a clear pause; the captions keep the colon.
+    return text.replace(': ', '. ').replace(':', '.')
+
 clips = []
 for i, (ms, text) in enumerate(lines):
     mp3 = os.path.join(out, 'say%03d.mp3' % i)
     wav = os.path.join(out, 'say%03d.wav' % i)
-    synth_with_retries(text, mp3)
+    synth_with_retries(spoken_form(text), mp3)
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-i', mp3, '-ar', str(RATE), '-ac', '2', wav], check=True)
     with wave.open(wav, 'rb') as w:
         data = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).reshape(-1, 2).astype(np.float32) / 32768.0

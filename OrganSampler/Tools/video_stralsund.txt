@@ -5,11 +5,22 @@
 # The user's rules: everything the video does is seen - the cursor goes there, the element glows or is framed;
 # "say" lines are the narration (spoken by make_narration.py at their moment; keep a sentence under ~8 s).
 window 2560 1400
-wait 1500
+wait 800
 record start
-caption OrganSampler - Stralsund, St. Jakobi (Sonus Paradisi samples). One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings.
-say OrganSampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples.
-wait 14500
+caption OrganSampler. One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings. Load Configuration opens it.
+say OrganSampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples - and Load Configuration opens it.
+wait 13500
+load C:\Users\doma\AppData\Local\Temp\video\cfg\Stralsund_video.json
+wait 3600
+caption The load box: how the samples are held in memory, and where the file shall live. We load it where it is.
+say The load box offers the choices of every load: how the samples are held in memory, and where the file shall live. We load it where it is.
+loadbox own folder
+wait 9500
+click Load
+caption The organ comes in, division by division: the loading window shows the stop being read, the progress and the disk speed.
+say And the organ comes in, division by division: the loading window shows the stop being read, the progress, and the speed of the disk.
+waitload 240000
+wait 800
 caption The program did not find the Oberwerk's sample folders where the configuration expects them - the division says so. Click the notice and point it to the folder ...
 say The program did not find the Oberwerk's sample folders where the configuration expects them on this computer - the division says so. One click on the notice, and we point it to the folder where the samples are.
 alert 3|11500
@@ -78,6 +89,10 @@ slide 1|UW Principal 8|key|57|0|1800
 wait 800
 note 1|57|off
 wait 600
+caption The green thumbs at the top: pipes the stop never had, filled by the program from their neighbours - automatic extensions.
+say And the green thumbs at the top of the row: pipes this stop never had, filled by the program from their neighbours - automatic extensions, every one of them with a slider of its own.
+pointkey 1|UW Principal 8|94|6500
+wait 4600
 caption With the right mouse button a whole curve is painted over the sliders in one sweep - here the treble of every pipe.
 say And with the right mouse button, a whole curve is painted across the sliders in one sweep - here the treble of every pipe, a wave over the whole stop.
 tonerow 1|UW Principal 8
@@ -99,10 +114,14 @@ note 0|48|on
 wait 2200
 note 0|48|off
 wait 800
+caption Arrange mode: press any stop for two seconds and release - every button gets its red x and can be dragged.
+say To move stops, press any stop for two seconds and release: the console enters arrange mode - every button gets its red x, and the stops can be dragged.
+holdarrange 2|HW Octave 4
+wait 7500
 caption ... now two more ranks dragged into the open folder from other manuals: the Octave 4' ...
-say Now two more ranks join it, dragged into the open folder from other manuals: the Octave four of the Hauptwerk ...
+say Now two more ranks join the Cornet, dragged into the open folder from other manuals: the Octave four of the Hauptwerk ...
 drag 2|HW Octave 4|into|0|Cornet|copy
-wait 2800
+wait 4000
 caption ... and the Gedackt 8'.
 say ... and the Gedackt eight of the Positive.
 drag 1|UW Gedackt 8|into|0|Cornet|copy
@@ -120,23 +139,22 @@ note 0|48|on
 wait 2600
 note 0|48|off
 wait 600
-arrange off
 collapse 0|Cornet
 stop 0|Cornet|off
 wait 800
-caption Arrange mode: a stop dragged with the right mouse button into another division ...
-say Arrange mode. A stop dragged with the right mouse button into another division ...
+caption Still in arrange mode: a stop dragged with the right mouse button (or with Shift) into another division ...
+say Still in arrange mode: a stop dragged with the right mouse button - or with Shift held - into another division ...
 drag 2|HW Tromp 16|0|-1|0|copy
-wait 1800
+wait 4000
 caption ... becomes a transmission: the Trompete 16' of the Hauptwerk now plays from the pedal.
 say ... becomes a transmission. The Trompete sixteen of the Hauptwerk now speaks from the pedal.
 arrange off
 stop 0|HW Tromp 16|on
-wait 3400
+wait 4800
 note 0|41|on
 wait 2000
 note 0|41|off
-wait 600
+wait 2000
 caption Its voicing has a Transposition: an octave up, and the caption's footage follows - the same key, now at 8'.
 say Its voicing has a transposition. An octave up - and the caption follows: the same key, now at eight foot.
 expand 0|HW Tromp 16
@@ -162,6 +180,11 @@ click III/II 4'
 wait 1400
 click Close
 wait 600
+caption ... and here they are, under the header of the Hauptwerk keyboard.
+say ... and here they are, under the header of the Hauptwerk keyboard.
+glowcoupler 3-2-16|1600
+glowcoupler 3-2-4|1600
+wait 400
 caption The new couplers sit under the header of their keyboard. The Oberwerk principal on the Hauptwerk keys: unison, then the 4' adds the upper octave, the 16' the lower.
 say The new couplers sit under the header of their keyboard. The Oberwerk principal, played from the Hauptwerk keys through the unison coupler ... now the four-foot coupler adds the upper octave ... and the sixteen-foot the lower one.
 stop 3|OW Principal 8|on
@@ -205,7 +228,7 @@ say A right click on the swell bar opens the shutters' settings: how far they at
 settings swell 1
 wait 3200
 closedialog Swell settings
-wait 600
+wait 2200
 caption The tremulant comes in while the flute sounds.
 say The tremulant comes in while the flute sounds.
 wait 400
@@ -232,7 +255,7 @@ say Program your own crescendo: a right click on its display opens the crescendo
 settings crescendo
 wait 3400
 closedialog Crescendo
-wait 800
+wait 3200
 caption The general crescendo: 40 steps of this organ, stops and couplers added one by one while the keys are held.
 say The general crescendo: forty steps of this organ, stops and couplers added one by one while the keys are held - and taken away again.
 click Cresc.
@@ -272,10 +295,10 @@ wait 4200
 click Show Trsm.
 wait 5800
 click Close
-wait 800
+wait 1800
 caption Save Configuration keeps everything. Portable: share the organ on GitHub.
 say Save Configuration keeps everything. A portable configuration shares the organ with the world - on GitHub.
-wait 8500
+wait 10000
 caption
 wait 600
 record stop
