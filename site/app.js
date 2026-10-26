@@ -8,9 +8,19 @@ const views = {
 };
 for (const button of document.querySelectorAll("[data-view]")) {
   button.addEventListener("click", () => {
+    const videoFigure = document.getElementById("video-figure"), screenshotFigure = document.getElementById("screenshot-figure"), video = document.getElementById("demo-video");
+    if (button.dataset.view === "video") {
+      for (const peer of document.querySelectorAll("[data-view]")) peer.setAttribute("aria-pressed", String(peer === button));
+      screenshotFigure.hidden = true;
+      videoFigure.hidden = false;
+      return;
+    }
     const view = views[button.dataset.view];
     if (!view) return;
     for (const peer of document.querySelectorAll("[data-view]")) peer.setAttribute("aria-pressed", String(peer === button));
+    if (video) video.pause();
+    videoFigure.hidden = true;
+    screenshotFigure.hidden = false;
     const img = document.getElementById("screenshot");
     img.src = "assets/" + view.file;
     img.alt = view.alt;

@@ -12,8 +12,44 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
-## [0.8.205] - 2026-10-26
+## [0.8.206] - 2026-10-26
 
+### Added
+- A guided tour of a teaching organ (the Rural Organ demo, or any configuration
+  with "guidedTour": true): ten steps with an arrow to the element and a link
+  to the manual chapter - a stop and its corner button, the voicing row, a stop
+  folder, a transmission, arranging, the division header, the couplers, the
+  Stop List, the temperaments, saving. It starts by itself after the load; a
+  "Guided tour" button in the top bar brings it back; "Don't show this tour
+  again for this organ" keeps it away.
+- The instruction video is made by the program itself (ORGAN_VIDEO_SCRIPT,
+  Tools/video_stralsund.txt + Tools/make_video.ps1): a drawn cursor goes to
+  every element and presses it - a missing sample folder found through the
+  notice, its menu and a folder chooser, stops drawn and played, the voicing
+  row with alias, the stop volume and one pipe's slider dragged while they
+  sound, ranks dragged into a stop folder, a transmission dragged into the
+  pedal and transposed an octave, couplers ticked in the Couplers dialog, a
+  combination, the swell shutters, the tremulant, the general crescendo, the
+  temperaments chosen in their window under a held chord, the Stop List; the
+  frames are the program's own windows with captions, the sound is the
+  engine's own recording with a spoken narration; ffmpeg joins them. The
+  website shows the video as a tab beside the screenshots.
+- Glow on the console: a button pressed with the left mouse button and a stop
+  being dragged glow for a moment, as in the video. Configuration Editor:
+  "Glow: a pressed button and a dragged stop glow for a moment" (on; off
+  brings the console as it was).
+
+### Fixed
+- The orange progress strip of the last stop whose filled pipes were built
+  stayed half-way on its button until a mouse-over repainted it.
+- Loading another organ: the picture of the old stops kept over the workspace
+  is composed per division under the new organ's coupler rows (the new
+  couplers and the old stops showed through each other).
+- A configuration whose library root is named otherwise than the folder on
+  this computer (an old "haupwerk" root): its trees are found one level
+  around every sample location by their path alone.
+
+## [0.8.205] - 2026-10-26
 ### Added
 - The loading window has a third line, "Reading from the disk at N MB/s",
   refreshed every 5 seconds from the bytes of sample files read (the user's

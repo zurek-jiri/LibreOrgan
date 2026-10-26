@@ -89,7 +89,10 @@ private:
     LeftOnlyTextButton temperamentsButton{ "Temperaments" };
     LeftOnlyTextButton configurationEditorButton{ "Configuration Editor" };
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
+    LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
+    GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
+    bool consoleGlow = true;
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
     bool ramLogPending = false;            // "RAM held after the load" to be logged once the copies are built (0.8.184)
     bool loadConfigurationAgain = false;   // the test hook ORGAN_LOAD_CONFIGURATION_AGAIN is the file to take now (0.8.184)
@@ -155,6 +158,21 @@ private:
     // load (a merge, a reload) replaces the instrument (0.8.154: the grid went
     // blank for the minutes a second organ took to load).
     std::unique_ptr<juce::ImageComponent> frozenGrid;
+    // 0.8.206: the picture is composed per division - the old stops of a division under
+    // the NEW header and coupler rows (0.8.204's picture showed them through each other).
+    juce::Image frozenPicture;
+    std::vector<std::pair<int, juce::Rectangle<int>>> frozenAreas;   // the grid areas of the picture (container coordinates)
+    juce::Point<int> frozenViewPosition;
+    // The guided tour of a teaching organ (0.8.206, GuidedTour.h): offered when the
+    // configuration carries "guidedTour": true (or is the Rural Organ demo).
+    std::unique_ptr<class GuidedTour> guidedTour;
+    bool guidedTourAvailable = false;
+    juce::StringArray guidedTourDismissed;   // configuration names whose tour was closed with "Don't show again" (machine-specific)
+    void startGuidedTour();
+    // ORGAN_VIDEO_SCRIPT (0.8.206): an instruction video's frames and sound, driven by a script file.
+    struct VideoScript;
+    std::shared_ptr<VideoScript> video;   // shared_ptr: the struct is defined late in the cpp, after the destructor
+    void startVideoScript(const juce::File& script, const juce::File& folder);
     void freezeGrid();
     void thawGrid();
     // The empty instrument (no folder tree, no stop): a hint in the stop

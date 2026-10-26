@@ -1,0 +1,282 @@
+# The instruction video of OrganSampler on Stralsund, St. Jakobi (ORGAN_VIDEO_SCRIPT, 0.8.206).
+# Divisions: 0 Pedal, 1 UW, 2 HW, 3 OW. Keys: MIDI numbers. One step per line; "#" comments.
+# The configuration is Tools/make_video_config.py's copy: the Oberwerk's two trees point at a drive that does
+# not exist, so the video can show the missing-folder notice, the folder chooser and the loading window.
+# The user's rules: everything the video does is seen - the cursor goes there, the element glows or is framed;
+# "say" lines are the narration (spoken by make_narration.py at their moment; keep a sentence under ~8 s).
+window 2560 1400
+wait 1500
+record start
+caption OrganSampler - Stralsund, St. Jakobi (Sonus Paradisi samples). One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings.
+say OrganSampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples.
+wait 14500
+caption The program did not find the Oberwerk's sample folders where the configuration expects them - the division says so. Click the notice and point it to the folder ...
+say The program did not find the Oberwerk's sample folders where the configuration expects them on this computer - the division says so. One click on the notice, and we point it to the folder where the samples are.
+alert 3|11500
+wait 11500
+relocate 003136\pipe\OW|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003136
+say Any folder of the set will do: the program finds the sample trees around it, loads the missing stops, and remembers the place - next time it finds them by itself.
+caption ... the program finds the sample trees around the chosen folder, loads the division and remembers the place.
+waitfor OK|60000
+wait 2500
+click OK
+wait 1200
+caption MIDI: a right click on the keyboard symbol learns the keyboard - press a key, and the symbol blinks red with every note received.
+say MIDI. A right click on the keyboard symbol learns your keyboard: press any key on it - and from now on the symbol blinks red with every note it receives.
+learnkeyboard 2|48,55,64,67
+wait 10500
+caption A right click on a stop learns a MIDI control for it - a piston or a switch on your console; the stop follows it.
+say And a right click on a stop learns a MIDI control for it: a piston or a switch on your console - the stop follows it from then on.
+learnstop 2|HW Rohrflote 8
+wait 10500
+caption A stop is drawn with a click. Play.
+say A stop is drawn with a click. Let us play.
+stop 2|HW Rohrflote 8|on
+wait 2200
+chord 2|48,60,64,67|2600
+wait 3200
+caption The chorus: Octave 4' and the Mixture.
+say The chorus: the Octave four foot, and the Mixture.
+stop 2|HW Octave 4|on
+stop 2|HW Mixtur|on
+wait 1200
+chord 2|43,55,59,62,67|3000
+wait 3600
+stop 2|HW Mixtur|off
+stop 2|HW Octave 4|off
+caption The corner button opens the voicing: alias, transposition, volume, attack, every pipe.
+say The small corner button opens the voicing of a stop: its alias, transposition, volume, attack - and every single pipe.
+expand 2|HW Rohrflote 8
+wait 9200
+caption The alias is the caption of the button - type any name.
+say The alias is the caption of the button. Name it as you like.
+alias 2|HW Rohrflote 8|Rohrflöte
+wait 5200
+caption The stop volume, dragged while the chord sounds ...
+say The stop volume, dragged while the chord sounds.
+chord 2|53,57,60,65|7200
+wait 800
+slide 2|HW Rohrflote 8|stop|-12|2200
+wait 500
+slide 2|HW Rohrflote 8|stop|0|1800
+wait 1800
+collapse 2|HW Rohrflote 8
+stop 2|HW Rohrflote 8|off
+wait 600
+caption ... and every pipe has a slider of its own: the Positive's Principal 8', one pipe held - its slider lights green and is dragged.
+say And every pipe has a slider of its own. The Principal of the Positive: one pipe held, its slider lights green - we draw it down, and up again.
+stop 1|UW Principal 8|on
+expand 1|UW Principal 8
+wait 2200
+keyvolume 1|UW Principal 8
+wait 2400
+note 1|57|on
+wait 1000
+slide 1|UW Principal 8|key|57|-9|2200
+wait 500
+slide 1|UW Principal 8|key|57|0|1800
+wait 800
+note 1|57|off
+wait 600
+caption With the right mouse button a whole curve is painted over the sliders in one sweep - here the treble of every pipe.
+say And with the right mouse button, a whole curve is painted across the sliders in one sweep - here the treble of every pipe, a wave over the whole stop.
+tonerow 1|UW Principal 8
+wait 2400
+chord 1|52,55,59,64|9500
+wait 1200
+paint 1|UW Principal 8|tone|38|94|5200|7
+wait 1800
+collapse 1|UW Principal 8
+stop 1|UW Principal 8|off
+wait 600
+caption A stop folder: ranks under one button - the pedal Cornet [III]. One note ...
+say A stop folder gathers several ranks under one button - here the pedal Cornet, three ranks. One note.
+expand 0|Cornet
+wait 3500
+stop 0|Cornet|on
+wait 400
+note 0|48|on
+wait 2200
+note 0|48|off
+wait 800
+caption ... now two more ranks dragged into the open folder from other manuals: the Octave 4' ...
+say Now two more ranks join it, dragged into the open folder from other manuals: the Octave four of the Hauptwerk ...
+drag 2|HW Octave 4|into|0|Cornet|copy
+wait 2800
+caption ... and the Gedackt 8'.
+say ... and the Gedackt eight of the Positive.
+drag 1|UW Gedackt 8|into|0|Cornet|copy
+wait 1500
+caption The new ranks come in switched off: draw them ...
+say The new ranks come in silent. We draw them ...
+stop 0|HW Octave 4|on
+stop 0|UW Gedackt 8|on
+wait 800
+glow 0|Cornet|2600
+wait 1600
+caption ... and the Cornet, enriched.
+say ... and here is the Cornet, enriched: five ranks now.
+note 0|48|on
+wait 2600
+note 0|48|off
+wait 600
+arrange off
+collapse 0|Cornet
+stop 0|Cornet|off
+wait 800
+caption Arrange mode: a stop dragged with the right mouse button into another division ...
+say Arrange mode. A stop dragged with the right mouse button into another division ...
+drag 2|HW Tromp 16|0|-1|0|copy
+wait 1800
+caption ... becomes a transmission: the Trompete 16' of the Hauptwerk now plays from the pedal.
+say ... becomes a transmission. The Trompete sixteen of the Hauptwerk now speaks from the pedal.
+arrange off
+stop 0|HW Tromp 16|on
+wait 3400
+note 0|41|on
+wait 2000
+note 0|41|off
+wait 600
+caption Its voicing has a Transposition: an octave up, and the caption's footage follows - the same key, now at 8'.
+say Its voicing has a transposition. An octave up - and the caption follows: the same key, now at eight foot.
+expand 0|HW Tromp 16
+wait 3000
+shift 0|HW Tromp 16|12
+wait 1800
+glow 0|HW Tromp 16|2600
+wait 1400
+note 0|41|on
+wait 2000
+note 0|41|off
+wait 600
+collapse 0|HW Tromp 16
+stop 0|HW Tromp 16|off
+wait 400
+caption Couplers: the Couplers dialog lists every coupler this organ can have - tick what the console shall show.
+say Couplers live in their own dialog: every coupler this organ can have. Tick what the console shall show.
+click Couplers...
+wait 3500
+click III/II 16'
+wait 1400
+click III/II 4'
+wait 1400
+click Close
+wait 600
+caption The new couplers sit under the header of their keyboard. The Oberwerk principal on the Hauptwerk keys: unison, then the 4' adds the upper octave, the 16' the lower.
+say The new couplers sit under the header of their keyboard. The Oberwerk principal, played from the Hauptwerk keys through the unison coupler ... now the four-foot coupler adds the upper octave ... and the sixteen-foot the lower one.
+stop 3|OW Principal 8|on
+coupler 3-2-8|on
+wait 1200
+chord 2|50,57,62,65|12500
+wait 3600
+coupler 3-2-4|on
+wait 3400
+coupler 3-2-16|on
+wait 3800
+coupler 3-2-16|off
+coupler 3-2-4|off
+coupler 3-2-8|off
+stop 3|OW Principal 8|off
+caption Combinations: a piston brings a stored registration back - Set and a piston store one.
+say Combinations. A piston brings a stored registration back; Set and a piston store one.
+combination 8
+wait 2200
+chord 2|45,52,57,60|2800
+note 0|45|on
+wait 2800
+note 0|45|off
+wait 800
+click X
+wait 1000
+caption The swell shutters of a division: closed and opened by the bar in its header (or a MIDI pedal).
+say The swell shutters of a division: closed ... and opened again, by the bar in its header - or by a MIDI pedal.
+stop 1|UW Gedackt 8|on
+stop 1|UW Principal 8|on
+wait 400
+chord 1|55,59,62,67|8600
+wait 1000
+swell 1|0.05|2500
+wait 600
+swell 1|1|2500
+wait 1200
+stop 1|UW Principal 8|off
+caption A right click on the swell bar: the shutters' settings - attenuation when closed, the inertia of the shutters.
+say A right click on the swell bar opens the shutters' settings: how far they attenuate when closed, and how slowly they follow the pedal.
+settings swell 1
+wait 4800
+closedialog Swell settings
+wait 600
+caption The tremulant comes in while the flute sounds.
+say The tremulant comes in while the flute sounds.
+wait 400
+chord 1|52,55,59,64|21000
+wait 2200
+trem 1|on
+wait 4200
+caption Its settings - a right click on the Tremulant: the rate, dragged while the tone sounds - faster ... and slower.
+say And its settings, a right click on the Tremulant button: the rate, dragged while the tone sounds - faster ... and slower again.
+settings tremulant 1
+wait 4000
+dialogslider Tremulant settings|0|7.5|2600
+wait 1400
+dialogslider Tremulant settings|0|3.2|2600
+wait 1400
+dialogslider Tremulant settings|0|4.4|1200
+wait 400
+closedialog Tremulant settings
+wait 600
+trem 1|off
+stop 1|UW Gedackt 8|off
+caption The general crescendo: 40 steps of this organ, stops and couplers added one by one while the keys are held.
+say Program your own crescendo: a right click on its display opens the crescendo settings - Set and a step store the current stops and couplers in that step.
+settings crescendo
+wait 5200
+closedialog Crescendo
+wait 800
+caption The general crescendo: 40 steps of this organ, stops and couplers added one by one while the keys are held.
+say The general crescendo: forty steps of this organ, stops and couplers added one by one while the keys are held - and taken away again.
+click Cresc.
+wait 800
+chord 2|50,57,62,66|12500
+note 0|38|on
+wait 1500
+crescendo 0.5|4500
+wait 600
+crescendo 0|3800
+wait 800
+note 0|38|off
+click Cresc.
+wait 1000
+caption Temperaments: B major held on the principal while the temperament changes - equal, Pythagorean, quarter-comma meantone, equal.
+say Temperaments. A chord of B major, held on the principal while the temperament changes: equal ... Pythagorean, with its wide thirds ... quarter-comma meantone, where B major turns sour ... and equal again.
+stop 2|HW Octava 8|on
+click Temperaments
+wait 1500
+click Equal
+wait 1200
+chord 2|47,51,54,59,63|14500
+wait 1600
+click Pythagorean
+wait 3600
+click Meantone (-1/4)
+wait 3200
+click Equal
+wait 2800
+closedialog Temperaments
+wait 400
+stop 2|HW Octava 8|off
+caption The Stop List: load more sample folders, assign them to divisions, make transmissions - Show Trsm. lists them under their stops.
+say The Stop List - here the organ is built: more sample folders loaded, stops assigned to divisions, transmissions made. Show transmissions lists them under their stops - our Cornet, with the two ranks we gave it.
+stoplist open
+wait 6000
+click Show Trsm.
+wait 7500
+click Close
+wait 800
+caption Save Configuration keeps everything. Portable: share the organ on GitHub.
+say Save Configuration keeps everything. A portable configuration shares the organ with the world - on GitHub.
+wait 8500
+caption
+wait 600
+record stop
+end

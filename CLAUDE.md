@@ -1128,44 +1128,101 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   over (use a non-portable configuration of this machine, a portable one would ask for the root); quit the program
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
+  0.8.206 (Windows, every to-do of 26 Oct done): (1) PROGRESS STRIP: `StopRow::pollBuildProgress` repaints 5 more polls
+  after a build ended (`buildingSeen` is an int) - the one repaint after it fell on the flags still set and the last
+  stop built kept a half-way strip until a mouse-over. (2) FROZEN PICTURE vs COUPLERS: `Voicer::divisionGridAreas()`
+  (container coords: under each header's bottom + 4, the column matched by x) is taken with the snapshot
+  (`frozenPicture/frozenAreas/frozenViewPosition`) and `freezeGrid()` COMPOSES the picture after the new rebuild: every
+  division's old grid area drawn at the NEW grid area, transparent above (the new headers and coupler rows show live).
+  Test %TEMP%\test_frozen206.ps1 (Adlington -> Ashton, grid.png.frozen.png: II. starts lower than I. = under two
+  coupler rows). (3) GUIDED TOUR (`Source/GuidedTour.h`, header-only; the jucer lists no headers): an overlay child of
+  MainComponent taking no mouse, a `Box` (title "Tour n of N", TextLayout text, "Manual: <chapter>", Back / Next
+  (Finish) / Close, "Don't show this tour again for this organ") placed below/above/beside the target, a breathing
+  golden frame around the target and an arrow box -> frame, following the target at 30 Hz;
+  `MainComponent::startGuidedTour()` builds the 10 steps from the live grid (`Voicer::findRow(test)`,
+  `StopRow::buttonComponent()/voicingToggleComponent()`, `Voicer::headerButton(manual, "Tremulant")`, the top-bar
+  buttons; a step without its element is skipped). `guidedTourAvailable` = the file key "guidedTour": true OR a name
+  starting with "Rural Organ" (the old demo download), set in applyPortableConfiguration; the top-bar button "Guided
+  tour" (key guidedTour in headerButtons; `isHeaderButtonShown` returns guidedTourAvailable, no setting, skipped in the
+  Editor's toggles); auto-start through runWhenLoaded + a 1.5 s retry while `ModalComponentManager` holds anything
+  (the Rural "Nested folder trees" box stood over the box), never under ORGAN_LOAD_CONFIGURATION / ORGAN_VIDEO_SCRIPT;
+  "guidedTourDismissed" = a machine-specific StringArray of configuration names. The key is in
+  F:\Suchy_rejstrik\Kobrle\Rural Organ.json and in configurations/rural-organ/Rural-Organ.zip's json (%TEMP%\rural_tour.py).
+  (4) VIDEO SCRIPT: `MainComponent::VideoScript` (a nested struct defined late in the cpp -> a `std::shared_ptr`
+  member: a unique_ptr needs the complete type at ~MainComponent), hook `ORGAN_VIDEO_SCRIPT=<file>` +
+  `ORGAN_VIDEO_OUT=<folder>` started by runWhenLoaded: one command per line (window / wait / waitfor BUTTON|MS / caption
+  / record / click TEXT (any button of any window: dialogs too) / expand / collapse / alias / volume / slide (the stop
+  volume slider or a key's slider dragged) / shift (the Transposition box) / stop / trem / coupler / combination [set] N /
+  swell M|TO|MS / crescendo TO|MS / note / chord / arrange / drag (cursor + glow + the button's picture travelling) /
+  drop / relocate / stoplist / closedialog / temperament / highlight / end - listed above the struct), a 40 ms timer
+  steps it and takes a frame every 100 ms while recording: the top-level window's own paint + every other visible
+  desktop window at its place (dialogs, the Temperaments window, popup menus) + a drawn arrow cursor that glides to
+  every element and presses there + a golden halo/frame on the element (1.2-2 s) + the caption bar (h/13, 0.36 text);
+  PNGs f%05d.png by a 3-thread ThreadPool with their times, `engine.startRecording` = audio.wav, `frames.txt` = the
+  ffmpeg concat list. THE USER'S VIDEO RULES (26 Oct 2026): everything the video does must be SEEN and glow for a
+  moment - no action from behind the scenes ("My jsme lidé!"): a temperament is chosen in the open Temperaments window
+  (click rows; the config's own temperament is Neidhardt I, click Equal first), couplers in the Couplers dialog (tick
+  "III/II 16'", Close, they appear under the header), a missing folder through the notice -> its menu -> a folder
+  chooser (JUCE's own `FileBrowserComponent` + `FileChooserDialogBox` opened by the script: the system's dialog cannot
+  be pictured; the row found by selectRow + getSelectedFile, "Choose" pressed) -> the loading window -> the "Sample
+  folders found" box -> OK (THE MENU IS A REPLICA, `VideoScript::MenuReplica`, painted with the look-and-feel's own
+  drawPopupMenuBackground/drawPopupMenuItem from the texts showMissingTreesMenu gives: a real JUCE PopupMenu dismisses
+  itself within 10 ms when the process is not in the foreground - juce_PopupMenu.cpp `menuWasHiddenBecauseOfAppChange`
+  - and the user watches every recording from another window, so three runs pictured no menu at all; never click the
+  real notice in a video); the voicing shows the stop volume slider dragged under a held chord and one pipe's slider
+  dragged while that pipe sounds (green); new ranks dragged into a stop folder come in OFF - draw them before the
+  second note; a transmission's Transposition +12 played on the same key (the octave jump; the caption's footage
+  follows); the tremulant switched on while the flute sounds; the swell closed/opened and the crescendo up/down under
+  a held chord; the mixture once, a single pedal note for the Cornet, no tremulant in the stored combination, the
+  Rohrflöte off before the transmission; the Load/loading windows flash by (the OW reload shows the three-line loader).
+  `Voicer::headerSwell`, `StopRow::volumeSliderComponent/keySliderComponent/shiftBoxComponent/buttonComponent/
+  voicingToggleComponent/applyAlias/volumeHeaderComponent/openVolumeRow`, `Voicer::scriptCellCentre/scriptIndentPoint/
+  scriptDropAt/scriptDrop/scriptArrange/headerButton("prefix*")`. FRAMES: 25 a second - the window and its dialogs are
+  snapshotted 10 times a second into `baseFrame` (a 2560 x 1400 snapshot costs ~100 ms), the overlays (cursor, the
+  travelling button over 2.2 s, glows, the red "!" of `alert`, the caption) are drawn on a copy for every frame, a
+  6-thread PNG pool, frames dropped when > 40 wait (the 10 fps capture made a drag a jump of 11 pictures: "nevidím, jak
+  se rejstříky přesouvají"). THE SCREEN SHOWS THE SAME: `VideoScript::Overlay` (a child of the top-level window,
+  no mouse, `drawOverlays` shared with the frames, repainted on the dirty union of cursor/travel/glow rects every
+  tick, `suppressOverlay` while the base snapshot is taken) - the user watches the live window and took the
+  invisible overlays for a missing drag ("já prostě nevidím, jak táhneš"). `paint M|STOP|tone|FROM|TO|MS|dB[|waves]`
+  = the right-button painting of a key row (`StopRow::beginScriptPaint/scriptPaintAt/endScriptPaint` ->
+  paintKeySlidersAt, the cursor's ring blue for the right button, a sine sweep), `tonerow` unfolds "Treble per key".
+  MIDI LEARN in the video (`learnkeyboard M|KEYS`, `learnstop M|STOP`): the right click on the keyboard symbol
+  (header local (5,7,34,24)) or the stop -> `rightClickMenu` (replica items as showKeyboardLearnMenu / showMidiLearnMenu
+  give them) -> `beginKeyboardLearn` / `beginMidiLearn("stop:<name>")` (their real AlertWindows, captured) -> after
+  2.7 s the window's `exitModalState(1)` = "the MIDI message arrived" (pendingButtonLearnTarget cleared under the lock;
+  no binding is written) -> the symbol blinks red (`Voicer::pulseManualActivity`) while notes play / the stop toggles
+  six times. Every script note/chord sets `blinkUntil[manual]` -> 120 ms red pulses every 300 ms while it plays (the
+  user: "musí blikat klaviatura II."). `settings crescendo|swell M|tremulant M` = the right click + replica menu +
+  the real settings dialog (showCrescendoDialog / showFeatureSettings); `dialogslider "Tremulant settings"|0|HZ|MS`
+  drags the Rate slider of the open dialog (the engine follows); `glow M|STOP|MS` frames a caption that changed
+  (the transmission stays at +12 = "HW Tromp 8' (Trsm.)", the Cornet's [V]); every `actOn` press glows too.
+  GLOW IN THE PROGRAM (the user: "dej do configuration volbu, jestli uživatel chce ty různé glow vidět"):
+  `GlowLayer` (UIControls.h after HintSheen) = a transparent child of MainComponent over everything (bounds and
+  toFront in resized), a recursive mouse listener (`addMouseListener(&glowLayer, true)`): a left press on any
+  juce::Button glows 0.9 s, a drag over a button keeps it glowing; `consoleGlow` (machine-specific key, default on),
+  Editor toggle "Glow: a pressed button and a dragged stop glow for a moment" after "Load the last configuration
+  at startup". The video's own overlays are separate (VideoScript). NARRATION: `say TEXT` writes "ms<TAB>text" into narration.txt at its moment;
+  Tools/make_narration.py (edge-tts 7.3.1 on Python39 - needs `aiohttp<3.10` there, the new aiohttp breaks on 3.9's
+  typing; voice en-GB-SoniaNeural, rate -4 %; the service answers "NoAudioReceived" now and then - 6 tries) speaks each
+  line, moves a line that would start over the previous one (reported "moved ... -> ..."; lengthen the script's wait)
+  and writes narration.wav; make_video.ps1 mixes it: organ loudnorm -18 LUFS ducked by sidechaincompress under the
+  speech (-15 LUFS). The texts are the user's wish: "trochu poeticky", every step told. Tools/make_video.ps1 runs the
+  program (ORGAN_LOAD_CONFIGURATION + the script; settings.json restored) and ffmpeg (concat + audio [+ narration] ->
+  organsampler.mp4: x264 crf 20, 30 fps, 1920 wide; organsampler.gif: 8 fps, 960 px, 128 colours);
+  Tools/video_debug_menu.txt = the notice/menu/chooser alone (a 1.5-minute check); Tools/video_stralsund.txt = the Stralsund script (divisions
+  0 Ped, 1 UW, 2 HW, 3 OW; stops by name prefix - "HW Tromp 16" in division 0 is the transmission row, "Tromp" alone
+  would hit "Ped Trompete 8'" by caption; the coupler id "3-2-4" = OW on HW at 4', label "III/II 4'", the dialog's
+  toggles carry the label); Tools/make_video_config.py makes %TEMP%\video\cfg\Stralsund_video.json from the published
+  Stralsund json: the OW trees on a drive X: that does not exist (the missing-folder demo), release fades 120 ms (the
+  user: 70 ms "příliš krátký crossfade"), every stored combination's tremulant off. Tools/video_tour_test.txt steps
+  the tour through. The frames are the program's own paint - nothing of the desktop can get in; the user still wants
+  to be told before a recording, and watches the run (his remarks come mid-recording). Website: the video is a TAB of
+  the screenshot switcher ("Video, with sound", data-view="video": #video-figure shown, #screenshot-figure hidden;
+  the screenshot stays the default - the user: "ten existující screenshot nezahazuj"); README: the screenshot first,
+  organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
+  children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
-- TUTORIAL RURAL ORGAN + INSTRUCTION VIDEO (the user, 26 Oct 2026, "jen zapis do to-do"): (A) the Rural Organ demo
-  configuration as a TEACHING organ - arrows with captions at the essential features, "like a comic", each with a
-  link to the manual chapter that explains it: making a transmission / extension, a stop folder with child stops
-  (a Cornet), moving stops between divisions (arrange mode), adding couplers, adding stops from a new folder (Stop
-  List). Design idea: an in-app guided tour on the HintSheen mechanism (UIControls.h: golden band + sliding arrow
-  already point at buttons) - a sequence of steps, each an arrow + a caption box with "Next" and a manual link
-  (showManualSection), started from the Rural Organ (a configuration key "tutorial" or a Help button), skippable,
-  never shown on other organs; the captions in English, the chapters named as the manual's links name them. (B) an
-  instruction video for the website and GitHub (maybe instead of the screenshot; Stralsund rather than Rural for
-  the picture): expanding the voicing and changing a pipe's volume, renaming a stop (alias), making a stop folder
-  and indenting ranks into a Cornet, dragging stops over the grid, making transmissions/extensions (transposition
-  against the parent stop), changing the tuning, adding couplers, adding stops through the Stop List. What I can
-  do: a scripted screen video from the program's OWN frames - the hooks (ORGAN_TEST_CLICK, ORGAN_TEST_DROP,
-  ORGAN_TEST_EXPAND, ORGAN_TEST_NEW_FOLDER, ORGAN_TEST_TRANSPOSITION, ORGAN_TEST_SNAPSHOT/DIALOG_SNAPSHOT ...) drive
-  each step, a snapshot after each, a synthetic cursor and caption frames drawn in, stitched with ffmpeg into an
-  MP4/GIF - deterministic, redoable after every version; a real screen recording with the mouse moving needs Windows
-  (ffmpeg gdigrab + SendInput) at a time the user is not at the machine, and narration/music is his. GitHub README
-  cannot embed a player: a GIF or a linked MP4 (the website can embed <video>). Ask the user which: the in-app tour,
-  the frame-built video, or both; and which organ for the video (he said Stralsund).
-- FILLED-PIPES PROGRESS TRACK STUCK (the user, 26 Oct 2026, to do next): when the copies of the filled pipes are
-  built, the LAST stop built often keeps its orange progress fill stuck half-way on the button, and only a mouse-over
-  repaints it away. The button's track (the dark track / orange fill along the bottom of a stop button, manual 4.4)
-  is not repainted after the final copy: the stop's last progress notification or the "build ended" state must
-  trigger a repaint of that button (and of every stop still showing a partial fill) when the build queue empties -
-  not only on the next progress tick or a mouse event. Look at where the fill share is painted in voicer.cpp (the
-  stop button's paint with the copy progress) and where the copy build posts progress; the end-of-build path must
-  repaint the stop buttons once more.
-- FROZEN GRID PICTURE vs THE NEW COUPLERS (the user, 26 Oct 2026, to do next; "je to lepsi s tema sesedlyma
-  rejstriky, ale ted se nactou nove spojky a stare rejstriky se se spojkami prekryvaji"): the 0.8.204 picture of the
-  old stops (laid out in the new division count) is placed over the workspace from the top, but the new organ's
-  coupler rail (rebuildCouplerRail in applyPortableConfiguration, the rows of coupler buttons under each division
-  header) is taller or shorter than the old one, so the new couplers paint through/under the dimmed old stops. The
-  picture must respect the NEW rail: either take the snapshot of the stop grid only (below the coupler rows) and
-  place it under the new rail, or rebuild the rail of the new configuration (couplers from the new file) BEFORE
-  the snapshot so the picture already carries the new coupler rows, or leave the rail area out of the picture
-  (clip the ImageComponent to the grid area under the new rail). Check what stopsViewport holds (headers + couplers
-  + grid?) and where the rail lives; test with test_frozen.sh (Adlington -> Ashton: Ashton has many couplers).
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was

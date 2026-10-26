@@ -1,0 +1,30 @@
+# A test of the guided tour through the video script (0.8.206): the Rural Organ loaded, the tour
+# opened from its top-bar button and stepped through; the frames show the box and the arrows.
+window 1920 1120
+wait 1500
+record start
+caption The guided tour of the Rural Organ.
+click Guided tour
+wait 2500
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Next
+wait 2000
+click Finish
+wait 1500
+record stop
+end

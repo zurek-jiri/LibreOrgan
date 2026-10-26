@@ -52,6 +52,8 @@ p { margin-bottom: 1.1rem; }
 .app-preview { margin: 0; overflow: hidden; background: #0f1012; border: 1px solid var(--line); border-radius: 14px; }
 .app-preview > a { display: block; }
 .app-preview img { width: 100%; height: auto; display: block; }
+.app-preview video { width: 100%; height: auto; display: block; background: #000; }
+.app-preview[hidden] { display: none; }
 figcaption { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1rem 1.4rem; background: var(--panel); color: var(--ink); font-size: 1rem; }
 figcaption a { flex-shrink: 0; font-weight: 650; }
 .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.2rem 2.6rem; margin-top: 3rem; }

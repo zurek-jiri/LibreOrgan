@@ -334,3 +334,69 @@ private:
     size_t current = 0;    // the button of this sweep
     float phase = -1.0f;   // < 0 between the sweeps
 };
+
+// A transparent layer over the whole console (0.8.206): a button pressed with the left mouse button and a stop
+// being dragged glow for a moment with the golden halo of the instruction video (the user asked for the glows in
+// the program too, with a switch: the setting "consoleGlow", Configuration Editor "Glow ..."). It is a mouse
+// listener of the main component (every child's events reach it) and takes no mouse itself.
+class GlowLayer final : public juce::Component, private juce::Timer
+{
+public:
+    GlowLayer() { setInterceptsMouseClicks(false, false); setOpaque(false); }
+    bool enabled = true;
+    void glow(juce::Component* target, double ms)
+    {
+        if (!enabled || target == nullptr) return;
+        const double until = juce::Time::getMillisecondCounterHiRes() + ms;
+        for (auto& item : items)
+            if (item.target == target) { item.until = juce::jmax(item.until, until); return; }
+        items.push_back({ target, until });
+        toFront(false);
+        if (!isTimerRunning()) startTimerHz(30);
+        repaint(areaOf(target));
+    }
+    void mouseDown(const juce::MouseEvent& event) override
+    {
+        if (event.mods.isLeftButtonDown() && dynamic_cast<juce::Button*>(event.eventComponent) != nullptr) glow(event.eventComponent, 900.0);
+    }
+    void mouseDrag(const juce::MouseEvent& event) override
+    {
+        if (dynamic_cast<juce::Button*>(event.eventComponent) != nullptr) glow(event.eventComponent, 400.0);   // a dragged stop glows as long as it is dragged
+    }
+    void paint(juce::Graphics& g) override
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        for (const auto& item : items)
+        {
+            if (item.target == nullptr || !item.target->isShowing() || now >= item.until) continue;
+            const auto r = getLocalArea(item.target, item.target->getLocalBounds()).toFloat();
+            const float fade = (float)juce::jlimit(0.0, 1.0, (item.until - now) / 300.0);
+            const float pulse = (0.55f + 0.45f * (float)std::sin(now / 110.0)) * fade;
+            for (int ring = 4; ring >= 1; --ring)
+            {
+                g.setColour(juce::Colour(0xffffd36b).withAlpha(pulse * 0.16f * (float)(5 - ring)));
+                g.drawRoundedRectangle(r.expanded(3.0f + 4.0f * (float)ring), 8.0f, 5.0f);
+            }
+        }
+    }
+private:
+    struct Item { juce::Component::SafePointer<juce::Component> target; double until; };
+    juce::Rectangle<int> areaOf(juce::Component* target) const
+    {
+        return target != nullptr && target->isShowing() ? getLocalArea(target, target->getLocalBounds()).expanded(26) : juce::Rectangle<int>();
+    }
+    void timerCallback() override
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        juce::Rectangle<int> dirty;
+        for (auto it = items.begin(); it != items.end();)
+        {
+            const auto a = areaOf(it->target);
+            if (!a.isEmpty()) dirty = dirty.isEmpty() ? a : dirty.getUnion(a);
+            if (it->target == nullptr || now >= it->until + 40.0) it = items.erase(it); else ++it;
+        }
+        if (!dirty.isEmpty()) repaint(dirty);
+        if (items.empty()) stopTimer();
+    }
+    std::vector<Item> items;
+};

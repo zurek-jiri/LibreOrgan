@@ -43,7 +43,7 @@ public:
     // Repaints while the stop's filled-pipe copies are being built (the progress
     // strip on the button) and once more when the build is over.
     void pollBuildProgress();
-    bool buildingSeen = false;
+    int buildingSeen = 0;   // polls still to repaint after the build ended (0.8.206)
     void updateFromStop();           // sync UI with stop's current per-key gains and global db
     void refreshEnabledColour();     // the button's colour from the stop's (or transmission's) on/off state
     void setNoteActive(int note, bool active);   // highlight slider when note is held
@@ -71,6 +71,28 @@ public:
     // The One-shot switch of a stop (0.8.158): on/off, overriding the One-shot Patterns.
     std::function<void(Stop*, bool)> oneShotRequest;
     juce::Rectangle<int> getStopButtonBounds() const { return stopButton.getBounds(); }
+    // 0.8.206 (the guided tour, the video script): the button and the corner "+" as components, the alias set as the box sets it.
+    juce::Component& buttonComponent() noexcept { return stopButton; }
+    juce::Component& voicingToggleComponent() noexcept { return voicingToggle; }
+    void applyAlias(const juce::String& text) { aliasBox.setText(text, juce::dontSendNotification); aliasChanged(); }
+    juce::Slider* volumeSliderComponent() noexcept { return &globalSlider; }                    // the stop volume slider (video script)
+    juce::Slider* keySliderComponent(int note) noexcept                                          // the volume slider of one key (video script)
+    { const int idx = note - noteMin; return idx >= 0 && idx < keySliders.size() ? keySliders[idx] : nullptr; }
+    juce::ComboBox& shiftBoxComponent() noexcept { return shiftBox; }                           // the Transposition box (video script)
+    juce::Component& volumeHeaderComponent() noexcept { return volumeHeader; }                  // the "Volume per key" header (video script)
+    void openVolumeRow() { if (!volumeRowShown() && toggleSection) toggleSection(0); }          // unfolds the per-key volume sliders (video script)
+    juce::Component& toneHeaderComponent() noexcept { return toneHeader; }                      // the "Treble per key" header (video script)
+    void openToneRow()                                                                           // unfolds the per-key treble sliders (video script)
+    {
+        auto* t = transmission();
+        if (!(t != nullptr ? t->toneKeysExpanded : stop->toneKeysExpanded) && toggleSection) toggleSection(1);
+    }
+    juce::Slider* toneSliderComponent(int note) noexcept
+    { const int idx = note - noteMin; return idx >= 0 && idx < toneSliders.size() ? toneSliders[idx] : nullptr; }
+    // The right-button painting of a key row as the mouse does it (video script): begin, the points swept, end.
+    void beginScriptPaint(bool tone) { keySliderPaintActive = true; paintRow = tone ? &toneSliders : &keySliders; lastPaintedKeySlider = -1; }
+    void scriptPaintAt(juce::Point<int> screenPosition) { paintKeySlidersAt(screenPosition); }
+    void endScriptPaint() { keySliderPaintActive = false; paintRow = nullptr; lastPaintedKeySlider = -1; }
     // Development (ORGAN_DUMP_GRID): where the first line's widgets are and whether they show.
     juce::String describeLineOne() const
     {
@@ -331,6 +353,21 @@ public:
     // are counted or switched: never only the stops with samples of their own.
     struct GridItem { int manual = 0; Stop* stop = nullptr; int transmission = -1; bool folder = false; bool enabled = false; juce::String caption; };
     std::vector<GridItem> gridItems() const;
+    // 0.8.206: the stop grid area of every division of the last layout (container
+    // coordinates) - under the header with its coupler rows, down to the bottom; the
+    // frozen picture of a load is composed from these per division.
+    std::vector<std::pair<int, juce::Rectangle<int>>> divisionGridAreas() const;
+    // 0.8.206 (the guided tour, the video script): the first row that satisfies the test, a division header's button by its text.
+    StopRow* findRow(const std::function<bool(const StopRow&)>& test) const;
+    juce::Component* headerButton(int manual, const juce::String& text) const;
+    juce::Component* headerSwell(int manual) const;    // the swell bar of a division header (the video script drives it)
+    // The video script (0.8.206): the arrange mode entered/left, an item dropped on a
+    // cell of a division as the mouse would drop it (column < 0: the first free cell).
+    void scriptArrange(int manual, bool on) { if (on) enterArrangeMode(manual); else exitArrangeMode(); }
+    bool scriptDrop(int manual, const juce::String& name, int targetManual, int column, int row, bool duplicate);
+    bool scriptCellCentre(int targetManual, int column, int row, juce::Point<int>& screen) const;       // the centre of a cell (column -1: the first free cell)
+    bool scriptIndentPoint(int masterManual, const juce::String& masterName, juce::Point<int>& screen) const;   // a point on the open voicing of a stop folder (a drop there indents)
+    bool scriptDropAt(int manual, const juce::String& name, juce::Point<int> screen, bool duplicate);  // the drop at a screen point as the mouse would make it
     void resetAll(bool resetGrid = true);   // reset voicing; optionally also stop grids and the stop pool
     // Forgets the grid cells of a division's own stops (transmissions keep theirs):
     // the next layout places them in load order (the Stop building table's order).

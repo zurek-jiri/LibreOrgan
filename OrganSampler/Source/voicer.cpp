@@ -1753,12 +1753,117 @@ void StopRow::pollBuildProgress()
 {
     const bool building = stop != nullptr
         && (stop->copiesBuilding.load(std::memory_order_acquire) || stop->copiesQueued.load(std::memory_order_acquire));
-    if (building || buildingSeen) repaint(stopButton.getBounds());
-    buildingSeen = building;
+    // A few polls more after the build ended (0.8.206): the one repaint after it
+    // could still fall on the flags being cleared, and the last stop built kept a
+    // half-way orange strip until a mouse-over repainted it (the user, 26 Oct).
+    if (building) buildingSeen = 5;
+    if (building || buildingSeen > 0) repaint(stopButton.getBounds());
+    if (!building && buildingSeen > 0) --buildingSeen;
 }
 
 Voicer::~Voicer()
 {
+}
+
+std::vector<std::pair<int, juce::Rectangle<int>>> Voicer::divisionGridAreas() const
+{
+    // A header is matched to its division column by the x it was laid out at.
+    std::vector<std::pair<int, juce::Rectangle<int>>> areas;
+    for (auto* header : sectionHeaders)
+    {
+        if (header == nullptr || header->getParentComponent() == nullptr) continue;
+        for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+            if (columnBounds[(size_t)manual].getWidth() > 0 && columnBounds[(size_t)manual].getX() == header->getX()
+                && containerOf(manual) == header->getParentComponent())
+            {
+                const int top = header->getBottom() + 4;
+                areas.push_back({ manual, juce::Rectangle<int>(header->getX(), top, header->getWidth(), juce::jmax(0, header->getParentComponent()->getHeight() - top)) });
+                break;
+            }
+    }
+    return areas;
+}
+
+bool Voicer::scriptCellCentre(int targetManual, int column, int row, juce::Point<int>& screen) const
+{
+    for (const auto& cell : compactCells)
+    {
+        if (cell.manual != targetManual) continue;
+        if (column >= 0 ? (cell.column != column || cell.row != row) : cell.key.isNotEmpty()) continue;
+        auto* c = containerOf(cell.manual);
+        if (c == nullptr) c = uiContainer;
+        if (c == nullptr) return false;
+        screen = c->localAreaToGlobal(cell.bounds).getCentre();
+        return true;
+    }
+    return false;
+}
+
+bool Voicer::scriptIndentPoint(int masterManual, const juce::String& masterName, juce::Point<int>& screen) const
+{
+    // The open voicing of the folder: a point under its button, inside the row's field.
+    for (auto* r : stopRows)
+        if (r != nullptr && !r->isTransmission() && r->getStop() != nullptr && r->getStop()->primaryManual == masterManual && r->isExpanded()
+            && (r->getStop()->name == masterName || r->getStop()->name.startsWith(masterName) || r->caption().contains(masterName)))
+        {
+            const auto button = r->getStopButtonBounds();
+            screen = r->localPointToGlobal(juce::Point<int>(button.getCentreX(), juce::jmin(r->getHeight() - 4, button.getBottom() + 26)));
+            return true;
+        }
+    return false;
+}
+
+bool Voicer::scriptDropAt(int manual, const juce::String& name, juce::Point<int> screen, bool duplicate)
+{
+    StopRow* dragged = nullptr;
+    for (auto* r : stopRows)
+        if (r != nullptr && !r->isTransmission() && r->getStop() != nullptr && r->getStop()->primaryManual == manual
+            && (r->getStop()->name == name || r->getStop()->name.startsWith(name) || r->caption().contains(name))) { dragged = r; break; }
+    if (dragged == nullptr) return false;
+    enterArrangeMode(manual);
+    dropItem(manual, dragged->getStop()->name, dragged, screen, duplicate);
+    return true;
+}
+
+bool Voicer::scriptDrop(int manual, const juce::String& name, int targetManual, int column, int row, bool duplicate)
+{
+    juce::Point<int> where;
+    return scriptCellCentre(targetManual, column, row, where) && scriptDropAt(manual, name, where, duplicate);
+}
+
+StopRow* Voicer::findRow(const std::function<bool(const StopRow&)>& test) const
+{
+    for (auto* row : stopRows)
+        if (row != nullptr && row->getStop() != nullptr && test(*row)) return row;
+    return nullptr;
+}
+
+juce::Component* Voicer::headerButton(int manual, const juce::String& text) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return nullptr;
+    for (auto* header : sectionHeaders)
+    {
+        if (header == nullptr || header->getParentComponent() == nullptr) continue;
+        if (columnBounds[(size_t)manual].getWidth() <= 0 || columnBounds[(size_t)manual].getX() != header->getX() || containerOf(manual) != header->getParentComponent()) continue;
+        for (int i = 0; i < header->getNumChildComponents(); ++i)
+            if (auto* button = dynamic_cast<juce::Button*>(header->getChildComponent(i)); button != nullptr && button->isVisible()
+                && (button->getButtonText() == text || (text.endsWithChar('*') && button->getButtonText().startsWith(text.dropLastCharacters(1)))))
+                return button;
+    }
+    return nullptr;
+}
+
+juce::Component* Voicer::headerSwell(int manual) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return nullptr;
+    for (auto* header : sectionHeaders)
+    {
+        if (header == nullptr || header->getParentComponent() == nullptr) continue;
+        if (columnBounds[(size_t)manual].getWidth() <= 0 || columnBounds[(size_t)manual].getX() != header->getX() || containerOf(manual) != header->getParentComponent()) continue;
+        for (int i = 0; i < header->getNumChildComponents(); ++i)
+            if (auto* c = header->getChildComponent(i); c->getComponentID() == "swell" && c->isVisible()) return c;
+    }
+    return nullptr;
 }
 
 void Voicer::computeNoteRange()
@@ -2164,6 +2269,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             setup.onClick = [settings, index] { if (settings) settings(index); };
             addAndMakeVisible(setup);
             addAndMakeVisible(swell);
+            swell.setComponentID("swell");   // found by Voicer::headerSwell (the video script drives it)
             tremulant.setButtonText("Tremulant");
             tremulant.getProperties().set("tremulantManual", index);
             tremulant.setColour(juce::TextButton::buttonOnColourId, onColour());

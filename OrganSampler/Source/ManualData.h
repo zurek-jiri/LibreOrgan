@@ -1061,6 +1061,15 @@ static const char* const kManualText_part5 =
     "  asks where); clicking again stops the recording with a short fade.\n"
     "- **Stop List** opens the table of the whole organ: see \"4. The Stop List\n"
     "  (building the organ)\".\n"
+    "- **Guided tour** (0.8.206; shown on a teaching organ only: the Rural Organ\n"
+    "  demo, or any configuration that carries `\"guidedTour\": true`) walks through\n"
+    "  the console in ten steps, each with an arrow to the element it speaks of\n"
+    "  and a link to the manual chapter that explains it: a stop and its corner\n"
+    "  button, the voicing row, a stop folder, a transmission and an extension,\n"
+    "  arranging the grid, the division header, the couplers, the Stop List, the\n"
+    "  temperaments, saving. The tour starts by itself once the organ is loaded;\n"
+    "  the console stays usable under it. *Don't show this tour again for this\n"
+    "  organ* keeps it away, the button brings it back.\n"
     "- **Couplers...** opens the couplers dialog: see \"Couplers\".\n"
     "- **Temperaments** opens the temperament dialog: see \"Temperaments\".\n"
     "- **Hide all voicing** folds every open voicing row on the grid (each row\n"
@@ -1203,6 +1212,8 @@ static const char* const kManualText_part5 =
     "menu offers *Swell settings...* (maximum attenuation, shutter inertia,\n"
     "harmonic filter), the *Tremulant* button's menu *Tremulant settings...*\n"
     "(rate, depth, drift between ranks, volume per cent, harmonic filter and its\n"
+    ;
+static const char* const kManualText_part6 =
     "phase), and a right-click on the header's own background lists the swell,\n"
     "tremulant and wind settings of the division together with the Divisions\n"
     "dialog and the Configuration Editor. The rows are the same as the\n"
@@ -1212,8 +1223,6 @@ static const char* const kManualText_part5 =
     "The mouse wheel scrolls the workspace everywhere - except inside the\n"
     "rectangle of an open voicing (a stop's row with its per-key sliders), where\n"
     "it moves the sliders; the rest of that division's column scrolls as usual.\n"
-    ;
-static const char* const kManualText_part6 =
     "The button of a stop folder switches all its children with it, their buttons\n"
     "included; a child can still be switched alone to hear it by itself.\n"
     "\n"
@@ -1405,6 +1414,8 @@ static const char* const kManualText_part6 =
     "mode). Each transmission has its own voicing row, opened like a stop's, with:\n"
     "\n"
     "- **Transposition (extension)** - the key sounds the pipe this many semitones\n"
+    ;
+static const char* const kManualText_part7 =
     "  away, -24 to +24, every step a pure interval written as the footage it\n"
     "  gives (octaves printed bold). -12 makes a 16' extension of an 8' stop,\n"
     "  +12 a 4' one; the button caption follows: \"Principal 16' (Ext.)\" in the\n"
@@ -1414,8 +1425,6 @@ static const char* const kManualText_part6 =
     "  the played key (a 2 2/3' shifted by +5 gives an exact 2'), the temperament\n"
     "  follows the played key, wind, tremulant and detune stay with the pipe.\n"
     "- **Taken from** - the source stop, its division and footage.\n"
-    ;
-static const char* const kManualText_part7 =
     "- **Volume vs. parent stop** (-10 to +10 dB), the per-key volume and treble\n"
     "  sliders and the pipe on/off boxes of the transmission alone.\n"
     "- **Formants (filled pipes)** for the pipes only this transmission asks for\n"
@@ -1607,6 +1616,8 @@ static const char* const kManualText_part7 =
     "Loading is quick, so the dialog is rarely looked at: it shows the samples being\n"
     "read per division and in total, under it what the program does right now (the\n"
     "stop being decoded, the tuning analysis, the pipe fills), and on a third line\n"
+    ;
+static const char* const kManualText_part8 =
     "the reading speed, \"Reading from the disk at N MB/s\", refreshed every five\n"
     "seconds (0.8.205) - a big organ loads as fast as the disk delivers it: about\n"
     "500 MB/s from a SATA SSD, several times that from an NVMe one, far less from\n"
@@ -1616,8 +1627,6 @@ static const char* const kManualText_part7 =
     "of its own and can take a few seconds. Only when the dialog closes are the\n"
     "copies of the filled pipes (see \"The transposition methods\") built in the\n"
     "background: a dark track\n"
-    ;
-static const char* const kManualText_part8 =
     "along the bottom of a stop button means the stop still waits, an orange fill\n"
     "shows the pipes done. The organ can be played at once; a filled pipe plays in\n"
     "a simpler way until its copy exists.\n"
@@ -1809,6 +1818,8 @@ static const char* const kManualText_part8 =
     "  is set in the driver's control panel (*Driver Control Panel* in the audio\n"
     "  tab opens it).\n"
     "- **Windows Audio (WASAPI)**: the driver of any Windows sound device, the\n"
+    ;
+static const char* const kManualText_part9 =
     "  on-board chip included. Larger buffers, more latency, less polyphony per\n"
     "  route than ASIO, but it works with every device.\n"
     "- **Aggregated WASAPI**: several Windows sound devices joined into one device\n"
@@ -1818,8 +1829,6 @@ static const char* const kManualText_part8 =
     "  opens - exactly those, on every path (loading a configuration, *Set for\n"
     "  all*, a switch of the type, a reopen). A device that cannot be opened (an\n"
     "  unplugged interface, a digital output with no cable) is refused: its\n"
-    ;
-static const char* const kManualText_part9 =
     "  channels are set to none, the list shows them unticked with the reason\n"
     "  after their names, and the activity log names them - the same as the\n"
     "  Windows Audio type, which refuses such a device outright. No ticked\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "The same computer that renders 25 000 voices of a one-perspective dry set\n"
     "may manage a third of that with three perspectives, an auxiliary route and\n"
     "IRs. This is why *Maximum polyphony* is saved with the configuration, and\n"
+    ;
+static const char* const kManualText_part10 =
     "why \"Measure the maximum polyphony\" works only with the organ loaded and its\n"
     "audio outputs configured: a general value would not fit any organ. What\n"
     "decides how many voices fit:\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "  auxiliary route\").\n"
     "- **IR reverb.** The convolution of an impulse response is heavy and its\n"
     "  cost does not depend on how many pipes sound: it is paid on every route\n"
-    ;
-static const char* const kManualText_part10 =
     "  that has an IR, at every audio period. The convolutions run on the render\n"
     "  workers, in parallel, one buffer behind the dry signal (that buffer is\n"
     "  part of the pre-delay), so they take render time away from the pipes but\n"
@@ -2213,6 +2222,8 @@ static const char* const kManualText_part10 =
     "---\n"
     "\n"
     "# 7. Filled pipes, extensions and the transposition methods\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "## 7.1 What a filled pipe is\n"
     "\n"
@@ -2222,8 +2233,6 @@ static const char* const kManualText_part10 =
     "top or bottom keys are missing, and gaps inside the compass. Only the pipes\n"
     "that a stop can be asked to play are filled: the compass of its own division and, for\n"
     "every transmission, the compass of the receiving division shifted by the\n"
-    ;
-static const char* const kManualText_part11 =
     "transposition. A filled pipe keeps everything a real pipe has: its own voicing\n"
     "slider, random detune, wind and tremulant behaviour, release samples (from the\n"
     "same neighbour, treated the same way); it costs nothing while silent.\n"
@@ -2415,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "### Audio devices: list also the ALSA devices that cannot be opened (Linux)\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "Linux only. Off: the audio device lists hold only the ALSA devices the program\n"
     "could open when it looked. On: every device ALSA names is listed, a device\n"
     "in use by another program or without a working configuration included - for\n"
@@ -2424,8 +2435,6 @@ static const char* const kManualText_part11 =
     "\n"
     "The processor, its physical cores and logical CPUs, and the RAM. Information\n"
     "only; it tells what the thread settings below can use.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "### Render threads\n"
     "\n"
@@ -2617,6 +2626,8 @@ static const char* const kManualText_part12 =
     "measurement and choice. Full and Light set the mode by hand. The setting\n"
     "belongs to the computer, not to the organ: a portable configuration does not\n"
     "carry it.\n"
+    ;
+static const char* const kManualText_part13 =
     "\n"
     "Routes that share everything the reverb depends on share one convolution\n"
     "(since 0.8.109): rendered by the same audio device to the same output\n"
@@ -2626,8 +2637,6 @@ static const char* const kManualText_part12 =
     "the same and the work is paid once per group: Rural Organ's three divisions on\n"
     "one device, each with its default and its auxiliary route, run two\n"
     "convolutions instead of six. The IR caption of a route that rides on\n"
-    ;
-static const char* const kManualText_part13 =
     "another's convolution says *(shared)* and its tooltip names the route; a\n"
     "route whose settings differ in anything keeps its own convolution. Nothing\n"
     "needs to be set: the grouping follows the settings and the devices.\n"
@@ -2819,6 +2828,8 @@ static const char* const kManualText_part13 =
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in when the key is released (default 70\n"
+    ;
+static const char* const kManualText_part14 =
     "ms), scaled by pitch exactly like the sustain fade-out. The two together shape\n"
     "the join between the held note and its release.\n"
     "\n"
@@ -2828,8 +2839,6 @@ static const char* const kManualText_part13 =
     "position \"-inf\" silences them. Quieter releases make a drier organ without\n"
     "losing the room entirely.\n"
     "\n"
-    ;
-static const char* const kManualText_part14 =
     "### Release cutting\n"
     "\n"
     "Release samples are faded out over this share of their length and end there\n"
@@ -3021,6 +3030,8 @@ static const char* const kManualText_part14 =
     "\n"
     "### Filled pipes: release played from\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "Every pitch-shift method. A filled pipe's release copy is played from this\n"
     "many milliseconds in (0 to 300, default 140), skipping its start, where the\n"
     "methods leave their worst: a stop transient that no longer belongs, a level\n"
@@ -3030,8 +3041,6 @@ static const char* const kManualText_part14 =
     "\n"
     "### Filled pipes: release level matched to the source\n"
     "\n"
-    ;
-static const char* const kManualText_part15 =
     "Every pitch-shift method. On: a filled pipe's release copy is played at the\n"
     "level relation the source pipe's release has to its sustain (measured when the\n"
     "copy was built), so the step at the key release is the real pipe's. Off\n"
@@ -3223,6 +3232,8 @@ static const char* const kManualText_part15 =
     "choice. Hidden by default since *Load folder...* reads the archives itself\n"
     "(and unpacks on request); the button beside this switch does the same\n"
     "without the top bar.\n"
+    ;
+static const char* const kManualText_part16 =
     "\n"
     "### Top bar: GLOBAL RESET\n"
     "\n"
@@ -3232,8 +3243,6 @@ static const char* const kManualText_part15 =
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held; when that key is released the coupler does not\n"
-    ;
-static const char* const kManualText_part16 =
     "fall back to the next one. Off: the coupled note always follows the highest\n"
     "(lowest) key currently held.\n"
     "\n"
@@ -3248,6 +3257,14 @@ static const char* const kManualText_part16 =
     "Off by default. On: the configuration file used last time is opened when the\n"
     "program starts. Otherwise the program starts with an empty instrument and\n"
     "nothing is loaded until you ask.\n"
+    "\n"
+    "### Glow: a pressed button and a dragged stop glow for a moment\n"
+    "\n"
+    "On by default. Every button pressed with the left mouse button - a stop, a\n"
+    "coupler, a piston, a tremulant, a button of the top bar - and every stop being\n"
+    "dragged glows for a moment with the golden halo of the instruction video. Off:\n"
+    "the console as it was, with no halo at all. The setting belongs to this\n"
+    "computer, not to the organ.\n"
     "\n"
     "### Samples' base temperament\n"
     "\n"
@@ -3417,6 +3434,8 @@ static const char* const kManualText_part16 =
     "\n"
     "(The Divisions dialog names it *Allow Pipe Coupling*.)\n"
     "On: pipes of the same pitch sounding together pull each other into tune a\n"
+    ;
+static const char* const kManualText_part17 =
     "little, as neighbouring pipes on one chest do. Off: every pipe keeps its own\n"
     "detune.\n"
     "\n"
@@ -3434,8 +3453,6 @@ static const char* const kManualText_part16 =
     "\n"
     "How far the ranks of the division drift apart in the tremulant's cycle (0 to\n"
     "360 degrees, default 260): with 0 every stop dips at the same moment, with a\n"
-    ;
-static const char* const kManualText_part17 =
     "large value the stops of a full registration shimmer rather than pulse.\n"
     "\n"
     "### Wind: depth (maximum pitch sag)\n"

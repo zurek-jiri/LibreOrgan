@@ -1047,6 +1047,15 @@ fired from a MIDI control: right-click it and choose *Learn MIDI On trigger*
   asks where); clicking again stops the recording with a short fade.
 - **Stop List** opens the table of the whole organ: see "4. The Stop List
   (building the organ)".
+- **Guided tour** (0.8.206; shown on a teaching organ only: the Rural Organ
+  demo, or any configuration that carries `"guidedTour": true`) walks through
+  the console in ten steps, each with an arrow to the element it speaks of
+  and a link to the manual chapter that explains it: a stop and its corner
+  button, the voicing row, a stop folder, a transmission and an extension,
+  arranging the grid, the division header, the couplers, the Stop List, the
+  temperaments, saving. The tour starts by itself once the organ is loaded;
+  the console stays usable under it. *Don't show this tour again for this
+  organ* keeps it away, the button brings it back.
 - **Couplers...** opens the couplers dialog: see "Couplers".
 - **Temperaments** opens the temperament dialog: see "Temperaments".
 - **Hide all voicing** folds every open voicing row on the grid (each row
@@ -3212,6 +3221,14 @@ make the solo stop jump. Off: it follows at once.
 Off by default. On: the configuration file used last time is opened when the
 program starts. Otherwise the program starts with an empty instrument and
 nothing is loaded until you ask.
+
+### Glow: a pressed button and a dragged stop glow for a moment
+
+On by default. Every button pressed with the left mouse button - a stop, a
+coupler, a piston, a tremulant, a button of the top bar - and every stop being
+dragged glows for a moment with the golden halo of the instruction video. Off:
+the console as it was, with no halo at all. The setting belongs to this
+computer, not to the organ.
 
 ### Samples' base temperament
 

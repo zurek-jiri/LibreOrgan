@@ -1,0 +1,14 @@
+# A short debug script: the missing-folder notice, its menu and the folder chooser alone (0.8.206).
+window 2560 1400
+wait 1500
+record start
+caption Debug: the notice, its menu, the folder chooser.
+alert 3|6000
+wait 1500
+relocate 003136\pipe\OW|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003136
+waitfor OK|60000
+wait 1500
+click OK
+wait 800
+record stop
+end

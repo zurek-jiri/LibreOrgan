@@ -63,6 +63,7 @@ namespace
 #include "TemperamentsData.h"   // temperaments.csv embedded by the pre-build step
 #include "LicencesData.h"       // the licence texts embedded (GenerateLicencesData.ps1)
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
+#include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
 #include "UIScale.h"
 
 namespace
@@ -979,9 +980,14 @@ MainComponent::MainComponent()
     stopListButton.setTooltip("The stop list of the whole organ: every division's stops, their sample folders per "
         "perspective, transmissions and stop folders; loads and unloads sample folders.");
     stopListButton.onClick = [this] { showStopBuildingDialog(-1); };
+    addChildComponent(guidedTourButton);   // visible on a teaching organ only (0.8.206)
+    guidedTourButton.setTooltip("A tour of the console: what the stops, the stop folders, the transmissions, the couplers and the Stop List are, step by step, with the manual chapter of each.");
+    guidedTourButton.onClick = [this] { startGuidedTour(); };
     addAndMakeVisible(hintSheen);
     hintSheen.follow({ &stopListButton, &loadConfigurationButton });
     addMouseListener(&hintSheen, true);   // the first click anywhere in the window ends the sheen
+    addAndMakeVisible(glowLayer);
+    addMouseListener(&glowLayer, true);   // every button press and drag in the window glows (when consoleGlow)
     // "Waiting for audio devices ..." box: shown while a saved device is awaited at start-up.
     addChildComponent(waitingForAudioLabel);
     waitingForAudioLabel.setJustificationType(juce::Justification::centred);
@@ -1710,6 +1716,19 @@ MainComponent::MainComponent()
             CrashHandler::note("ORGAN_TEST_RELOCATE: no missing tree ends with " + parts[0]);
         });
     }
+    // ORGAN_VIDEO_SCRIPT=<file> + ORGAN_VIDEO_OUT=<folder> (0.8.206): the instruction
+    // video - the script's steps drive the console (captions, stops, notes, voicing,
+    // drags, dialogs), the frames of the program's own windows go to the folder as PNG
+    // with their timestamps, the engine records the sound; ffmpeg joins them (Tools/make_video.ps1).
+    if (const char* script = std::getenv("ORGAN_VIDEO_SCRIPT"))
+    {
+        const juce::File file(juce::String::fromUTF8(script));
+        const juce::File out(std::getenv("ORGAN_VIDEO_OUT") != nullptr ? juce::String::fromUTF8(std::getenv("ORGAN_VIDEO_OUT")) : file.getSiblingFile("video").getFullPathName());
+        hintSheen.stop();             // no golden hint arrows from the first moment of a video run (the user: "vypni si ty šipky")
+        stopListHintShown = true;     // ... nor the Stop List's "Load folder..." arrow when the script opens it
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        runWhenLoaded([safeThis, file, out] { if (safeThis != nullptr) safeThis->startVideoScript(file, out); });
+    }
     // ORGAN_TEST_ARCHIVE=<rar> (tests, 0.8.157): the volumes, the index and the
     // top-level folders of a RAR archive of sample folders, logged 2 s after start.
     if (const char* env = std::getenv("ORGAN_TEST_ARCHIVE"))
@@ -2299,6 +2318,8 @@ void MainComponent::paint(juce::Graphics& g)
 
 void MainComponent::resized()
 {
+    glowLayer.setBounds(getLocalBounds());
+    glowLayer.toFront(false);
     if (applicationReady.load() && (getWidth() != observedWindowWidth
         || getHeight() != observedWindowHeight))
     {
@@ -10777,7 +10798,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -12247,7 +12268,10 @@ namespace
                 candidates.add(above.getChildFile(relative));
             }
             for (const auto& child : locationChildren(folder))
-                candidates.add(rootName.isNotEmpty() ? child.getChildFile(rootName).getChildFile(relative) : child.getChildFile(relative));
+            {
+                if (rootName.isNotEmpty()) candidates.add(child.getChildFile(rootName).getChildFile(relative));
+                candidates.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
+            }
         }
         return candidates;
     }
@@ -12344,6 +12368,38 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
 void MainComponent::freezeGrid()
 {
     if (frozenGrid == nullptr) return;
+    // The picture composed per division (0.8.206, the user: "staré rejstříky se se
+    // spojkami překrývají"): the old stops of a division are placed under the NEW
+    // header with its coupler rows - the rows of the new organ may be taller or
+    // shorter than the old ones. Everything above the grid areas stays transparent,
+    // so the new headers and couplers show as they are.
+    juce::Image shown = frozenPicture;
+    if (voicer != nullptr && frozenPicture.isValid() && !frozenAreas.empty())
+    {
+        const auto newAreas = voicer->divisionGridAreas();
+        const auto newView = stopsViewport.getViewPosition();
+        juce::Image composed(juce::Image::ARGB, frozenPicture.getWidth(), frozenPicture.getHeight(), true);
+        juce::Graphics g(composed);
+        int placed = 0;
+        for (const auto& [manual, newArea] : newAreas)
+            for (const auto& [oldManual, oldArea] : frozenAreas)
+                if (oldManual == manual)
+                {
+                    const auto src = oldArea.translated(-frozenViewPosition.x, -frozenViewPosition.y).getIntersection(frozenPicture.getBounds());
+                    const auto dst = newArea.translated(-newView.x, -newView.y);
+                    const int w = juce::jmin(src.getWidth(), dst.getWidth()), h = src.getHeight();
+                    if (w > 0 && h > 0) { g.drawImage(frozenPicture, dst.getX(), dst.getY(), w, h, src.getX(), src.getY(), w, h); ++placed; }
+                }
+        if (placed > 0) shown = composed;
+        CrashHandler::note("Grid picture: " + juce::String(placed) + " division(s) of the old stops placed under the new headers and coupler rows");
+    }
+    frozenGrid->setImage(shown, juce::RectanglePlacement(juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yTop | juce::RectanglePlacement::doNotResize));
+    if (const char* png = std::getenv("ORGAN_TEST_SNAPSHOT"))   // tests: the picture as kept over the workspace
+    {
+        const juce::File file(juce::String::fromUTF8(png) + ".frozen.png");
+        file.deleteFile();
+        if (auto out = file.createOutputStream()) { juce::PNGImageFormat().writeImageToStream(shown, *out); CrashHandler::note("ORGAN_TEST_SNAPSHOT: " + file.getFullPathName()); }
+    }
     frozenGrid->setBounds(stopsViewport.getBounds());
     frozenGrid->setVisible(true);
     frozenGrid->toFront(false);
@@ -12598,12 +12654,9 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
             CrashHandler::note("Grid picture: the old stops laid out in " + juce::String(newCount + 1) + " divisions (were " + juce::String(manualCount + 1) + ") before the picture is taken");
         }
         const juce::Image picture = stopsViewport.createComponentSnapshot(stopsViewport.getLocalBounds(), false, 1.0f);
-        if (const char* png = std::getenv("ORGAN_TEST_SNAPSHOT"))   // tests: the picture as kept over the workspace
-        {
-            const juce::File file(juce::String::fromUTF8(png) + ".frozen.png");
-            file.deleteFile();
-            if (auto out = file.createOutputStream()) { juce::PNGImageFormat().writeImageToStream(picture, *out); CrashHandler::note("ORGAN_TEST_SNAPSHOT: " + file.getFullPathName()); }
-        }
+        frozenPicture = picture;   // 0.8.206: composed per division in freezeGrid, once the new headers stand
+        frozenAreas = voicer != nullptr ? voicer->divisionGridAreas() : std::vector<std::pair<int, juce::Rectangle<int>>>{};
+        frozenViewPosition = stopsViewport.getViewPosition();
         frozenGrid = std::make_unique<juce::ImageComponent>();
         frozenGrid->setImage(picture, juce::RectanglePlacement(juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yTop | juce::RectanglePlacement::doNotResize));
         frozenGrid->setInterceptsMouseClicks(false, false);
@@ -12634,6 +12687,28 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     saveLastDirectory();
     setCurrentConfigurationName(configurationFile.getFileNameWithoutExtension());
     currentConfigurationFile = configurationFile;
+    // A teaching organ (0.8.206): "guidedTour": true in the file, or the Rural Organ
+    // demo by its name (the demo release's file has no key). The top bar shows
+    // "Guided tour"; the tour starts by itself once the organ is loaded, unless it
+    // was closed with "Don't show again" for this organ, and never in a test run.
+    guidedTourAvailable = (bool)configuration.getProperty("guidedTour", false) || currentConfigurationName.startsWithIgnoreCase("Rural Organ");
+    resized();
+    if (guidedTourAvailable && !guidedTourDismissed.contains(currentConfigurationName)
+        && std::getenv("ORGAN_LOAD_CONFIGURATION") == nullptr && std::getenv("ORGAN_VIDEO_SCRIPT") == nullptr)
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        // ... and after every box of the load (the nested-trees notice, a memory
+        // warning): the tour waits while anything modal is up.
+        auto whenFree = std::make_shared<std::function<void()>>();
+        *whenFree = [safeThis, whenFree]
+        {
+            if (safeThis == nullptr || !safeThis->guidedTourAvailable) return;
+            if (juce::ModalComponentManager::getInstance()->getNumModalComponents() > 0) { juce::Timer::callAfterDelay(1500, [whenFree] { if (*whenFree) (*whenFree)(); }); return; }
+            safeThis->startGuidedTour();
+            juce::MessageManager::callAsync([keep = whenFree] { *keep = nullptr; });   // cleared after this call, not while it runs
+        };
+        runWhenLoaded([whenFree] { if (*whenFree) (*whenFree)(); });
+    }
     refreshArchiveSearchFolders(configurationFile);   // the archive folders remembered beside it (0.8.158)
     configurationUsedThisSession = true;
     saveSettings();
@@ -13394,6 +13469,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
     return {
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
         { &stopListButton, 120, "stopList", "Stop List", true },
+        { &guidedTourButton, 115, "guidedTour", "Guided tour", true },   // shown on a teaching organ only (0.8.206; isHeaderButtonShown)
         { &couplersButton, 125, "couplers", "Couplers", true }, { &temperamentsButton, 145, "temperaments", "Temperaments", true },
         { &toggleAllVoicingButton, 145, "voicing", "Hide/Show all voicing", true },
         { &perspectivePatternsButton, 190, "perspectivePatterns", "Perspective Patterns", true },
@@ -13413,6 +13489,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
 
 bool MainComponent::isHeaderButtonShown(const juce::String& key) const
 {
+    if (key == "guidedTour") return guidedTourAvailable;   // a teaching organ only (0.8.206), never a setting
     const auto found = headerButtonShown.find(key);
     if (found != headerButtonShown.end()) return found->second;
     // Unpack archive is hidden by default since 0.8.157: Load folder... of the Stop List reads RAR archives itself (and unpacks on request).
@@ -14168,7 +14245,8 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
             for (int up = 0; up <= 2 && candidate == juce::File() && a != juce::File(); ++up)
             {
                 for (int k = juce::jmin(6, otherParts.size() - 1); k >= 2; --k)
-                    if (const auto f = resolveCaseInsensitive(underFolder(a, otherParts, otherParts.size() - k)); f != juce::File()) { candidate = f; break; }
+                    if (const auto f = resolveCaseInsensitive(underFolder(a, otherParts, otherParts.size() - k)); f != juce::File() && poolIndexOf(f.getFullPathName()) < 0 && !taken(f))
+                    { candidate = f; break; }   // a folder taken by another tree (two packages' "pipe/OW": the first package's under the new prefix) is passed over, the search goes on above
                 const auto parent = a.getParentDirectory();
                 if (parent == a) break;
                 a = parent;
@@ -14283,6 +14361,1139 @@ void MainComponent::showMissingTreesMenu(int manual)
         if (result == 1000) { safeThis->showStopBuildingDialog(manual); return; }
         safeThis->chooseFolderForMissingTree(result - 1);
     });
+}
+
+void MainComponent::startGuidedTour()
+{
+    // The tour of a teaching organ (0.8.206, the user: the Rural Organ demo "jako
+    // komix" - arrows with captions at the essential features, each with its manual
+    // chapter). The elements are looked up on the live grid when the tour starts;
+    // a step whose element is not there is skipped.
+    if (voicer == nullptr) return;
+    if (guidedTour != nullptr) { guidedTour->setVisible(true); guidedTour->toFront(false); return; }
+    auto rowButton = [this](std::function<bool(const StopRow&)> test) -> juce::Component*
+    {
+        auto* row = voicer->findRow(test);
+        return row != nullptr ? &row->buttonComponent() : nullptr;
+    };
+    auto plainStop = [](int manual) { return [manual](const StopRow& r) { return !r.isTransmission() && r.getStop()->primaryManual == manual && !r.getStop()->container && r.getStop()->groupMaster.isEmpty(); }; };
+    std::vector<GuidedTour::Step> steps;
+    steps.push_back({ [rowButton, plainStop] { return rowButton(plainStop(1)); },
+        "This is a stop. Click it to draw it, click it again to retire it, and play on your MIDI keyboard - Settings in the "
+        "division header assigns the keyboard and the audio outputs. Engaged stops are orange.", "Stop buttons" });
+    steps.push_back({ [this, plainStop]() -> juce::Component* { auto* row = voicer->findRow(plainStop(1)); return row != nullptr ? &row->voicingToggleComponent() : nullptr; },
+        "The small corner button opens the voicing row of a stop: its alias (the caption of the button - type any name), "
+        "the transposition, the stop volume, the attack, and one slider per pipe for volume and treble. \"-\" folds it again.", "The voicing row" });
+    steps.push_back({ [rowButton] { return rowButton([](const StopRow& r) { return !r.isTransmission() && r.getStop()->groupMaster.isEmpty() && (r.getStop()->container || r.caption().contains("[")); }); },
+        "A button with [II] or [III] is a stop folder: several ranks indented under one button - a Cornet, a celeste. Open its "
+        "voicing and each rank appears with its own button and voicing row, so the ranks are voiced one at a time and drawn together.", "Stop buttons" });
+    steps.push_back({ [rowButton] { return rowButton([](const StopRow& r) { return r.isTransmission(); }); },
+        "(Trsm.) and (Ext.): a transmission plays the pipes of another stop here - on another manual, or in its own division "
+        "at another footage (a 16' extension of an 8' stop). Its voicing row sets the transposition and its own volume.", "Transmissions and extensions" });
+    steps.push_back({ [rowButton, plainStop] { return rowButton(plainStop(2)); },
+        "Arranging: press a stop for two seconds and the whole console enters arrange mode - drag any stop to another cell "
+        "or another division. Drag with the right mouse button to make a transmission instead. Rest the dragged stop over "
+        "another stop until a bar appears under it and pull it down onto the bar: it is indented - a stop folder is born.", "Arranging the grid" });
+    steps.push_back({ [this]() -> juce::Component* { return voicer->headerButton(1, "Tremulant"); },
+        "The division header: the tremulant switch, the swell bar beside it, and Settings - the MIDI keyboard and channel, "
+        "the compass, the wind, and the audio routes of every microphone perspective.", "Division headers" });
+    steps.push_back({ [this]() -> juce::Component* { return &couplersButton; },
+        "Couplers...: choose the couplers the console shows - unison, 16', 4', melody, bass. They sit under the division "
+        "headers and work like the stops.", "Couplers" });
+    steps.push_back({ [this]() -> juce::Component* { return &stopListButton; },
+        "Stop List: the table of the whole organ. Load more sample folders here (or RAR archives as they are), assign the "
+        "stops to divisions, make transmissions in the table, then Apply and reload.", "Folder trees and the pool" });
+    steps.push_back({ [this]() -> juce::Component* { return &temperamentsButton; },
+        "Temperaments: retune the organ to a1 = 440 Hz, or to a historical temperament - Werckmeister, Kirnberger, "
+        "meantone and many more.", "Temperaments" });
+    steps.push_back({ [this]() -> juce::Component* { return &saveConfigurationButton; },
+        "Save Configuration keeps all of it in one file: folders, stops, voicing, couplers, combinations, audio and MIDI. "
+        "Tick \"Portable\" to share the organ with others on GitHub. That is the tour - the \"?\" buttons of the "
+        "Configuration Editor open the manual at every setting.", "Configurations and settings" });
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    guidedTour = std::make_unique<GuidedTour>(std::move(steps),
+        [safeThis](const juce::String& chapter) { if (safeThis != nullptr) safeThis->showManualSection(chapter); },
+        [safeThis](bool dontShowAgain)
+        {
+            if (safeThis == nullptr) return;
+            if (dontShowAgain && safeThis->currentConfigurationName.isNotEmpty())
+            {
+                safeThis->guidedTourDismissed.addIfNotAlreadyThere(safeThis->currentConfigurationName);
+                safeThis->saveSettings();
+            }
+            CrashHandler::note(juce::String("Guided tour closed") + (dontShowAgain ? " (not shown again for this organ)" : ""));
+            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->guidedTour.reset(); });
+        });
+    if (guidedTour->stepCount() == 0) { guidedTour.reset(); return; }
+    addAndMakeVisible(*guidedTour);
+    guidedTour->setBounds(getLocalBounds());
+    guidedTour->toFront(false);
+    CrashHandler::note("Guided tour started: " + juce::String(guidedTour->stepCount()) + " step(s)");
+}
+
+//==============================================================================
+// ORGAN_VIDEO_SCRIPT (0.8.206): the instruction video. One command per line:
+//   window W H              the main window's size for the frames
+//   wait MS                 pause
+//   caption TEXT            the caption shown under the picture ("caption" alone: none)
+//   record start|stop       the sound of the routes (audio.wav in the output folder); frames are taken while it runs
+//   click BUTTON TEXT       a button of any window: the drawn cursor glides to it, presses, the button fires
+//   expand M|STOP / collapse M|STOP   the voicing row of a stop (division M, name prefix or caption part) - the cursor on the corner "+"
+//   alias M|STOP|TEXT       the alias set as the voicing box sets it
+//   volume M|STOP|DB        the stop volume
+//   stop M|STOP|on|off      the stop drawn / retired with the cursor (every button of the grid, transmissions and folders too)
+//   trem M|on|off           the division's tremulant (the cursor on its button, which glows first)
+//   coupler ID|on|off       a coupler by its id ("1-2-8"), the cursor on its button in the header
+//   note M|KEY|on|off       a key of the division, as MIDI arrives
+//   chord M|K1,K2,..|MS     the keys held that long
+//   arrange M|on / arrange off
+//   drag M|STOP|TARGET|COL|ROW|move|copy        the whole gesture: the cursor to the stop, the stop glows, its button
+//                                               travels with the cursor to the cell (COL -1: the first free cell), the drop
+//   drag M|STOP|into|MASTER M|MASTER STOP|copy  ... onto the OPEN voicing of a stop folder: indented into it (a copy = a transmission inside)
+//   drop M|STOP|TARGET|COL|ROW|move|copy        the drop alone, at once
+//   relocate TAIL|FOLDER    a missing folder tree: the cursor on the division's notice, then the folder given as the chooser would
+//   stoplist open|close
+//   closedialog TITLE PART  a dialog window closed (its close button)
+//   temperament NAME
+//   highlight M|STOP        the golden frame on a button for two seconds
+//   end
+// Every action that has an element on the screen first glides the cursor there (0.7 s) and presses; the script's next
+// line follows after that. The cursor, the glow, the travelling button and the captions are drawn into the frames.
+struct MainComponent::VideoScript final : private juce::Timer
+{
+    VideoScript(MainComponent& o, const juce::File& scriptFile, const juce::File& out) : owner(o), folder(out), pool(6)
+    {
+        folder.createDirectory();
+        juce::StringArray raw;
+        raw.addLines(scriptFile.loadFileAsString());
+        for (auto line : raw) { line = line.trim(); if (line.isNotEmpty() && !line.startsWith("#")) lines.add(line); }
+        CrashHandler::note("ORGAN_VIDEO_SCRIPT: " + juce::String(lines.size()) + " step(s) from " + scriptFile.getFullPathName() + " into " + folder.getFullPathName());
+        owner.hintSheen.stop();   // the golden hint arrows (Stop List, Load Configuration) run until a click - none in a video
+        nextAt = juce::Time::getMillisecondCounterHiRes();
+        startTimer(40);
+    }
+    ~VideoScript() override { stopTimer(); pool.removeAllJobs(true, 30000); }
+
+    void timerCallback() override
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        for (size_t i = 0; i < pending.size();)
+        {
+            if (now >= pending[i].at) { auto action = std::move(pending[i].action); pending.erase(pending.begin() + (std::ptrdiff_t)i); action(); }
+            else ++i;
+        }
+        if (slide.active)
+        {
+            // The swell bar or the crescendo display dragged: the value slides, the pressed cursor with it.
+            const float t = eased((float)((now - slide.start) / slide.duration));
+            const float value = slide.from + (slide.to - slide.from) * t;
+            if (slide.slider != nullptr) slide.slider->setValue(value, juce::sendNotificationSync);
+            else if (slide.crescendo) owner.setCrescendoPosition(value);
+            else owner.setExpressionTarget(slide.manual, value);
+            cursor.from = cursor.to = slidePoint(value);
+            cursor.start = now;
+            cursor.shown = true;
+            if (now - slide.start >= slide.duration) { slide.active = false; cursor.pressed = false; }
+        }
+        if (sweep.active)
+        {
+            // The right-button sweep across a key row: a wave painted over every slider in one movement.
+            auto* row = sweep.row.getComponent();
+            juce::Slider* a = row != nullptr ? (sweep.tone ? row->toneSliderComponent(sweep.from) : row->keySliderComponent(sweep.from)) : nullptr;
+            juce::Slider* b = row != nullptr ? (sweep.tone ? row->toneSliderComponent(sweep.to) : row->keySliderComponent(sweep.to)) : nullptr;
+            if (a == nullptr || b == nullptr || !a->isShowing()) { sweep.active = false; cursor.pressed = false; cursor.rightButton = false; if (row != nullptr) row->endScriptPaint(); }
+            else
+            {
+                const double t = juce::jlimit(0.0, 1.0, (now - sweep.start) / sweep.duration);
+                const double value = sweep.amplitude * std::sin(juce::MathConstants<double>::twoPi * sweep.waves * t);
+                const auto ba = a->getScreenBounds(), bb = b->getScreenBounds();
+                const int trackTop = ba.getY() + 4, trackBottom = ba.getBottom() - 20;   // as paintKeySlidersAt reads the track
+                const double vertical = 1.0 - a->valueToProportionOfLength(value);
+                const juce::Point<int> screen(juce::roundToInt(ba.getCentreX() + (bb.getCentreX() - ba.getCentreX()) * t),
+                                              juce::roundToInt(trackTop + vertical * (trackBottom - trackTop)));
+                row->scriptPaintAt(screen);
+                cursor.from = cursor.to = screen.toFloat() - frameOrigin();
+                cursor.start = now; cursor.shown = true; cursor.pressed = true; cursor.rightButton = true;
+                if (t >= 1.0) { sweep.active = false; cursor.pressed = false; cursor.rightButton = false; row->endScriptPaint(); }
+            }
+        }
+        // The keyboard symbol of a division the script plays on blinks red, as it does with MIDI notes (120 ms pulses every 300 ms).
+        for (size_t m = 0; m < blinkUntil.size(); ++m)
+            if (now < blinkUntil[m] && owner.voicer != nullptr && std::fmod(now, 300.0) < 40.0) owner.voicer->pulseManualActivity((int)m);
+        if (!done) refreshOverlay(now);
+        int guard = 0;
+        while (!done && now >= nextAt && index < lines.size() && guard++ < 50) step(lines[index++]);
+        if (!done && index >= lines.size() && pending.empty()) finish();
+        // Frames at 25 per second: the window itself is pictured 10 times a second (a snapshot costs ~100 ms),
+        // the overlays (cursor, the travelling button, glows) are drawn fresh on every frame - a drag reads as a
+        // movement (the user: "chceme vidět, jak se přesouvá rejstřík"), not as a jump of a few pictures.
+        if (!done && capturing && now - lastFrameMs >= 39.0) { lastFrameMs = now; captureFrame(now); }
+    }
+
+    // ---- the drawn cursor and the travelling button ----
+    juce::Point<float> frameOrigin() const
+    {
+        auto* top = owner.getTopLevelComponent();
+        return top != nullptr ? top->getScreenPosition().toFloat() : juce::Point<float>();
+    }
+    juce::Point<float> frameCentreOf(juce::Component* c) const { return c->getScreenBounds().getCentre().toFloat() - frameOrigin(); }
+    static float eased(float t) { t = juce::jlimit(0.0f, 1.0f, t); return t < 0.5f ? 2.0f * t * t : 1.0f - 2.0f * (1.0f - t) * (1.0f - t); }
+    void cursorTo(juce::Point<float> target, double ms, double now)
+    {
+        cursor.from = cursor.shown ? cursorAt(now) : target + juce::Point<float>(-160.0f, 120.0f);
+        cursor.to = target;
+        cursor.start = now;
+        cursor.duration = juce::jmax(1.0, ms);
+        cursor.shown = true;
+    }
+    juce::Point<float> cursorAt(double now) const
+    {
+        const float t = eased((float)((now - cursor.start) / cursor.duration));
+        return cursor.from + (cursor.to - cursor.from) * t;
+    }
+    // The cursor glides to the element, presses there, and the action runs; the
+    // script goes on once the press is over.
+    void actOn(juce::Component* target, std::function<void()> action, double now, double holdMs = 0.0)
+    {
+        if (target == nullptr || !target->isShowing()) { if (action) action(); return; }
+        cursorTo(frameCentreOf(target), 700.0, now);
+        juce::Component::SafePointer<juce::Component> safeTarget(target);
+        pending.push_back({ now + 760.0, [this, safeTarget, action]
+        {
+            pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0;
+            if (safeTarget != nullptr)
+            {
+                highlight(safeTarget, 1500.0);
+                if (!travel.active) { glowTarget = safeTarget; glowUntil = juce::Time::getMillisecondCounterHiRes() + 1400.0; }   // every press glows (the user: the "+" and Show Trsm. had none)
+            }
+            if (action) action();
+        } });
+        nextAt = juce::jmax(nextAt, now + 1000.0 + holdMs);
+    }
+    // The drag: the cursor to the stop, the stop glows under the pressed cursor, its
+    // picture travels with the cursor to the destination, the drop there.
+    void dragTo(StopRow* row, juce::Point<int> destinationScreen, std::function<void()> drop, double now)
+    {
+        if (row == nullptr) return;
+        auto& button = row->buttonComponent();
+        const auto from = frameCentreOf(&button);
+        const auto to = destinationScreen.toFloat() - frameOrigin();
+        cursorTo(from, 700.0, now);
+        juce::Component::SafePointer<juce::Component> safeButton(&button);
+        pending.push_back({ now + 760.0, [this, safeButton]
+        {
+            if (safeButton == nullptr) return;
+            glowTarget = safeButton;
+            glowUntil = juce::Time::getMillisecondCounterHiRes() + 3600.0;   // the source glows until the drop
+            cursor.pressed = true;
+        } });
+        pending.push_back({ now + 1900.0, [this, safeButton, from, to]
+        {
+            if (safeButton == nullptr) return;
+            travel.image = safeButton->createComponentSnapshot(safeButton->getLocalBounds(), false, 1.0f);
+            travel.from = from;
+            travel.to = to;
+            travel.start = juce::Time::getMillisecondCounterHiRes();
+            travel.duration = 2200.0;   // a slow, readable journey across the console
+            travel.active = true;
+            cursorTo(to, 2200.0, travel.start);
+        } });
+        pending.push_back({ now + 4300.0, [this, drop]
+        {
+            travel.active = false;
+            cursor.pressed = false;
+            pressedUntil = juce::Time::getMillisecondCounterHiRes() + 200.0;
+            if (drop) drop();
+        } });
+        nextAt = juce::jmax(nextAt, now + 4800.0);
+    }
+    // A bar dragged: the swell bar of a division (0 closed .. 1 open) or the crescendo display (0 .. 1 of its steps).
+    juce::Point<float> slidePoint(float value) const
+    {
+        if (slide.slider != nullptr)
+        {
+            // A juce::Slider: the thumb's place for the value (vertical key sliders, the horizontal stop volume).
+            const float pos = slide.slider->getPositionOfValue((double)value);
+            const auto local = slide.slider->isVertical() ? juce::Point<float>((float)slide.slider->getWidth() * 0.5f, pos)
+                                                          : juce::Point<float>(pos, (float)slide.slider->getHeight() * 0.5f);
+            return slide.slider->localPointToGlobal(local) - frameOrigin();
+        }
+        if (slide.bar == nullptr) return {};
+        const auto r = slide.bar->getScreenBounds().toFloat() - frameOrigin();
+        const float width = slide.crescendo ? r.getWidth() - (float)juce::jmin(46, juce::jmax(28, slide.bar->getWidth() / 5)) : r.getWidth();   // CrescendoDisplay's bar ends before its number
+        return { r.getX() + juce::jlimit(0.0f, 1.0f, value) * width, r.getCentreY() };
+    }
+    void slideTo(juce::Component* bar, bool crescendo, int manual, float from, float to, double ms, double now, juce::Slider* slider = nullptr)
+    {
+        if (bar == nullptr) { CrashHandler::note("Video: no bar to slide"); return; }
+        slide.bar = bar; slide.slider = slider; slide.crescendo = crescendo; slide.manual = manual; slide.from = from; slide.to = to;
+        slide.duration = juce::jmax(1.0, ms); slide.active = false;
+        cursorTo(slidePoint(from), 700.0, now);
+        pending.push_back({ now + 760.0, [this]
+        {
+            cursor.pressed = true;
+            slide.start = juce::Time::getMillisecondCounterHiRes();
+            slide.active = true;
+            glowTarget = slide.bar;
+            glowUntil = slide.start + slide.duration;
+        } });
+        nextAt = juce::jmax(nextAt, now + 760.0 + ms + 300.0);
+    }
+
+    void step(const juce::String& line)
+    {
+        const juce::String cmd = line.upToFirstOccurrenceOf(" ", false, false).toLowerCase();
+        const juce::String arg = line.fromFirstOccurrenceOf(" ", false, false).trim();
+        const auto parts = juce::StringArray::fromTokens(arg, "|", "");
+        auto part = [&parts](int i) { return i < parts.size() ? parts[i].trim() : juce::String(); };
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        if (waitForStart <= 0.0) CrashHandler::note("Video step: " + line);   // a waitfor poll is not logged again
+        if (cmd == "window")
+        {
+            const auto wh = juce::StringArray::fromTokens(arg, " ", "");
+            if (auto* window = dynamic_cast<juce::ResizableWindow*>(owner.getTopLevelComponent()); window != nullptr && wh.size() >= 2)
+            {
+                window->setFullScreen(false);
+                window->setBounds(0, 0, wh[0].getIntValue(), wh[1].getIntValue());
+            }
+            nextAt = now + 600.0;
+        }
+        else if (cmd == "wait") nextAt = now + juce::jmax(0, arg.getIntValue());
+        else if (cmd == "waitfor")
+        {
+            // waitfor BUTTON|MAXMS: the script waits until a button of that text shows (the box after a reload), MAXMS at most.
+            if (waitForStart <= 0.0) waitForStart = now;
+            if (findButton(part(0)) != nullptr || now - waitForStart > juce::jmax(1000.0, part(1).getDoubleValue())) { waitForStart = 0.0; nextAt = now + 400.0; }
+            else { --index; nextAt = now + 200.0; }
+        }
+        else if (cmd == "caption") caption = arg;
+        else if (cmd == "say")
+        {
+            // say TEXT: a sentence of the narration at this moment of the recording (narration.txt, spoken afterwards).
+            if (capturing) narration << juce::String(juce::roundToInt(now - t0)) << "\t" << arg << "\n";
+        }
+        else if (cmd == "record")
+        {
+            if (arg.startsWithIgnoreCase("start"))
+            {
+                const bool ok = owner.engine.startRecording(folder.getChildFile("audio.wav"));
+                capturing = true;
+                t0 = now;
+                lastFrameMs = 0.0;
+                CrashHandler::note(juce::String("Video: recording ") + (ok ? "started" : "FAILED"));
+            }
+            else { owner.engine.stopRecording(); CrashHandler::note("Video: recording stopped"); }
+        }
+        else if (cmd == "click")
+        {
+            if (auto* button = findButton(arg)) actOn(button, [button] { button->triggerClick(); }, now);
+            else CrashHandler::note("Video: no button \"" + arg + "\"");
+        }
+        else if (cmd == "expand" || cmd == "collapse")
+        {
+            if (auto* row = findRow(part(0).getIntValue(), part(1)))
+            {
+                const bool open = cmd == "expand";
+                const int manual = part(0).getIntValue();
+                const juce::String what = part(1);
+                actOn(&row->voicingToggleComponent(), [this, manual, what, open]
+                {
+                    auto* r = findRow(manual, what);
+                    if (r == nullptr) return;
+                    if (auto* t = r->transmission()) t->voicingExpanded = open; else r->getStop()->voicingExpanded = open;
+                    if (owner.voicer) owner.voicer->rebuildUI(owner.stopsContent, owner.stopsViewport);
+                    // The row rebuilt: scrolled into the picture whole (the expanded voicing of
+                    // the last manual stood beyond the right edge - the user: "okno není celé").
+                    if (auto* again = findRow(manual, what); again != nullptr && open && again->getParentComponent() != nullptr)
+                    {
+                        const auto b = owner.stopsViewport.getViewedComponent() != nullptr
+                            ? owner.stopsViewport.getViewedComponent()->getLocalArea(again, again->getLocalBounds()) : again->getBounds();
+                        auto view = owner.stopsViewport.getViewPosition();
+                        if (b.getRight() > view.x + owner.stopsViewport.getViewWidth()) view.x = juce::jmax(0, b.getRight() - owner.stopsViewport.getViewWidth() + 8);
+                        if (b.getX() < view.x) view.x = juce::jmax(0, b.getX() - 8);
+                        if (b.getBottom() > view.y + owner.stopsViewport.getViewHeight()) view.y = juce::jmax(0, b.getBottom() - owner.stopsViewport.getViewHeight() + 8);
+                        if (b.getY() < view.y) view.y = juce::jmax(0, b.getY() - 8);
+                        owner.stopsViewport.setViewPosition(view);
+                    }
+                    else if (!open) owner.stopsViewport.setViewPosition(0, owner.stopsViewport.getViewPositionY());
+                }, now);
+            }
+        }
+        else if (cmd == "alias")
+        {
+            if (auto* row = findRow(part(0).getIntValue(), part(1)))
+            {
+                const int manual = part(0).getIntValue(); const juce::String what = part(1), text = part(2);
+                actOn(&row->buttonComponent(), [this, manual, what, text] { if (auto* r = findRow(manual, what)) r->applyAlias(text); }, now);
+            }
+        }
+        else if (cmd == "volume")
+        {
+            if (auto* row = findRow(part(0).getIntValue(), part(1)))
+            {
+                const float db = (float)part(2).getDoubleValue();
+                Stop* stop = row->getStop();
+                actOn(&row->buttonComponent(), [this, stop, db] { stop->setDb(db); if (owner.voicer) owner.voicer->updateStopStates(); }, now);
+            }
+        }
+        else if (cmd == "stop")
+        {
+            if (auto* row = findRow(part(0).getIntValue(), part(1)))
+            {
+                Voicer::GridItem item;
+                item.manual = part(0).getIntValue(); item.stop = row->getStop(); item.transmission = row->getTransmissionIndex(); item.folder = row->getStop()->container;
+                const bool on = part(2).equalsIgnoreCase("on");
+                actOn(&row->buttonComponent(), [this, item, on] { owner.setGridItemEnabled(item, on); if (owner.voicer) owner.voicer->updateStopStates(); }, now);
+            }
+        }
+        else if (cmd == "trem")
+        {
+            const int manual = part(0).getIntValue();
+            if (manual >= 0 && manual < SamplerEngine::maxManuals)
+            {
+                const bool on = part(1).equalsIgnoreCase("on");
+                juce::Component* button = owner.voicer ? owner.voicer->headerButton(manual, "Tremulant") : nullptr;
+                // The button glows a moment before the switch (the user: the tone sounds, then the tremulant comes in audibly).
+                if (button != nullptr) { glowTarget = button; glowUntil = now + 1600.0; }
+                actOn(button, [this, manual, on]
+                {
+                    auto& config = owner.manualConfigs[(size_t)manual];
+                    config.tremulantEnabled = on;
+                    owner.engine.setManualTremulant(manual, on, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                }, now, 400.0);
+            }
+        }
+        else if (cmd == "coupler")
+        {
+            const juce::String id = part(0);
+            const bool on = part(1).equalsIgnoreCase("on");
+            juce::Component* button = nullptr;
+            {
+                const juce::ScopedLock lock(owner.couplerLock);
+                if (auto* coupler = owner.findCoupler(id); coupler != nullptr && owner.voicer) button = owner.voicer->headerButton(coupler->sourceManual, coupler->label);
+            }
+            actOn(button, [this, id, on] { owner.setCouplerEnabled(id, on); }, now);
+        }
+        else if (cmd == "note")
+        {
+            const int manual = part(0).getIntValue();
+            const bool on = part(2).equalsIgnoreCase("on");
+            owner.routeKeyboardNote(manual, part(1).getIntValue(), 100, on);
+            if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = on ? 1.0e12 : 0.0;   // the keyboard symbol blinks while the script plays
+        }
+        else if (cmd == "chord")
+        {
+            const int manual = part(0).getIntValue();
+            const auto keys = juce::StringArray::fromTokens(part(1), ",", "");
+            const double holdMs = juce::jmax(100, part(2).getIntValue());
+            for (const auto& k : keys) owner.routeKeyboardNote(manual, k.getIntValue(), 100, true);
+            if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = now + holdMs;
+            MainComponent* o = &owner;
+            pending.push_back({ now + holdMs, [o, manual, keys] { for (const auto& k : keys) o->routeKeyboardNote(manual, k.getIntValue(), 0, false); } });
+        }
+        else if (cmd == "arrange")
+        {
+            if (owner.voicer) owner.voicer->scriptArrange(part(0).getIntValue(), !arg.equalsIgnoreCase("off") && !part(1).equalsIgnoreCase("off"));
+        }
+        else if (cmd == "drag")
+        {
+            // drag M|STOP|TARGET|COL|ROW|move|copy   or   drag M|STOP|into|MASTER M|MASTER STOP|copy
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            juce::Point<int> where;
+            bool found = false;
+            if (owner.voicer != nullptr && row != nullptr)
+                found = part(2).equalsIgnoreCase("into") ? owner.voicer->scriptIndentPoint(part(3).getIntValue(), part(4), where)
+                                                        : owner.voicer->scriptCellCentre(part(2).getIntValue(), part(3).getIntValue(), part(4).getIntValue(), where);
+            if (!found) { CrashHandler::note("Video: drag - no row or no destination"); return; }
+            const int manual = part(0).getIntValue();
+            const juce::String name = part(1);
+            const bool duplicate = part(5).equalsIgnoreCase("copy");
+            dragTo(row, where, [this, manual, name, where, duplicate]
+            {
+                const bool ok = owner.voicer != nullptr && owner.voicer->scriptDropAt(manual, name, where, duplicate);
+                CrashHandler::note(juce::String("Video: drop ") + (ok ? "done" : "FAILED (no row)"));
+            }, now);
+        }
+        else if (cmd == "drop")
+        {
+            if (owner.voicer)
+            {
+                const bool ok = owner.voicer->scriptDrop(part(0).getIntValue(), part(1), part(2).getIntValue(), part(3).getIntValue(), part(4).getIntValue(), part(5).equalsIgnoreCase("copy"));
+                CrashHandler::note(juce::String("Video: drop ") + (ok ? "done" : "FAILED (no row or cell)"));
+            }
+        }
+        else if (cmd == "relocate")
+        {
+            // The missing tree whose path ends with the tail, the folder as the chooser would give it.
+            const juce::String tail = part(0).replaceCharacter('\\', '/');
+            const juce::File chosen(part(1));
+            int tree = -1, manual = -1;
+            for (int i = 0; i < (int)owner.sampleTrees.size() && tree < 0; ++i)
+                if (!SampleFiles::isDirectory(juce::File(owner.sampleTrees[(size_t)i])) && owner.sampleTrees[(size_t)i].replaceCharacter('\\', '/').endsWithIgnoreCase(tail)) tree = i;
+            for (int m = 0; m <= owner.manualCount && tree >= 0 && manual < 0; ++m)
+                for (const auto& path : owner.divisionTrees(m)) if (owner.poolIndexOf(path) == tree) { manual = m; break; }
+            juce::Component* notice = owner.voicer != nullptr && manual >= 0 ? owner.voicer->headerButton(manual, "Sample folder*") : nullptr;
+            if (tree < 0 || notice == nullptr) { CrashHandler::note("Video: relocate - no missing tree ends with " + part(0) + " or no notice"); return; }
+            // The whole way a person goes (the user: everything must be seen): the notice pressed -> its menu ->
+            // the "Replace ..." item pressed -> the folder chooser (the program's own JUCE dialog: the system's
+            // cannot be pictured) -> the folder's row chosen -> "Choose" pressed -> the trees relocated.
+            juce::Component::SafePointer<juce::Component> safeNotice(notice);
+            actOn(notice, [this, safeNotice, manual] { if (safeNotice != nullptr) showMenuReplica(manual, safeNotice.getComponent()); }, now);
+            pending.push_back({ now + 1900.0, [this] { if (menuReplica != nullptr) cursorTo(menuReplicaItemCentre(0), 600.0, juce::Time::getMillisecondCounterHiRes()); } });
+            pending.push_back({ now + 2600.0, [this] { if (menuReplica != nullptr) { menuReplica->pressed = 0; menuReplica->repaint(); } } });
+            const juce::String tailText = part(0);
+            pending.push_back({ now + 2900.0, [this, chosen, tailText]
+            {
+                pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0;
+                menuReplica.reset();
+                openFolderChooser(chosen, tailText);
+            } });
+            pending.push_back({ now + 4800.0, [this, chosen] { selectFolderRow(chosen); } });
+            pending.push_back({ now + 6600.0, [this]
+            {
+                if (browser == nullptr) return;
+                if (auto* button = findButton(browser->getActionVerb())) cursorTo(frameCentreOf(button), 700.0, juce::Time::getMillisecondCounterHiRes());
+            } });
+            pending.push_back({ now + 7500.0, [this, tree, chosen]
+            {
+                pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0;
+                if (browser != nullptr) if (auto* button = findButton(browser->getActionVerb())) highlight(button, 600.0);
+                chooserBox.reset();
+                browser.reset();
+                owner.relocateTreeSmart(tree, chosen);
+            } });
+            nextAt = juce::jmax(nextAt, now + 8200.0);
+        }
+        else if (cmd == "stoplist")
+        {
+            if (arg.startsWithIgnoreCase("open")) actOn(&owner.stopListButton, [this] { owner.showStopBuildingDialog(-1); }, now);
+            else owner.stopBuildWindow.reset();
+        }
+        else if (cmd == "closedialog")
+        {
+            for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0;)
+                if (auto* dialog = dynamic_cast<juce::DialogWindow*>(juce::Desktop::getInstance().getComponent(w)); dialog != nullptr && dialog->getName().containsIgnoreCase(arg))
+                { dialog->closeButtonPressed(); break; }
+        }
+        else if (cmd == "temperament")
+        {
+            // The cursor presses the Temperaments button (the dialog itself is not opened) and the temperament changes - sounding voices retune at once.
+            actOn(findButton("Temperaments"), [this, arg] { owner.selectTemperament(arg); }, now);
+        }
+        else if (cmd == "swell")
+        {
+            // swell M|TO|MS: the shutters of the division driven from where they stand to TO (0 closed, 1 open) over MS.
+            const int manual = part(0).getIntValue();
+            if (manual >= 0 && manual < SamplerEngine::maxManuals)
+                slideTo(owner.voicer ? owner.voicer->headerSwell(manual) : nullptr, false, manual,
+                    owner.manualConfigs[(size_t)manual].expressionPosition, (float)part(1).getDoubleValue(), part(2).getDoubleValue(), now);
+        }
+        else if (cmd == "crescendo")
+        {
+            // crescendo TO|MS: the crescendo display dragged from its position to TO (0..1 of the steps); "click Cresc." first.
+            slideTo(owner.crescendoDisplay.get(), true, -1, owner.crescendoPosition, (float)part(0).getDoubleValue(), part(1).getDoubleValue(), now);
+        }
+        else if (cmd == "slide")
+        {
+            // slide M|STOP|stop|TO|MS: the stop volume slider of the open voicing dragged; slide M|STOP|key|NOTE|TO|MS: the slider of one key.
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            juce::Slider* slider = nullptr;
+            int toIndex = 3;
+            if (row != nullptr)
+            {
+                if (part(2).equalsIgnoreCase("key")) { slider = row->keySliderComponent(part(3).getIntValue()); toIndex = 4; }
+                else slider = row->volumeSliderComponent();
+            }
+            if (slider == nullptr || !slider->isShowing()) { CrashHandler::note("Video: slide - no slider showing for " + arg); return; }
+            slideTo(slider, false, -1, (float)slider->getValue(), (float)part(toIndex).getDoubleValue(), part(toIndex + 1).getDoubleValue(), now, slider);
+        }
+        else if (cmd == "keyvolume")
+        {
+            // keyvolume M|STOP: the "Volume per key" section of the open voicing row unfolded (the cursor presses its header).
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            if (row == nullptr) { CrashHandler::note("Video: keyvolume - no row " + arg); return; }
+            const int manual = part(0).getIntValue();
+            const juce::String what = part(1);
+            actOn(&row->volumeHeaderComponent(), [this, manual, what] { if (auto* r = findRow(manual, what)) r->openVolumeRow(); }, now, 500.0);
+        }
+        else if (cmd == "learnkeyboard")
+        {
+            // learnkeyboard M|KEYS: a right click on the division's keyboard symbol -> "MIDI Learn..." -> the learn window ->
+            // learned (a key arrived) -> the symbol blinks red with the notes of KEYS (as MIDI notes do), the notes sound.
+            const int manual = part(0).getIntValue();
+            auto* settings = owner.voicer != nullptr ? owner.voicer->headerButton(manual, "Settings") : nullptr;
+            auto* header = settings != nullptr ? settings->getParentComponent() : nullptr;
+            if (header == nullptr) { CrashHandler::note("Video: learnkeyboard - no header of division " + part(0)); return; }
+            const auto indicator = header->localAreaToGlobal(juce::Rectangle<int>(5, 7, 34, 24));   // the keyboard symbol of the header's paint
+            rightClickMenu(indicator, { "MIDI Learn...", "Clear learned keyboard MIDI" }, [this, manual] { owner.beginKeyboardLearn(manual); }, now);
+            pending.push_back({ now + 5600.0, [this] { if (owner.keyboardLearnWindow != nullptr) owner.keyboardLearnWindow->exitModalState(1); } });   // a MIDI key arrived
+            const auto keys = juce::StringArray::fromTokens(part(1).isNotEmpty() ? part(1) : juce::String("48,55,64"), ",", "");
+            MainComponent* o = &owner;
+            for (int k = 0; k < keys.size(); ++k)
+            {
+                const int key = keys[k].getIntValue();
+                const double at = now + 6200.0 + 700.0 * k;
+                pending.push_back({ at, [o, manual, key] { o->routeKeyboardNote(manual, key, 100, true); if (o->voicer) o->voicer->pulseManualActivity(manual); } });
+                pending.push_back({ at + 120.0, [o, manual] { if (o->voicer) o->voicer->pulseManualActivity(manual); } });
+                pending.push_back({ at + 240.0, [o, manual] { if (o->voicer) o->voicer->pulseManualActivity(manual); } });
+                pending.push_back({ at + 600.0, [o, manual, key] { o->routeKeyboardNote(manual, key, 0, false); } });
+            }
+            nextAt = juce::jmax(nextAt, now + 6200.0 + 700.0 * keys.size() + 600.0);
+        }
+        else if (cmd == "learnstop")
+        {
+            // learnstop M|STOP: a right click on the stop -> "Learn - normal On/Off" -> the MIDI Learn window -> learned
+            // -> the stop switches on and off three times as its MIDI control would.
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            if (row == nullptr) { CrashHandler::note("Video: learnstop - no row " + arg); return; }
+            const juce::String target = "stop:" + row->getStop()->name;   // as StopRow's right click gives it
+            Voicer::GridItem item;
+            item.manual = part(0).getIntValue(); item.stop = row->getStop(); item.transmission = row->getTransmissionIndex(); item.folder = row->getStop()->container;
+            highlight(&row->buttonComponent(), 1500.0);
+            rightClickMenu(row->buttonComponent().getScreenBounds(), { "Learn - normal On/Off", "Learn - toggle on each press", {}, "Clear MIDI assignment" },
+                [this, target] { owner.beginMidiLearn(target, false, false); }, now);
+            pending.push_back({ now + 5600.0, [this]
+            {
+                { const juce::ScopedLock lock(owner.midiButtonBindingLock); owner.pendingButtonLearnTarget.clear(); }
+                if (owner.midiLearnWindow != nullptr) owner.midiLearnWindow->exitModalState(1);   // the MIDI control arrived
+            } });
+            for (int k = 0; k < 6; ++k)
+                pending.push_back({ now + 6300.0 + 550.0 * k, [this, item, k] { owner.setGridItemEnabled(item, k % 2 == 0); if (owner.voicer) owner.voicer->updateStopStates(); } });
+            nextAt = juce::jmax(nextAt, now + 6300.0 + 550.0 * 6 + 300.0);
+        }
+        else if (cmd == "settings")
+        {
+            // settings crescendo | settings swell M | settings tremulant M: the right click on the control, its menu
+            // replica, the "... settings..." item pressed, the settings dialog opens (closed by "closedialog").
+            const juce::String what = part(0);
+            const int manual = part(1).getIntValue();
+            if (what == "crescendo" && owner.crescendoDisplay != nullptr)
+                rightClickMenu(owner.crescendoDisplay->getScreenBounds(), { "Learn MIDI continuous controller", "Clear MIDI assignment", {}, "Crescendo settings..." },
+                    [this] { owner.showCrescendoDialog(); }, now, 3);
+            else if (what == "swell")
+            {
+                auto* bar = owner.voicer != nullptr ? owner.voicer->headerSwell(manual) : nullptr;
+                if (bar == nullptr) { CrashHandler::note("Video: settings swell - no bar"); return; }
+                rightClickMenu(bar->getScreenBounds(), { "Learn MIDI continuous controller", "Clear MIDI assignment", {}, "Swell settings (attenuation, shutter inertia, harmonic filter)..." },
+                    [this, manual] { owner.showFeatureSettings(manual, "swell"); }, now, 3);
+            }
+            else if (what == "tremulant")
+            {
+                auto* button = owner.voicer != nullptr ? owner.voicer->headerButton(manual, "Tremulant") : nullptr;
+                if (button == nullptr) { CrashHandler::note("Video: settings tremulant - no button"); return; }
+                rightClickMenu(button->getScreenBounds(), { "Learn - normal On/Off", "Learn - toggle on each press", {}, "Clear MIDI assignment", {}, "Tremulant settings (rate, depth, drift, harmonic filter)..." },
+                    [this, manual] { owner.showFeatureSettings(manual, "tremulant"); }, now, 5);
+            }
+            else { CrashHandler::note("Video: settings - unknown " + arg); return; }
+            nextAt = juce::jmax(nextAt, now + 3600.0);
+        }
+        else if (cmd == "dialogslider")
+        {
+            // dialogslider TITLE PART|INDEX|TO|MS: the INDEX-th slider of the open dialog whose title holds TITLE PART, dragged to TO.
+            juce::Slider* slider = dialogSlider(part(0), part(1).getIntValue());
+            if (slider == nullptr || !slider->isShowing()) { CrashHandler::note("Video: dialogslider - no slider for " + arg); return; }
+            slideTo(slider, false, -1, (float)slider->getValue(), (float)part(2).getDoubleValue(), part(3).getDoubleValue(), now, slider);
+        }
+        else if (cmd == "glow")
+        {
+            // glow M|STOP|MS: the stop's button glows and is framed (a caption that changed: 8', [V]).
+            if (auto* row = findRow(part(0).getIntValue(), part(1)))
+            {
+                glowTarget = &row->buttonComponent();
+                glowUntil = now + juce::jmax(500.0, part(2).getDoubleValue());
+                highlight(&row->buttonComponent(), juce::jmax(500.0, part(2).getDoubleValue()));
+            }
+        }
+        else if (cmd == "tonerow")
+        {
+            // tonerow M|STOP: the "Treble per key" section of the open voicing row unfolded (the cursor presses its header).
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            if (row == nullptr) { CrashHandler::note("Video: tonerow - no row " + arg); return; }
+            const int manual = part(0).getIntValue();
+            const juce::String what = part(1);
+            actOn(&row->toneHeaderComponent(), [this, manual, what] { if (auto* r = findRow(manual, what)) r->openToneRow(); }, now, 500.0);
+        }
+        else if (cmd == "paint")
+        {
+            // paint M|STOP|tone|FROM|TO|MS|AMPLITUDE[|WAVES]: the right button held, the cursor sweeps the key row from
+            // note FROM to note TO over MS ms along a sine of AMPLITUDE dB - the row's own painting follows it.
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            const bool tone = !part(2).equalsIgnoreCase("volume");
+            juce::Slider* first = row != nullptr ? (tone ? row->toneSliderComponent(part(3).getIntValue()) : row->keySliderComponent(part(3).getIntValue())) : nullptr;
+            if (first == nullptr || !first->isShowing()) { CrashHandler::note("Video: paint - no slider row showing for " + arg); return; }
+            sweep.row = row; sweep.tone = tone; sweep.from = part(3).getIntValue(); sweep.to = part(4).getIntValue();
+            sweep.duration = juce::jmax(500.0, part(5).getDoubleValue()); sweep.amplitude = part(6).getDoubleValue();
+            sweep.waves = part(7).isNotEmpty() ? part(7).getDoubleValue() : 1.5;
+            const auto startAt = first->getScreenBounds().getCentre().toFloat() - frameOrigin();
+            cursorTo(startAt, 700.0, now);
+            juce::Component::SafePointer<StopRow> safeRow(row);
+            pending.push_back({ now + 760.0, [this, safeRow, tone]
+            {
+                if (safeRow == nullptr) return;
+                safeRow->beginScriptPaint(tone);
+                sweep.start = juce::Time::getMillisecondCounterHiRes();
+                sweep.active = true;
+            } });
+            nextAt = juce::jmax(nextAt, now + 760.0 + sweep.duration + 400.0);
+        }
+        else if (cmd == "shift")
+        {
+            // shift M|STOP|SEMITONES: the Transposition box of the open voicing row set as a choice would (the caption's footage follows).
+            auto* row = findRow(part(0).getIntValue(), part(1));
+            if (row == nullptr) { CrashHandler::note("Video: shift - no row " + arg); return; }
+            const int manual = part(0).getIntValue();
+            const juce::String what = part(1);
+            const int semitones = part(2).getIntValue();
+            actOn(&row->shiftBoxComponent(), [this, manual, what, semitones]
+            {
+                if (auto* r = findRow(manual, what)) r->shiftBoxComponent().setSelectedId(semitones + 100, juce::sendNotificationSync);
+            }, now, 600.0);
+        }
+        else if (cmd == "combination")
+        {
+            // combination N: the piston pressed (recalls what it holds); combination set N: Set, then the piston (stores).
+            const bool set = part(0).startsWithIgnoreCase("set");
+            const int n = (set ? part(1) : part(0)).getIntValue();
+            if (n >= 0 && n < owner.pistonButtons.size())
+            {
+                juce::Button* piston = owner.pistonButtons[n];
+                if (set)
+                {
+                    actOn(&owner.combinationSetButton, [this] { owner.combinationSetButton.setToggleState(true, juce::sendNotification); }, now);
+                    pending.push_back({ now + 1100.0, [this, piston] { actOn(piston, [piston] { piston->triggerClick(); }, juce::Time::getMillisecondCounterHiRes()); } });
+                    nextAt = juce::jmax(nextAt, now + 2300.0);
+                }
+                else actOn(piston, [piston] { piston->triggerClick(); }, now);
+            }
+            else CrashHandler::note("Video: no piston " + juce::String(n));
+        }
+        else if (cmd == "highlight") { if (auto* row = findRow(part(0).getIntValue(), part(1))) highlight(&row->buttonComponent(), 2000.0); }
+        else if (cmd == "alert")
+        {
+            // alert M|MS: a red exclamation mark beside the division's "Sample folders not found" notice for MS ms.
+            markTarget = owner.voicer != nullptr ? owner.voicer->headerButton(part(0).getIntValue(), "Sample folder*") : nullptr;
+            markUntil = now + juce::jmax(500.0, part(1).getDoubleValue());
+            if (markTarget == nullptr) CrashHandler::note("Video: alert - no notice in division " + part(0));
+        }
+        else if (cmd == "end") finish();
+        else CrashHandler::note("Video: unknown step \"" + line + "\"");
+    }
+
+    // An item of the open popup menu (JUCE's menu window is a desktop component named "menu"; its items are its children).
+    // The popup menu of the notice, drawn by the video itself with the look-and-feel's own menu painting: a real
+    // JUCE menu dismisses itself at once while another program is in the foreground (the user watches the recording
+    // from another window), so nothing of it ever reached a frame. The items are the texts showMissingTreesMenu gives.
+    struct MenuReplica final : public juce::Component
+    {
+        juce::StringArray items;   // an empty string = a separator
+        int pressed = -1;
+        std::vector<juce::Rectangle<int>> areas;
+        void layout()
+        {
+            auto& lf = getLookAndFeel();
+            int width = 0, y = 2;
+            areas.clear();
+            for (const auto& text : items)
+            {
+                int w = 0, h = 0;
+                lf.getIdealPopupMenuItemSize(text, text.isEmpty(), 0, w, h);
+                width = juce::jmax(width, w);
+                areas.push_back({ 0, y, 0, h });
+                y += h;
+            }
+            for (auto& a : areas) a.setWidth(width + 24);
+            setSize(width + 24, y + 2);
+        }
+        void paint(juce::Graphics& g) override
+        {
+            auto& lf = getLookAndFeel();
+            lf.drawPopupMenuBackground(g, getWidth(), getHeight());
+            for (int i = 0; i < items.size(); ++i)
+                lf.drawPopupMenuItem(g, areas[(size_t)i], items[i].isEmpty(), true, i == pressed, false, false, items[i], {}, nullptr, nullptr);
+        }
+    };
+    std::unique_ptr<MenuReplica> menuReplica;
+    // The menu replica with these items under an element (its screen bounds).
+    void showReplicaMenu(const juce::StringArray& items, juce::Rectangle<int> anchorScreen)
+    {
+        menuReplica = std::make_unique<MenuReplica>();
+        menuReplica->items = items;
+        menuReplica->layout();
+        const auto at = owner.getLocalArea(nullptr, anchorScreen);
+        menuReplica->setTopLeftPosition(juce::jlimit(0, juce::jmax(0, owner.getWidth() - menuReplica->getWidth()), at.getX()),
+                                        juce::jlimit(0, juce::jmax(0, owner.getHeight() - menuReplica->getHeight()), at.getBottom() + 2));
+        owner.addAndMakeVisible(*menuReplica);
+        menuReplica->toFront(false);
+    }
+    void showMenuReplica(int manual, juce::Component* notice)
+    {
+        auto tail = [](const juce::String& path)
+        {
+            juce::StringArray parts;
+            parts.addTokens(path.replaceCharacter('/', '\\'), "\\", "");
+            parts.removeEmptyStrings();
+            while (parts.size() > 3) parts.remove(0);
+            return parts.joinIntoString(juce::File::getSeparatorString());
+        };
+        juce::StringArray items;
+        for (const auto& path : owner.divisionTrees(manual))
+            if (owner.poolIndexOf(path) >= 0 && path.isNotEmpty() && !SampleFiles::isDirectory(juce::File(path)))
+                items.add("Replace \"" + tail(path) + "\" with a folder on this computer...");
+        if (!items.isEmpty()) items.add({});
+        items.add("Open the Stop List");
+        showReplicaMenu(items, notice->getScreenBounds());
+    }
+    // A right-button press on an element, its menu replica, the first item pressed, then `then` runs (MIDI learn).
+    void rightClickMenu(juce::Rectangle<int> anchorScreen, const juce::StringArray& items, std::function<void()> then, double now, int itemIndex = 0)
+    {
+        cursorTo(anchorScreen.getCentre().toFloat() - frameOrigin(), 700.0, now);
+        pending.push_back({ now + 760.0, [this, items, anchorScreen]
+        {
+            cursor.rightButton = true;
+            pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0;
+            showReplicaMenu(items, anchorScreen);
+        } });
+        pending.push_back({ now + 1900.0, [this, itemIndex] { if (menuReplica != nullptr) cursorTo(menuReplicaItemCentre(itemIndex), 600.0, juce::Time::getMillisecondCounterHiRes()); } });
+        pending.push_back({ now + 2600.0, [this, itemIndex] { if (menuReplica != nullptr) { menuReplica->pressed = itemIndex; menuReplica->repaint(); } } });
+        pending.push_back({ now + 2900.0, [this, then]
+        {
+            cursor.rightButton = false;
+            pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0;
+            menuReplica.reset();
+            if (then) then();
+        } });
+    }
+    juce::Point<float> menuReplicaItemCentre(int index) const
+    {
+        if (menuReplica == nullptr || index >= (int)menuReplica->areas.size()) return {};
+        return menuReplica->localPointToGlobal(menuReplica->areas[(size_t)index].getCentre()).toFloat() - frameOrigin();
+    }
+    void openFolderChooser(const juce::File& chosen, const juce::String& tail)
+    {
+        browser = std::make_unique<juce::FileBrowserComponent>(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+            chosen.getParentDirectory(), nullptr, nullptr);
+        chooserBox = std::make_unique<juce::FileChooserDialogBox>(
+            "Any folder of the samples that hold \"" + tail + "\" - the tree itself, a folder above it, or a neighbouring tree",
+            juce::String(), *browser, false, juce::Colours::darkgrey);
+        chooserBox->centreWithDefaultSize(owner.getTopLevelComponent());
+        chooserBox->setVisible(true);
+        chooserBox->toFront(true);
+    }
+    void selectFolderRow(const juce::File& chosen, int attempt = 0)
+    {
+        if (browser == nullptr) return;
+        auto* list = dynamic_cast<juce::FileListComponent*>(browser->getDisplayComponent());
+        if (list == nullptr) { browser->setFileName(chosen.getFileName()); return; }
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        int found = -1;
+        const int rows = list->getListBoxModel() != nullptr ? list->getListBoxModel()->getNumRows() : 0;   // FileListComponent's own getNumRows is private
+        if (rows == 0 && attempt < 10) { pending.push_back({ now + 300.0, [this, chosen, attempt] { selectFolderRow(chosen, attempt + 1); } }); return; }   // the directory list fills on its thread
+        for (int r = 0; r < rows && found < 0; ++r)
+        {
+            list->selectRow(r, true, true);
+            if (browser->getSelectedFile(0) == chosen) found = r;
+        }
+        if (found < 0) { list->deselectAllRows(); browser->setFileName(chosen.getFileName()); CrashHandler::note("Video: folder chooser - no row for " + chosen.getFullPathName() + " among " + juce::String(rows)); return; }
+        list->selectRow(found);
+        list->scrollToEnsureRowIsOnscreen(found);
+        CrashHandler::note("Video: folder chooser - row " + juce::String(found) + " of " + juce::String(rows) + " = " + chosen.getFileName());
+        const auto area = list->getRowPosition(found, true);
+        cursorTo(list->localPointToGlobal(area.getCentre()).toFloat() - frameOrigin(), 700.0, now);
+        // The list may refresh from its thread after the choice: the row selected and shown again, the press drawn.
+        pending.push_back({ now + 760.0, [this, found] { pressedUntil = juce::Time::getMillisecondCounterHiRes() + 220.0; reselectFolderRow(found); } });
+        pending.push_back({ now + 1400.0, [this, found] { reselectFolderRow(found); } });
+    }
+    void reselectFolderRow(int row)
+    {
+        if (browser == nullptr) return;
+        if (auto* list = dynamic_cast<juce::FileListComponent*>(browser->getDisplayComponent()))
+        {
+            list->selectRow(row);
+            list->scrollToEnsureRowIsOnscreen(row);
+            const auto area = list->getRowPosition(row, true);
+            cursor.from = cursor.to = list->localPointToGlobal(area.getCentre()).toFloat() - frameOrigin();
+        }
+    }
+    // The INDEX-th slider inside the open dialog whose title holds TITLE PART (the feature settings dialogs).
+    juce::Slider* dialogSlider(const juce::String& titlePart, int index) const
+    {
+        std::function<void(juce::Component*, std::vector<juce::Slider*>&)> collect = [&collect](juce::Component* c, std::vector<juce::Slider*>& out)
+        {
+            if (auto* s = dynamic_cast<juce::Slider*>(c)) out.push_back(s);
+            for (int i = 0; i < c->getNumChildComponents(); ++i) collect(c->getChildComponent(i), out);
+        };
+        for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0;)
+            if (auto* dialog = dynamic_cast<juce::DialogWindow*>(juce::Desktop::getInstance().getComponent(w)); dialog != nullptr && dialog->isShowing() && dialog->getName().containsIgnoreCase(titlePart))
+            {
+                std::vector<juce::Slider*> sliders;
+                collect(dialog, sliders);
+                return index >= 0 && index < (int)sliders.size() ? sliders[(size_t)index] : nullptr;
+            }
+        return nullptr;
+    }
+    juce::Button* findButton(const juce::String& text) const
+    {
+        std::function<juce::Button*(juce::Component*)> find = [&find, &text](juce::Component* c) -> juce::Button*
+        {
+            if (auto* button = dynamic_cast<juce::Button*>(c); button != nullptr && button->getButtonText() == text && button->isShowing()) return button;
+            for (int i = 0; i < c->getNumChildComponents(); ++i) if (auto* found = find(c->getChildComponent(i))) return found;
+            return nullptr;
+        };
+        for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0;)
+            if (auto* found = find(juce::Desktop::getInstance().getComponent(w))) return found;
+        return nullptr;
+    }
+    StopRow* findRow(int manual, const juce::String& what) const
+    {
+        if (owner.voicer == nullptr) return nullptr;
+        return owner.voicer->findRow([manual, what](const StopRow& r)
+        {
+            if (r.divisionIndex() != manual) return false;
+            return r.getStop()->name == what || r.getStop()->name.startsWith(what) || r.caption().contains(what);
+        });
+    }
+    void highlight(juce::Component* target, double ms)
+    {
+        highlightTarget = target;
+        highlightUntil = juce::Time::getMillisecondCounterHiRes() + ms;
+    }
+
+    void captureFrame(double now)
+    {
+        auto* top = owner.getTopLevelComponent();
+        if (top == nullptr) return;
+        if (pool.getNumJobs() > 40) return;   // the PNG writers lag: this frame is dropped rather than held in memory
+        const auto origin = top->getScreenPosition();
+        if (!baseFrame.isValid() || now - lastBaseMs >= 99.0)
+        {
+            suppressOverlay = true;   // the screen overlay is a child of the window: not into the base picture (the frame draws its own)
+            baseFrame = top->createComponentSnapshot(top->getLocalBounds(), false, 1.0f);
+            suppressOverlay = false;
+            if (!baseFrame.isValid()) return;
+            lastBaseMs = now;
+            juce::Graphics gb(baseFrame);
+            // The other windows of ours (dialogs, menus) at their places over the main window.
+            for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
+            {
+                auto* window = juce::Desktop::getInstance().getComponent(w);
+                if (window == nullptr || window == top || !window->isVisible() || window->getWidth() <= 0) continue;
+                const juce::Image image = window->createComponentSnapshot(window->getLocalBounds(), false, 1.0f);
+                const auto at = window->getScreenPosition() - origin;
+                gb.drawImageAt(image, at.x, at.y);
+            }
+        }
+        juce::Image frame = baseFrame.createCopy();
+        juce::Graphics g(frame);
+        drawOverlays(g, frame.getWidth(), frame.getHeight(), now, origin);
+        const int number = ++frames;
+        const juce::File file = folder.getChildFile(juce::String::formatted("f%05d.png", number));
+        times.push_back(now - t0);
+        struct WriteJob final : public juce::ThreadPoolJob
+        {
+            WriteJob(juce::Image i, juce::File f) : juce::ThreadPoolJob("frame"), image(std::move(i)), file(std::move(f)) {}
+            JobStatus runJob() override
+            {
+                file.deleteFile();
+                juce::FileOutputStream stream(file);
+                if (stream.openedOk()) juce::PNGImageFormat().writeImageToStream(image, stream);
+                return jobHasFinished;
+            }
+            juce::Image image; juce::File file;
+        };
+        pool.addJob(new WriteJob(frame, file), true);
+    }
+
+    // The overlays of a frame - drawn into every recorded frame AND on the screen (the Overlay child of the main
+    // window, the user: "chci to vidět"): glow, the red "!", the golden frame, the travelling button, the cursor,
+    // the caption bar. Coordinates are the top-level window's (origin = its screen position).
+    void drawOverlays(juce::Graphics& g, int width, int height, double now, juce::Point<int> origin) const
+    {
+        // The glow of a stop taken for a drag or of a button about to be switched: a soft golden halo.
+        if (glowTarget != nullptr && glowTarget->isShowing() && now < glowUntil)
+        {
+            const auto r = (glowTarget->getScreenBounds() - origin).toFloat();
+            const float pulse = 0.55f + 0.45f * (float)std::sin(now / 110.0);
+            for (int ring = 4; ring >= 1; --ring)
+            {
+                g.setColour(juce::Colour(0xffffd36b).withAlpha(pulse * 0.16f * (float)(5 - ring)));
+                g.drawRoundedRectangle(r.expanded(3.0f + 4.0f * (float)ring), 8.0f, 5.0f);
+            }
+        }
+        // The red exclamation mark beside a notice (the "Sample folders not found" line; the user: a red "!" there).
+        if (markTarget != nullptr && markTarget->isShowing() && now < markUntil)
+        {
+            const auto r = (markTarget->getScreenBounds() - origin).toFloat();
+            const float radius = juce::jlimit(16.0f, 30.0f, r.getHeight() * 0.9f);
+            const float pulse = 0.8f + 0.2f * (float)std::sin(now / 140.0);
+            const juce::Point<float> centre(r.getX() - radius - 10.0f, r.getCentreY());
+            g.setColour(juce::Colours::black.withAlpha(0.35f));
+            g.fillEllipse(centre.x - radius * pulse + 3.0f, centre.y - radius * pulse + 4.0f, 2.0f * radius * pulse, 2.0f * radius * pulse);
+            g.setColour(juce::Colour(0xffe03030));
+            g.fillEllipse(centre.x - radius * pulse, centre.y - radius * pulse, 2.0f * radius * pulse, 2.0f * radius * pulse);
+            g.setColour(juce::Colours::white);
+            g.setFont(juce::Font(juce::FontOptions(radius * 1.6f * pulse, juce::Font::bold)));
+            g.drawText("!", juce::Rectangle<float>(centre.x - radius, centre.y - radius, 2.0f * radius, 2.0f * radius), juce::Justification::centred, false);
+            g.setColour(juce::Colour(0xffe03030).withAlpha(0.7f));
+            g.drawRoundedRectangle(r.expanded(3.0f), 6.0f, 3.0f);
+        }
+        // The golden frame around the element just acted on.
+        if (highlightTarget != nullptr && highlightTarget->isShowing() && now < highlightUntil)
+        {
+            const auto r = (highlightTarget->getScreenBounds() - origin).toFloat().expanded(5.0f);
+            const float alpha = (float)juce::jlimit(0.0, 1.0, (highlightUntil - now) / 400.0);
+            g.setColour(juce::Colour(0xffffd36b).withAlpha(alpha));
+            g.drawRoundedRectangle(r, 6.0f, 4.0f);
+        }
+        // The travelling picture of a dragged button.
+        if (travel.active && travel.image.isValid())
+        {
+            const auto p = travel.from + (travel.to - travel.from) * eased((float)((now - travel.start) / travel.duration));
+            g.setColour(juce::Colours::black.withAlpha(0.35f));
+            g.fillRoundedRectangle(p.x - travel.image.getWidth() * 0.5f + 6.0f, p.y - travel.image.getHeight() * 0.5f + 8.0f, (float)travel.image.getWidth(), (float)travel.image.getHeight(), 6.0f);
+            g.setOpacity(0.92f);
+            g.drawImageAt(travel.image, juce::roundToInt(p.x - travel.image.getWidth() * 0.5f), juce::roundToInt(p.y - travel.image.getHeight() * 0.5f));
+            g.setOpacity(1.0f);
+        }
+        // The cursor: a white arrow with a dark outline; a ring while it presses.
+        if (cursor.shown)
+        {
+            const auto p = cursorAt(now);
+            juce::Path arrow;
+            arrow.startNewSubPath(p.x, p.y);
+            arrow.lineTo(p.x, p.y + 30.0f);
+            arrow.lineTo(p.x + 7.5f, p.y + 23.5f);
+            arrow.lineTo(p.x + 13.0f, p.y + 35.0f);
+            arrow.lineTo(p.x + 18.5f, p.y + 32.5f);
+            arrow.lineTo(p.x + 13.0f, p.y + 21.0f);
+            arrow.lineTo(p.x + 22.0f, p.y + 21.0f);
+            arrow.closeSubPath();
+            if (cursor.pressed || now < pressedUntil)
+            {
+                g.setColour((cursor.rightButton ? juce::Colour(0xff6bb8ff) : juce::Colour(0xffffd36b)).withAlpha(0.45f));   // blue ring = the right button
+                g.fillEllipse(p.x - 16.0f, p.y - 16.0f, 32.0f, 32.0f);
+            }
+            g.setColour(juce::Colours::white);
+            g.fillPath(arrow);
+            g.setColour(juce::Colours::black);
+            g.strokePath(arrow, juce::PathStrokeType(1.6f));
+        }
+        // The caption bar.
+        if (caption.isNotEmpty())
+        {
+            const int barHeight = juce::jmax(84, height / 13);   // the frames may be a whole 2560 px screen: the bar and its text scale with them
+            const auto bar = juce::Rectangle<int>(0, height - barHeight, width, barHeight);
+            g.setColour(juce::Colours::black.withAlpha(0.62f));
+            g.fillRect(bar);
+            g.setColour(juce::Colours::white);
+            g.setFont(juce::Font(juce::FontOptions((float)barHeight * 0.36f)));
+            g.drawFittedText(caption, bar.reduced(40, 8), juce::Justification::centred, 2, 0.9f);
+        }
+    }
+    // Where the overlays are at this moment (the screen's repaint area; the caption bar apart).
+    juce::Rectangle<int> overlayArea(double now, juce::Point<int> origin) const
+    {
+        juce::Rectangle<int> r;
+        auto add = [&r](juce::Rectangle<int> a) { r = r.isEmpty() ? a : r.getUnion(a); };
+        if (cursor.shown) { const auto p = cursorAt(now).toInt(); add({ p.x - 24, p.y - 24, 60, 72 }); }
+        if (travel.active && travel.image.isValid())
+        {
+            const auto p = (travel.from + (travel.to - travel.from) * eased((float)((now - travel.start) / travel.duration))).toInt();
+            add({ p.x - travel.image.getWidth() / 2 - 12, p.y - travel.image.getHeight() / 2 - 12, travel.image.getWidth() + 32, travel.image.getHeight() + 36 });
+        }
+        if (glowTarget != nullptr && glowTarget->isShowing()) add((glowTarget->getScreenBounds() - origin).expanded(30));
+        if (highlightTarget != nullptr && highlightTarget->isShowing()) add((highlightTarget->getScreenBounds() - origin).expanded(12));
+        if (markTarget != nullptr && markTarget->isShowing()) add((markTarget->getScreenBounds() - origin).expanded(80, 40));
+        return r;
+    }
+    struct Overlay final : public juce::Component
+    {
+        explicit Overlay(VideoScript& s) : script(s) { setInterceptsMouseClicks(false, false); setOpaque(false); }
+        void paint(juce::Graphics& g) override
+        {
+            if (script.suppressOverlay) return;
+            auto* top = getParentComponent();
+            script.drawOverlays(g, getWidth(), getHeight(), juce::Time::getMillisecondCounterHiRes(), top != nullptr ? top->getScreenPosition() : juce::Point<int>());
+        }
+        VideoScript& script;
+    };
+    void refreshOverlay(double now)
+    {
+        auto* top = owner.getTopLevelComponent();
+        if (top == nullptr) return;
+        if (overlay == nullptr)
+        {
+            overlay = std::make_unique<Overlay>(*this);
+            top->addAndMakeVisible(*overlay);
+        }
+        if (overlay->getBounds() != top->getLocalBounds()) overlay->setBounds(top->getLocalBounds());
+        overlay->toFront(false);
+        const auto area = overlayArea(now, top->getScreenPosition());
+        const auto dirty = lastOverlayArea.isEmpty() ? area : (area.isEmpty() ? lastOverlayArea : area.getUnion(lastOverlayArea));
+        if (!dirty.isEmpty()) overlay->repaint(dirty);
+        lastOverlayArea = area;
+        if (caption != captionOnScreen)
+        {
+            const int barHeight = juce::jmax(84, overlay->getHeight() / 13);
+            overlay->repaint(0, overlay->getHeight() - barHeight, overlay->getWidth(), barHeight);
+            captionOnScreen = caption;
+        }
+    }
+
+    void finish()
+    {
+        if (done) return;
+        done = true;
+        stopTimer();
+        owner.engine.stopRecording();
+        capturing = false;
+        // The concat list for ffmpeg: every frame with the time until the next one.
+        juce::String list;
+        for (size_t i = 0; i < times.size(); ++i)
+        {
+            const double duration = i + 1 < times.size() ? (times[i + 1] - times[i]) / 1000.0 : 0.1;
+            list << "file 'f" << juce::String::formatted("%05d", (int)i + 1) << ".png'\nduration " << juce::String(juce::jmax(0.01, duration), 3) << "\n";
+        }
+        if (!times.empty()) list << "file 'f" << juce::String::formatted("%05d", (int)times.size()) << ".png'\n";
+        folder.getChildFile("narration.txt").replaceWithText(narration);
+        folder.getChildFile("frames.txt").replaceWithText(list);
+        pool.removeAllJobs(false, 60000);
+        CrashHandler::note("ORGAN_VIDEO_SCRIPT: done - " + juce::String(frames) + " frame(s) over " + juce::String(times.empty() ? 0.0 : times.back() / 1000.0, 1) + " s in " + folder.getFullPathName());
+        juce::Component::SafePointer<MainComponent> safeThis(&owner);
+        juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->video.reset(); });
+    }
+
+    struct Pending { double at; std::function<void()> action; };
+    struct Cursor { juce::Point<float> from, to; double start = 0.0, duration = 1.0; bool shown = false, pressed = false, rightButton = false; } cursor;
+    struct Sweep { juce::Component::SafePointer<StopRow> row; bool tone = true; int from = 0, to = 0; double start = 0.0, duration = 1.0, amplitude = 6.0, waves = 1.5; bool active = false; } sweep;
+    std::unique_ptr<Overlay> overlay;
+    std::array<double, SamplerEngine::maxManuals> blinkUntil{};
+    bool suppressOverlay = false;
+    juce::Rectangle<int> lastOverlayArea;
+    juce::String captionOnScreen;
+    struct Travel { juce::Image image; juce::Point<float> from, to; double start = 0.0, duration = 1.0; bool active = false; } travel;
+    struct Slide { juce::Component::SafePointer<juce::Component> bar; juce::Component::SafePointer<juce::Slider> slider; int manual = -1; float from = 0.0f, to = 0.0f; double start = 0.0, duration = 1.0; bool active = false, crescendo = false; } slide;
+    std::unique_ptr<juce::FileBrowserComponent> browser;          // the folder chooser of "relocate" (the program's own, pictured; the system's cannot be)
+    std::unique_ptr<juce::FileChooserDialogBox> chooserBox;
+    MainComponent& owner;
+    juce::File folder;
+    juce::ThreadPool pool;
+    juce::StringArray lines;
+    int index = 0, frames = 0;
+    double nextAt = 0.0, t0 = 0.0, lastFrameMs = 0.0, highlightUntil = 0.0, glowUntil = 0.0, pressedUntil = 0.0, waitForStart = 0.0;
+    bool capturing = false, done = false;
+    juce::String caption;
+    juce::Component::SafePointer<juce::Component> highlightTarget, glowTarget, markTarget;
+    double markUntil = 0.0, lastBaseMs = 0.0;
+    juce::Image baseFrame;   // the window and its dialogs as last pictured (10 a second); the overlays go on a copy per frame
+    juce::String narration;  // "ms<TAB>text" lines of the "say" steps (narration.txt: spoken by make_video.ps1)
+    std::vector<Pending> pending;
+    std::vector<double> times;
+};
+
+void MainComponent::startVideoScript(const juce::File& script, const juce::File& folder)
+{
+    if (!script.existsAsFile()) { CrashHandler::note("ORGAN_VIDEO_SCRIPT: no file " + script.getFullPathName()); return; }
+    video = std::make_shared<VideoScript>(*this, script, folder);
 }
 
 void MainComponent::installLinuxDesktopEntry()
@@ -17833,12 +19044,17 @@ void MainComponent::loadSettings()
     copyCacheFolder = parsed.getProperty("copyCacheFolder", "").toString();
     copyCacheEnabled = parsed.getProperty("copyCacheEnabled", true);   // on by default (0.8.124): a reload of a big organ computed every filled pipe again
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
+    consoleGlow = parsed.getProperty("consoleGlow", true);   // 0.8.206: the glow of a pressed button / a dragged stop
+    glowLayer.enabled = consoleGlow;
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
     configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
     sampleLocations.clear();
     if (auto* locations = parsed.getProperty("sampleLocations", juce::var()).getArray())
         for (const auto& location : *locations) if (location.toString().isNotEmpty()) sampleLocations.addIfNotAlreadyThere(location.toString());
     gSampleLocations = sampleLocations;
+    guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
+    if (auto* dismissed = parsed.getProperty("guidedTourDismissed", juce::var()).getArray())
+        for (const auto& name : *dismissed) if (name.toString().isNotEmpty()) guidedTourDismissed.addIfNotAlreadyThere(name.toString());
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
     if (auto* folded = parsed.getProperty("configEditorCollapsed", juce::var()).getDynamicObject())
@@ -18352,6 +19568,7 @@ void MainComponent::saveSettings()
     obj->setProperty("transposeLoopCrossfadePct", transposeLoopCrossfadePct);
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
+    obj->setProperty("consoleGlow", consoleGlow);
     obj->setProperty("transposeAttackTimingPct", transposeAttackTimingPct);
     obj->setProperty("transposeReleaseTimingPct", transposeReleaseTimingPct);
     obj->setProperty("transposeReleaseTrimMs", transposeReleaseTrimMs);
@@ -18362,6 +19579,11 @@ void MainComponent::saveSettings()
         juce::Array<juce::var> locations;
         for (const auto& location : sampleLocations) locations.add(location);
         obj->setProperty("sampleLocations", locations);
+    }
+    {
+        juce::Array<juce::var> dismissed;
+        for (const auto& name : guidedTourDismissed) dismissed.add(name);
+        obj->setProperty("guidedTourDismissed", dismissed);
     }
     {
         juce::DynamicObject::Ptr folded = new juce::DynamicObject();
@@ -23808,7 +25030,7 @@ void MainComponent::showConfigurationEditor()
                 for (const auto& item : o.headerButtons())
                 {
                     const juce::String key(item.key);
-                    if (key == "configurationEditor") continue;   // the way back here stays
+                    if (key == "configurationEditor" || key == "guidedTour") continue;   // the way back here stays; the tour's button follows the organ (0.8.206)
                     juce::Component::SafePointer<juce::Button> target(item.button);
                     addToggleButton(juce::String("Top bar: ") + item.label, o.isHeaderButtonShown(key), [&o, key](bool state)
                     {
@@ -23833,6 +25055,10 @@ void MainComponent::showConfigurationEditor()
             { o.melodyBassGraceTime = state; o.saveSettings(); });
             addToggle("Load the last configuration at startup", o.loadLastConfigurationAtStartup, [&o](bool state)
             { o.loadLastConfigurationAtStartup = state; o.saveSettings(); });
+            addToggle("Glow: a pressed button and a dragged stop glow for a moment", o.consoleGlow, [&o](bool state)
+                { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
+                "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
+                "and every stop being dragged glows for a moment. Off: the console as it was.");
             // Where the configurations and the samples live (0.8.190).
             addButton("Configurations folder: " + o.configurationsDirectory().getFullPathName(), "Choose...", [&o]
                 {
