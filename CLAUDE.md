@@ -1373,6 +1373,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   uncached readers give 528 MB/s, the log's load of 93.8 GB WAV in 182 s = 515 MB/s - the disk's ceiling, no reserve
   (the packing's thread time 30 s per 44 s tree on 16 cores is no factor). Only NVMe or the page cache makes it faster;
   never promise more from a SATA SSD. Linux python read test: files of a package not loaded recently, 4 MB reads.
+  0.8.205 (the user: "zobrazovat rychlost cteni z disku v dalsim radku load dialogu, radky nesmi preskakovat"):
+  `SamplerEngine::loadBytesRead` (atomic, added after every decodeSampleFile in loadSamplesIntoStop: the archive
+  entry's bytes else `file.getSize()`), `bytesReadByLoads()`; the StartupFolderLoader's status has ALWAYS THREE lines
+  now (progressLine / workLine / diskLine, " " when empty): `diskSpeed()` in the progress lambda takes the difference
+  every 5 s -> "Reading from the disk at N MB/s"; one log line per tree "Tree X: N GB of sample files read in T s =
+  M MB/s" (the figure to judge "loading is slow" by). Manual 4.4 says so (SATA ~500 MB/s). Posting a GitHub issue
+  comment from the Linux session was DENIED by the tool classifier: the drafted answer stays in
+  /tmp/issue105_comment.md for the user to post (gh issue comment 105 --body-file ...).
   0.8.201 VOICING ROW WIDTH (the user: a pedal's voicing row cut the Alias box off): `Voicer::rebuildUI`'s
   `line1Width` must mirror `StopRow::resized` line 1 - it was the sum of 0.8.135 and never followed the Transposition
   box (104 + 258), One-shot (96) and Rank count (146) additions, so the expanded column = the compass width on a
