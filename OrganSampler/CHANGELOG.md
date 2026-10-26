@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.204] - 2026-10-26
+
+### Fixed
+- The "Sample folders found" box (0.8.202) came up together with the loading
+  window and the two flickered over each other (#105): it comes once the
+  reload is over.
+- Loading another organ with a different number of divisions: the picture of
+  the old stops kept over the workspace while the new organ loads showed the
+  old division columns through the new ones (#105: a 3-division Adlington
+  over a 5-division Ashton). The old stops are laid out in the new organ's
+  division columns before the picture is taken.
+
 ## [0.8.203] - 2026-10-26
 
 ### Fixed

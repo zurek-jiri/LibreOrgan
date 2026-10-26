@@ -12587,7 +12587,23 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     // instrument is built (0.8.154); taken before the divisions are unloaded.
     if (frozenGrid == nullptr && !engine.getStops().isEmpty() && stopsViewport.isShowing() && stopsViewport.getWidth() > 0)
     {
+        // The old stops laid out in the NEW organ's division columns first (0.8.204,
+        // #105: a 3-division picture over a 5-division workspace showed both sets of
+        // headers and column lines through each other while the organ loaded).
+        const int newCount = juce::jlimit(1, SamplerEngine::maxManuals - 1, (int)configuration.getProperty("manualCount", manualCount));
+        if (newCount != manualCount && voicer)
+        {
+            voicer->setActiveManualCount(newCount + 1);
+            voicer->rebuildUI(stopsContent, stopsViewport);
+            CrashHandler::note("Grid picture: the old stops laid out in " + juce::String(newCount + 1) + " divisions (were " + juce::String(manualCount + 1) + ") before the picture is taken");
+        }
         const juce::Image picture = stopsViewport.createComponentSnapshot(stopsViewport.getLocalBounds(), false, 1.0f);
+        if (const char* png = std::getenv("ORGAN_TEST_SNAPSHOT"))   // tests: the picture as kept over the workspace
+        {
+            const juce::File file(juce::String::fromUTF8(png) + ".frozen.png");
+            file.deleteFile();
+            if (auto out = file.createOutputStream()) { juce::PNGImageFormat().writeImageToStream(picture, *out); CrashHandler::note("ORGAN_TEST_SNAPSHOT: " + file.getFullPathName()); }
+        }
         frozenGrid = std::make_unique<juce::ImageComponent>();
         frozenGrid->setImage(picture, juce::RectanglePlacement(juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yTop | juce::RectanglePlacement::doNotResize));
         frozenGrid->setInterceptsMouseClicks(false, false);
@@ -14173,12 +14189,17 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
     CrashHandler::note("Replace tree: " + juce::String((int)relocations.size()) + " tree(s) found - " + lines.joinIntoString("; ")
         + (stillMissing.isEmpty() ? juce::String() : "; still missing: " + stillMissing.joinIntoString(", ")) + "; divisions reloaded: " + juce::String((int)users.size()));
     saveSettings();
-    if (relocations.size() > 1 || !stillMissing.isEmpty())
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found",
-            "Found on this computer and loaded now:\n" + lines.joinIntoString("\n")
-            + (stillMissing.isEmpty() ? juce::String() : "\n\nStill not found (the notice under the division stays - click it and choose a folder of that set):\n" + stillMissing.joinIntoString("\n"))
-            + "\n\nThe place is remembered as a sample location: the next configuration finds its folders there by itself.");
     if (!users.empty()) reloadDivisions(users);
+    // The summary once the reload is over (0.8.204, #105: shown before it, the box and
+    // the loading window stood over each other and flickered).
+    if (relocations.size() > 1 || !stillMissing.isEmpty())
+    {
+        const juce::String text = "Found on this computer and loaded:\n" + lines.joinIntoString("\n")
+            + (stillMissing.isEmpty() ? juce::String() : "\n\nStill not found (the notice under the division stays - click it and choose a folder of that set):\n" + stillMissing.joinIntoString("\n"))
+            + "\n\nThe place is remembered as a sample location: the next configuration finds its folders there by itself.";
+        if (users.empty()) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found", text);
+        else runWhenLoaded([text] { juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found", text); });
+    }
 }
 
 void MainComponent::chooseFolderForMissingTree(int poolIndex)
