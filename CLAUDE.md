@@ -1325,6 +1325,21 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   bell-like stops above all (Chimes, Glockenspiel, Celesta, Harp: inharmonic partials, the formant moves with the
   pitch, the attack is stretched), so for such a stop keep the transposition at 0, the retune off (the one-shot
   patterns) and the missing keys unfilled, or accept it. Regenerate ManualData.h after the edit.
+- GLOW DEFAULT OFF (the user, 26 Oct 2026 evening): `consoleGlow` defaults to OFF (MainComponent.h `consoleGlow =
+  true` -> false; the Editor toggle and the manual's Glow section say "off by default"; a settings.json without the
+  key = off).
+- ONE ZIP FOR THE UPLOAD (the user, 26 Oct 2026 evening: "portable zip by se měl vytvořit jako zip včetně readme v
+  něm ... upload by měl pouze zip"): GitHub itself reads nothing out of a zip - but OUR robot does: the issue
+  workflow (`configuration_from_issue.py`) downloads the attachment, so it can take `<name>.README.md` from INSIDE the
+  zip. Plan: `savePortableConfiguration` with publishFiles writes the zip with the .json AND the README inside (the
+  README still beside it on disk for the user to read, nothing to fill in since 0.8.179); the issue form
+  `organ_configuration.yml` asks for ONE attachment (the zip) and its text says so; the robot unzips, takes the README
+  out (an attached README beside the zip still accepted for old exports), validates the pair as now and publishes
+  `configurations/<slug>/README.md` + the zip WITHOUT the README inside (the folder rule "exactly two files" and the
+  check's "one .json in the zip" stay - re-zip the json alone, or let `validate` accept a README member and the
+  index job strip it). Load Configuration of a zip (0.8.195, "the one .json inside") must ignore a README member.
+  Update configurations/README.md, the site's "Using one"/publishing text, the manual's publishing chapter and the
+  publish window's text ("attach the zip"). Test: the robot script on a new export (python -I) + validate.
 - FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
   the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
   (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
