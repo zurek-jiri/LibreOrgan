@@ -1307,6 +1307,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   user (the font size, "podle přání uživatele") - a +/- pair or a size combo in the manual window, Ctrl+wheel too,
   remembered as a machine-specific setting; part of the own text component above (one scale over every block's
   TextLayout, relaid out on a change).
+- DISK READ 358 MB/s (the user, 26 Oct 2026 evening): the loading dialog's "Reading from the disk at N MB/s" line
+  showed only 358 MB/s on his load - find out why. Check first WHICH disk and organ (the log's per-tree line "Tree X:
+  N GB of sample files read in T s = M MB/s" and the "Load Configuration" line with the storage options): D: is the
+  Samsung 870 QVO SATA (~500-530 MB/s ceiling measured 0.8.204, 400 MB/s cold in 0.8.154), E: the Toshiba HDD
+  (~200 MB/s), a RAR set reads through the archive path (100-120 MB/s per thread packed). Then whether the figure
+  is the disk or OUR ceiling: the figure counts `loadBytesRead` over 5 s windows (0.8.205) - decoding, packing
+  (2.5x the cost), the 32 kHz sinc (4x) and the memory counting run on the same loader threads, so with packing on
+  the readers wait on the CPU and the "disk" figure is really the loader's throughput; compare the same load with
+  packing/resampling off, the Task Manager's disk graph during the load, and a plain parallel read test
+  (%TEMP% python, 4 MB reads, 8 threads, uncached files) of the same folder. Name the line's meaning in the dialog or
+  the manual accordingly ("read and decoded") if the CPU is the limit; raise the reader parallelism or decouple
+  reading from decoding only after the measurement says so.
 - FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
   the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
   (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
