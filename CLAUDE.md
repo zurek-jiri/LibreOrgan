@@ -1129,6 +1129,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
+- FILLED-PIPES PROGRESS TRACK STUCK (the user, 26 Oct 2026, to do next): when the copies of the filled pipes are
+  built, the LAST stop built often keeps its orange progress fill stuck half-way on the button, and only a mouse-over
+  repaints it away. The button's track (the dark track / orange fill along the bottom of a stop button, manual 4.4)
+  is not repainted after the final copy: the stop's last progress notification or the "build ended" state must
+  trigger a repaint of that button (and of every stop still showing a partial fill) when the build queue empties -
+  not only on the next progress tick or a mouse event. Look at where the fill share is painted in voicer.cpp (the
+  stop button's paint with the copy progress) and where the copy build posts progress; the end-of-build path must
+  repaint the stop buttons once more.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
