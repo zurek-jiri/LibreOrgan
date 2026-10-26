@@ -4699,11 +4699,14 @@ struct SamplerEngine::Impl
     {
         std::unique_ptr<RouteReverb> fresh;
         route.reverbError.clear();
-        if (route.reverbOwner == nullptr && route.reverbIrFile.existsAsFile())   // a follower of a shared IR builds nothing: its owner convolves for it
+        if (route.reverbOwner == nullptr && SampleFiles::existsAsFile(route.reverbIrFile))   // a follower of a shared IR builds nothing: its owner convolves for it
         {
             juce::AudioFormatManager formats;
             formats.registerBasicFormats();
-            std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(route.reverbIrFile));
+            // On the disk or inside a chosen RAR archive (0.8.207: the Rural Organ demo's IRs live in its archive).
+            std::unique_ptr<juce::AudioFormatReader> reader;
+            if (route.reverbIrFile.existsAsFile()) reader.reset(formats.createReaderFor(route.reverbIrFile));
+            else if (auto stream = SampleFiles::openInput(route.reverbIrFile)) reader.reset(formats.createReaderFor(std::move(stream)));
             if (reader == nullptr || reader->numChannels < 1 || reader->lengthInSamples < 8)
                 route.reverbError = "The impulse response could not be read.";
             else

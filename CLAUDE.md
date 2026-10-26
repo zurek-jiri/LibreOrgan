@@ -538,6 +538,20 @@ ows.empty() && active(),
   50 s, settings restored): the tree now "in the archive Aeolian_Skinner.part01.rar", 1 tree job, stops "001845 - pipes
   - man - CH BlockFl 2" etc. with ORTF/AB/Rea perspectives, every stop auto-transposed -12 (files numbered 024 = key 36).
   CLAUDE.md said "Linux clone commits"; on Windows: git add -u, commit -F file, tag only after git log -1.
+  0.8.207 REGRESSION (the user: the Rural Organ demo RuralOrgan.rar downloaded into Downloads, Load Configuration of
+  the rar, "load it where it is" -> "Sample folder not found: Downloads\Rural Organ\Samply" under every division, IRs
+  "FILE NOT FOUND"): `registerArchive` wrote the chosen archive's line beside the configuration OPEN AT THE TIME
+  (another organ's folder - the user's settings even pointed at my %TEMP%\video\cfg after the video runs), and
+  `loadConfigurationFile(json inside the rar)` -> `refreshArchiveSearchFolders(new file)` REBUILT the serving set
+  (`setChosenArchives`) from the lists beside the new file (a virtual folder: none) and in the settings folder (none):
+  the archive just chosen dropped out before its trees were looked up. The 0.8.160/0.8.177 tests passed only because
+  the settings-folder list already held lines. Fix: registerArchive writes the settings-folder list ALWAYS (the
+  program's memory of every archive chosen - "on si pak měl zapamatovat, kde ty rary leží") plus the configuration's
+  own list when its folder is real; `SampleFiles::existsAsFile` for the IR candidates and the route caption, the engine
+  reads an IR inside an archive through `SampleFiles::openInput` (createReaderFor(stream)). Test: %TEMP%\fix207.ps1
+  (ORGAN_LOAD_CONFIGURATION=<rar>: the hook goes through loadConfigurationFromArchives; settings and the global list
+  backed up/restored). Every test run of mine that loads a configuration RETARGETS settings.json - a killed run leaves
+  the user's program starting on MY file; restore it by hand after every killed run.
   0.8.177 THE USER'S RULE ("On nesmí brát archivy, které člověk nevybere!"): ONLY the archives the user chose serve paths -
   Load folder / Load Configuration / Merge (with their parts) and the ARCHIVE lines of ArchiveFolders.txt; never another
   .rar lying beside them, and no longer every archive of the configuration's own folder. 0.8.157's design took every

@@ -6587,7 +6587,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 else
                 {
                     text = "IR: " + irFile.getFileNameWithoutExtension();
-                    if (!irFile.existsAsFile()) text << "  (FILE NOT FOUND - choose it)";   // 0.8.191: visible, not only in the log
+                    if (!SampleFiles::existsAsFile(irFile)) text << "  (FILE NOT FOUND - choose it)";   // 0.8.191: visible, not only in the log; 0.8.207: an IR inside a chosen archive is a file too
                     else if (info.error.isNotEmpty()) text << "  (error)";
                     else if (info.channels <= 0) text << "  (loading)";
                     else if (info.sharedWith.isNotEmpty()) text << "  (shared)";
@@ -10660,16 +10660,28 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     if (!archive.existsAsFile()) return;
     SampleFiles::addChosenArchives({ archive });
     noteSampleLocation(archive.getParentDirectory());   // 0.8.190: an unpacked set beside its archives is found there
-    const juce::File list = (currentConfigurationFile != juce::File() && currentConfigurationFile.getParentDirectory().isDirectory()
-        ? currentConfigurationFile.getParentDirectory()
-        : juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler")).getChildFile("ArchiveFolders.txt");
-    juce::StringArray lines;
-    if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
-    for (const auto& line : lines) if (juce::File(line.trim()) == archive) return;
-    if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
-    lines.add(archive.getFullPathName());
-    list.replaceWithText(lines.joinIntoString("\n") + "\n");
-    CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
+    // 0.8.207 REGRESSION FIX: the line went beside the configuration open at the time alone - another organ's
+    // folder - and the load of the configuration INSIDE the archive then called refreshArchiveSearchFolders
+    // with the new file, which rebuilt the serving set from the lists beside it (a virtual folder in the rar:
+    // none) and in the settings folder (empty): the archive just chosen dropped out and "Sample folder not
+    // found: Downloads\Rural Organ\Samply" stood under every division of the downloaded demo. The settings
+    // folder's list is the program's memory of every archive ever chosen: written always, the configuration's
+    // own list beside it when that folder is real.
+    std::vector<juce::File> lists{ juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("ArchiveFolders.txt") };
+    if (currentConfigurationFile != juce::File() && currentConfigurationFile.getParentDirectory().isDirectory())
+        lists.push_back(currentConfigurationFile.getParentDirectory().getChildFile("ArchiveFolders.txt"));
+    for (const auto& list : lists)
+    {
+        juce::StringArray lines;
+        if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
+        bool there = false;
+        for (const auto& line : lines) if (juce::File(line.trim()) == archive) { there = true; break; }
+        if (there) continue;
+        if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
+        lines.add(archive.getFullPathName());
+        list.replaceWithText(lines.joinIntoString("\n") + "\n");
+        CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
+    }
 }
 
 void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file, bool importing)
@@ -12558,7 +12570,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                             }
                             bool found = false;
                             for (const auto& candidate : candidates)
-                                if (candidate.existsAsFile()) { routeObject->setProperty("reverbIr", candidate.getFullPathName()); found = true; break; }
+                                if (SampleFiles::existsAsFile(candidate)) { routeObject->setProperty("reverbIr", candidate.getFullPathName()); found = true; break; }   // 0.8.207: inside a chosen archive too
                             if (!found && (irAbsolute.isNotEmpty() || irRelative.isNotEmpty() || irLibraryRelative.isNotEmpty()))
                                 CrashHandler::note("Impulse response not found for division " + juce::String(manual) + " route " + routeObject->getProperty("name").toString()
                                     + ": " + (irAbsolute.isNotEmpty() ? irAbsolute : irLibraryRelative.isNotEmpty() ? irLibraryRelative : irRelative) + " (the route shows it; choose the file there)");

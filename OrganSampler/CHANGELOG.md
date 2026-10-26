@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.207] - 2026-10-26
+
+### Fixed
+- A configuration loaded straight from a RAR archive (the Rural Organ demo
+  downloaded into Downloads, loaded "from its own folder") found none of its
+  sample folders: the archive just chosen was remembered beside the
+  configuration open at the time only, and the load of the configuration
+  inside the archive rebuilt the list of serving archives without it. The
+  chosen archive is now remembered in the program's own list as well, so it
+  serves this configuration and every later one.
+- The impulse responses of such a configuration are read from the archive
+  too (they showed "FILE NOT FOUND").
+
 ## [0.8.206] - 2026-10-26
 
 ### Added
