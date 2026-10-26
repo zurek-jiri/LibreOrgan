@@ -1687,6 +1687,29 @@ MainComponent::MainComponent()
             safeThis->loadTreeIntoDivision(tree, division);
         });
     }
+    // ORGAN_TEST_RELOCATE="<tree tail>|<folder>[|<seconds>]" (tests, 0.8.202): the
+    // missing pool tree whose path ends with the tail is given the folder as the
+    // notice's chooser would (relocateTreeSmart), 25 s after start by default; the
+    // "holds none of the stop folders" box is logged as a refusal instead of shown.
+    if (const char* relocate = std::getenv("ORGAN_TEST_RELOCATE"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(relocate), "|", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(parts.size() > 2 ? juce::jmax(1, parts[2].getIntValue()) * 1000 : 25000, [safeThis, parts]
+        {
+            if (safeThis == nullptr || parts.size() < 2) return;
+            const juce::String tailWanted = parts[0].replaceCharacter('\\', '/');
+            for (int i = 0; i < (int)safeThis->sampleTrees.size(); ++i)
+            {
+                const juce::String path = safeThis->sampleTrees[(size_t)i].replaceCharacter('\\', '/');
+                if (SampleFiles::isDirectory(juce::File(safeThis->sampleTrees[(size_t)i])) || !path.endsWithIgnoreCase(tailWanted)) continue;
+                CrashHandler::note("ORGAN_TEST_RELOCATE: tree " + safeThis->sampleTrees[(size_t)i] + " <- " + parts[1]);
+                safeThis->relocateTreeSmart(i, juce::File(parts[1]));
+                return;
+            }
+            CrashHandler::note("ORGAN_TEST_RELOCATE: no missing tree ends with " + parts[0]);
+        });
+    }
     // ORGAN_TEST_ARCHIVE=<rar> (tests, 0.8.157): the volumes, the index and the
     // top-level folders of a RAR archive of sample folders, logged 2 s after start.
     if (const char* env = std::getenv("ORGAN_TEST_ARCHIVE"))
@@ -12106,7 +12129,9 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     text << "Put " << code(file.getFileName()) << " into your configurations folder (Configuration Editor > *Configurations folder*; "
             "`Documents\\OrganSampler\\Configurations` by default) and load it from there. The sample folders are found in your "
             "sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration "
-            "Editor); one not found is asked for once. ";
+            "Editor). One not found shows \"Sample folder not found\" under its division: click it and choose any folder of "
+            "the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing "
+            "ones around it, and remembers the place for every configuration to come. ";
     if (topFolders.size() > 1) text << "The folders " << joinWithAnd(topCodes) << " must stand side by side in one folder:";
     else if (topFolders.size() == 1) text << "The folder " << topCodes[0] << " is expected like this:";
     text << "\n\n```\n<a sample location>\\\n";
@@ -12135,6 +12160,27 @@ namespace
     // The sample locations of this computer (MainComponent::sampleLocations, 0.8.190),
     // for the candidates below: set whenever the settings are read or a location noted.
     juce::StringArray gSampleLocations;
+
+    // The direct subfolders of a sample location (32 at most), listed once per
+    // load (0.8.202): the candidates of every tree ask for them.
+    const std::vector<juce::File>& locationChildren(const juce::File& folder)
+    {
+        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;   // message thread only
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        auto& slot = cache[folder.getFullPathName()];
+        if (slot.first <= 0.0 || now - slot.first > 30000.0)
+        {
+            slot.first = now;
+            slot.second.clear();
+            if (folder.isDirectory())
+                for (const auto& child : SampleFiles::childDirectories(folder))
+                {
+                    if (slot.second.size() >= 32) break;
+                    slot.second.push_back(child);
+                }
+        }
+        return slot.second;
+    }
 
     juce::Array<juce::File> portableFolderCandidates(const juce::var& configuration, const juce::File& configurationFile,
         const juce::File& selectedLibraryRoot, const juce::String& relativeIn, const juce::String& absolute)
@@ -12189,6 +12235,19 @@ namespace
             const juce::File folder(location);
             if (rootName.isNotEmpty()) candidates.add(folder.getChildFile(rootName).getChildFile(relative));
             candidates.add(folder.getChildFile(relative));
+            // The neighbourhood of a location (0.8.202, the user: "jestli tam nekde v
+            // okoli nelezi onen cislovany adresar"): the folder above it and its own
+            // subfolders, one level each - a place remembered one level too deep (the
+            // numbered package itself) or too high (the folder above the library)
+            // still finds the tree of the next configuration.
+            const auto above = folder.getParentDirectory();
+            if (above != folder && above.getFullPathName().isNotEmpty())
+            {
+                if (rootName.isNotEmpty()) candidates.add(above.getChildFile(rootName).getChildFile(relative));
+                candidates.add(above.getChildFile(relative));
+            }
+            for (const auto& child : locationChildren(folder))
+                candidates.add(rootName.isNotEmpty() ? child.getChildFile(rootName).getChildFile(relative) : child.getChildFile(relative));
         }
         return candidates;
     }
@@ -13843,17 +13902,68 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
     return all;
 }
 
-void MainComponent::relocateTree(int poolIndex, const juce::File& tree)
+namespace
 {
-    if (poolIndex < 0 || poolIndex >= (int)sampleTrees.size() || !SampleFiles::isDirectory(tree) || activeFolderLoader != nullptr) return;
+    juce::StringArray pathParts(const juce::String& path)
+    {
+        juce::StringArray parts;
+        parts.addTokens(path.replaceCharacter('/', '\\'), "\\", "");
+        parts.removeEmptyStrings();
+        return parts;
+    }
+    // The last k parts of both paths are the same, the case of the letters aside.
+    bool tailsEqual(const juce::StringArray& a, const juce::StringArray& b, int k)
+    {
+        if (k < 1 || a.size() < k || b.size() < k) return false;
+        for (int i = 1; i <= k; ++i)
+            if (!a[a.size() - i].equalsIgnoreCase(b[b.size() - i])) return false;
+        return true;
+    }
+    // The first n parts of 'path' are those of 'prefix'.
+    bool startsWithParts(const juce::StringArray& path, const juce::StringArray& prefix)
+    {
+        if (path.size() <= prefix.size()) return false;
+        for (int i = 0; i < prefix.size(); ++i)
+            if (!path[i].equalsIgnoreCase(prefix[i])) return false;
+        return true;
+    }
+    juce::File underFolder(juce::File folder, const juce::StringArray& parts, int from)
+    {
+        for (int i = juce::jmax(0, from); i < parts.size(); ++i) folder = folder.getChildFile(parts[i]);
+        return folder;
+    }
+    juce::File ancestorOf(juce::File file, int levels)
+    {
+        for (int i = 0; i < levels; ++i)
+        {
+            const auto parent = file.getParentDirectory();
+            if (parent == file) break;
+            file = parent;
+        }
+        return file;
+    }
+    // "002067\pipes\bw": the last three parts of a path, as the notices show them.
+    juce::String tailText(const juce::String& path)
+    {
+        auto parts = pathParts(path);
+        while (parts.size() > 3) parts.remove(0);
+        return parts.joinIntoString(juce::File::getSeparatorString());
+    }
+}
+
+bool MainComponent::applyTreeRelocation(int poolIndex, const juce::File& tree)
+{
+    // The folder takes the pool tree's place (and the divisions' legacy lists);
+    // nothing is reloaded here.
+    if (poolIndex < 0 || poolIndex >= (int)sampleTrees.size() || !SampleFiles::isDirectory(tree)) return false;
     const size_t index = (size_t)poolIndex;
     const juce::File old(sampleTrees[index]);
-    if (old == tree) return;
+    if (old == tree) return false;
     if (poolIndexOf(tree.getFullPathName()) >= 0)
     {
         juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Replace folder tree",
             "That folder is already a tree of the pool; a tree cannot stand in for another one.");
-        return;
+        return false;
     }
     sampleTrees[index] = tree.getFullPathName();
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
@@ -13862,15 +13972,220 @@ void MainComponent::relocateTree(int poolIndex, const juce::File& tree)
         if (juce::File(config.folderPath) == old) config.folderPath = tree.getFullPathName();
         for (auto& extra : config.extraFolderPaths) if (juce::File(extra) == old) extra = tree.getFullPathName();
     }
+    CrashHandler::note("Tree " + tree.getFullPathName() + " takes the place of the pool tree " + old.getFullPathName()
+        + " (index " + juce::String((int)index) + (old.isDirectory() ? "" : ", not on this computer") + ")");
+    return true;
+}
+
+void MainComponent::relocateTree(int poolIndex, const juce::File& tree)
+{
+    if (activeFolderLoader != nullptr || !applyTreeRelocation(poolIndex, tree)) return;
     syncDivisionTreeLists();
     std::vector<int> users;
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
         for (const auto& path : divisionTrees(m))
             if (juce::File(path) == tree) { users.push_back(m); break; }
-    CrashHandler::note("Tree " + tree.getFullPathName() + " takes the place of the pool tree " + old.getFullPathName()
-        + " (index " + juce::String((int)index) + (old.isDirectory() ? "" : ", not on this computer") + "); divisions reloaded: " + juce::String((int)users.size()));
+    CrashHandler::note("Tree " + tree.getFullPathName() + ": divisions reloaded: " + juce::String((int)users.size()));
     saveSettings();
     if (!users.empty()) reloadDivisions(users);
+}
+
+juce::StringArray MainComponent::treeRowFolders(int poolIndex) const
+{
+    // The folders the Stop List rows expect inside the tree (relative to it).
+    juce::StringArray folders;
+    for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+    {
+        const auto& build = manualConfigs[(size_t)m].stopBuild;
+        if (!build.active) continue;
+        for (const auto& entry : build.entries)
+            for (const auto& [perspective, ref] : entry.folders)
+            {
+                if (ref.tree != poolIndex) continue;
+                if (ref.relativePath.isNotEmpty() && ref.relativePath != ".") folders.addIfNotAlreadyThere(ref.relativePath);
+                for (const auto& more : ref.morePaths) folders.addIfNotAlreadyThere(more);
+            }
+    }
+    return folders;
+}
+
+int MainComponent::treeFoldersFound(int poolIndex, const juce::File& folder, juce::StringArray* missing) const
+{
+    // How many of the tree's expected stop folders lie under the folder (the case
+    // of the letters aside); -1 when no row names one (nothing to check against).
+    const auto folders = treeRowFolders(poolIndex);
+    if (folders.isEmpty()) return -1;
+    int found = 0;
+    for (const auto& relative : folders)
+    {
+        if (resolveCaseInsensitive(folder.getChildFile(slashes(relative))) != juce::File()) ++found;
+        else if (missing != nullptr) missing->add(relative);
+    }
+    return found;
+}
+
+void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
+{
+    // A missing tree and a folder the user chose for it (0.8.202, the user: "udelej
+    // to chytre, hodne chytre"): the tree is looked for FROM the chosen folder - the
+    // folder itself, a folder above it (the numbered package, the whole library) or
+    // a neighbouring tree of the same organ: whichever end of the missing path lies
+    // there, the longest first ("002067\pipes\bw" under a chosen "002067"). The
+    // folder found must hold what the Stop List expects in that tree (one of its
+    // stop folders at least) - a wrong folder was loaded blindly before, gave the
+    // stops nothing and took the notice away. Then every other missing tree of the
+    // organ is looked for around it (the same place under the new prefix, else the
+    // tail of its path under the folders above), all of them loaded at once, and the
+    // place is remembered as a sample location for the next configuration.
+    if (poolIndex < 0 || poolIndex >= (int)sampleTrees.size() || !chosen.isDirectory() || activeFolderLoader != nullptr) return;
+    const juce::File old(sampleTrees[(size_t)poolIndex]);
+    const auto oldParts = pathParts(old.getFullPathName());
+    const int maxTail = juce::jmin(6, oldParts.size() - 1);
+    juce::File found;
+    int tail = 0;
+    {
+        juce::File a = chosen;
+        for (int up = 0; up <= 4 && a != juce::File(); ++up)
+        {
+            const auto aParts = pathParts(a.getFullPathName());
+            for (int k = maxTail; k >= 1 && k > tail; --k)
+                if (tailsEqual(aParts, oldParts, k)) { found = a; tail = k; break; }
+            for (int k = maxTail; k >= 1 && k > tail; --k)
+                if (const auto f = resolveCaseInsensitive(underFolder(a, oldParts, oldParts.size() - k)); f != juce::File() && f != chosen)
+                { found = f; tail = k; break; }
+            const auto parent = a.getParentDirectory();
+            if (parent == a) break;
+            a = parent;
+        }
+    }
+    const bool byName = found != juce::File();
+    if (!byName) found = chosen;
+    juce::StringArray rowsMissing;
+    const int rowsFound = treeFoldersFound(poolIndex, found, &rowsMissing);
+    const auto rows = treeRowFolders(poolIndex);
+    CrashHandler::note("Replace tree " + tailText(old.getFullPathName()) + ": chosen " + chosen.getFullPathName() + " -> " + found.getFullPathName()
+        + (byName ? " (" + juce::String(tail) + " part(s) of the path matched)" : " (no part of the path matched)")
+        + (rowsFound < 0 ? ", no stop folder to check" : ", " + juce::String(rowsFound) + " of " + juce::String(rows.size()) + " expected stop folder(s) there"));
+    if (rowsFound == 0)
+    {
+        // Nothing of what the rows expect is there: never loaded blindly.
+        juce::StringArray shown;
+        for (int i = 0; i < rows.size() && i < 6; ++i) shown.add(rows[i]);
+        const juce::String text = "The folder\n    " + chosen.getFullPathName() + "\n"
+            + (byName && found != chosen ? "(the tree found from it: " + found.getFullPathName() + ")\n" : juce::String())
+            + "holds none of the " + juce::String(rows.size()) + " stop folder(s) the Stop List expects in \"" + tailText(old.getFullPathName()) + "\": "
+            + shown.joinIntoString(", ") + (rows.size() > shown.size() ? ", ..." : "") + ".\n\n"
+            "Nothing was loaded. Choose any folder of this organ's samples - the folder tree itself, a folder above it "
+            "(the numbered package or the whole library) or a neighbouring tree of the same organ: the program finds the "
+            "tree from there, looks for the other missing trees around it and remembers the place for the next configuration.";
+        if (std::getenv("ORGAN_TEST_RELOCATE") != nullptr) { CrashHandler::note("ORGAN_TEST_RELOCATE: refused - " + text.replace("\n", " ")); return; }
+        auto* box = new juce::AlertWindow("Replace folder tree", text, juce::MessageBoxIconType::WarningIcon);
+        box->addButton("Choose another folder", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        box->addButton("Use this folder anyway", 2);
+        box->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        box->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, poolIndex, chosen](int result)
+        {
+            if (safeThis == nullptr) return;
+            if (result == 1) safeThis->chooseFolderForMissingTree(poolIndex);
+            else if (result == 2) safeThis->relocateTree(poolIndex, chosen);
+        }), true);
+        return;
+    }
+    std::vector<std::pair<int, juce::File>> relocations{ { poolIndex, found } };
+    juce::StringArray lines, stillMissing;
+    lines.add(tailText(old.getFullPathName()) + "  ->  " + found.getFullPathName() + (byName ? "" : "  (the folder as chosen)"));
+    const juce::File oldPrefix = ancestorOf(old, tail), newPrefix = ancestorOf(found, tail);
+    const auto prefixParts = pathParts(oldPrefix.getFullPathName());
+    auto taken = [&relocations](const juce::File& folder)
+    {
+        for (const auto& r : relocations) if (r.second == folder) return true;
+        return false;
+    };
+    for (int j = 0; j < (int)sampleTrees.size(); ++j)
+    {
+        if (j == poolIndex) continue;
+        const juce::File other(sampleTrees[(size_t)j]);
+        if (SampleFiles::isDirectory(other)) continue;
+        const auto otherParts = pathParts(other.getFullPathName());
+        juce::File candidate;
+        // The same place under the new prefix ("002067\pipes\hw" beside the "bw" found).
+        if (tail > 0 && startsWithParts(otherParts, prefixParts))
+            candidate = resolveCaseInsensitive(underFolder(newPrefix, otherParts, prefixParts.size()));
+        // Elsewhere: the end of its path (two parts at least) under the new prefix and the folders above it.
+        if (candidate == juce::File())
+        {
+            juce::File a = newPrefix;
+            for (int up = 0; up <= 2 && candidate == juce::File() && a != juce::File(); ++up)
+            {
+                for (int k = juce::jmin(6, otherParts.size() - 1); k >= 2; --k)
+                    if (const auto f = resolveCaseInsensitive(underFolder(a, otherParts, otherParts.size() - k)); f != juce::File()) { candidate = f; break; }
+                const auto parent = a.getParentDirectory();
+                if (parent == a) break;
+                a = parent;
+            }
+        }
+        if (candidate != juce::File() && poolIndexOf(candidate.getFullPathName()) < 0 && !taken(candidate) && treeFoldersFound(j, candidate) != 0)
+        {
+            relocations.push_back({ j, candidate });
+            lines.add(tailText(other.getFullPathName()) + "  ->  " + candidate.getFullPathName());
+        }
+        else stillMissing.add(tailText(other.getFullPathName()));
+    }
+    // The place to remember (0.8.190): where the new path stops matching the old
+    // one from its end - the folder above the moved set.
+    if (byName)
+    {
+        juce::File a = found, b = old;
+        while (a.getParentDirectory() != a && b.getParentDirectory() != b && a.getFileName().equalsIgnoreCase(b.getFileName()))
+        {
+            a = a.getParentDirectory();
+            b = b.getParentDirectory();
+        }
+        noteSampleLocation(a);
+    }
+    std::vector<int> users;
+    int applied = 0;
+    for (const auto& [index, folder] : relocations) if (applyTreeRelocation(index, folder)) ++applied;
+    if (applied == 0) return;
+    syncDivisionTreeLists();
+    for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+        for (const auto& path : divisionTrees(m))
+        {
+            bool uses = false;
+            for (const auto& r : relocations) if (r.second == juce::File(path)) uses = true;
+            if (uses) { users.push_back(m); break; }
+        }
+    CrashHandler::note("Replace tree: " + juce::String((int)relocations.size()) + " tree(s) found - " + lines.joinIntoString("; ")
+        + (stillMissing.isEmpty() ? juce::String() : "; still missing: " + stillMissing.joinIntoString(", ")) + "; divisions reloaded: " + juce::String((int)users.size()));
+    saveSettings();
+    if (relocations.size() > 1 || !stillMissing.isEmpty())
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found",
+            "Found on this computer and loaded now:\n" + lines.joinIntoString("\n")
+            + (stillMissing.isEmpty() ? juce::String() : "\n\nStill not found (the notice under the division stays - click it and choose a folder of that set):\n" + stillMissing.joinIntoString("\n"))
+            + "\n\nThe place is remembered as a sample location: the next configuration finds its folders there by itself.");
+    if (!users.empty()) reloadDivisions(users);
+}
+
+void MainComponent::chooseFolderForMissingTree(int poolIndex)
+{
+    // The folder chooser of the notice: any folder of the set will do (relocateTreeSmart).
+    if (poolIndex < 0 || poolIndex >= (int)sampleTrees.size()) return;
+    const juce::File old(sampleTrees[(size_t)poolIndex]);
+    juce::File start = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
+    for (const auto& location : sampleLocations)
+        if (juce::File(location).isDirectory()) { start = juce::File(location); break; }
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    folderChooser = std::make_unique<juce::FileChooser>(
+        "Any folder of the samples that hold \"" + tailText(old.getFullPathName()) + "\" - the tree itself, a folder above it, or a neighbouring tree",
+        start, "", true);
+    folderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+        [safeThis, poolIndex](const juce::FileChooser& chooser)
+        {
+            const auto folder = chooser.getResult();
+            if (safeThis == nullptr || !folder.isDirectory()) return;
+            safeThis->relocateTreeSmart(poolIndex, folder);
+        });
 }
 
 void MainComponent::showMissingTreesMenu(int manual)
@@ -13902,28 +14217,7 @@ void MainComponent::showMissingTreesMenu(int manual)
     {
         if (safeThis == nullptr || result <= 0) return;
         if (result == 1000) { safeThis->showStopBuildingDialog(manual); return; }
-        const int index = result - 1;
-        if (index >= (int)safeThis->sampleTrees.size()) return;
-        const juce::File old(safeThis->sampleTrees[(size_t)index]);
-        safeThis->folderChooser = std::make_unique<juce::FileChooser>(
-            "The folder that replaces \"" + old.getFileName() + "\" (the stop folders of the tree lie in it)",
-            juce::File::getSpecialLocation(juce::File::userHomeDirectory), "", true);
-        safeThis->folderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
-            [safeThis, index, old](const juce::FileChooser& chooser)
-            {
-                const auto folder = chooser.getResult();
-                if (safeThis == nullptr || !folder.isDirectory()) return;
-                // The place to remember (0.8.190): where the new path stops matching the
-                // old one from its end - the folder above the moved set.
-                juce::File a = folder, b = old;
-                while (a.getParentDirectory() != a && b.getParentDirectory() != b && a.getFileName().equalsIgnoreCase(b.getFileName()))
-                {
-                    a = a.getParentDirectory();
-                    b = b.getParentDirectory();
-                }
-                safeThis->noteSampleLocation(a);
-                safeThis->relocateTree(index, folder);
-            });
+        safeThis->chooseFolderForMissingTree(result - 1);
     });
 }
 
@@ -14027,7 +14321,7 @@ void MainComponent::loadTreeIntoDivision(const juce::File& tree, int manual)
             const juce::File old(sampleTrees[index]);
             if (!SampleFiles::isDirectory(old) && tail(old, components) == tail(tree, components)) relocate = (int)index;
         }
-    if (relocate >= 0) { relocateTree(relocate, tree); return; }
+    if (relocate >= 0) { relocateTreeSmart(relocate, tree); return; }   // 0.8.202: the other missing trees around it too
     if (addTreeToDivisionTable(tree, manual)) reloadDivisions({ manual }, tree.getFullPathName());
 }
 
@@ -16908,7 +17202,7 @@ void MainComponent::showStopBuildingDialog(int)
                         [&owner, t](const juce::FileChooser& chooser)
                         {
                             const auto folder = chooser.getResult();
-                            if (folder.isDirectory()) owner.relocateTree(t, folder);
+                            if (folder.isDirectory()) owner.relocateTreeSmart(t, folder);   // 0.8.202: found from any folder of the set, the others around it
                         });
                     return;
                 }
@@ -18502,8 +18796,10 @@ juce::String MainComponent::missingTreeNotice(int manual, bool detail) const
     if (names.isEmpty()) return {};
     if (!detail) return (names.size() == 1 ? "Sample folder not found: " : "Sample folders not found: ") + names.joinIntoString(", ");
     return "These sample folder trees of the division are not on this computer:\n" + paths.joinIntoString("\n")
-        + "\n\nClick to open the Stop List. \"Load folder...\" with a folder of the same name puts it in the missing tree's place "
-          "(the stops keep their samples); \"Unload folder...\" removes the tree and its stops. The notice goes when no tree is missing.";
+        + "\n\nClick, choose the tree and then ANY folder of the organ's samples - the tree itself, a folder above it (the numbered "
+          "package or the whole library) or a neighbouring tree: the program finds the tree from there, looks for the other missing "
+          "trees around it, loads them all and remembers the place for the next configuration. The stops keep their samples. "
+          "\"Unload folder...\" in the Stop List removes a tree and its stops. The notice goes when no tree is missing.";
 }
 
 void MainComponent::logRamAfterLoadIfDue()

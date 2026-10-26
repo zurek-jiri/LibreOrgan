@@ -35,10 +35,15 @@ refuses anything else.
 
 If a tree is not found, the configuration loads all the same with the trees
 that are; every division that misses a tree shows an orange notice "Sample
-folder not found: <folder>" under its header. Click it and choose the folder
-where that tree is now: it takes the missing tree's place, the stops keep
-their samples, and the folder above it is remembered as a sample location.
-Then *Save Configuration* to keep the paths.
+folder not found: <folder>" under its header. Click it and choose any folder
+of the set - the tree itself, a folder above it (the numbered package, the
+whole library) or a neighbouring tree: the program finds the tree from there,
+checks that it holds the stop folders expected, looks for the other missing
+trees around it, loads them all at once and remembers the folder above the
+library as a sample location, so the next configuration finds its folders by
+itself. Then *Save Configuration* to keep the paths. The manual's chapter
+[The usual ways to an organ](../OrganSampler/USER_MANUAL.md#16-the-usual-ways-to-an-organ)
+walks through this and the other common cases.
 
 ## Publishing a configuration
 

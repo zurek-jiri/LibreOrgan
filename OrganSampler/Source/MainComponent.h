@@ -380,6 +380,14 @@ private:
     // tree), every division that uses it is rebuilt. "Replace ... with another
     // folder" of the Stop List and of the missing-tree notice.
     void relocateTree(int poolIndex, const juce::File& newFolder);
+    // 0.8.202: the tree found from ANY folder of the set the user chose (the tree, a folder above
+    // it, a neighbour), its content checked against the Stop List rows, the other missing trees
+    // looked for around it, all loaded at once, the place remembered as a sample location.
+    void relocateTreeSmart(int poolIndex, const juce::File& chosen);
+    bool applyTreeRelocation(int poolIndex, const juce::File& newFolder);   // the path replaced in the pool and the divisions, no reload
+    juce::StringArray treeRowFolders(int poolIndex) const;                  // the folders the Stop List rows expect inside the tree (relative)
+    int treeFoldersFound(int poolIndex, const juce::File& folder, juce::StringArray* missing = nullptr) const;   // how many of them lie under the folder; -1 = no row names one
+    void chooseFolderForMissingTree(int poolIndex);                          // the folder chooser of the notice's menu
     void showMissingTreesMenu(int manual);   // the notice under a division header was clicked
     // Linux: a .desktop entry and the icon in every size under ~/.local/share, so
     // the program has its icon in the menu, the dock and the file manager.

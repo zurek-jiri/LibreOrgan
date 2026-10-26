@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.202] - 2026-10-26
+
+### Added
+- "Sample folder not found": the folder you choose may be ANY folder of the
+  set - the tree itself, a folder above it (the numbered package, the whole
+  library) or a neighbouring tree. The program finds the tree from there
+  (the longest end of the missing path under or around the chosen folder),
+  checks that it holds the stop folders the Stop List expects there (a
+  folder with none of them is refused with a box instead of being loaded
+  blindly, which gave the stops nothing and took the notice away), looks for
+  every other missing tree of the organ around it and loads them all at
+  once; the folder above the library is remembered as a sample location.
+  The same for "Load folder..." with a folder of a missing tree's name and
+  for the Stop List's "Replace ... with another folder".
+- A load also looks one level around every remembered sample location (the
+  folder above it, its subfolders) for the missing trees.
+- Manual chapter "1.6 The usual ways to an organ": a bought RAR set, a
+  configuration from GitHub, folders not found, an installed Hauptwerk
+  organ, a set without a definition, moved samples, a second volume,
+  sharing - linked from the chapters concerned; the website and the
+  configurations README say the same.
+
 ## [0.8.201] - 2026-10-25
 
 ### Fixed

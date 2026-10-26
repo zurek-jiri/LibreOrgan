@@ -516,7 +516,8 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   (loading, unpacking, limits), grep the site, README, build.yml body and configurations/*README* in the same session.
   0.8.175 (Windows): HintSheen::follow(buttons, arrowFromAbove) paints, beside the band, a golden half-transparent
   arrow sliding 90 px towards the button (eased, alpha sin(pi p) x 0.6) - from below on the console's top row, from
-  above on the Stop List's "Load folder..." (StopListDialog::loadHint, visible while ows.empty() && active(),
+  above on the Stop List's "Load folder..." (StopListDialog::loadHint, visible while 
+ows.empty() && active(),
   stopped by the first click in the dialog; the orange caption + fixed arrow of paintOverChildren are gone, the
   info line at the bottom is always visible). The website fact "500 000 voices / 2009 laptop" is replaced by "Light
   on RAM, CPU and disk" + feature 07 (16-bit, 32 kHz, FLAC-like packing, half-rate releases, RAR in place, everything
@@ -545,7 +546,8 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   rchivesOfFolderLocked(folder) = the chosen archives in it (+ every archive of a folder named as a whole: OrganRarPackages,
   old folder lines), servingArchivesLocked() for the "elsewhere" loop; MainComponent::registerArchive(archive) (was
   registerArchiveFolder(folder)) writes the archive's first part into ArchiveFolders.txt, the Hauptwerk import writes
-  SampleFiles::archiveOf(odf); efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives once
+  SampleFiles::archiveOf(odf); 
+efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives once
   (log "the folder line X replaced by its archives: ...") - a line of another OS's path (the Linux /run/media/... line
   in the user's Adlington list) is neither a folder nor a file here and stays as it is. The user's Adlington list had
   the aeolian FOLDER line (written by 0.8.176's Load folder): replaced by hand with Aeolian_Skinner.part01.rar so the
@@ -1323,6 +1325,30 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   nakopíruje do Konfigurací, musí ztratit příponu portable"): `configurationsCopyOf(file)` = the configurations
   folder + the name less ".portable" - used by adoptCopyInConfigurationsFolder, the same-file check, keepExisting and
   askLoadOptions' "exists" (so "X.portable.json" loaded with "X.json" in the folder asks keep/replace/inPlace).
+  0.8.202 SMART TREE RELOCATION (Linux session, the user: "udelej to chytre, hodne chytre"; his Linux list held the
+  location ".../OrganInstallationPackages/002067" = the WRONG folder noted by the old mismatch rule when he clicked the
+  package for a missing "002067/pipes/bw", and the tree was replaced by the package blindly: no stops, notice gone):
+  `relocateTreeSmart(poolIndex, chosen)` (MainComponent.cpp before showMissingTreesMenu) - the tree is looked for FROM
+  the chosen folder: for the folder and up to 4 ancestors, the longest tail of the missing path (<= 6 parts) that the
+  folder itself carries or that exists under it (`tailsEqual`/`underFolder` + resolveCaseInsensitive), the nearest
+  wins a tie; then `treeFoldersFound(index, folder)` = how many of the Stop List rows' folders of that tree
+  (`treeRowFolders`: FolderRef.relativePath + morePaths) exist under it - 0 of N -> the box "holds none of the stop
+  folders ..." (Choose another folder / Use this folder anyway = the old blind relocateTree / Cancel), NEVER loaded
+  blindly; then every other missing pool tree: the same place under the new prefix (old/new paths less the matched
+  tail; `startsWithParts`), else the tail (>= 2 parts) of its path under the new prefix and 2 folders above, each
+  checked with treeFoldersFound != 0; all applied with `applyTreeRelocation` (the old body without the reload) and
+  ONE reloadDivisions; the location noted only when the path matched by name (the first-mismatch rule); a box lists
+  what was found / still missing when more than the one tree is concerned. Callers: the notice's menu
+  (`chooseFolderForMissingTree`: chooser starts in the first sample location), Load folder with a matching tail,
+  the Stop List's "Replace ... with another folder". Load time: `portableFolderCandidates` adds one level around
+  every location - the folder above (rootName/relative and relative) and its first 32 subfolders
+  (`locationChildren`, a 30 s cache) - so a place noted one level off still serves. Hook `ORGAN_TEST_RELOCATE=
+  "<tree tail>|<folder>[|<seconds>]"` (the box is logged as "refused" there). Manual chapter "1.6 The usual ways
+  to an organ" (RAR set, GitHub configuration, not found, installed Hauptwerk, no definition, moved samples, second
+  volume, sharing) linked by its quoted heading from 1.3 step 4, the RAR section, 1.5, "Where configurations...",
+  4.1 and the ODF section; site "Using one" and configurations/README.md rewritten (they still said "put the .json
+  beside the samples" since 0.8.190). The "same disk" idea: a configuration looks beside ITSELF (configDir forms)
+  and in the locations - never over a disk; told the user. Test: ~/tools/test_relocate.sh (below).
   0.8.201 VOICING ROW WIDTH (the user: a pedal's voicing row cut the Alias box off): `Voicer::rebuildUI`'s
   `line1Width` must mirror `StopRow::resized` line 1 - it was the sum of 0.8.135 and never followed the Transposition
   box (104 + 258), One-shot (96) and Rank count (146) additions, so the expanded column = the compass width on a

@@ -231,6 +231,9 @@ tree holding everything and move stops between divisions in the table. Click
 *Apply and reload*. The stops appear as buttons on the grid. This step comes
 before the audio, because the perspectives of a division (and so the audio
 tabs for them) exist only once its stops have been built from the folders.
+A bought RAR set, a configuration downloaded from GitHub or an installed
+Hauptwerk organ take other roads to the same place: "The usual ways to an
+organ".
 
 ### Step 5: Audio
 
@@ -532,6 +535,8 @@ Unpacked or not, keep the folder structure as the archive has it: the
 configurations published for a set name its folders as the archive created
 them. Unpacked samples load faster from a fast disk (no decompression) and
 the archives can go; packed ones save the disk space.
+The whole road from the bought archives to the playing organ is in "The
+usual ways to an organ".
 
 ## 1.5 Configurations and settings
 
@@ -541,7 +546,8 @@ combinations, crescendo, window layout - the organ definition, written by the
 program. *Save Configuration* and *Load Configuration* are in the top bar;
 *Load Configuration* takes a configuration (`.json`), a Hauptwerk organ
 definition (see "Hauptwerk organ definitions") or a RAR archive holding
-either, read straight from the archive. A
+either, read straight from the archive ("The usual ways to an organ" walks
+through the common cases). A
 configuration counts as open once it was loaded or saved in the session (its
 name is in the window title). When you quit, or load another configuration,
 while the open configuration has unsaved changes, the program asks whether to
@@ -567,7 +573,8 @@ without any configuration at all.
 *Load Configuration* also opens a Hauptwerk organ definition
 (`<organ>.Organ_Hauptwerk_xml`, the files in Hauptwerk's `OrganDefinitions`
 folder) and makes an OrganSampler configuration of it - the quick way to a
-sample set that came with a Hauptwerk definition. What is taken from the
+sample set that came with a Hauptwerk definition (its place among the other
+roads: "The usual ways to an organ"). What is taken from the
 definition: the divisions in the order of their keyboards (the pedal first)
 with their key ranges - a division of ours is a keyboard, so every Hauptwerk
 division a keyboard plays joins it, the ones it plays only with a ventil
@@ -822,6 +829,118 @@ missing.
 Paths are stored with "/" and resolved on every platform; a configuration
 saved on Windows loads on Linux and macOS and the other way round.
 
+## 1.6 The usual ways to an organ
+
+The scenarios that come up again and again, in the order most people meet
+them. Every one of them ends with *Save Configuration*; the details are in
+the chapters named.
+
+### A freshly bought set in RAR archives
+
+Put all the archives of the set together in one folder on the disk where
+your samples live (`D:\Samples\Caen\`: the `.part1.rar`, `.part2.rar` ...
+side by side, or the one archive of a small set). Nothing needs unpacking.
+*Load Configuration* in the top bar, choose the archive (several with Ctrl
+or Shift when the organ comes in several): the program reads what the
+archives hold, offers the Hauptwerk organ definition found inside (or a
+configuration, when one is packed with the set) and loads the whole organ
+straight from the archives - "Sample archives (RAR)" and "Loading a
+Hauptwerk organ definition (ODF)" say what happens. The archives you chose
+are remembered (`ArchiveFolders.txt`) and their folder joins the sample
+locations, so the configuration finds them again at every start, and every
+later configuration of the same set finds them too. Unpacking the archives
+first is allowed and loads faster from an SSD; keep the folder tree as the
+archive created it.
+
+### A configuration published on GitHub
+
+Someone built the organ for the same sample folders you own and published
+the configuration ("Portable configuration (to share with others)" is the
+other direction). Download the zip from the list of published
+configurations, then *Load Configuration* and choose the zip as it is: the
+program reads the `.json` inside and copies it into your configurations
+folder (the load box asks; "Where configurations and samples live"). Where
+the downloaded file lies does not matter - Downloads is fine - because the
+sample folders are not looked for beside it: they are looked for in your
+**sample locations**, the folders above your sample libraries that the
+program remembers from every organ loaded, every archive chosen and every
+folder you pointed to, and one level around each of them. (Putting the file
+beside the library root works as well: a configuration looks for its
+folders next to itself too. The same disk alone does nothing - the program
+never searches a whole disk.) When the locations are known, the organ loads
+without a question. When they are not yet - the first configuration on a
+new computer, a library the program has never seen - the divisions show
+"Sample folder not found": the next section.
+
+### Sample folders not found: one click finds them
+
+The configuration loads with what it finds; every division that misses a
+folder tree shows the orange notice "Sample folder not found: ..." under
+its header. Click it, pick the tree in the menu and choose **any folder of
+the set** in the dialog: the tree itself (`002067\pipes\bw`), a folder above
+it (the numbered package `002067`, the whole `OrganInstallationPackages`)
+or a neighbouring tree of the same organ (`002067\pipes\hw`). The program
+finds the tree from there - the longest end of the missing path that lies
+under or around the folder you chose -, checks that the folder holds what
+the Stop List expects in that tree (its stop folders; a folder holding none
+of them is refused with a box and never loaded blindly), then looks for
+every other missing tree of the organ around it: the same place under the
+new library (the other divisions of the package) and the end of each path
+under the folders above (the other packages of a Hauptwerk library lie side
+by side in `OrganInstallationPackages`). Everything found is loaded at
+once; a box lists what was found and what is still missing. The folder
+above the moved library is remembered as a sample location, so every
+configuration you load afterwards finds its folders there by itself. The
+same happens when you load a folder of the same name as a missing tree with
+*Load folder...* in the Stop List ("Folder trees and the pool"). Then *Save
+Configuration*: the paths are kept.
+
+### A Hauptwerk organ already installed
+
+*Load Configuration* and choose the organ definition in Hauptwerk's
+`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`): divisions,
+stops, perspectives, voicing, couplers, crescendo and tremulant rates come
+from the definition ("Loading a Hauptwerk organ definition (ODF)"), the
+configuration is written into your configurations folder and the library's
+place joins the sample locations. An encrypted set (`.hbw`) cannot be read.
+
+### A set without any definition: building from the Stop List
+
+Samples that came as plain folders of WAV files (or an archive without a
+definition): *Stop List* in the top bar, *Load folder...* with the top
+folder of the samples, say which division its stops go to, repeat for every
+division (or load one tree holding everything and move the stops in the
+table), then *Apply and reload*. Part 4 explains the table, "How the sample
+folders must be organised" says what the program makes of the folder names,
+and "The first start, step by step" takes you on to the audio (steps 5-7).
+
+### The samples moved, a new disk, a new computer
+
+Load the configuration as it is. The trees are looked for at their old
+place, then in every sample location and one level around each; what is
+not found shows the notice - one click as above puts everything right, and
+the new place is remembered. The Configuration Editor's *Sample and IR
+locations* row adds a folder by hand when you know where the libraries are
+before the first load. A configuration never holds anything about your
+computer that cannot be found again this way.
+
+### A second volume or perspective set of the same organ
+
+A set sold in volumes (the direct perspective first, the rear one later):
+load the first as above, then right-click *Load Configuration* > *Merge
+another configuration* with the second one's definition or configuration
+(or its archives): the shared stops dissolve into the loaded organ and gain
+the new perspective, new stops are added ("Merging another configuration
+into the loaded organ").
+
+### Sharing what you built
+
+*Save Configuration* with *Portable configuration (to share with others)*
+ticked exports the organ without anything of your computer and opens the
+window that publishes it on GitHub ("Portable configuration (to share with
+others)"); whoever owns the same samples loads it as in "A configuration
+published on GitHub" above.
+
 ## Where configurations and samples live
 
 Since 0.8.190 every organ configuration of a computer lives in ONE folder,
@@ -862,15 +981,20 @@ collection elsewhere); at a load each is looked for at the path it had, then
 under every location - `<location>/<root name>/<path>`, `<location>/<path>`
 and the last one to three parts of the old path - and taken silently when
 found, so a sample set or a collection moved within a known location is
-found by its name. The program fills the list by itself: the folder above
+found by its name; one level around every location is searched as well
+(the folder above it and its subfolders), so a place remembered one level
+too deep or too high serves the next configuration all the same. The
+program fills the list by itself: the folder above
 the library root at every portable save, the root where it was found at a
 load, the folder of every archive you choose, the collection of every IR you
 choose, the folder you point to when a tree is asked for. The Configuration
 Editor shows the list (*Sample and IR locations*), adds a folder by hand and
-forgets them all. A tree found nowhere is asked for once, with the "Sample
-folder not found" notice under the division; an IR found nowhere shows
-"FILE NOT FOUND - choose it" on its route in the Divisions dialog; the
-answer joins the locations.
+forgets them all. A tree found nowhere shows the "Sample folder not found"
+notice under its division: click it and choose any folder of the set - the
+program finds the tree from there, the other missing trees around it, loads
+them all and remembers the place ("Sample folders not found: one click
+finds them"); an IR found nowhere shows "FILE NOT FOUND - choose it" on its
+route in the Divisions dialog; the answer joins the locations.
 
 A word to the user: keeping track of where the sample folders and archives
 are is a nightmare for the programmer, and every move of a sample set is a
@@ -1373,15 +1497,21 @@ folder that plays that perspective of the stop.
   can serve any division. When a tree of the organ is missing on this
   computer (a configuration from elsewhere: the division header says
   "Sample folder not found"), a loaded folder of the same name takes the
-  missing tree's place and the stops built from it keep their samples.
+  missing tree's place and the stops built from it keep their samples; the
+  other missing trees of the organ are looked for around it and loaded as
+  well, and the place is remembered ("Sample folders not found: one click
+  finds them").
 - **Unload folder...** removes one tree from the whole organ after saying how
   many stops lose their samples (their rows stay as empty stops). **Unload all
   folder trees** empties the organ; the Stop List opens again with the empty
   rows, *Remove empty stops* clears them and *Apply and reload* applies that
   even though no tree is loaded. The same menu offers **Replace "..." with
   another folder...** for every tree: the tree is taken from another folder
-  (a moved disk, a configuration from another computer), its rows keep their
-  folders and the divisions that use it reload.
+  (a moved disk, a configuration from another computer) - any folder of the
+  set will do, the tree is found from it and the other missing trees around
+  it -, its rows keep their folders and the divisions that use it reload. A
+  folder that holds none of the stop folders the rows expect is refused
+  with a box, never loaded blindly.
 - The table starts out as the automatic rules built the divisions (from the
   folder names and the perspective prefixes), so it shows what was
   recognised, and it can be corrected where the rules could not pair the
