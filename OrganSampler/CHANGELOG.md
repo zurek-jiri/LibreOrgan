@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.203] - 2026-10-26
+
+### Fixed
+- The folder found for a missing tree (0.8.202) and the place remembered:
+  a pool path saved on Windows and read on Linux or macOS ("F:\Samples\...")
+  is one component there, so the other missing trees of the same place were
+  not found beside it and the tree itself was noted as the sample location
+  instead of the folder above the library. Both are counted in parts of the
+  path now; the location is the folder above the library root (the common
+  folder of the missing trees' parents), as the portable save notes it.
+
 ## [0.8.202] - 2026-10-26
 
 ### Added

@@ -14095,8 +14095,12 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
     std::vector<std::pair<int, juce::File>> relocations{ { poolIndex, found } };
     juce::StringArray lines, stillMissing;
     lines.add(tailText(old.getFullPathName()) + "  ->  " + found.getFullPathName() + (byName ? "" : "  (the folder as chosen)"));
-    const juce::File oldPrefix = ancestorOf(old, tail), newPrefix = ancestorOf(found, tail);
-    const auto prefixParts = pathParts(oldPrefix.getFullPathName());
+    // The prefixes by PARTS, never by juce::File's parents: a pool path saved on
+    // Windows and read on Linux or macOS ("F:\\Samples\\Kobrle\\Samply") is one
+    // component with backslashes there (0.8.203, found by the Rural test).
+    const juce::File newPrefix = ancestorOf(found, tail);
+    juce::StringArray prefixParts = oldParts;
+    prefixParts.removeRange(oldParts.size() - tail, tail);
     auto taken = [&relocations](const juce::File& folder)
     {
         for (const auto& r : relocations) if (r.second == folder) return true;
@@ -14132,17 +14136,27 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
         }
         else stillMissing.add(tailText(other.getFullPathName()));
     }
-    // The place to remember (0.8.190): where the new path stops matching the old
-    // one from its end - the folder above the moved set.
+    // The place to remember (0.8.190): the folder above the library root, as the
+    // portable save notes it - the root being the common folder of the missing
+    // trees' parents (one tree: its parent), counted in parts of the old paths and
+    // walked up from the tree found (0.8.203: the old rule compared juce::File
+    // parents and noted the tree itself for a Windows path read on Linux).
     if (byName)
     {
-        juce::File a = found, b = old;
-        while (a.getParentDirectory() != a && b.getParentDirectory() != b && a.getFileName().equalsIgnoreCase(b.getFileName()))
+        juce::StringArray common;
+        for (int j = 0; j < (int)sampleTrees.size(); ++j)
         {
-            a = a.getParentDirectory();
-            b = b.getParentDirectory();
+            const juce::File other(sampleTrees[(size_t)j]);
+            if (j != poolIndex && SampleFiles::isDirectory(other)) continue;
+            auto parent = pathParts(other.getFullPathName());
+            if (parent.size() > 1) parent.remove(parent.size() - 1);
+            if (common.isEmpty()) { common = parent; continue; }
+            int same = 0;
+            while (same < common.size() && same < parent.size() && common[same].equalsIgnoreCase(parent[same])) ++same;
+            common.removeRange(same, common.size() - same);
         }
-        noteSampleLocation(a);
+        const int below = juce::jmax(1, oldParts.size() - common.size());   // parts of this tree's path under the root
+        noteSampleLocation(ancestorOf(found, below + 1));
     }
     std::vector<int> users;
     int applied = 0;
