@@ -1137,6 +1137,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   not only on the next progress tick or a mouse event. Look at where the fill share is painted in voicer.cpp (the
   stop button's paint with the copy progress) and where the copy build posts progress; the end-of-build path must
   repaint the stop buttons once more.
+- FROZEN GRID PICTURE vs THE NEW COUPLERS (the user, 26 Oct 2026, to do next; "je to lepsi s tema sesedlyma
+  rejstriky, ale ted se nactou nove spojky a stare rejstriky se se spojkami prekryvaji"): the 0.8.204 picture of the
+  old stops (laid out in the new division count) is placed over the workspace from the top, but the new organ's
+  coupler rail (rebuildCouplerRail in applyPortableConfiguration, the rows of coupler buttons under each division
+  header) is taller or shorter than the old one, so the new couplers paint through/under the dimmed old stops. The
+  picture must respect the NEW rail: either take the snapshot of the stop grid only (below the coupler rows) and
+  place it under the new rail, or rebuild the rail of the new configuration (couplers from the new file) BEFORE
+  the snapshot so the picture already carries the new coupler rows, or leave the rail area out of the picture
+  (clip the ImageComponent to the grid area under the new rail). Check what stopsViewport holds (headers + couplers
+  + grid?) and where the rail lives; test with test_frozen.sh (Adlington -> Ashton: Ashton has many couplers).
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
