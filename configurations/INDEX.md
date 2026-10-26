@@ -2,8 +2,8 @@
 
 One line per organ - the README of each (with the download of its `.json` and where to
 put it), the number of divisions, the rows of its Stop List (transmissions and extensions
-included, the rows nested in stop folders not), the **RAM the organ takes at the least -
-with every saving option of the load box** (16-bit, 32 kHz on loading, releases at half the
+included, the rows nested in stop folders not), the RAM the organ takes at the least -
+with every saving option of the load box (16-bit, 32 kHz on loading, releases at half the
 rate, packed samples), measured or estimated by the program when the configuration was
 saved; at the full quality (32-bit float, the files' own rate, full releases, no packing)
 count on roughly ten times as much; `-` = saved by an older version - and the
