@@ -1716,11 +1716,19 @@ MainComponent::MainComponent()
             Stop* master = find(parts[2].getIntValue(), parts[3]);
             CrashHandler::note("ORGAN_TEST_INDENT: stop " + (stop != nullptr ? stop->name : juce::String("NOT FOUND")) + " under " + (master != nullptr ? master->name : juce::String("NOT FOUND")));
             if (stop != nullptr && master != nullptr) safeThis->indentStopUnder(stop, master);
-            juce::Timer::callAfterDelay(4000, [safeThis]
+            juce::Timer::callAfterDelay(4000, [safeThis, parts]
             {
                 if (safeThis == nullptr || safeThis->voicer == nullptr) return;
                 for (auto* s : safeThis->engine.getStops())
                     if (s->groupMaster.isNotEmpty()) CrashHandler::note("ORGAN_TEST_INDENT: \"" + s->name + "\" is a child of \"" + s->groupMaster + "\" in division " + juce::String(s->primaryManual));
+                // Where the GRID shows the stop (the user saw it back in its old division while the engine had moved it).
+                for (const auto& item : safeThis->voicer->gridItems())
+                    if (item.stop != nullptr && item.transmission < 0 && item.stop->name.startsWith(parts[1]))
+                        CrashHandler::note("ORGAN_TEST_INDENT: the grid shows \"" + item.stop->name + "\" in division " + juce::String(item.manual) + (item.stop->groupMaster.isNotEmpty() ? " under \"" + item.stop->groupMaster + "\"" : juce::String(" as a stop of its own")));
+                for (int m = 0; m <= safeThis->manualCount; ++m)
+                    for (const auto& e : safeThis->manualConfigs[(size_t)m].stopBuild.entries)
+                        if (e.name.startsWith(parts[1]) || e.name.startsWith(parts[3]))
+                            CrashHandler::note("ORGAN_TEST_INDENT: Stop List division " + juce::String(m) + " row \"" + e.name + "\"" + (e.child ? " (child)" : ""));
             });
         });
     }
@@ -16410,6 +16418,9 @@ void MainComponent::indentStopUnder(Stop* stop, Stop* master)
         engine.moveStopToDivision(stop, target);
         rebuildPerspectiveAudioRoutes();   // the division may lack this stop's perspectives' routes
     }
+    // The result in sight (0.8.211, the user: "stop folder se neudělá, stop skočí zpět" - the child vanished under a
+    // folded master and only the "[II]" told): the master's voicing opens, the new child stands under it.
+    master->voicingExpanded = true;
     finishInPlaceStopEdit(source == target ? std::set<int>{ source } : std::set<int>{ source, target });
 }
 

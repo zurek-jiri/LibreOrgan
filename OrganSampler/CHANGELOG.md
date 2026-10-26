@@ -12,6 +12,12 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.211] - 2026-10-26
+
+### Changed
+- A stop indented under another on the grid: the master's voicing opens at
+  once and the new child stands under it (it vanished under a folded master
+  before, and only the "[II]" in the caption told).
 ## [0.8.210] - 2026-10-26
 
 ### Fixed
