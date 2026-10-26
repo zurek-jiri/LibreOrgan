@@ -1129,6 +1129,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
 ## Pending for the next session (delete when done)
+- TUTORIAL RURAL ORGAN + INSTRUCTION VIDEO (the user, 26 Oct 2026, "jen zapis do to-do"): (A) the Rural Organ demo
+  configuration as a TEACHING organ - arrows with captions at the essential features, "like a comic", each with a
+  link to the manual chapter that explains it: making a transmission / extension, a stop folder with child stops
+  (a Cornet), moving stops between divisions (arrange mode), adding couplers, adding stops from a new folder (Stop
+  List). Design idea: an in-app guided tour on the HintSheen mechanism (UIControls.h: golden band + sliding arrow
+  already point at buttons) - a sequence of steps, each an arrow + a caption box with "Next" and a manual link
+  (showManualSection), started from the Rural Organ (a configuration key "tutorial" or a Help button), skippable,
+  never shown on other organs; the captions in English, the chapters named as the manual's links name them. (B) an
+  instruction video for the website and GitHub (maybe instead of the screenshot; Stralsund rather than Rural for
+  the picture): expanding the voicing and changing a pipe's volume, renaming a stop (alias), making a stop folder
+  and indenting ranks into a Cornet, dragging stops over the grid, making transmissions/extensions (transposition
+  against the parent stop), changing the tuning, adding couplers, adding stops through the Stop List. What I can
+  do: a scripted screen video from the program's OWN frames - the hooks (ORGAN_TEST_CLICK, ORGAN_TEST_DROP,
+  ORGAN_TEST_EXPAND, ORGAN_TEST_NEW_FOLDER, ORGAN_TEST_TRANSPOSITION, ORGAN_TEST_SNAPSHOT/DIALOG_SNAPSHOT ...) drive
+  each step, a snapshot after each, a synthetic cursor and caption frames drawn in, stitched with ffmpeg into an
+  MP4/GIF - deterministic, redoable after every version; a real screen recording with the mouse moving needs Windows
+  (ffmpeg gdigrab + SendInput) at a time the user is not at the machine, and narration/music is his. GitHub README
+  cannot embed a player: a GIF or a linked MP4 (the website can embed <video>). Ask the user which: the in-app tour,
+  the frame-built video, or both; and which organ for the video (he said Stralsund).
 - FILLED-PIPES PROGRESS TRACK STUCK (the user, 26 Oct 2026, to do next): when the copies of the filled pipes are
   built, the LAST stop built often keeps its orange progress fill stuck half-way on the button, and only a mouse-over
   repaints it away. The button's track (the dark track / orange fill along the bottom of a stop button, manual 4.4)
