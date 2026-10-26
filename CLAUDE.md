@@ -1233,6 +1233,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
   indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
   gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
+  0.8.212 THE MANUAL OPENS SLOWLY (the user: "po kliknutí na rozevření kapitoly manuálu to trvá několik sekund"):
+  MEASURED with ORGAN_TEST_CLICK "Guided tour|Manual: Stop buttons|Close|Manual: Stop buttons" (the tour's button
+  text is "Manual: <chapter>"): `AboutComponent::setTextWithHighlight` builds the WHOLE manual into the TextEditor
+  (one `insertTextAtCaret` per block with font/colour changes, every insert a new layout) = 2.7 s on the Ryzen,
+  and before 0.8.212 it ran TWICE at every opening (the constructor's build, then `openChapter` built it again with
+  the heading orange) in a NEW window each time. Now: built once per window, `highlightChapter` selects the heading
+  (`setHighlightedRegion`) instead of a rebuild, `aboutWindow` is KEPT (DialogWindow's closeButtonPressed only hides
+  it) and `aboutOpenChapter` jumps in it - the log says "Manual: text of entry 0 built in N ms" at the first opening
+  and "Manual: shown again at ... in 57 ms (no rebuild)" afterwards. The first opening of a session still costs the
+  one build (2.7 s); a cheaper build (one pre-laid text) is not done. The tour's division-header step names the right
+  clicks on the Tremulant and the swell bar.
   0.8.209: THE VIDEO BEGINS WITH THE LOADING - make_video.ps1 sets NO ORGAN_LOAD_CONFIGURATION when the script has a
   "load " line (and turns loadLastConfigurationAtStartup off in the backed-up settings for the run); the hook then
   starts the script 1.5 s after the start on the empty console; `load FILE` presses Load Configuration and calls
