@@ -1362,6 +1362,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   published Arnstadt with the whole OrganInstallationPackages chosen -> 6 trees, 21 rows; Altenbruch with only
   the wrong location .../002067 known -> found at load. Rural's Samply/20 and /19 trees do not exist on the
   Linux disk (still missing is right there).
+  0.8.204 (#105, Linux): (1) the "Sample folders found" box of relocateTreeSmart stood over the loading window and
+  flickered - now `runWhenLoaded` after the reload (at once only when no division reloads). (2) The frozen grid
+  picture (0.8.154) of a 3-division organ over a 5-division workspace showed both header rows and column lines through
+  each other: applyPortableConfiguration reads the NEW file's "manualCount" and, when it differs, lays the OLD stops out
+  in that many columns (voicer->setActiveManualCount + rebuildUI) BEFORE the snapshot; ORGAN_TEST_SNAPSHOT writes the
+  picture as "<png>.frozen.png". Test ~/tools/test_frozen.sh (Adlington 3 then Ashton 5 via
+  ORGAN_LOAD_CONFIGURATION_AGAIN). (3) "Loading Ashton very slow" MEASURED: the Hauptwerk disk on this box is
+  /dev/sda2 = Samsung 870 QVO 8 TB SATA (the Windows D:), mounted ntfs3 (the kernel driver, not FUSE); 8 parallel
+  uncached readers give 528 MB/s, the log's load of 93.8 GB WAV in 182 s = 515 MB/s - the disk's ceiling, no reserve
+  (the packing's thread time 30 s per 44 s tree on 16 cores is no factor). Only NVMe or the page cache makes it faster;
+  never promise more from a SATA SSD. Linux python read test: files of a package not loaded recently, 4 MB reads.
   0.8.201 VOICING ROW WIDTH (the user: a pedal's voicing row cut the Alias box off): `Voicer::rebuildUI`'s
   `line1Width` must mirror `StopRow::resized` line 1 - it was the sum of 0.8.135 and never followed the Transposition
   box (104 + 258), One-shot (96) and Rank count (146) additions, so the expanded column = the compass width on a
