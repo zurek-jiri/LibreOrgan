@@ -26,7 +26,8 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 |---|---:|---:|---:|---|
 | [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear |
 | [Altenbruch, Klapmeyer Organ](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default |
+| [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear |
 | [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
 | [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear |
 
-6 configuration(s).
+7 configuration(s).
