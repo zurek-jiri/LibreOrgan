@@ -9,9 +9,9 @@ list, perform.
 
 [![The console with the Stralsund, St. Jakobi organ: four divisions with their stop buttons, stop folders, extensions and transmissions, the voicing bars under the stops, couplers and tremulants in the headers, the swell shutters at different positions, a combination engaged, the crescendo and the polyphony display above](site/assets/main.jpg)](site/assets/main.jpg)
 
-The program at work on the Stralsund organ, with sound - a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row, a stop folder enriched by dragging, a transmission dragged into the pedal, couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List. Every frame and every note come from the program itself ([full size on the website](https://zurek-jiri.github.io/OrganSampler/)):
+The program at work on the Stralsund organ, with sound - the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with the per-pipe sliders, arrange mode by a two-second press, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift) and transposed, couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List. Every frame and every note come from the program itself ([full size on the website](https://zurek-jiri.github.io/OrganSampler/)):
 
-https://github.com/user-attachments/assets/28361fcc-1bc5-4f94-ba3f-d0d28406af0a
+https://github.com/user-attachments/assets/24b5890e-af7d-4d8e-b8a5-da2631e3529b
 
 OrganSampler plays sampled pipe organs from plain folders of WAV files - one
 folder per stop, its pipes as WAV files - and turns any number of such folders into
