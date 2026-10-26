@@ -1299,6 +1299,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   once right after the start (the layouts can be prepared off the message thread; only the painting component is
   message-thread), scrolled in a Viewport, chapter highlight + find + links as the TextEditor had them - not the
   slices. The stop-folder gesture on the grid: the user confirms it works in 0.8.211/0.8.212 ("grid už teď šel dobře").
+- TOUR STEP 3 (the user, 26 Oct 2026 evening): the stop-folder step should point at the Rural "Cornet [III]" of the
+  SECOND manual (II.), not at Unda Maris of I. - a real stop folder of three ranks is the better example. In
+  `startGuidedTour` the step's finder takes the first row with `container` or "[" in the caption over the grid;
+  prefer a row of manual 2 whose caption contains "Cornet" (then any stop folder as the fallback).
+- MANUAL FONT SIZE (the user, 26 Oct 2026 evening): the manual's text must be enlargeable and reducible by the
+  user (the font size, "podle přání uživatele") - a +/- pair or a size combo in the manual window, Ctrl+wheel too,
+  remembered as a machine-specific setting; part of the own text component above (one scale over every block's
+  TextLayout, relaid out on a change).
 - FROZEN ORANGE PROGRESS STRIP (the user, 26 Oct 2026 evening): the filled-pipes build strip on the LAST stops of
   the build stays half-way long after the copies are built and vanishes only on a mouse-over. 0.8.206's cure
   (`StopRow::pollBuildProgress` repaints 5 more polls after a build ended, `buildingSeen` an int) did NOT cure it -
