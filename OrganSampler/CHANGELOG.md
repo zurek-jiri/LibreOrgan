@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.212] - 2026-10-26
+
+### Fixed
+- The manual opened several seconds after a "?" or a tour link: its whole text
+  was built anew for every chapter (thousands of coloured inserts), twice at
+  the first opening. The text is built once, the chapter's heading is
+  highlighted instead of repainted, and the manual window is kept - a second
+  "?" shows it at once.
+- Guided tour, division header step: tells of the right click on the Tremulant
+  and on the swell bar for their settings.
 ## [0.8.211] - 2026-10-26
 
 ### Changed

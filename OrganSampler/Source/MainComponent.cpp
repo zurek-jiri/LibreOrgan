@@ -14463,7 +14463,8 @@ void MainComponent::startGuidedTour()
         "another stop until a bar appears under it and pull it down onto the bar: it is indented - a stop folder is born.", "Arranging the grid" });
     steps.push_back({ [this]() -> juce::Component* { return voicer->headerButton(1, "Tremulant"); },
         "The division header: the tremulant switch, the swell bar beside it, and Settings - the MIDI keyboard and channel, "
-        "the compass, the wind, and the audio routes of every microphone perspective.", "Division headers" });
+        "the compass, the wind, and the audio routes of every microphone perspective. Right-click the Tremulant for its rate, "
+        "depth and drift, right-click the swell bar for the shutters' attenuation and inertia - and set them as you like.", "Division headers" });
     steps.push_back({ [this]() -> juce::Component* { return &couplersButton; },
         "Couplers...: choose the couplers the console shows - unison, 16', 4', melody, bass. They sit under the division "
         "headers and work like the stops.", "Couplers" });
@@ -24048,7 +24049,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             backButton.setEnabled(!history.empty());
             if (list.getSelectedRow() != 0) list.selectRow(0);
             if (shownRow != 0) selectedRowsChanged(0);
-            if (highlightedChapter != place.second) setTextWithHighlight(0, place.second);
+            highlightChapter(place.second);
             chapterBox.setSelectedId(place.second + 1, juce::dontSendNotification);
             pendingIndex = place.first;
             scrollToIndex(place.first);
@@ -24062,7 +24063,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             if (list.getSelectedRow() != 0) list.selectRow(0);
             if (shownRow != 0) selectedRowsChanged(0);
             chapterBox.setSelectedId(chapter + 1, juce::dontSendNotification);
-            if (highlightedChapter != chapter) setTextWithHighlight(0, chapter);
+            highlightChapter(chapter);   // 0.8.212: the heading selected, no second build of the whole text (seconds per "?")
             if (text.getWidth() > 0) scrollToChapter(chapter);
             // The text's layout (its height) is settled only after this message:
             // scroll again then, otherwise the view is clamped to the old height.
@@ -24201,8 +24202,19 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
             }
             flushPlain();
         }
+        // The chapter read now: its heading selected (the orange highlight), the text left as it is. Before 0.8.212 the
+        // whole manual was built anew with the heading in orange - thousands of coloured inserts into the TextEditor,
+        // each laying the text out again: seconds at every "?" and tour link, twice at the first opening.
+        void highlightChapter(int chapter)
+        {
+            highlightedChapter = chapter;
+            if (shownRow != 0 || chapter < 0 || chapter >= (int)chapters.size()) return;
+            const int start = chapters[(size_t)chapter].start;
+            text.setHighlightedRegion({ start, start + chapters[(size_t)chapter].heading.length() });
+        }
         void setTextWithHighlight(int row, int chapter)
         {
+            const double startedMs = juce::Time::getMillisecondCounterHiRes();
             text.clear();
             text.links.clear();
             text.setColour(juce::TextEditor::textColourId, juce::Colours::white);
@@ -24239,6 +24251,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
                 text.insertTextAtCaret(joined);
             }
             highlightedChapter = row == 0 ? chapter : -1;
+            CrashHandler::note("Manual: text of entry " + juce::String(row) + " built in " + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms");
         }
         void scrollToChapter(int chapter)
         {
@@ -24264,8 +24277,20 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
         std::vector<std::pair<int, int>> history;   // (text index at the top of the view, highlighted chapter)
         int shownRow = -1, highlightedChapter = -1, pendingChapter = -1, pendingIndex = -1;
     };
+    // The window and its text are kept (0.8.212): a second "?" shows the window and jumps - no new window, no build.
+    if (aboutWindow != nullptr && aboutOpenChapter)
+    {
+        const double startedMs = juce::Time::getMillisecondCounterHiRes();
+        aboutWindow->setVisible(true);
+        aboutWindow->toFront(true);
+        if (manualSection.isNotEmpty()) aboutOpenChapter(manualSection, fallbackSection);
+        CrashHandler::note("Manual: shown again at \"" + manualSection + "\" in " + juce::String(juce::Time::getMillisecondCounterHiRes() - startedMs, 0) + " ms (no rebuild)");
+        return;
+    }
     auto* content = new AboutComponent();
     if (manualSection.isNotEmpty()) content->openChapter(manualSection, fallbackSection);
+    juce::Component::SafePointer<AboutComponent> safeForLater(content);
+    aboutOpenChapter = [safeForLater](const juce::String& section, const juce::String& fallback) { if (safeForLater != nullptr) safeForLater->openChapter(section, fallback); };
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(new ScrollableContent(content));
     options.dialogTitle = "About OrganSampler, user manual & licences";

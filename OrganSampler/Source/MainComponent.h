@@ -656,6 +656,7 @@ private:
     // the dialog opens on the manual, scrolled to that heading, the heading orange.
     void showAboutDialog(const juce::String& manualSection = {}, const juce::String& fallbackSection = {});
     std::unique_ptr<juce::DialogWindow> aboutWindow;
+    std::function<void(const juce::String&, const juce::String&)> aboutOpenChapter;   // 0.8.212: the kept manual window jumps to a chapter
 
     // "Set for all perspectives & divisions" in the audio tab: the source
     // route's audio device is copied everywhere; any other device choice cancels it.
