@@ -1,13 +1,13 @@
 # Stralsund, St. Jakobi, Kr. Wegscheider
 
-<!-- Written by OrganSampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):
+<!-- Written by OrganSampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->
 
 A complete OrganSampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 72 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/stralsund-st-jakobi-kr-wegscheider/Stralsund_Jakobi_Wegscheider.portable.zip) - unpack it, the `Stralsund_Jakobi_Wegscheider.portable.json` inside goes where the next section says.
+**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/stralsund-st-jakobi-kr-wegscheider/Stralsund_Jakobi_Wegscheider.portable.zip) - *Load Configuration* in OrganSampler opens the zip as it is (0.8.195) and copies the configuration into your configurations folder; or unpack it and put the `Stralsund_Jakobi_Wegscheider.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,23 +15,22 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.189 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). OrganSampler 0.8.214 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **43 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
-  - **81 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** OrganSampler 0.8.189.
-- **Author:** Jiri Zurek, 25 October 2026.
+  - **7.9 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **41 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
+  - **79 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** OrganSampler 0.8.214.
+- **Author:** Jiri Zurek, 27 October 2026.
 
 ## Where to put the file
 
-The folders `003135` and `003136` must stand side by side in one folder. Place `Stralsund_Jakobi_Wegscheider.portable.json` in that folder:
+Put `Stralsund_Jakobi_Wegscheider.portable.json` into your configurations folder (Configuration Editor > *Configurations folder*; `Documents\OrganSampler\Configurations` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `003135` and `003136` must stand side by side in one folder:
 
 ```
-<any folder>\
-├── Stralsund_Jakobi_Wegscheider.portable.json
+<a sample location>\
 ├── 003135\
 │   ├── pipe\HW\
 │   ├── pipe\OW\
@@ -69,4 +68,4 @@ The folders `003135` and `003136` must stand side by side in one folder. Place `
 |  |  | Flöte 2' (Trsm.) |  |
 |  |  | HW Tromp 4' (Ext.) |  |
 
-<!-- published by @zurekjiri (issue #93, 2026-10-25) -->
+<!-- published by @zurek-jiri (issue #109, 2026-10-27) -->
