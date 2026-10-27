@@ -1365,6 +1365,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
+- RELEASE FADES 110 ms (the user, 27 Oct 2026: "default pro Sustain fade-out bude 110 ms, default pro release fade-in
+  bude 110 ms"): today both default to 70 ms in FOUR places that must change together - the sliders' start values
+  (MainComponent.cpp ctor ~1032 / ~1053), the settings fallback when the key is absent (`parsed.getProperty(
+  "releaseFadeOutMs", 70.0)` / `"releaseFadeInMs", 70.0` in loadSettings), the GLOBAL RESET values (~22126 / 22128),
+  and the manual's "(default 70 ms)" in "Sustain fade-out on key release" / "Release sample fade-in" (regenerate
+  ManualData.h). The engine's own atomics (SamplerEngine.h: fade-out 70, fade-in 20) are overwritten by the GUI
+  at start - set them to 110 too so the self-test/kerneltest render the same join. The values are configuration
+  keys (they travel with the organ): an existing file keeps its own 70 (or whatever it holds) - the new default
+  reaches only files without the key and a fresh installation; the published Stralsund video config already has
+  120. Double-click on a slider returns to its start value (no explicit setDoubleClickReturnValue found - check).
 - DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
   N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only
   the later loads of the day: every per-tree line says 1 300-3 900 MB/s (Stralsund from the page cache), nothing
