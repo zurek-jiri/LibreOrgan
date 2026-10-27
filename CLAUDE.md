@@ -1484,7 +1484,10 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `ORGAN_TEST_NEIGHBOURS=1` answers yes. Log lines "Missing folders: ...". (2) SINC DEFAULT BY CPU:
   `SamplerEngine::defaultSincKernelFromHz()` = hasAVX2 ? 3000 : 20000 in all four places (engine atomic, the
   MainComponent member, loadSettings' fallback, the Editor slider's default); loadSettings logs "Full kernel from: N
-  Hz (the default for this CPU M Hz, AVX2/no AVX2)"; the manual's slider paragraph and 5.8 say it.
+  Hz (the default for this CPU M Hz, AVX2/no AVX2)"; the manual's slider paragraph and 5.8 say it. Released as
+  commit a621e60 + merge fa665ef (origin had moved: the user removed menesterol-dry through the new remove link -
+  it works), tag v0.8.218 on fa665ef, CI green on all four, Intel mac "late symbols: 0". %TEMP%\ci_watch.ps1 needs
+  the FULL 40-char SHA (`actions/runs?head_sha=` finds nothing for a short one: "no run for v0.8.218 after 10 min").
   (3) DISK READ 358 MB/s - SETTLED (27 Oct 2026, measured here): a plain parallel read (%TEMP%\diskread.py, 8
   threads, 4 MB reads, 4 GB of a package not read recently) of D: (Samsung 870 QVO 8 TB SATA) gives 441-455 MB/s;
   a COLD load through the program (ORGAN_LOAD_TREE of 001692 with packing OFF: "4.53 GB read in 12.5 s = 363
