@@ -23,6 +23,7 @@ body:
         - "arnstadt-bach-organ"
         - "ashton-lewis-organ"
         - "casavant-organ-model"
+        - "dom-b-dos-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false
