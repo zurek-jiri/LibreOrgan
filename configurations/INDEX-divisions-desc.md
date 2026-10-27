@@ -32,6 +32,5 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
 | [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-organ&organ=adlington-hall-organ) |
 | [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
-| [Menesterol, Dry](menesterol-dry/README.md) | 3 | 23 | 0.9 GB | Dry | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20menesterol-dry&organ=menesterol-dry) |
 
-8 configuration(s).
+7 configuration(s).
