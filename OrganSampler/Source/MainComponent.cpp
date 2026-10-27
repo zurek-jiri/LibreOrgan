@@ -12439,7 +12439,7 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
     const juce::File& configurationFile, const juce::File& selectedLibraryRoot)
 {
     gChosenConfigurationDir = chosenConfigurationDir;   // 0.8.214: the chosen file's folder serves this load's lookups
-    struct ClearChosen { juce::File& member; ~ClearChosen() { gChosenConfigurationDir = {}; member = {}; } } clearChosen{ chosenConfigurationDir };
+    struct ClearChosen { juce::File& member; ~ClearChosen() { gChosenConfigurationDir = juce::File(); member = juce::File(); } } clearChosen{ chosenConfigurationDir };   // juce::File() spelt out: "= {}" is ambiguous for GCC
     auto manuals = configuration.getProperty("manualKeyboards", juce::var());
     // What is missing, by name: the user must know what to look for before a
     // folder dialog asks for "the root". Paths relative to the library root are
