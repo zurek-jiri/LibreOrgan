@@ -1467,17 +1467,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `storageSampleRate`, `renderKernel`) and the "per voice and block: kernel N ns" of the last clean seconds.
   The "Profiling clock" on that Mac reads ~1 GHz in every run (958-1103 MHz) - not a throttle sign, the same in #88.
   Comment drafts: %TEMP%\issue113_comment.md, issue114_comment.md, issue115_comment.md.
-## Pending for the next session (delete when done)
-- DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
-  N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only
-  the later loads of the day: every per-tree line says 1 300-3 900 MB/s (Stralsund from the page cache), nothing
-  at 358. To settle it: the "Tree X: N GB of sample files read in T s = M MB/s" lines of THAT load (which disk, which
-  organ, cold or warm), then whether the figure is the disk or the loader: the figure counts `loadBytesRead` per
-  5 s window, and decoding, packing (2.5x the cost), the 32 kHz sinc (4x) and the memory counting run on the same
-  loader threads - with packing on the readers wait for the CPU and the "disk" figure is the loader's throughput.
-  Compare the same load with packing/resampling off, the Task Manager's disk graph, and a plain parallel read
-  (8 threads, 4 MB reads, files not read recently) of the same folder; name the line "read and decoded" if the CPU
-  is the limit; decouple reading from decoding only after the measurement says so.
+  0.8.218 (27 Oct 2026, the user: "udělej všechna to-do i toto"): (1) NEIGHBOURING ARCHIVES OF A SET (Dom Bedos =
+  five SEPARATE rars: bedos1_862 ... bedos4 + BedosUpdate864_ODF with the definition; the ODF rar alone gave "11
+  sample folder tree(s) not on this computer"): `MainComponent::offerNeighbourArchives(explicitRequest)` - called by
+  `runWhenLoaded` from `resolveAndApplyPortableConfiguration` when `missing` is not empty (once per configuration
+  file and session, `neighbourArchivesAsked`) and by the notice menu item 1001 "Look for the missing folders in the
+  archives beside this organ...". THE USER'S RULE ("co když tam bude 100 dalších rarů? Já bych to stavěl na
+  shodnosti části jména"): candidates = first-volume rars (not chosen yet) in the folders beside the chosen archives,
+  beside the configuration file and the nearest existing folder above every missing tree, whose letters-only stem
+  (".partNN", digits, separators dropped) shares >= 4 leading letters with a chosen archive's stem OR contains a
+  >= 4-letter word of the configuration/organ name ("bedos"); at most 24; a folder of foreign rars opens none. Only
+  those are indexed (`indexArchivesThen`, the progress window), then `SampleFiles::entriesOf(archive, startsWith
+  "<tree relative to the archive's folder>/")` decides which hold which missing trees; one box "Missing folders"
+  (Read them too / Not now) lists "archive: tails"; yes -> `registerArchive` each + `reloadDivisions(affected)` (the
+  pool paths are unchanged, the archives now serve them). `SampleFiles::chosenArchives()` getter added. Dev:
+  `ORGAN_TEST_NEIGHBOURS=1` answers yes. Log lines "Missing folders: ...". (2) SINC DEFAULT BY CPU:
+  `SamplerEngine::defaultSincKernelFromHz()` = hasAVX2 ? 3000 : 20000 in all four places (engine atomic, the
+  MainComponent member, loadSettings' fallback, the Editor slider's default); loadSettings logs "Full kernel from: N
+  Hz (the default for this CPU M Hz, AVX2/no AVX2)"; the manual's slider paragraph and 5.8 say it.
+  (3) DISK READ 358 MB/s - SETTLED (27 Oct 2026, measured here): a plain parallel read (%TEMP%\diskread.py, 8
+  threads, 4 MB reads, 4 GB of a package not read recently) of D: (Samsung 870 QVO 8 TB SATA) gives 441-455 MB/s;
+  a COLD load through the program (ORGAN_LOAD_TREE of 001692 with packing OFF: "4.53 GB read in 12.5 s = 363
+  MB/s"; 001693 with packing ON: "8.15 GB in 22.6 s = 361 MB/s") gives the same figure with and without packing -
+  the loader's per-file reads on 16 threads reach ~80 % of the disk's sequential ceiling, the CPU is no limit, the
+  line IS the disk. The user's 358 MB/s was a cold load from the SATA SSD (the page cache gives 1 300-3 900). No
+  code change; the manual's 4.4 (SATA ~500 MB/s) stands. Never promise more from a SATA SSD.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was

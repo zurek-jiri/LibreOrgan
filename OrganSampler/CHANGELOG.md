@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.218] - 2026-10-27
+
+### Added
+- A set sold as several separate archives (Dom Bedos: bedos1 ... bedos4
+  and the definition in its own archive): after a load that left folders
+  missing, the program looks beside the chosen archive and the configuration
+  for other archives with a name like the organ's, reads the contents of
+  those few, and offers the ones that hold the missing folders in one box -
+  "Read them too?" - which joins them to the remembered archives and loads
+  the divisions again. The same look is in the "Sample folder not found"
+  menu. Nothing is taken without the answer; archives of other organs are
+  never opened.
+
+### Changed
+- The default of "Full kernel from (sounding pitch)" follows the processor:
+  3000 Hz with AVX2 as before, 20000 Hz (off) on a CPU without it (Core 2 Duo
+  and such), where the sinc kernel doubles the cost of every high voice -
+  3 900 voices against 780 on the same Mac. A value set by hand stays.
+
 ## [0.8.217] - 2026-10-27
 
 ### Fixed

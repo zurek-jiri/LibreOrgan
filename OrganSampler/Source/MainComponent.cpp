@@ -12644,6 +12644,12 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
         CrashHandler::note("Load Configuration: " + juce::String(missing.size()) + " sample folder tree(s) not on this computer, loaded without them: "
             + missing.joinIntoString(" | ") + (rootName.isNotEmpty() ? "  (library root \"" + rootName + "\")" : juce::String()));
     applyPortableConfiguration(configuration, configurationFile, selectedLibraryRoot);
+    // 0.8.218: once the organ is up, the archives beside it with a name like it are offered for the missing trees.
+    if (!missing.isEmpty())
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        runWhenLoaded([safeThis] { if (safeThis != nullptr) safeThis->offerNeighbourArchives(false); });
+    }
 }
 
 void MainComponent::freezeGrid()
@@ -14668,13 +14674,161 @@ void MainComponent::showMissingTreesMenu(int manual)
         menu.addItem(index + 1, "Replace \"" + tail(path) + "\" with a folder on this computer...");
     }
     if (!missing.empty()) menu.addSeparator();
+    if (!missing.empty()) menu.addItem(1001, "Look for the missing folders in the archives beside this organ...");
     menu.addItem(1000, "Open the Stop List");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(juce::PopupMenu::Options(), [safeThis, manual](int result)
     {
         if (safeThis == nullptr || result <= 0) return;
         if (result == 1000) { safeThis->showStopBuildingDialog(manual); return; }
+        if (result == 1001) { safeThis->offerNeighbourArchives(true); return; }
         safeThis->chooseFolderForMissingTree(result - 1);
+    });
+}
+
+void MainComponent::offerNeighbourArchives(bool explicitRequest)
+{
+    // A set sold as several SEPARATE archives (Dom Bedos: bedos1_862 ... bedos4 and the
+    // definition in BedosUpdate864_ODF, not a multi-part set): the one archive chosen
+    // gives the organ with most of its folders missing. The user's rule (27 Oct 2026):
+    // the candidates are chosen by a shared part of the NAME (a folder of a hundred
+    // foreign archives opens none of them), only those few are indexed, and their
+    // contents decide what the box says; nothing is taken without the answer (0.8.177).
+    std::vector<int> missingIndex;
+    for (int i = 0; i < (int)sampleTrees.size(); ++i)
+        if (sampleTrees[(size_t)i].isNotEmpty() && !SampleFiles::isDirectory(juce::File(sampleTrees[(size_t)i]))) missingIndex.push_back(i);
+    if (missingIndex.empty()) return;
+    const auto configurationKey = currentConfigurationFile.getFullPathName();
+    if (!explicitRequest)
+    {
+        if (neighbourArchivesAsked.contains(configurationKey)) return;
+        neighbourArchivesAsked.add(configurationKey);
+    }
+    const auto allChosen = SampleFiles::chosenArchives();
+    // Where to look: the nearest existing folder above every missing tree (the archives'
+    // own folder) and beside the configuration - not beside every archive this computer
+    // remembers (those are other organs: the Aeolian folder was searched for Bedos).
+    std::vector<juce::File> folders;
+    auto addFolder = [&folders](juce::File folder)
+    {
+        while (folder != juce::File() && !folder.isDirectory()) folder = folder.getParentDirectory();
+        if (folder.isDirectory() && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
+    };
+    for (int index : missingIndex) addFolder(juce::File(sampleTrees[(size_t)index]).getParentDirectory());
+    if (currentConfigurationFile.existsAsFile()) addFolder(currentConfigurationFile.getParentDirectory());
+    std::vector<juce::File> chosen;   // the chosen archives lying in those folders: their names are the organ's
+    for (const auto& archive : allChosen)
+        if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) chosen.push_back(archive);
+    // The name sieve: the letters of a name (digits, separators and ".partNN" dropped);
+    // a candidate shares at least four leading letters with a chosen archive, or holds a
+    // word of four letters or more of the organ's name ("bedos").
+    auto letters = [](const juce::String& text)
+    {
+        juce::String out;
+        for (auto p = text.toLowerCase().getCharPointer(); !p.isEmpty(); ++p)
+            if (juce::CharacterFunctions::isLetter(*p)) out += juce::String::charToString(*p);
+        return out;
+    };
+    auto stemOf = [&letters](const juce::File& file)
+    {
+        auto name = file.getFileNameWithoutExtension().toLowerCase();
+        const int part = name.lastIndexOf(".part");
+        if (part > 0) name = name.substring(0, part);
+        return letters(name);
+    };
+    juce::StringArray stems, words;
+    for (const auto& archive : chosen) stems.add(stemOf(archive));
+    {
+        juce::StringArray raw;
+        raw.addTokens(currentConfigurationName + " " + publicationOrgan, " _-.,()[]'", "");
+        for (const auto& w : raw) { const auto l = letters(w); if (l.length() >= 4) words.addIfNotAlreadyThere(l); }
+    }
+    auto matches = [&](const juce::File& candidate)
+    {
+        const auto stem = stemOf(candidate);
+        for (const auto& s : stems)
+        {
+            int n = 0;
+            while (n < s.length() && n < stem.length() && s[n] == stem[n]) ++n;
+            if (n >= 4) return true;
+        }
+        for (const auto& w : words) if (stem.contains(w)) return true;
+        return false;
+    };
+    std::vector<juce::File> candidates;
+    for (const auto& folder : folders)
+        for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
+        {
+            const auto file = entry.getFile();
+            if (!SampleFiles::isFirstVolume(file) || std::find(allChosen.begin(), allChosen.end(), file) != allChosen.end()) continue;
+            if (!matches(file) || std::find(candidates.begin(), candidates.end(), file) != candidates.end()) continue;
+            candidates.push_back(file);
+            if (candidates.size() >= 24) break;
+        }
+    juce::StringArray candidateNames;
+    for (const auto& c : candidates) candidateNames.add(c.getFileName());
+    CrashHandler::note("Missing folders: " + juce::String((int)missingIndex.size()) + " tree(s); archives beside the organ with a shared name: "
+        + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", ")));
+    if (candidates.empty())
+    {
+        if (explicitRequest)
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Missing folders",
+                "No other archive with a name like the organ's lies beside it (" + (folders.empty() ? juce::String("no folder to look in") : folders.front().getFullPathName()) + ").");
+        return;
+    }
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    indexArchivesThen(candidates, [safeThis, candidates, missingIndex, explicitRequest]
+    {
+        if (safeThis == nullptr) return;
+        struct Found { juce::File archive; std::vector<int> trees; };
+        std::vector<Found> found;
+        for (const auto& archive : candidates)
+        {
+            const auto folder = archive.getParentDirectory();
+            Found f{ archive, {} };
+            for (int index : missingIndex)
+            {
+                const juce::File tree(safeThis->sampleTrees[(size_t)index]);
+                if (!tree.isAChildOf(folder)) continue;
+                const auto relative = tree.getRelativePathFrom(folder).replaceCharacter('\\', '/');
+                if (relative.isEmpty() || relative.startsWith("..")) continue;
+                const auto hits = SampleFiles::entriesOf(archive, [relative](const juce::String& path) { return path.startsWithIgnoreCase(relative + "/"); });
+                if (!hits.empty()) f.trees.push_back(index);
+            }
+            if (!f.trees.empty()) found.push_back(f);
+        }
+        if (found.empty())
+        {
+            CrashHandler::note("Missing folders: none of the archives beside the organ holds them");
+            if (explicitRequest)
+                queueNotice(juce::MessageBoxIconType::InfoIcon, "Missing folders", "The archives beside the organ (" + juce::String((int)candidates.size()) + " with a name like it) hold none of the missing folders.");
+            return;
+        }
+        juce::String text = "The organ's folders that are not on this computer lie in archives beside it:\n";
+        for (const auto& f : found)
+        {
+            juce::StringArray tails;
+            for (int index : f.trees) tails.add(tailText(safeThis->sampleTrees[(size_t)index]));
+            text += "\n" + f.archive.getFileName() + ":  " + tails.joinIntoString(", ");
+        }
+        text += "\n\nRead these archives too? They join the archives this computer remembers and the divisions are loaded again.";
+        CrashHandler::note("Missing folders: " + text.replaceCharacters("\n", " "));
+        auto takeThem = [safeThis, found]
+        {
+            if (safeThis == nullptr) return;
+            std::vector<int> trees;
+            for (const auto& f : found) { safeThis->registerArchive(f.archive); trees.insert(trees.end(), f.trees.begin(), f.trees.end()); }
+            std::vector<int> affected;
+            for (int manual = 0; manual <= safeThis->manualCount && manual < SamplerEngine::maxManuals; ++manual)
+                for (const auto& path : safeThis->divisionTrees(manual))
+                    if (std::find(trees.begin(), trees.end(), safeThis->poolIndexOf(path)) != trees.end()) { affected.push_back(manual); break; }
+            CrashHandler::note("Missing folders: " + juce::String((int)found.size()) + " archive(s) taken, " + juce::String((int)affected.size()) + " division(s) reloaded");
+            if (!affected.empty()) safeThis->reloadDivisions(affected);
+        };
+        if (std::getenv("ORGAN_TEST_NEIGHBOURS") != nullptr) { takeThem(); return; }   // tests: the answer is yes
+        juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::QuestionIcon).withTitle("Missing folders")
+            .withMessage(text).withButton("Read them too").withButton("Not now").withAssociatedComponent(safeThis.getComponent()),
+            [takeThem](int result) { if (result == 1) takeThem(); });
     });
 }
 
@@ -19598,8 +19752,10 @@ void MainComponent::loadSettings()
         for (int i = 0; i < SamplerEngine::maxManuals && i < screens->size(); ++i) divisionScreen[(size_t)i] = juce::jlimit(0, 1, (int)screens->getReference(i));
     windMaxEffect = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windMaxEffect", 1.0));
     toneStartHz = juce::jlimit(120.0f, 5000.0f, (float)(double)parsed.getProperty("toneStartHz", 1800.0));
-    sincKernelFromHz = juce::jlimit(0.0f, 20000.0f, (float)(double)parsed.getProperty("sincKernelFromHz", 3000.0));
+    sincKernelFromHz = juce::jlimit(0.0f, 20000.0f, (float)(double)parsed.getProperty("sincKernelFromHz", (double)SamplerEngine::defaultSincKernelFromHz()));
     engine.setSincKernelFromHz(sincKernelFromHz);
+    CrashHandler::note("Full kernel from: " + juce::String((int)sincKernelFromHz) + " Hz (the default for this CPU " + juce::String((int)SamplerEngine::defaultSincKernelFromHz())
+        + " Hz, " + (juce::SystemStats::hasAVX2() ? "AVX2" : "no AVX2") + ")");
     harmonicSwellDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicSwellDb", 8.0));
     harmonicWindDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicWindDb", 2.0));
     harmonicTremulantDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicTremulantDb", 4.0));
@@ -25337,7 +25493,7 @@ void MainComponent::showConfigurationEditor()
                 // The sinc playback kernel for high pipes (0.8.164): a slider over the whole
                 // audible range, logarithmic in feel (the midpoint at 2 kHz) so the low
                 // end is reachable - a computer with CPU to spare may give it to every pipe.
-                addSlider("Full kernel from (sounding pitch)", 0.0, 20000.0, 10.0, " Hz", o.sincKernelFromHz, 3000.0,
+                addSlider("Full kernel from (sounding pitch)", 0.0, 20000.0, 10.0, " Hz", o.sincKernelFromHz, (double)SamplerEngine::defaultSincKernelFromHz(),
                     [&o](double value) { o.sincKernelFromHz = juce::jlimit(0.0f, 20000.0f, (float)value); o.engine.setSincKernelFromHz(o.sincKernelFromHz); o.saveSettings(); },
                     "Every pipe whose sounding fundamental lies at or above this plays through the 8-tap windowed-sinc kernel instead of the "
                     "two-point linear one. The linear kernel leaves an image of a retuned high tone BELOW its fundamental (48000 x (ratio - 1) Hz "

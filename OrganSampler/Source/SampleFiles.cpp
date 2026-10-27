@@ -1241,6 +1241,12 @@ namespace SampleFiles
         gArchivesOfFolder.clear();
     }
 
+    std::vector<juce::File> chosenArchives()
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        return gChosenArchives;
+    }
+
     juce::File archiveOf(const juce::File& path)
     {
         const auto place = locate(path);

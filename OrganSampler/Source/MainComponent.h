@@ -408,6 +408,11 @@ private:
     int treeFoldersFound(int poolIndex, const juce::File& folder, juce::StringArray* missing = nullptr) const;   // how many of them lie under the folder; -1 = no row names one
     void chooseFolderForMissingTree(int poolIndex);                          // the folder chooser of the notice's menu
     void showMissingTreesMenu(int manual);   // the notice under a division header was clicked
+    // 0.8.218: the missing trees looked for in the OTHER archives beside the chosen ones / the configuration
+    // (a set sold as several separate rars: Dom Bedos): candidates by a shared name part, confirmed by their
+    // contents, one box "Read them too?". explicitRequest = from the notice's menu (says so when none is found).
+    void offerNeighbourArchives(bool explicitRequest);
+    juce::StringArray neighbourArchivesAsked;   // configuration files asked in this session (the automatic offer once)
     // Linux: a .desktop entry and the icon in every size under ~/.local/share, so
     // the program has its icon in the menu, the dock and the file manager.
     void installLinuxDesktopEntry();
@@ -983,7 +988,7 @@ private:
     float releaseCutPercent = 100.0f;
     float windMaxEffect = 1.0f;      // wind model strength 0..1 (each key stroke uses a random 40..100 % of it)
     float toneStartHz = 1800.0f;     // per-key tone shelf: start of the transition band
-    float sincKernelFromHz = 3000.0f;   // the sinc playback kernel for pipes sounding from here up (0.8.164; 0 = all, 20000 = none); machine-specific
+    float sincKernelFromHz = SamplerEngine::defaultSincKernelFromHz();   // the sinc playback kernel for pipes sounding from here up (0.8.164; 0 = all, 20000 = none; the default by CPU, 0.8.218); machine-specific
     float retuneLimitCents = 200.0f;   // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165); travels with the organ
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.

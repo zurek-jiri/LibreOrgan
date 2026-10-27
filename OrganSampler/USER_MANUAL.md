@@ -875,11 +875,26 @@ division that uses a missing tree shows an orange notice under its header,
 tooltip). Click it: a menu offers *Replace "..." with a folder on this
 computer...* for every missing tree - choose the folder where that tree is
 now, whatever its name, and the stops come alive at once, their rows keep
-their folders - or *Open the Stop List*, where *Load folder...* offers the
+their folders -, *Look for the missing folders in the archives beside this
+organ...* (below), or *Open the Stop List*, where *Load folder...* offers the
 same for every missing tree (marked NOT FOUND) and *Unload folder...*
 removes a tree you no longer have.
 The notice goes when no tree of the division is missing; no message box
 reports the find, the activity log does.
+
+A set sold as several separate archives (not the parts of one archive:
+`bedos1_862.rar`, `bedos2_861.rar` ... and the definition in
+`BedosUpdate864_ODF.rar`) loads from the one archive you chose with most of
+its folders missing. The program then looks beside it - and beside the
+configuration - for other archives whose name shares a part with the
+chosen one or with the organ's name (`bedos`; a folder full of other organs'
+archives is left alone), reads the contents of those few, and when they hold
+the missing folders one box names them: "bedos1_862.rar: 000862\pipe\...,
+bedos2_861.rar: ..." - *Read them too?* Yes joins them to the archives this
+computer remembers and loads the divisions again; *Not now* leaves the
+notice. The same look is in the notice's menu. The simplest way is still to
+choose all the archives of the set at once in *Load Configuration* (Ctrl or
+Shift in the file dialog).
 
 Paths are stored with "/" and resolved on every platform; a configuration
 saved on Windows loads on Linux and macOS and the other way round.
@@ -896,7 +911,9 @@ Put all the archives of the set together in one folder on the disk where
 your samples live (`D:\Samples\Caen\`: the `.part1.rar`, `.part2.rar` ...
 side by side, or the one archive of a small set). Nothing needs unpacking.
 *Load Configuration* in the top bar, choose the archive (several with Ctrl
-or Shift when the organ comes in several): the program reads what the
+or Shift when the organ comes in several separate archives - choose them
+all; if you chose one, the program offers the others with a name like it
+once the organ is up): the program reads what the
 archives hold, offers the Hauptwerk organ definition found inside (or a
 configuration, when one is packed with the set) and loads the whole organ
 straight from the archives - "Sample archives (RAR)" and "Loading a
@@ -2089,6 +2106,11 @@ decides how many voices fit:
   IR switches the convolution off until the next sound, so idle
   perspectives cost nothing. Dry/wet at 0 %, or *Clear*, removes the cost
   entirely.
+- **The full kernel on an old processor.** Engine > *Full kernel from*: on
+  a CPU without AVX2 every pipe above that pitch costs twice as much, so a
+  low value halves the polyphony of a Core 2 Duo; the default there is off
+  (20000 Hz). Two reports of the same laptop that differ only in this
+  setting differ by a factor of two to five.
 - **ASIO.** All routes on one ASIO driver are rendered by one audio thread
   and the render workers behind it (*Render threads* in the Configuration
   Editor): the voices of every route are shared out over all the processor's
@@ -2558,12 +2580,17 @@ Hz under it at about -26 dB: a pipe at 9 kHz retuned by 20 cents (a
 temperament, Equal at 440 Hz) gets a foreign tone 560 Hz under it. Low
 pipes hide it (their image is 50 dB down and sits beside the partials), the
 top octaves do not. The sinc kernel puts it below -44 dB. The default
-3000 Hz (2/3' at c1) covers the top octaves of the 2' and 1' stops and the
-mixtures at a few per cent of extra work; 0 gives the sinc to every pipe
-(three to five times the work per voice, the kerneltest prints the figure
-of this CPU - for a computer with CPU to spare),
-20000 switches it off. The slider is logarithmic, so the low end is easy to
-reach. Takes effect for the next notes, no reload; this computer's setting.
+depends on the processor: 3000 Hz (2/3' at c1) on a CPU with AVX2 - that
+covers the top octaves of the 2' and 1' stops and the mixtures at a few per
+cent of extra work; 20000 Hz (off) on a CPU without AVX2 (a Core 2 Duo and
+its kind, rendering with the SSE2 kernel), where the sinc doubles the cost
+of every voice it touches - measured on such a Mac: 3 900 voices with it
+off, 780 with it on at 3000 Hz. 0 gives the sinc to every pipe (three to
+five times the work per voice, the kerneltest prints the figure of this
+CPU - for a computer with CPU to spare), 20000 switches it off. The slider
+is logarithmic, so the low end is easy to reach. Takes effect for the next
+notes, no reload; this computer's setting - a value you set stays, only the
+default follows the CPU.
 
 ### Currently active
 

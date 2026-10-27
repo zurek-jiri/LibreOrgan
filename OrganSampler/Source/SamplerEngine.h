@@ -865,6 +865,10 @@ public:
     // leaves an image of a retuned high tone below its fundamental (a foreign
     // tone, 48000 x (ratio - 1) Hz under it, -26 dB); the sinc puts it 50 dB
     // down. 0 = every voice, 20000 or more = never (the linear kernel as before).
+    // The default of "Full kernel from" (0.8.218, the user's rule): 3000 Hz with AVX2 (the sinc costs 1.1 ns a frame
+    // there), 20000 = off on a CPU without it (Core 2 Duo and such: the sinc on SSE2 doubles the cost of a voice -
+    // 3900 -> 779 voices on the P8600 Mac when the default replaced his 20000). Only the default: a setting stays.
+    static float defaultSincKernelFromHz() noexcept { return juce::SystemStats::hasAVX2() ? 3000.0f : 20000.0f; }
     void setSincKernelFromHz(float hz) noexcept { sincKernelFromHz.store(juce::jlimit(0.0f, 20000.0f, hz), std::memory_order_relaxed); }
     float getSincKernelFromHz() const noexcept { return sincKernelFromHz.load(std::memory_order_relaxed); }
     // The retune limit per pipe (0.8.165): a pipe whose recorded pitch lies further
@@ -1499,7 +1503,7 @@ private:
     std::atomic<float> windOneStopShare{ 0.2f }, windOnePipeShare{ 0.5f }, windTwoPipesShare{ 0.5f };
     std::atomic<float> releaseCutPercent{ 100.0f };
     std::atomic<float> toneStartHz{ 1800.0f };   // per-key tone shelf: start of the transition band
-    std::atomic<float> sincKernelFromHz{ 3000.0f };   // the sinc playback kernel from this sounding fundamental up (0.8.164)
+    std::atomic<float> sincKernelFromHz{ defaultSincKernelFromHz() };   // the sinc playback kernel from this sounding fundamental up (0.8.164; the default by CPU, 0.8.218)
     std::atomic<float> retuneLimitCents{ 200.0f };    // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165)
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1
     std::atomic<int> fillGroupSize{ 12 };
