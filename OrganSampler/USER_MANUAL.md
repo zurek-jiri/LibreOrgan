@@ -989,8 +989,10 @@ found, so a sample set or a collection moved within a known location is
 found by its name; one level around every location is searched as well
 (the folder above it and its subfolders), so a place remembered one level
 too deep or too high serves the next configuration all the same. The
-program fills the list by itself: the folder above
-the library root at every portable save, the root where it was found at a
+program fills the list by itself - always a library root, never a single
+package of it: the folder above a root named as the configuration names it
+(else the root folder itself, whatever it is called) at every save, the root
+where it was found at a
 load, the folder of every archive you choose, the collection of every IR you
 choose, the folder you point to when a tree is asked for. The list is the
 text file `Locations.txt` beside the settings - the sample folders and the

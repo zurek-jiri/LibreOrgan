@@ -1001,17 +1001,19 @@ static const char* const kManualText_part4 =
     "found by its name; one level around every location is searched as well\n"
     "(the folder above it and its subfolders), so a place remembered one level\n"
     "too deep or too high serves the next configuration all the same. The\n"
-    "program fills the list by itself: the folder above\n"
-    "the library root at every portable save, the root where it was found at a\n"
+    "program fills the list by itself - always a library root, never a single\n"
+    "package of it: the folder above a root named as the configuration names it\n"
+    "(else the root folder itself, whatever it is called) at every save, the root\n"
+    "where it was found at a\n"
     "load, the folder of every archive you choose, the collection of every IR you\n"
     "choose, the folder you point to when a tree is asked for. The list is the\n"
     "text file `Locations.txt` beside the settings - the sample folders and the\n"
     "RAR archives you chose, one path per line, readable and editable in any\n"
     "editor; the Configuration Editor shows it (*Sample and IR locations*), opens\n"
-    "it (*Show*), adds a folder by hand and forgets the folders. On a computer\n"
-    "that knows no location yet, the library root is also looked for by its name\n"
     ;
 static const char* const kManualText_part5 =
+    "it (*Show*), adds a folder by hand and forgets the folders. On a computer\n"
+    "that knows no location yet, the library root is also looked for by its name\n"
     "at the top of every fixed drive, under every first-level folder of the drive\n"
     "and in the Hauptwerk layout (`<folder>\\HauptwerkSampleSetsAndComponents\\<root>`,\n"
     "so `D:\\Hauptwerk\\HauptwerkSampleSetsAndComponents\\OrganInstallationPackages`\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "run ran out of keys and strikes before the computer did. The \"free\" figure is what the\n"
     "system could give the program now: Windows' available physical memory,\n"
     "Linux's MemAvailable (the reclaimable cache included), macOS's free and\n"
-    "inactive pages; the footprint rule is the one that bites on an 8 GB machine.\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "inactive pages; the footprint rule is the one that bites on an 8 GB machine.\n"
+    "\n"
     "## 2.5 Division headers\n"
     "\n"
     "Each division column starts with a one-line header: a keyboard icon that\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "  transmissions are not affected (each transmission has its own boxes).\n"
     "- **Treble per key** (-9 to +9 dB) - a high shelf per pipe, above the\n"
     "  frequency set in *Treble per key: shelf start frequency* (default 1800 Hz).\n"
-    "- A *Reset to 0 dB* button sits beside each header; dragging with the right\n"
-    "  mouse button paints one value across a row of sliders.\n"
     ;
 static const char* const kManualText_part7 =
+    "- A *Reset to 0 dB* button sits beside each header; dragging with the right\n"
+    "  mouse button paints one value across a row of sliders.\n"
     "- The sliders light up while the key sounds. A **green thumb** marks a filled\n"
     "  pipe (hover it: the tooltip names the stop, the sample file and the shift it\n"
     "  was made with, \"HW Tromp 16', sample 039-D#.wav, -12 st (from key 51)\"). An\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "  configurations; the alias is only what is shown.\n"
     "- **Transp.:** the stop's transposition in semitones against its files on\n"
     "  their own numbers; a pure interval: -12 puts the file 024 on key 36 (an\n"
-    "  octave down: Doesburg's stops, a 16' made of files that sound 8'), +12 an\n"
-    "  octave up, +7 a fifth. Empty (\"auto\"): found by the program from the\n"
     ;
 static const char* const kManualText_part8 =
+    "  octave down: Doesburg's stops, a 16' made of files that sound 8'), +12 an\n"
+    "  octave up, +7 a fifth. Empty (\"auto\"): found by the program from the\n"
     "  samples' pitch and the footage in the folder's name, or from a Hauptwerk\n"
     "  definition, and written here once found. The voicing of every stop offers\n"
     "  the same setting (with the footage each step gives) and applies it at once;\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "sizes - the program does not stop you. The samples are loaded at 48 kHz (see\n"
     "\"Sample rate on loading\"): a device at 44.1 or 96 kHz gets its route's pipes\n"
     "read at the matching speed, through the same interpolation as a transposed\n"
-    "pipe, which costs a little more per voice and is a step below the quality of\n"
-    "the resampling on load. So give every device 48 kHz and the same buffer size.\n"
     ;
 static const char* const kManualText_part9 =
+    "pipe, which costs a little more per voice and is a step below the quality of\n"
+    "the resampling on load. So give every device 48 kHz and the same buffer size.\n"
     "A device opened for the first time, or chosen for a route that had none, runs\n"
     "at the loading rate, 48 kHz, when it offers it (a fresh device would\n"
     "otherwise open at the lowest rate from 44.1 kHz up); a device chosen for a\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "\n"
     "## 5.7 Audio devices not ready when OrganSampler starts\n"
     "\n"
-    "Devices that cannot be opened at start-up (unplugged, driver missing, or merely\n"
-    "late - an RME interface registers a few seconds after it switches its sample\n"
     ;
 static const char* const kManualText_part10 =
+    "Devices that cannot be opened at start-up (unplugged, driver missing, or merely\n"
+    "late - an RME interface registers a few seconds after it switches its sample\n"
     "rate) are waited for: a box \"Waiting for audio devices\" appears and the program\n"
     "checks every second for six seconds. Devices still absent afterwards are listed\n"
     "once in one message; their routes stay silent until the device appears, then\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -\n"
     "or a big global Pitch) is not played by speeding every pipe up: the common\n"
     "part of it is applied once to the mixed output of every route with a proper\n"
-    "resampler (0.8.163), so the pipes keep their recorded speed; only the\n"
-    "cents of temperament and detune stay in the pipes themselves, and the high\n"
     ;
 static const char* const kManualText_part11 =
+    "resampler (0.8.163), so the pipes keep their recorded speed; only the\n"
+    "cents of temperament and detune stay in the pipes themselves, and the high\n"
     "pipes play those through the full kernel (Engine > *Full kernel from*,\n"
     "0.8.164), so no foreign tone appears under a retuned top octave.\n"
     "\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "  Nothing else is lost.\n"
     "- *Filled pipes cache: files of stops not loaded now* - **Remove them**\n"
     "  deletes only the files of ranks that are not loaded at the moment: the\n"
-    "  stops of other configurations, of folders you have unloaded or deleted.\n"
-    "  The files of the loaded organ stay, so its next load is still fast. This is\n"
     ;
 static const char* const kManualText_part12 =
+    "  stops of other configurations, of folders you have unloaded or deleted.\n"
+    "  The files of the loaded organ stay, so its next load is still fast. This is\n"
     "  the button for routine housekeeping.\n"
     "- *Filled pipes cache folder* - **Choose...** picks another folder for the\n"
     "  cache (the default is `FilledPipesCache` in the application-data folder,\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "to nothing there - and the RAM drops by a quarter or a third; the kernel\n"
     "interpolates from the coarser grid at the same cost, so more stops fit and\n"
     "the polyphony stays. *Keep each file's own rate* loads faster and plays by\n"
-    "interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits\n"
-    "whatever it holds; only the coarser grid saves. Takes effect at the next load.\n"
     ;
 static const char* const kManualText_part13 =
+    "interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits\n"
+    "whatever it holds; only the coarser grid saves. Takes effect at the next load.\n"
     "\n"
     "A word on who hears the difference. Hearing loses its top end with the\n"
     "years: past fifty, few people hear anything above 17 kHz, and past sixty the\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "   started from the audio tab of a division's Settings (*Measure polyphony*,\n"
     "   beside *Reopen device*).\n"
     "\n"
-    "Then save the configuration: the value belongs to this organ. Measure again\n"
-    "after changing the audio routes, the IRs, the buffer size or the samples.\n"
     ;
 static const char* const kManualText_part14 =
+    "Then save the configuration: the value belongs to this organ. Measure again\n"
+    "after changing the audio routes, the IRs, the buffer size or the samples.\n"
     "The run takes one to two minutes; *Cancel* restores everything.\n"
     "\n"
     "## 8.2 Global sound\n"
@@ -3028,10 +3030,10 @@ static const char* const kManualText_part14 =
     "out.\n"
     "\n"
     "### Filled pipes: release length (pitch shift)\n"
-    "\n"
-    "Pitch shift method only. How long a filled pipe's release (the room decay) is,\n"
     ;
 static const char* const kManualText_part15 =
+    "\n"
+    "Pitch shift method only. How long a filled pipe's release (the room decay) is,\n"
     "as a share of its source's duration (25 to 200 %, default 100). Resampling\n"
     "alone would make a release shifted two octaves down four times as long and one\n"
     "shifted two octaves up a quarter, but the room does not grow or shrink with the\n"
@@ -3230,10 +3232,10 @@ static const char* const kManualText_part15 =
     "Shows or hides the button editing the one-shot stops list.\n"
     "\n"
     "### Top bar: Stop-Merging\n"
-    "\n"
-    "Shows or hides the Stop-Merging button (see \"Stop-Merging\"). Hidden by\n"
     ;
 static const char* const kManualText_part16 =
+    "\n"
+    "Shows or hides the Stop-Merging button (see \"Stop-Merging\"). Hidden by\n"
     "default.\n"
     "\n"
     "### Top bar: Load Voicing\n"
@@ -3432,10 +3434,10 @@ static const char* const kManualText_part16 =
     "\n"
     "How slowly the shutters follow the pedal (50 to 2000 ms, default 300). Larger\n"
     "= heavier, smoother movement; a sudden pedal stroke then takes this long to\n"
-    "arrive.\n"
-    "\n"
     ;
 static const char* const kManualText_part17 =
+    "arrive.\n"
+    "\n"
     "### Division volume\n"
     "\n"
     "The level of the whole division, -60 to +12 dB (default 0), for balancing the\n"

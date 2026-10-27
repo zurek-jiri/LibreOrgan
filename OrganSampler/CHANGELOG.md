@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.216] - 2026-10-27
+
+### Fixed
+- A save with one package of the organ missing recomputed the library root
+  from the trees at hand ("pipe", trees "PE", "UW") and froze the missing
+  package's trees as absolute paths into the configurations folder: the
+  missing package was never found again, even when put in place, and the
+  Stop List's tooltip showed that absurd path. The root this computer holds
+  is now taken from the relative paths the configuration already knows (a
+  loaded tree minus its relative path), the root's name in the file never
+  changes, and a missing tree keeps its relative path.
+- Locations.txt remembers the library ROOT of this computer ("D:\rr" standing
+  for OrganInstallationPackages), never one package of it, so the next
+  configuration of the same library finds its folders there; the tooltip of
+  a missing folder names it from its tree on.
+
 ## [0.8.215] - 2026-10-27
 
 ### Fixed

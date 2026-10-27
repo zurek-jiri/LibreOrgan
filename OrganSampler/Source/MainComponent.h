@@ -1029,6 +1029,13 @@ private:
     // 0.8.214: the sample locations and the chosen archives live in ONE readable file, Locations.txt beside the
     // settings (the user: "čitelné jako txt"); settings.json no longer carries them.
     juce::StringArray rememberedArchives;
+    juce::String libraryRootName;           // 0.8.216: the configuration's own library root name ("OrganInstallationPackages"), kept at every save
+    // 0.8.216: the relative path (below the library root) of every tree the configuration named, keyed by the
+    // absolute path it has on this computer (found or the placeholder) - the save derives the root from them and
+    // keeps a missing tree relative; "treeRelativePaths" in settings.json (machine-specific), rebuilt at every load.
+    std::map<juce::String, juce::String> treeRelativePaths;
+    juce::String knownRelativeOf(const juce::String& absolute) const;
+    void rememberTreeRelative(const juce::String& absolute, const juce::String& relative);
     juce::File locationsFile() const;
     void readLocationsFile(const juce::var& settings);   // the file, else the old settings key / ArchiveFolders.txt once
     void writeLocationsFile() const;

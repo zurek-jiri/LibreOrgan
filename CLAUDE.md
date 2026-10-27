@@ -1238,6 +1238,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
   indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
   gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
+  0.8.216 (27 Oct 2026, the user's D:\rr session): THE SAVE RECOMPUTED THE ROOT. His file after "Save" at quit had
+  rootName "pipe", trees "PE"/"UW" and the missing 003136 trees as ABSOLUTE placeholder paths
+  (C:\Users\...\Configurations\OrganInstallationPackages\003136\pipe\PE) - savePortableConfiguration took the root as
+  the common folder of the trees AT HAND (D:\rr\003135\pipe), so the organ could never find 003136 again, the Stop
+  List tooltip showed that path, and the location noted was D:\rr\003135. Now: (1) `treeRelativePaths` (member, map
+  absolute -> relative below the root; filled in applyPortableConfiguration for every found tree AND every missing
+  placeholder, written into the var as "treeRelativePaths" so loadSettings/saveSettings keep it - a machine-specific
+  key, cleared at each load; `applyTreeRelocation` moves the entry to the new path) - the save derives the root as
+  `rootFromKnownRelative(absolute, relative)` votes (D:\rr\003136\pipe\PE minus 003136/pipe/PE = D:\rr), the old
+  common-ancestor rule only when nothing is known; `libraryRootName` (member, from the file) is written back
+  unchanged, never the folder's own name; a missing tree keeps its relative path (`knownRelativeOf`, else
+  `relativeBelowNamedRoot` = the part after the root's name in the placeholder, else the file's own key) in the
+  division items and the pool, in both the portable and the ordinary branch. (2) Locations.txt gets the ROOT: the
+  save notes the root's parent when the folder is named as the configuration names it, else the root folder itself
+  ("D:\rr"); `relocateTreeSmart` notes `ancestorOf(found, below)` the same way (was below + 1 = "D:"); never a
+  package. (3) The Stop List tooltip of a missing cell = "NOT FOUND on this computer: <tree tail>\<relative>" (no
+  placeholder path). Tests: %TEMP%\test_root216_t1.ps1 (the Downloads json with the root renamed, zero trees,
+  ORGAN_TEST_RELOCATE to D:\rr\003136 -> "Sample location remembered: D:\rr"), test_root216_t2.ps1 (root "rr", 003135
+  missing, ORGAN_SAVE_PORTABLE -> the file keeps rootName "rr" and all 8 trees relative; the log "Save configuration:
+  the library root on this computer is D:\rr"). The user REFUSED the root-under-another-name probe at load (a folder
+  "rr" standing for the root is found only through a remembered location or a click) and the Replace of trees that
+  are here. The relocation's refusal box ("holds none of the stop folders") stays; the "Sample folders found" box is
+  gone (0.8.214).
   0.8.215 (27 Oct 2026): `driveChildren(root)` (anonymous namespace beside `locationChildren`: the first-level folders
   of a fixed drive, 64 at most, Windows/Program Files/ProgramData/$Recycle.Bin/System Volume Information/Recovery/
   PerfLogs and the Unix system folders skipped, a 30 s cache) and `portableFolderCandidates` ends with, per fixed

@@ -10886,7 +10886,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -10921,6 +10921,45 @@ void MainComponent::askPublicationDetails(std::function<void()> then)
         safeThis->publicationAuthor = safeAlert->getTextEditorContents("author").trim();
         then();
     }), true);
+}
+
+namespace
+{
+    // The parts of a path, "/" or "\" (0.8.216; the helpers further down the file are not visible here).
+    juce::StringArray partsOfPath(const juce::String& path)
+    {
+        juce::StringArray parts;
+        parts.addTokens(path.replaceCharacter('/', '\\'), "\\", "");
+        parts.removeEmptyStrings();
+        return parts;
+    }
+    // A tree's path below a root folder of the given NAME, from the last folder of that name in the
+    // path ("C:\...\OrganInstallationPackages\003136\pipe\PE" -> "003136/pipe/PE"); empty when the name
+    // is not in the path. A missing tree keeps its relative path this way instead of the placeholder.
+    juce::String relativeBelowNamedRoot(const juce::String& path, const juce::String& rootName)
+    {
+        if (rootName.isEmpty()) return {};
+        const auto parts = partsOfPath(path);
+        int from = -1;
+        for (int i = 0; i < parts.size() - 1; ++i) if (parts[i].equalsIgnoreCase(rootName)) from = i + 1;
+        if (from < 0) return {};
+        juce::StringArray tail;
+        for (int i = from; i < parts.size(); ++i) tail.add(parts[i]);
+        return tail.joinIntoString("/");
+    }
+    // The folder that stands for the library root on this computer: the tree's absolute path minus the
+    // relative path the configuration gave it ("D:\rr\003135\pipe\PE" minus "003135/pipe/PE" = "D:\rr");
+    // File() when the path does not end so.
+    juce::File rootFromKnownRelative(const juce::String& absolute, const juce::String& relative)
+    {
+        const auto a = partsOfPath(absolute), r = partsOfPath(relative);
+        if (r.isEmpty() || a.size() <= r.size()) return {};
+        for (int i = 1; i <= r.size(); ++i)
+            if (!a[a.size() - i].equalsIgnoreCase(r[r.size() - i])) return {};
+        juce::File root(absolute);
+        for (int i = 0; i < r.size(); ++i) root = root.getParentDirectory();
+        return root;
+    }
 }
 
 void MainComponent::savePortableConfiguration(const juce::File& file, bool includeMidi, bool portable, bool publishFiles)
@@ -11050,7 +11089,38 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     if (SampleFiles::isDirectory(juce::File(extra.toString()))) folders.push_back(juce::File(extra.toString()));
         }
     juce::File libraryRoot;
-    if (!folders.empty())
+    // The root THIS computer holds, from the relative paths the configuration already knows (0.8.216):
+    // a loaded tree minus its relative path ("D:\rr\003135\pipe\PE" minus "003135/pipe/PE" = "D:\rr", the
+    // folder standing for "OrganInstallationPackages" whatever it is called). Before, the root was
+    // recomputed as the common folder of the trees AT HAND: with one package missing it became
+    // "D:\rr\003135\pipe", the name "pipe", the trees "PE", "UW" - and the missing package's trees were
+    // frozen as absolute placeholder paths nobody could find again (the user's Stralsund, 27 Oct 2026).
+    {
+        std::map<juce::String, int> votes;
+        auto vote = [&votes](const juce::String& absolute, const juce::String& relative)
+        {
+            if (absolute.isEmpty() || relative.isEmpty() || !SampleFiles::isDirectory(juce::File(absolute))) return;
+            if (const auto r = rootFromKnownRelative(absolute, relative); r != juce::File()) ++votes[r.getFullPathName()];
+        };
+        for (const auto& [absolute, relative] : treeRelativePaths) vote(absolute, relative);   // every tree the load resolved
+        if (auto* array = manuals.getArray())
+            for (const auto& itemVar : *array)
+            {
+                vote(itemVar.getProperty("folderPath", "").toString(), itemVar.getProperty("folderRelativePath", "").toString());
+                juce::StringArray relatives;
+                if (auto* extrasRelative = itemVar.getProperty("extraFolderRelativePaths", juce::var()).getArray())
+                    for (const auto& r : *extrasRelative) relatives.add(r.toString());
+                if (auto* extras = itemVar.getProperty("extraFolderPaths", juce::var()).getArray())
+                    for (const auto& extra : *extras)
+                        for (const auto& r : relatives) vote(extra.toString(), r);
+            }
+        int best = 0;
+        for (const auto& v : votes) if (v.second > best) { best = v.second; libraryRoot = juce::File(v.first); }
+        if (libraryRoot != juce::File())
+            CrashHandler::note("Save configuration: the library root on this computer is " + libraryRoot.getFullPathName()
+                + " (from the trees' relative paths; its name in the configuration stays \"" + libraryRootName + "\")");
+    }
+    if (libraryRoot == juce::File() && !folders.empty())
     {
         std::map<juce::String, int> perDrive;
         // The drive of a path: the letter on Windows; one file system on Linux/macOS
@@ -11072,8 +11142,16 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 libraryRoot = parent;
             }
         }
-        root->setProperty("sampleLibraryRootName", libraryRoot.getFileName());
-        noteSampleLocation(libraryRoot.getParentDirectory());   // 0.8.190: the next load finds the root by its name here
+    }
+    const juce::String rootNameOut = libraryRoot == juce::File() ? juce::String()
+        : libraryRootName.isNotEmpty() ? libraryRootName : libraryRoot.getFileName();   // 0.8.216: the configuration's own name stays
+    if (libraryRoot != juce::File())
+    {
+        root->setProperty("sampleLibraryRootName", rootNameOut);
+        // The place remembered (0.8.190; 0.8.216): the folder above a root named as the configuration
+        // names it, else the root folder ITSELF ("D:\rr" standing for OrganInstallationPackages) - never
+        // one package of it (the user: "zapisuj kořeny, nikoli rovnou jednotlivé adresáře").
+        noteSampleLocation(libraryRoot.getFileName().equalsIgnoreCase(rootNameOut) ? libraryRoot.getParentDirectory() : libraryRoot);
         // Where the library root lies relative to this configuration file
         // ("..\..\Samples" and the like). When the configuration travels
         // together with the library, the folders are found without asking.
@@ -11094,6 +11172,10 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 // (0.8.187, the user's rule); the live position stays this computer's.
                 if (portable) item->setProperty("expressionPosition", 1.0);
                 const juce::File folder(item->getProperty("folderPath").toString());
+                const auto originalRelative = item->getProperty("folderRelativePath").toString();
+                juce::StringArray originalExtraRelatives;
+                if (auto* extrasRelative = item->getProperty("extraFolderRelativePaths").getArray())
+                    for (const auto& r : *extrasRelative) originalExtraRelatives.add(r.toString());
                 bool folderRelativeWritten = false;
                 item->removeProperty("folderRelativePath");
                 if (SampleFiles::isDirectory(folder) && libraryRoot != juce::File())
@@ -11106,13 +11188,37 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     }
                     else absoluteOnly.add(folder.getFullPathName());
                 }
+                else if (folder != juce::File() && !SampleFiles::isDirectory(folder))
+                {
+                    // A tree NOT on this computer keeps its relative path (0.8.216): the one below the root's
+                    // name in its placeholder path, else the one the file gave it - never the placeholder as
+                    // an absolute path (that froze "C:\...\Configurations\OrganInstallationPackages\003136\
+                    // pipe\PE" into the file, unfindable anywhere).
+                    auto relative = knownRelativeOf(folder.getFullPathName());
+                    if (relative.isEmpty()) relative = relativeBelowNamedRoot(folder.getFullPathName(), rootNameOut);
+                    if (relative.isEmpty()) relative = slashes(originalRelative);
+                    if (relative.isNotEmpty())
+                    {
+                        item->setProperty("folderRelativePath", relative);
+                        folderRelativeWritten = true;
+                    }
+                }
                 // Further trees of the division: relative where possible, else absolute.
                 juce::Array<juce::var> extraRelative, extraAbsolute;
                 if (auto* extras = item->getProperty("extraFolderPaths").getArray())
                     for (const auto& extra : *extras)
                     {
                         const juce::File extraFolder(extra.toString());
-                        if (!SampleFiles::isDirectory(extraFolder)) continue;
+                        if (!SampleFiles::isDirectory(extraFolder))
+                        {
+                            // Missing (0.8.216): by the root's name in the placeholder, else the file's own relative path ending like it.
+                            auto relative = knownRelativeOf(extra.toString());
+                            if (relative.isEmpty()) relative = relativeBelowNamedRoot(extra.toString(), rootNameOut);
+                            for (const auto& r : originalExtraRelatives)
+                                if (relative.isEmpty() && rootFromKnownRelative(extra.toString(), r) != juce::File()) relative = slashes(r);
+                            if (relative.isNotEmpty()) extraRelative.add(relative);
+                            continue;
+                        }
                         const auto relative = libraryRoot != juce::File() ? slashes(extraFolder.getRelativePathFrom(libraryRoot)) : juce::String();
                         if (relative.isNotEmpty() && !juce::File::isAbsolutePath(relative)) extraRelative.add(relative);
                         else { extraAbsolute.add(extraFolder.getFullPathName()); absoluteOnly.add(extraFolder.getFullPathName()); }
@@ -11226,6 +11332,12 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 const juce::File treeFile(entry);
                 if (libraryRoot != juce::File() && (treeFile == libraryRoot || treeFile.isAChildOf(libraryRoot)))
                     entry = treeFile == libraryRoot ? juce::String(".") : slashes(treeFile.getRelativePathFrom(libraryRoot));
+                else if (!SampleFiles::isDirectory(treeFile))
+                {
+                    auto relative = knownRelativeOf(entry);   // 0.8.216: a missing tree stays relative
+                    if (relative.isEmpty()) relative = relativeBelowNamedRoot(entry, rootNameOut);
+                    if (relative.isNotEmpty()) entry = relative;
+                }
                 remap[i] = kept.size();
                 kept.add(entry);
             }
@@ -11273,6 +11385,12 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 const juce::File treeFile(entry);
                 if (libraryRoot != juce::File() && (treeFile == libraryRoot || treeFile.isAChildOf(libraryRoot)))
                     entry = treeFile == libraryRoot ? juce::String(".") : slashes(treeFile.getRelativePathFrom(libraryRoot));
+                else if (!SampleFiles::isDirectory(treeFile))
+                {
+                    auto relative = knownRelativeOf(entry);   // 0.8.216
+                    if (relative.isEmpty()) relative = relativeBelowNamedRoot(entry, rootNameOut);
+                    if (relative.isNotEmpty()) entry = relative;
+                }
                 kept.add(entry);
             }
             root->setProperty("sampleTrees", kept);
@@ -12596,6 +12714,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         if (localConfiguration.hasProperty(key)) root->setProperty(key, localConfiguration.getProperty(key, juce::var()));
         else root->removeProperty(key);
     }
+    treeRelativePaths.clear();   // 0.8.216: rebuilt below from this file's relative paths
     if ((bool)root->getProperty("portable"))
     {
         root->removeProperty("portable");   // the settings of this computer from now on
@@ -12620,6 +12739,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                     if (found != juce::File())
                     {
                         item->setProperty("folderPath", found.getFullPathName());
+                        rememberTreeRelative(found.getFullPathName(), relative);
                         // Where the library root turned out to be: its parent (or the root
                         // itself when it is not named) joins the sample locations (0.8.190).
                         juce::File rootFound = found;
@@ -12636,7 +12756,11 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                     }
                     // Not here: the path where the configuration expects it (beside the
                     // file), so the division's tree list names it and the notice can say so.
-                    else if (absolute.isEmpty() && !candidates.isEmpty()) item->setProperty("folderPath", candidates.getFirst().getFullPathName());
+                    else if (absolute.isEmpty() && !candidates.isEmpty())
+                    {
+                        item->setProperty("folderPath", candidates.getFirst().getFullPathName());
+                        rememberTreeRelative(candidates.getFirst().getFullPathName(), relative);   // the placeholder keeps the relative path (0.8.216)
+                    }
                 }
                 else if (absolute.isNotEmpty())
                 {
@@ -12658,6 +12782,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                                 libraryRoot, extra.toString(), {}));
                             if (found == juce::File()) continue;
                             resolved.add(found.getFullPathName());
+                            rememberTreeRelative(found.getFullPathName(), extra.toString());
                             // The library root found through a further tree joins the locations too (0.8.214: a
                             // division whose main tree is missing and whose second tree is here noted nothing).
                             juce::File rootFound = found;
@@ -12755,8 +12880,16 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
             juce::File found = firstExistingDirectory(candidates);
             if (found == juce::File() && !candidates.isEmpty()) found = candidates.getFirst();
             resolved.add(found != juce::File() ? found.getFullPathName() : entry.toString());
+            if (found != juce::File()) rememberTreeRelative(found.getFullPathName(), text);   // found or the placeholder (0.8.216)
         }
         root->setProperty("sampleTrees", resolved);
+    }
+    {
+        // The relative paths travel in the var the settings are written from (0.8.216): loadSettings
+        // reads them back, saveSettings keeps them, the configuration save derives the root from them.
+        juce::DynamicObject::Ptr relatives = new juce::DynamicObject();
+        for (const auto& [absolute, relative] : treeRelativePaths) relatives->setProperty(juce::Identifier(absolute), relative);
+        root->setProperty("treeRelativePaths", juce::var(relatives.get()));
     }
 
     if (!root->getProperty("containsMidiMappings"))
@@ -14269,6 +14402,8 @@ bool MainComponent::applyTreeRelocation(int poolIndex, const juce::File& tree)
         return false;
     }
     sampleTrees[index] = tree.getFullPathName();
+    if (const auto relative = knownRelativeOf(old.getFullPathName()); relative.isNotEmpty())
+        rememberTreeRelative(tree.getFullPathName(), relative);   // 0.8.216: the relative path follows the tree to its new place
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
     {
         auto& config = manualConfigs[(size_t)m];
@@ -14460,7 +14595,11 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
             common.removeRange(same, common.size() - same);
         }
         const int below = juce::jmax(1, oldParts.size() - common.size());   // parts of this tree's path under the root
-        noteSampleLocation(ancestorOf(found, below + 1));
+        // The ROOT folder on this computer is remembered (0.8.216, the user: roots, never single packages):
+        // the folder above it when it is named as the configuration names the root, else the folder itself
+        // ("D:\rr" standing for OrganInstallationPackages).
+        const juce::File rootHere = ancestorOf(found, below);
+        noteSampleLocation(libraryRootName.isNotEmpty() && rootHere.getFileName().equalsIgnoreCase(libraryRootName) ? rootHere.getParentDirectory() : rootHere);
     }
     std::vector<int> users;
     int applied = 0;
@@ -18380,7 +18519,11 @@ void MainComponent::showStopBuildingDialog(int)
                     const auto& ref = entry.folders.at(perspective);
                     const bool treeMissing = ref.tree >= 0 && ref.tree < (int)pool.size() && !SampleFiles::isDirectory(juce::File(pool[(size_t)ref.tree]));
                     const bool missing = treeMissing || !SampleFiles::isDirectory(folder);
-                    cellPaths[cell.button.get()] = (missing ? juce::String("NOT FOUND on this computer: ") : juce::String()) + folder.getFullPathName();
+                    // A missing folder is named from its tree on (0.8.216: the placeholder path "C:\Users\...\Configurations\
+                    // OrganInstallationPackages\..." the program keeps for a missing tree told the user nothing).
+                    cellPaths[cell.button.get()] = missing
+                        ? "NOT FOUND on this computer: " + tailText(pool[(size_t)juce::jmax(0, ref.tree)]) + juce::File::getSeparatorString() + ref.relativePath.replaceCharacter('/', juce::File::getSeparatorChar())
+                        : folder.getFullPathName();
                     if (missing) cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
                     cell.button->addMouseListener(this, false);
                 }
@@ -19423,8 +19566,13 @@ void MainComponent::loadSettings()
     consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
+    treeRelativePaths.clear();   // 0.8.216
+    if (auto* relatives = parsed.getProperty("treeRelativePaths", juce::var()).getDynamicObject())
+        for (const auto& entry : relatives->getProperties())
+            if (entry.value.toString().isNotEmpty()) treeRelativePaths[entry.name.toString()] = entry.value.toString();
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
     configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
+    libraryRootName = parsed.getProperty("sampleLibraryRootName", "").toString();   // 0.8.216: never recomputed from the trees at hand
     readLocationsFile(parsed);   // 0.8.214: Locations.txt (the settings key taken over once)
     guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
     if (auto* dismissed = parsed.getProperty("guidedTourDismissed", juce::var()).getArray())
@@ -20086,6 +20234,11 @@ void MainComponent::saveSettings()
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
     obj->setProperty("manualFontScale", (double)manualFontScale);
+    {
+        juce::DynamicObject::Ptr relatives = new juce::DynamicObject();   // 0.8.216
+        for (const auto& [absolute, relative] : treeRelativePaths) relatives->setProperty(juce::Identifier(absolute), relative);
+        obj->setProperty("treeRelativePaths", juce::var(relatives.get()));
+    }
     obj->setProperty("transposeAttackTimingPct", transposeAttackTimingPct);
     obj->setProperty("transposeReleaseTimingPct", transposeReleaseTimingPct);
     obj->setProperty("transposeReleaseTrimMs", transposeReleaseTrimMs);
@@ -20663,6 +20816,21 @@ void MainComponent::noteSampleLocation(const juce::File& folder)
 juce::File MainComponent::locationsFile() const
 {
     return settingsFile.getSiblingFile("Locations.txt");
+}
+
+juce::String MainComponent::knownRelativeOf(const juce::String& absolute) const
+{
+    if (absolute.isEmpty()) return {};
+    const juce::File wanted(absolute);
+    for (const auto& [path, relative] : treeRelativePaths)
+        if (juce::File(path) == wanted) return relative;
+    return {};
+}
+
+void MainComponent::rememberTreeRelative(const juce::String& absolute, const juce::String& relative)
+{
+    if (absolute.isEmpty() || relative.isEmpty()) return;
+    treeRelativePaths[absolute] = slashes(relative);
 }
 
 void MainComponent::readLocationsFile(const juce::var& settings)
