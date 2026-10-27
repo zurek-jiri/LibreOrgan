@@ -1,22 +1,36 @@
 name: Remove my configuration
-description: Take a configuration you published off the list - name the organ, a robot removes it.
+description: Take a configuration you published off the list - tick the organ, a robot removes it.
 title: "[Remove configuration] "
 labels: ["configuration-remove"]
 body:
   - type: markdown
     attributes:
       value: |
-        The simplest way: the *remove* link in the last column of the organ's line in
-        [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md) opens this form with the organ
-        filled in - just submit it. By hand, any part of the organ's name is enough (case does not matter). A robot removes the folder when
-        you are the one who published it (or the maintainer), answers here and closes this issue. When several organs match, it lists them:
-        edit the issue with more of the name.
-        To publish a new version instead, send the new zip and README with the "Organ configuration" form: it replaces the old one by itself.
-  - type: input
+        Tick the organ (or several) in the list and press *Submit new issue*. A robot removes the folder when you are
+        the one who published it (or the maintainer), answers here and closes this issue. The list is written by the
+        robot from [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md);
+        the *remove* link of an organ's line there opens this form with the organ ticked. To publish a new version
+        instead, send the new zip with the "Organ configuration" form: it replaces the old one by itself.
+  - type: dropdown
     id: organ
     attributes:
       label: Organ
-      description: The organ to remove - any part of its name.
+      description: The configuration folder(s) to remove, as listed in INDEX.md.
+      multiple: true
+      options:
+        - "adlington-hall-organ"
+        - "altenbruch-klapmeyer-organ"
+        - "arnstadt-bach-organ"
+        - "ashton-lewis-organ"
+        - "casavant-organ-model"
+        - "stralsund-st-jakobi-kr-wegscheider"
+    validations:
+      required: false
+  - type: input
+    id: name
+    attributes:
+      label: Or any part of its name
+      description: When the list above does not fit - any part of the organ's name (case does not matter).
       placeholder: "Stralsund"
     validations:
-      required: true
+      required: false

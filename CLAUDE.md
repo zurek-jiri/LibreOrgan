@@ -1488,6 +1488,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   commit a621e60 + merge fa665ef (origin had moved: the user removed menesterol-dry through the new remove link -
   it works), tag v0.8.218 on fa665ef, CI green on all four, Intel mac "late symbols: 0". %TEMP%\ci_watch.ps1 needs
   the FULL 40-char SHA (`actions/runs?head_sha=` finds nothing for a short one: "no run for v0.8.218 after 10 min").
+  0.8.219 (27 Oct 2026, the user: "mechanismus mazání funguje, ale musel jsem napsat část jména ... kdyby to vyhodilo
+  seznam a já bych jen zaškrtl" + "když vyberu bedos rar bez ODF ... měl by ihned prohlédnout okolní bedose ... Load from
+  ODF / not now"): (1) THE REMOVE FORM IS GENERATED: `configurations_index.py` writes `.github/ISSUE_TEMPLATE/
+  organ_configuration_remove.yml` with a `dropdown` (id organ, `multiple: true`, options = the folder names, rural-organ
+  left out) + an `input` (id name, "Or any part of its name"); an issue TEMPLATE may be pushed by GITHUB_TOKEN (only
+  .github/workflows may not), so the index job, the remove and the feature workflows `git add` the template with
+  configurations/. `configuration-remove.yml` reads the dropdown ("a, b" = several; "_No response_" = none) and the
+  input, removes every match in ONE commit and answers "Removed: ... / Not removed: ..." (rural, foreign publisher,
+  no match, several matches). INDEX.md's remove link `?...&organ=<folder>` stays (a dropdown prefill when GitHub
+  honours it). (2) `MainComponent::archivesNamedLike(folders, like, nameWords, exclude)` = the name sieve of 0.8.218
+  made static and shared; `offerDefinitionBeside(archives, merge)` replaces the "no configuration / definition" notice
+  of `loadConfigurationFromArchives`: the archives beside the chosen ones with a name like them are indexed; one
+  holding a definition/configuration -> the box lists them ALL ("they look like one organ", the holder marked) with
+  "Load from the definition" / "Not now"; yes = `loadConfigurationFromArchives(chosen + neighbours)` (registers them
+  all; several definitions -> chooseFromList as before); none -> the old notice extended by "the archives beside it
+  hold none either". ORGAN_TEST_NEIGHBOURS=1 answers yes here too. Test: bedos1_862.rar alone (Locations.txt
+  stripped of bedos lines) -> the set found -> the Dom Bedos definition loaded with all five archives.
   (3) DISK READ 358 MB/s - SETTLED (27 Oct 2026, measured here): a plain parallel read (%TEMP%\diskread.py, 8
   threads, 4 MB reads, 4 GB of a package not read recently) of D: (Samsung 870 QVO 8 TB SATA) gives 441-455 MB/s;
   a COLD load through the program (ORGAN_LOAD_TREE of 001692 with packing OFF: "4.53 GB read in 12.5 s = 363

@@ -66,6 +66,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           python3 .github/scripts/configurations_index.py || true
-          git add -A configurations
+          git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
           git commit -m "configurations: $folder ${INPUT_ACTION}d (Feature a configuration, run by ${{ github.actor }})"
           git push

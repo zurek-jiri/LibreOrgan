@@ -52,38 +52,47 @@ jobs:
             fi
             echo "$1"
           }
+          # What was asked for: the form's dropdown "Organ" (one folder per line, several ticked = "a, b";
+          # "_No response_" when none), the field "Or any part of its name", or the dispatch input.
+          field() { printf '%s\n' "$ISSUE_BODY" | awk -v h="### $1" 'index($0, h) == 1 {f=1; next} /^### /{f=0} f' | sed '/^\s*$/d' | head -n 1 | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
+          wanted=""
           if [ "$BY_ISSUE" = "true" ]; then
-            # The form's "Organ" field: the text under the "### Organ" heading of the issue body.
-            wanted="$(printf '%s\n' "$ISSUE_BODY" | awk '/^### Organ/{f=1; next} /^### /{f=0} f' | sed '/^\s*$/d' | head -n 1 | tr -d '\r')"
+            picked="$(field "Organ")"
+            [ "$picked" = "_No response_" ] && picked=""
+            typed="$(field "Or any part of its name")"
+            [ "$typed" = "_No response_" ] && typed=""
+            wanted="$(printf '%s\n%s' "$(printf '%s' "$picked" | sed 's/, */\n/g')" "$typed" | sed '/^\s*$/d')"
             who="$ISSUE_AUTHOR"
           else
             wanted="$INPUT_ORGAN"
             who="${{ github.actor }}"
           fi
-          wanted="$(echo "$wanted" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
           if [ -z "$wanted" ]; then answer "No organ was named." ; exit 1; fi
-          matches="$(python3 .github/scripts/configuration_tools.py find "$wanted")"
-          count=$(printf '%s' "$matches" | grep -c . || true)
-          if [ "$count" -eq 0 ]; then
-            answer "$(printf 'No published configuration matches "%s". The organs now:\n\n%s' "$wanted" "$(ls -1 configurations | grep -v '\.md$' | sed 's/^/- /')")"
-            exit 1
-          fi
-          if [ "$count" -gt 1 ]; then
-            answer "$(printf '"%s" matches %d configurations - give more of the name:\n\n%s' "$wanted" "$count" "$(printf '%s\n' "$matches" | awk -F'|' '{printf "- %s (%s)\n", $1, $2}')")"
-            exit 1
-          fi
-          folder="$(printf '%s' "$matches" | cut -d'|' -f1)"
-          publisher="$(printf '%s' "$matches" | cut -d'|' -f4)"
-          if [ "$folder" = "rural-organ" ]; then answer "The Rural Organ demo stays."; exit 1; fi
-          if [ "$BY_ISSUE" = "true" ] && [ "$who" != "$REPO_OWNER" ] && [ "$who" != "$publisher" ]; then
-            answer "$(printf 'configurations/%s was published by %s - only they or the repository'"'"'s owner can remove it.' "$folder" "${publisher:+@$publisher}${publisher:-somebody else (before the publisher was recorded)}")"
-            exit 1
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm -r -q "configurations/$folder"
+          removed=""; problems=""
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            matches="$(python3 .github/scripts/configuration_tools.py find "$name")"
+            count=$(printf '%s' "$matches" | grep -c . || true)
+            if [ "$count" -eq 0 ]; then problems="$problems"$'\n'"- \"$name\": no published configuration matches it"; continue; fi
+            if [ "$count" -gt 1 ]; then problems="$problems"$'\n'"- \"$name\" matches $count configurations - give more of the name: $(printf '%s\n' "$matches" | awk -F'|' '{printf "%s (%s); ", $1, $2}')"; continue; fi
+            folder="$(printf '%s' "$matches" | cut -d'|' -f1)"
+            publisher="$(printf '%s' "$matches" | cut -d'|' -f4)"
+            if [ "$folder" = "rural-organ" ]; then problems="$problems"$'\n'"- the Rural Organ demo stays"; continue; fi
+            if [ "$BY_ISSUE" = "true" ] && [ "$who" != "$REPO_OWNER" ] && [ "$who" != "$publisher" ]; then
+              problems="$problems"$'\n'"- configurations/$folder was published by ${publisher:+@$publisher}${publisher:-somebody else (before the publisher was recorded)} - only they or the repository's owner can remove it"
+              continue
+            fi
+            git rm -r -q "configurations/$folder"
+            removed="$removed"$'\n'"- configurations/$folder"
+          done <<< "$wanted"
+          if [ -z "$removed" ]; then
+            answer "$(printf 'Nothing removed:%s\n\nThe organs now:\n\n%s' "$problems" "$(ls -1 configurations | grep -v '\.md$' | sed 's/^/- /')")"
+            exit 1
+          fi
           python3 .github/scripts/configurations_index.py || true
-          git add -A configurations
-          git commit -m "configurations: $folder removed (asked by @$who)"
+          git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
+          git commit -m "configurations: removed$(printf '%s' "$removed" | tr '\n' ' ' | sed 's/- configurations\//  /g') (asked by @$who)"
           git push
-          answer "configurations/$folder removed, INDEX.md regenerated." close
+          answer "$(printf 'Removed, INDEX.md regenerated:%s%s' "$removed" "${problems:+$'\n\nNot removed:'$problems}")" close

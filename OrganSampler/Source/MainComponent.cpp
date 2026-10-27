@@ -10640,9 +10640,8 @@ void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>&
         const juce::String title = merge ? "Merge configuration" : "Load Configuration";
         if (candidates.empty())
         {
-            queueNotice(juce::MessageBoxIconType::WarningIcon, title,
-                juce::String(archives.size() == 1 ? "The archive holds" : "The archives hold") + " no OrganSampler configuration (.json) and no Hauptwerk organ definition.\n\n"
-                "Their sample folders can be loaded in the Stop List: Load folder... > Browse archives...", "OK", safeThis.getComponent());
+            // 0.8.219: the archives beside it with a name like it may hold the definition - offered, never taken alone.
+            safeThis->offerDefinitionBeside(archives, merge);
             return;
         }
         auto go = [safeThis, merge](const juce::File& chosen)
@@ -14686,6 +14685,124 @@ void MainComponent::showMissingTreesMenu(int manual)
     });
 }
 
+std::vector<juce::File> MainComponent::archivesNamedLike(const std::vector<juce::File>& folders, const std::vector<juce::File>& like,
+                                                         const juce::String& nameWords, const std::vector<juce::File>& exclude)
+{
+    // The name sieve (the user's rule, 27 Oct 2026: "co když tam bude 100 dalších rarů? Já
+    // bych to stavěl na shodnosti části jména"): the letters of a name (digits, separators
+    // and ".partNN" dropped); a candidate shares at least four leading letters with one of
+    // the archives it should be like, or holds a word of four letters or more of the
+    // organ's name ("bedos"). A folder of a hundred foreign archives opens none of them.
+    auto letters = [](const juce::String& text)
+    {
+        juce::String out;
+        for (auto p = text.toLowerCase().getCharPointer(); !p.isEmpty(); ++p)
+            if (juce::CharacterFunctions::isLetter(*p)) out += juce::String::charToString(*p);
+        return out;
+    };
+    auto stemOf = [&letters](const juce::File& file)
+    {
+        auto name = file.getFileNameWithoutExtension().toLowerCase();
+        const int part = name.lastIndexOf(".part");
+        if (part > 0) name = name.substring(0, part);
+        return letters(name);
+    };
+    juce::StringArray stems, words;
+    for (const auto& archive : like) stems.add(stemOf(archive));
+    {
+        juce::StringArray raw;
+        raw.addTokens(nameWords, " _-.,()[]'", "");
+        for (const auto& w : raw) { const auto l = letters(w); if (l.length() >= 4) words.addIfNotAlreadyThere(l); }
+    }
+    auto matches = [&](const juce::File& candidate)
+    {
+        const auto stem = stemOf(candidate);
+        for (const auto& s : stems)
+        {
+            int n = 0;
+            while (n < s.length() && n < stem.length() && s[n] == stem[n]) ++n;
+            if (n >= 4) return true;
+        }
+        for (const auto& w : words) if (stem.contains(w)) return true;
+        return false;
+    };
+    std::vector<juce::File> candidates;
+    for (const auto& folder : folders)
+        for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
+        {
+            const auto file = entry.getFile();
+            if (!SampleFiles::isFirstVolume(file) || std::find(exclude.begin(), exclude.end(), file) != exclude.end()) continue;
+            if (!matches(file) || std::find(candidates.begin(), candidates.end(), file) != candidates.end()) continue;
+            candidates.push_back(file);
+            if (candidates.size() >= 24) break;
+        }
+    return candidates;
+}
+
+void MainComponent::offerDefinitionBeside(const std::vector<juce::File>& archives, bool merge)
+{
+    // Load Configuration of an archive without any definition or configuration (the user,
+    // 27 Oct 2026: "nejen zahlásit No-ODF, ale i dát na výběr Load from ODF, not now"): the
+    // archives beside it with a name like it are indexed, and when one of them holds a
+    // definition the whole set is offered - every archive that looks like the same organ
+    // listed; yes = Load Configuration with all of them (several definitions -> the choice
+    // box, as with several archives chosen at once).
+    const juce::String title = merge ? "Merge configuration" : "Load Configuration";
+    const juce::String none = juce::String(archives.size() == 1 ? "The archive holds" : "The archives hold")
+        + " no OrganSampler configuration (.json) and no Hauptwerk organ definition.";
+    std::vector<juce::File> folders;
+    for (const auto& archive : archives)
+        if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) == folders.end()) folders.push_back(archive.getParentDirectory());
+    const auto neighbours = archivesNamedLike(folders, archives, {}, archives);
+    juce::StringArray names;
+    for (const auto& n : neighbours) names.add(n.getFileName());
+    CrashHandler::note(title + ": no definition in the chosen archive(s); archives beside with a name like it: " + (names.isEmpty() ? juce::String("none") : names.joinIntoString(", ")));
+    if (neighbours.empty())
+    {
+        queueNotice(juce::MessageBoxIconType::WarningIcon, title, none + "\n\nTheir sample folders can be loaded in the Stop List: Load folder... > Browse archives...", "OK", this);
+        return;
+    }
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    indexArchivesThen(neighbours, [safeThis, archives, neighbours, merge, title, none]
+    {
+        if (safeThis == nullptr) return;
+        const std::function<bool(const juce::String&)> isConfiguration = [](const juce::String& p) { return p.endsWithIgnoreCase(".json") && !p.endsWithIgnoreCase(".bak"); };
+        const std::function<bool(const juce::String&)> isDefinition = [](const juce::String& p) { return p.endsWithIgnoreCase(".Organ_Hauptwerk_xml"); };
+        juce::String list;
+        int definitions = 0;
+        for (const auto& archive : neighbours)
+        {
+            juce::StringArray held;
+            for (const auto& e : SampleFiles::entriesOf(archive, isDefinition)) held.add(juce::File(e).getFileNameWithoutExtension());
+            for (const auto& e : SampleFiles::entriesOf(archive, isConfiguration)) held.add(juce::File(e).getFileName());
+            definitions += held.size();
+            list += "\n  " + archive.getFileName() + (held.isEmpty() ? juce::String() : "  - holds the definition " + held.joinIntoString(", "));
+        }
+        if (definitions == 0)
+        {
+            queueNotice(juce::MessageBoxIconType::WarningIcon, title, none + "\n\nThe archives beside it with a name like it (" + juce::String((int)neighbours.size())
+                + ") hold none either. Their sample folders can be loaded in the Stop List: Load folder... > Browse archives...", "OK", safeThis.getComponent());
+            return;
+        }
+        juce::StringArray chosenNames;
+        for (const auto& a : archives) chosenNames.add(a.getFileName());
+        const juce::String text = none + "\n\nBeside it, with a name like it, lie these archives - they look like one organ:" + list
+            + "\n\nLoad the organ from the definition, with all of them (" + chosenNames.joinIntoString(", ") + " included)?";
+        CrashHandler::note(title + ": " + text.replaceCharacters("\n", " "));
+        auto load = [safeThis, archives, neighbours, merge]
+        {
+            if (safeThis == nullptr) return;
+            std::vector<juce::File> all = archives;
+            all.insert(all.end(), neighbours.begin(), neighbours.end());
+            safeThis->loadConfigurationFromArchives(all, merge);
+        };
+        if (std::getenv("ORGAN_TEST_NEIGHBOURS") != nullptr) { load(); return; }   // tests: the answer is yes
+        juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::QuestionIcon).withTitle(title)
+            .withMessage(text).withButton("Load from the definition").withButton("Not now").withAssociatedComponent(safeThis.getComponent()),
+            [load](int result) { if (result == 1) load(); });
+    });
+}
+
 void MainComponent::offerNeighbourArchives(bool explicitRequest)
 {
     // A set sold as several SEPARATE archives (Dom Bedos: bedos1_862 ... bedos4 and the
@@ -14719,52 +14836,7 @@ void MainComponent::offerNeighbourArchives(bool explicitRequest)
     std::vector<juce::File> chosen;   // the chosen archives lying in those folders: their names are the organ's
     for (const auto& archive : allChosen)
         if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) chosen.push_back(archive);
-    // The name sieve: the letters of a name (digits, separators and ".partNN" dropped);
-    // a candidate shares at least four leading letters with a chosen archive, or holds a
-    // word of four letters or more of the organ's name ("bedos").
-    auto letters = [](const juce::String& text)
-    {
-        juce::String out;
-        for (auto p = text.toLowerCase().getCharPointer(); !p.isEmpty(); ++p)
-            if (juce::CharacterFunctions::isLetter(*p)) out += juce::String::charToString(*p);
-        return out;
-    };
-    auto stemOf = [&letters](const juce::File& file)
-    {
-        auto name = file.getFileNameWithoutExtension().toLowerCase();
-        const int part = name.lastIndexOf(".part");
-        if (part > 0) name = name.substring(0, part);
-        return letters(name);
-    };
-    juce::StringArray stems, words;
-    for (const auto& archive : chosen) stems.add(stemOf(archive));
-    {
-        juce::StringArray raw;
-        raw.addTokens(currentConfigurationName + " " + publicationOrgan, " _-.,()[]'", "");
-        for (const auto& w : raw) { const auto l = letters(w); if (l.length() >= 4) words.addIfNotAlreadyThere(l); }
-    }
-    auto matches = [&](const juce::File& candidate)
-    {
-        const auto stem = stemOf(candidate);
-        for (const auto& s : stems)
-        {
-            int n = 0;
-            while (n < s.length() && n < stem.length() && s[n] == stem[n]) ++n;
-            if (n >= 4) return true;
-        }
-        for (const auto& w : words) if (stem.contains(w)) return true;
-        return false;
-    };
-    std::vector<juce::File> candidates;
-    for (const auto& folder : folders)
-        for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
-        {
-            const auto file = entry.getFile();
-            if (!SampleFiles::isFirstVolume(file) || std::find(allChosen.begin(), allChosen.end(), file) != allChosen.end()) continue;
-            if (!matches(file) || std::find(candidates.begin(), candidates.end(), file) != candidates.end()) continue;
-            candidates.push_back(file);
-            if (candidates.size() >= 24) break;
-        }
+    const auto candidates = archivesNamedLike(folders, chosen, currentConfigurationName + " " + publicationOrgan, allChosen);
     juce::StringArray candidateNames;
     for (const auto& c : candidates) candidateNames.add(c.getFileName());
     CrashHandler::note("Missing folders: " + juce::String((int)missingIndex.size()) + " tree(s); archives beside the organ with a shared name: "

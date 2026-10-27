@@ -860,10 +860,11 @@ knowledge of Git. After the merge the organ appears as a line of
 `configurations/INDEX.md`, the list of all published organs, in a folder
 named after the organ as you named it at the save. A new version is sent
 the same way and replaces the old one by itself (the organ is known
-by that name, whatever the file is called); the *remove* link in the last
-column of its line in `configurations/INDEX.md` opens the form *Remove my
-configuration* with the organ filled in - submit it, and a robot takes the
-organ off the list (when you are the one who published it).
+by that name, whatever the file is called); the form *Remove my
+configuration* (the *remove* link in the last column of its line in
+`configurations/INDEX.md` opens it) lists the published organs - tick the
+one (or several), submit, and a robot takes them off the list (when you are
+the one who published them); a field for a part of the name is there too.
 
 Paths inside a configuration are stored relative to the common folder of the
 sample trees where possible, so a configuration kept beside its sample folders
@@ -892,9 +893,14 @@ archives is left alone), reads the contents of those few, and when they hold
 the missing folders one box names them: "bedos1_862.rar: 000862\pipe\...,
 bedos2_861.rar: ..." - *Read them too?* Yes joins them to the archives this
 computer remembers and loads the divisions again; *Not now* leaves the
-notice. The same look is in the notice's menu. The simplest way is still to
-choose all the archives of the set at once in *Load Configuration* (Ctrl or
-Shift in the file dialog).
+notice. The same look is in the notice's menu. And the other way round: when
+the archive you chose holds no definition at all (a package of samples
+alone), the program reads the archives beside it with a name like it and,
+when one of them holds the organ definition, lists them all - "they look
+like one organ" - with *Load from the definition* / *Not now*; yes loads
+the organ from the definition with every one of them. The simplest way is
+still to choose all the archives of the set at once in *Load Configuration*
+(Ctrl or Shift in the file dialog).
 
 Paths are stored with "/" and resolved on every platform; a configuration
 saved on Windows loads on Linux and macOS and the other way round.

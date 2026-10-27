@@ -872,10 +872,11 @@ static const char* const kManualText_part4 =
     "`configurations/INDEX.md`, the list of all published organs, in a folder\n"
     "named after the organ as you named it at the save. A new version is sent\n"
     "the same way and replaces the old one by itself (the organ is known\n"
-    "by that name, whatever the file is called); the *remove* link in the last\n"
-    "column of its line in `configurations/INDEX.md` opens the form *Remove my\n"
-    "configuration* with the organ filled in - submit it, and a robot takes the\n"
-    "organ off the list (when you are the one who published it).\n"
+    "by that name, whatever the file is called); the form *Remove my\n"
+    "configuration* (the *remove* link in the last column of its line in\n"
+    "`configurations/INDEX.md` opens it) lists the published organs - tick the\n"
+    "one (or several), submit, and a robot takes them off the list (when you are\n"
+    "the one who published them); a field for a part of the name is there too.\n"
     "\n"
     "Paths inside a configuration are stored relative to the common folder of the\n"
     "sample trees where possible, so a configuration kept beside its sample folders\n"
@@ -904,9 +905,14 @@ static const char* const kManualText_part4 =
     "the missing folders one box names them: \"bedos1_862.rar: 000862\\pipe\\...,\n"
     "bedos2_861.rar: ...\" - *Read them too?* Yes joins them to the archives this\n"
     "computer remembers and loads the divisions again; *Not now* leaves the\n"
-    "notice. The same look is in the notice's menu. The simplest way is still to\n"
-    "choose all the archives of the set at once in *Load Configuration* (Ctrl or\n"
-    "Shift in the file dialog).\n"
+    "notice. The same look is in the notice's menu. And the other way round: when\n"
+    "the archive you chose holds no definition at all (a package of samples\n"
+    "alone), the program reads the archives beside it with a name like it and,\n"
+    "when one of them holds the organ definition, lists them all - \"they look\n"
+    "like one organ\" - with *Load from the definition* / *Not now*; yes loads\n"
+    "the organ from the definition with every one of them. The simplest way is\n"
+    "still to choose all the archives of the set at once in *Load Configuration*\n"
+    "(Ctrl or Shift in the file dialog).\n"
     "\n"
     "Paths are stored with \"/\" and resolved on every platform; a configuration\n"
     "saved on Windows loads on Linux and macOS and the other way round.\n"
@@ -1004,14 +1010,14 @@ static const char* const kManualText_part4 =
     "Load the configuration as it is. The trees are looked for at their old\n"
     "place, then in every sample location and one level around each; what is\n"
     "not found shows the notice - one click as above puts everything right, and\n"
+    ;
+static const char* const kManualText_part5 =
     "the new place is remembered. The Configuration Editor's *Sample and IR\n"
     "locations* row adds a folder by hand when you know where the libraries are\n"
     "before the first load. A configuration never holds anything about your\n"
     "computer that cannot be found again this way.\n"
     "\n"
     "### A second volume or perspective set of the same organ\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "A set sold in volumes (the direct perspective first, the rear one later):\n"
     "load the first as above, then right-click *Load Configuration* > *Merge\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "number of steps, whether the crescendo may switch off hand-registered stops\n"
     "(otherwise the steps only add), clears all steps, and saves or loads the steps\n"
     "as a file.\n"
+    ;
+static const char* const kManualText_part6 =
     "\n"
     "## 2.4 Global sound sliders and the polyphony display\n"
     "\n"
     "The sliders of *Configuration Editor > Global sound* can each be shown on the\n"
     "main panel (the checkbox beside them in the editor). Master volume, pitch,\n"
     "sustain fade-out, release fade-in, release volume, release cutting, attack\n"
-    ;
-static const char* const kManualText_part6 =
     "minimum time and delay: all are described in \"Global sound\". Every one of\n"
     "them is MIDI-learnable (right-click). The polyphony display shows the voices\n"
     "sounding now (*NOW*), the most at once over the last seconds (*PEAK*), the\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "  the button's caption follows the transposition, and so do the stop's transmissions and\n"
     "  extensions, which add their own transposition on top. A change loads the\n"
     "  stop's samples again on their keys at once (the fills follow; the keys\n"
+    ;
+static const char* const kManualText_part7 =
     "  held fall silent first and the stop starts no voice while it reloads). The same\n"
     "  setting is the Stop List column \"Transp.\". Each key's tooltip in the rows\n"
     "  below names the file it plays.\n"
     "  The program sets it by itself where it can: a Hauptwerk import takes it\n"
     "  from the definition (its pipe notes against the file names: Doesburg's\n"
     "  files sound 8' on their numbers and the definition puts \"024\" on key 36,\n"
-    ;
-static const char* const kManualText_part7 =
     "  so its 8' stops read \"-12 -> 8'\" and its 16' stops \"-12 -> 16'\"); a folder\n"
     "  loaded on its own gets it from the samples' pitch against the footage\n"
     "  written in the folder's name - \"quintaton 16\" whose files sound 8' on\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "  missing trees have such a line): choose any folder of the set,\n"
     "  the tree is found from there, the stops built from it keep their samples,\n"
     "  the other missing trees of the organ are looked for around it and loaded\n"
+    ;
+static const char* const kManualText_part8 =
     "  as well, and the place is remembered (\"Sample folders not found: one click\n"
     "  finds them\"). A tree never takes the place of another one by its last\n"
     "  folder name alone - only by the same path below the library root - so a\n"
     "  missing tree stays missing until you replace it. In the table the folder\n"
     "  cells of a missing tree are orange, their tooltip says NOT FOUND, and the\n"
     "  line below the table counts the missing trees.\n"
-    ;
-static const char* const kManualText_part8 =
     "- **Unload folder...** removes one tree from the whole organ after saying how\n"
     "  many stops lose their samples (their rows stay as empty stops); a tree\n"
     "  that is not on this computer is marked NOT FOUND there, so you can drop\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "are spread over those channels by their key number, so that neighbouring keys\n"
     "come from neighbouring channels and a chord spreads across the speakers like\n"
     "the pipes across a windchest:\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "- A **mono sample** goes to one channel: key after key, the ticked channels\n"
     "  are taken in turn (with four channels: C on the first, C# on the second, D\n"
     "  on the third, D# on the fourth, E on the first again ...).\n"
     "- A **stereo sample** goes to a pair of channels, its left channel to one and\n"
     "  its right channel to the next. With an **even** number of ticked channels\n"
-    ;
-static const char* const kManualText_part9 =
     "  the pairs are fixed (the first and second, the third and fourth ...) and\n"
     "  neighbouring keys alternate between the pairs. With an **odd** number of\n"
     "  ticked channels the pairs shift by one channel from key to key, so the\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "sudo usermod -aG audio $USER\n"
     "sudo sh -c 'printf \"@audio - rtprio 95\\n@audio - memlock unlimited\\n\" > /etc/security/limits.d/audio.conf'\n"
     "```\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "OrganSampler raises its audio thread to realtime by itself at the first\n"
     "callback of a device and writes the outcome into the activity log (\"Audio\n"
     "thread of ... raised to realtime\", \"realtime already\" under JACK, or\n"
     "\"realtime refused\" with the reason). Through JACK the thread is PipeWire's\n"
     "own, which the system has already made realtime; through ALSA it is the\n"
-    ;
-static const char* const kManualText_part10 =
     "program's, and needs the permission above.\n"
     "\n"
     "**The two kinds of driver in OrganSampler:**\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "  use ASIO or one Windows Audio device for the card.\n"
     "- **What the measurement cannot see.** It judges every callback of the\n"
     "  program's own audio threads (its length against the period, late calls).\n"
+    ;
+static const char* const kManualText_part11 =
     "  A dropout made after our buffer leaves the program - a shared-mode mixer\n"
     "  of the system with many streams on one endpoint, an exclusive-mode device\n"
     "  of ours opened on the same endpoint and getting no callbacks, a USB card\n"
     "  starved by the system - is inaudible to it: the run is \"clean\" and the\n"
     "  sound is not. Such a case shows in the activity log as \"Audio callback\n"
     "  anomaly: ... no callbacks\" for a route, or not at all; the cure is the\n"
-    ;
-static const char* const kManualText_part11 =
     "  device layout (one driver for everything, ASIO where there is one, no\n"
     "  unused routes left open on the same endpoint), not the limit.\n"
     "\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "pitch, and a seam that was perfect in the recording is then only nearly\n"
     "perfect. The loop crossfade helps there too; listen to a held note of the\n"
     "lowest extension pipes and raise it when the loop is heard.\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "Practical advice: stay with the default, *Pitch shift + time stretch*, unless a\n"
     "stop sounds wrong with it; then try the plain pitch shift (no frayed attack)\n"
     "or, for shifts within an octave, the phase vocoder (the speaking at its real\n"
     "speed, at the price of the loops). Compare on the lowest keys of a reed\n"
     "extension, where everything is heard.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "## 7.3 The settings that go with the methods\n"
     "\n"
@@ -2620,14 +2626,14 @@ static const char* const kManualText_part12 =
     "notes, no reload; this computer's setting - a value you set stays, only the\n"
     "default follows the CPU.\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "### Currently active\n"
     "\n"
     "The threads really rendering now and the interpolation kernel in use.\n"
     "Information only.\n"
     "\n"
     "### Render threads for Aggregated WASAPI\n"
-    ;
-static const char* const kManualText_part13 =
     "\n"
     "Windows only. The threads used by routes on an Aggregated WASAPI device (the virtual\n"
     "device that joins several Windows Audio endpoints). Every aggregated route\n"
@@ -2822,14 +2828,14 @@ static const char* const kManualText_part13 =
     "   by the engine at every change (a stroke's attacks over the releases of\n"
     "   the last one), the same figure the limit is compared with. Whenever they stop rising below the current target, the\n"
     "   stimulus grows at once - more keys spread over the compass (up to every\n"
+    ;
+static const char* const kManualText_part14 =
     "   key of every division), then a faster rate (up to 16 strikes a second).\n"
     "   No coupler is used: every division is struck itself. A wet set with several perspectives and\n"
     "   long releases reaches tens of thousands of voices with a handful of keys;\n"
     "   a dry set gives little more than what is being pressed, so it ends up with\n"
     "   every key hammered and the couplers on. The IR reverbs of the routes run\n"
     "   as they are: on a dry set they are the main cost, and the report says so.\n"
-    ;
-static const char* const kManualText_part14 =
     "3. The target grows in steps of 2 000 voices (a tenth above 20 000). Every\n"
     "   target reached is held for four seconds and judged: clean means every\n"
     "   callback of the busiest device - the render of all its routes, the note\n"
@@ -3024,14 +3030,14 @@ static const char* const kManualText_part14 =
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
     "default 90): 0 = the tone dips exactly when the level does, 90 = a quarter cycle\n"
+    ;
+static const char* const kManualText_part15 =
     "later, 180 = the tone dips when the level peaks. Real tremulants differ here;\n"
     "listen with a soft flute.\n"
     "\n"
     "### Key velocity: full strike from velocity\n"
     "\n"
     "From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut\n"
-    ;
-static const char* const kManualText_part15 =
     "(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127).\n"
     "The ramp of the two settings below runs from velocity 1, the\n"
     "gentlest stroke, to this value.\n"
@@ -3226,14 +3232,14 @@ static const char* const kManualText_part15 =
     "The *Treble per key* sliders of the voicing raise or lower everything above\n"
     "this frequency (120 to 5000 Hz, default 1800): a high shelf whose transition\n"
     "band runs from here to about twice this frequency. A pipe whose recorded\n"
+    ;
+static const char* const kManualText_part16 =
     "fundamental lies higher starts its shelf at that fundamental instead. The\n"
     "velocity treble cut uses the same frequency.\n"
     "\n"
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
     "Undulating (celeste) stops beat this many times faster at the top of their\n"
-    ;
-static const char* const kManualText_part16 =
     "compass than at the bottom (1 to 20, default 12); the a1 key always beats as\n"
     "set in the stop's voicing. Equal beats everywhere (1x) detune the bass most,\n"
     "as a real celeste tuned to constant beats would.\n"
@@ -3428,14 +3434,14 @@ static const char* const kManualText_part16 =
     "skip\" in chapter 2). A pattern without a star matches anywhere, a\n"
     "star at the start anchors it to the end of the name, a star at the end to its\n"
     "start; underscores count. Applies to the next folder load.\n"
+    ;
+static const char* const kManualText_part17 =
     "\n"
     "### Perspective prefixes\n"
     "\n"
     "Folder name prefixes that mark a microphone perspective, one line per\n"
     "perspective. Every prefix that belongs to the same perspective must stand on\n"
     "that one line, separated by semicolons; the perspective takes its name from\n"
-    ;
-static const char* const kManualText_part17 =
     "the first entry of the line (\"Direct;01-dirMk2H-;dir\" makes folders with any\n"
     "of the three prefixes the perspective \"Direct\"). Defaults: Direct, Diffuse and\n"
     "Rear. Prefixes found in a newly loaded set are added here by themselves (a\n"
@@ -3630,14 +3636,14 @@ static const char* const kManualText_part17 =
     "with *Add screenshot files...*. Then the GitHub bug report opens in your\n"
     "browser with its fields filled in from the dialog: drag `logs.zip` into\n"
     "\"Logs\" (the first field of the form) and the pictures into \"Screenshots\",\n"
+    ;
+static const char* const kManualText_part18 =
     "check the text, submit. The report folder itself opens in the file manager\n"
     "beside it, and the program's own message sits at the bottom of the screen,\n"
     "out of the way. The program puts the browser on the left half of the screen\n"
     "and the folder on the right half, side by side, so the zip is dragged across\n"
     "(Windows always, macOS through AppleScript - the browser only with\n"
     "the accessibility permission -, Linux where wmctrl is installed). The\n"
-    ;
-static const char* const kManualText_part18 =
     "link carries the computer and the routes only while it stays short\n"
     "(GitHub answered a long one with an error after its sign-in) - the whole\n"
     "list is in `system.txt` of `logs.zip` in any case. A free\n"

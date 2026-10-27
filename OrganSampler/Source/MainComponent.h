@@ -413,6 +413,13 @@ private:
     // contents, one box "Read them too?". explicitRequest = from the notice's menu (says so when none is found).
     void offerNeighbourArchives(bool explicitRequest);
     juce::StringArray neighbourArchivesAsked;   // configuration files asked in this session (the automatic offer once)
+    // The name sieve (0.8.218): the first-volume rars in 'folders' (not in 'exclude') whose letters-only stem
+    // shares >= 4 leading letters with one of 'like' or holds a >= 4-letter word of 'nameWords'; at most 24.
+    static std::vector<juce::File> archivesNamedLike(const std::vector<juce::File>& folders, const std::vector<juce::File>& like,
+                                                     const juce::String& nameWords, const std::vector<juce::File>& exclude);
+    // 0.8.219: Load Configuration of an archive holding no definition - the archives beside it with a name like
+    // it are read; one of them holding a definition is offered: "Load from the definition" with all of them.
+    void offerDefinitionBeside(const std::vector<juce::File>& archives, bool merge);
     // Linux: a .desktop entry and the icon in every size under ~/.local/share, so
     // the program has its icon in the menu, the dock and the file manager.
     void installLinuxDesktopEntry();

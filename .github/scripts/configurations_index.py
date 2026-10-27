@@ -192,6 +192,51 @@ def main():
                 with open(out, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(text)
                 changed += 1
+    # The "Remove my configuration" issue form (27 Oct 2026, the user: "kdyby to prostě vyhodilo
+    # seznam konfigurací a já bych jen zaškrtl"): a dropdown of every published folder, several
+    # at once, written here from the same rows - an issue TEMPLATE may be pushed by the robot
+    # (only .github/workflows may not). A field to type a part of the name stays beside it.
+    form = os.path.join(ROOT, '..', '.github', 'ISSUE_TEMPLATE', 'organ_configuration_remove.yml')
+    folders = sorted(r[1] for r in rows if r[1] != 'rural-organ')
+    options = '\n'.join('        - "%s"' % f.replace('"', '') for f in folders) or '        - "(nothing published yet)"'
+    form_text = '''name: Remove my configuration
+description: Take a configuration you published off the list - tick the organ, a robot removes it.
+title: "[Remove configuration] "
+labels: ["configuration-remove"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tick the organ (or several) in the list and press *Submit new issue*. A robot removes the folder when you are
+        the one who published it (or the maintainer), answers here and closes this issue. The list is written by the
+        robot from [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md);
+        the *remove* link of an organ's line there opens this form with the organ ticked. To publish a new version
+        instead, send the new zip with the "Organ configuration" form: it replaces the old one by itself.
+  - type: dropdown
+    id: organ
+    attributes:
+      label: Organ
+      description: The configuration folder(s) to remove, as listed in INDEX.md.
+      multiple: true
+      options:
+%s
+    validations:
+      required: false
+  - type: input
+    id: name
+    attributes:
+      label: Or any part of its name
+      description: When the list above does not fit - any part of the organ's name (case does not matter).
+      placeholder: "Stralsund"
+    validations:
+      required: false
+''' % options
+    old = open(form, encoding='utf-8').read() if os.path.exists(form) else None
+    if old != form_text:
+        with open(form, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(form_text)
+        changed += 1
+        print('%s written: %d organ(s) in the list' % (os.path.relpath(form, os.path.join(ROOT, '..')), len(folders)))
     print('%s: %d configuration(s), %d file(s) written' % ('INDEX.md' if changed == 0 else 'INDEX', len(rows), changed))
     return 1 if changed else 0
 

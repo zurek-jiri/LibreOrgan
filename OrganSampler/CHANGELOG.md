@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.219] - 2026-10-27
+
+### Added
+- Load Configuration of an archive that holds no definition no longer ends
+  with "load its folders in the Stop List": the archives beside it with a
+  name like it are read, and when one of them holds the organ definition the
+  whole set is offered - every archive that looks like the same organ listed
+  - with "Load from the definition" / "Not now"; yes loads the organ from
+  the definition with all of them (several definitions: the choice box, as
+  with several archives chosen at once).
+- The "Remove my configuration" form shows the published organs as a list to
+  tick (several at once), written by the robot with INDEX.md; a field to type
+  a part of the name stays beside it. The robot removes every ticked organ in
+  one go and answers what it removed and what not.
+
 ## [0.8.218] - 2026-10-27
 
 ### Added
