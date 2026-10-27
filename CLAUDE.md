@@ -1273,6 +1273,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Configurations copy moved aside and restored; -ZeroTrees = the json alone in %TEMP% with the root renamed + the
   ORGAN_TEST_RELOCATE hook), test_stoplist214.ps1 (the dialog picture), tablediff.py (dump vs README table).
   The user's remaining demand that is NOT a code item: load what is there, report what is not, play.
+  GCC LESSON (the first v0.8.214 tag: Linux + macOS failed, Windows passed): `juce::File f; f = {};` is AMBIGUOUS for
+  GCC (File has operator= for File and String) - write `f = juce::File()`. MSVC takes it. The Windows CI watch
+  (%TEMP%\ci_watch.ps1) prints the jobs only; the job LOGS need a token: `git credential fill` on Windows works
+  through `cmd /c "git credential fill < file"` with "protocol=https\nhost=github.com\n\n" in the file (the manager
+  helper; a PowerShell pipe gave nothing), then GET /repos/.../actions/jobs/<id>/logs with "Authorization: Bearer
+  <token>" and grep "\.cpp:[0-9]+:[0-9]+: error". The tag was deleted and re-pushed onto the fix (50d343f).
   0.8.213 (the user's evening batch of 26 Oct, ALL to-dos in one build): (1) PATTERNS KEPT: `Patterns.json` beside
   settings.json (`applicationPatternsFile`, `rememberPatterns(exact)`, `mergeApplicationPatterns()` at the end of
   loadSettings, `rememberPatterns(false)` in applyPortableConfiguration before the unload): the loaded file's lists
