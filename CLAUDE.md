@@ -1238,6 +1238,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
   indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
   gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
+  0.8.215 (27 Oct 2026): `driveChildren(root)` (anonymous namespace beside `locationChildren`: the first-level folders
+  of a fixed drive, 64 at most, Windows/Program Files/ProgramData/$Recycle.Bin/System Volume Information/Recovery/
+  PerfLogs and the Unix system folders skipped, a 30 s cache) and `portableFolderCandidates` ends with, per fixed
+  drive: `<root>\<rootName>\<relative>`, `<root>\HauptwerkSampleSetsAndComponents\<rootName>\<relative>`, then for
+  each first-level folder `<child>\<rootName>\<relative>` and `<child>\HauptwerkSampleSetsAndComponents\<rootName>\
+  <relative>` - the normal Hauptwerk place D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages is
+  found from a zip in Downloads on a wiped computer (%TEMP%\test_clean215.ps1 -Downloads: 8 trees, 72 rows, the
+  location D:\Hauptwerk\HauptwerkSampleSetsAndComponents remembered). Fades: 110 ms default in the sliders'
+  start values, loadSettings' fallbacks, GLOBAL RESET (values + label texts) and the engine atomics; the manual
+  spells the bass scaling out (165 / 248 / 371 ms on the C of 8' / 16' / 32'); EngineSelfTest keeps its own 70.
   0.8.214 (27 Oct 2026, the clean-install batch; the user wipes AppData + Configurations to see what a first-time
   user sees, the Stralsund zip in F:\ beside F:\haupwerk\003135, the Rear package 003136 deliberately absent):
   (1) LOOKUP: `gChosenConfigurationDir` (set from `chosenConfigurationDir` in resolveAndApplyPortableConfiguration,
@@ -1365,32 +1375,6 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
-- HAUPTWERK LAYOUT PROBE (the user, 27 Oct 2026, clean install again: the new Stralsund zip in Downloads, root name
-  "OrganInstallationPackages", trees 00313x/pipe/..., the samples in the NORMAL Hauptwerk place
-  D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003135 - "8 tree(s) not on this computer",
-  zero trees; the voicing was kept, 0.8.214's new path works). WHY: the lookup tries the zip's folder, the copy's
-  folder, Locations.txt (empty after the wipe) and `<drive>:\<rootName>\<relative>` = D:\OrganInstallationPackages\...
-  - the Hauptwerk layout puts the root TWO folders deeper (Hauptwerk\HauptwerkSampleSetsAndComponents), which the
-  drive-root probe does not reach (F:\haupwerk worked only because it sits at the root). PLAN: extend
-  `fixedDriveRoots`-based candidates with the known Hauptwerk layout and one level of folders: for every fixed drive
-  list its first-level folders (cap 64, skip Windows/Program Files/$Recycle.Bin) and try `<child>\<rootName>\<relative>`
-  and `<child>\HauptwerkSampleSetsAndComponents\<rootName>\<relative>` (D:\Hauptwerk\HSSC\OIP, C:\Hauptwerk5..9\HSSC
-  on this machine); Hauptwerk's own default is C:\Hauptwerk\HauptwerkSampleSetsAndComponents. Still one directory
-  test per candidate, no scan. Note it in the manual's "Where configurations and samples live".
-- RELEASE FADES 110 ms (the user, 27 Oct 2026: "default pro Sustain fade-out bude 110 ms, default pro release fade-in
-  bude 110 ms"): today both default to 70 ms in FOUR places that must change together - the sliders' start values
-  (MainComponent.cpp ctor ~1032 / ~1053), the settings fallback when the key is absent (`parsed.getProperty(
-  "releaseFadeOutMs", 70.0)` / `"releaseFadeInMs", 70.0` in loadSettings), the GLOBAL RESET values (~22126 / 22128),
-  and the manual's "(default 70 ms)" in "Sustain fade-out on key release" / "Release sample fade-in" (regenerate
-  ManualData.h). The engine's own atomics (SamplerEngine.h: fade-out 70, fade-in 20) are overwritten by the GUI
-  at start - set them to 110 too so the self-test/kerneltest render the same join. The values are configuration
-  keys (they travel with the organ): an existing file keeps its own 70 (or whatever it holds) - the new default
-  reaches only files without the key and a fresh installation; the published Stralsund video config already has
-  120. Double-click on a slider returns to its start value (no explicit setDoubleClickReturnValue found - check).
-  The pitch scaling IS in the manual already (both chapters: the value for the sounding c1, 1.5x per octave below,
-  a 32' C 3.4x, a filled pipe as the pipe it stands for; `fadeScale` in SamplerEngine.cpp) - the user asked twice,
-  so with the new default spell the figures out there: 110 ms at c1 -> 165 ms on an 8' C, 248 ms on a 16' C,
-  371 ms on a 32' C; higher pipes the value as set.
 - DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
   N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only
   the later loads of the day: every per-tree line says 1 300-3 900 MB/s (Stralsund from the page cache), nothing

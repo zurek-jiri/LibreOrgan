@@ -998,7 +998,10 @@ RAR archives you chose, one path per line, readable and editable in any
 editor; the Configuration Editor shows it (*Sample and IR locations*), opens
 it (*Show*), adds a folder by hand and forgets the folders. On a computer
 that knows no location yet, the library root is also looked for by its name
-at the top of every fixed drive, and the folder of the file you chose is
+at the top of every fixed drive, under every first-level folder of the drive
+and in the Hauptwerk layout (`<folder>\HauptwerkSampleSetsAndComponents\<root>`,
+so `D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages`
+is found without any help), and the folder of the file you chose is
 searched even when a copy of the configuration is loaded from the
 configurations folder. A tree found nowhere shows the "Sample folder not found"
 notice under its division: click it and choose any folder of the set - the
@@ -2817,18 +2820,20 @@ temperament, for playing with instruments tuned elsewhere than a1 = 440 Hz.
 ### Sustain fade-out on key release
 
 How long the sounding pipe fades out when its key is released and the release
-sample takes over (default 70 ms). Too short and the join clicks or the pipe
+sample takes over (default 110 ms). Too short and the join clicks or the pipe
 stops unnaturally; too long and the release sounds smeared. The value is for
 the sounding c1 (MIDI 60 of an 8' rank, the rank's footage counted in): pipes
-below it get 1.5 times as much per octave (a 32' C 3.4 times), because a big
-pipe's sound cannot stop as fast; higher pipes the value as set. A filled pipe
-counts as the pipe it stands for.
+below it get 1.5 times as much per octave, because a big pipe's sound cannot
+stop as fast - with the default, 165 ms on the C of an 8' rank, 248 ms on a
+16' C, 371 ms on a 32' C (3.4 times); higher pipes the value as set. A filled
+pipe counts as the pipe it stands for.
 
 ### Release sample fade-in
 
-How long the release sample fades in when the key is released (default 70
-ms), scaled by pitch exactly like the sustain fade-out. The two together shape
-the join between the held note and its release.
+How long the release sample fades in when the key is released (default 110
+ms), scaled by pitch exactly like the sustain fade-out (165 / 248 / 371 ms on
+the C of an 8' / 16' / 32' rank). The two together shape the join between the
+held note and its release.
 
 ### Release sample volume
 

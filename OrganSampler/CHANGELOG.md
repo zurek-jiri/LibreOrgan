@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.215] - 2026-10-27
+
+### Fixed
+- A configuration whose samples lie in the normal Hauptwerk place
+  (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\...`)
+  found nothing on a clean computer: the drive roots were probed for the
+  library root's name, but not the folders one level down. Now every
+  first-level folder of each fixed drive and the Hauptwerk layout
+  (`<folder>\HauptwerkSampleSetsAndComponents\<root>`) are tried as well -
+  still one directory test per candidate, never a scan.
+
+### Changed
+- Sustain fade-out on key release and Release sample fade-in default to
+  110 ms (70 before); a configuration that carries its own values keeps
+  them. The manual spells the pitch scaling out in milliseconds.
+
 ## [0.8.214] - 2026-10-27
 
 ### Fixed

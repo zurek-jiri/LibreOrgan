@@ -1542,8 +1542,8 @@ private:
     std::atomic<float> undulationBeatRatio{ 12.0f };
     juce::String lastLoadError;
     std::atomic<double> defaultSampleRate{ 48000.0 };
-    std::atomic<float> releaseFadeOutMs{ 70.0f };
-    std::atomic<float> releaseFadeInMs{ 20.0f };
+    std::atomic<float> releaseFadeOutMs{ 110.0f };   // 0.8.215: the GUI's defaults (110 ms), so the self-test renders the same join
+    std::atomic<float> releaseFadeInMs{ 110.0f };
     std::atomic<float> velocityFadeInMs{ 100.0f };
     std::atomic<int> velocityFullFrom{ 80 };
     std::atomic<bool> velocityPlainStrict{ false };

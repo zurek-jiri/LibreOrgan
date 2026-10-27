@@ -1029,7 +1029,7 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(releaseFadeOutSlider);
     releaseFadeOutSlider.setRange(10.0, 500.0, 1.0);
-    releaseFadeOutSlider.setValue(70.0, juce::dontSendNotification);
+    releaseFadeOutSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
     releaseFadeOutSlider.setTextValueSuffix(" ms");
     releaseFadeOutSlider.onValueChange = [this] {
         engine.setReleaseFadeOutMs((float)releaseFadeOutSlider.getValue());
@@ -1050,7 +1050,7 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(releaseFadeInSlider);
     releaseFadeInSlider.setRange(0.0, 200.0, 1.0);
-    releaseFadeInSlider.setValue(70.0, juce::dontSendNotification);
+    releaseFadeInSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
     releaseFadeInSlider.setTextValueSuffix(" ms");
     releaseFadeInSlider.onValueChange = [this] {
         engine.setReleaseFadeInMs((float)releaseFadeInSlider.getValue());
@@ -12289,6 +12289,32 @@ namespace
         return roots;
     }
 
+    // The first-level folders of a drive (0.8.215; 64 at most, the system's own left out),
+    // listed once per load: the probe of the Hauptwerk layout asks for them per tree.
+    const std::vector<juce::File>& driveChildren(const juce::File& root)
+    {
+        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;   // message thread only
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        auto& slot = cache[root.getFullPathName()];
+        if (slot.first <= 0.0 || now - slot.first > 30000.0)
+        {
+            slot.first = now;
+            slot.second.clear();
+            static const char* const skipped[] = { "Windows", "Program Files", "Program Files (x86)", "ProgramData", "$Recycle.Bin",
+                "System Volume Information", "Recovery", "PerfLogs", "proc", "sys", "dev", "etc", "bin", "sbin", "lib", "lib64", "usr", "var", "boot", "run", "tmp" };
+            if (root.isDirectory())
+                for (const auto& entry : juce::RangedDirectoryIterator(root, false, "*", juce::File::findDirectories))
+                {
+                    if (slot.second.size() >= 64) break;
+                    const auto name = entry.getFile().getFileName();
+                    bool skip = name.startsWithChar('.');
+                    for (const auto* s : skipped) if (name.equalsIgnoreCase(s)) skip = true;
+                    if (!skip) slot.second.push_back(entry.getFile());
+                }
+        }
+        return slot.second;
+    }
+
     // The direct subfolders of a sample location (32 at most), listed once per
     // load (0.8.202): the candidates of every tree ask for them.
     const std::vector<juce::File>& locationChildren(const juce::File& folder)
@@ -12388,10 +12414,23 @@ namespace
             }
         }
         // Last: the library root by its name at the top of every fixed drive (0.8.214 - a
-        // clean computer knows no location yet; the user's "F:\haupwerk" beside a zip in F:\).
+        // clean computer knows no location yet; the user's "F:\haupwerk" beside a zip in F:\),
+        // and one level down (0.8.215): under each first-level folder of the drive, and under
+        // the Hauptwerk layout "<folder>\HauptwerkSampleSetsAndComponents\<root>" - the normal
+        // place of a Hauptwerk library (D:\Hauptwerk\HauptwerkSampleSetsAndComponents\
+        // OrganInstallationPackages) lies two folders under the drive, where the root probe
+        // alone never looked. Still one directory test per candidate, never a scan.
         if (rootName.isNotEmpty())
             for (const auto& root : fixedDriveRoots())
+            {
                 candidates.add(root.getChildFile(rootName).getChildFile(relative));
+                candidates.add(root.getChildFile("HauptwerkSampleSetsAndComponents").getChildFile(rootName).getChildFile(relative));
+                for (const auto& child : driveChildren(root))
+                {
+                    candidates.add(child.getChildFile(rootName).getChildFile(relative));
+                    candidates.add(child.getChildFile("HauptwerkSampleSetsAndComponents").getChildFile(rootName).getChildFile(relative));
+                }
+            }
         return candidates;
     }
     // A folder whose path exists but for the case of its letters (0.8.147, #57: a
@@ -19549,12 +19588,12 @@ void MainComponent::loadSettings()
     masterGainLinear.store(juce::Decibels::decibelsToGain((float)masterDb));
     masterLabel.setText("Master: " + juce::String(masterDb, 1) + " dB", juce::dontSendNotification);
 
-    const double releaseFadeOut = parsed.getProperty("releaseFadeOutMs", 70.0);
+    const double releaseFadeOut = parsed.getProperty("releaseFadeOutMs", 110.0);   // 0.8.215: 110 ms for a file without the key
     releaseFadeOutSlider.setValue(releaseFadeOut, juce::dontSendNotification);
     releaseFadeOutLabel.setText("Sustain fade-out: " + juce::String(releaseFadeOut, 0) + " ms", juce::dontSendNotification);
     engine.setReleaseFadeOutMs((float)releaseFadeOut);
 
-    const double releaseFadeIn = parsed.getProperty("releaseFadeInMs", 70.0);
+    const double releaseFadeIn = parsed.getProperty("releaseFadeInMs", 110.0);   // 0.8.215
     releaseFadeInSlider.setValue(releaseFadeIn, juce::dontSendNotification);
     releaseFadeInLabel.setText("Release fade-in: " + juce::String(releaseFadeIn, 0) + " ms", juce::dontSendNotification);
     engine.setReleaseFadeInMs((float)releaseFadeIn);
@@ -22123,10 +22162,10 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     masterLabel.setText("Master: -18.0 dB", juce::dontSendNotification);
     pitchSlider.setValue(0.0, juce::dontSendNotification);
     pitchLabel.setText("Pitch: 0 cents", juce::dontSendNotification);
-    releaseFadeOutSlider.setValue(70.0, juce::dontSendNotification);
-    releaseFadeOutLabel.setText("Sustain fade-out: 70 ms", juce::dontSendNotification);
-    releaseFadeInSlider.setValue(70.0, juce::dontSendNotification);
-    releaseFadeInLabel.setText("Release fade-in: 70 ms", juce::dontSendNotification);
+    releaseFadeOutSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms
+    releaseFadeOutLabel.setText("Sustain fade-out: 110 ms", juce::dontSendNotification);
+    releaseFadeInSlider.setValue(110.0, juce::dontSendNotification);
+    releaseFadeInLabel.setText("Release fade-in: 110 ms", juce::dontSendNotification);
     releaseScalingSlider.setValue(0.0, juce::dontSendNotification);
     releaseScalingLabel.setText("Release scaling: 0.0 dB", juce::dontSendNotification);
     attackMinimumSlider.setValue(80.0, juce::dontSendNotification);
