@@ -1375,6 +1375,10 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   keys (they travel with the organ): an existing file keeps its own 70 (or whatever it holds) - the new default
   reaches only files without the key and a fresh installation; the published Stralsund video config already has
   120. Double-click on a slider returns to its start value (no explicit setDoubleClickReturnValue found - check).
+  The pitch scaling IS in the manual already (both chapters: the value for the sounding c1, 1.5x per octave below,
+  a 32' C 3.4x, a filled pipe as the pipe it stands for; `fadeScale` in SamplerEngine.cpp) - the user asked twice,
+  so with the new default spell the figures out there: 110 ms at c1 -> 165 ms on an 8' C, 248 ms on a 16' C,
+  371 ms on a 32' C; higher pipes the value as set.
 - DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
   N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only
   the later loads of the day: every per-tree line says 1 300-3 900 MB/s (Stralsund from the page cache), nothing
