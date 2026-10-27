@@ -1504,7 +1504,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "Load from the definition" / "Not now"; yes = `loadConfigurationFromArchives(chosen + neighbours)` (registers them
   all; several definitions -> chooseFromList as before); none -> the old notice extended by "the archives beside it
   hold none either". ORGAN_TEST_NEIGHBOURS=1 answers yes here too. Test: bedos1_862.rar alone (Locations.txt
-  stripped of bedos lines) -> the set found -> the Dom Bedos definition loaded with all five archives.
+  stripped of bedos lines with ReadAllLines/WriteAllLines - `Get-Content | Set-Content` on the SAME file fails "in
+  use") -> the set found -> the choice box (the Bedos package rars carry the ODF too: several candidates; pressed by
+  ORGAN_TEST_CLICK="zzz|zzz|zzz|Load", the hook clicks 3 s after the start and 2 s apart, a missing name is logged and
+  skipped) -> Dom Bedos imported from the definition with all five archives, 56 stops, no tree missing. Released as
+  commit 3bd65bd, tag v0.8.219.
   (3) DISK READ 358 MB/s - SETTLED (27 Oct 2026, measured here): a plain parallel read (%TEMP%\diskread.py, 8
   threads, 4 MB reads, 4 GB of a package not read recently) of D: (Samsung 870 QVO 8 TB SATA) gives 441-455 MB/s;
   a COLD load through the program (ORGAN_LOAD_TREE of 001692 with packing OFF: "4.53 GB read in 12.5 s = 363
