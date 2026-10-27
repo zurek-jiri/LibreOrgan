@@ -518,12 +518,11 @@ static const char* const kManualText_part2 =
     "- **Which archives are read:** only the archives you choose - in *Load\n"
     "  folder...*, *Load Configuration* or a merge - with their parts, never\n"
     "  another archive that happens to lie beside them. Every chosen archive is\n"
-    "  written into `ArchiveFolders.txt` beside the open configuration (in the\n"
-    "  configurations folder, see \"Where configurations and samples live\";\n"
-    "  without a configuration into the settings folder; one path per line,\n"
-    "  editable by hand), so the next start finds it again; a line naming a\n"
-    "  folder stands for every archive in that folder, and so does a folder\n"
-    "  `OrganRarPackages` beside the configurations folder. A sample folder that\n"
+    "  written into `Locations.txt` beside the settings (see \"Where\n"
+    "  configurations and samples live\"; one path per line, editable by hand;\n"
+    "  nothing is written beside a configuration), so the next start finds it\n"
+    "  again; a folder `OrganRarPackages` beside the configurations folder stands\n"
+    "  for every archive in it. A sample folder that\n"
     "  is not on the disk is looked for in those archives by the tail of its path\n"
     "  (`OrganInstallationPackages/002735/pipes` ...). The folder of every chosen\n"
     "  archive is also remembered as a sample location, so an unpacked set beside\n"
@@ -606,9 +605,9 @@ static const char* const kManualText_part2 =
     "is. Who owns a rank several stops play (0.8.135): the stop whose name the\n"
     "rank carries (\"Rear: GO. Bombarde 16\" belongs to \"GO. Bombarde 16\", whatever\n"
     "the file order - the pedal's \"Ped. Bombarde 16\" borrows it, not the other\n"
+    "way round), else the stop playing it straight over its whole division, then\n"
     ;
 static const char* const kManualText_part3 =
-    "way round), else the stop playing it straight over its whole division, then\n"
     "the one with the most keys. A stop with ranks of its own is a stop of its\n"
     "own and is loaded from them, whatever it borrows besides (Billerbeck's \"Tuba\n"
     "16\" plays its own rank and takes three top keys from the \"Tuba 4\": the\n"
@@ -808,9 +807,9 @@ static const char* const kManualText_part3 =
     "organ (instrument, builder, place), the producer of the samples, the link\n"
     "to the page where the sample folders are bought or downloaded, your name -\n"
     "and keeps the answers in the configuration; nothing in the README is\n"
+    "filled in by hand. Then the window *Publish the configuration* appears\n"
     ;
 static const char* const kManualText_part4 =
-    "filled in by hand. Then the window *Publish the configuration* appears\n"
     "(0.8.194, like the one after a problem report): *Publish on GitHub* opens the\n"
     "form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml\n"
     "in your browser with the title and the organ filled in (a free GitHub\n"
@@ -837,10 +836,11 @@ static const char* const kManualText_part4 =
     "tooltip). Click it: a menu offers *Replace \"...\" with a folder on this\n"
     "computer...* for every missing tree - choose the folder where that tree is\n"
     "now, whatever its name, and the stops come alive at once, their rows keep\n"
-    "their folders - or *Open the Stop List*, where *Unload folder...* also\n"
-    "offers *Replace \"...\" with another folder...* for every tree and removes a\n"
-    "tree you no longer have. The notice goes when no tree of the division is\n"
-    "missing.\n"
+    "their folders - or *Open the Stop List*, where *Load folder...* offers the\n"
+    "same for every missing tree (marked NOT FOUND) and *Unload folder...*\n"
+    "removes a tree you no longer have.\n"
+    "The notice goes when no tree of the division is missing; no message box\n"
+    "reports the find, the activity log does.\n"
     "\n"
     "Paths are stored with \"/\" and resolved on every platform; a configuration\n"
     "saved on Windows loads on Linux and macOS and the other way round.\n"
@@ -862,8 +862,8 @@ static const char* const kManualText_part4 =
     "configuration, when one is packed with the set) and loads the whole organ\n"
     "straight from the archives - \"Sample archives (RAR)\" and \"Loading a\n"
     "Hauptwerk organ definition (ODF)\" say what happens. The archives you chose\n"
-    "are remembered (`ArchiveFolders.txt`) and their folder joins the sample\n"
-    "locations, so the configuration finds them again at every start, and every\n"
+    "are remembered (`Locations.txt` beside the settings) and their folder joins\n"
+    "the sample locations, so the configuration finds them again at every start, and every\n"
     "later configuration of the same set finds them too. Unpacking the archives\n"
     "first is allowed and loads faster from an SSD; keep the folder tree as the\n"
     "archive created it.\n"
@@ -904,7 +904,8 @@ static const char* const kManualText_part4 =
     "new library (the other divisions of the package) and the end of each path\n"
     "under the folders above (the other packages of a Hauptwerk library lie side\n"
     "by side in `OrganInstallationPackages`). Everything found is loaded at\n"
-    "once; a box lists what was found and what is still missing. The folder\n"
+    "once (the activity log lists what was found and what is still missing; the\n"
+    "notice stays under a division that still misses a tree). The folder\n"
     "above the moved library is remembered as a sample location, so every\n"
     "configuration you load afterwards finds its folders there by itself. The\n"
     "same happens when you load a folder of the same name as a missing tree with\n"
@@ -1003,15 +1004,21 @@ static const char* const kManualText_part4 =
     "program fills the list by itself: the folder above\n"
     "the library root at every portable save, the root where it was found at a\n"
     "load, the folder of every archive you choose, the collection of every IR you\n"
-    "choose, the folder you point to when a tree is asked for. The Configuration\n"
-    "Editor shows the list (*Sample and IR locations*), adds a folder by hand and\n"
-    "forgets them all. A tree found nowhere shows the \"Sample folder not found\"\n"
+    "choose, the folder you point to when a tree is asked for. The list is the\n"
+    "text file `Locations.txt` beside the settings - the sample folders and the\n"
+    "RAR archives you chose, one path per line, readable and editable in any\n"
+    "editor; the Configuration Editor shows it (*Sample and IR locations*), opens\n"
+    "it (*Show*), adds a folder by hand and forgets the folders. On a computer\n"
+    "that knows no location yet, the library root is also looked for by its name\n"
+    ;
+static const char* const kManualText_part5 =
+    "at the top of every fixed drive, and the folder of the file you chose is\n"
+    "searched even when a copy of the configuration is loaded from the\n"
+    "configurations folder. A tree found nowhere shows the \"Sample folder not found\"\n"
     "notice under its division: click it and choose any folder of the set - the\n"
     "program finds the tree from there, the other missing trees around it, loads\n"
     "them all and remembers the place (\"Sample folders not found: one click\n"
     "finds them\"); an IR found nowhere shows \"FILE NOT FOUND - choose it\" on its\n"
-    ;
-static const char* const kManualText_part5 =
     "route in the Divisions dialog; the answer joins the locations.\n"
     "\n"
     "A word to the user: keeping track of where the sample folders and archives\n"
@@ -1205,6 +1212,8 @@ static const char* const kManualText_part5 =
     "## 2.5 Division headers\n"
     "\n"
     "Each division column starts with a one-line header: a keyboard icon that\n"
+    ;
+static const char* const kManualText_part6 =
     "lights when a key is pressed (right-click it: *MIDI Learn...* learns the\n"
     "division's keyboard from the next key pressed, *Clear learned keyboard MIDI*\n"
     "forgets it), the division's name, the swell display (drag it, or right-click it\n"
@@ -1212,8 +1221,6 @@ static const char* const kManualText_part5 =
     "(registration, like a stop) and *Settings*, which opens the Divisions dialog at\n"
     "that division. Drag the dividers between the columns to share out the width.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "Every feature has its settings where it sits, by right-click: the swell bar's\n"
     "menu offers *Swell settings...* (maximum attenuation, shutter inertia,\n"
     "harmonic filter), the *Tremulant* button's menu *Tremulant settings...*\n"
@@ -1407,6 +1414,8 @@ static const char* const kManualText_part6 =
     "- The sliders light up while the key sounds. A **green thumb** marks a filled\n"
     "  pipe (hover it: the tooltip names the stop, the sample file and the shift it\n"
     "  was made with, \"HW Tromp 16', sample 039-D#.wav, -12 st (from key 51)\"). An\n"
+    ;
+static const char* const kManualText_part7 =
     "  **orange note name** means the sample has no loop points. A **grey slider**\n"
     "  means the stop has no pipe there at all.\n"
     "\n"
@@ -1414,8 +1423,6 @@ static const char* const kManualText_part6 =
     "\n"
     "A transmission is an extra button that plays the pipes of another stop, on any\n"
     "division (its own included). It is made in the Stop List (the *Transmissions*\n"
-    ;
-static const char* const kManualText_part7 =
     "cell of the stop's row) or on the grid (a right-button or Shift drag in arrange\n"
     "mode). Each transmission has its own voicing row, opened like a stop's, with:\n"
     "\n"
@@ -1527,13 +1534,21 @@ static const char* const kManualText_part7 =
     "  A tree is loaded once and its folders\n"
     "  can serve any division. When a tree of the organ is missing on this\n"
     "  computer (a configuration from elsewhere: the division header says\n"
-    "  \"Sample folder not found\"), a loaded folder of the same name takes the\n"
-    "  missing tree's place and the stops built from it keep their samples; the\n"
-    "  other missing trees of the organ are looked for around it and loaded as\n"
-    "  well, and the place is remembered (\"Sample folders not found: one click\n"
-    "  finds them\").\n"
+    "  \"Sample folder not found\"), the menu lists it as **NOT FOUND on this\n"
+    "  computer: replace \"...\" with a folder on this computer...** (only the\n"
+    "  missing trees have such a line): choose any folder of the set,\n"
+    "  the tree is found from there, the stops built from it keep their samples,\n"
+    "  the other missing trees of the organ are looked for around it and loaded\n"
+    "  as well, and the place is remembered (\"Sample folders not found: one click\n"
+    "  finds them\"). A tree never takes the place of another one by its last\n"
+    "  folder name alone - only by the same path below the library root - so a\n"
+    "  missing tree stays missing until you replace it. In the table the folder\n"
+    "  cells of a missing tree are orange, their tooltip says NOT FOUND, and the\n"
+    "  line below the table counts the missing trees.\n"
     "- **Unload folder...** removes one tree from the whole organ after saying how\n"
-    "  many stops lose their samples (their rows stay as empty stops). **Unload all\n"
+    "  many stops lose their samples (their rows stay as empty stops); a tree\n"
+    "  that is not on this computer is marked NOT FOUND there, so you can drop\n"
+    "  it when it is not meant to come (a package you do not own). **Unload all\n"
     "  folder trees** empties the organ; the Stop List opens again with the empty\n"
     "  rows, *Remove empty stops* clears them and *Apply and reload* applies that\n"
     "  even though no tree is loaded. The same menu offers **Replace \"...\" with\n"
@@ -1601,6 +1616,8 @@ static const char* const kManualText_part7 =
     "  samples' pitch and the footage in the folder's name, or from a Hauptwerk\n"
     "  definition, and written here once found. The voicing of every stop offers\n"
     "  the same setting (with the footage each step gives) and applies it at once;\n"
+    ;
+static const char* const kManualText_part8 =
     "  applied here with *Apply and reload* (see \"The voicing row\").\n"
     "\n"
     "## 4.3 Apply and reload\n"
@@ -1616,8 +1633,6 @@ static const char* const kManualText_part7 =
     "the table) - nothing is lost by the close button alone.\n"
     "\n"
     "## 4.4 What the loading dialog shows\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "Loading is quick, so the dialog is rarely looked at: it shows the samples being\n"
     "read per division and in total, under it what the program does right now (the\n"
@@ -1803,6 +1818,8 @@ static const char* const kManualText_part8 =
     "A device opened for the first time, or chosen for a route that had none, runs\n"
     "at the loading rate, 48 kHz, when it offers it (a fresh device would\n"
     "otherwise open at the lowest rate from 44.1 kHz up); a device chosen for a\n"
+    ;
+static const char* const kManualText_part9 =
     "route keeps the rate the route ran at when it offers it; a portable\n"
     "configuration carries the rate and buffer of every route with it. *Set for\n"
     "all* copies the rate the device of that tab really runs at - look at the\n"
@@ -1818,8 +1835,6 @@ static const char* const kManualText_part8 =
     "- **ASIO**: the professional driver of an audio interface. The lowest\n"
     "  latency, the most polyphony. One ASIO driver is opened once and shared by\n"
     "  every route that uses it; a second interface with its own ASIO driver is\n"
-    ;
-static const char* const kManualText_part9 =
     "  opened beside it. Use ASIO for every route when you can. Its buffer size\n"
     "  is set in the driver's control panel (*Driver Control Panel* in the audio\n"
     "  tab opens it).\n"
@@ -2005,6 +2020,8 @@ static const char* const kManualText_part9 =
     "rate) are waited for: a box \"Waiting for audio devices\" appears and the program\n"
     "checks every second for six seconds. Devices still absent afterwards are listed\n"
     "once in one message; their routes stay silent until the device appears, then\n"
+    ;
+static const char* const kManualText_part10 =
     "reopen by themselves. A device you choose yourself is never swapped back.\n"
     "\n"
     "## 5.8 Getting the most polyphony\n"
@@ -2020,8 +2037,6 @@ static const char* const kManualText_part9 =
     "it depends on the whole configuration of the organ - the number of audio\n"
     "routes (every perspective of every division, every auxiliary route with a\n"
     "device), the IR reverbs on them, the drivers and their buffer sizes, and the\n"
-    ;
-static const char* const kManualText_part10 =
     "samples themselves (their number of perspectives, the length of their releases).\n"
     "The same computer that renders 25 000 voices of a one-perspective dry set\n"
     "may manage a third of that with three perspectives, an auxiliary route and\n"
@@ -2207,6 +2222,8 @@ static const char* const kManualText_part10 =
     "pipes play those through the full kernel (Engine > *Full kernel from*,\n"
     "0.8.164), so no foreign tone appears under a retuned top octave.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "## 6.4 MIDI learn\n"
     "\n"
     "Everything that can be played from a console can be learned: stops,\n"
@@ -2222,8 +2239,6 @@ static const char* const kManualText_part10 =
     "\n"
     "*Record* in the top bar records the stereo mix to a WAV file; click again to\n"
     "stop (the recording ends with a short fade).\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "---\n"
     "\n"
@@ -2409,6 +2424,8 @@ static const char* const kManualText_part11 =
     "  the button for routine housekeeping.\n"
     "- *Filled pipes cache folder* - **Choose...** picks another folder for the\n"
     "  cache (the default is `FilledPipesCache` in the application-data folder,\n"
+    ;
+static const char* const kManualText_part12 =
     "  usually on the system drive). Choose a big drive, for example beside the\n"
     "  samples; the files built so far are moved there, so nothing has to be\n"
     "  rebuilt.\n"
@@ -2424,8 +2441,6 @@ static const char* const kManualText_part11 =
     "scrolling dialog, in sections: Engine, Global sound, Advanced global audio\n"
     "(collapsed by default: click its title), Console, Folder name patterns, and\n"
     "one section per division (collapsed by default). The folding is remembered.\n"
-    ;
-static const char* const kManualText_part12 =
     "The \"?\" beside every option opens this manual at the option's chapter below.\n"
     "At the top: *About & licences...* with this manual (a chapter box jumps to any\n"
     "chapter), the program's licence and, in full, the licences of the software it\n"
@@ -2611,6 +2626,8 @@ static const char* const kManualText_part12 =
     "\n"
     "A word on who hears the difference. Hearing loses its top end with the\n"
     "years: past fifty, few people hear anything above 17 kHz, and past sixty the\n"
+    ;
+static const char* const kManualText_part13 =
     "limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose\n"
     "nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser\n"
     "grid leaves out is already beyond reach - and saves a third of the RAM.\n"
@@ -2626,8 +2643,6 @@ static const char* const kManualText_part12 =
     "at a few dozen voices whatever the buffer size. *Light* runs the convolution\n"
     "at a quarter of the sample rate (half when the high cut of the wet signal\n"
     "lies above 2.5 kHz, so that the wet band stays intact), trims the IR where\n"
-    ;
-static const char* const kManualText_part13 =
     "its energy has fallen 60 dB below the whole (a church IR of 7 s is there\n"
     "after 3.5 s; what follows is inaudible under the organ) and reduces a true\n"
     "stereo IR to its direct channels - a small fraction of the work, the same\n"
@@ -2813,6 +2828,8 @@ static const char* const kManualText_part13 =
     "The run takes one to two minutes; *Cancel* restores everything.\n"
     "\n"
     "## 8.2 Global sound\n"
+    ;
+static const char* const kManualText_part14 =
     "\n"
     "Every slider of this section has a checkbox that shows it on the main panel\n"
     "too (the shown sliders share a row with the polyphony display). All are\n"
@@ -2828,8 +2845,6 @@ static const char* const kManualText_part13 =
     "\n"
     "Shifts the whole organ by -200 to +200 cents (default 0) on top of the\n"
     "temperament, for playing with instruments tuned elsewhere than a1 = 440 Hz.\n"
-    ;
-static const char* const kManualText_part14 =
     "\n"
     "### Sustain fade-out on key release\n"
     "\n"
@@ -3015,6 +3030,8 @@ static const char* const kManualText_part14 =
     "shifted two octaves up a quarter, but the room does not grow or shrink with the\n"
     "pipe, so the decay is laid out again to this length in both directions (100 % =\n"
     "exactly the source's duration). Longer than 100 % gives a bigger room to the\n"
+    ;
+static const char* const kManualText_part15 =
     "extension than to the stop; shorter dries it. Changing it rebuilds the release\n"
     "copies.\n"
     "\n"
@@ -3030,8 +3047,6 @@ static const char* const kManualText_part14 =
     "transposition methods\"); lower\n"
     "the slider for a stop whose speaking turns rough. Changing it rebuilds the\n"
     "copies.\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "### Filled pipes: time stretch of the release\n"
     "\n"
@@ -3217,6 +3232,8 @@ static const char* const kManualText_part15 =
     "### Top bar: Load Voicing\n"
     "\n"
     "Shows or hides the Load Voicing button (the voicing from a file). Hidden by\n"
+    ;
+static const char* const kManualText_part16 =
     "default.\n"
     "\n"
     "### Top bar: Save Voicing\n"
@@ -3232,8 +3249,6 @@ static const char* const kManualText_part15 =
     "### Top bar: Save Configuration\n"
     "\n"
     "Shows or hides the Save Configuration button.\n"
-    ;
-static const char* const kManualText_part16 =
     "\n"
     "### Top bar: Shut down PC\n"
     "\n"
@@ -3419,6 +3434,8 @@ static const char* const kManualText_part16 =
     "The level of the whole division, -60 to +12 dB (default 0), for balancing the\n"
     "divisions against each other.\n"
     "\n"
+    ;
+static const char* const kManualText_part17 =
     "### Audio output channels (default perspective)\n"
     "\n"
     "The channels of the division's audio device that the default perspective\n"
@@ -3434,8 +3451,6 @@ static const char* const kManualText_part16 =
     "### Perspective output channels\n"
     "\n"
     "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
-    ;
-static const char* const kManualText_part17 =
     "channels of that perspective's own device.\n"
     "\n"
     "### Perspective volume\n"

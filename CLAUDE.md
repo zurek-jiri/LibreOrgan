@@ -1238,6 +1238,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   swaps or refuses -> "jumps back"). dropItem logs "Grid drop over the button of X without the indent gesture" and
   indentStopUnder logs every refusal with its reason. The tour's stop-folder step and the manual (3.2) tell the
   gesture. GuidedTour::placeBox puts the box ABOVE the element when there is room (the voicing/children unfold below).
+  0.8.214 (27 Oct 2026, the clean-install batch; the user wipes AppData + Configurations to see what a first-time
+  user sees, the Stralsund zip in F:\ beside F:\haupwerk\003135, the Rear package 003136 deliberately absent):
+  (1) LOOKUP: `gChosenConfigurationDir` (set from `chosenConfigurationDir` in resolveAndApplyPortableConfiguration,
+  cleared by a scope guard) adds the CHOSEN file's folder forms to `portableFolderCandidates` - the "same file already
+  in Configurations" branch loaded the copy and searched beside it alone; and `fixedDriveRoots()` (Windows
+  GetLogicalDrives + DRIVE_FIXED; else "/" + /media/<user>, /run/media/<user>, /mnt, /Volumes children) gives
+  `<root>/<rootName>/<relative>` as the last candidates - a json in %TEMP% found F:\haupwerk\003135 through it (test 2
+  had to rename the root to "haupwerkX" to get a zero-tree load). (2) ZERO TREES: `beginStartupFolderLoading`'s
+  empty path rebuilds the voicer and `loadState`s the file's voicing (`embeddedVoicingPresent` set in loadSettings)
+  so every entry is RETAINED ("Voicing state: 53 stop(s) not loaded ... kept"), and `reloadDivisions` saves the voicer
+  state only when `voicerStateLoaded || stops exist` ("the voicer holds no state yet, the voicing file is left as it
+  is") - before, the empty voicer's saveState wiped the file's grid/transmissions at the first relocation. (3) The
+  leaf-name rule of loadSettings is now `tailsEqual(pathParts(tree), belowRoot(path))` = the whole path below the
+  library root (the part after the last "<rootName>" folder, else the last three parts) - 003136/pipe/PE is never
+  taken over by 003135/pipe/PE; the pool is DEDUPED after the resolution (refs remapped: "Tree pool: N duplicate
+  slot(s) merged") so a tree is never loaded twice (doubled ranks). (4) Crescendo/combinations: `findStopForKey` and
+  `applyRegistrationAdditive` match by name + division, the saved perspective only breaks a tie. (5) Locations.txt
+  beside settings.json = `sampleLocations` folder lines + `rememberedArchives` (.rar lines): `locationsFile()`,
+  `readLocationsFile(settings)` (in loadSettings; migrates the old "sampleLocations" key and ArchiveFolders.txt of the
+  settings folder once), `writeLocationsFile()`; settings.json no longer carries sampleLocations (removed from the
+  configuration var too); `registerArchive` and the Hauptwerk import write archives there ONLY - nothing beside a
+  configuration any more; refreshArchiveSearchFolders reads Locations.txt's .rar lines (+ the legacy lists);
+  Editor "Sample and IR locations: N folder(s), M archive(s)" + "Show" (revealToUser) + Forget (folders only).
+  (6) Stop List: a cell whose tree or folder is not on this computer is ORANGE with the tooltip "NOT FOUND on this
+  computer: <path>" (the path tooltip label is white for a folder that is here, orange only for a missing one - the
+  user), the info line counts "N NOT FOUND", "Load folder..." lists ONLY the missing trees as "NOT FOUND on this
+  computer: replace ... with a folder on this computer..." (-> chooseFolderForMissingTree; the user refused a
+  Replace for trees that are here), "Unload folder..." marks them "- NOT FOUND on this computer" and lost its
+  Replace section (the same offer twice "doubled and blurred"); the "Sample folders found" box is GONE (needless;
+  the log line and the notice say it). (7) `stopBuildMap` creates a container row (stop folder) with the first tree
+  of the division that IS here (Cornet [III] / Vox Humana Cornet [V] were left out with the Rear package missing:
+  the dump had 70 rows, the published table 72 - now 72). Tests: %TEMP%\test_clean214.ps1 (AppData + the
+  Configurations copy moved aside and restored; -ZeroTrees = the json alone in %TEMP% with the root renamed + the
+  ORGAN_TEST_RELOCATE hook), test_stoplist214.ps1 (the dialog picture), tablediff.py (dump vs README table).
+  The user's remaining demand that is NOT a code item: load what is there, report what is not, play.
   0.8.213 (the user's evening batch of 26 Oct, ALL to-dos in one build): (1) PATTERNS KEPT: `Patterns.json` beside
   settings.json (`applicationPatternsFile`, `rememberPatterns(exact)`, `mergeApplicationPatterns()` at the end of
   loadSettings, `rememberPatterns(false)` in applyPortableConfiguration before the unload): the loaded file's lists

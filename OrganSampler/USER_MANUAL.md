@@ -510,12 +510,11 @@ as a folder, and reads the samples out of the archives.
 - **Which archives are read:** only the archives you choose - in *Load
   folder...*, *Load Configuration* or a merge - with their parts, never
   another archive that happens to lie beside them. Every chosen archive is
-  written into `ArchiveFolders.txt` beside the open configuration (in the
-  configurations folder, see "Where configurations and samples live";
-  without a configuration into the settings folder; one path per line,
-  editable by hand), so the next start finds it again; a line naming a
-  folder stands for every archive in that folder, and so does a folder
-  `OrganRarPackages` beside the configurations folder. A sample folder that
+  written into `Locations.txt` beside the settings (see "Where
+  configurations and samples live"; one path per line, editable by hand;
+  nothing is written beside a configuration), so the next start finds it
+  again; a folder `OrganRarPackages` beside the configurations folder stands
+  for every archive in it. A sample folder that
   is not on the disk is looked for in those archives by the tail of its path
   (`OrganInstallationPackages/002735/pipes` ...). The folder of every chosen
   archive is also remembered as a sample location, so an unpacked set beside
@@ -825,10 +824,11 @@ division that uses a missing tree shows an orange notice under its header,
 tooltip). Click it: a menu offers *Replace "..." with a folder on this
 computer...* for every missing tree - choose the folder where that tree is
 now, whatever its name, and the stops come alive at once, their rows keep
-their folders - or *Open the Stop List*, where *Unload folder...* also
-offers *Replace "..." with another folder...* for every tree and removes a
-tree you no longer have. The notice goes when no tree of the division is
-missing.
+their folders - or *Open the Stop List*, where *Load folder...* offers the
+same for every missing tree (marked NOT FOUND) and *Unload folder...*
+removes a tree you no longer have.
+The notice goes when no tree of the division is missing; no message box
+reports the find, the activity log does.
 
 Paths are stored with "/" and resolved on every platform; a configuration
 saved on Windows loads on Linux and macOS and the other way round.
@@ -850,8 +850,8 @@ archives hold, offers the Hauptwerk organ definition found inside (or a
 configuration, when one is packed with the set) and loads the whole organ
 straight from the archives - "Sample archives (RAR)" and "Loading a
 Hauptwerk organ definition (ODF)" say what happens. The archives you chose
-are remembered (`ArchiveFolders.txt`) and their folder joins the sample
-locations, so the configuration finds them again at every start, and every
+are remembered (`Locations.txt` beside the settings) and their folder joins
+the sample locations, so the configuration finds them again at every start, and every
 later configuration of the same set finds them too. Unpacking the archives
 first is allowed and loads faster from an SSD; keep the folder tree as the
 archive created it.
@@ -892,7 +892,8 @@ every other missing tree of the organ around it: the same place under the
 new library (the other divisions of the package) and the end of each path
 under the folders above (the other packages of a Hauptwerk library lie side
 by side in `OrganInstallationPackages`). Everything found is loaded at
-once; a box lists what was found and what is still missing. The folder
+once (the activity log lists what was found and what is still missing; the
+notice stays under a division that still misses a tree). The folder
 above the moved library is remembered as a sample location, so every
 configuration you load afterwards finds its folders there by itself. The
 same happens when you load a folder of the same name as a missing tree with
@@ -991,9 +992,15 @@ too deep or too high serves the next configuration all the same. The
 program fills the list by itself: the folder above
 the library root at every portable save, the root where it was found at a
 load, the folder of every archive you choose, the collection of every IR you
-choose, the folder you point to when a tree is asked for. The Configuration
-Editor shows the list (*Sample and IR locations*), adds a folder by hand and
-forgets them all. A tree found nowhere shows the "Sample folder not found"
+choose, the folder you point to when a tree is asked for. The list is the
+text file `Locations.txt` beside the settings - the sample folders and the
+RAR archives you chose, one path per line, readable and editable in any
+editor; the Configuration Editor shows it (*Sample and IR locations*), opens
+it (*Show*), adds a folder by hand and forgets the folders. On a computer
+that knows no location yet, the library root is also looked for by its name
+at the top of every fixed drive, and the folder of the file you chose is
+searched even when a copy of the configuration is loaded from the
+configurations folder. A tree found nowhere shows the "Sample folder not found"
 notice under its division: click it and choose any folder of the set - the
 program finds the tree from there, the other missing trees around it, loads
 them all and remembers the place ("Sample folders not found: one click
@@ -1509,13 +1516,21 @@ folder that plays that perspective of the stop.
   A tree is loaded once and its folders
   can serve any division. When a tree of the organ is missing on this
   computer (a configuration from elsewhere: the division header says
-  "Sample folder not found"), a loaded folder of the same name takes the
-  missing tree's place and the stops built from it keep their samples; the
-  other missing trees of the organ are looked for around it and loaded as
-  well, and the place is remembered ("Sample folders not found: one click
-  finds them").
+  "Sample folder not found"), the menu lists it as **NOT FOUND on this
+  computer: replace "..." with a folder on this computer...** (only the
+  missing trees have such a line): choose any folder of the set,
+  the tree is found from there, the stops built from it keep their samples,
+  the other missing trees of the organ are looked for around it and loaded
+  as well, and the place is remembered ("Sample folders not found: one click
+  finds them"). A tree never takes the place of another one by its last
+  folder name alone - only by the same path below the library root - so a
+  missing tree stays missing until you replace it. In the table the folder
+  cells of a missing tree are orange, their tooltip says NOT FOUND, and the
+  line below the table counts the missing trees.
 - **Unload folder...** removes one tree from the whole organ after saying how
-  many stops lose their samples (their rows stay as empty stops). **Unload all
+  many stops lose their samples (their rows stay as empty stops); a tree
+  that is not on this computer is marked NOT FOUND there, so you can drop
+  it when it is not meant to come (a package you do not own). **Unload all
   folder trees** empties the organ; the Stop List opens again with the empty
   rows, *Remove empty stops* clears them and *Apply and reload* applies that
   even though no tree is loaded. The same menu offers **Replace "..." with

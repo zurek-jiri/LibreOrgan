@@ -1026,6 +1026,15 @@ private:
     // Filled by the program: the library root's parent at a portable save, the root
     // found at a load, the folder of a chosen archive; and by hand in the Editor.
     juce::StringArray sampleLocations;
+    // 0.8.214: the sample locations and the chosen archives live in ONE readable file, Locations.txt beside the
+    // settings (the user: "čitelné jako txt"); settings.json no longer carries them.
+    juce::StringArray rememberedArchives;
+    juce::File locationsFile() const;
+    void readLocationsFile(const juce::var& settings);   // the file, else the old settings key / ArchiveFolders.txt once
+    void writeLocationsFile() const;
+    juce::File chosenConfigurationDir;      // 0.8.214: the folder of the file the user chose - a search place even when its copy is loaded
+    bool voicerStateLoaded = false;         // 0.8.214: the voicer has read a state file (reloadDivisions saves only then)
+    bool embeddedVoicingPresent = false;    // the configuration parsed last carried voicingSettings
     void noteSampleLocation(const juce::File& folder);   // remembered once, saved with the settings
     bool loadLastConfigurationAtStartup = false;   // re-open the last configuration file when the program starts
     // Remembered UI folding: Configuration Editor sections (title -> collapsed) and

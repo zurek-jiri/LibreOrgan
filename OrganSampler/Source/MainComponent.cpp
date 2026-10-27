@@ -8892,6 +8892,10 @@ namespace
             if (stop->primaryManual == manual && stop->name == fields[3]
                 && (fields[2].isEmpty() || stop->perspective.equalsIgnoreCase(fields[2])))
                 return stop;
+        // The perspective of the saved entry is a relic of the stop's first rank at the time (0.8.214): a stop
+        // loaded without that perspective (the user's Stralsund without its Rear package) is the same stop.
+        for (auto* stop : stops)
+            if (stop->primaryManual == manual && stop->name == fields[3]) return stop;
         return nullptr;
     }
 }
@@ -8968,11 +8972,16 @@ void MainComponent::applyRegistrationAdditive(const MemorySlot& memory)
         const auto name = stopObj.getProperty("name", "").toString();
         const int savedManual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)stopObj.getProperty("primaryManual", 0));
         const auto savedPerspective = canonicalPerspectiveName(stopObj.getProperty("perspective", "").toString());
+        // By name and division; the saved perspective only breaks a tie (0.8.214: a stop loaded without the
+        // perspective the entry names - a missing package - is the same stop; its crescendo was silent before).
+        Stop* target = nullptr;
+        for (auto* stop : stops)
+            if (stop->name == name && stop->primaryManual == savedManual
+                && (target == nullptr || (savedPerspective.isNotEmpty() && stop->perspective.equalsIgnoreCase(savedPerspective))))
+                target = stop;
         for (auto* stop : stops)
         {
-            if (stop->name != name || stop->primaryManual != savedManual
-                || (savedPerspective.isNotEmpty() && !stop->perspective.equalsIgnoreCase(savedPerspective)))
-                continue;
+            if (stop != target) continue;
             if ((bool)stopObj.getProperty("enabled", false)) engine.setStopEnabled(stop, true);
             for (const auto& [target, ordinal] : storedTransmissionsOn(stopObj))
             {
@@ -10509,6 +10518,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     // The same file already in the configurations folder (0.8.193): loaded from there,
     // nothing copied, nothing asked - never a duplicate.
     juce::File source = jsonFile;
+    chosenConfigurationDir = jsonFile.getParentDirectory();   // 0.8.214: looked into whatever file is loaded in the end
     if (jsonFile.getParentDirectory() != configurationsDirectory())
     {
         const auto existing = configurationsCopyOf(jsonFile);
@@ -10706,6 +10716,23 @@ void MainComponent::refreshArchiveSearchFolders(const juce::File& configurationF
         folders.push_back(own.getSiblingFile("OrganRarPackages"));
     }
     addList(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("ArchiveFolders.txt"));
+    // Locations.txt (0.8.214): the archive lines of the one list of this computer (read here as the file stands,
+    // so a line typed by hand serves at the next load too).
+    {
+        const auto file = locationsFile();
+        if (file.existsAsFile())
+        {
+            juce::StringArray lines;
+            lines.addLines(file.loadFileAsString());
+            for (const auto& line : lines)
+            {
+                const auto text = line.trim();
+                if (text.isEmpty() || text.startsWithChar('#') || !text.endsWithIgnoreCase(".rar")) continue;
+                const juce::File entry(text);
+                if (entry.existsAsFile()) archives.push_back(entry);
+            }
+        }
+    }
     SampleFiles::setSearchFolders(folders);
     SampleFiles::setChosenArchives(archives);
 }
@@ -10721,28 +10748,16 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     if (!archive.existsAsFile()) return;
     SampleFiles::addChosenArchives({ archive });
     noteSampleLocation(archive.getParentDirectory());   // 0.8.190: an unpacked set beside its archives is found there
-    // 0.8.207 REGRESSION FIX: the line went beside the configuration open at the time alone - another organ's
-    // folder - and the load of the configuration INSIDE the archive then called refreshArchiveSearchFolders
-    // with the new file, which rebuilt the serving set from the lists beside it (a virtual folder in the rar:
-    // none) and in the settings folder (empty): the archive just chosen dropped out and "Sample folder not
-    // found: Downloads\Rural Organ\Samply" stood under every division of the downloaded demo. The settings
-    // folder's list is the program's memory of every archive ever chosen: written always, the configuration's
-    // own list beside it when that folder is real.
-    std::vector<juce::File> lists{ juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("ArchiveFolders.txt") };
-    if (currentConfigurationFile != juce::File() && currentConfigurationFile.getParentDirectory().isDirectory())
-        lists.push_back(currentConfigurationFile.getParentDirectory().getChildFile("ArchiveFolders.txt"));
-    for (const auto& list : lists)
-    {
-        juce::StringArray lines;
-        if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
-        bool there = false;
-        for (const auto& line : lines) if (juce::File(line.trim()) == archive) { there = true; break; }
-        if (there) continue;
-        if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
-        lines.add(archive.getFullPathName());
-        list.replaceWithText(lines.joinIntoString("\n") + "\n");
-        CrashHandler::note("Archive remembered in " + list.getFullPathName() + ": " + archive.getFullPathName());
-    }
+    // 0.8.207: the settings folder's list is the program's memory of every archive ever chosen (a line beside the
+    // configuration open at the time went to another organ's folder and dropped out at the next load).
+    // 0.8.214: that memory is Locations.txt, one file for folders and archives; nothing is written beside a
+    // configuration any more (the user: "V Configurations to nemá co dělat").
+    bool there = false;
+    for (const auto& line : rememberedArchives) if (juce::File(line) == archive) { there = true; break; }
+    if (there) return;
+    rememberedArchives.add(archive.getFullPathName());
+    writeLocationsFile();
+    CrashHandler::note("Archive remembered in " + locationsFile().getFullPathName() + ": " + archive.getFullPathName());
 }
 
 void MainComponent::askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file, bool importing)
@@ -11722,21 +11737,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         plan.configurationFile = safeThis->configurationsDirectory().getChildFile(plan.configurationFile.getFileName());
         plan.configurationFile.getParentDirectory().createDirectory();
         if (SampleFiles::inArchive(odfFile))
-        {
-            // The archive itself (0.8.177; its folder before - every other archive of the folder served then).
-            const auto list = plan.configurationFile.getParentDirectory().getChildFile("ArchiveFolders.txt");
-            juce::StringArray lines;
-            if (list.existsAsFile()) lines.addLines(list.loadFileAsString());
-            const auto archive = SampleFiles::archiveOf(odfFile);
-            bool known = false;
-            for (const auto& line : lines) if (juce::File(line.trim()) == archive) known = true;
-            if (!known && archive.existsAsFile())
-            {
-                if (lines.isEmpty()) lines.add("# RAR archives of sample folders OrganSampler looks into when a sample folder is not on the disk (one per line: an archive, or a folder for every archive in it).");
-                lines.add(archive.getFullPathName());
-                list.replaceWithText(lines.joinIntoString("\n") + "\n");
-            }
-        }
+            safeThis->registerArchive(SampleFiles::archiveOf(odfFile));   // the archive itself into Locations.txt (0.8.177; 0.8.214: never beside the configuration)
         // The configuration file is written in the load box's callback below (0.8.193):
         // a file of the organ's name already in the configurations folder is replaced
         // only when the box says so - never overwritten unasked, never duplicated.
@@ -12257,6 +12258,36 @@ namespace
     // The sample locations of this computer (MainComponent::sampleLocations, 0.8.190),
     // for the candidates below: set whenever the settings are read or a location noted.
     juce::StringArray gSampleLocations;
+    // The folder of the file the user chose for this load (0.8.214): a search place of its own. The "same file
+    // already in the configurations folder" rule loaded the COPY and looked beside it alone - a zip in F:\ beside
+    // F:\haupwerk found nothing on a clean computer.
+    juce::File gChosenConfigurationDir;
+
+    // The roots of the fixed drives (0.8.214): on a computer with no sample location yet, the library root is
+    // looked for by its name at the top of every drive - one directory test per drive and tree, never a scan.
+    std::vector<juce::File> fixedDriveRoots()
+    {
+        std::vector<juce::File> roots;
+#if JUCE_WINDOWS
+        const DWORD mask = GetLogicalDrives();
+        for (int i = 0; i < 26; ++i)
+            if ((mask & (1u << i)) != 0)
+            {
+                const juce::String root = juce::String::charToString((juce::juce_wchar)('A' + i)) + ":\\";
+                if (GetDriveTypeW(root.toWideCharPointer()) == DRIVE_FIXED) roots.emplace_back(root);
+            }
+#else
+        roots.emplace_back("/");
+        const auto user = juce::SystemStats::getLogonName();
+        for (const auto& base : { juce::String("/media/") + user, juce::String("/run/media/") + user, juce::String("/mnt"), juce::String("/Volumes") })
+        {
+            const juce::File folder(base);
+            if (!folder.isDirectory()) continue;
+            for (const auto& child : SampleFiles::childDirectories(folder)) roots.push_back(child);
+        }
+#endif
+        return roots;
+    }
 
     // The direct subfolders of a sample location (32 at most), listed once per
     // load (0.8.202): the candidates of every tree ask for them.
@@ -12323,6 +12354,13 @@ namespace
             if (rootName.isNotEmpty()) candidates.add(configDir.getChildFile(rootName).getChildFile(relative));
             candidates.add(configDir.getChildFile(relative));
             if (absolute.isNotEmpty()) candidates.add(juce::File(absolute));
+            // The folder of the file the user chose (0.8.214), when the file loaded is its copy elsewhere.
+            if (gChosenConfigurationDir != juce::File() && gChosenConfigurationDir != configDir)
+            {
+                if (rootRelative.isNotEmpty()) candidates.add(gChosenConfigurationDir.getChildFile(rootRelative).getChildFile(relative));
+                if (rootName.isNotEmpty()) candidates.add(gChosenConfigurationDir.getChildFile(rootName).getChildFile(relative));
+                candidates.add(gChosenConfigurationDir.getChildFile(relative));
+            }
         }
         // The sample locations of this computer (0.8.190): the library root by its
         // name under each, and each as the root itself - a configuration kept in the
@@ -12349,6 +12387,11 @@ namespace
                 candidates.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
             }
         }
+        // Last: the library root by its name at the top of every fixed drive (0.8.214 - a
+        // clean computer knows no location yet; the user's "F:\haupwerk" beside a zip in F:\).
+        if (rootName.isNotEmpty())
+            for (const auto& root : fixedDriveRoots())
+                candidates.add(root.getChildFile(rootName).getChildFile(relative));
         return candidates;
     }
     // A folder whose path exists but for the case of its letters (0.8.147, #57: a
@@ -12395,6 +12438,8 @@ namespace
 void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration,
     const juce::File& configurationFile, const juce::File& selectedLibraryRoot)
 {
+    gChosenConfigurationDir = chosenConfigurationDir;   // 0.8.214: the chosen file's folder serves this load's lookups
+    struct ClearChosen { juce::File& member; ~ClearChosen() { gChosenConfigurationDir = {}; member = {}; } } clearChosen{ chosenConfigurationDir };
     auto manuals = configuration.getProperty("manualKeyboards", juce::var());
     // What is missing, by name: the user must know what to look for before a
     // folder dialog asks for "the root". Paths relative to the library root are
@@ -12572,7 +12617,18 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                             if (extra.toString().isEmpty()) continue;
                             const auto found = firstExistingDirectory(portableFolderCandidates(configuration, configurationFile,
                                 libraryRoot, extra.toString(), {}));
-                            if (found != juce::File()) resolved.add(found.getFullPathName());
+                            if (found == juce::File()) continue;
+                            resolved.add(found.getFullPathName());
+                            // The library root found through a further tree joins the locations too (0.8.214: a
+                            // division whose main tree is missing and whose second tree is here noted nothing).
+                            juce::File rootFound = found;
+                            juce::StringArray parts;
+                            parts.addTokens(slashes(extra.toString()), "/", "");
+                            parts.removeEmptyStrings();
+                            for (int n = parts.size(); n > 0 && rootFound != juce::File(); --n) rootFound = rootFound.getParentDirectory();
+                            const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+                            if (rootFound != juce::File())
+                                noteSampleLocation(rootName.isNotEmpty() && rootFound.getFileName().equalsIgnoreCase(rootName) ? rootFound.getParentDirectory() : rootFound);
                         }
                     if (auto* extras = item->getProperty("extraFolderPaths").getArray())
                         for (const auto& extra : *extras)
@@ -12641,14 +12697,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                         }
             }
 
-    // The sample locations noted above go into this configuration's var as well
-    // (0.8.190): its machine-specific keys were copied from the settings read at
-    // the top, and the parse that follows would put the old list back.
-    {
-        juce::Array<juce::var> locations;
-        for (const auto& location : sampleLocations) locations.add(location);
-        root->setProperty("sampleLocations", locations);
-    }
+    root->removeProperty("sampleLocations");   // 0.8.214: Locations.txt holds them, no configuration carries them
 
     // The pool of a portable configuration: trees relative to the library root
     // (or paths of another computer) become this computer's paths, found like
@@ -13073,7 +13122,7 @@ void MainComponent::beginStartupFolderLoading()
         {
             for (const auto& path : divisionTrees(manual)) treesUsed.insert(path);
             for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
-                if (entry.folders.empty() && !sampleTrees.empty() && divisionTrees(manual).empty()) treesUsed.insert(sampleTrees.front());
+                if (entry.folders.empty() && !sampleTrees.empty() && divisionTrees(manual).empty()) { for (const auto& candidate : sampleTrees) if (SampleFiles::isDirectory(juce::File(candidate))) { treesUsed.insert(candidate); break; } }   // the first tree that is here (0.8.214)
         }
         for (const auto& path : sampleTrees)
         {
@@ -13086,6 +13135,18 @@ void MainComponent::beginStartupFolderLoading()
     if (!jobs.empty() && !checkMemoryForFolders(folders)) jobs.clear();
     if (jobs.empty())
     {
+        // No tree of the configuration is on this computer (0.8.214): its voicing state is read all the same, so
+        // that the voicer KEEPS every entry - the grid cells, the transmissions and extensions, the volumes - for
+        // the trees to come. Before, nothing read it, and the relocation's reload began by saving the empty voicer
+        // over the file: the organ came back as a plain folder (the user's Stralsund, 27 Oct 2026).
+        if (voicer != nullptr && embeddedVoicingPresent && voicerStateFile.existsAsFile())
+        {
+            voicer->setActiveManualCount(manualCount + 1);
+            voicer->rebuildUI(stopsContent, stopsViewport);
+            voicer->loadState(voicerStateFile);
+            voicerStateLoaded = true;
+            CrashHandler::note("No sample folder tree to load: the configuration's voicing state read all the same (grid, transmissions and voicing kept for the trees to come)");
+        }
         if (pendingConfigurationRegistration != nullptr)
         {
             applyRegistrationState(*pendingConfigurationRegistration);
@@ -13134,7 +13195,7 @@ void MainComponent::beginStartupFolderLoading()
         { "Compiling the Stop List: voicing state", 0.65, [this]
             {
                 if (voicer == nullptr) return;
-                if (voicerStateFile.existsAsFile()) voicer->loadState(voicerStateFile);
+                if (voicerStateFile.existsAsFile()) { voicer->loadState(voicerStateFile); voicerStateLoaded = true; }
                 // The aliases of the Stop List table (typed there, or the Hauptwerk
                 // stop names of an import) - the voicing state carries them only
                 // once it was saved with them; a configuration whose state has no
@@ -14071,7 +14132,11 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
             // A row without folders is an empty container stop (a stop folder's
             // master); it is created together with the first tree the division uses
             // (or the pool's first tree).
-            const juce::String tree = !trees.empty() ? trees.front() : (sampleTrees.empty() ? juce::String() : sampleTrees.front());
+            // ... the first tree that IS on this computer (0.8.214: a missing first tree - the Rear package of
+            // the user's Stralsund - left the stop folders "Cornet [III]" and "Vox Humana Cornet [V]" unbuilt).
+            juce::String tree;
+            for (const auto& candidate : trees) if (SampleFiles::isDirectory(juce::File(candidate))) { tree = candidate; break; }
+            if (tree.isEmpty()) for (const auto& candidate : sampleTrees) if (SampleFiles::isDirectory(juce::File(candidate))) { tree = candidate; break; }
             if (tree.isNotEmpty()) map->push_back({ juce::File(tree), entry.name, "default", true, true, manual });
             continue;
         }
@@ -14374,16 +14439,8 @@ void MainComponent::relocateTreeSmart(int poolIndex, const juce::File& chosen)
         + (stillMissing.isEmpty() ? juce::String() : "; still missing: " + stillMissing.joinIntoString(", ")) + "; divisions reloaded: " + juce::String((int)users.size()));
     saveSettings();
     if (!users.empty()) reloadDivisions(users);
-    // The summary once the reload is over (0.8.204, #105: shown before it, the box and
-    // the loading window stood over each other and flickered).
-    if (relocations.size() > 1 || !stillMissing.isEmpty())
-    {
-        const juce::String text = "Found on this computer and loaded:\n" + lines.joinIntoString("\n")
-            + (stillMissing.isEmpty() ? juce::String() : "\n\nStill not found (the notice under the division stays - click it and choose a folder of that set):\n" + stillMissing.joinIntoString("\n"))
-            + "\n\nThe place is remembered as a sample location: the next configuration finds its folders there by itself.";
-        if (users.empty()) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found", text);
-        else runWhenLoaded([text] { juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Sample folders found", text); });
-    }
+    // No "Sample folders found" box any more (0.8.214, the user: needless) - the log line above says what was
+    // found, and the notice under a division names what is still missing.
 }
 
 void MainComponent::chooseFolderForMissingTree(int poolIndex)
@@ -16873,7 +16930,7 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
         for (int manual : mapped) for (const auto& path : divisionTrees(manual)) treesUsed.insert(path);
         for (int manual : mapped)   // containers of divisions without folders: created with the pool's first tree
             for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
-                if (entry.folders.empty() && !sampleTrees.empty() && divisionTrees(manual).empty()) treesUsed.insert(sampleTrees.front());
+                if (entry.folders.empty() && !sampleTrees.empty() && divisionTrees(manual).empty()) { for (const auto& candidate : sampleTrees) if (SampleFiles::isDirectory(juce::File(candidate))) { treesUsed.insert(candidate); break; } }   // the first tree that is here (0.8.214)
         for (const auto& path : sampleTrees)   // pool order
         {
             const juce::File tree(path);
@@ -16886,7 +16943,10 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
     for (int manual : manuals) list << (list.isEmpty() ? "" : ", ") << manual;
     CrashHandler::note((onlyTree.isNotEmpty() ? "Loading tree " + onlyTree + " for division(s) " : "Reloading division(s) ") + list
         + " with " + juce::String((int)jobs.size()) + " tree job(s)");
-    if (voicer) voicer->saveState(voicerStateFile);
+    // The voicer's state is saved only when the voicer holds one (0.8.214): an empty voicer that never read the
+    // configuration's state would wipe the file's grid, transmissions and voicing (the user's Stralsund).
+    if (voicer && (voicerStateLoaded || !engine.getStops().isEmpty())) voicer->saveState(voicerStateFile);
+    else CrashHandler::note("Reloading divisions: the voicer holds no state yet, the voicing file is left as it is");
     audioMuted.store(true);
     panic();
     // The divisions' old stops stay until the commit: the new stops of the same
@@ -16991,7 +17051,7 @@ void MainComponent::finishDivisionsLoadGrid(const std::vector<int>& manuals)
     {
         voicer->setActiveManualCount(manualCount + 1);
         voicer->rebuildUI(stopsContent, stopsViewport);
-        if (voicerStateFile.existsAsFile()) voicer->loadState(voicerStateFile);
+        if (voicerStateFile.existsAsFile()) { voicer->loadState(voicerStateFile); voicerStateLoaded = true; }
         bool layoutChanged = false;
         for (int manual : manuals)
         {
@@ -17915,6 +17975,10 @@ void MainComponent::showStopBuildingDialog(int)
             const auto found = cellPaths.find(event.eventComponent);
             if (found == cellPaths.end()) return;
             pathTip.setText(found->second, juce::dontSendNotification);
+            // White for a folder that is here, orange only for one that is not (0.8.214, the user).
+            const bool missing = found->second.startsWith("NOT FOUND");
+            pathTip.setColour(juce::Label::textColourId, missing ? onColour() : juce::Colours::white);
+            pathTip.setColour(juce::Label::outlineColourId, missing ? juce::Colours::darkorange : juce::Colours::grey);
             const int width = juce::jmin(getWidth() - 8,
                 (int)std::ceil(juce::GlyphArrangement::getStringWidth(pathTip.getFont(), found->second)) + 28);
             const auto cellBounds = getLocalArea(event.eventComponent, event.eventComponent->getLocalBounds());
@@ -18038,9 +18102,14 @@ void MainComponent::showStopBuildingDialog(int)
                 info.setText("No sample folder loaded yet: \"Load folder...\" adds a folder tree to a division; its stops "
                     "enter the table by the automatic rules.", juce::dontSendNotification);
             else
+            {
+                int missingTrees = 0;
+                for (const auto& path : pool) if (!SampleFiles::isDirectory(juce::File(path))) ++missingTrees;
                 info.setText("Sample folders in the loaded trees: " + juce::String(total) + ", used in the table: " + juce::String(used)
-                    + ", free: " + juce::String(juce::jmax(0, total - used)) + "   |   folder trees: " + juce::String((int)treeInfos.size())
+                    + ", free: " + juce::String(juce::jmax(0, total - used)) + "   |   folder trees: " + juce::String((int)pool.size())
+                    + (missingTrees > 0 ? ", " + juce::String(missingTrees) + " NOT FOUND on this computer (orange cells; replace them in \"Load folder...\", drop them in \"Unload folder...\")" : juce::String())
                     + "   |   stops: " + juce::String(stops), juce::dontSendNotification);
+            }
             unloadFolderButton.setEnabled(!treeInfos.empty());
             swapButton.setEnabled(owner.manualCount >= 1);
             resetButton.setEnabled(!treeInfos.empty());
@@ -18266,7 +18335,14 @@ void MainComponent::showStopBuildingDialog(int)
                 const bool assigned = entry.folders.count(perspective) != 0;
                 if (assigned)
                 {
-                    cellPaths[cell.button.get()] = resolve(manual, entry.folders.at(perspective)).getFullPathName();
+                    const auto folder = resolve(manual, entry.folders.at(perspective));
+                    // A folder that is nowhere - its tree not on this computer, or the folder gone from it (0.8.214):
+                    // orange, and the tooltip says so (the user's missing Rear package looked found before).
+                    const auto& ref = entry.folders.at(perspective);
+                    const bool treeMissing = ref.tree >= 0 && ref.tree < (int)pool.size() && !SampleFiles::isDirectory(juce::File(pool[(size_t)ref.tree]));
+                    const bool missing = treeMissing || !SampleFiles::isDirectory(folder);
+                    cellPaths[cell.button.get()] = (missing ? juce::String("NOT FOUND on this computer: ") : juce::String()) + folder.getFullPathName();
+                    if (missing) cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
                     cell.button->addMouseListener(this, false);
                 }
                 else
@@ -18688,11 +18764,28 @@ void MainComponent::showStopBuildingDialog(int)
             juce::PopupMenu menu;
             for (int m = 0; m <= owner.manualCount && m < kDivisions; ++m)
                 menu.addItem(m + 1, "Its stops into " + longNames()[m] + (drafts[(size_t)m].entries.empty() ? "  (empty)" : ""));
+            // The trees NOT on this computer, each to be replaced by a folder of this computer from here (0.8.214,
+            // the user: the missing ones only - a tree that is here is never "replaced"); the folder chosen is
+            // searched the smart way (relocateTreeSmart: the tree, the others around it).
+            bool anyMissing = false;
+            for (int t = 0; t < (int)pool.size(); ++t)
+            {
+                if (SampleFiles::isDirectory(juce::File(pool[(size_t)t]))) continue;
+                if (!anyMissing) menu.addSeparator();
+                anyMissing = true;
+                menu.addItem(1001 + t, "NOT FOUND on this computer: replace \"" + tailText(pool[(size_t)t]) + "\" with a folder on this computer...");
+            }
             juce::Component::SafePointer<StopListDialog> safeThis(this);
             menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadFolderButton), [safeThis](int result)
             {
                 if (safeThis == nullptr || result <= 0) return;
                 MainComponent& o = safeThis->owner;
+                if (result >= 1001)
+                {
+                    const int t = result - 1001;
+                    if (t < (int)safeThis->pool.size()) o.chooseFolderForMissingTree(t);
+                    return;
+                }
                 o.reopenStopBuildManual = result - 1;
                 o.selectManualFolder(result - 1);
             });
@@ -18713,39 +18806,18 @@ void MainComponent::showStopBuildingDialog(int)
             juce::PopupMenu menu;
             for (int t = 0; t < (int)pool.size(); ++t)
                 menu.addItem(t + 1, juce::File(pool[(size_t)t]).getFileName() + "  (" + juce::String(stopsUsingTree(t)) + " stop(s))   "
-                    + pool[(size_t)t]);
+                    + pool[(size_t)t] + (SampleFiles::isDirectory(juce::File(pool[(size_t)t])) ? juce::String() : juce::String("   - NOT FOUND on this computer")));
             if (!pool.empty())
             {
                 menu.addSeparator();
                 menu.addItem((int)pool.size() + 1, "Unload all folder trees (" + juce::String((int)pool.size()) + ")");
-                // A tree replaced by another folder (moved disk, a configuration from
-                // elsewhere): the rows keep their folders, the divisions reload.
-                menu.addSeparator();
-                for (int t = 0; t < (int)pool.size(); ++t)
-                    menu.addItem(2001 + t, "Replace \"" + juce::File(pool[(size_t)t]).getFileName() + "\" with another folder..."
-                        + (SampleFiles::isDirectory(juce::File(pool[(size_t)t])) ? (SampleFiles::inArchive(juce::File(pool[(size_t)t])) ? "   (in " + SampleFiles::archiveNameOf(juce::File(pool[(size_t)t])) + ")" : juce::String()) : juce::String("   (not on this computer)")));
+                // The replacing of a tree lives in "Load folder..." since 0.8.214 (the user: the same offer in two
+                // menus doubled and blurred it) - this menu unloads only.
             }
             juce::Component::SafePointer<StopListDialog> safeThis(this);
             menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&unloadFolderButton), [safeThis](int result)
             {
                 if (safeThis == nullptr || result <= 0) return;
-                if (result >= 2001)
-                {
-                    const int t = result - 2001;
-                    if (t >= (int)safeThis->pool.size()) return;
-                    MainComponent& owner = safeThis->owner;
-                    const juce::File old(safeThis->pool[(size_t)t]);
-                    owner.folderChooser = std::make_unique<juce::FileChooser>(
-                        "The folder that replaces \"" + old.getFileName() + "\" (the stop folders of the tree lie in it)",
-                        old.isDirectory() ? old.getParentDirectory() : juce::File::getSpecialLocation(juce::File::userHomeDirectory), "", true);
-                    owner.folderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
-                        [&owner, t](const juce::FileChooser& chooser)
-                        {
-                            const auto folder = chooser.getResult();
-                            if (folder.isDirectory()) owner.relocateTreeSmart(t, folder);   // 0.8.202: found from any folder of the set, the others around it
-                        });
-                    return;
-                }
                 if (result - 1 > (int)safeThis->pool.size()) return;
                 if (result - 1 == (int)safeThis->pool.size())
                 {
@@ -19314,10 +19386,7 @@ void MainComponent::loadSettings()
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
     configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
-    sampleLocations.clear();
-    if (auto* locations = parsed.getProperty("sampleLocations", juce::var()).getArray())
-        for (const auto& location : *locations) if (location.toString().isNotEmpty()) sampleLocations.addIfNotAlreadyThere(location.toString());
-    gSampleLocations = sampleLocations;
+    readLocationsFile(parsed);   // 0.8.214: Locations.txt (the settings key taken over once)
     guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
     if (auto* dismissed = parsed.getProperty("guidedTourDismissed", juce::var()).getArray())
         for (const auto& name : *dismissed) if (name.toString().isNotEmpty()) guidedTourDismissed.addIfNotAlreadyThere(name.toString());
@@ -19467,8 +19536,12 @@ void MainComponent::loadSettings()
     // voicer.json sidecar. Folder loading happens later, and its existing
     // post-load path will apply this state once the stops actually exist.
     const auto embeddedVoicing = parsed.getProperty("voicingSettings", juce::var());
+    embeddedVoicingPresent = embeddedVoicing.isObject();
     if (embeddedVoicing.isObject())
+    {
         voicerStateFile.replaceWithText(juce::JSON::toString(embeddedVoicing, true));
+        voicerStateLoaded = false;   // 0.8.214: a fresh file the voicer has not read yet
+    }
 
     // Master volume
     double masterDb = parsed.getProperty("masterVolumeDb", kDefaultMasterDb);
@@ -19733,15 +19806,63 @@ void MainComponent::loadSettings()
                     if (ref.tree >= 0 && ref.tree < (int)remap.size()) ref.tree = remap[(size_t)ref.tree];
         }
     }
-    for (auto& path : sampleTrees)
-        if (!SampleFiles::isDirectory(juce::File(path)))
-            for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
-                for (const auto& tree : manualConfigs[(size_t)manual].stopBuild.legacyTrees)
-                    if (SampleFiles::isDirectory(juce::File(tree)) && leafName(tree) == leafName(path)) path = tree;
+    // A pool path that vanished is replaced only by a tree whose path ends with the SAME relative path below the
+    // library root (0.8.214; the leaf name alone put 003135/pipe/PE into the slot of the missing 003136/pipe/PE -
+    // another package with a "PE" too: the notice vanished, the Stop List showed Rear folders that do not exist,
+    // and the same tree loaded twice gave every stop its ranks twice). A missing tree stays missing.
+    {
+        const auto rootName = parsed.getProperty("sampleLibraryRootName", "").toString();
+        auto belowRoot = [&rootName](const juce::String& path)
+        {
+            auto parts = pathParts(path);
+            int from = -1;
+            if (rootName.isNotEmpty())
+                for (int i = 0; i < parts.size(); ++i) if (parts[i].equalsIgnoreCase(rootName)) from = i + 1;
+            if (from < 0) from = juce::jmax(0, parts.size() - 3);   // no root in the path: its last three parts
+            parts.removeRange(0, from);
+            return parts;
+        };
+        for (auto& path : sampleTrees)
+            if (!SampleFiles::isDirectory(juce::File(path)))
+            {
+                const auto tail = belowRoot(path);
+                if (tail.isEmpty()) continue;
+                for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+                    for (const auto& tree : manualConfigs[(size_t)manual].stopBuild.legacyTrees)
+                        if (SampleFiles::isDirectory(juce::File(tree)) && tailsEqual(pathParts(tree), tail, tail.size()))
+                        {
+                            CrashHandler::note("Pool tree " + path + " taken over by " + tree + " (the same path below the library root)");
+                            path = tree;
+                        }
+            }
+    }
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)   // trees of divisions without a table are pool trees too
         if (!manualConfigs[(size_t)manual].stopBuild.active)
             for (const auto& tree : manualConfigs[(size_t)manual].stopBuild.legacyTrees)
                 if (SampleFiles::isDirectory(juce::File(tree))) addTreeToPool(tree);
+    // One folder once in the pool (0.8.214): two slots on the same tree loaded it twice and doubled every rank.
+    {
+        std::vector<int> remap;
+        std::vector<juce::String> unique;
+        for (const auto& path : sampleTrees)
+        {
+            int found = -1;
+            for (int j = 0; j < (int)unique.size() && found < 0; ++j)
+                if (juce::File(unique[(size_t)j]) == juce::File(path)) found = j;
+            if (found < 0) { found = (int)unique.size(); unique.push_back(path); }
+            remap.push_back(found);
+        }
+        if (unique.size() != sampleTrees.size())
+        {
+            for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+                for (auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
+                    for (auto& [perspective, ref] : entry.folders)
+                        if (ref.tree >= 0 && ref.tree < (int)remap.size()) ref.tree = remap[(size_t)ref.tree];
+            CrashHandler::note("Tree pool: " + juce::String((int)(sampleTrees.size() - unique.size())) + " duplicate slot(s) merged, "
+                + juce::String((int)unique.size()) + " tree(s) kept");
+            sampleTrees = unique;
+        }
+    }
     syncDivisionTreeLists();
 
     // A list that is missing or empty in the settings means the defaults
@@ -19932,11 +20053,7 @@ void MainComponent::saveSettings()
     obj->setProperty("transposeReleaseLevelMatch", transposeReleaseLevelMatch);
     obj->setProperty("loadLastConfigurationAtStartup", loadLastConfigurationAtStartup);
     obj->setProperty("configurationsFolder", configurationsFolder);   // 0.8.190
-    {
-        juce::Array<juce::var> locations;
-        for (const auto& location : sampleLocations) locations.add(location);
-        obj->setProperty("sampleLocations", locations);
-    }
+    // The sample locations live in Locations.txt since 0.8.214 (no key in settings.json).
     {
         juce::Array<juce::var> dismissed;
         for (const auto& name : guidedTourDismissed) dismissed.add(name);
@@ -20495,7 +20612,75 @@ void MainComponent::noteSampleLocation(const juce::File& folder)
     for (const auto& known : sampleLocations) if (juce::File(known) == folder) return;
     sampleLocations.add(folder.getFullPathName());
     gSampleLocations = sampleLocations;
+    writeLocationsFile();
     CrashHandler::note("Sample location remembered: " + folder.getFullPathName());
+}
+
+// Locations.txt beside the settings (0.8.214): ONE readable list of where the samples of this computer live -
+// the folders under which sample folder trees are looked for, and the RAR archives the user chose (read as they
+// are). The user: a text file anybody reads and edits, not a key in settings.json; and never a copy of it beside
+// a configuration (ArchiveFolders.txt went there before). Old lists are taken over once: the settings key
+// "sampleLocations" and ArchiveFolders.txt of the settings folder.
+juce::File MainComponent::locationsFile() const
+{
+    return settingsFile.getSiblingFile("Locations.txt");
+}
+
+void MainComponent::readLocationsFile(const juce::var& settings)
+{
+    sampleLocations.clear();
+    rememberedArchives.clear();
+    const auto file = locationsFile();
+    bool migrated = false;
+    if (file.existsAsFile())
+    {
+        juce::StringArray lines;
+        lines.addLines(file.loadFileAsString());
+        for (const auto& line : lines)
+        {
+            const auto text = line.trim();
+            if (text.isEmpty() || text.startsWithChar('#')) continue;
+            if (text.endsWithIgnoreCase(".rar")) rememberedArchives.addIfNotAlreadyThere(text);
+            else sampleLocations.addIfNotAlreadyThere(text);
+        }
+    }
+    else
+    {
+        if (auto* locations = settings.getProperty("sampleLocations", juce::var()).getArray())
+            for (const auto& location : *locations) if (location.toString().isNotEmpty()) sampleLocations.addIfNotAlreadyThere(location.toString());
+        const auto old = settingsFile.getSiblingFile("ArchiveFolders.txt");
+        if (old.existsAsFile())
+        {
+            juce::StringArray lines;
+            lines.addLines(old.loadFileAsString());
+            for (const auto& line : lines)
+            {
+                const auto text = line.trim();
+                if (text.isEmpty() || text.startsWithChar('#')) continue;
+                if (juce::File(text).existsAsFile()) rememberedArchives.addIfNotAlreadyThere(text);
+                else if (juce::File(text).isDirectory()) sampleLocations.addIfNotAlreadyThere(text);   // an old folder line: a location now
+            }
+        }
+        migrated = !sampleLocations.isEmpty() || !rememberedArchives.isEmpty();
+    }
+    gSampleLocations = sampleLocations;
+    if (migrated)
+    {
+        writeLocationsFile();
+        CrashHandler::note("Locations.txt written from the old settings key and ArchiveFolders.txt: " + juce::String(sampleLocations.size())
+            + " folder(s), " + juce::String(rememberedArchives.size()) + " archive(s)");
+    }
+}
+
+void MainComponent::writeLocationsFile() const
+{
+    juce::StringArray lines;
+    lines.add("# OrganSampler - where the samples of this computer live, one path per line (edit freely).");
+    lines.add("# A folder: sample folder trees a configuration names are looked for under it (by the library root's name, by their path).");
+    lines.add("# A .rar file: an archive you chose; sample folders are read from it as it is. The program adds lines as organs are loaded, saved and archives chosen.");
+    for (const auto& location : sampleLocations) lines.add(location);
+    for (const auto& archive : rememberedArchives) lines.add(archive);
+    locationsFile().replaceWithText(lines.joinIntoString("\n") + "\n");
 }
 
 juce::File MainComponent::copyCacheDirectory() const
@@ -25448,7 +25633,8 @@ void MainComponent::showConfigurationEditor()
                    "there, Save Configuration and Load Configuration start there. Documents/OrganSampler/Configurations by default. "
                    "The folder can be moved or chosen anew at any time - the sample folders are found through the sample locations below.",
                 "Where configurations and samples live");
-            addButton("Sample and IR locations: " + (o.sampleLocations.isEmpty() ? juce::String("none yet") : juce::String(o.sampleLocations.size()) + " folder(s)"), "Add folder...", [&o]
+            addButton("Sample and IR locations: " + (o.sampleLocations.isEmpty() && o.rememberedArchives.isEmpty() ? juce::String("none yet")
+                    : juce::String(o.sampleLocations.size()) + " folder(s), " + juce::String(o.rememberedArchives.size()) + " archive(s)"), "Add folder...", [&o]
                 {
                     o.sampleLocationChooser = std::make_unique<juce::FileChooser>("A folder under which sample folders or archives lie", juce::File());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -25462,20 +25648,25 @@ void MainComponent::showConfigurationEditor()
                             safeThis->saveSettings();
                             safeThis->refreshConfigurationEditor();
                         });
-                }, "Folders under which your sample folders, archives and impulse responses lie" + (o.sampleLocations.isEmpty() ? juce::String() : ": " + o.sampleLocations.joinIntoString("; "))
+                }, "Folders under which your sample folders, archives and impulse responses lie, and the RAR archives you chose" + (o.sampleLocations.isEmpty() ? juce::String() : ": " + o.sampleLocations.joinIntoString("; "))
+                   + (o.rememberedArchives.isEmpty() ? juce::String() : "; archives: " + o.rememberedArchives.joinIntoString("; "))
                    + ". A sample folder tree or an IR a configuration names is looked for under each of them - by the name of the library root, "
                    "by its own path, by the tail of its old path - before you are asked for it. The program adds them by itself: the folder above "
                    "the library root at a portable save, the root found at a load, the folder of every archive you choose, the collection of every "
-                   "IR you choose; add one by hand when samples or IRs live elsewhere.",
+                   "IR you choose; add one by hand when samples or IRs live elsewhere. The list is the text file Locations.txt beside the settings (one path per line, editable).",
                 "Where configurations and samples live");
+            addButton("Sample and IR locations: the file Locations.txt", "Show", [&o] { o.writeLocationsFile(); o.locationsFile().revealToUser(); },
+                "Opens the folder of Locations.txt - the list of sample locations and chosen archives as a text file, one path per line; edit it in any editor, "
+                "the program reads it at the next load.", "Where configurations and samples live");
             addButton("Sample and IR locations: forget them all", "Forget", [&o]
                 {
                     o.sampleLocations.clear();
                     gSampleLocations.clear();
-                    CrashHandler::note("Sample locations forgotten");
+                    o.writeLocationsFile();
+                    CrashHandler::note("Sample locations forgotten (the archives chosen stay in Locations.txt)");
                     o.saveSettings();
                     o.refreshConfigurationEditor();
-                }, "Empties the list of sample locations; the program fills it again as organs are saved, loaded and archives chosen.",
+                }, "Empties the list of sample folders (the archives you chose stay); the program fills it again as organs are saved, loaded and archives chosen.",
                 "Where configurations and samples live", !o.sampleLocations.isEmpty());
             {
                 juce::StringArray names;

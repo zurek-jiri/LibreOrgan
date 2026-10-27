@@ -12,6 +12,45 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.214] - 2026-10-27
+
+### Fixed
+- A configuration downloaded onto the disk that holds its samples found none
+  of them on a clean computer when a copy of it already lay in the
+  configurations folder: only the copy's folder was searched. The folder of
+  the file you chose is searched too, and as a last resort the library root
+  is looked for by its name at the top of every fixed drive.
+- A configuration none of whose folder trees were on the computer lost its
+  grid layout, transmissions, extensions and voicing as soon as the first
+  tree was replaced: the voicing state had never been read, and the reload
+  began by saving the empty state over it. The state is read even with no
+  tree loaded, and a reload never saves over a state the program has not read.
+- A missing folder tree took the place of another package's tree with the
+  same last folder name ("003135/pipe/PE" for the missing "003136/pipe/PE"):
+  the "not found" notice vanished, the Stop List showed folders that do not
+  exist, and the tree loaded twice doubled every stop's ranks. A tree is
+  taken over only by one with the same path below the library root; the pool
+  never holds one folder twice; a missing tree stays missing.
+- The crescendo and the combinations switched nothing for a stop loaded
+  without the perspective its saved entry named (a missing package): stops
+  are matched by name and division.
+
+### Changed
+- Where samples live is one readable text file, Locations.txt beside the
+  settings: the sample folders and the RAR archives you chose, one path per
+  line, editable. Nothing is written beside a configuration any more
+  (ArchiveFolders.txt there is read once and taken over); the Configuration
+  Editor's "Sample and IR locations" shows both and opens the file.
+- Stop List: a folder cell whose folder is not on this computer is orange
+  with a "NOT FOUND" tooltip (the tooltip of a folder that is here is white),
+  the line below the table counts the missing trees, "Load folder..." offers
+  to replace each missing tree with a folder of this computer and "Unload
+  folder..." marks them so they can be dropped; the "Replace ... with another
+  folder" lines of "Unload folder..." and the "Sample folders found" box are
+  gone. A stop folder of a division whose first tree is missing is built
+  with the first tree that is here (Stralsund's Cornet [III] and Vox Humana
+  Cornet [V] were left out with the Rear package missing).
+
 ## [0.8.213] - 2026-10-26
 
 ### Fixed
