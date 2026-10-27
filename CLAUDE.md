@@ -1516,6 +1516,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the loader's per-file reads on 16 threads reach ~80 % of the disk's sequential ceiling, the CPU is no limit, the
   line IS the disk. The user's 358 MB/s was a cold load from the SATA SSD (the page cache gives 1 300-3 900). No
   code change; the manual's 4.4 (SATA ~500 MB/s) stands. Never promise more from a SATA SSD.
+## Pending for the next session (delete when done)
+- NO QUESTION AFTER THE ARCHIVE SEARCH (the user, 27 Oct 2026 evening, on 0.8.219: "dialog po prohledání archivů
+  klade otázku ... included? Ale nelze na ni odpovědět. Nedělej takovou otázku, prostě ty archivy všechny vezmi bez
+  otázky"): the box of `offerDefinitionBeside` ("Load the organ from the definition, with all of them (... included)?",
+  Load from the definition / Not now) goes - when the archives beside the chosen one with a name like it hold the
+  definition, take ALL of them at once and load (the log line and, at most, a NOTICE through queueNotice saying which
+  archives were taken; several definitions keep the choice box). Most likely the same for `offerNeighbourArchives`'
+  "Read them too?" box: take them, say so. Also find out WHY the box could not be answered - it is a
+  juce::AlertWindow::showAsync opened from inside the index job's completion (the ThreadWithProgressWindow of
+  `indexArchivesThen` may still be the front modal component when the box comes up, or a second modal box stands
+  over it): check the modal stack order before any other AlertWindow is opened from a `then` of indexArchivesThen.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
