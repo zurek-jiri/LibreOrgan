@@ -1365,6 +1365,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
 ## Pending for the next session (delete when done)
+- HAUPTWERK LAYOUT PROBE (the user, 27 Oct 2026, clean install again: the new Stralsund zip in Downloads, root name
+  "OrganInstallationPackages", trees 00313x/pipe/..., the samples in the NORMAL Hauptwerk place
+  D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003135 - "8 tree(s) not on this computer",
+  zero trees; the voicing was kept, 0.8.214's new path works). WHY: the lookup tries the zip's folder, the copy's
+  folder, Locations.txt (empty after the wipe) and `<drive>:\<rootName>\<relative>` = D:\OrganInstallationPackages\...
+  - the Hauptwerk layout puts the root TWO folders deeper (Hauptwerk\HauptwerkSampleSetsAndComponents), which the
+  drive-root probe does not reach (F:\haupwerk worked only because it sits at the root). PLAN: extend
+  `fixedDriveRoots`-based candidates with the known Hauptwerk layout and one level of folders: for every fixed drive
+  list its first-level folders (cap 64, skip Windows/Program Files/$Recycle.Bin) and try `<child>\<rootName>\<relative>`
+  and `<child>\HauptwerkSampleSetsAndComponents\<rootName>\<relative>` (D:\Hauptwerk\HSSC\OIP, C:\Hauptwerk5..9\HSSC
+  on this machine); Hauptwerk's own default is C:\Hauptwerk\HauptwerkSampleSetsAndComponents. Still one directory
+  test per candidate, no scan. Note it in the manual's "Where configurations and samples live".
 - RELEASE FADES 110 ms (the user, 27 Oct 2026: "default pro Sustain fade-out bude 110 ms, default pro release fade-in
   bude 110 ms"): today both default to 70 ms in FOUR places that must change together - the sliders' start values
   (MainComponent.cpp ctor ~1032 / ~1053), the settings fallback when the key is absent (`parsed.getProperty(
