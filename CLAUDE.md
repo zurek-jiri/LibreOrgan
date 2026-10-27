@@ -1443,7 +1443,9 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   bytes 16..19 from the last piece's header. (2) unarr reads in small pieces: a seek + read of the volume per piece
   gave 6 MB/s (libarchive 100+ through the same VirtualStream, which hands it 1 MB at a time) - `readInto` serves
   from a 1 MB window (`windowStart/windowLength`, the ranges filled in a row). Verified: CHECK "82 compared, 0
-  differ" before the fixes except the 3 split ones. (3) Measurement end: `outputGainHoldUntilMs`
+  differ" before the fixes except the 3 split ones; after them 85/85 at 108 MB/s. Released as commit b4d7249, tag
+  v0.8.217 (the submodule's first CI build on Linux/macOS: watch the "off64_t" typedef and the `_POSIX_C_SOURCE`
+  define of stream.c if it fails). (3) Measurement end: `outputGainHoldUntilMs`
   = now + 5000 (the level stays at -52 dB five seconds after the run and the report, then 26 dB/s). (4) MANUAL: no
   version number anywhere any more ("každá verze si nese svůj manuál" - never write "(0.8.xxx)" or "since 0.8.xxx"
   into USER_MANUAL.md again); 1.5 has "### Where the files are" (settings folder per OS: Windows
