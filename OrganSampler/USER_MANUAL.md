@@ -452,8 +452,7 @@ Principal 8
   named after its sibling or its parent with "tr" or "trem" appended
   ("Pos_Bourdontr" beside "Pos_Bourdon", "HW_Gedackt8TREM" beside
   "HW_Gedackt8") is the tremmed recording of that stop and is skipped by every
-  tree scan too (0.8.135; such folders stood in the pool as a second copy of
-  every stop). A folder a Stop List row names explicitly is loaded whatever
+  tree scan too. A folder a Stop List row names explicitly is loaded whatever
   its name.
 - **How the folder-name patterns match.** A pattern without a star matches
   anywhere in the folder name ("trem" matches "Principal 8 trem" and
@@ -502,6 +501,10 @@ as a folder, and reads the samples out of the archives.
   files, a compressed one at the speed of the decompression (100-200 MB per
   second and core, all cores at once). RAR 4 and RAR 5; a solid archive is
   read in sequence, which is slower; password-protected archives are refused.
+  Two readers are built in: libarchive, and for the files it cannot unpack
+  (a definition packed as text, the archives of older WinRAR versions with
+  their filters - the Dom Bedos set) unarr; the program switches by itself
+  and the activity log says so.
   What you gain: the disk space (a packed set is a half to two thirds of the
   unpacked one), fewer bytes read from a slow disk, and nothing to unpack.
   What you pay: the first load indexes the archive, and a compressed set
@@ -545,18 +548,18 @@ A **configuration** is one file holding everything about an instrument: the
 folder trees, the Stop List, voicing, audio and MIDI settings, couplers,
 combinations, crescendo, window layout - the organ definition, written by the
 program. *Save Configuration* and *Load Configuration* are in the top bar;
-*Load Configuration* takes a configuration (`.json`), a Hauptwerk organ
-definition (see "Hauptwerk organ definitions") or a RAR archive holding
-either, read straight from the archive ("The usual ways to an organ" walks
-through the common cases). A
-configuration counts as open once it was loaded or saved in the session (its
-name is in the window title). When you quit, or load another configuration,
-while the open configuration has unsaved changes, the program asks whether to
-save the changes first: *Save* writes them into the file and goes on, *Don't
-Save* goes on and leaves the file as it was, *Cancel* stays. An instrument
-built with no file open is offered a new file the same way (*Save As...*).
-*Shut down PC* never asks:
-it saves into the open configuration (or into a rescue file) and shuts down.
+*Load Configuration* takes a configuration (`.json`, or the published `.zip`),
+a Hauptwerk organ definition (see "Loading a Hauptwerk organ definition
+(ODF)") or a RAR archive holding either, read straight from the archive ("The
+usual ways to an organ" walks through the common cases). A configuration
+counts as open once it was loaded or saved in the session (its name is in the
+window title). When you quit, or load another configuration, while the open
+configuration has unsaved changes, the program asks whether to save them
+first: *Save* writes them into the file and goes on, *Don't Save* goes on and
+leaves the file as it was, *Cancel* stays. An instrument built with no file
+open is offered a new file the same way (*Save As...*). *Shut down PC* never
+asks: it saves into the open configuration (or into a rescue file) and shuts
+down.
 
 Before the samples of a loaded configuration (or of a Hauptwerk organ
 definition) load, a box asks how they are to be held in RAM: *Sample storage
@@ -564,10 +567,58 @@ in RAM*, *Compress samples in RAM* and *Sample rate on loading* (see the
 Configuration Editor's Engine section for what they mean). The box shows the
 configuration file's own values when it carries them, else this computer's
 last choices; what you choose loads and is saved with the configuration.
-*Cancel* leaves the loading alone.
-Starting the program without *Load the last configuration at startup* begins
-with an empty instrument; nothing stops you from loading folders and playing
-without any configuration at all.
+*Cancel* leaves the loading alone. Starting the program without *Load the
+last configuration at startup* begins with an empty instrument; nothing stops
+you from loading folders and playing without any configuration at all.
+
+### Where the files are
+
+**The settings of this computer** - the application-data folder:
+
+- Windows: `C:\Users\<you>\AppData\Roaming\OrganSampler`
+- macOS: `~/Library/OrganSampler` (the `Library` folder of your home folder)
+- Linux: `~/.config/OrganSampler`
+
+In it: `settings.json` (the program's state, this computer's settings and the
+name of the open configuration), `Locations.txt` (where your samples and
+archives are - below), `Patterns.json` (your folder-name patterns),
+`ArchiveIndex` (the indexes of the RAR archives read), `FilledPipesCache` (the
+copies of the filled pipes, unless you chose another folder), `CrashLogs`
+(the activity log and crash reports), `Reports` (problem reports) and
+`ImportReports` (the Hauptwerk import reports).
+
+**Your organ configurations** - the configurations folder:
+`C:\Users\<you>\Documents\OrganSampler\Configurations` on Windows,
+`~/Documents/OrganSampler/Configurations` on macOS and Linux; another folder
+is chosen in the Configuration Editor (*Configurations folder*). Every import
+writes there, *Save Configuration* and *Load Configuration* start there; a
+configuration opened from anywhere else (Downloads, a zip from GitHub, inside
+an archive) is copied there by the load box, or loaded where it is. The
+exports for publishing go into its `Publish` subfolder.
+
+**Sample folders**: anywhere you like - one place per disk is best. A
+configuration names its folder trees relative to the library root
+(`OrganInstallationPackages/003135/pipe/HW`, with the root's name), never by
+an absolute path, so the same file serves on any disk and any computer.
+
+**RAR archives**: expected nowhere. The program reads only the archives you
+chose yourself - in *Load folder*, *Load Configuration* or *Merge* - and
+never opens an archive it merely found lying somewhere.
+
+**How the program learns the places**: it remembers every place you choose -
+the library root of every configuration loaded or saved, the folder of every
+archive you open, the folder you point to when a tree is missing (the orange
+"Sample folder not found" notice under the division: click it and choose any
+folder of the set), the collection of every impulse response you choose - in
+the text file `Locations.txt` beside the settings, one path per line, folders
+and archives alike, readable and editable in any text editor. At a load every
+tree is looked for at the path it had, then under every remembered location,
+beside the configuration file, and on a fresh computer at the top of every
+fixed drive and in the Hauptwerk layout
+(`...\HauptwerkSampleSetsAndComponents\OrganInstallationPackages`). The
+Configuration Editor shows the list (*Sample and IR locations*: *Show*, *Add
+folder*, *Forget*). The details and the lookup order: "Where configurations
+and samples live".
 
 ### Loading a Hauptwerk organ definition (ODF)
 
@@ -587,14 +638,14 @@ sample folders, the perspectives
 perspective patterns), and the per-pipe level adjustments as the voicing.
 Hauptwerk has no volume per perspective, only the pipes, so a perspective
 recorded quieter is quieter in every one of its pipes; OrganSampler has three
-steps, and the import uses them (0.8.126): the median of all pipe levels of a
+steps, and the import uses them: the median of all pipe levels of a
 division's perspective becomes that route's volume (the division dialog's
 audio tab), the median of what is left becomes the stop's volume (averaged
 over its perspectives; most pipes stand at 0 dB, a few voiced ones must not
 pull the whole stop), the rest the per-key voicing. The way from a
 stop to its folders is the definition's own: stop > its StopRank rows > the
 ranks > the folders of their pipe samples; the folders decide what a stop
-is. Who owns a rank several stops play (0.8.135): the stop whose name the
+is. Who owns a rank several stops play: the stop whose name the
 rank carries ("Rear: GO. Bombarde 16" belongs to "GO. Bombarde 16", whatever
 the file order - the pedal's "Ped. Bombarde 16" borrows it, not the other
 way round), else the stop playing it straight over its whole division, then
@@ -613,10 +664,10 @@ division; a FLOATING division - one no keyboard reaches without a coupler
 8" on the Great, "Ped. Clairon en chamade" on the Pedal, "5. Tuba 16" on V).
 A keyboard whose own division its keys reach only under a condition switch
 (Ashton: "1. unison off" conditions the link from the keys of 1. manual to
-the Choir) gets that switch as its Unison Off coupler (0.8.144). A stop
+the Choir) gets that switch as its Unison Off coupler. A stop
 none of whose ranks has release samples (a carillon, chimes) is a
 one-shot stop: its folder names join the One-shot Patterns of the
-configuration. The couplers of the definition (0.8.138: its KeyAction rows -
+configuration. The couplers of the definition (its KeyAction rows -
 the keys of one keyboard playing another keyboard or a division, shifted by
 0, 12 or -12 semitones, or the top note only) become the couplers of ours
 that exist for them - a keyboard pulling a higher division at 8', 16', 4' or
@@ -624,20 +675,20 @@ as a melody coupler, itself at 16' and 4', I from II or III - and only those are
 shown on the console; a coupler of the definition OrganSampler has no
 coupler for (one to a floating division whose stops lie in several
 divisions, a 24' coupler) is named in the import's report. The catalog of
-couplers has the "downward" ones since 0.8.139 - a keyboard pulling a lower
+couplers has the "downward" ones too - a keyboard pulling a lower
 manual, I/II, I/III, II/III and so on at 8', 16', 4', as a melody or bass
 coupler, listed after the usual ones and hidden until shown (Couplers
 dialog) or brought by an import; the bass couplers to the pedal are the
 "pedal from the manual" couplers (the manual's lowest key plays the pedal) -
-Doesburg's "bass_1" to "bass_4" become them (0.8.140). After an import the
+Doesburg's "bass_1" to "bass_4" become them. After an import the
 console shows exactly the definition's couplers: every other coupler of the
-catalog is hidden, whatever the organ before had shown (0.8.142). The
+catalog is hidden, whatever the organ before had shown. The
 stops take their places on the grid from the definition's jamb page - the
 page holding the most drawknobs ("Simple Jamb"): within every division,
 the drawknobs' columns and rows become the grid's columns and rows, the
 picture copied (a drawknob whose name the definition cut short is found
 all the same); a division laid out too wide or too tall to be ours stays
-in the table's order (0.8.142). A division column narrower than the page's
+in the table's order. A division column narrower than the page's
 columns folds the rightmost column into its neighbour (left, right, left,
 right ...); widen the division's column to see the page's layout. An extension's button carries the
 definition's name of it ("P. tuba 4"), not the owner's name with the
@@ -650,7 +701,7 @@ carries the Hauptwerk name and no folders, its children - one per rank, the
 ranks matched across the perspectives by their names - carry the folders,
 so the button plays them all. Ranks of different perspectives stay one
 stop with one folder per perspective, as ever. The compass of every stop
-comes from the definition too (0.8.128): the keys its StopRank rows give it
+comes from the definition too: the keys its StopRank rows give it
 - a Cornet from c1 up, a stop of several pieces as their union - and the
 keys of the division outside them are switched off in the stop's voicing,
 so they stay silent and no filled pipes are made for them (switch them on
@@ -658,7 +709,7 @@ again in the voicing dialog if you want them filled). The speed of the
 definition's tremulant (the middle of the range it wanders in) becomes the
 tremulant rate of every division whose pipes it modulates; the tremulant
 itself stays off until you draw it. The definition's general crescendo
-becomes ours (0.8.129): Hauptwerk keeps one combination per stage
+becomes ours: Hauptwerk keeps one combination per stage
 ("Cresc.Comb.1" to "Cresc.Comb.64"), the stops each stage draws become a
 step of our crescendo (every row on or off, the hand registration
 cancelled, as there); more than 60 stages are spread over our 60 steps, and
@@ -674,11 +725,11 @@ and the configuration starts with the default Ignored Patterns; OrganSampler
 has its own tremulant. (A stop the definition plays from folders named TREM
 only - Billerbeck's "Grosse flute 32" - is taken as Hauptwerk has it, and the
 import's report says so.) Names and aliases the import makes put a capital
-after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8") and, since
-0.8.200, after a manual's mark as well - "HW Trombone 8", "RW Gedact 8",
+after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8") and after
+a manual's mark as well - "HW Trombone 8", "RW Gedact 8",
 "G.O. Trompette 8", "Pos Flute 4", "Réc. Hautbois 8" (a mark is a token of
 up to five capitals, a known word like Pos/Rec/Ped/Man/Gt, or anything
-ending in "." or ":"), and since 0.8.201 the mark itself starts with a
+ending in "." or ":"), and the mark itself starts with a
 capital too ("ped subbass 16" -> "Ped Subbass 16", "g.o." -> "G.O.", a
 roman numeral whole: "ii." -> "II."); so do the row names of every tree
 scan. Encrypted
@@ -690,17 +741,15 @@ The samples must lie where Hauptwerk keeps them: the definition in
 id>` beside it (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents\...` on a
 usual installation) - or in the RAR archives the set came in, read without
 unpacking (see "Sample archives (RAR)"). The configuration is written as
-`<organ name>.json` into your configurations folder (0.8.190, see "Where
+`<organ name>.json` into your configurations folder (see "Where
 configurations and samples live"; `Documents\OrganSampler\Configurations`
 by default), so nothing of ours lands inside Hauptwerk's tree and all your
 organs are in one place, the unpacked and the archived ones alike. The
 `OrganInstallationPackages` folder is its library root; the folder above it
 is remembered as a sample location, so the file works from anywhere.
-Versions 0.8.158-0.8.189 wrote the file into an `OrganConfigurations` folder
-beside the folder that holds `HauptwerkSampleSetsAndComponents`
-(`D:\OrganConfigurations` for the usual `D:\Hauptwerk\...`), 0.8.125-0.8.157 beside `OrganDefinitions`,
-earlier ones into the numbered package; those files keep working where they
-are. The transpositions the definition implies (its pipe notes against the
+(Older versions wrote the file into an `OrganConfigurations` folder beside
+the samples or into the numbered package; those files keep working where
+they are.) The transpositions the definition implies (its pipe notes against the
 sample file names) are taken as they are, and every stop plays the keys of
 its own rows in the definition: a rank folder used by a bass stop and a
 treble stop is loaded ONCE, by the first stop, and the second stop becomes a
@@ -763,7 +812,7 @@ polyphony. Loaded on another computer, every route that had a device - the
 auxiliary routes with their reverbs included - plays through that
 computer's default sound device at once; the computer keeps its own
 interface size and thread settings, and the activity log notes it (no
-message box since 0.8.135). Since 0.8.144 every configuration file, portable
+message box). Every configuration file, portable
 or not, leaves the settings of this computer alone: render threads, the
 sample storage and its rate, the window places, the measurement limit - a
 file saved with other ones never switches them behind your back. What to set up:
@@ -773,17 +822,17 @@ output channels of every route in the audio tabs, then *Measure the maximum
 polyphony* in the Configuration Editor and *Save Configuration*. Published
 configurations (see "Organ configurations" on the website) are saved this way.
 
-A portable save is an export (0.8.194): it never touches the ordinary
+A portable save is an export: it never touches the ordinary
 configuration of your configurations folder (the one with your MIDI and
 audio devices). It writes three files into the `Publish` subfolder of the
 configurations folder: `<name>.portable.json`, the portable configuration
 itself; `<name>.portable.zip`, the same zipped together with the README (a
 zip is downloaded from GitHub with one click, a bare `.json` would open as
-text; the one zip is the whole upload since 0.8.213); and
+text; the one zip is the whole upload); and
 `<name>.portable.README.md`, the README in the published form, for reading - the
 perspectives, the folders the
 configuration expects and where to put the file, the routes, the RAM as
-one bullet per figure with its storage options (0.8.189): the least the
+one bullet per figure with its storage options: the least the
 organ takes (16-bit, 32 kHz, releases at half the rate, packed - measured
 when it was loaded so, else estimated at the save from a share of the
 loaded samples), the figure measured at the save with the options the organ
@@ -798,7 +847,7 @@ organ (instrument, builder, place), the producer of the samples, the link
 to the page where the sample folders are bought or downloaded, your name -
 and keeps the answers in the configuration; nothing in the README is
 filled in by hand. Then the window *Publish the configuration* appears
-(0.8.194, like the one after a problem report): *Publish on GitHub* opens the
+(like the one after a problem report): *Publish on GitHub* opens the
 form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
 in your browser with the title and the organ filled in (a free GitHub
 account is needed) and the `Publish` folder in the file manager, side by
@@ -810,9 +859,11 @@ as a pull request and answers in the form; nothing else is needed, no
 knowledge of Git. After the merge the organ appears as a line of
 `configurations/INDEX.md`, the list of all published organs, in a folder
 named after the organ as you named it at the save. A new version is sent
-the same way and replaces the old one by itself (0.8.188: the organ is known
-by that name, whatever the file is called); the form *Remove my
-configuration* takes it off the list again.
+the same way and replaces the old one by itself (the organ is known
+by that name, whatever the file is called); the *remove* link in the last
+column of its line in `configurations/INDEX.md` opens the form *Remove my
+configuration* with the organ filled in - submit it, and a robot takes the
+organ off the list (when you are the one who published it).
 
 Paths inside a configuration are stored relative to the common folder of the
 sample trees where possible, so a configuration kept beside its sample folders
@@ -948,32 +999,30 @@ published on GitHub" above.
 
 ## Where configurations and samples live
 
-Since 0.8.190 every organ configuration of a computer lives in ONE folder,
+Every organ configuration of a computer lives in ONE folder,
 the **configurations folder**: `Documents\OrganSampler\Configurations` by
 default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),
 chosen anew in the Configuration Editor (*Configurations folder* > Choose).
 The Hauptwerk and RAR imports write there, *Save Configuration* and *Load
 Configuration* start there. A configuration loaded from anywhere else
 (Downloads, beside the samples, inside an archive, or the published `.zip`
-as downloaded from GitHub - *Load Configuration* opens it as it is, 0.8.195)
-is copied into the folder by the load box (0.8.191; or loaded from its own
+as downloaded from GitHub - *Load Configuration* opens it as it is)
+is copied into the folder by the load box (or loaded from its own
 folder, the second choice); the copy becomes the open file, the original
 stays. The copy of a portable file drops the `.portable` of its name
-(0.8.201: `Arnstadt Surround.portable.json` becomes `Arnstadt Surround.json`
+(`Arnstadt Surround.portable.json` becomes `Arnstadt Surround.json`
 - it is the configuration you edit on this computer now, no export any
 more; a file of that name already in the folder makes the box ask, as
 below). Never a
-duplicate (0.8.193): the same file already in the folder is simply loaded
+duplicate: the same file already in the folder is simply loaded
 from there; a file of the same name with other content makes the box ask -
 keep the one in the folder and load it, replace it with this file (the old
 one survives as `.json.bak`), or load this file from its own folder. A
 Hauptwerk import of an organ whose configuration is in the folder already
 asks the same way: replace it with the import, or keep the existing
 configuration and load it without importing. The folder can
-be moved: nothing in it points at its own place. (Up to 0.8.189 the imports
-made an `OrganConfigurations` folder beside every sample set, which nobody
-found again.) The setting belongs to the computer, never to a configuration
-file.
+be moved: nothing in it points at its own place. The setting belongs to the
+computer, never to a configuration file.
 
 The samples and the impulse responses are found through the **sample and
 IR locations**: the folders under which your sample libraries, archives and
@@ -1063,7 +1112,7 @@ fired from a MIDI control: right-click it and choose *Learn MIDI On trigger*
   asks where); clicking again stops the recording with a short fade.
 - **Stop List** opens the table of the whole organ: see "4. The Stop List
   (building the organ)".
-- **Guided tour** (0.8.206; shown on a teaching organ only: the Rural Organ
+- **Guided tour** (shown on a teaching organ only: the Rural Organ
   demo, or any configuration that carries `"guidedTour": true`) walks through
   the console in ten steps, each with an arrow to the element it speaks of
   and a link to the manual chapter that explains it: a stop and its corner
@@ -1160,18 +1209,18 @@ on purpose; it never claims the system is paging when it is not. A folder
 tree that lies inside another loaded tree (the whole library and one of its
 sub-folders both loaded) is the same folders twice: the inner tree is
 dropped from the pool, its stops point into the outer tree, and a message
-after the load names it (0.8.143) - load a tree once, whole or in parts,
+after the load names it - load a tree once, whole or in parts,
 never both. A stop
 whose samples the program holds already (a reload of the same organ: the
 new load adopts them, nothing is decoded) is loaded whatever the memory
-says. The loading dialog has a *Cancel* button (0.8.139): the loading stops
+says. The loading dialog has a *Cancel* button: the loading stops
 at the next stop, the instrument is built from what was loaded, the rest is
 named like after a memory stop and stays in the pool. A stop left out of
 the load keeps its row in the Stop List and is offered in the pool of its
-division ("Add stop" on the grid, 0.8.142): taking it reloads the division
+division ("Add stop" on the grid): taking it reloads the division
 with that row, no second row is made.
 
-The report also profiles the device thread (0.8.137): per route callback,
+The report also profiles the device thread: per route callback,
 in microseconds, how much went into this thread's own rendering of voices,
 into waiting for the other lanes and merging their output, into the mixing
 (block context, harmonic shelf, channel separation, safety clip), into the
@@ -1182,14 +1231,14 @@ callbacks, and the longest route callback of the run with its parts - the
 sound breaks on such a peak, never on the average, and how late a lane
 joined a job after it opened. It is what tells, on a
 computer whose render cores are not full when the sound breaks, where the
-time goes. Since 0.8.143 the render workers wake ahead of every period
+time goes. The render workers wake ahead of every period
 (the cadence is known) instead of being woken by the job, and the device
 thread takes no more voices at the tail of a job when the lanes still at
 work finish them sooner: the peaks of 2-2.5 ms that limited a 16-core
 computer at 55 000 voices were the device thread rendering alone while the
 workers woke up. The limit the measurement judges by - how much of its period the
 longest driver callback may take - is the *Measurement limit* of the
-Configuration Editor (0.8.139): 85 % by default, which leaves headroom for
+Configuration Editor: 85 % by default, which leaves headroom for
 what the computer does besides; up to 100 %, where a level counts as broken
 only when the driver actually called late - dangerous for playing, the
 limit it sets breaks up on the first callback that runs a little longer.
@@ -1460,7 +1509,7 @@ never changes the volume of the held note. What it does depends on the stop:
   9 dB), which opens up again over *Key velocity: treble cut opens over*
   (default 180 ms). Both effects are strongest at velocity 1 and shrink to
   nothing at the full-strike velocity (*Key velocity: full strike from
-  velocity*, default 80 - from there up every stroke is a full one, 0.8.196);
+  velocity*, default 80 - from there up every stroke is a full one);
   the held tone is not touched. The result is a chiff that is blunted by a
   gentle touch, as on a tracker action.
 
@@ -1479,8 +1528,8 @@ suffix ("_070"), and one for the plain files, the top layer (its box reads
 layer's velocities use the next layer up or the plain samples; the plain layer
 unticked sends its velocities to the highest ticked layer. When nothing is
 ticked the plain files play anyway - a key never falls silent (the switch
-*Velocity layers: an unticked _128 never plays* in the Configuration Editor,
-0.8.192, makes such a key silent instead). The choice is
+*Velocity layers: an unticked _128 never plays* in the Configuration Editor
+makes such a key silent instead). The choice is
 saved with the voicing. The keyboard drawing of the Divisions dialog shows the
 MIDI velocity of the key pressed last in a small badge, so you can see which
 layer a stroke reaches. The special use the tick boxes are there for: some
@@ -1623,7 +1672,7 @@ Loading is quick, so the dialog is rarely looked at: it shows the samples being
 read per division and in total, under it what the program does right now (the
 stop being decoded, the tuning analysis, the pipe fills), and on a third line
 the reading speed, "Reading from the disk at N MB/s", refreshed every five
-seconds (0.8.205) - a big organ loads as fast as the disk delivers it: about
+seconds - a big organ loads as fast as the disk delivers it: about
 500 MB/s from a SATA SSD, several times that from an NVMe one, far less from
 a hard disk or over USB; the log keeps one line per folder tree with the
 gigabytes read and the speed. Then *Compiling the Stop List*, the steps that
@@ -2198,10 +2247,10 @@ sound, cents on top of everything) mean what they say. The voicing row's
 (an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -
 or a big global Pitch) is not played by speeding every pipe up: the common
 part of it is applied once to the mixed output of every route with a proper
-resampler (0.8.163), so the pipes keep their recorded speed; only the
+resampler, so the pipes keep their recorded speed; only the
 cents of temperament and detune stay in the pipes themselves, and the high
-pipes play those through the full kernel (Engine > *Full kernel from*,
-0.8.164), so no foreign tone appears under a retuned top octave.
+pipes play those through the full kernel (Engine > *Full kernel from*),
+so no foreign tone appears under a retuned top octave.
 
 ## 6.4 MIDI learn
 
@@ -2371,9 +2420,8 @@ minute or more for a big set with many extensions, every time the organ loads.
 The cache keeps them on disk so that this happens once.
 
 **The switch.** *Configuration Editor > Advanced global audio > Filled
-pipes: keep the generated copies on disk (cache)*, on by default since 0.8.124
-(it was off, and a reload of a big organ computed every filled pipe again even
-on a 16-core; the activity log's "Copy build" lines say when it is OFF). On,
+pipes: keep the generated copies on disk (cache)*, on by default
+(the activity log's "Copy build" lines say when it is OFF). On,
 every copy that is built is also written to a file, and at the next load
 of the same stops with the same settings the copies are read from the files
 instead of being computed: the build after loading takes seconds instead of
@@ -2447,8 +2495,8 @@ only; it tells what the thread settings below can use.
 How many CPU threads render pipes for ASIO routes, the audio driver's own
 thread included. (The note bookkeeping - MIDI commands, attacks and releases,
 the return of finished voices - runs on a thread of its own beside them, so
-the audio callback only renders; before 0.8.45 it took up to a third of every
-period inside the callback.) Default: all physical cores - keep it there. Hyper-threads
+the audio callback only renders.) Default: all physical cores - keep it there.
+Hyper-threads
 (the logical CPUs) share a core's execution units and memory pipeline: measured
 on a 16-core processor, 31 threads rendered a tutti slower than 16 (0.95 ms
 against 0.78 ms per block) and with peaks four times as high (up to 4.5 ms
@@ -2459,7 +2507,7 @@ holds only the choices this computer can tell apart: without hyper-threading
 "All logical CPUs" is the same as "All physical cores" and is not shown, a
 single core has no "all - 1". A hybrid processor (Intel 12th generation and
 later: performance and efficiency cores; Windows tells them apart) offers
-*Performance cores only* (0.8.140): a render worker on an efficiency core
+*Performance cores only*: a render worker on an efficiency core
 renders several times slower and the device thread waits for it - the
 measurement's longest callback of an Ultra 7 notebook was 2.6 ms of which
 2.4 ms waiting for the lanes; the report says so for such a processor. The
@@ -2480,13 +2528,12 @@ thread helps instead of holding the block up.
 
 ### Interpolation kernel
 
-The code that renders every pipe (0.8.124). *Automatic* (the default) takes
+The code that renders every pipe. *Automatic* (the default) takes
 the kernel this processor is known to run well: AVX2 (eight frames a step,
 current x86-64 processors), SSE2 (four frames, x86-64 without AVX2 such as a
-Core 2 Duo - since 0.8.126: measured with this switch on the same routes, SSE2
-gave 2500 voices against 1700 scalar on such a Mac; what had made those
-laptops slower in 0.8.119-0.8.122 was the thread priority, fixed in 0.8.123,
-not the kernel) or NEON (four frames, Apple silicon and Linux arm64). The
+Core 2 Duo - measured with this switch on the same routes, SSE2 gave 2500
+voices against 1700 scalar on such a Mac) or NEON (four frames, Apple
+silicon and Linux arm64). The
 list holds every kernel this computer
 can run: *scalar* (one frame a step, every CPU), *SSE2* (four frames, every
 x86-64), *AVX2* (eight frames, when the CPU has it), *NEON* (arm64). Pick one
@@ -2534,41 +2581,39 @@ threads per route only fight each other there. Raise it when one or two
 aggregated routes carry the whole organ (a big division on a single route is
 otherwise bound to one core): the route then shares its pipes out over the
 set number of threads, like a route on ASIO does over all *Render threads*.
-Whatever is set, a route gets at most cores / aggregated routes lanes
-(0.8.148): fifteen routes with sixteen lanes each kept sixteen workers
+Whatever is set, a route gets at most cores / aggregated routes lanes:
+fifteen routes with sixteen lanes each kept sixteen workers
 spinning for fifteen posters and starved the endpoint threads - the sound
 broke at one pipe, clean with one lane. The activity log says when the cap
 applies ("Aggregated WASAPI: N route(s) on M cores - L lane(s) per route").
 Routes on ASIO drivers and on Windows Audio devices do not use this setting:
 every such device is one stream with one callback, and all its routes are
-rendered by the whole pool of *Render threads* (since 0.8.47 for Windows
-Audio too - before, every Windows Audio route had a stream and a thread of
-its own, so a big division on one route was bound to a single core).
+rendered by the whole pool of *Render threads*.
 
 ### Sample storage in RAM
 
 *32-bit float* keeps the samples exactly as read (full fidelity); *16-bit
 integer* halves the RAM and allows more polyphony at the cost of a little
-hiss. *16-bit integer, releases at half the rate* (0.8.143) stores the
+hiss. *16-bit integer, releases at half the rate* stores the
 release samples - a large part of a set and a decaying tail - at half the
 storage rate: they lose what lies above 12 kHz (at the 48 kHz base) and take
 a quarter of the RAM they would; nothing is requantised, the room noise of
 the tail stays as recorded. The first 1.3 seconds of a halved release play
-through an eight-tap windowed-sinc kernel (0.8.147): the plain linear kernel
+through an eight-tap windowed-sinc kernel: the plain linear kernel
 let the images of what the file holds through at only 7-11 dB below it - a
 digital ringing at the start of a reed's release - and the sinc puts them
 40-50 dB down; after 1.3 s, where the treble has died, the linear kernel
 takes over. Only a release whose treble above 11 kHz is louder than -18 dB
 of the whole (a reed in the treble) keeps the full rate; a halved release
 with nothing above 6 kHz louder than -40 dB has nothing to mirror and plays
-through the cheap linear kernel (0.8.149: the sinc costs ten times the
+through the cheap linear kernel (the sinc costs ten times the
 linear kernel - every release through it took half the polyphony of a
 two-core laptop). The log says how many went each way. Takes effect the
 next time a division's folders are loaded.
 
 ### Compress samples in RAM (lossless)
 
-Off by default (0.8.145). On, the 16-bit samples are packed in RAM the way
+Off by default. On, the 16-bit samples are packed in RAM the way
 FLAC packs a file: a predictor per block of 256 frames and the residuals
 with the bits they need. Every frame comes back exactly - loops, pitch and
 voicing are untouched - and a set takes about a third less RAM; the log
@@ -2593,7 +2638,7 @@ with both on. Takes effect the next time a division's folders are loaded.
 *Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1
 kHz are converted once while loading with a high-quality filter, so every set
 plays exactly like a 48 kHz one and a 96 kHz set needs half the RAM it would
-otherwise; loading takes longer. *36 kHz* and *32 kHz* (0.8.143) store every
+otherwise; loading takes longer. *36 kHz* and *32 kHz* store every
 file at that rate: what lies above 17 or 15 kHz goes - organ pipes carry next
 to nothing there - and the RAM drops by a quarter or a third; the kernel
 interpolates from the coarser grid at the same cost, so more stops fit and
@@ -2633,8 +2678,8 @@ measurement and choice. Full and Light set the mode by hand. The setting
 belongs to the computer, not to the organ: a portable configuration does not
 carry it.
 
-Routes that share everything the reverb depends on share one convolution
-(since 0.8.109): rendered by the same audio device to the same output
+Routes that share everything the reverb depends on share one convolution:
+rendered by the same audio device to the same output
 channels, with the same impulse response, dry/wet, wet volume, high and low
 cut, pre-delay, decay and fade-out. Convolution is linear - the reverb of the
 summed dry signal of such routes is the sum of their reverbs - so the sound is
@@ -2926,8 +2971,8 @@ listen with a soft flute.
 ### Key velocity: full strike from velocity
 
 From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut
-(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127,
-0.8.196). The ramp of the two settings below runs from velocity 1, the
+(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127).
+The ramp of the two settings below runs from velocity 1, the
 gentlest stroke, to this value.
 
 ### Key velocity: fade-in at the lowest velocity
@@ -3071,7 +3116,7 @@ with its formants moved down loses level).
 
 ### Filled pipes: keep the generated copies on disk (cache)
 
-On by default (0.8.124; off before). On: the copies of the filled pipes are written to files as
+On by default. On: the copies of the filled pipes are written to files as
 they are built and read back the next time the same stops load with the same
 settings, so the build after loading takes seconds instead of minutes - the
 build of a large organ otherwise takes a minute or more at every load. One
@@ -3510,7 +3555,7 @@ you.
 *Report a problem...* at the top of the Configuration Editor opens a dialog
 for what happened and how to reproduce it. When you press *Create the report
 and open GitHub*, the program writes a folder `OrganSampler-report-<date>`
-into `Reports` in its application-data folder (0.8.188; nothing goes onto
+into `Reports` in its application-data folder (nothing goes onto
 your Desktop) with `logs.zip` (the activity log, the crash reports,
 `settings.json`, the last self-test report and `system.txt` - the version,
 the computer, every audio route with its device, buffer, rate and channels;
@@ -3524,10 +3569,10 @@ check the text, submit. The report folder itself opens in the file manager
 beside it, and the program's own message sits at the bottom of the screen,
 out of the way. The program puts the browser on the left half of the screen
 and the folder on the right half, side by side, so the zip is dragged across
-(0.8.139; Windows always, macOS through AppleScript - the browser only with
+(Windows always, macOS through AppleScript - the browser only with
 the accessibility permission -, Linux where wmctrl is installed). The
-link carries the computer and the routes only while it stays short (0.8.138;
-GitHub answered a long one with an error after its sign-in) - the whole
+link carries the computer and the routes only while it stays short
+(GitHub answered a long one with an error after its sign-in) - the whole
 list is in `system.txt` of `logs.zip` in any case. A free
 GitHub account is needed to submit; the report is public, like every issue
 of a free program.

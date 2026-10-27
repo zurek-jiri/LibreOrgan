@@ -522,12 +522,12 @@ public:
         if (gainStart != target)
         {
             // Down in 50 ms (before the first strike of the measurement). Up (0.8.147):
-            // held at the low level while outputGainHoldUntilMs says so (0 since
-            // 0.8.187: no hold), then 26 dB a second - a glide in decibels, from
-            // -52 dB to 0 dB in two seconds (the user's rule, 0.8.187: full level
-            // within 2 s of the report; 4.5 dB/s after a 4 s hold took 16 s). A
-            // linear glide (0.8.146, "3 s") was at -20 dB after a third of a second:
-            // a jump to the ear, with thousands of tails sounding.
+            // held at the low level while outputGainHoldUntilMs says so (0.8.217: five
+            // seconds after the run ends and the report appears, the user's rule), then
+            // 26 dB a second - a glide in decibels, from -52 dB to 0 dB in two seconds
+            // (0.8.187; 4.5 dB/s after a 4 s hold took 16 s). A linear glide (0.8.146,
+            // "3 s") was at -20 dB after a third of a second: a jump to the ear, with
+            // thousands of tails sounding.
             const double rate = expectedRate.load(std::memory_order_relaxed);
             const double blockSeconds = numSamples / juce::jmax(1000.0, rate);
             if (target < gainStart)
@@ -845,6 +845,7 @@ void MainComponent::applyDefaultTremulantProfile(int manualIndex)
 MainComponent::MainComponent()
     : AudioAppComponent()
 {
+    noticeOwner = this;   // the notice queue (0.8.217)
     setOpaque(true);
     DBG("MainComponent constructor start");
     manualConfigs[0].compassHigh = 67;   // pedal: 32 keys by default
@@ -1797,6 +1798,7 @@ MainComponent::MainComponent()
         const juce::File archive(juce::String::fromUTF8(env));
         juce::Timer::callAfterDelay(2000, [archive]
         {
+            SampleFiles::addChosenArchives({ archive });   // 0.8.177: only a chosen archive serves paths - the test's counts as chosen
             juce::StringArray volumes;
             for (const auto& v : SampleFiles::volumesOf(archive)) volumes.add(v.getFileName());
             CrashHandler::note("ORGAN_TEST_ARCHIVE: " + archive.getFullPathName() + " first volume " + (SampleFiles::isFirstVolume(archive) ? "yes" : "NO")
@@ -2326,6 +2328,7 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
 
 MainComponent::~MainComponent()
 {
+    if (noticeOwner == this) noticeOwner = nullptr;
     engine.stopRecording();
     if (quietTestManager != nullptr)
         quietTestManager->removeAudioCallback(&quietTestPlayer);
@@ -3816,7 +3819,7 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
                 + file.getFullPathName() + " -> " + juce::String(info.channels) + " ch, " + juce::String(info.seconds, 2) + " s"
                 + (info.error.isNotEmpty() ? "  ERROR " + info.error : juce::String()));
             if (info.error.isNotEmpty())
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Impulse response", info.error);
+                queueNotice(juce::MessageBoxIconType::WarningIcon, "Impulse response", info.error);
             safeThis->saveSettings();
         });
 }
@@ -3991,7 +3994,7 @@ void MainComponent::showSafeStartNoticeIfDue()
     if (safeStartNotice.isEmpty() || activeFolderLoader != nullptr) return;
     const auto notice = safeStartNotice;
     safeStartNotice.clear();
-    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Audio device opened with the default buffer",
+    queueNotice(juce::MessageBoxIconType::WarningIcon, "Audio device opened with the default buffer",
         "The last start of OrganSampler crashed while opening " + notice + ".\n\n"
         "This time the device was opened with the default buffer size (512 samples) and rate (48 kHz) instead, so the program "
         "starts again. Choose a buffer size the driver can take in the audio tab of the division (Settings in the division "
@@ -4031,7 +4034,7 @@ void MainComponent::showMissingAudioDevicesIfDue()
     juce::String list;
     for (const auto& item : stillMissing) list << "\n  - " << item;
     CrashHandler::note("Audio devices still missing after the wait: " + stillMissing.joinIntoString("; "));
-    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Audio devices not available",
+    queueNotice(juce::MessageBoxIconType::WarningIcon, "Audio devices not available",
         "These audio devices could not be opened (waited " + juce::String(kAudioDevicesWaitMs / 1000.0, 0) + " s for them):" + list
         + "\n\nThe routes using them stay silent until the device is switched on again (checked every 2 s) or another "
           "device is chosen for them (division Settings, audio tabs).");
@@ -5338,7 +5341,7 @@ void MainComponent::showProblemReportDialog()
                 const auto whatText = what.getText().trim();
                 if (whatText.isEmpty())
                 {
-                    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Report a problem",
+                    queueNotice(juce::MessageBoxIconType::InfoIcon, "Report a problem",
                         "Say what happened first - a report without it cannot be worked on.");
                     return;
                 }
@@ -5638,7 +5641,7 @@ void MainComponent::toggleRecording()
             CrashHandler::note("Recording to " + file.getFullPathName());
             safeThis->recordingFadeOutStartedMs = -1.0;
             if (!safeThis->engine.startRecording(file))
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Record",
+                queueNotice(juce::MessageBoxIconType::WarningIcon, "Record",
                     "The file could not be created:\n" + file.getFullPathName());
             safeThis->recordButton.setRecording(safeThis->engine.isRecording());
         });
@@ -8685,7 +8688,7 @@ void MainComponent::showTemperamentsDialog()
                     auto name = safeAlert->getTextEditorContents("name").trim();
                     if (name.isEmpty() || safeThis->owner.findTemperament(name) >= 0)
                     {
-                        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                        queueNotice(juce::MessageBoxIconType::WarningIcon,
                             "Add custom temperament", "Please use a non-empty, unique name.");
                         return;
                     }
@@ -9261,7 +9264,7 @@ void MainComponent::showCrescendoDialog()
                 if (save)
                 {
                     if (!file.replaceWithText(juce::JSON::toString(safeOwner->crescendoToVar(), true)))
-                        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                        queueNotice(juce::MessageBoxIconType::WarningIcon,
                             "General Crescendo", "The crescendo file could not be written.");
                 }
                 else
@@ -9269,7 +9272,7 @@ void MainComponent::showCrescendoDialog()
                     const auto parsed = juce::JSON::parse(file.loadFileAsString());
                     if (!parsed.isObject() || !parsed.hasProperty("steps"))
                     {
-                        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                        queueNotice(juce::MessageBoxIconType::WarningIcon,
                             "General Crescendo", "This is not a crescendo file.");
                         return;
                     }
@@ -9788,7 +9791,7 @@ public:
             + mergedFolder.getFullPathName() + "\n\nMerged stops (" + juce::String(mergedNames.size()) + "):\n"
             + mergedNames.joinIntoString("\n");
         juce::MessageManager::callAsync([summary] {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, "Merge", summary);
+            queueNotice(juce::AlertWindow::InfoIcon, "Merge", summary);
             });
     }
 
@@ -9814,7 +9817,7 @@ void MainComponent::mergeStops()
             if (s->transmissions[(size_t)i].enabled) enabledTransmissions.push_back({ s, i });
 
     if (enabledStops.isEmpty() && enabledTransmissions.empty()) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, "Merge", "No stops or transmissions enabled.");
+        queueNotice(juce::AlertWindow::InfoIcon, "Merge", "No stops or transmissions enabled.");
         return;
     }
     // Filled pipes of the transmissions need their copies first (a build still
@@ -9822,7 +9825,7 @@ void MainComponent::mergeStops()
     for (const auto& [stop, index] : enabledTransmissions)
         if (engine.countMissingCopies(stop) > 0)
         {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, "Merge",
+            queueNotice(juce::AlertWindow::InfoIcon, "Merge",
                 "The copies of the filled pipes of " + SamplerEngine::transposedStopName(stop, stop->transmissions[(size_t)index].shift)
                 + " are still being built. Please wait until the strip on its button is gone.");
             return;
@@ -9853,7 +9856,7 @@ void MainComponent::mergeStops()
         if (destinationRoot == juce::File()) destinationRoot = topFolder;
     }
     if (destinationRoot == juce::File()) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "Merge", "No folder selected.");
+        queueNotice(juce::AlertWindow::WarningIcon, "Merge", "No folder selected.");
         return;
     }
 
@@ -10268,7 +10271,7 @@ void MainComponent::chooseCombinationsFileToSave()
             safeThis->lastSettingsDirectory = file.getParentDirectory();
             safeThis->saveLastDirectory();
             if (!safeThis->saveMemoriesToFile(file))
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                queueNotice(juce::MessageBoxIconType::WarningIcon,
                     "Save combinations", "The combinations file could not be written.");
         });
 }
@@ -10289,7 +10292,7 @@ void MainComponent::chooseCombinationsFileToLoad()
             if (file == juce::File()) return;
             if (!safeThis->loadMemoriesFromFile(file))
             {
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                queueNotice(juce::MessageBoxIconType::WarningIcon,
                     "Load combinations", "This is not a valid combinations file.");
                 return;
             }
@@ -10496,7 +10499,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
             if (zip.getEntry(i)->filename.endsWithIgnoreCase(".json")) entry = zip.getEntry(i);
         if (entry == nullptr)
         {
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Load Configuration", "The zip holds no configuration (.json).");
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Load Configuration", "The zip holds no configuration (.json).");
             return;
         }
         if (auto in = std::unique_ptr<juce::InputStream>(zip.createStreamForEntry(*entry))) text = in->readEntireStreamAsString();
@@ -10511,7 +10514,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     if (!configuration.isObject()
         || !configuration.getProperty("manualKeyboards", juce::var()).isArray())
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+        queueNotice(juce::MessageBoxIconType::WarningIcon,
             "Load Configuration", "The selected file is not a valid OrganSampler configuration.");
         return;
     }
@@ -10637,7 +10640,7 @@ void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>&
         const juce::String title = merge ? "Merge configuration" : "Load Configuration";
         if (candidates.empty())
         {
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, title,
+            queueNotice(juce::MessageBoxIconType::WarningIcon, title,
                 juce::String(archives.size() == 1 ? "The archive holds" : "The archives hold") + " no OrganSampler configuration (.json) and no Hauptwerk organ definition.\n\n"
                 "Their sample folders can be loaded in the Stop List: Load folder... > Browse archives...", "OK", safeThis.getComponent());
             return;
@@ -11407,7 +11410,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     // The file being overwritten survives as "<name>.json.bak" (one generation).
     if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
     if (!target.replaceWithText(juce::JSON::toString(configuration, true)))
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+        queueNotice(juce::MessageBoxIconType::WarningIcon,
             "Save Configuration", "The configuration file could not be written.");
     else
     {
@@ -11501,7 +11504,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             + ", root " + root.getFullPathName() + (plan.error.isNotEmpty() ? "  ERROR " + plan.error : juce::String()));
         if (plan.error.isNotEmpty())
         {
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition", plan.error, "OK", safeThis.getComponent());
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition", plan.error, "OK", safeThis.getComponent());
             return;
         }
         // The configuration: the divisions' trees, the perspectives, the names;
@@ -11937,7 +11940,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 configurationFile.copyFileTo(configurationFile.getSiblingFile(configurationFile.getFileName() + ".bak"));
             if (!configurationFile.replaceWithText(juce::JSON::toString(chosen, true)))
             {
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition",
+                queueNotice(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition",
                     "The configuration could not be written into the configurations folder:\n" + configurationFile.getFullPathName(), "OK", safeThis.getComponent());
                 return;
             }
@@ -13056,7 +13059,7 @@ public:
         engine.commitPendingDivisions();
         const auto error = engine.takeLastLoadError();
         if (error.isNotEmpty())
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
         if (finished) finished(cancelled);
     }
 private:
@@ -13215,7 +13218,7 @@ private:
         engine.commitPendingDivisions();
         const auto error = engine.takeLastLoadError();
         if (error.isNotEmpty())
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
     }
     void report(const juce::String& text, double fraction)
     {
@@ -14034,13 +14037,13 @@ void MainComponent::startUnpack(const juce::Array<juce::File>& archives, const j
             // Load folder... unpacking first (0.8.157): the unpacked folders are loaded next; only a failure is reported here.
             std::vector<juce::File> tops;
             for (const auto& top : topFolders) tops.push_back(juce::File(top));
-            if (failed) juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Unpack archive", text, "OK", safeThis.getComponent());
+            if (failed) queueNotice(juce::MessageBoxIconType::WarningIcon, "Unpack archive", text, "OK", safeThis.getComponent());
             afterwards(tops, !failed);
             return;
         }
         text << "\n\nNext: Stop List > Load folder... and choose the folder tree of the samples (the folder that holds the "
                 "stops' folders, or the division folders), or Load Configuration when a configuration came with the samples.";
-        juce::AlertWindow::showMessageBoxAsync(failed ? juce::MessageBoxIconType::WarningIcon : juce::MessageBoxIconType::InfoIcon,
+        queueNotice(failed ? juce::MessageBoxIconType::WarningIcon : juce::MessageBoxIconType::InfoIcon,
             "Unpack archive", text, "OK", safeThis.getComponent());
     };
     juce::Timer::callAfterDelay(300, [poll] { if (*poll) (*poll)(); });
@@ -14140,7 +14143,7 @@ void MainComponent::shutdownComputer()
                #endif
                 if (!started)
                 {
-                    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Shut down the computer",
+                    queueNotice(juce::MessageBoxIconType::WarningIcon, "Shut down the computer",
                         "The system did not accept the shutdown command. The configuration is saved.");
                     return;
                 }
@@ -14258,7 +14261,7 @@ void MainComponent::dropNestedTrees()
     const juce::String list = fresh.joinIntoString("\n  - ");
     runWhenLoaded([this, list]
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Nested folder trees",
+        queueNotice(juce::MessageBoxIconType::WarningIcon, "Nested folder trees",
             "These folder trees lie inside another loaded tree - the same folders twice. They were dropped from the pool; "
             "their stops now point into the outer tree, nothing is lost:\n  - " + list
             + "\n\nLoad a folder tree once: either the whole tree or its parts, never both. The configuration is saved without them.");
@@ -14397,7 +14400,7 @@ bool MainComponent::applyTreeRelocation(int poolIndex, const juce::File& tree)
     if (old == tree) return false;
     if (poolIndexOf(tree.getFullPathName()) >= 0)
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Replace folder tree",
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Replace folder tree",
             "That folder is already a tree of the pool; a tree cannot stand in for another one.");
         return false;
     }
@@ -16044,7 +16047,7 @@ void MainComponent::installLinuxDesktopEntry()
         if (process.start(command)) process.waitForProcessToFinish(8000);
     }
     CrashHandler::note(juce::String("Linux desktop entry ") + (ok ? "installed: " : "FAILED: ") + entry.getFullPathName() + ", " + juce::String(icons) + " icon size(s)");
-    juce::AlertWindow::showMessageBoxAsync(ok ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon, "Menu entry and icon",
+    queueNotice(ok ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon, "Menu entry and icon",
         ok ? "Installed: " + entry.getFullPathName() + " and the icon in " + juce::String(icons) + " sizes under ~/.local/share/icons/hicolor.\n\n"
              "Where to find it: open the application menu (the launcher button or the Super/Windows key) and type \"Organ\" - OrganSampler "
              "is in the Multimedia (Sound & Video) group - Audio Production on Ubuntu Studio - with its icon; right-click it there to pin it to the panel or dock.\n\n"
@@ -16061,7 +16064,7 @@ void MainComponent::loadTreeIntoDivision(const juce::File& tree, int manual)
     if (manual < 0 || manual > manualCount || !SampleFiles::isDirectory(tree)) return;   // on the disk or in a RAR archive (0.8.157)
     if (poolIndexOf(tree.getFullPathName()) >= 0)
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Load folder",
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Load folder",
             "This folder tree is already loaded. Its folders are assigned in the Stop List.");
         return;
     }
@@ -16122,7 +16125,7 @@ void MainComponent::loadTreesIntoDivision(const std::vector<juce::File>& trees, 
     bool any = false;
     for (const auto& tree : trees) any = addTreeToDivisionTable(tree, manual) || any;
     if (any) reloadDivisions({ manual });
-    else juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Load folder",
+    else queueNotice(juce::MessageBoxIconType::InfoIcon, "Load folder",
         "These folder trees are already loaded. Their folders are assigned in the Stop List.");
 }
 
@@ -16201,7 +16204,7 @@ void MainComponent::indexArchivesThen(const std::vector<juce::File>& archives, s
                 CrashHandler::note("Multi-part archive " + sets[sets.size() - 1]);
             }
             if (!sets.isEmpty())
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Multi-part archive",
+                queueNotice(juce::MessageBoxIconType::InfoIcon, "Multi-part archive",
                     "The other parts of the archive were found beside it and read as one set:\n\n" + sets.joinIntoString("\n"), "OK", safeThis.getComponent());
         }
         then();
@@ -16723,7 +16726,7 @@ void MainComponent::createStopFolderOnGrid(int manual, int column, int row)
     if (sampleTrees.empty())
     {
         // An empty stop is created together with a folder tree: there is none yet.
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "New stop folder",
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "New stop folder",
             "Load a sample folder first (Stop List > Load folder...): stop folders are created together with the folder trees of the organ.", "OK", this);
         return;
     }
@@ -16967,7 +16970,7 @@ void MainComponent::removeStopFromGrid(Stop* stop)
             juce::StringArray names;
             for (auto* child : children) names.add(child->displayName());
             for (const auto& [source, index] : childTransmissions) names.add(Voicer::transmissionLabel(source, index));
-            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Stop folder not empty",
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Stop folder not empty",
                 "\"" + stop->displayName() + "\" still carries " + juce::String(names.size()) + " stop(s):\n  " + names.joinIntoString("\n  ")
                 + "\n\nTake them out of the folder (drag them onto the grid, or outdent them in the Stop List) or remove them first; "
                 "then the folder can be removed.", "OK", this);
@@ -18646,7 +18649,7 @@ void MainComponent::showStopBuildingDialog(int)
                 for (size_t j = index + 1; j < entries.size() && entries[j].child; ++j) names.add(entries[j].name);
                 if (!names.isEmpty())
                 {
-                    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Stop folder not empty",
+                    queueNotice(juce::MessageBoxIconType::WarningIcon, "Stop folder not empty",
                         "\"" + entry->name + "\" still carries " + juce::String(names.size()) + " stop(s):\n  " + names.joinIntoString("\n  ")
                         + "\n\nOutdent or remove them first; then the folder can be removed.", "OK", this);
                     return;
@@ -19368,7 +19371,7 @@ void MainComponent::offerCombinationFileConversion(int a, int b)
                     if (file.replaceWithText(juce::JSON::toString(parsed, true))) ++converted; else ++skipped;
                 }
                 if (converted + skipped > 0)
-                    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Swap divisions",
+                    queueNotice(juce::MessageBoxIconType::InfoIcon, "Swap divisions",
                         juce::String(converted) + " file(s) converted" + (skipped > 0 ? ", " + juce::String(skipped) + " skipped (not a combination file)." : "."));
             });
         }));
@@ -20723,6 +20726,64 @@ void MainComponent::showPortableNoticeIfDue()
     // The log only (0.8.135): the message box stood over the import's own report
     // and the memory warning and said nothing the division dialogs do not show.
     CrashHandler::note("Configuration from another computer: every route on this computer's default device, no MIDI keyboard assigned - set the divisions' settings");
+}
+
+// The notice queue (0.8.217). A plain message box is never shown over another
+// alert box: the load box, the loading window, a question, a notice before it -
+// it waits in the queue and comes up when the box in front is gone. Dialog
+// windows (Stop List, Couplers, the Editor) and menus do not hold it back.
+MainComponent* MainComponent::noticeOwner = nullptr;
+
+void queueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
+                 juce::Component* associated, juce::ModalComponentManager::Callback* callback)
+{
+    if (MainComponent::noticeOwner != nullptr) MainComponent::noticeOwner->enqueueNotice(icon, title, text, button, callback);
+    else juce::AlertWindow::showMessageBoxAsync(icon, title, text, button, associated, callback);
+}
+
+void MainComponent::enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
+                                  juce::ModalComponentManager::Callback* callback)
+{
+    pendingNotices.push_back({ icon, title, text, button.isEmpty() ? juce::String("OK") : button, callback });
+    showNextNotice();
+}
+
+bool MainComponent::noticeBlocked() const
+{
+    if (noticeShowing || activeFolderLoader != nullptr) return true;
+    auto* manager = juce::ModalComponentManager::getInstance();
+    for (int i = 0; i < manager->getNumModalComponents(); ++i)
+        if (dynamic_cast<juce::AlertWindow*>(manager->getModalComponent(i)) != nullptr) return true;
+    return false;
+}
+
+void MainComponent::showNextNotice()
+{
+    if (pendingNotices.empty()) return;
+    if (noticeBlocked())
+    {
+        if (noticeRetryPending) return;
+        if (!noticeShowing && !noticeWaitLogged) { noticeWaitLogged = true; CrashHandler::note("Notice \"" + pendingNotices.front().title + "\" waits: another box or the loader is up"); }
+        noticeRetryPending = true;
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(400, [safeThis] { if (safeThis != nullptr) { safeThis->noticeRetryPending = false; safeThis->showNextNotice(); } });
+        return;
+    }
+    const PendingNotice notice = pendingNotices.front();
+    pendingNotices.pop_front();
+    noticeShowing = true;
+    noticeWaitLogged = false;
+    CrashHandler::note("Notice shown: \"" + notice.title + "\"" + (pendingNotices.empty() ? juce::String() : " (" + juce::String((int)pendingNotices.size()) + " waiting)"));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(notice.icon).withTitle(notice.title).withMessage(notice.text)
+                                     .withButton(notice.button).withAssociatedComponent(this),
+        [safeThis, callback = notice.callback](int result)
+        {
+            if (callback != nullptr) { callback->modalStateFinished(result); delete callback; }
+            if (safeThis == nullptr) return;
+            safeThis->noticeShowing = false;
+            safeThis->showNextNotice();
+        });
 }
 
 juce::String MainComponent::missingTreeNotice(int manual, bool detail) const
@@ -22791,7 +22852,7 @@ void MainComponent::startPolyphonyMeasurement()
     // right after the load broke at 328 voices with the cores busy building).
     if (engine.pendingBackgroundWorkers() > 0)
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Measure the maximum polyphony",
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Measure the maximum polyphony",
             "The filled pipes are still being built in the background (the orange tracks under the stop buttons). "
             "Measure once they are gone - a run beside the building would measure the building.");
         return;
@@ -23636,8 +23697,8 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
                     + safeThis->engine.debugState() + "; audio muted " + (safeThis->audioMuted.load() ? "YES" : "no"));
         });
     }
-    outputGainHoldUntilMs.store(0.0);   // no hold (0.8.187, the user: full level within 2 s of the report)
-    outputGainTarget.store(1.0f);       // ... 26 dB a second up to normal, in decibels
+    outputGainHoldUntilMs.store(juce::Time::getMillisecondCounterHiRes() + 5000.0);   // held 5 s after the end and the report (0.8.217, the user's rule; 0.8.187 had no hold)
+    outputGainTarget.store(1.0f);       // ... then 26 dB a second up to normal, in decibels
     engine.setAttackMinimumMs((float)state->previousAttackMinimumMs);
     engine.setAttackMinimumDelayMs((float)state->previousAttackDelayMs);
     applyRegistrationState(state->registration, false);
@@ -24280,6 +24341,7 @@ void MainComponent::prepareManual()
         { "Signalsmith Stretch - MIT", kLicenceSignalsmithStretchParts, kLicenceSignalsmithStretchPartCount },
         { "Signalsmith Linear - MIT", kLicenceSignalsmithLinearParts, kLicenceSignalsmithLinearPartCount },
         { "libarchive 3.8.9 - BSD", kLicenceLibarchiveParts, kLicenceLibarchivePartCount },
+        { "unarr 1.2.0 - LGPL v3", kLicenceUnarrParts, kLicenceUnarrPartCount },
     };
     class AboutComponent final : public juce::Component, private juce::ListBoxModel
     {
@@ -25675,7 +25737,7 @@ void MainComponent::showConfigurationEditor()
                 {
                     const int removed = o.engine.removeCopyCacheFilesOfUnloadedRanks();
                     o.refreshConfigurationEditor();
-                    juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Filled pipes cache",
+                    queueNotice(juce::MessageBoxIconType::InfoIcon, "Filled pipes cache",
                         juce::String(removed) + " file(s) of stops that are not loaded removed.");
                 }, "Deletes the cache files of ranks that are not loaded now: the stops of other configurations and of "
                    "folders that are gone. The files of the loaded stops stay.");

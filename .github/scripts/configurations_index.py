@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import zipfile
+from urllib.parse import quote
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'configurations')
 
@@ -148,14 +149,22 @@ def main():
             'routes - the perspectives as the configuration names them (`default` = a single',
             'perspective) and `auxiliary` when a division uses that route; what each one carries, the',
             'README of the organ says. The triangles in the header sort the tables by that column.',
+            'The last column takes a configuration off the list: its *remove* link opens the',
+            '"Remove my configuration" form with the organ filled in - submit it, and a robot removes',
+            'the folder when you are the one who published it (or the maintainer).',
             'Written by the `Configurations check` workflow from the configuration files themselves',
             'on every change; do not edit by hand. How to use and publish one: [README.md](README.md).',
             '',
         ]
+        def remove_link(folder):
+            # The issue form prefilled through the query string: the field id "organ" and the title.
+            return ('[remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml'
+                    '&title=%s&organ=%s)' % (quote('[Remove configuration] ' + folder), quote(folder)))
         def table(entries):
-            out = ['| ' + ' | '.join(header) + ' |', '|---|---:|---:|---:|---|']
+            out = ['| ' + ' | '.join(header + ['Remove']) + ' |', '|---|---:|---:|---:|---|---|']
             for title, folder, divisions, count, perspectives, ram_bytes, ram_min in entries:
-                out.append('| [%s](%s/README.md) | %d | %d | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives))
+                out.append('| [%s](%s/README.md) | %d | %d | %s | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives,
+                                                                               '' if folder == 'rural-organ' else remove_link(folder)))
             return out
         top = [r for r in ordered if r[1].lower() in featured]
         rest = [r for r in ordered if r[1].lower() not in featured]

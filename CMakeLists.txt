@@ -9,7 +9,7 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(OrganSampler VERSION 0.8.216 LANGUAGES C CXX)
+project(OrganSampler VERSION 0.8.217 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -61,6 +61,30 @@ add_subdirectory(ThirdParty/libarchive EXCLUDE_FROM_ALL)
 target_include_directories(OrganSampler PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/libarchive/libarchive")
 target_compile_definitions(OrganSampler PRIVATE LIBARCHIVE_STATIC=1)
 target_link_libraries(OrganSampler PRIVATE archive_static)
+# unarr (LGPL-3.0, git submodule ThirdParty/unarr, pinned to the commit Masterpiece
+# uses): the RAR 4 files libarchive cannot unpack - PPMd blocks (text: an organ
+# definition packed with the "best" method) and the RAR VM filters of the WinRAR
+# versions of 2011 (the Dom Bedos set) - are read through it (SampleFiles.cpp,
+# 0.8.217). Built from the same file list as Masterpiece's, no zlib/bzip2/lzma, RAR
+# only; the header unarr.h is the checked-in ThirdParty/unarr-include/unarr.h
+# (Tools/make_unarr_header.py from unarr.h.in). Without the submodule the program
+# builds without it.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/unarr/rar/rar.c")
+    set(UNARR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/unarr")
+    add_library(organ_unarr STATIC
+        "${UNARR_DIR}/common/conv.c" "${UNARR_DIR}/common/crc32.c" "${UNARR_DIR}/common/stream.c" "${UNARR_DIR}/common/unarr.c"
+        "${UNARR_DIR}/lzmasdk/CpuArch.c" "${UNARR_DIR}/lzmasdk/Ppmd7.c" "${UNARR_DIR}/lzmasdk/Ppmd7Dec.c" "${UNARR_DIR}/lzmasdk/Ppmd7aDec.c"
+        "${UNARR_DIR}/rar/filter-rar.c" "${UNARR_DIR}/rar/huffman-rar.c" "${UNARR_DIR}/rar/parse-rar.c" "${UNARR_DIR}/rar/rar.c"
+        "${UNARR_DIR}/rar/rarvm.c" "${UNARR_DIR}/rar/uncompress-rar.c")
+    target_include_directories(organ_unarr PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/unarr-include" PRIVATE "${UNARR_DIR}" "${UNARR_DIR}/common")
+    target_compile_definitions(organ_unarr PRIVATE _FILE_OFFSET_BITS=64 $<$<C_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
+    if(UNIX)
+        set_source_files_properties("${UNARR_DIR}/common/stream.c" PROPERTIES COMPILE_DEFINITIONS _POSIX_C_SOURCE=200809L)
+    endif()
+    set_target_properties(organ_unarr PROPERTIES C_STANDARD 99 POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(OrganSampler PRIVATE organ_unarr)
+    target_compile_definitions(OrganSampler PRIVATE ORGAN_HAVE_UNARR=1)
+endif()
 # The Mac compatibility file defines symbols of the C++ library under their own
 # names; as a native (non-LTO) object the linker treats them like the library's.
 if(APPLE)

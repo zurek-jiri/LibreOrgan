@@ -9,6 +9,7 @@
 #include <atomic>
 #include <set>
 #include <climits>
+#include <deque>
 #include <string>
 #include <unordered_map>
 
@@ -1211,6 +1212,19 @@ private:
     bool portableNoticePending = false;
     bool suppressPortableNotice = false;   // set by the Hauptwerk import: its configuration is made here, no "from another computer" notice
     void showPortableNoticeIfDue();
+    // 0.8.217: every plain message box (OK alone) of ours goes through ONE queue and
+    // is shown only when no alert box is up - not over the load box, the loading
+    // window, a question or another notice (the user: boxes over each other, the
+    // one below unreachable). The same arguments as AlertWindow::showMessageBoxAsync.
+    struct PendingNotice { juce::MessageBoxIconType icon; juce::String title, text, button; juce::ModalComponentManager::Callback* callback = nullptr; };
+    std::deque<PendingNotice> pendingNotices;
+    bool noticeShowing = false, noticeRetryPending = false, noticeWaitLogged = false;
+    static MainComponent* noticeOwner;   // the one instance, for the free function queueNotice (usable from any lambda or helper struct)
+    friend void queueNotice(juce::MessageBoxIconType, const juce::String&, const juce::String&, const juce::String&, juce::Component*, juce::ModalComponentManager::Callback*);
+    void enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
+                       juce::ModalComponentManager::Callback* callback);
+    bool noticeBlocked() const;    // an alert box (ours, the loader's, a question) is up, or a loader runs
+    void showNextNotice();
     void resolveAndApplyPortableConfiguration(juce::var configuration,
         const juce::File& configurationFile, const juce::File& selectedLibraryRoot = {});
     void applyPortableConfiguration(juce::var configuration,
@@ -1328,3 +1342,10 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
+
+// A plain message box of ours (0.8.217): queued in the MainComponent and shown only when no
+// alert box is up - the same arguments as juce::AlertWindow::showMessageBoxAsync, callable
+// from any lambda or helper struct (a free function, so no 'this' is needed). Without a
+// MainComponent it shows the box at once.
+void queueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button = {},
+                 juce::Component* associated = nullptr, juce::ModalComponentManager::Callback* callback = nullptr);

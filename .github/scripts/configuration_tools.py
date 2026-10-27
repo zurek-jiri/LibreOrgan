@@ -146,7 +146,10 @@ def find(text):
         haystacks = [folder, slugify(title), slugify(organ)]
         if any(key == h or key in h for h in haystacks if h):
             found.append((folder, title, organ, publisher_of_folder(folder)))
-    return found
+    # The folder's whole name (the Remove link of INDEX.md sends it) is one match,
+    # whatever other folders contain it.
+    exact = [f for f in found if f[0] == key]
+    return exact if len(exact) == 1 else found
 
 
 def count_rows(cfg):

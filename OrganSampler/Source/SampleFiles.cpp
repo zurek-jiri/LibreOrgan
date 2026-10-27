@@ -3,6 +3,13 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#if ORGAN_HAVE_UNARR
+extern "C" {
+#include <unarr.h>
+// ar_open_stream is unarr's own (common/unarr-imp.h, not in unarr.h): declared here with its signature.
+ar_stream* ar_open_stream(void* data, void (*close)(void*), size_t (*read)(void*, void*, size_t), bool (*seek)(void*, off64_t, int), off64_t (*tell)(void*));
+}
+#endif
 #include <algorithm>
 #include <atomic>
 #include <cstring>
@@ -565,7 +572,12 @@ namespace
             la_int64_t offset = 0;
             const int r = archive_read_data_block(a, &data, &length, &offset);
             if (r == ARCHIVE_EOF) break;
-            if (r < ARCHIVE_WARN) return nullptr;
+            if (r < ARCHIVE_WARN)
+            {
+                CrashHandler::note("libarchive: data block read returned " + juce::String(r) + " after " + juce::String(out.getPosition()) + " of "
+                    + juce::String(expectedSize) + " bytes - " + archiveError(a, "no error text"));
+                return nullptr;
+            }
             if ((juce::int64)offset != out.getPosition()) out.setPosition((juce::int64)offset);
             if (length > 0) out.write(data, length);
         }
@@ -766,6 +778,7 @@ namespace
         juce::int64 total = 0, position = 0;
         std::map<int, std::unique_ptr<juce::FileInputStream>> streams;
         std::vector<char> buffer;
+        std::vector<char> synthetic;   // volume -2: bytes of our own (a file header rewritten for unarr, 0.8.217)
         juce::String error;
 
         explicit VirtualStream(const ArchiveIndex& i) : index(i) { buffer.resize(1 << 20); }
@@ -794,7 +807,8 @@ namespace
             const auto& range = ranges[r];
             const juce::int64 within = position - starts[r];
             const juce::int64 n = std::min<juce::int64>((juce::int64)buffer.size(), range.length - within);
-            if (range.volume < 0) std::memset(buffer.data(), 0, (size_t)n);
+            if (range.volume == -1) std::memset(buffer.data(), 0, (size_t)n);
+            else if (range.volume == -2) std::memcpy(buffer.data(), synthetic.data() + range.offset + within, (size_t)n);
             else
             {
                 auto* s = streamOf(range.volume);
@@ -804,6 +818,49 @@ namespace
             position += n;
             *out = buffer.data();
             return (la_ssize_t)n;
+        }
+        // The same stream for unarr (0.8.217): exactly 'count' bytes into the caller's
+        // buffer. unarr reads in small pieces, so the bytes come through a 1 MB window
+        // (a seek and a read of the file per piece made it 6 MB/s; libarchive asks for
+        // a megabyte at a time).
+        juce::int64 windowStart = -1, windowLength = 0;
+        size_t readInto(void* dest, size_t count)
+        {
+            size_t done = 0;
+            while (done < count && position < total)
+            {
+                if (position < windowStart || position >= windowStart + windowLength)
+                {
+                    // Fill the window from here: the ranges in a row, up to a megabyte.
+                    windowStart = position;
+                    windowLength = 0;
+                    juce::int64 at = position;
+                    while (windowLength < (juce::int64)buffer.size() && at < total)
+                    {
+                        const size_t r = (size_t)(std::upper_bound(starts.begin(), starts.end(), at) - starts.begin()) - 1;
+                        const auto& range = ranges[r];
+                        const juce::int64 within = at - starts[r];
+                        const juce::int64 n = std::min<juce::int64>((juce::int64)buffer.size() - windowLength, range.length - within);
+                        char* d = buffer.data() + windowLength;
+                        if (range.volume == -1) std::memset(d, 0, (size_t)n);
+                        else if (range.volume == -2) std::memcpy(d, synthetic.data() + range.offset + within, (size_t)n);
+                        else
+                        {
+                            auto* s = streamOf(range.volume);
+                            if (s == nullptr) break;
+                            if (!s->setPosition(range.offset + within) || s->read(d, (int)n) != (int)n) { error = "read error in " + index.volumes[(size_t)range.volume].getFileName(); break; }
+                        }
+                        windowLength += n;
+                        at += n;
+                    }
+                    if (windowLength == 0) break;
+                }
+                const juce::int64 n = std::min<juce::int64>((juce::int64)(count - done), windowStart + windowLength - position);
+                std::memcpy(static_cast<char*>(dest) + done, buffer.data() + (position - windowStart), (size_t)n);
+                position += n;
+                done += (size_t)n;
+            }
+            return done;
         }
         la_int64_t seek(la_int64_t offset, int whence)
         {
@@ -823,6 +880,153 @@ namespace
     la_ssize_t virtualRead(struct archive*, void* data, const void** out) { return static_cast<VirtualStream*>(data)->read(out); }
     la_int64_t virtualSeek(struct archive*, void* data, la_int64_t offset, int whence) { return static_cast<VirtualStream*>(data)->seek(offset, whence); }
     la_int64_t virtualSkip(struct archive*, void* data, la_int64_t request) { return static_cast<VirtualStream*>(data)->skip(request); }
+
+   #if ORGAN_HAVE_UNARR
+    // ---- unarr (0.8.217): the RAR 4 files libarchive cannot unpack ----------------------------
+    // libarchive 3.8.9 fails on two kinds of RAR 4 data: a PPMd block (what RAR makes of
+    // text - an organ definition packed with the "best" method: "File CRC error" or
+    // nothing at all, however it is fed) and the RAR VM filters of the WinRAR versions
+    // of 2011 ("Internal error extracting RAR file" on the Dom Bedos set's WAVs). unarr
+    // (LGPL-3.0, C, every platform; Masterpiece reads such archives with it too) has both.
+    // libarchive stays first; after one failure an archive is read with unarr from then on.
+    std::mutex gUnarrMutex;
+    std::set<juce::String> gUnarrFirst;   // lower-case first-volume paths
+
+    bool unarrFirst(const ArchiveIndex& index)
+    {
+        static const bool forced = std::getenv("ORGAN_UNARR_FIRST") != nullptr;   // tests: every archive through unarr
+        if (forced) return true;
+        std::lock_guard<std::mutex> lock(gUnarrMutex);
+        return gUnarrFirst.count(lower(index.first.getFullPathName())) != 0;
+    }
+    void preferUnarr(const ArchiveIndex& index, const juce::String& why)
+    {
+        std::lock_guard<std::mutex> lock(gUnarrMutex);
+        if (gUnarrFirst.insert(lower(index.first.getFullPathName())).second)
+            CrashHandler::note("Archive " + index.first.getFileName() + ": read with unarr from now on (libarchive: " + why + ")");
+    }
+
+    void unarrClose(void*) {}
+    size_t unarrRead(void* data, void* buffer, size_t count) { return static_cast<VirtualStream*>(data)->readInto(buffer, count); }
+    bool unarrSeek(void* data, off64_t offset, int origin) { return static_cast<VirtualStream*>(data)->seek(offset, origin) >= 0; }
+    off64_t unarrTell(void* data) { return static_cast<VirtualStream*>(data)->position; }
+
+    uint32_t crc32Of(const uint8_t* bytes, size_t length)
+    {
+        static uint32_t table[256];
+        static bool made = false;
+        if (!made)
+        {
+            for (uint32_t i = 0; i < 256; ++i)
+            {
+                uint32_t c = i;
+                for (int k = 0; k < 8; ++k) c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+                table[i] = c;
+            }
+            made = true;
+        }
+        uint32_t crc = 0xFFFFFFFFu;
+        for (size_t i = 0; i < length; ++i) crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >> 8);
+        return crc ^ 0xFFFFFFFFu;
+    }
+
+    // One file read through unarr: the same bytes libarchive gets ([signature + main
+    // block][file header][data]). A file over several volumes: unarr knows no volumes,
+    // so the first part's header is rewritten as the header of a whole file (the split
+    // flags cleared, the packed size the sum of the parts, the header CRC anew) and the
+    // parts' data follow in a row - what Masterpiece does as well.
+    std::shared_ptr<juce::MemoryBlock> readEntryWithUnarr(const ArchiveIndex& index, const ArchiveIndex::Entry& entry, juce::String& error)
+    {
+        if (entry.pieces.empty()) { error = "no data"; return nullptr; }
+        if (entry.encrypted) { error = "encrypted"; return nullptr; }
+        if (index.solid) { error = "solid archive"; return nullptr; }
+        VirtualStream stream(index);
+        const auto& first = entry.pieces.front();
+        const auto& info = index.volumeInfo[(size_t)first.volume];
+        stream.add(first.volume, 0, info.mainOffset + info.mainLength);
+        if (entry.pieces.size() == 1) stream.add(first.volume, first.headerOffset, first.headerLength);
+        else
+        {
+            juce::FileInputStream in(index.volumes[(size_t)first.volume]);
+            std::vector<char> header((size_t)first.headerLength);
+            if (header.size() < 32 || !in.openedOk() || !in.setPosition(first.headerOffset) || in.read(header.data(), (int)header.size()) != (int)header.size())
+            { error = "the file header could not be read"; return nullptr; }
+            // The FILE_CRC of a part's header is the CRC of that part's unpacked bytes; the
+            // whole file's CRC stands in the LAST part's header (unarr checks it at the end).
+            const auto& last = entry.pieces.back();
+            juce::FileInputStream lastIn(index.volumes[(size_t)last.volume]);
+            uint8_t lastCrc[4];
+            if (last.headerLength < 20 || !lastIn.openedOk() || !lastIn.setPosition(last.headerOffset + 16) || lastIn.read(lastCrc, 4) != 4)
+            { error = "the last part's header could not be read"; return nullptr; }
+            juce::int64 packed = 0;
+            for (const auto& piece : entry.pieces) packed += piece.dataLength;
+            auto* h = reinterpret_cast<uint8_t*>(header.data());
+            const uint16_t flags = (uint16_t)((h[3] | (h[4] << 8)) & ~0x0003);   // LHD_SPLIT_BEFORE | LHD_SPLIT_AFTER cleared
+            h[3] = (uint8_t)flags; h[4] = (uint8_t)(flags >> 8);
+            std::memcpy(h + 16, lastCrc, 4);                                     // FILE_CRC of the whole file
+            auto write32 = [](uint8_t* at, uint32_t v) { at[0] = (uint8_t)v; at[1] = (uint8_t)(v >> 8); at[2] = (uint8_t)(v >> 16); at[3] = (uint8_t)(v >> 24); };
+            write32(h + 7, (uint32_t)packed);                                        // PACK_SIZE
+            if ((flags & 0x0100) != 0) write32(h + 32, (uint32_t)(packed >> 32));  // LHD_LARGE: HIGH_PACK_SIZE
+            const uint32_t crc = crc32Of(h + 2, header.size() - 2);
+            h[0] = (uint8_t)crc; h[1] = (uint8_t)(crc >> 8);
+            stream.synthetic = header;
+            stream.add(-2, 0, (juce::int64)header.size());
+        }
+        for (const auto& piece : entry.pieces) stream.add(piece.volume, piece.dataOffset, piece.dataLength);
+        stream.add(-1, 0, 4096);
+        ar_stream* s = ar_open_stream(&stream, unarrClose, unarrRead, unarrSeek, unarrTell);
+        if (s == nullptr) { error = "unarr: no stream"; return nullptr; }
+        std::shared_ptr<juce::MemoryBlock> block;
+        ar_archive* ar = ar_open_rar_archive(s);
+        if (ar == nullptr) error = "unarr did not open the archive";
+        else if (!ar_parse_entry(ar)) error = "unarr found no file entry";
+        else
+        {
+            const size_t size = ar_entry_get_size(ar);
+            if ((juce::int64)size != entry.size) error = "unarr sees " + juce::String((juce::int64)size) + " bytes, the index " + juce::String(entry.size);
+            else
+            {
+                block = std::make_shared<juce::MemoryBlock>(size, false);
+                if (size > 0 && !ar_entry_uncompress(ar, block->getData(), size)) { error = "unarr could not unpack the file"; block.reset(); }
+            }
+        }
+        if (ar != nullptr) ar_close_archive(ar);
+        ar_close(s);
+        if (block == nullptr && stream.error.isNotEmpty()) error = stream.error;
+        return block;
+    }
+
+    // A file of a solid archive through unarr: the real volume, the entry by its header
+    // offset (unarr rebuilds the solid state from the first entry when it has to).
+    std::shared_ptr<juce::MemoryBlock> readSolidEntryWithUnarr(const ArchiveIndex& index, const ArchiveIndex::Entry& entry, juce::String& error)
+    {
+        if (entry.pieces.empty()) { error = "no data"; return nullptr; }
+        if (index.volumes.size() != 1 || entry.pieces.size() != 1) { error = "a solid archive in several volumes"; return nullptr; }
+       #if JUCE_WINDOWS
+        ar_stream* s = ar_open_file_w(index.volumes.front().getFullPathName().toWideCharPointer());
+       #else
+        ar_stream* s = ar_open_file(index.volumes.front().getFullPathName().toRawUTF8());
+       #endif
+        if (s == nullptr) { error = "the archive could not be opened"; return nullptr; }
+        std::shared_ptr<juce::MemoryBlock> block;
+        ar_archive* ar = ar_open_rar_archive(s);
+        if (ar == nullptr) error = "unarr did not open the archive";
+        else if (!ar_parse_entry_at(ar, (off64_t)entry.pieces.front().headerOffset)) error = "unarr found no file entry at the offset";
+        else
+        {
+            const size_t size = ar_entry_get_size(ar);
+            if ((juce::int64)size != entry.size) error = "unarr sees " + juce::String((juce::int64)size) + " bytes, the index " + juce::String(entry.size);
+            else
+            {
+                block = std::make_shared<juce::MemoryBlock>(size, false);
+                if (size > 0 && !ar_entry_uncompress(ar, block->getData(), size)) { error = "unarr could not unpack the file"; block.reset(); }
+            }
+        }
+        if (ar != nullptr) ar_close_archive(ar);
+        ar_close(s);
+        return block;
+    }
+   #endif
 
     // The file read on its own. Stored data comes straight from the volumes; packed
     // data goes through libarchive fed with the file's bytes alone. nullptr (with
@@ -957,14 +1161,44 @@ namespace
         juce::String error;
         if (!index.solid || entry.stored)
         {
-            auto block = readEntryAlone(index, entry, error);
+            std::shared_ptr<juce::MemoryBlock> block;
+           #if ORGAN_HAVE_UNARR
+            if (!entry.stored && unarrFirst(index))
+            {
+                block = readEntryWithUnarr(index, entry, error);
+                if (block == nullptr) CrashHandler::note("Archive " + index.first.getFileName() + ": " + entry.path + " could not be read by unarr - " + error);
+                return block;
+            }
+           #endif
+            block = readEntryAlone(index, entry, error);
+           #if ORGAN_HAVE_UNARR
+            if (block == nullptr && !entry.stored && !entry.encrypted)
+            {
+                preferUnarr(index, error);
+                juce::String why;
+                block = readEntryWithUnarr(index, entry, why);
+                if (block == nullptr) error += "; unarr: " + why;
+            }
+           #endif
             if (block == nullptr) CrashHandler::note("Archive " + index.first.getFileName() + ": " + entry.path + " could not be read - " + error);
             return block;
         }
         std::map<juce::int64, std::shared_ptr<juce::MemoryBlock>> wanted;
         wanted[entry.order] = nullptr;
-        readEntriesInSequence(index, wanted);
+       #if ORGAN_HAVE_UNARR
+        if (!unarrFirst(index))
+       #endif
+            readEntriesInSequence(index, wanted);
         auto block = wanted.begin()->second;
+       #if ORGAN_HAVE_UNARR
+        if (block == nullptr && !entry.encrypted)
+        {
+            preferUnarr(index, "the solid stream");
+            block = readSolidEntryWithUnarr(index, entry, error);
+            if (block == nullptr) CrashHandler::note("Archive " + index.first.getFileName() + ": " + entry.path + " could not be read by unarr - " + error);
+            return block;
+        }
+       #endif
         if (block == nullptr) CrashHandler::note("Archive " + index.first.getFileName() + ": " + entry.path + " could not be read (solid archive)");
         return block;
     }

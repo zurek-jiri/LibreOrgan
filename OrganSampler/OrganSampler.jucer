@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="TSAADV" name="OrganSampler" projectType="guiapp" useAppConfig="0"
-              version="0.8.216" companyName="OrganSampler" addUsingNamespaceToJuceHeader="0"
-              jucerFormatVersion="1" headerPath="../../../ASIOSDK/common;../../../ASIOSDK/host;../../../ASIOSDK/host/pc;../../../ThirdParty/signalsmith;../../../ThirdParty/libarchive/libarchive">
+              version="0.8.217" companyName="OrganSampler" addUsingNamespaceToJuceHeader="0"
+              jucerFormatVersion="1" headerPath="../../../ASIOSDK/common;../../../ASIOSDK/host;../../../ASIOSDK/host/pc;../../../ThirdParty/signalsmith;../../../ThirdParty/libarchive/libarchive;../../../ThirdParty/unarr-include;../../../ThirdParty/unarr;../../../ThirdParty/unarr/common">
   <MAINGROUP id="bQGqRZ" name="OrganSampler">
     <GROUP id="{1CF4E020-5D96-48D3-C007-4FEDB9856EFD}" name="Source">
       <FILE id="ApIcn1" name="AppIcon.png" compile="0" resource="0" file="Source/AppIcon.png"/>
@@ -50,6 +50,22 @@
       <FILE id="nCxonC" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
     </GROUP>
+    <GROUP id="{7A3B1C44-2E5F-4D61-9B08-5C2A6E7F1D03}" name="unarr">
+      <FILE id="UnrC01" name="conv.c" compile="1" resource="0" file="../ThirdParty/unarr/common/conv.c"/>
+      <FILE id="UnrC02" name="crc32.c" compile="1" resource="0" file="../ThirdParty/unarr/common/crc32.c"/>
+      <FILE id="UnrC03" name="stream.c" compile="1" resource="0" file="../ThirdParty/unarr/common/stream.c"/>
+      <FILE id="UnrC04" name="unarr.c" compile="1" resource="0" file="../ThirdParty/unarr/common/unarr.c"/>
+      <FILE id="UnrC05" name="CpuArch.c" compile="1" resource="0" file="../ThirdParty/unarr/lzmasdk/CpuArch.c"/>
+      <FILE id="UnrC06" name="Ppmd7.c" compile="1" resource="0" file="../ThirdParty/unarr/lzmasdk/Ppmd7.c"/>
+      <FILE id="UnrC07" name="Ppmd7Dec.c" compile="1" resource="0" file="../ThirdParty/unarr/lzmasdk/Ppmd7Dec.c"/>
+      <FILE id="UnrC08" name="Ppmd7aDec.c" compile="1" resource="0" file="../ThirdParty/unarr/lzmasdk/Ppmd7aDec.c"/>
+      <FILE id="UnrC09" name="filter-rar.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/filter-rar.c"/>
+      <FILE id="UnrC10" name="huffman-rar.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/huffman-rar.c"/>
+      <FILE id="UnrC11" name="parse-rar.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/parse-rar.c"/>
+      <FILE id="UnrC12" name="rar.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/rar.c"/>
+      <FILE id="UnrC13" name="rarvm.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/rarvm.c"/>
+      <FILE id="UnrC14" name="uncompress-rar.c" compile="1" resource="0" file="../ThirdParty/unarr/rar/uncompress-rar.c"/>
+    </GROUP>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
@@ -70,7 +86,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_ASIO="1" JUCE_ASIO_DEBUGGING="1" JUCE_USE_MP3AUDIOFORMAT="0" JUCE_USE_OPUS="0" JUCE_USE_WEBP="0"/>
   <EXPORTFORMATS>
-    <VS2026 targetFolder="Builds/VisualStudio2026" smallIcon="ApIcn1" bigIcon="ApIcn1" extraDefs="_USE_MATH_DEFINES=1&#10;NOMINMAX=1&#10;LIBARCHIVE_STATIC=1"
+    <VS2026 targetFolder="Builds/VisualStudio2026" smallIcon="ApIcn1" bigIcon="ApIcn1" extraDefs="_USE_MATH_DEFINES=1&#10;NOMINMAX=1&#10;LIBARCHIVE_STATIC=1&#10;ORGAN_HAVE_UNARR=1&#10;_CRT_SECURE_NO_WARNINGS=1"
             externalLibraries="archive.lib&#10;bcrypt.lib"
             postExportShellCommandWin="copy /Y &quot;%%1%%\OrganSampler_icon.ico&quot; &quot;%%1%%\Builds\VisualStudio2026\icon.ico&quot;">
       <CONFIGURATIONS>

@@ -207,7 +207,7 @@ void MainComponent::mergeConfigurationFile(const juce::File& file)
     auto configuration = juce::JSON::parse(text);
     if (!configuration.isObject() || !configuration.getProperty("manualKeyboards", juce::var()).isArray())
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+        queueNotice(juce::MessageBoxIconType::WarningIcon,
             "Merge configuration", "The selected file is not a valid OrganSampler configuration.");
         return;
     }
@@ -218,7 +218,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
 {
     if (activeFolderLoader != nullptr)
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Merge configuration", "Please wait until the folders have finished loading.", "OK", this);
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Merge configuration", "Please wait until the folders have finished loading.", "OK", this);
         return;
     }
     auto* addedRoot = added.getDynamicObject();
@@ -312,7 +312,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         + gb(needed) + " in memory), " + gb(available) + " free");
     if (needed > available - (juce::int64)512 * 1024 * 1024)
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Merge configuration",
+        queueNotice(juce::MessageBoxIconType::WarningIcon, "Merge configuration",
             "Not enough memory for the added organ: its new sample folders hold " + gb(addedBytes) + " of WAV files (about " + gb(needed)
             + " in memory), and only " + gb(available) + " is free. Nothing was changed. Close other programs, or add fewer folders (a configuration with fewer divisions).",
             "OK", this);
@@ -650,7 +650,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     CrashHandler::note("Merge configuration: " + summary + " | " + done.joinIntoString(" | ") + " | ignored: " + ignored.joinIntoString(" | "));
     if (stopsAdded == 0 && newTrees.empty())
     {
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Merge configuration", summary + "\n\nNothing new to add"
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Merge configuration", summary + "\n\nNothing new to add"
             + (ignored.isEmpty() ? juce::String(".") : ":\n- " + ignored.joinIntoString("\n- ")), "OK", this);
         return;
     }
@@ -667,7 +667,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         if (safeThis == nullptr) return;
         safeThis->configurationDirty = true;
         if (afterLoad) afterLoad();
-        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Merge configuration", report, "OK", safeThis.getComponent());
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Merge configuration", report, "OK", safeThis.getComponent());
     });
     applyPortableConfiguration(base, file, {});
     configurationDirty = true;

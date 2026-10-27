@@ -12,6 +12,36 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.217] - 2026-10-27
+
+### Fixed
+- Message boxes over each other: every plain notice of the program (the
+  "Multi-part archive" note, "Nested folder trees", "Audio devices not
+  available", a merge's summary ...) now waits in one queue and is shown only
+  when no other box is up - never over the load box, the loading window or a
+  question, so the box in front is always the one to answer.
+- The Dom Bedos set (RAR archives made by WinRAR in 2011) could not be read:
+  its organ definition is a PPMd block (what RAR makes of text) and its WAVs
+  carry the RAR filters of that WinRAR, and the archive library libarchive
+  fails on both ("File CRC error", "Internal error extracting RAR file").
+  Such files are now read through a second reader, unarr (LGPL-3.0, C, the
+  same on Windows, macOS and Linux; Masterpiece reads them with it too):
+  libarchive stays first, and after its first failure the archive is read
+  with unarr from then on; a file split over several volumes is handed to
+  unarr as one.
+- After a polyphony measurement the level stays at -52 dB for five seconds
+  after the run ends and the report appears, then glides up as before.
+
+### Changed
+- The manual names no program versions any more (every version carries its
+  own manual); section 1.5 says concisely where the settings, the
+  configurations, the sample folders and the archives are expected and how
+  the program learns the places (`Locations.txt`), with the default paths of
+  Windows, macOS and Linux.
+- `configurations/INDEX.md` has a *remove* link on every line: it opens the
+  "Remove my configuration" form with the organ filled in - submit it and the
+  robot takes the organ off the list.
+
 ## [0.8.216] - 2026-10-27
 
 ### Fixed

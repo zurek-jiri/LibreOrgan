@@ -34,7 +34,8 @@ $items = @(
     @{ Name = 'kLicenceAsioNotice';      File = (Join-Path $Root 'ThirdParty\notices\ASIO-SDK-notice.txt') },
     @{ Name = 'kLicenceSignalsmithStretch'; File = (Join-Path $Root 'ThirdParty\signalsmith\LICENSE-signalsmith-stretch.txt') },
     @{ Name = 'kLicenceSignalsmithLinear';  File = (Join-Path $Root 'ThirdParty\signalsmith\LICENSE-signalsmith-linear.txt') },
-    @{ Name = 'kLicenceLibarchive';         File = (Join-Path $Root 'ThirdParty\notices\libarchive-COPYING.txt') }
+    @{ Name = 'kLicenceLibarchive';         File = (Join-Path $Root 'ThirdParty\notices\libarchive-COPYING.txt') },
+    @{ Name = 'kLicenceUnarr';              File = (Join-Path $Root 'ThirdParty\notices\unarr-COPYING.txt') }
 )
 
 $sb = New-Object System.Text.StringBuilder

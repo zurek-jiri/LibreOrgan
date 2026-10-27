@@ -10,25 +10,28 @@ count on roughly ten times as much; `-` = saved by an older version - and the
 routes - the perspectives as the configuration names them (`default` = a single
 perspective) and `auxiliary` when a division uses that route; what each one carries, the
 README of the organ says. The triangles in the header sort the tables by that column.
+The last column takes a configuration off the list: its *remove* link opens the
+"Remove my configuration" form with the organ filled in - submit it, and a robot removes
+the folder when you are the one who published it (or the maintainer).
 Written by the `Configurations check` workflow from the configuration files themselves
 on every change; do not edit by hand. How to use and publish one: [README.md](README.md).
 
 ## Featured
 
-| Organ ▲[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
-|---|---:|---:|---:|---|
-| [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |
-| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 7.9 GB | Direct, Diffuse, Rear |
+| Organ ▲[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
+|---|---:|---:|---:|---|---|
+| [Rural Organ - the demo organ](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |  |
+| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 7.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20stralsund-st-jakobi-kr-wegscheider&organ=stralsund-st-jakobi-kr-wegscheider) |
 
 ## All the others
 
-| Organ ▲[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) |
-|---|---:|---:|---:|---|
-| [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear |
-| [Altenbruch, Klapmeyer Organ](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default |
-| [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear |
-| [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear |
-| [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear |
-| [Menesterol, Dry](menesterol-dry/README.md) | 3 | 23 | 0.9 GB | Dry |
+| Organ ▲[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
+|---|---:|---:|---:|---|---|
+| [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-organ&organ=adlington-hall-organ) |
+| [Altenbruch, Klapmeyer Organ](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
+| [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
+| [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-lewis-organ&organ=ashton-lewis-organ) |
+| [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
+| [Menesterol, Dry](menesterol-dry/README.md) | 3 | 23 | 0.9 GB | Dry | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20menesterol-dry&organ=menesterol-dry) |
 
 8 configuration(s).

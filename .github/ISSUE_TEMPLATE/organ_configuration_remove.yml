@@ -6,9 +6,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Name the organ as it stands in [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md) -
-        any part of its name is enough (case does not matter). A robot removes the folder when you are the one who published it
-        (or the maintainer), answers here and closes this issue. When several organs match, it lists them: edit the issue with more of the name.
+        The simplest way: the *remove* link in the last column of the organ's line in
+        [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md) opens this form with the organ
+        filled in - just submit it. By hand, any part of the organ's name is enough (case does not matter). A robot removes the folder when
+        you are the one who published it (or the maintainer), answers here and closes this issue. When several organs match, it lists them:
+        edit the issue with more of the name.
         To publish a new version instead, send the new zip and README with the "Organ configuration" form: it replaces the old one by itself.
   - type: input
     id: organ

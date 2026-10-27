@@ -1397,6 +1397,74 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the screenshot stays the default - the user: "ten existující screenshot nezahazuj"); README: the screenshot first,
   organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
+  0.8.217 (27 Oct 2026, the user's batch): (1) NOTICE QUEUE: `queueNotice(icon, title, text[, button, component,
+  callback])` is a FREE function declared after the class in MainComponent.h (friend; the same arguments as
+  AlertWindow::showMessageBoxAsync, callable from any lambda or helper struct without `this`) -> `MainComponent::
+  noticeOwner->enqueueNotice` -> `pendingNotices` (std::deque) -> `showNextNotice`: shown only when `noticeBlocked()` is
+  false = no notice of ours showing, no `activeFolderLoader`, and NO juce::AlertWindow among the modal components (the
+  load box, the loading window, a question, the measurement window); DialogWindows (Stop List, Couplers, Editor) and
+  menus do not block; blocked -> a 400 ms retry. EVERY former showMessageBoxAsync of MainComponent.cpp and
+  MainComponentMerge.cpp goes through it (replace_all); Main.cpp's "already running" box stays direct. Never call
+  juce::AlertWindow::showMessageBoxAsync in MainComponent again - the user's "msgboxy přes sebe" (the Multi-part
+  archive note over the load box over the loader). (2) BEDOS: the ODF `Dom Bedos Organ Model.Organ_Hauptwerk_xml` in
+  `BedosUpdate864_ODF.CompPkg.Hauptwerk.rar` (E:\sonus\HW2\bedos, RAR 4 with a recovery record, 183 files) is a text
+  file packed -m5 = a PPMd block (first data bit 1); libarchive fed the file alone (`readEntryAlone`) returned "File
+  CRC error" (WinRAR tests the archive OK - the user checked too); the sequential path (`readEntriesInSequence`, the
+  real stream) FAILS THE SAME WAY, and so do the set's WAVs (bedos1: "Internal error extracting RAR file"; LZSS blocks,
+  so the 2011 WinRAR's RAR VM filters, not PPMd). Measured with the user's own WinRAR 6: the same WAV repacked
+  `-ma4 -m5` and `-mm` reads fine through libarchive, `-mct+` (PPMd forced) fails with ARCHIVE_FAILED (-25) and NO
+  error text after 0 bytes, alone and solid alike -> libarchive 3.8.9's RAR 3 PPMd is broken, never patch it
+  (prebuilt). THE USER'S RULES (27 Oct 2026, three messages): NO external unrar/7z ("jaký kurva unrar???"), nothing
+  that is not for Windows + macOS + Linux alike, open-source freeware only; he pointed at Masterpiece
+  (github.com/bonninr/masterpiece, GPL-3, C++20/JUCE), which reads RAR with libarchive + unarr (github.com/selmf/unarr,
+  LGPL-3.0, C; pinned commit 9c8e898bb3dc2ee9d368b0e945d5bb453e15c187; solid RAR 4 and archives with filters go to
+  unarr there; a file split over volumes is joined into a synthetic single-volume archive in memory). Ours
+  (SampleFiles.cpp, `#if ORGAN_HAVE_UNARR`): `readEntryWithUnarr` feeds the SAME VirtualStream ([sig+main][file
+  header][data][zeros]) to `ar_open_stream` (declared by hand: it lives in common/unarr-imp.h) -> `ar_open_rar_archive`
+  -> `ar_parse_entry` -> `ar_entry_uncompress`; a split file gets a SYNTHETIC header (`VirtualStream::synthetic`,
+  volume -2: split flags 0x0003 cleared, PACK_SIZE = the sum, HIGH_PACK_SIZE with LHD_LARGE 0x0100, header CRC16 =
+  low 16 bits of CRC32 over bytes 2..size) and the parts' data in a row; a solid archive -> `readSolidEntryWithUnarr`
+  (ar_open_file(_w) + `ar_parse_entry_at(headerOffset)`, single volume only). `gUnarrFirst` (preferUnarr, logged
+  once "read with unarr from now on") skips libarchive for an archive after its first failure. CMake: `organ_unarr`
+  static lib from Masterpiece's 14-file list (no zlib/bzip2/lzma), `ORGAN_HAVE_UNARR=1`, guarded by the existence
+  of ThirdParty/unarr/rar/rar.c; the header = checked-in ThirdParty/unarr-include/unarr.h written by
+  `Tools/make_unarr_header.py` from unarr.h.in (unarr's sources `#include "unarr.h"`). The jucer needs the same
+  14 C files as a group + headerPath ThirdParty/unarr-include;ThirdParty/unarr;ThirdParty/unarr/common + extraDefs
+  ORGAN_HAVE_UNARR=1. The tool classifier DENIED `git submodule add` ("Untrusted Code Integration") - the user added the
+  submodule himself (two `!` commands, one per line - two lines in one `!` input break on the second "!"). Dev:
+  `ORGAN_UNARR_FIRST=1` sends every archive through unarr (the split-file path is tested on the Aeolian set that way);
+  `ORGAN_TEST_ARCHIVE` now registers its archive as chosen (0.8.177 rule) so ORGAN_TEST_ARCHIVE_CHECK reads it.
+  Test archives: %TEMP%\bedos_rartest (one Bedos WAV unpacked + arc1 -m5, arc2 -mm, arc3 -mct+, arc4 -mct+ -s solid,
+  arc5 -m3 -mct+ made by the user's WinRAR 6). unarr.h typedefs `off64_t` as int64_t (glibc's is `long` = the same
+  type on x86_64; watch 32-bit builds). TWO LESSONS of the split-file path (%TEMP%\rartest\v4 + v4rr = 001313
+  Re_glockenton in 40 MB volumes, 5 files split, disk root D:\): (1) the FILE_CRC of a part's header is the CRC of
+  THAT part's unpacked bytes; the whole file's CRC stands in the LAST part's header - unarr returns false on a CRC
+  mismatch ("unarr could not unpack the file" on exactly the 3 split files sampled), so the synthetic header takes
+  bytes 16..19 from the last piece's header. (2) unarr reads in small pieces: a seek + read of the volume per piece
+  gave 6 MB/s (libarchive 100+ through the same VirtualStream, which hands it 1 MB at a time) - `readInto` serves
+  from a 1 MB window (`windowStart/windowLength`, the ranges filled in a row). Verified: CHECK "82 compared, 0
+  differ" before the fixes except the 3 split ones. (3) Measurement end: `outputGainHoldUntilMs`
+  = now + 5000 (the level stays at -52 dB five seconds after the run and the report, then 26 dB/s). (4) MANUAL: no
+  version number anywhere any more ("každá verze si nese svůj manuál" - never write "(0.8.xxx)" or "since 0.8.xxx"
+  into USER_MANUAL.md again); 1.5 has "### Where the files are" (settings folder per OS: Windows
+  `C:\Users\<you>\AppData\Roaming\OrganSampler`, macOS `~/Library/OrganSampler`, Linux `~/.config/OrganSampler`; the
+  configurations folder; samples anywhere, relative to the library root; RAR archives expected NOWHERE - only the chosen
+  ones; Locations.txt). (5) REMOVE A CONFIGURATION = the *remove* link column of INDEX.md (configurations_index.py
+  `remove_link`: the issue form prefilled by query string `?template=organ_configuration_remove.yml&title=...&organ=
+  <folder>`; `configuration_tools.py find` returns the exact folder match alone when one exists; rural-organ has no
+  link). The robot cannot rewrite workflow files (GITHUB_TOKEN has no `workflows` scope), so a `choice` input list in
+  the dispatch form is impossible; the user's "Actions" attempts never produced a workflow_dispatch run at all (every
+  run of configuration-remove.yml is an `issues` event, skipped). (6) POLYPHONY #113-#115 (Core 2 Duo Mac P8600 and
+  Linux T6670, 0.8.216 vs #88/#89 of 0.8.183): NOT an engine regression. Mac: the settings.json of #88 had
+  `sincKernelFromHz` 20000 (sinc for no pipe) and `irLightAuto` true; #113/#114 have 3000 (the default: every pipe
+  from 3 kHz through the 8-tap sinc, kernel 4930 -> 8000-11400 ns per voice and block on SSE2) and irLightAuto false
+  (IR Full kept at 17.5 % per thread: hand-over wait 365 us per route callback, callbacks of 14-29 ms) -> 3900 -> 779;
+  memesdry (dry set, no IR) 687 from a single 107 % callback with render at 19 %. Linux: kernel 5117 -> 4103 ns
+  (faster), limits 2500-2600 vs 2800 = 36 kHz storage then vs 48 kHz now + three device paths. Before calling a
+  Core 2 Duo figure a regression: diff the settings.json of the two reports (`sincKernelFromHz`, `irLightAuto`,
+  `storageSampleRate`, `renderKernel`) and the "per voice and block: kernel N ns" of the last clean seconds.
+  The "Profiling clock" on that Mac reads ~1 GHz in every run (958-1103 MHz) - not a throttle sign, the same in #88.
+  Comment drafts: %TEMP%\issue113_comment.md, issue114_comment.md, issue115_comment.md.
 ## Pending for the next session (delete when done)
 - DISK READ 358 MB/s (the user, 26 Oct 2026 evening) - STILL OPEN: the loading dialog's "Reading from the disk at
   N MB/s" showed 358 MB/s on one of his loads. The activity log kept on this machine (1 MB, rotated) holds only

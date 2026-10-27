@@ -104,19 +104,16 @@ comment (`published by @login`); a new version from another account is
 proposed all the same, with that said in the pull request and the issue -
 the maintainer's merge decides.
 
-**Removing one**, without Git:
-
-- Anybody who published an organ: the form
-  https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml
-  with any part of the organ's name. The robot removes the folder when the
-  issue's author is the publisher (or the maintainer), answers and closes the
-  issue; when several organs match it lists them - edit the issue with more
-  of the name.
-- The maintainer: GitHub > *Actions* > *Remove a configuration* > *Run
-  workflow* > any part of the organ's name (the folder, the README title or
-  the organ as named at the save; case does not matter) > *Run workflow*. One
-  match: the folder goes, INDEX.md is regenerated, both committed by the
-  workflow; several: they are listed in the job and nothing happens.
+**Removing one**, without Git: pick it in [INDEX.md](INDEX.md) - the
+*remove* link in the last column of its line opens the form "Remove my
+configuration" with the organ filled in; press *Submit new issue*. The robot
+removes the folder when the issue's author is the one who published it (or
+the maintainer), answers and closes the issue. (The same form typed by hand,
+https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml,
+takes any part of the organ's name; the maintainer can also run GitHub >
+*Actions* > *Remove a configuration* > *Run workflow* with a part of the
+name.) The folder goes, INDEX.md is regenerated, both committed by the
+workflow.
 
 The Rural Organ demo is never replaced or removed by the robots.
 

@@ -5,6 +5,9 @@
     <Filter Include="OrganSampler\Source">
       <UniqueIdentifier>{6F1D7FA6-130F-4447-A7B3-046287E9C254}</UniqueIdentifier>
     </Filter>
+    <Filter Include="OrganSampler\unarr">
+      <UniqueIdentifier>{793CA33F-B617-718D-0334-78F44799FCE4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="OrganSampler">
       <UniqueIdentifier>{E2AE3F04-384D-10F9-28BD-ECBBB971C02B}</UniqueIdentifier>
     </Filter>
@@ -984,6 +987,48 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\MainComponent.cpp">
       <Filter>OrganSampler\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\common\conv.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\common\crc32.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\common\stream.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\common\unarr.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\lzmasdk\CpuArch.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\lzmasdk\Ppmd7.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\lzmasdk\Ppmd7Dec.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\lzmasdk\Ppmd7aDec.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\filter-rar.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\huffman-rar.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\parse-rar.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\rar.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\rarvm.c">
+      <Filter>OrganSampler\unarr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\ThirdParty\unarr\rar\uncompress-rar.c">
+      <Filter>OrganSampler\unarr</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
