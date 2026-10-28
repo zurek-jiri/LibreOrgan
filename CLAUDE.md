@@ -1578,11 +1578,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   SAME size, the rest within 1 % (24 header bytes or a few KB of release), 0 files missing = the same take from two
   microphones; the DRY set of the same organ (002061/hw/03-ortf_HW_Principal8 - the same folder names!) vs far: 0
   equal, 17 % off, 45 files more = another recording. BUT the user (28 Oct): "nemusí mít soubory stejnou délku,
-  historicky jsem některé zkracoval, o trošku" - the file length is NEVER a gate or a filter, a log line at most. So:
-  (b) the TUNING FINGERPRINT per pipe is the ONLY hard gate: f0 of 8-12 same-named files of both folders (the first
-  0.3 s after the onset - a trimmed END does not matter, the computeTuning440 analysis), the per-pipe cents must
-  agree within ~2 c (the same pipe from two mics), foreign organs scatter 5-15 c even at the same a1 - a1 alone is NO
-  gate (many sets retuned to 440); (c) decided PER FOLDER, not per package: name match + fingerprint -> joins the row, name
+  historicky jsem některé zkracoval, o trošku" - the file length is NEVER a gate or a filter, a log line at most.
+  THE LAW (the user, 28 Oct 2026): "perspektivy musí mít absolutně stejné ladění v smpl ... Nesmí mít rozdíl 1-2
+  centy" - MEASURED (%TEMP%\smpl_cmp.py <folderA> <folderB>): Bergen HW Principal 8 Surround 03-ortf vs far
+  (002082) 67 of 67 files the SAME smpl (unity note + fraction, bit for bit), ab vs rea 67/67; the DRY set
+  (002061/hw/03-ortf_HW_Principal8) vs far 0 equal, 51 different, 45 files more; every folder 67 distinct values
+  (an honest smpl). So: (b) THE GATE = the smpl chunk of the same-named files IDENTICAL (unity + fraction, no
+  tolerance; 8-12 files per folder or all - header reads, a few KB per file, no audio decoded, independent of
+  trimming and of a1); one difference = not joined. Fallback ONLY for a degenerate smpl (few distinct values in the
+  folder against its file count - fraction 0 / unity = the file number everywhere - or no smpl chunk): the f0
+  fingerprint from the first 0.3 s (computeTuning440's analysis) within ~2 c; never read f0 otherwise. The same gate
+  for the ODF merge and Load folder (the ODF's pitch is not used for it); (c) decided PER FOLDER, not per package: name match + fingerprint -> joins the row, name
   match without -> a new row (a second perspective need not carry every stop); the 80 %/one-prefix rule then only
   LEARNS the perspective label, it no longer decides the join; (d) the whole stem after the prefix must be equal
   (the base folder's prefix a known pattern); (e) no question box. The decision moves into the loader (the analysis
