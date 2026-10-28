@@ -802,14 +802,15 @@ static const char* const kManualText_part3 =
     "same pipe has exactly the same tuning (the `smpl` chunk of the file: unity\n"
     "note and pitch fraction) in every perspective - the program reads the\n"
     "headers of a few same-named files of the two folders and the folder joins\n"
-    "when a clear majority of them is identical (a producer may have retuned a\n"
-    "pipe or two in the later set; a foreign pipe never matches bit for bit),\n"
-    "else it is added as a stop of its own; files\n"
+    "when two thirds of them are the same within 0.02 cent (a producer may have\n"
+    "retuned a pipe or two in the later set, and each perspective is tuned to\n"
+    "440 Hz on its own anyway; a foreign pipe differs by cents), else it is\n"
+    "added as a stop of its own; files\n"
     "without a usable `smpl` chunk are compared by their measured pitch within\n"
     "two cents instead. So the stops of another organ, even one with the same\n"
-    "folder names and the same a1, are added as rows as ever, never fused; a\n"
     ;
 static const char* const kManualText_part4 =
+    "folder names and the same a1, are added as rows as ever, never fused; a\n"
     "perspective your organ already has keeps its audio route and settings, a new\n"
     "perspective brings the added configuration's; a division that has stops\n"
     "keeps its MIDI keyboard, an empty one takes the added configuration's keys,\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "*Load Configuration* and choose the organ definition in Hauptwerk's\n"
     "`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`): divisions,\n"
     "stops, perspectives, voicing, couplers, crescendo and tremulant rates come\n"
-    "from the definition (\"Loading a Hauptwerk organ definition (ODF)\"), the\n"
     ;
 static const char* const kManualText_part5 =
+    "from the definition (\"Loading a Hauptwerk organ definition (ODF)\"), the\n"
     "configuration is written into your configurations folder and the library's\n"
     "place joins the sample locations. An encrypted set (`.hbw`) cannot be read.\n"
     "\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "combination in use, *Tutti* and *X* (all stops on / all off), *Save* and\n"
     "*Load* for combination files, and the crescendo.\n"
     "\n"
-    "- Click a piston to recall its registration (stops, transmissions, couplers,\n"
     ;
 static const char* const kManualText_part6 =
+    "- Click a piston to recall its registration (stops, transmissions, couplers,\n"
     "  tremulants, Unison Off).\n"
     "- With *Set* on, clicking a piston stores the current registration in it.\n"
     "- *<<* and *>>* step through the pistons, the bank buttons through the banks\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "  the loaded folders that no division of the instrument uses yet, and the\n"
     "  division's pooled stops and transmissions, which return to the grid in that\n"
     "  cell. A stop already in use anywhere is not offered: it is moved on the\n"
-    "  grid (arrange mode) or given a transmission instead.\n"
     ;
 static const char* const kManualText_part7 =
+    "  grid (arrange mode) or given a transmission instead.\n"
     "\n"
     "None of this loads anything again: stops keep their samples and the copies of\n"
     "their filled pipes.\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "the copies of a transmission's filled pipes are still being built the merge\n"
     "waits with a message.\n"
     "\n"
-    "---\n"
     ;
 static const char* const kManualText_part8 =
+    "---\n"
     "\n"
     "# 4. The Stop List (building the organ)\n"
     "\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "many sound cards at once\" below. Each tab, top to bottom:\n"
     "\n"
     "- **Perspective volume** (-31 dB switches the perspective off) and **Channel\n"
-    "  separation**: at 100 % every pipe sounds only on its own channel pair (mono\n"
     ;
 static const char* const kManualText_part9 =
+    "  separation**: at 100 % every pipe sounds only on its own channel pair (mono\n"
     "  samples are spread over the pairs, stereo samples keep theirs); below 100 %\n"
     "  every channel of the route also carries that share of the other channels; at\n"
     "  0 % all channels carry the same sum.\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "do not. Open a terminal (*Konsole* or *Terminal* in the application menu;\n"
     "Ctrl+Alt+T on most desktops) and type the line for your distribution, then\n"
     "Enter and your password:\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "- Ubuntu, Debian, Mint, Pop!_OS: `sudo apt install pipewire-jack pipewire-bin pavucontrol`\n"
     "- Fedora: `sudo dnf install pipewire-jack-audio-connection-kit pipewire-utils pavucontrol`\n"
     "- Arch, Manjaro: `sudo pacman -S pipewire-jack pavucontrol`\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "that long; the activity log notes every such event.\n"
     "\n"
     "### What moves the measured figure, and what the measurement cannot see\n"
-    "\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
     "Lessons from many runs on four computers (two-core laptops, a 16-core\n"
     "desktop, a 16-core notebook), 2026-10:\n"
     "\n"
@@ -2423,9 +2424,9 @@ static const char* const kManualText_part11 =
     "**Pitch shift (resampling + timbre correction).** A copy of every filled\n"
     "pipe's attacks and releases is built in the background when the stop loads or\n"
     "its compass changes: the sample resampled with the best filter, its spectral\n"
-    "envelope (the formants, the body of the sound) moved back by the stop's\n"
     ;
 static const char* const kManualText_part12 =
+    "envelope (the formants, the body of the sound) moved back by the stop's\n"
     "*Formants* value, the loops set to whole periods, the loudness matched to the\n"
     "source, and the release's decay laid out again to the source's duration\n"
     "(*Filled pipes: release length*). Nothing in the copy varies with time, so\n"
@@ -2625,9 +2626,9 @@ static const char* const kManualText_part12 =
     "voices against 1700 scalar on such a Mac) or NEON (four frames, Apple\n"
     "silicon and Linux arm64). The\n"
     "list holds every kernel this computer\n"
-    "can run: *scalar* (one frame a step, every CPU), *SSE2* (four frames, every\n"
     ;
 static const char* const kManualText_part13 =
+    "can run: *scalar* (one frame a step, every CPU), *SSE2* (four frames, every\n"
     "x86-64), *AVX2* (eight frames, when the CPU has it), *NEON* (arm64). Pick one\n"
     "to compare it with another: the change takes effect at once, no reload, and\n"
     "the polyphony measurement run with each tells which gives more pipes on this\n"
@@ -2827,9 +2828,9 @@ static const char* const kManualText_part13 =
     "   keeps its place in the polyphony until its release has died away\n"
     "   completely.\n"
     "3. Watch *DSP* and *PEAK* while you do it. At the moment the audio starts to\n"
-    "   break up (crackle, dropouts), note the *PEAK* value.\n"
     ;
 static const char* const kManualText_part14 =
+    "   break up (crackle, dropouts), note the *PEAK* value.\n"
     "4. Enter a somewhat lower number as the limit.\n"
     "5. Repeat until no breaking up of the audio (dropouts, crackle) is ever heard.\n"
     "\n"
@@ -3029,9 +3030,9 @@ static const char* const kManualText_part14 =
     "\n"
     "How much quieter a pipe gets for every cent the wind sag lowers its pitch (0\n"
     "to 0.6 dB per cent, default 0.2). Together with the division's *Wind: depth*\n"
-    "it decides how strongly a full chord sags in level.\n"
     ;
 static const char* const kManualText_part15 =
+    "it decides how strongly a full chord sags in level.\n"
     "\n"
     "### Wind: one stop's share of the full sag\n"
     "\n"
@@ -3231,9 +3232,9 @@ static const char* const kManualText_part15 =
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The row shows the size of the cache and the folder it lives in. *Empty the\n"
-    "cache* deletes every cached file at once - to get the disk space back, or\n"
     ;
 static const char* const kManualText_part16 =
+    "cache* deletes every cached file at once - to get the disk space back, or\n"
     "after you have replaced your sample folders. The copies are built again, and\n"
     "cached again, the next time they are needed; nothing else is lost.\n"
     "\n"
@@ -3433,9 +3434,9 @@ static const char* const kManualText_part16 =
     "every temperament can be switched from a MIDI control.\n"
     "\n"
     "### Window size\n"
-    "\n"
     ;
 static const char* const kManualText_part17 =
+    "\n"
     "The size of the main window, saved automatically. Information only; the window\n"
     "returns to where it was last time, always with its title bar on the screen.\n"
     "\n"
@@ -3635,9 +3636,9 @@ static const char* const kManualText_part17 =
     "\n"
     "### Wind: sag settling lag\n"
     "\n"
-    "How long the wind pressure takes to settle after stops or keys change (100 to\n"
     ;
 static const char* const kManualText_part18 =
+    "How long the wind pressure takes to settle after stops or keys change (100 to\n"
     "400 ms, default 255). The same lag governs the volume glide when a pipe held\n"
     "through several routes passes from one route to another.\n"
     "\n"

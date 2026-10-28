@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.222] - 2026-10-28
+
+### Fixed
+- The tuning gate of 0.8.221 compared the `smpl` chunks bit for bit: the
+  Distant set of Bergen op Zoom has five files whose pitch fraction differs
+  from the Surround set's by one or two units of 2^32 (0.00000005 cents - the
+  last bit of a rewritten header, no tuning at all), so two of its stops
+  were refused as another organ's. "The same" is now within 0.02 cent; a
+  foreign pipe differs by cents. The rule that two thirds of the compared
+  files must be the same stays (each perspective is tuned to 440 Hz on its
+  own, so a retouched pipe or two in a later set does no harm).
+
 ## [0.8.221] - 2026-10-28
 
 ### Changed

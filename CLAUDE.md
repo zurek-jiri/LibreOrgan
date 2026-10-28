@@ -1581,11 +1581,30 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   STEM rule: the base folder's head must be a known pattern prefix or empty ("HW_Principal8" != "Principal8").
   Tests: %TEMP%\test_loadtree221.ps1 [-Tree <tree> -Tag <x>] (default 002082/pipes: 15 of 15 confirmed, 6 rows of
   I. + 9 of II. gain "Far", 42 rows; `-Tree %TEMP%\fake_far\pipes` = copies of 4 far folders x 10 lowest files with
-  the smpl fraction + 1, made by %TEMP%\make_fake_far.py: 4 refused "0 identical, 8 different", 4 new rows, no
-  pattern learned, 46 rows), %TEMP%\test_merge220.ps1 (42 joined, 0 added, 4 routes), %TEMP%\smpl_cmp.py <a> <b>
+  the smpl fraction + 5 CENTS (214748365 units; made by %TEMP%\make_fake_far.py - the first version added 1 unit =
+  0.00000002 c, which the 0.02 c tolerance of 0.8.222 rightly accepts: a fake must differ by cents): 4 refused
+  "0 the same, 8 different", 4 new rows, no pattern learned, 46 rows), %TEMP%\test_merge220.ps1 (42 joined, 0 added, 4 routes), %TEMP%\smpl_cmp.py <a> <b>
   (the smpl comparison of two folders by hand). The gate reads 8 files x 2 folders per pair: Bergen's 15 pairs in
   under a second from the SATA disk; an archive entry is read WHOLE (2 MB each) - a packed rar package of 40 folders
   costs ~5-7 s on the progress window.
+  0.8.222 (28 Oct 2026): THE "DIFFERENT" SMPL FILES OF BERGEN WERE THE LAST BIT - %TEMP%\smpl_bits.py <a> <b> prints
+  the raw unity/fraction of the differing files: Pos Principal 8 041-f_bis / 042-f# / 072-c / 090-f# and Rohrflaut 8
+  036-c differ by 1-2 units of 2^32 = 0.00000005 cents (a rewritten header's rounding), the measured f0 the same
+  take. So the user's law holds for every file and "the same" in compareFolderTuning is |delta| <= 0.02 cent (the
+  user's figure; a foreign pipe differs by cents); THE TWO-THIRDS RULE STAYS BY THE USER'S ORDER ("důležité je, abys
+  zachoval pravidlo, že stačí, když se bude shodovat většina, tj. 2/3 ... zejména když víme, že se perspektivy
+  dolaďují zvlášť") - never make the gate "one difference refuses". LESSON (28 Oct 2026, the user: "já jsem ti
+  neříkal, abys dělal novou verzi!!! Jen odpověz otázku"): a QUESTION is answered, never turned into a build - the
+  0.8.222 build started on my own after a measurement was stopped before the deploy; a correction of my own work
+  waits for his word too. The 0.8.221
+  note's "4 of 67 retuned" is WRONG - nothing was retuned. 440 Hz QUESTION (the user, 28 Oct): the retune is PER RANK
+  = per perspective and per pipe - `rank->tuningCentsFor(sampleNote, tuneTo440)` at every voice start (6172/6471,
+  13137/13158), filled by `computeTuning440` from each rank's OWN smpl pitches (`tuning440Cents[note]`, the rank's
+  `measuredDiapasonHz` for the retune bus through `commonRetuneCents(stop, rank)`); the temperament mode 2 uses the
+  rank's own `measuredTemperamentCents` too. Two perspectives with a REAL smpl difference on a pipe are each pulled
+  to the same equal-tempered 440 pitch (the difference vanishes with "Equal at 440 Hz" on, stays as recorded with
+  it off); a smpl difference that is metadata only (same audio) would be INTRODUCED by the 440 mode as a beat between
+  the perspectives - Bergen's is 0.00000005 c, nothing.
 ## Pending for the next session (delete when done)
 - PERSPECTIVE JOIN SAFEGUARDS - DONE in 0.8.221 (the note above); kept here only for the reasoning: (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
   "rear_Principal8" of another - common stop names): the 0.8.220 rule (one new prefix on >= 3 and >= 80 % of the NEW

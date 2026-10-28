@@ -792,9 +792,10 @@ Distant". The gate is the law of every multi-microphone recording: the
 same pipe has exactly the same tuning (the `smpl` chunk of the file: unity
 note and pitch fraction) in every perspective - the program reads the
 headers of a few same-named files of the two folders and the folder joins
-when a clear majority of them is identical (a producer may have retuned a
-pipe or two in the later set; a foreign pipe never matches bit for bit),
-else it is added as a stop of its own; files
+when two thirds of them are the same within 0.02 cent (a producer may have
+retuned a pipe or two in the later set, and each perspective is tuned to
+440 Hz on its own anyway; a foreign pipe differs by cents), else it is
+added as a stop of its own; files
 without a usable `smpl` chunk are compared by their measured pitch within
 two cents instead. So the stops of another organ, even one with the same
 folder names and the same a1, are added as rows as ever, never fused; a

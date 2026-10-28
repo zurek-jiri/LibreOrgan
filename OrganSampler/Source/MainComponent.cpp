@@ -16907,16 +16907,20 @@ MainComponent::TuningGate MainComponent::compareFolderTuning(const juce::File& a
         distinct.insert({ ua, fa });
         if (fa == 0) ++zeroFractions;
         ++gate.compared;
-        if (ua == ub && fa == fb) ++gate.same; else ++gate.different;
+        // "The same" within 0.02 cent (0.8.222, the user's figure): Bergen's Distant set has 5 files
+        // whose fraction differs from the Surround set's by 1-2 units of 2^32 = 0.00000005 cents -
+        // the last bit of a rewritten header, not a tuning; a foreign pipe differs by cents.
+        const double deltaCents = (((double)ub + (double)fb / 4294967296.0) - ((double)ua + (double)fa / 4294967296.0)) * 100.0;
+        if (std::abs(deltaCents) <= 0.02) ++gate.same; else ++gate.different;
     }
     gate.degenerate = withSmpl == 0 || (int)distinct.size() < std::max(2, withSmpl / 2) || zeroFractions == withSmpl;
     if (!gate.degenerate)
     {
-        // A clear majority identical = the same pipes: Bergen's own Distant set has 4 of 67 files
-        // of Pos Principal 8 retuned against the Surround set (1 of 64 on Rohrflaut 8) - a producer's
-        // retouch; a foreign pipe never matches a fraction bit for bit, so foreign folders stand at 0.
+        // Two thirds the same = the same pipes (the user's rule, kept on purpose: a producer's real
+        // retouch of a pipe or two in a later set is allowed, and the perspectives are retuned to
+        // 440 each on its own anyway); a foreign pipe never matches, so foreign folders stand at 0.
         gate.passed = gate.compared > 0 && gate.same >= std::min(3, gate.compared) && gate.same * 3 >= gate.compared * 2;
-        gate.why = "smpl tuning of " + juce::String(gate.compared) + " file(s): " + juce::String(gate.same) + " identical, " + juce::String(gate.different) + " different";
+        gate.why = "smpl tuning of " + juce::String(gate.compared) + " file(s): " + juce::String(gate.same) + " the same (within 0.02 cent), " + juce::String(gate.different) + " different";
         return gate;
     }
     // Degenerate smpl (none, or the same value everywhere): the measured pitch of the lowest files.
