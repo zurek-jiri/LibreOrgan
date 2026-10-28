@@ -1573,6 +1573,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   their union). Hard gate = (2) + (3) (per folder, independent of coverage), the 80 % of the NEW folders stays, (1)
   only as evidence in the log/summary, (5) only when the file counts cannot decide. The second package of a learned
   prefix (002083 after 002082) is no case for the rule: the scan knows "Far;06-far__" and joins by name the old way.
+  FINAL DESIGN (the user: "chci i 4., protože ladění je jediná tvrdá brána. Někdy nemusí mít ani všechny společné
+  rejstříky"): MEASURED on Bergen HW Principal 8 - Surround 03-ortf (002086) vs far (002082): 32-40 of 67 files the
+  SAME size, the rest within 1 % (24 header bytes or a few KB of release), 0 files missing = the same take from two
+  microphones; the DRY set of the same organ (002061/hw/03-ortf_HW_Principal8 - the same folder names!) vs far: 0
+  equal, 17 % off, 45 files more = another recording. So: (a) a FILE-LENGTH filter first (headers only, free): the
+  same-named files of the pair within ~2 % on most pairs; (b) then the TUNING FINGERPRINT per pipe: f0 of 8-12
+  same-named files of both folders (first 0.3 s, the computeTuning440 analysis), the per-pipe cents must agree within
+  ~2 c (the same pipe from two mics), foreign organs scatter 5-15 c even at the same a1 - a1 alone is NO gate (many
+  sets retuned to 440); (c) decided PER FOLDER, not per package: name match + fingerprint -> joins the row, name
+  match without -> a new row (a second perspective need not carry every stop); the 80 %/one-prefix rule then only
+  LEARNS the perspective label, it no longer decides the join; (d) the whole stem after the prefix must be equal
+  (the base folder's prefix a known pattern); (e) no question box. The decision moves into the loader (the analysis
+  reads audio: a few seconds per package from SATA or a rar, on the progress window) - the table is built after it,
+  not at scan time as 0.8.220 does. The Dry set of the same organ is untouched by the rule (same prefixes as the
+  Surround set -> the old same-name-known-perspective path). Data: %TEMP% none - the PowerShell size comparison
+  above is one-off; 002061 = Bergen Dry (hw/...), 002082/002083 = Wet-Distant, 002084-002088 = Surround.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
