@@ -1516,35 +1516,46 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the loader's per-file reads on 16 threads reach ~80 % of the disk's sequential ceiling, the CPU is no limit, the
   line IS the disk. The user's 358 MB/s was a cold load from the SATA SSD (the page cache gives 1 300-3 900). No
   code change; the manual's 4.4 (SATA ~500 MB/s) stands. Never promise more from a SATA SSD.
+  0.8.220 (28 Oct 2026): A FURTHER PERSPECTIVE OF THE SAME ORGAN (the user's question "jak to rozliší? ... Nevím,
+  poraď": the criterion is the NAMES, never whole folder lists - a division may be split over packages):
+  `MainComponent::matchFoldersAsPerspective(newNames, baseEntries, knownPatterns)` (static, MainComponent.cpp before
+  extendStopBuildWithTree): every new folder name against the rows' folder names, longest common ENDING >= 4 chars
+  that starts at a separator on both sides (the ending = the stop, the rest = the prefix/head; a head ending inside a
+  word is no prefix, the same head on both = the same perspective, skipped); the dominant head must be on >= 3 and
+  >= 80 % of the candidates and must NOT be a prefix of a known pattern line -> `rowOfFolder`, else `why`.
+  `perspectiveLabelForHead` (a known label whose first three letters the head holds, else a word from the head:
+  "06-far__" -> "Far"), `patternsWithHead(patterns, label, head)` adds the head to the label's line. MERGE
+  (MainComponentMerge.cpp, before the addedEntries loop): the non-shared added entries' folder names are matched
+  against the base division's rows with the base `perspectivePatterns`; for a definition the Hauptwerk stop names
+  (aliases) must agree on >= 80 % where both sides have them (`withNames >= 3`), else "another organ"; a matched
+  entry's folders join the base row (`target.folders[label]`, label = the plan's perspective or the head's word), the
+  pattern "Label;head" goes into the merged `perspectivePatterns` (patternsWithHead in the union loop), a ROUTE of
+  that name is made per division (`divisionJoinedLabels`: the added "default" route's settings when any, counted in
+  `perspectivesAdded`), `stopsJoined` + `joinedPerspectiveNames` in the summary ("42 stop(s) gained the perspective
+  Distant ..."), `sharedStopNames` set so the grid rule "the same organ in volumes" applies. The "(2)" rule fires on
+  an alias collision too (the alias gets " (2)"). LOAD FOLDER (`extendStopBuildWithTree`): the scan's folders with
+  perspective ""/"default" are matched against the rows of EVERY built division (a package holds several divisions'
+  folders: Bergen 002082 = HW_ + Pos_), the matched ones join their rows (other divisions too: `treeJoinedDivisions`,
+  reloaded by loadTreeIntoDivision / loadTreesIntoDivision with `onlyTree`), the pattern is learned into the engine +
+  Patterns.json (`rememberPatterns(false)`); log "Load folder: ... is (not) another perspective of the loaded organ".
+  HAUPTWERK IMPORT: the prefix detection of HauptwerkOdf.cpp (~1844-1890) takes FLAT ranks (`rank.folder ==
+  stopFolder`: the ranks lie in `pipes/` directly) - Bergen Surround now writes "Direct;03-ortf_", "Diffuse;04-ab_",
+  "Rear;05-rea_" (Stralsund/Bellevue/Caen/Ashton/Stellwagen unchanged, checked with --hauptwerk); the Distant ODF
+  alone (one perspective) writes no pattern line - nothing to compare. `applyHauptwerkVoicing`: `Entry.partial` (the
+  definition knows only some of the stop's folders - a merge) -> route volume counted, stop/per-key voicing skipped,
+  "N stop(s) with a perspective of this definition only" in the log. Tests: %TEMP%\test_merge220.ps1 (Surround ODF
+  imported by the hook into a settings copy with configurationsFolder = %TEMP%\cfgtest220, Distant ODF merged:
+  "42 stop(s) gained the perspective Distant", 4 new routes, every row of I. with Diffuse/Direct/Distant/Rear, 42
+  rows before and after) and test_loadtree220.ps1 (ORGAN_LOAD_TREE="1|...\002082\pipes|45": 15 of 15 folders join
+  6 rows of I. and 9 rows of II. as "Far", pattern "Far;06-far__", 42 rows). Hooks: ORGAN_LOAD_TREE's third field =
+  seconds; ORGAN_LOAD_TREE and ORGAN_MERGE_CONFIGURATION save the ordinary configuration afterwards
+  (`savePortableConfiguration(current, true, false, false)` - saveSettings alone writes NO configuration file) and
+  dump the Stop List as "<ORGAN_DUMP_STOPLIST>.tree.md" / ".merged.md". NO QUESTION AFTER THE ARCHIVE SEARCH: the
+  boxes of `offerDefinitionBeside` and `offerNeighbourArchives` are gone - the archives are taken (registered,
+  divisions reloaded / the organ loaded from the definition with all of them) and a queueNotice names them;
+  ORGAN_TEST_NEIGHBOURS is no longer needed there. Why the box could not be answered was NOT found (the box is
+  gone; if a box from a `then` of indexArchivesThen is ever needed again, check the modal stack first).
 ## Pending for the next session (delete when done)
-- MERGE OF A FURTHER PERSPECTIVE OF THE SAME ORGAN (the user, 28 Oct 2026 evening, Bergen op Zoom: "Wet - Distant"
-  ODF merged into the "Surround" ODF's configuration -> every stop DOUBLED, two buttons "1. Octav 2'" with the same
-  alias): the merge (MainComponentMerge.cpp ~410-441) knows "the same stop" by an IDENTICAL FOLDER only (`baseFolders`
-  "tree|path"); the Distant set (packages 002082/002083, folders `pipes/06-far__HW_Octava2`) shares no folder with
-  the Surround set (002084-002088, `pipes/03-ortf_HW_Octava2` / `04-ab_` / `05-rea_`), so all 42 stops were "new"
-  rows under the last row (a foreign organ), and the "(2)" rule compares the ROW NAME (the folder's automatic name,
-  different) never the ALIAS (the HW stop name, identical - what the button shows). TO DO: (1) an added
-  single-perspective stop whose folder is not shared is matched to a base row of the same division by the HW name /
-  alias AND the folder name without its perspective prefix (the 0.8.132 rule: longest common ending of the folder
-  names = the stop, the rest = the prefix: `HW_Octava2`) -> its folder joins that row as a NEW PERSPECTIVE FolderRef
-  (Distant), its voicing goes to the perspective's route, no new row; the "same organ in volumes" grid rule then
-  applies. (2) The "(2)" suffix also on an alias/caption collision in one division. (3) The Surround import wrote
-  `perspectivePatterns` Direct/Diffuse/Rear WITHOUT their prefixes (03-ortf_/04-ab_/05-rea_): the ranks lie flat in
-  `pipes/` (no stop folder) and the prefix detection missed them - with the prefixes the plain Load folder of 002083
-  would learn `06-far__` as a perspective too; fix the import's prefix detection for flat trees. (4) The merge
-  summary said "0 new perspective route(s)" although the divisions got the Distant perspective - count it right.
-  Data: C:\Users\doma\Documents\OrganSampler\Configurations\Bergen op Zoom, Merged.json (+ Surround.json, .bak),
-  %TEMP%\bergen_rows2.py prints division I.'s rows; Tools/odf_stops.py on both ODFs in D:\Hauptwerk\...\OrganDefinitions.
-- NO QUESTION AFTER THE ARCHIVE SEARCH (the user, 27 Oct 2026 evening, on 0.8.219: "dialog po prohledání archivů
-  klade otázku ... included? Ale nelze na ni odpovědět. Nedělej takovou otázku, prostě ty archivy všechny vezmi bez
-  otázky"): the box of `offerDefinitionBeside` ("Load the organ from the definition, with all of them (... included)?",
-  Load from the definition / Not now) goes - when the archives beside the chosen one with a name like it hold the
-  definition, take ALL of them at once and load (the log line and, at most, a NOTICE through queueNotice saying which
-  archives were taken; several definitions keep the choice box). Most likely the same for `offerNeighbourArchives`'
-  "Read them too?" box: take them, say so. Also find out WHY the box could not be answered - it is a
-  juce::AlertWindow::showAsync opened from inside the index job's completion (the ThreadWithProgressWindow of
-  `indexArchivesThen` may still be the front modal component when the box comes up, or a second modal box stands
-  over it): check the modal stack order before any other AlertWindow is opened from a `then` of indexArchivesThen.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
