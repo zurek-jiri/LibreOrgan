@@ -1606,6 +1606,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   it off); a smpl difference that is metadata only (same audio) would be INTRODUCED by the 440 mode as a beat between
   the perspectives - Bergen's is 0.00000005 c, nothing.
 ## Pending for the next session (delete when done)
+- THREE MERGE FAULTS FOUND 28 Oct 2026 EVENING (the user: "jak to že nemohu mergovat Bellevue Casavant do Bergen
+  Surround??? ... proč při mergi distant do surroundu to tak dlouho čeká a je jakoby zamrznuté?" - diagnosed from
+  his activity.log 20:51-20:55, NOT coded, he said "nekóduj, jen řekni"): (1) INFINITE LOOP in the "(2)" rule of
+  0.8.220 (MainComponentMerge.cpp 556-566): an alias that already ends with ")" is not suffixed again but still
+  collides -> the loop never ends; Bergen has "1. Principal" (16' and 8') and "1. Octav" twice, so the second added
+  stop of a shared alias collides with the first's "(2)" alias for ever (stacks: stopBuildKey from
+  mergeConfiguration at line 561 for 8/69/129 s). Fix: always suffix the alias (strip an old " (n)" first) and cap
+  the loop. (2) MERGE OF A .json FROM THE CONFIGURATIONS FOLDER FINDS NO TREES: `resolveTree` (MainComponentMerge.cpp
+  ~235) looks beside the ADDED FILE only (dir/rootRelative/relative, dir/rootName/relative, dir/relative, absolute);
+  since 0.8.190 the configurations live in Documents\OrganSampler\Configurations away from the samples, so
+  "Casavant, Bellevue, Surround.json" (trees "002098/ped" ..., root OrganInstallationPackages, all present on D:)
+  gave "0 new tree(s), 0 stop(s) added". Fix: resolve like a load does - the base organ's resolved root, the sample
+  locations (Locations.txt), `portableFolderCandidates`. (3) THE WHOLE-STEM RULE of 0.8.221 needs the base folder's
+  head among the KNOWN PATTERN PREFIXES; the user's Bergen Surround.json was imported before 0.8.220 and has
+  "Direct"/"Diffuse"/"Rear" WITHOUT prefixes -> "no folder name repeats a folder of the division after a prefix of
+  its own", all 42 Distant stops added as rows (doubled again) and then fault (1) froze it. Fix: a head carried by
+  >= 3 base folders under one perspective counts as a known prefix (derived from the rows, not the patterns).
+  Verify all three on HIS files (Bergen op Zoom, Surround.json of 18:57 + the Bellevue json + the Distant ODF).
 - PERSPECTIVE JOIN SAFEGUARDS - DONE in 0.8.221 (the note above); kept here only for the reasoning: (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
   "rear_Principal8" of another - common stop names): the 0.8.220 rule (one new prefix on >= 3 and >= 80 % of the NEW
   folders, not a known prefix; HW names on an ODF merge) passes a SMALL foreign organ of the same producer's naming
