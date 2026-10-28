@@ -1556,6 +1556,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ORGAN_TEST_NEIGHBOURS is no longer needed there. Why the box could not be answered was NOT found (the box is
   gone; if a box from a `then` of indexArchivesThen is ever needed again, check the modal stack first).
 ## Pending for the next session (delete when done)
+- PERSPECTIVE JOIN SAFEGUARDS (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
+  "rear_Principal8" of another - common stop names): the 0.8.220 rule (one new prefix on >= 3 and >= 80 % of the NEW
+  folders, not a known prefix; HW names on an ODF merge) passes a SMALL foreign organ of the same producer's naming
+  scheme with a usual disposition; the division mark in the stem does not protect (the longest common ENDING matches
+  "Principal8" under "rear_" and "AB_HW_"). Told the user; NOT coded (he said "nekóduj, jen řekni"). Proposed, in
+  order: (1) a BIDIRECTIONAL threshold - most of the division's rows with folders (>= 70 %) must be matched too, not
+  only most of the new folders; (2) the WHOLE stem after the prefix must be equal, the base folder's prefix must be
+  one of the organ's known pattern prefixes (so "HW_Principal8" != "Principal8"); (3) the sample FILE COUNT of the
+  two folders must agree on most pairs (the same rank has the same files in every perspective; a foreign Principal 8
+  has another compass/layers) - cheap, no audio read; (4) a1 of the first files (computeTuning440) - reliable but reads
+  samples; (5) a question box only in the grey zone (passed, not 100 %, file counts undecided): "Join / Add as new
+  stops". Recommendation 1+2+3 automatic, 5 only when 3 cannot decide. Do it in the next build before someone hits it.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
