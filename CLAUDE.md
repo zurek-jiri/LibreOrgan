@@ -1517,6 +1517,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   line IS the disk. The user's 358 MB/s was a cold load from the SATA SSD (the page cache gives 1 300-3 900). No
   code change; the manual's 4.4 (SATA ~500 MB/s) stands. Never promise more from a SATA SSD.
 ## Pending for the next session (delete when done)
+- MERGE OF A FURTHER PERSPECTIVE OF THE SAME ORGAN (the user, 28 Oct 2026 evening, Bergen op Zoom: "Wet - Distant"
+  ODF merged into the "Surround" ODF's configuration -> every stop DOUBLED, two buttons "1. Octav 2'" with the same
+  alias): the merge (MainComponentMerge.cpp ~410-441) knows "the same stop" by an IDENTICAL FOLDER only (`baseFolders`
+  "tree|path"); the Distant set (packages 002082/002083, folders `pipes/06-far__HW_Octava2`) shares no folder with
+  the Surround set (002084-002088, `pipes/03-ortf_HW_Octava2` / `04-ab_` / `05-rea_`), so all 42 stops were "new"
+  rows under the last row (a foreign organ), and the "(2)" rule compares the ROW NAME (the folder's automatic name,
+  different) never the ALIAS (the HW stop name, identical - what the button shows). TO DO: (1) an added
+  single-perspective stop whose folder is not shared is matched to a base row of the same division by the HW name /
+  alias AND the folder name without its perspective prefix (the 0.8.132 rule: longest common ending of the folder
+  names = the stop, the rest = the prefix: `HW_Octava2`) -> its folder joins that row as a NEW PERSPECTIVE FolderRef
+  (Distant), its voicing goes to the perspective's route, no new row; the "same organ in volumes" grid rule then
+  applies. (2) The "(2)" suffix also on an alias/caption collision in one division. (3) The Surround import wrote
+  `perspectivePatterns` Direct/Diffuse/Rear WITHOUT their prefixes (03-ortf_/04-ab_/05-rea_): the ranks lie flat in
+  `pipes/` (no stop folder) and the prefix detection missed them - with the prefixes the plain Load folder of 002083
+  would learn `06-far__` as a perspective too; fix the import's prefix detection for flat trees. (4) The merge
+  summary said "0 new perspective route(s)" although the divisions got the Distant perspective - count it right.
+  Data: C:\Users\doma\Documents\OrganSampler\Configurations\Bergen op Zoom, Merged.json (+ Surround.json, .bak),
+  %TEMP%\bergen_rows2.py prints division I.'s rows; Tools/odf_stops.py on both ODFs in D:\Hauptwerk\...\OrganDefinitions.
 - NO QUESTION AFTER THE ARCHIVE SEARCH (the user, 27 Oct 2026 evening, on 0.8.219: "dialog po prohledání archivů
   klade otázku ... included? Ale nelze na ni odpovědět. Nedělej takovou otázku, prostě ty archivy všechny vezmi bez
   otázky"): the box of `offerDefinitionBeside` ("Load the organ from the definition, with all of them (... included)?",
