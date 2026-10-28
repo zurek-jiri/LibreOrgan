@@ -13060,6 +13060,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     }
     refreshArchiveSearchFolders(configurationFile);   // the archive folders remembered beside it (0.8.158)
     configurationUsedThisSession = true;
+    learnPrefixesFromTables();   // 0.8.223: the prefixes the tables reveal, on every load
     saveSettings();
     markConfigurationClean();
     {
@@ -16710,6 +16711,90 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
     return build;
 }
 
+std::map<juce::String, juce::String> MainComponent::perspectiveHeadsOfEntries(const std::vector<ManualConfig::StopBuild::Entry>& entries)
+{
+    // The head every folder of a perspective's column carries ("03-ortf_" for Direct), cut right
+    // after a separator run; "default" has none; one folder alone cannot tell where its head ends.
+    auto isSep = [](juce::juce_wchar c) { return c == '-' || c == '_' || c == ' ' || c == '.'; };
+    std::map<juce::String, std::vector<juce::String>> namesOf;
+    for (const auto& entry : entries)
+        for (const auto& [perspective, ref] : entry.folders)
+        {
+            if (perspective.isEmpty() || perspective == "default") continue;
+            const auto last = ref.relativePath.replaceCharacter('\\', '/').fromLastOccurrenceOf("/", false, false);
+            if (last.isNotEmpty() && last != ".") namesOf[perspective].push_back(last);
+        }
+    std::map<juce::String, juce::String> heads;
+    for (const auto& [perspective, names] : namesOf)
+    {
+        if (names.size() < 2) continue;
+        int common = names.front().length();
+        for (const auto& n : names)
+        {
+            int i = 0;
+            while (i < common && i < n.length() && juce::CharacterFunctions::toLowerCase(n[i]) == juce::CharacterFunctions::toLowerCase(names.front()[i])) ++i;
+            common = i;
+        }
+        const auto& first = names.front();
+        int cut = 0;
+        for (int i = 1; i <= common && i < first.length(); ++i)
+            if (isSep(first[i - 1]) && !isSep(first[i])) cut = i;   // the head ends right after a separator run
+        if (cut == 0) continue;
+        bool stemsLeft = true;
+        for (const auto& n : names) if (n.length() <= cut) stemsLeft = false;
+        if (stemsLeft) heads[perspective] = first.substring(0, cut);
+    }
+    return heads;
+}
+
+void MainComponent::learnPrefixesFromTables()
+{
+    // Every load path (a configuration with explicit tables, an import, a merge, the Stop List
+    // applied): the heads the tables reveal join the perspective patterns and are saved with
+    // the organ - a file imported before 0.8.220 ("Direct" without "03-ortf_") repairs itself.
+    auto patterns = engine.getPerspectivePatterns();
+    const auto before = patterns;
+    juce::StringArray learned;
+    // Over the WHOLE organ, not per division: the head all the Direct folders of one division
+    // carry is "03-ortf_HW_" (the division mark included), the organ's is "03-ortf_".
+    std::vector<ManualConfig::StopBuild::Entry> allEntries;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+    {
+        const auto& build = manualConfigs[(size_t)manual].stopBuild;
+        if (build.active) allEntries.insert(allEntries.end(), build.entries.begin(), build.entries.end());
+    }
+    for (const auto& [label, head] : perspectiveHeadsOfEntries(allEntries))
+    {
+        bool known = false;
+        for (const auto& line : patterns)
+        {
+            auto tokens = juce::StringArray::fromTokens(line, ";", "");
+            for (int i = 1; i < tokens.size(); ++i) if (tokens[i].trim().equalsIgnoreCase(head)) known = true;
+        }
+        if (known) continue;
+        patterns = patternsWithHead(patterns, label, head);
+        learned.addIfNotAlreadyThere(label + ";" + head);
+    }
+    if (patterns == before) return;
+    engine.setPerspectivePatterns(patterns);
+    rememberPatterns(false);
+    CrashHandler::note("Perspective prefixes learned from the Stop List tables: " + learned.joinIntoString(", ") + " - patterns now " + juce::StringArray(patterns.data(), (int)patterns.size()).joinIntoString(" | "));
+}
+
+juce::File MainComponent::resolveTreeLikeALoad(const juce::var& configuration, const juce::File& configurationFile, const juce::String& relative, const juce::String& absolute) const
+{
+    // The merge of a configuration kept in the configurations folder (0.8.190: away from the
+    // samples) finds its trees where a load does: the loaded organ's library root, the sample
+    // locations and their neighbourhood, the fixed drives - not beside the file alone.
+    juce::File root;
+    for (const auto& [absoluteTree, relativeTree] : treeRelativePaths)
+    {
+        root = rootFromKnownRelative(absoluteTree, relativeTree);
+        if (root != juce::File()) break;
+    }
+    return firstExistingDirectory(portableFolderCandidates(configuration, configurationFile, root, relative, absolute));
+}
+
 MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const std::vector<juce::String>& newNames, const std::vector<ManualConfig::StopBuild::Entry>& base,
                                                                          const std::vector<juce::String>& knownPatterns)
 {
@@ -16734,6 +16819,9 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
         auto tokens = juce::StringArray::fromTokens(line, ";", "");
         for (int i = 1; i < tokens.size(); ++i) if (tokens[i].trim().isNotEmpty()) knownPrefixes.push_back(tokens[i].trim().toLowerCase());
     }
+    // 0.8.223: the heads the rows themselves carry count as known prefixes (a file imported
+    // before 0.8.220 has "Direct" without "03-ortf_" in its patterns - the rows know better).
+    for (const auto& [label, head] : perspectiveHeadsOfEntries(base)) knownPrefixes.push_back(head.toLowerCase());
     struct BaseName { juce::String name; size_t entry; };
     std::vector<BaseName> baseNames;
     for (size_t i = 0; i < base.size(); ++i)
@@ -16762,7 +16850,16 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
             if (cutB > 0 && !isSep(b.name[cutB - 1])) continue;
             const juce::String headN = n.substring(0, cutN), headB = b.name.substring(0, cutB);
             if (headN.isEmpty() || headN.equalsIgnoreCase(headB)) continue;   // no prefix, or the same prefix = the same perspective
-            if (headB.isNotEmpty() && std::find(knownPrefixes.begin(), knownPrefixes.end(), headB.toLowerCase()) == knownPrefixes.end()) continue;   // the ending must be the base folder's whole stem
+            if (headB.isNotEmpty())
+            {
+                // The ending must be the base folder's whole stem: its head is a known prefix - or
+                // holds one / is held by one, the division mark being part of a per-division head
+                // ("03-ortf_HW_" known, the pair cut at "03-ortf_"; the gate decides the rest).
+                bool prefixOk = false;
+                const auto lowerB = headB.toLowerCase();
+                for (const auto& known : knownPrefixes) if (lowerB == known || lowerB.startsWith(known) || known.startsWith(lowerB)) { prefixOk = true; break; }
+                if (!prefixOk) continue;
+            }
             if (ending > bestLength) { bestLength = ending; bestEntry = b.entry; bestHead = headN; }
         }
         if (bestLength == 0) continue;
@@ -16774,12 +16871,11 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
     if (count == 0) { result.why = "no folder name repeats a folder of the division after a prefix of its own"; return result; }
     result.head = spelling[head];
     result.matched = (int)count;
-    for (const auto& line : knownPatterns)
-    {
-        auto tokens = juce::StringArray::fromTokens(line, ";", "");
-        for (int i = 1; i < tokens.size(); ++i)
-            if (tokens[i].trim().equalsIgnoreCase(result.head)) { result.why = "the prefix " + result.head + " is a perspective the organ has already"; result.matched = 0; return result; }
-    }
+    // The same perspective twice? Decided by the ROWS (0.8.223): a base folder that already
+    // starts with this head means the organ has that perspective (a pattern line alone does
+    // not - the scan may have learned the head from the new tree a moment ago).
+    for (const auto& b : baseNames)
+        if (b.name.startsWithIgnoreCase(result.head)) { result.why = "the prefix " + result.head + " is a perspective the organ has already"; result.matched = 0; return result; }
     if (result.matched < 3)
     {
         result.why = juce::String(result.matched) + " of " + juce::String(result.candidates) + " folder(s) repeat a folder of the division after the prefix " + result.head + " (three at least are needed)";
@@ -16951,20 +17047,30 @@ std::unique_ptr<MainComponent::TreeJoinPlan> MainComponent::planTreeJoin(const j
     auto plan = std::make_unique<TreeJoinPlan>();
     plan->tree = tree;
     const auto assignments = engine.scanTreeAssignments(tree, true);
-    std::vector<juce::String> unplaced;
-    std::map<juce::String, juce::File> folderOfName;
-    for (const auto& a : assignments)
-        if (a.perspective.isEmpty() || a.perspective == "default") { unplaced.push_back(a.folder.getFileName()); folderOfName[a.folder.getFileName().toLowerCase()] = a.folder; }
-    plan->candidates = (int)unplaced.size();
-    if (unplaced.empty()) { plan->why = "every folder carries a known perspective prefix"; return plan; }
     std::vector<ManualConfig::StopBuild::Entry> allEntries;
     std::vector<std::pair<int, size_t>> placeOfEntry;
+    std::set<juce::String> perspectivesOfRows;   // lower-case labels the rows carry folders under
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
     {
         const auto& config = manualConfigs[(size_t)m];
         const ManualConfig::StopBuild build = config.stopBuild.active ? config.stopBuild : deriveStopBuildFromEngine(m);
-        for (size_t i = 0; i < build.entries.size(); ++i) { allEntries.push_back(build.entries[i]); placeOfEntry.push_back({ m, i }); }
+        for (size_t i = 0; i < build.entries.size(); ++i)
+        {
+            allEntries.push_back(build.entries[i]);
+            placeOfEntry.push_back({ m, i });
+            for (const auto& [perspective, ref] : build.entries[i].folders) perspectivesOfRows.insert(perspective.toLowerCase());
+        }
     }
+    // The candidates: the folders the scan left without a perspective AND those under a
+    // perspective no row carries yet (0.8.223: the scan may have just learned "Far;06-far__"
+    // from the tree itself - the organ still has no Far folders, so they are to be joined).
+    std::vector<juce::String> unplaced;
+    std::map<juce::String, juce::File> folderOfName;
+    for (const auto& a : assignments)
+        if (a.perspective.isEmpty() || a.perspective == "default" || perspectivesOfRows.count(a.perspective.toLowerCase()) == 0)
+        { unplaced.push_back(a.folder.getFileName()); folderOfName[a.folder.getFileName().toLowerCase()] = a.folder; }
+    plan->candidates = (int)unplaced.size();
+    if (unplaced.empty()) { plan->why = "every folder carries a perspective prefix the organ has already"; return plan; }
     const auto patterns = engine.getPerspectivePatterns();
     const auto match = matchFoldersAsPerspective(unplaced, allEntries, patterns);
     plan->why = match.why;
@@ -17172,6 +17278,7 @@ void MainComponent::applyStopBuild(int manual, const ManualConfig::StopBuild& bu
     }
     CrashHandler::note("Stop building applied to division " + juce::String(manual) + ": " + juce::String((int)entries.size())
         + " stops, " + juce::String((int)config.stopBuild.perspectives.size()) + " perspectives");
+    learnPrefixesFromTables();   // 0.8.223
     saveSettings();
     reloadDivisionTrees(manual);
 }

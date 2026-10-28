@@ -246,7 +246,9 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         }
         if (absolute.isNotEmpty() && juce::File::isAbsolutePath(absolute)) candidates.add(juce::File(absolute));
         for (const auto& candidate : candidates) if (SampleFiles::isDirectory(candidate)) return candidate;   // on the disk or inside a RAR archive (0.8.160)
-        return {};
+        // 0.8.223: a configuration kept in the configurations folder (away from the samples) - the
+        // loaded organ's root, the sample locations, the drives, as Load Configuration looks.
+        return resolveTreeLikeALoad(added, addedFile, relative, absolute);
     };
     // The added pool (its stop building tables index it), resolved entry by entry.
     std::vector<juce::File> addedPool;
@@ -441,8 +443,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             }
             if (!names.empty())
             {
-                std::vector<juce::String> basePatterns;
-                if (auto* list = base.getProperty("perspectivePatterns", juce::var()).getArray()) for (const auto& item : *list) basePatterns.push_back(item.toString());
+                const auto basePatterns = engine.getPerspectivePatterns();   // 0.8.223: the lines in force (the tables' prefixes learned at the load), not the file's alone
                 auto match = matchFoldersAsPerspective(names, baseBuild.entries, basePatterns);
                 if (match.matched > 0)
                 {
@@ -552,8 +553,12 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     }
                 }
             }
-            const juce::String originalName = entry.name;
-            for (int suffix = 2; ; ++suffix)
+            const juce::String originalName = entry.name, originalAlias = entry.alias;
+            // 0.8.223: name AND alias re-suffixed from the originals at every step, and a ceiling -
+            // 0.8.220 left an alias ending with ")" as it was, so a second stop of a shared alias
+            // (Bergen: "1. Principal" 16' and 8') collided with the first's "(2)" for ever (the user's
+            // "zamrznuté" merge: 129 s in this loop).
+            for (int suffix = 2; suffix < 200; ++suffix)
             {
                 bool taken = false;
                 for (const auto& existing : baseBuild.entries)
@@ -561,7 +566,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                         || (entry.alias.isNotEmpty() && stopBuildKey(existing.alias) == stopBuildKey(entry.alias))) taken = true;   // 0.8.220: the caption (alias) too - the user sees that one
                 if (!taken) break;
                 entry.name = originalName + " (" + juce::String(suffix) + ")";
-                if (entry.alias.isNotEmpty() && !entry.alias.endsWith(")")) entry.alias = entry.alias + " (" + juce::String(suffix) + ")";
+                if (originalAlias.isNotEmpty()) entry.alias = originalAlias + " (" + juce::String(suffix) + ")";
                 entry.customName = true;
             }
             if (entry.name != originalName) { ++stopsRenamed; renamed[juce::String(manual) + "|" + originalName] = entry.name; done.add(divisionName + " " + originalName + " added as \"" + entry.name + "\" (the name was taken)"); }

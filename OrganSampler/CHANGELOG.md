@@ -12,6 +12,35 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.223] - 2026-10-28
+
+### Fixed
+- Merging a second configuration file froze the program for good when the
+  added organ had two stops of one caption (Bergen: "1. Principal" 16' and
+  8'): the "(2)" rule of 0.8.220 left a caption that already ended with ")"
+  as it was and looped on the collision for ever. The caption is re-suffixed
+  from the original at every step and the loop has a ceiling.
+- Merging a configuration file kept in the configurations folder found none
+  of its folder trees ("0 new tree(s), 0 stop(s) added"): the merge looked
+  beside the added file only. It now finds them as Load Configuration does -
+  the loaded organ's library root, the remembered sample locations and their
+  neighbourhood, the drives.
+- The join of a further perspective (0.8.221) needed the perspective prefixes
+  in the file's patterns; an organ imported before 0.8.220 had none and the
+  Distant set of Bergen op Zoom doubled every stop again. Now the prefixes
+  are read off the Stop List tables themselves (the head every folder of a
+  perspective's column carries), learned into the patterns at every load,
+  import, merge and Stop List apply, and saved with the organ - an older
+  file repairs itself at its first load.
+
+### Changed
+- Perspective learning in the automatic scan: a head that every stop folder
+  of a tree carries and that names a perspective (direct, diffuse, rear, far,
+  near, close, dry, wet, front, ab, ortf ...) is learned as one even when
+  the tree holds no second perspective to compare with (a package of one
+  perspective alone). A lone head without such a word ("HW_", "Ped_") is
+  never taken - it would fuse the stops of two divisions.
+
 ## [0.8.222] - 2026-10-28
 
 ### Fixed

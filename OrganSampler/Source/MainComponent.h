@@ -479,6 +479,12 @@ private:
     };
     std::unique_ptr<TreeJoinPlan> pendingTreeJoin;   // consumed by extendStopBuildWithTree
     std::unique_ptr<TreeJoinPlan> planTreeJoin(const juce::File& tree, int manual);   // the name match over every division's rows
+    // 0.8.223 (the user's rules): the prefix of a perspective is the head ALL the stops of that perspective carry -
+    // read off the Stop List tables (label -> head, perspectives with one folder or no common head left out) and
+    // learned into the patterns on every load path; the merge finds the added file's trees as a load does.
+    static std::map<juce::String, juce::String> perspectiveHeadsOfEntries(const std::vector<ManualConfig::StopBuild::Entry>& entries);
+    void learnPrefixesFromTables();
+    juce::File resolveTreeLikeALoad(const juce::var& configuration, const juce::File& configurationFile, const juce::String& relative, const juce::String& absolute) const;
     void gateTreeJoinsThen(std::vector<std::unique_ptr<TreeJoinPlan>> plans, std::function<void(std::vector<std::unique_ptr<TreeJoinPlan>>)> then);
     static juce::String perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns);   // "06-far__" -> "Far", or the label whose stem the head holds (dir/dif/rea)
     static std::vector<juce::String> patternsWithHead(const std::vector<juce::String>& patterns, const juce::String& label, const juce::String& head);   // the lines with "Label;head" added

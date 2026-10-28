@@ -1605,8 +1605,33 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   to the same equal-tempered 440 pitch (the difference vanishes with "Equal at 440 Hz" on, stays as recorded with
   it off); a smpl difference that is metadata only (same audio) would be INTRODUCED by the 440 mode as a beat between
   the perspectives - Bergen's is 0.00000005 c, nothing.
+  0.8.223 (28 Oct 2026, "tak jo, dělej"): THE THREE MERGE FAULTS + PREFIX LEARNING ON EVERY LOAD PATH. (1) The "(2)"
+  loop (MainComponentMerge.cpp ~556): name AND alias re-suffixed from `originalName`/`originalAlias` at every step,
+  `suffix < 200`. (2) The merge's `resolveTree` falls back to `MainComponent::resolveTreeLikeALoad(configuration,
+  file, relative, absolute)` = `firstExistingDirectory(portableFolderCandidates(..., root, ...))` with root =
+  `rootFromKnownRelative` of the first `treeRelativePaths` entry (the loaded organ's root) - Bellevue.json from the
+  Configurations folder: 10 trees, 63 stops added. (3) `perspectiveHeadsOfEntries(entries)` (static): label -> the
+  head ALL folders of that perspective's column carry (common prefix cut right after a separator run, >= 2 folders,
+  stems left; "default" none) and `learnPrefixesFromTables()`: computed over the UNION of every active division's
+  entries (per division the head is "03-ortf_HW_" with the division mark; the organ's is "03-ortf_"), new heads
+  joined to the patterns by patternsWithHead + rememberPatterns + log "Perspective prefixes learned from the Stop
+  List tables: ..."; called in applyPortableConfiguration (before saveSettings - every load/import/merge result) and
+  applyStopBuild. `matchFoldersAsPerspective`: known prefixes = the pattern prefixes + the heads of the base rows
+  themselves; the base folder's head passes when it equals a known prefix OR one holds the other (the per-division
+  head "03-ortf_HW_" vs the pair's cut "03-ortf_"); "the same perspective twice" is decided by the ROWS (a base
+  folder starting with the head), not by the pattern lines (the scan may have just learned the head). The merge
+  takes `engine.getPerspectivePatterns()` (the lines in force), not the base var's. `planTreeJoin`: candidates =
+  folders with perspective ""/"default" OR under a label no row carries. SCAN WORD RULE (SamplerEngine.cpp learning
+  block): a head carried by EVERY considered stop folder of the tree (`consideredStops`) whose letter tokens hold a
+  perspective word (direct diffuse distant dir dif rea rear far near close dry wet front ab ortf dist surr amb; a
+  token equal to, or starting with a >= 3-letter word) qualifies without a partner; a lone head without a word
+  ("HW_", "Ped_") never (it would fuse divisions). His Surround.json (patterns "Direct" without prefix) + Distant ODF:
+  all 42 joined, patterns "Direct;03-ortf_ | Diffuse;04-ab_ | Rear;05-rea_ | Front;02-suchy_ | Distant;06-far__",
+  42 rows, no freeze. Test: %TEMP%\test_merge223.ps1 [-Added bellevue -Tag bellevue] (his two jsons copied into
+  %TEMP%\cfgtest223 as the configurations folder; the first run per division printed the per-division heads
+  "03-ortf_P_" - the organ-wide union fixed it).
 ## Pending for the next session (delete when done)
-- THREE MERGE FAULTS FOUND 28 Oct 2026 EVENING (the user: "jak to že nemohu mergovat Bellevue Casavant do Bergen
+- THREE MERGE FAULTS - DONE in 0.8.223 (the note above). FOUND 28 Oct 2026 EVENING (the user: "jak to že nemohu mergovat Bellevue Casavant do Bergen
   Surround??? ... proč při mergi distant do surroundu to tak dlouho čeká a je jakoby zamrznuté?" - diagnosed from
   his activity.log 20:51-20:55, NOT coded, he said "nekóduj, jen řekni"): (1) INFINITE LOOP in the "(2)" rule of
   0.8.220 (MainComponentMerge.cpp 556-566): an alias that already ends with ")" is not suffixed again but still

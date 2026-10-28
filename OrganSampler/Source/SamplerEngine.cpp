@@ -11852,11 +11852,13 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
                 && folderKeys.count(folder.getSiblingFile(other.toLowerCase()).getFullPathName().toLowerCase()) == 0) return {};
             return juce::String::charToString(juce::CharacterFunctions::toUpperCase(last));
         };
+        int consideredStops = 0;   // 0.8.223: the stop folders held against the candidates (a head ALL of them carry)
         for (const juce::File& stopFolder : allFolders)
         {
             const auto name = stopFolder.getFileName();
             if (name.startsWithIgnoreCase("rel") || isIgnoredFolderName(name) || isTremmedVariantFolder(stopFolder, folderKeys) || !folderHasValidWavFiles(stopFolder)) continue;
             if (patternMatches(name)) continue;   // already a known perspective
+            ++consideredStops;
             auto isSeparator = [](juce::juce_wchar c) { return c == '-' || c == '_' || c == ' '; };
             const bool component = componentOf(stopFolder).isNotEmpty();
             for (int i = 1; i < name.length() && i <= 24; ++i)
@@ -11889,6 +11891,32 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
             }
             if (partner) qualifying.push_back(prefix);
         }
+        // 0.8.223 (the user's rule): a head that EVERY stop folder of the tree carries and that
+        // names a perspective (dir, dif, rea, far, near, close, dry, wet, front, rear, ab, ortf ...)
+        // is a perspective even without a counterpart in this tree (a package of one perspective
+        // alone: "06-far__" on all of Bergen's Distant folders). A lone head without such a word
+        // ("HW_", "Ped_": a division mark) is never taken - it would fuse the divisions' stops.
+        auto perspectiveWord = [](const juce::String& prefix)
+        {
+            static const char* words[]{ "direct", "diffuse", "distant", "dir", "dif", "rea", "rear", "far", "near", "close", "dry", "wet", "front", "ab", "ortf", "dist", "surr", "amb" };
+            juce::StringArray tokens;
+            juce::String token;
+            for (int i = 0; i < prefix.length(); ++i)
+            {
+                const auto c = juce::CharacterFunctions::toLowerCase(prefix[i]);
+                if (juce::CharacterFunctions::isLetter(c)) token << juce::String::charToString(c);
+                else { if (token.isNotEmpty()) tokens.add(token); token = {}; }
+            }
+            if (token.isNotEmpty()) tokens.add(token);
+            for (const auto& t : tokens)
+                for (const char* w : words)
+                    if (t == w || (juce::String(w).length() >= 3 && t.startsWith(w))) return true;
+            return false;
+        };
+        if (consideredStops >= 2)
+            for (const auto& [prefix, candidate] : byPrefix)
+                if ((int)candidate.stops.size() >= consideredStops && std::find(qualifying.begin(), qualifying.end(), prefix) == qualifying.end() && perspectiveWord(candidate.spelling))
+                    qualifying.push_back(prefix);
         // The shortest form of each prefix: "01-dirMk2H-" rather than "01-dirMk2H-OW_".
         std::vector<juce::String> found;
         for (const auto& prefix : qualifying)

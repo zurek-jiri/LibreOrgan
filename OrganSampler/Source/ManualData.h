@@ -1676,7 +1676,14 @@ static const char* const kManualText_part8 =
     "  tuning means the same pipes, and the folder joins the row as the new\n"
     "  perspective (the prefix is learned into \"Perspective patterns\"); a folder\n"
     "  with other tuning is another organ's and becomes a row of its own, as\n"
-    "  does every folder with no match.\n"
+    "  does every folder with no match. The prefixes are read off the table\n"
+    "  itself as well: the head every folder of a perspective's column carries\n"
+    "  (\"03-ortf_\" under Direct) joins \"Perspective patterns\" at every load,\n"
+    "  import, merge and apply of the table, so an organ saved by an older\n"
+    "  version without them repairs itself. In a tree with one perspective\n"
+    "  only, a head that every stop folder carries and that names a perspective\n"
+    "  (direct, diffuse, rear, far, near, close, dry, wet, front, ab, ortf ...)\n"
+    "  is learned too; a lone head without such a word (\"HW_\", \"Ped_\") never is.\n"
     "- The info line at the bottom counts the sample folders found in all trees,\n"
     "  how many the table uses and how many are free.\n"
     "\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "## 5.3 The audio tabs\n"
     "\n"
     "Every perspective of the division has an audio tab (the default perspective,\n"
+    ;
+static const char* const kManualText_part9 =
     "Direct, Diffuse, Rear ... as the sample folders have them), plus one tab\n"
     "**auxiliary** (see \"The auxiliary route\" below). Every tab is one **audio\n"
     "route**: the pipes of that perspective rendered to that device and those\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "many sound cards at once\" below. Each tab, top to bottom:\n"
     "\n"
     "- **Perspective volume** (-31 dB switches the perspective off) and **Channel\n"
-    ;
-static const char* const kManualText_part9 =
     "  separation**: at 100 % every pipe sounds only on its own channel pair (mono\n"
     "  samples are spread over the pairs, stereo samples keep theirs); below 100 %\n"
     "  every channel of the route also carries that share of the other channels; at\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "choose it as the system output; use the on-board chip for the desktop and\n"
     "the interface for the organ. After switching the profile the card appears\n"
     "under a new name (its own, \"Komplete Audio 6\" instead of \"Analog Stereo\n"
+    ;
+static const char* const kManualText_part10 =
     "1/2\"), so choose it again in the audio tabs.\n"
     "\n"
     "**Step 2 - the packages.** OrganSampler needs PipeWire's JACK library and\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "do not. Open a terminal (*Konsole* or *Terminal* in the application menu;\n"
     "Ctrl+Alt+T on most desktops) and type the line for your distribution, then\n"
     "Enter and your password:\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "- Ubuntu, Debian, Mint, Pop!_OS: `sudo apt install pipewire-jack pipewire-bin pavucontrol`\n"
     "- Fedora: `sudo dnf install pipewire-jack-audio-connection-kit pipewire-utils pavucontrol`\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "The *DSP* value is the whole callback of the busiest audio device - the\n"
     "render of all its routes, the note bookkeeping of attacks and releases, the\n"
+    ;
+static const char* const kManualText_part11 =
     "copies to the device - as a share of the device's period, held at its peak\n"
     "for a moment. That is what decides about dropouts: at 100 % the next\n"
     "callback is late. A value of several hundred percent means the audio thread\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "that long; the activity log notes every such event.\n"
     "\n"
     "### What moves the measured figure, and what the measurement cannot see\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "Lessons from many runs on four computers (two-core laptops, a 16-core\n"
     "desktop, a 16-core notebook), 2026-10:\n"
@@ -2417,6 +2424,8 @@ static const char* const kManualText_part11 =
     "The three other methods build a copy of every filled pipe in the background\n"
     "(when the stop loads, when its compass or a transmission changes, when a\n"
     "setting changes). Until a pipe's copy is ready the pipe plays by plain\n"
+    ;
+static const char* const kManualText_part12 =
     "resampling, so the organ is playable from the first moment; the stop buttons\n"
     "show the build going on (a dark track along the bottom, filling orange), and\n"
     "the pipes switch to their copies one by one as they are finished.\n"
@@ -2424,8 +2433,6 @@ static const char* const kManualText_part11 =
     "**Pitch shift (resampling + timbre correction).** A copy of every filled\n"
     "pipe's attacks and releases is built in the background when the stop loads or\n"
     "its compass changes: the sample resampled with the best filter, its spectral\n"
-    ;
-static const char* const kManualText_part12 =
     "envelope (the formants, the body of the sound) moved back by the stop's\n"
     "*Formants* value, the loops set to whole periods, the loudness matched to the\n"
     "source, and the release's decay laid out again to the source's duration\n"
@@ -2619,6 +2626,8 @@ static const char* const kManualText_part12 =
     "\n"
     "### Interpolation kernel\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "The code that renders every pipe. *Automatic* (the default) takes\n"
     "the kernel this processor is known to run well: AVX2 (eight frames a step,\n"
     "current x86-64 processors), SSE2 (four frames, x86-64 without AVX2 such as a\n"
@@ -2626,8 +2635,6 @@ static const char* const kManualText_part12 =
     "voices against 1700 scalar on such a Mac) or NEON (four frames, Apple\n"
     "silicon and Linux arm64). The\n"
     "list holds every kernel this computer\n"
-    ;
-static const char* const kManualText_part13 =
     "can run: *scalar* (one frame a step, every CPU), *SSE2* (four frames, every\n"
     "x86-64), *AVX2* (eight frames, when the CPU has it), *NEON* (arm64). Pick one\n"
     "to compare it with another: the change takes effect at once, no reload, and\n"
@@ -2821,6 +2828,8 @@ static const char* const kManualText_part13 =
     "1. Engage a large number of stops with long releases (a full registration of\n"
     "   wet samples).\n"
     "2. Bash the keys: play many quick staccato notes over many keys at once\n"
+    ;
+static const char* const kManualText_part14 =
     "   (palm smearing - repeated fast strokes with the flat hands over the\n"
     "   keyboards), so that as many releases as possible sound at the same time:\n"
     "   that produces the highest polyphony. Remember:\n"
@@ -2828,8 +2837,6 @@ static const char* const kManualText_part13 =
     "   keeps its place in the polyphony until its release has died away\n"
     "   completely.\n"
     "3. Watch *DSP* and *PEAK* while you do it. At the moment the audio starts to\n"
-    ;
-static const char* const kManualText_part14 =
     "   break up (crackle, dropouts), note the *PEAK* value.\n"
     "4. Enter a somewhat lower number as the limit.\n"
     "5. Repeat until no breaking up of the audio (dropouts, crackle) is ever heard.\n"
@@ -3023,6 +3030,8 @@ static const char* const kManualText_part14 =
     "### Wind: harmonic filter\n"
     "\n"
     "The same shelf following the wind sag: this much high-frequency loss at the\n"
+    ;
+static const char* const kManualText_part15 =
     "full sag (default 2 dB). Big chords starve the wind, and a starved pipe is\n"
     "duller as well as flatter.\n"
     "\n"
@@ -3030,8 +3039,6 @@ static const char* const kManualText_part14 =
     "\n"
     "How much quieter a pipe gets for every cent the wind sag lowers its pitch (0\n"
     "to 0.6 dB per cent, default 0.2). Together with the division's *Wind: depth*\n"
-    ;
-static const char* const kManualText_part15 =
     "it decides how strongly a full chord sags in level.\n"
     "\n"
     "### Wind: one stop's share of the full sag\n"
@@ -3225,6 +3232,8 @@ static const char* const kManualText_part15 =
     "file per rank and folder tree, whatever the settings: a tree built with other\n"
     "settings replaces its file, so the cache takes about as much room on disk as\n"
     "the copies in RAM (hundreds of MB for a large organ) and never plays a stale\n"
+    ;
+static const char* const kManualText_part16 =
     "copy. Switch it on when the build after loading annoys you; switch it off\n"
     "when disk space is short - everything works the same without it. \"The cache\"\n"
     "describes it in full.\n"
@@ -3232,8 +3241,6 @@ static const char* const kManualText_part15 =
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The row shows the size of the cache and the folder it lives in. *Empty the\n"
-    ;
-static const char* const kManualText_part16 =
     "cache* deletes every cached file at once - to get the disk space back, or\n"
     "after you have replaced your sample folders. The copies are built again, and\n"
     "cached again, the next time they are needed; nothing else is lost.\n"
@@ -3427,6 +3434,8 @@ static const char* const kManualText_part16 =
     "\n"
     "### Target temperament\n"
     "\n"
+    ;
+static const char* const kManualText_part17 =
     "The temperament the organ *plays* in (see \"Temperaments\"). Every pipe is retuned by the\n"
     "difference between the target and the samples' base temperament, per pitch\n"
     "class. Choosing the base temperament itself plays the samples as recorded.\n"
@@ -3434,8 +3443,6 @@ static const char* const kManualText_part16 =
     "every temperament can be switched from a MIDI control.\n"
     "\n"
     "### Window size\n"
-    ;
-static const char* const kManualText_part17 =
     "\n"
     "The size of the main window, saved automatically. Information only; the window\n"
     "returns to where it was last time, always with its title bar on the screen.\n"
@@ -3629,6 +3636,8 @@ static const char* const kManualText_part17 =
     "\n"
     "How many oscillations die away after a stroke (0 to 20, default 7).\n"
     "\n"
+    ;
+static const char* const kManualText_part18 =
     "### Wind: oscillation strength\n"
     "\n"
     "The impulse a key stroke gives the wind (0 to 100 %, default 40); 100 % is\n"
@@ -3636,8 +3645,6 @@ static const char* const kManualText_part17 =
     "\n"
     "### Wind: sag settling lag\n"
     "\n"
-    ;
-static const char* const kManualText_part18 =
     "How long the wind pressure takes to settle after stops or keys change (100 to\n"
     "400 ms, default 255). The same lag governs the volume glide when a pipe held\n"
     "through several routes passes from one route to another.\n"

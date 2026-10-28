@@ -1656,7 +1656,14 @@ folder that plays that perspective of the stop.
   tuning means the same pipes, and the folder joins the row as the new
   perspective (the prefix is learned into "Perspective patterns"); a folder
   with other tuning is another organ's and becomes a row of its own, as
-  does every folder with no match.
+  does every folder with no match. The prefixes are read off the table
+  itself as well: the head every folder of a perspective's column carries
+  ("03-ortf_" under Direct) joins "Perspective patterns" at every load,
+  import, merge and apply of the table, so an organ saved by an older
+  version without them repairs itself. In a tree with one perspective
+  only, a head that every stop folder carries and that names a perspective
+  (direct, diffuse, rear, far, near, close, dry, wet, front, ab, ortf ...)
+  is learned too; a lone head without such a word ("HW_", "Ped_") never is.
 - The info line at the bottom counts the sample folders found in all trees,
   how many the table uses and how many are free.
 
