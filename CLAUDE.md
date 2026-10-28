@@ -1567,7 +1567,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   two folders must agree on most pairs (the same rank has the same files in every perspective; a foreign Principal 8
   has another compass/layers) - cheap, no audio read; (4) a1 of the first files (computeTuning440) - reliable but reads
   samples; (5) a question box only in the grey zone (passed, not 100 %, file counts undecided): "Join / Add as new
-  stops". Recommendation 1+2+3 automatic, 5 only when 3 cannot decide. Do it in the next build before someone hits it.
+  stops". CORRECTED (the user: "co když je divize rozdělená, jako Bergen? 002082 obsahuje jen 6 rejstříků z HW"):
+  (1) is WRONG as a requirement - a package of a split division covers 6 of 14 HW rows and would be refused; it
+  holds only for an ODF merge (the plan spans all packages) or several trees loaded at once (count the base side over
+  their union). Hard gate = (2) + (3) (per folder, independent of coverage), the 80 % of the NEW folders stays, (1)
+  only as evidence in the log/summary, (5) only when the file counts cannot decide. The second package of a learned
+  prefix (002083 after 002082) is no case for the rule: the scan knows "Far;06-far__" and joins by name the old way.
 - LOAD CONFIGURATION "WAITS FOR THE FILLED PIPES" (the user, 24 Oct 2026 evening) - MEASURED, not what it looks like:
   the log of 18:33:37 shows the copy build interrupted within the same second ("ended at 104/312 ... interrupted");
   what took 11 s with the window dead ("Message thread unresponsive for 8 s", stack in RtlFreeHeap/free_base) was
