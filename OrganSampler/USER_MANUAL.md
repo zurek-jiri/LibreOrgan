@@ -781,12 +781,21 @@ folders with your rows), its page becomes the layout of the whole
 division - your rows take its cells too, so the picture is the full organ's
 page, without empty rows between the old and the new stops. What would collide is left as it is and listed in the message at the
 end: a stop whose sample folder is already loaded is shared and not added; a
+further perspective of the same organ (a "Wet - Distant" set beside the
+"Surround" set: every added stop a single new folder, all of them under one
+new prefix such as `06-far__`, named like your rows - the folder names less
+their prefix and, for a definition, the Hauptwerk stop names) does not add
+rows: each added folder joins the row of its stop as that perspective, the
+prefix is learned, and the summary says "N stop(s) gained the perspective
+Distant" - the stops of another organ (other names, no single new prefix)
+are added as rows as ever, never fused; a
 perspective your organ already has keeps its audio route and settings, a new
 perspective brings the added configuration's; a division that has stops
 keeps its MIDI keyboard, an empty one takes the added configuration's keys,
 wind, tremulant and (when included) MIDI; couplers, combinations, crescendo,
 temperament, the global sound settings and the MIDI buttons stay yours. Two
-stops of one name in one division: the added one gets "(2)". Two organs
+stops of one name or one alias (the caption on the button) in one division:
+the added one gets "(2)". Two organs
 rarely stand at one pitch (a1 = 440, 415, 465 Hz ...), so the merge switches
 Temperaments > *Equal at 440 Hz* on: every stop of the merged organ is tuned
 to 440 Hz and they play together in tune. The same organ in a further volume
@@ -890,15 +899,15 @@ its folders missing. The program then looks beside it - and beside the
 configuration - for other archives whose name shares a part with the
 chosen one or with the organ's name (`bedos`; a folder full of other organs'
 archives is left alone), reads the contents of those few, and when they hold
-the missing folders one box names them: "bedos1_862.rar: 000862\pipe\...,
-bedos2_861.rar: ..." - *Read them too?* Yes joins them to the archives this
-computer remembers and loads the divisions again; *Not now* leaves the
-notice. The same look is in the notice's menu. And the other way round: when
-the archive you chose holds no definition at all (a package of samples
-alone), the program reads the archives beside it with a name like it and,
-when one of them holds the organ definition, lists them all - "they look
-like one organ" - with *Load from the definition* / *Not now*; yes loads
-the organ from the definition with every one of them. The simplest way is
+the missing folders it takes them without asking: they join the archives
+this computer remembers, the divisions are loaded again, and a notice names
+them: "bedos1_862.rar: 000862\pipe\..., bedos2_861.rar: ...". The same look
+is in the notice's menu. And the other way round: when the archive you chose
+holds no definition at all (a package of samples alone), the program reads
+the archives beside it with a name like it and, when one of them holds the
+organ definition, loads the organ from the definition with every one of them
+- a notice lists the archives taken (several definitions among them: the
+choice box, as with several archives chosen at once). The simplest way is
 still to choose all the archives of the set at once in *Load Configuration*
 (Ctrl or Shift in the file dialog).
 
@@ -1010,7 +1019,11 @@ load the first as above, then right-click *Load Configuration* > *Merge
 another configuration* with the second one's definition or configuration
 (or its archives): the shared stops dissolve into the loaded organ and gain
 the new perspective, new stops are added ("Merging another configuration
-into the loaded organ").
+into the loaded organ"). A perspective set whose folders stand beside yours
+under a new prefix (`06-far__HW_Octava2` beside `03-ortf_HW_Octava2`) joins
+your rows the same way, in the merge and in *Load folder...* of the Stop
+List alike: the folders join the rows of their stops as the new perspective
+and the prefix is learned.
 
 ### Sharing what you built
 
@@ -1621,7 +1634,13 @@ folder that plays that perspective of the stop.
   folder names and the perspective prefixes), so it shows what was
   recognised, and it can be corrected where the rules could not pair the
   folders - when the perspectives of one stop live in two folder trees, for
-  example.
+  example. A tree loaded into a division that has rows already is first
+  tried as a further perspective of those rows: when its folders, less one
+  new prefix they all share (`06-far__`), are named like the rows' folders
+  less theirs (`HW_Octava2`), and the prefix is no perspective known yet,
+  the folders join their rows as the new perspective (the prefix is learned
+  into "Perspective patterns") and no row is added; otherwise the tree's
+  folders become new rows as ever.
 - The info line at the bottom counts the sample folders found in all trees,
   how many the table uses and how many are free.
 

@@ -451,6 +451,17 @@ private:
     std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> stopBuildMap(int manual) const;   // nullptr while inactive
     ManualConfig::StopBuild deriveStopBuildFromEngine(int manual) const;   // the table as the loaded stops are
     void extendStopBuildWithTree(int manual, const juce::File& tree, int treeIndex);   // a tree added to a built division
+    std::set<int> treeJoinedDivisions;   // 0.8.220: the OTHER divisions whose rows the last extendStopBuildWithTree gave a perspective (reloaded too)
+    // 0.8.220: folders that are ANOTHER PERSPECTIVE of the division's rows (Bergen op Zoom: the Distant package's
+    // "06-far__HW_Octava2" beside the rows' "03-ortf_HW_Octava2" / "04-ab_" / "05-rea_"). The new names share their
+    // ending with a row's folder name after a prefix of their own (the ending >= 4 characters, the heads end at a
+    // separator and differ); ONE head must carry at least three and four in five of the new folders and must not
+    // be a prefix the division knows already - else nothing is joined (a foreign organ stays foreign).
+    struct PerspectiveMatch { juce::String head; int candidates = 0, matched = 0; std::map<juce::String, size_t> rowOfFolder; juce::String why; };   // rowOfFolder: lower-case new folder name -> base entry index
+    static PerspectiveMatch matchFoldersAsPerspective(const std::vector<juce::String>& newFolderNames, const std::vector<ManualConfig::StopBuild::Entry>& baseEntries,
+                                                      const std::vector<juce::String>& knownPatterns);
+    static juce::String perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns);   // "06-far__" -> "Far", or the label whose stem the head holds (dir/dif/rea)
+    static std::vector<juce::String> patternsWithHead(const std::vector<juce::String>& patterns, const juce::String& label, const juce::String& head);   // the lines with "Label;head" added
     void applyStopBuild(int manual, const ManualConfig::StopBuild& build, bool arrangeGrid = false);
     // The Stop List applies the tables of several divisions at once (one reload).
     void applyStopLists(const std::array<ManualConfig::StopBuild, SamplerEngine::maxManuals>& builds,

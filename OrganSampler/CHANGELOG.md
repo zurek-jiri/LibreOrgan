@@ -12,6 +12,39 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.220] - 2026-10-28
+
+### Added
+- A further perspective set of the same organ merged into the loaded one
+  (Bergen op Zoom "Wet - Distant" into "Surround") no longer doubles every
+  stop: an added stop with a single folder that shares no folder with the
+  loaded rows is matched to the row of its stop - the folder names less one
+  new prefix all the added folders share (`06-far__`) against the rows'
+  folder names less theirs (`HW_Octava2`), and for a definition the
+  Hauptwerk stop names must agree too - and its folder joins that row as the
+  new perspective; the prefix is learned into the perspective patterns and
+  the summary says "N stop(s) gained the perspective Distant". Stops of
+  another organ (other names, no single new prefix) are added as rows as
+  before, never fused with yours.
+- Load folder... of a tree into a division with rows does the same: the
+  folders of a new perspective join their rows instead of becoming new rows.
+- Two stops with the same caption (alias) in one division: the added one gets
+  "(2)" as a stop of the same name did.
+
+### Changed
+- No question after the archive search any more (the box could not be
+  answered): the archives beside the chosen one that hold the missing
+  folders are taken and the divisions loaded again, and a notice names them;
+  an archive without a definition whose neighbours hold one is loaded from
+  the definition with all of them at once, a notice lists the archives.
+- Hauptwerk import: a definition whose ranks lie flat in `pipes/` under a
+  perspective prefix (`pipes/03-ortf_HW_Octava2`) writes the prefixes into
+  the perspective patterns too, so a tree of a further perspective is
+  recognised by the loader.
+- Hauptwerk import into a stop that already has folders of another
+  perspective (a merge): the route volume of the new perspective is set, the
+  stop's own voicing is left as it was.
+
 ## [0.8.219] - 2026-10-27
 
 ### Added

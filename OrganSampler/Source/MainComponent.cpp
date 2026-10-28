@@ -1691,15 +1691,32 @@ MainComponent::MainComponent()
     // (a tree of the same name as a missing pool tree takes its place).
     if (const char* loadTree = std::getenv("ORGAN_LOAD_TREE"))
     {
-        const juce::String spec(loadTree);
-        const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
-        const juce::File tree(spec.fromFirstOccurrenceOf("|", false, false));
+        // 0.8.220: "<division>|<folder>|<seconds>" - a third field delays it (a hook import
+        // first); afterwards the configuration is saved and the Stop List dumped as
+        // "<ORGAN_DUMP_STOPLIST>.tree.md" (the rows after the tree joined).
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(loadTree), "|", "");
+        const int division = parts[0].getIntValue();
+        const juce::File tree(parts.size() > 1 ? parts[1] : juce::String());
+        const int seconds = parts.size() > 2 ? juce::jmax(5, parts[2].getIntValue()) : 25;
         juce::Component::SafePointer<MainComponent> safeThis(this);
-        juce::Timer::callAfterDelay(25000, [safeThis, division, tree]
+        juce::Timer::callAfterDelay(seconds * 1000, [safeThis, division, tree]
         {
             if (safeThis == nullptr) return;
             CrashHandler::note("ORGAN_LOAD_TREE: " + tree.getFullPathName() + " into division " + juce::String(division));
             safeThis->loadTreeIntoDivision(tree, division);
+            juce::Timer::callAfterDelay(10000, [safeThis]
+            {
+                if (safeThis == nullptr) return;
+                safeThis->runWhenLoaded([safeThis]
+                {
+                    if (safeThis == nullptr) return;
+                    if (safeThis->currentConfigurationFile != juce::File()) safeThis->savePortableConfiguration(safeThis->currentConfigurationFile, true, false, false);
+                    if (const char* dump = std::getenv("ORGAN_DUMP_STOPLIST"))
+                        if (safeThis->voicer != nullptr)
+                            juce::File(juce::String(dump) + ".tree.md").replaceWithText(safeThis->voicer->stopListMarkdown());
+                    CrashHandler::note("ORGAN_LOAD_TREE: organ saved to " + safeThis->currentConfigurationFile.getFullPathName());
+                });
+            });
         });
     }
     // ORGAN_TEST_RELOCATE="<tree tail>|<folder>[|<seconds>]" (tests, 0.8.202): the
@@ -2001,7 +2018,27 @@ MainComponent::MainComponent()
     {
         const juce::File added(juce::String::fromUTF8(env));
         juce::Component::SafePointer<MainComponent> safeThis(this);
-        runWhenLoaded([safeThis, added] { if (safeThis != nullptr && SampleFiles::existsAsFile(added)) { CrashHandler::note("ORGAN_MERGE_CONFIGURATION: " + added.getFullPathName()); safeThis->mergeConfigurationFile(added); } });   // on the disk or in an archive (0.8.160)
+        runWhenLoaded([safeThis, added]
+        {
+            if (safeThis == nullptr || !SampleFiles::existsAsFile(added)) return;
+            CrashHandler::note("ORGAN_MERGE_CONFIGURATION: " + added.getFullPathName());
+            safeThis->mergeConfigurationFile(added);   // on the disk or in an archive (0.8.160)
+            // 0.8.220 (tests): once the merged organ is loaded, the configuration is saved and the
+            // Stop List dumped again as "<ORGAN_DUMP_STOPLIST>.merged.md" (the rows after the merge).
+            juce::Timer::callAfterDelay(20000, [safeThis]
+            {
+                if (safeThis == nullptr) return;
+                safeThis->runWhenLoaded([safeThis]
+                {
+                    if (safeThis == nullptr) return;
+                    if (safeThis->currentConfigurationFile != juce::File()) safeThis->savePortableConfiguration(safeThis->currentConfigurationFile, true, false, false);
+                    if (const char* dump = std::getenv("ORGAN_DUMP_STOPLIST"))
+                        if (safeThis->voicer != nullptr)
+                            juce::File(juce::String(dump) + ".merged.md").replaceWithText(safeThis->voicer->stopListMarkdown());
+                    CrashHandler::note("ORGAN_MERGE_CONFIGURATION: merged organ saved to " + safeThis->currentConfigurationFile.getFullPathName());
+                });
+            });
+        });
     }
     // ORGAN_OPEN_UNPACK=1 opens the Unpack archive window 2 s after the start (screenshots).
     if (const char* env = std::getenv("ORGAN_OPEN_UNPACK"))
@@ -11966,7 +12003,7 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     // perspective goes to that route's volume (the division dialog's audio
     // tab), the median of what is left to the stop (averaged over its
     // perspectives), the rest to the pipes.
-    int voicedStops = 0, voicedNotes = 0;
+    int voicedStops = 0, voicedNotes = 0, partialStops = 0;
     juce::StringArray routeVolumesSet;
     {
         auto medianOf = [](std::vector<float> values)
@@ -11975,7 +12012,7 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
             return values.size() % 2 == 1 ? values[values.size() / 2] : 0.5f * (values[values.size() / 2 - 1] + values[values.size() / 2]);
         };
         struct Part { juce::String perspective; std::map<int, float> levels; };
-        struct Entry { Stop* stop; std::vector<Part> parts; };
+        struct Entry { Stop* stop; std::vector<Part> parts; bool partial = false; };   // partial (0.8.220): the definition knows SOME of the stop's folders only - a merged perspective
         std::vector<Entry> entries;
         std::map<std::pair<int, juce::String>, std::vector<float>> routeLevels;   // (division, perspective) -> every pipe level in it
         {
@@ -11996,6 +12033,8 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
                 };
                 addPart(stop->perspective, stop->folder);
                 for (const auto& rank : stop->ranks) addPart(rank->perspective, rank->folder);
+                const size_t folderCount = (stop->folder != juce::File() ? 1 : 0) + stop->ranks.size();
+                entry.partial = !entry.parts.empty() && entry.parts.size() < folderCount;
                 if (!entry.parts.empty()) entries.push_back(std::move(entry));
             }
         }
@@ -12006,6 +12045,10 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
             for (auto& entry : entries)
             {
                 auto* stop = entry.stop;
+                // A merged perspective (0.8.220): the definition's levels cover one rank of a stop
+                // that has others - the route volume takes them (above), the stop's own voicing
+                // (its dB, its pipes) stays as it was set from the first definition or by hand.
+                if (entry.partial) { ++partialStops; continue; }
                 std::map<int, float> residualSum; std::map<int, int> residualCount;
                 for (const auto& part : entry.parts)
                 {
@@ -12094,7 +12137,7 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     hauptwerkCompass.clear();
     if (voicer != nullptr) { voicer->updateStopStates(); voicer->rebuildUI(stopsContent, stopsViewport); }
     CrashHandler::note("Hauptwerk import: voicing applied to " + juce::String(voicedStops) + " stop(s), " + juce::String(voicedNotes) + " pipe level(s), route volumes "
-        + routeVolumesSet.joinIntoString(", ") + "; compass limited on " + juce::String(compassStops) + " stop(s), " + juce::String(compassKeys) + " key(s) switched off; "
+        + routeVolumesSet.joinIntoString(", ") + (partialStops > 0 ? "; " + juce::String(partialStops) + " stop(s) with a perspective of this definition only: route volume set, the stop's voicing left as it was" : juce::String()) + "; compass limited on " + juce::String(compassStops) + " stop(s), " + juce::String(compassKeys) + " key(s) switched off; "
         + juce::String(extensionsMade) + " extension(s)/transmission(s) made" + (extensionsMissed.isEmpty() ? juce::String() : " (not made: " + extensionsMissed.joinIntoString(", ") + ")")
         + (saveIntoPackage ? "" : " (merge: not saved)"));
     if (!saveIntoPackage) { configurationDirty = true; return; }   // a merge: the report comes from the merge itself
@@ -14784,22 +14827,15 @@ void MainComponent::offerDefinitionBeside(const std::vector<juce::File>& archive
                 + ") hold none either. Their sample folders can be loaded in the Stop List: Load folder... > Browse archives...", "OK", safeThis.getComponent());
             return;
         }
+        // 0.8.220 (the user: "nedělej takovou otázku, prostě ty archivy všechny vezmi bez otázky"):
+        // no box - the set is taken as one organ, the log and a notice say which archives.
         juce::StringArray chosenNames;
         for (const auto& a : archives) chosenNames.add(a.getFileName());
-        const juce::String text = none + "\n\nBeside it, with a name like it, lie these archives - they look like one organ:" + list
-            + "\n\nLoad the organ from the definition, with all of them (" + chosenNames.joinIntoString(", ") + " included)?";
-        CrashHandler::note(title + ": " + text.replaceCharacters("\n", " "));
-        auto load = [safeThis, archives, neighbours, merge]
-        {
-            if (safeThis == nullptr) return;
-            std::vector<juce::File> all = archives;
-            all.insert(all.end(), neighbours.begin(), neighbours.end());
-            safeThis->loadConfigurationFromArchives(all, merge);
-        };
-        if (std::getenv("ORGAN_TEST_NEIGHBOURS") != nullptr) { load(); return; }   // tests: the answer is yes
-        juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::QuestionIcon).withTitle(title)
-            .withMessage(text).withButton("Load from the definition").withButton("Not now").withAssociatedComponent(safeThis.getComponent()),
-            [load](int result) { if (result == 1) load(); });
+        CrashHandler::note(title + ": " + none.replaceCharacters("\n", " ") + " The archives beside it with a name like it are read as one organ:" + list.replaceCharacters("\n", " "));
+        queueNotice(juce::MessageBoxIconType::InfoIcon, title, chosenNames.joinIntoString(", ") + " holds no definition; the archives beside it with a name like it are read with it as one organ:" + list);
+        std::vector<juce::File> all = archives;
+        all.insert(all.end(), neighbours.begin(), neighbours.end());
+        safeThis->loadConfigurationFromArchives(all, merge);
     });
 }
 
@@ -14876,31 +14912,25 @@ void MainComponent::offerNeighbourArchives(bool explicitRequest)
                 queueNotice(juce::MessageBoxIconType::InfoIcon, "Missing folders", "The archives beside the organ (" + juce::String((int)candidates.size()) + " with a name like it) hold none of the missing folders.");
             return;
         }
-        juce::String text = "The organ's folders that are not on this computer lie in archives beside it:\n";
+        // 0.8.220 (the user: no question after the archive search): the archives are taken,
+        // the divisions loaded again, and a notice says what was taken from where.
+        juce::String text = "The organ's folders that were not on this computer were found in archives beside it and read:\n";
         for (const auto& f : found)
         {
             juce::StringArray tails;
             for (int index : f.trees) tails.add(tailText(safeThis->sampleTrees[(size_t)index]));
             text += "\n" + f.archive.getFileName() + ":  " + tails.joinIntoString(", ");
         }
-        text += "\n\nRead these archives too? They join the archives this computer remembers and the divisions are loaded again.";
         CrashHandler::note("Missing folders: " + text.replaceCharacters("\n", " "));
-        auto takeThem = [safeThis, found]
-        {
-            if (safeThis == nullptr) return;
-            std::vector<int> trees;
-            for (const auto& f : found) { safeThis->registerArchive(f.archive); trees.insert(trees.end(), f.trees.begin(), f.trees.end()); }
-            std::vector<int> affected;
-            for (int manual = 0; manual <= safeThis->manualCount && manual < SamplerEngine::maxManuals; ++manual)
-                for (const auto& path : safeThis->divisionTrees(manual))
-                    if (std::find(trees.begin(), trees.end(), safeThis->poolIndexOf(path)) != trees.end()) { affected.push_back(manual); break; }
-            CrashHandler::note("Missing folders: " + juce::String((int)found.size()) + " archive(s) taken, " + juce::String((int)affected.size()) + " division(s) reloaded");
-            if (!affected.empty()) safeThis->reloadDivisions(affected);
-        };
-        if (std::getenv("ORGAN_TEST_NEIGHBOURS") != nullptr) { takeThem(); return; }   // tests: the answer is yes
-        juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::QuestionIcon).withTitle("Missing folders")
-            .withMessage(text).withButton("Read them too").withButton("Not now").withAssociatedComponent(safeThis.getComponent()),
-            [takeThem](int result) { if (result == 1) takeThem(); });
+        std::vector<int> trees;
+        for (const auto& f : found) { safeThis->registerArchive(f.archive); trees.insert(trees.end(), f.trees.begin(), f.trees.end()); }
+        std::vector<int> affected;
+        for (int manual = 0; manual <= safeThis->manualCount && manual < SamplerEngine::maxManuals; ++manual)
+            for (const auto& path : safeThis->divisionTrees(manual))
+                if (std::find(trees.begin(), trees.end(), safeThis->poolIndexOf(path)) != trees.end()) { affected.push_back(manual); break; }
+        CrashHandler::note("Missing folders: " + juce::String((int)found.size()) + " archive(s) taken, " + juce::String((int)affected.size()) + " division(s) reloaded");
+        if (!affected.empty()) safeThis->reloadDivisions(affected);
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Missing folders", text);
     });
 }
 
@@ -16319,7 +16349,13 @@ void MainComponent::loadTreeIntoDivision(const juce::File& tree, int manual)
             if (!SampleFiles::isDirectory(old) && tail(old, components) == tail(tree, components)) relocate = (int)index;
         }
     if (relocate >= 0) { relocateTreeSmart(relocate, tree); return; }   // 0.8.202: the other missing trees around it too
-    if (addTreeToDivisionTable(tree, manual)) reloadDivisions({ manual }, tree.getFullPathName());
+    if (addTreeToDivisionTable(tree, manual))
+    {
+        std::vector<int> reload { manual };
+        for (int other : treeJoinedDivisions) if (other != manual) reload.push_back(other);   // 0.8.220: rows of other divisions gained the perspective
+        if (reload.size() > 1) CrashHandler::note("Load folder: division(s) " + juce::String(manual) + " and the other(s) whose rows gained the perspective are loaded again");
+        reloadDivisions(reload, tree.getFullPathName());
+    }
 }
 
 bool MainComponent::addTreeToDivisionTable(const juce::File& tree, int manual)
@@ -16349,8 +16385,13 @@ void MainComponent::loadTreesIntoDivision(const std::vector<juce::File>& trees, 
     if (trees.size() == 1) { loadTreeIntoDivision(trees.front(), manual); return; }
     if (!checkMemoryForFolders(trees)) return;
     bool any = false;
-    for (const auto& tree : trees) any = addTreeToDivisionTable(tree, manual) || any;
-    if (any) reloadDivisions({ manual });
+    std::vector<int> reload { manual };
+    for (const auto& tree : trees)
+    {
+        any = addTreeToDivisionTable(tree, manual) || any;
+        for (int other : treeJoinedDivisions) if (std::find(reload.begin(), reload.end(), other) == reload.end()) reload.push_back(other);   // 0.8.220
+    }
+    if (any) reloadDivisions(reload);
     else queueNotice(juce::MessageBoxIconType::InfoIcon, "Load folder",
         "These folder trees are already loaded. Their folders are assigned in the Stop List.");
 }
@@ -16650,14 +16691,177 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
     return build;
 }
 
+MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const std::vector<juce::String>& newNames, const std::vector<ManualConfig::StopBuild::Entry>& base,
+                                                                         const std::vector<juce::String>& knownPatterns)
+{
+    // The user's question (28 Oct 2026): how to tell a further perspective of the SAME
+    // organ from a foreign recording without comparing whole folder lists (a division
+    // may be split over several packages)? By the NAMES: the new folders repeat the
+    // rows' folder names after a prefix of their own, consistently - one head on at
+    // least three and four in five of them, and not a head the division knows (that
+    // would be the same perspective twice). A foreign organ shares a name here and
+    // there, never four in five with one prefix. The caller adds its own checks (the
+    // Hauptwerk stop names of a merge).
+    PerspectiveMatch result;
+    auto isSep = [](juce::juce_wchar c) { return c == '-' || c == '_' || c == ' ' || c == '.'; };
+    struct BaseName { juce::String name; size_t entry; };
+    std::vector<BaseName> baseNames;
+    for (size_t i = 0; i < base.size(); ++i)
+        for (const auto& [perspective, ref] : base[i].folders)
+        {
+            const auto last = ref.relativePath.replaceCharacter('\\', '/').fromLastOccurrenceOf("/", false, false);
+            if (last.isNotEmpty() && last != ".") baseNames.push_back({ last, i });
+        }
+    result.candidates = (int)newNames.size();
+    if (baseNames.empty()) { result.why = "the division has no folders yet"; return result; }
+    std::map<juce::String, std::vector<std::pair<juce::String, size_t>>> byHead;   // lower-case head -> (new name, base entry)
+    std::map<juce::String, juce::String> spelling;
+    for (const auto& n : newNames)
+    {
+        int bestLength = 0; size_t bestEntry = 0; juce::String bestHead;
+        for (const auto& b : baseNames)
+        {
+            int common = 0;
+            while (common < n.length() && common < b.name.length()
+                   && juce::CharacterFunctions::toLowerCase(n[n.length() - 1 - common]) == juce::CharacterFunctions::toLowerCase(b.name[b.name.length() - 1 - common])) ++common;
+            int cutN = n.length() - common, cutB = b.name.length() - common;
+            while (cutN < n.length() && isSep(n[cutN])) { ++cutN; ++cutB; }   // the ending starts with a letter or digit, the separator belongs to the head
+            const int ending = n.length() - cutN;
+            if (ending < 4) continue;
+            if (cutN > 0 && !isSep(n[cutN - 1])) continue;        // a head that ends inside a word is no prefix ("Principal16" / "Principal8" share "al8"? no: "ipal8" cut mid-word)
+            if (cutB > 0 && !isSep(b.name[cutB - 1])) continue;
+            const juce::String headN = n.substring(0, cutN), headB = b.name.substring(0, cutB);
+            if (headN.isEmpty() || headN.equalsIgnoreCase(headB)) continue;   // no prefix, or the same prefix = the same perspective
+            if (ending > bestLength) { bestLength = ending; bestEntry = b.entry; bestHead = headN; }
+        }
+        if (bestLength == 0) continue;
+        byHead[bestHead.toLowerCase()].push_back({ n, bestEntry });
+        spelling.emplace(bestHead.toLowerCase(), bestHead);
+    }
+    juce::String head; size_t count = 0;
+    for (const auto& [h, list] : byHead) if (list.size() > count) { count = list.size(); head = h; }
+    if (count == 0) { result.why = "no folder name repeats a folder of the division after a prefix of its own"; return result; }
+    result.head = spelling[head];
+    result.matched = (int)count;
+    for (const auto& line : knownPatterns)
+    {
+        auto tokens = juce::StringArray::fromTokens(line, ";", "");
+        for (int i = 1; i < tokens.size(); ++i)
+            if (tokens[i].trim().equalsIgnoreCase(result.head)) { result.why = "the prefix " + result.head + " is a perspective the organ has already"; result.matched = 0; return result; }
+    }
+    if (result.matched < 3 || result.matched * 5 < result.candidates * 4)
+    {
+        result.why = juce::String(result.matched) + " of " + juce::String(result.candidates) + " folder(s) repeat a folder of the division after the prefix " + result.head + " (four in five and three at least are needed)";
+        result.matched = 0;
+        return result;
+    }
+    for (const auto& [n, entry] : byHead[head]) result.rowOfFolder[n.toLowerCase()] = entry;
+    return result;
+}
+
+juce::String MainComponent::perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns)
+{
+    // The loader's own rule (scanTreeAssignments): a head holding the first three letters
+    // of ONE known label joins it ("03-ortf_" nothing, "05-rea_" -> Rear); else a readable
+    // name from the head ("06-far__" -> "Far").
+    const auto lower = head.toLowerCase();
+    juce::String matched; int matches = 0;
+    for (const auto& line : patterns)
+    {
+        const auto label = juce::StringArray::fromTokens(line, ";", "")[0].trim();
+        if (label.length() < 3) continue;
+        if (lower.contains(label.substring(0, 3).toLowerCase())) { matched = label; ++matches; }
+    }
+    if (matches == 1) return matched;
+    juce::String label = head.trimCharactersAtStart("0123456789-_. ").trimCharactersAtEnd("-_. ");
+    if (label.isEmpty()) label = head.trimCharactersAtEnd("-_. ");
+    return label.substring(0, 1).toUpperCase() + label.substring(1);
+}
+
+std::vector<juce::String> MainComponent::patternsWithHead(const std::vector<juce::String>& patterns, const juce::String& label, const juce::String& head)
+{
+    std::vector<juce::String> result = patterns;
+    for (auto& line : result)
+    {
+        auto tokens = juce::StringArray::fromTokens(line, ";", "");
+        tokens.trim();
+        tokens.removeEmptyStrings();
+        if (tokens.isEmpty() || !tokens[0].equalsIgnoreCase(label)) continue;
+        for (const auto& t : tokens) if (t.equalsIgnoreCase(head)) return result;
+        tokens.add(head);
+        line = tokens.joinIntoString(";");
+        return result;
+    }
+    result.push_back(label + ";" + head);
+    return result;
+}
+
 void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, int treeIndex)
 {
     // A tree added to a built division: its folders enter the table the way the
     // automatic rules would load them (same-named stops get the new perspectives).
     if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
     auto& build = manualConfigs[(size_t)manual].stopBuild;
-    for (const auto& assignment : engine.scanTreeAssignments(tree, true))
+    auto assignments = engine.scanTreeAssignments(tree, true);
+    // 0.8.220: the tree as ANOTHER PERSPECTIVE of the division's rows (the Distant package
+    // of Bergen op Zoom loaded after the Surround ones): the folders the scan could not
+    // place under a known perspective are held against the rows' folder names; one
+    // consistent new prefix on four in five of them = a perspective, learned for good
+    // (the pattern line), and each folder joins its row. The user's rule: never fuse a
+    // foreign recording - the match needs the names, not a guess.
+    // The rows of EVERY built division are held against (a package carries the folders of
+    // several divisions: Bergen's 002082 has HW_ and Pos_ folders): a folder that repeats a
+    // row of another division joins that row there, and that division is loaded again too.
+    std::map<juce::String, std::pair<int, size_t>> joinRow;   // lower-case folder name -> (division, row)
+    juce::String joinLabel;
+    treeJoinedDivisions.clear();
     {
+        std::vector<juce::String> unplaced;
+        for (const auto& a : assignments) if (a.perspective.isEmpty() || a.perspective == "default") unplaced.push_back(a.folder.getFileName());
+        if (!unplaced.empty())
+        {
+            std::vector<ManualConfig::StopBuild::Entry> allEntries;
+            std::vector<std::pair<int, size_t>> placeOfEntry;
+            for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+            {
+                const auto& other = manualConfigs[(size_t)m].stopBuild;
+                if (!other.active) continue;
+                for (size_t i = 0; i < other.entries.size(); ++i) { allEntries.push_back(other.entries[i]); placeOfEntry.push_back({ m, i }); }
+            }
+            const auto patterns = engine.getPerspectivePatterns();
+            const auto match = matchFoldersAsPerspective(unplaced, allEntries, patterns);
+            if (match.matched > 0)
+            {
+                joinLabel = perspectiveLabelForHead(match.head, patterns);
+                for (const auto& [name, index] : match.rowOfFolder) if (index < placeOfEntry.size()) joinRow[name] = placeOfEntry[index];
+                engine.setPerspectivePatterns(patternsWithHead(patterns, joinLabel, match.head));
+                rememberPatterns(false);
+                CrashHandler::note("Load folder: " + tree.getFullPathName() + " is another perspective of the loaded organ - the prefix " + match.head
+                    + " on " + juce::String(match.matched) + " of " + juce::String(match.candidates) + " folder(s) repeats the rows' folder names; perspective \"" + joinLabel
+                    + "\" learned (pattern \"" + joinLabel + ";" + match.head + "\"), the folders join their rows");
+            }
+            else CrashHandler::note("Load folder: " + tree.getFullPathName() + " is not another perspective of the loaded organ (" + match.why + ")");
+        }
+    }
+    for (const auto& assignment : assignments)
+    {
+        if (const auto joined = joinRow.find(assignment.folder.getFileName().toLowerCase()); joined != joinRow.end())
+        {
+            auto& joinedBuild = manualConfigs[(size_t)joined->second.first].stopBuild;
+            if (joined->second.second < joinedBuild.entries.size())
+            {
+                auto& row = joinedBuild.entries[joined->second.second];
+                if (row.folders.count(joinLabel) == 0)
+                {
+                    bool known = false;
+                    for (const auto& existing : joinedBuild.perspectives) if (existing.equalsIgnoreCase(joinLabel)) known = true;
+                    if (!known) joinedBuild.perspectives.push_back(joinLabel);
+                    row.folders[joinLabel] = { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) };
+                    if (joined->second.first != manual) treeJoinedDivisions.insert(joined->second.first);
+                    continue;
+                }
+            }
+        }
         const juce::String perspective = assignment.perspective.isEmpty() ? juce::String("default") : assignment.perspective;
         bool known = false;
         for (const auto& existing : build.perspectives) if (existing.equalsIgnoreCase(perspective)) known = true;

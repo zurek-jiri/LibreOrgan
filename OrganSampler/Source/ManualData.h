@@ -791,14 +791,25 @@ static const char* const kManualText_part3 =
     "division - your rows take its cells too, so the picture is the full organ's\n"
     "page, without empty rows between the old and the new stops. What would collide is left as it is and listed in the message at the\n"
     "end: a stop whose sample folder is already loaded is shared and not added; a\n"
+    "further perspective of the same organ (a \"Wet - Distant\" set beside the\n"
+    "\"Surround\" set: every added stop a single new folder, all of them under one\n"
+    "new prefix such as `06-far__`, named like your rows - the folder names less\n"
+    "their prefix and, for a definition, the Hauptwerk stop names) does not add\n"
+    "rows: each added folder joins the row of its stop as that perspective, the\n"
+    "prefix is learned, and the summary says \"N stop(s) gained the perspective\n"
+    "Distant\" - the stops of another organ (other names, no single new prefix)\n"
+    "are added as rows as ever, never fused; a\n"
     "perspective your organ already has keeps its audio route and settings, a new\n"
     "perspective brings the added configuration's; a division that has stops\n"
     "keeps its MIDI keyboard, an empty one takes the added configuration's keys,\n"
     "wind, tremulant and (when included) MIDI; couplers, combinations, crescendo,\n"
     "temperament, the global sound settings and the MIDI buttons stay yours. Two\n"
-    "stops of one name in one division: the added one gets \"(2)\". Two organs\n"
+    "stops of one name or one alias (the caption on the button) in one division:\n"
+    "the added one gets \"(2)\". Two organs\n"
     "rarely stand at one pitch (a1 = 440, 415, 465 Hz ...), so the merge switches\n"
     "Temperaments > *Equal at 440 Hz* on: every stop of the merged organ is tuned\n"
+    ;
+static const char* const kManualText_part4 =
     "to 440 Hz and they play together in tune. The same organ in a further volume\n"
     "(stops sharing folders with yours) keeps its pitch: nothing is retuned. Before anything\n"
     "is loaded the program sizes the added sample folders against the memory that\n"
@@ -808,8 +819,6 @@ static const char* const kManualText_part3 =
     "\n"
     "### Portable configuration (to share with others)\n"
     "\n"
-    ;
-static const char* const kManualText_part4 =
     "A configuration saved as it is carries the sound cards, the output channels\n"
     "and the MIDI keyboards of *your* computer, which another computer does not\n"
     "have. To give an organ to somebody else, tick **Portable configuration (to\n"
@@ -902,15 +911,15 @@ static const char* const kManualText_part4 =
     "configuration - for other archives whose name shares a part with the\n"
     "chosen one or with the organ's name (`bedos`; a folder full of other organs'\n"
     "archives is left alone), reads the contents of those few, and when they hold\n"
-    "the missing folders one box names them: \"bedos1_862.rar: 000862\\pipe\\...,\n"
-    "bedos2_861.rar: ...\" - *Read them too?* Yes joins them to the archives this\n"
-    "computer remembers and loads the divisions again; *Not now* leaves the\n"
-    "notice. The same look is in the notice's menu. And the other way round: when\n"
-    "the archive you chose holds no definition at all (a package of samples\n"
-    "alone), the program reads the archives beside it with a name like it and,\n"
-    "when one of them holds the organ definition, lists them all - \"they look\n"
-    "like one organ\" - with *Load from the definition* / *Not now*; yes loads\n"
-    "the organ from the definition with every one of them. The simplest way is\n"
+    "the missing folders it takes them without asking: they join the archives\n"
+    "this computer remembers, the divisions are loaded again, and a notice names\n"
+    "them: \"bedos1_862.rar: 000862\\pipe\\..., bedos2_861.rar: ...\". The same look\n"
+    "is in the notice's menu. And the other way round: when the archive you chose\n"
+    "holds no definition at all (a package of samples alone), the program reads\n"
+    "the archives beside it with a name like it and, when one of them holds the\n"
+    "organ definition, loads the organ from the definition with every one of them\n"
+    "- a notice lists the archives taken (several definitions among them: the\n"
+    "choice box, as with several archives chosen at once). The simplest way is\n"
     "still to choose all the archives of the set at once in *Load Configuration*\n"
     "(Ctrl or Shift in the file dialog).\n"
     "\n"
@@ -1001,6 +1010,8 @@ static const char* const kManualText_part4 =
     "definition): *Stop List* in the top bar, *Load folder...* with the top\n"
     "folder of the samples, say which division its stops go to, repeat for every\n"
     "division (or load one tree holding everything and move the stops in the\n"
+    ;
+static const char* const kManualText_part5 =
     "table), then *Apply and reload*. Part 4 explains the table, \"How the sample\n"
     "folders must be organised\" says what the program makes of the folder names,\n"
     "and \"The first start, step by step\" takes you on to the audio (steps 5-7).\n"
@@ -1010,8 +1021,6 @@ static const char* const kManualText_part4 =
     "Load the configuration as it is. The trees are looked for at their old\n"
     "place, then in every sample location and one level around each; what is\n"
     "not found shows the notice - one click as above puts everything right, and\n"
-    ;
-static const char* const kManualText_part5 =
     "the new place is remembered. The Configuration Editor's *Sample and IR\n"
     "locations* row adds a folder by hand when you know where the libraries are\n"
     "before the first load. A configuration never holds anything about your\n"
@@ -1024,7 +1033,11 @@ static const char* const kManualText_part5 =
     "another configuration* with the second one's definition or configuration\n"
     "(or its archives): the shared stops dissolve into the loaded organ and gain\n"
     "the new perspective, new stops are added (\"Merging another configuration\n"
-    "into the loaded organ\").\n"
+    "into the loaded organ\"). A perspective set whose folders stand beside yours\n"
+    "under a new prefix (`06-far__HW_Octava2` beside `03-ortf_HW_Octava2`) joins\n"
+    "your rows the same way, in the merge and in *Load folder...* of the Stop\n"
+    "List alike: the folders join the rows of their stops as the new perspective\n"
+    "and the prefix is learned.\n"
     "\n"
     "### Sharing what you built\n"
     "\n"
@@ -1199,6 +1212,8 @@ static const char* const kManualText_part5 =
     "\n"
     "## 2.3 The crescendo\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "The crescendo display is a row of segments, one per step (30 by default).\n"
     "Drag it, or move a learned MIDI controller (right-click the display: *Learn\n"
     "MIDI continuous controller*). *Cresc.* switches the crescendo on: switching it\n"
@@ -1212,8 +1227,6 @@ static const char* const kManualText_part5 =
     "number of steps, whether the crescendo may switch off hand-registered stops\n"
     "(otherwise the steps only add), clears all steps, and saves or loads the steps\n"
     "as a file.\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "## 2.4 Global sound sliders and the polyphony display\n"
     "\n"
@@ -1401,6 +1414,8 @@ static const char* const kManualText_part6 =
     "perspectives, for a stop with velocity layers one tick box per layer, the\n"
     "pitch information, the alias and the switches; the second line the sliders:\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "- **Transposition** (right after the button of every stop with pipes) - the\n"
     "  stop's transposition against its sample files on their own numbers (the\n"
     "  file \"036\" on key 36), every semitone from -24 to +24 as a pure interval\n"
@@ -1414,8 +1429,6 @@ static const char* const kManualText_part6 =
     "  the button's caption follows the transposition, and so do the stop's transmissions and\n"
     "  extensions, which add their own transposition on top. A change loads the\n"
     "  stop's samples again on their keys at once (the fills follow; the keys\n"
-    ;
-static const char* const kManualText_part7 =
     "  held fall silent first and the stop starts no voice while it reloads). The same\n"
     "  setting is the Stop List column \"Transp.\". Each key's tooltip in the rows\n"
     "  below names the file it plays.\n"
@@ -1603,6 +1616,8 @@ static const char* const kManualText_part7 =
     "folder that plays that perspective of the stop.\n"
     "\n"
     "## 4.1 Folder trees and the pool\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "- **Load folder...** loads a folder tree (the samples of an organ, or a part of them) and\n"
     "  asks which division its stops go to. One window: the folder tree, or the\n"
@@ -1616,8 +1631,6 @@ static const char* const kManualText_part7 =
     "  missing trees have such a line): choose any folder of the set,\n"
     "  the tree is found from there, the stops built from it keep their samples,\n"
     "  the other missing trees of the organ are looked for around it and loaded\n"
-    ;
-static const char* const kManualText_part8 =
     "  as well, and the place is remembered (\"Sample folders not found: one click\n"
     "  finds them\"). A tree never takes the place of another one by its last\n"
     "  folder name alone - only by the same path below the library root - so a\n"
@@ -1641,7 +1654,13 @@ static const char* const kManualText_part8 =
     "  folder names and the perspective prefixes), so it shows what was\n"
     "  recognised, and it can be corrected where the rules could not pair the\n"
     "  folders - when the perspectives of one stop live in two folder trees, for\n"
-    "  example.\n"
+    "  example. A tree loaded into a division that has rows already is first\n"
+    "  tried as a further perspective of those rows: when its folders, less one\n"
+    "  new prefix they all share (`06-far__`), are named like the rows' folders\n"
+    "  less theirs (`HW_Octava2`), and the prefix is no perspective known yet,\n"
+    "  the folders join their rows as the new perspective (the prefix is learned\n"
+    "  into \"Perspective patterns\") and no row is added; otherwise the tree's\n"
+    "  folders become new rows as ever.\n"
     "- The info line at the bottom counts the sample folders found in all trees,\n"
     "  how many the table uses and how many are free.\n"
     "\n"
@@ -1799,6 +1818,8 @@ static const char* const kManualText_part8 =
     "  makes the whole quieter rather than louder), *Decay* (shortens the IR to\n"
     "  this share of its length) and *Fade-out* (the share of the used IR's end\n"
     "  that dies away along a gentle curve; proposed automatically when *Decay* is\n"
+    ;
+static const char* const kManualText_part9 =
     "  moved; 0 % = the IR exactly as recorded).\n"
     "- **The device box**: audio device type, device, sample rate, buffer size,\n"
     "  and under it *Driver Control Panel* (the driver's own settings, e.g. the RME\n"
@@ -1818,8 +1839,6 @@ static const char* const kManualText_part8 =
     "are spread over those channels by their key number, so that neighbouring keys\n"
     "come from neighbouring channels and a chord spreads across the speakers like\n"
     "the pipes across a windchest:\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "- A **mono sample** goes to one channel: key after key, the ticked channels\n"
     "  are taken in turn (with four channels: C on the first, C# on the second, D\n"
@@ -2001,6 +2020,8 @@ static const char* const kManualText_part9 =
     "the processor is busy (measured: far less polyphony through ALSA than\n"
     "through JACK on the same card, for this reason alone). Linux grants\n"
     "realtime scheduling only to users with a realtime limit, which the audio\n"
+    ;
+static const char* const kManualText_part10 =
     "distributions (Ubuntu Studio, AV Linux, Fedora Jam) set up for the group\n"
     "`audio`; a plain desktop installation does not. Check in a terminal:\n"
     "\n"
@@ -2020,8 +2041,6 @@ static const char* const kManualText_part9 =
     "sudo usermod -aG audio $USER\n"
     "sudo sh -c 'printf \"@audio - rtprio 95\\n@audio - memlock unlimited\\n\" > /etc/security/limits.d/audio.conf'\n"
     "```\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "OrganSampler raises its audio thread to realtime by itself at the first\n"
     "callback of a device and writes the outcome into the activity log (\"Audio\n"
@@ -2203,6 +2222,8 @@ static const char* const kManualText_part10 =
     "  direct device or JACK. Windows: ASIO or one Windows Audio device for all\n"
     "  routes; macOS: Built-in Output or the card's own device.\n"
     "- **Compress samples in RAM** halves the figure, on a big organ more (Caen on\n"
+    ;
+static const char* const kManualText_part11 =
     "  the 16-core notebook: 60 000 -> 25 000). Measure with it off unless you\n"
     "  will play with it on.\n"
     "- **Two-core laptops** scatter by a third between runs: the render worker\n"
@@ -2222,8 +2243,6 @@ static const char* const kManualText_part10 =
     "  use ASIO or one Windows Audio device for the card.\n"
     "- **What the measurement cannot see.** It judges every callback of the\n"
     "  program's own audio threads (its length against the period, late calls).\n"
-    ;
-static const char* const kManualText_part11 =
     "  A dropout made after our buffer leaves the program - a shared-mode mixer\n"
     "  of the system with many streams on one endpoint, an exclusive-mode device\n"
     "  of ours opened on the same endpoint and getting no callbacks, a USB card\n"
@@ -2405,6 +2424,8 @@ static const char* const kManualText_part11 =
     "a lower attack stretch for such a stop, or the pitch shift method without\n"
     "stretch.\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "**Phase vocoder (Signalsmith Stretch).** Keeps every length and every loop\n"
     "point: the pipe speaks at its real speed and the room decays in its real time.\n"
     "The analysis block is sized from the pitch, so deep pipes keep their harmonics.\n"
@@ -2424,8 +2445,6 @@ static const char* const kManualText_part11 =
     "pitch, and a seam that was perfect in the recording is then only nearly\n"
     "perfect. The loop crossfade helps there too; listen to a held note of the\n"
     "lowest extension pipes and raise it when the loop is heard.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "Practical advice: stay with the default, *Pitch shift + time stretch*, unless a\n"
     "stop sounds wrong with it; then try the plain pitch shift (no frayed attack)\n"
@@ -2607,6 +2626,8 @@ static const char* const kManualText_part12 =
     "### Full kernel from (sounding pitch)\n"
     "\n"
     "Every pipe whose sounding fundamental lies at or above this frequency plays\n"
+    ;
+static const char* const kManualText_part13 =
     "through the 8-tap windowed-sinc kernel instead of the two-point linear one,\n"
     "for its whole length, loop splices included. The linear kernel leaves an\n"
     "image of a retuned high tone *below* its fundamental, 48000 x (ratio - 1)\n"
@@ -2626,8 +2647,6 @@ static const char* const kManualText_part12 =
     "notes, no reload; this computer's setting - a value you set stays, only the\n"
     "default follows the CPU.\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "### Currently active\n"
     "\n"
     "The threads really rendering now and the interpolation kernel in use.\n"
@@ -2809,6 +2828,8 @@ static const char* const kManualText_part13 =
     "*Measure...* does the procedure above for you, with the loaded organ and its\n"
     "configured audio outputs - every route, auxiliary route, IR reverb and\n"
     "driver as it is. The button is greyed out until samples are loaded: a\n"
+    ;
+static const char* const kManualText_part14 =
     "measurement without the organ would not say anything about it. What\n"
     "happens:\n"
     "\n"
@@ -2828,8 +2849,6 @@ static const char* const kManualText_part13 =
     "   by the engine at every change (a stroke's attacks over the releases of\n"
     "   the last one), the same figure the limit is compared with. Whenever they stop rising below the current target, the\n"
     "   stimulus grows at once - more keys spread over the compass (up to every\n"
-    ;
-static const char* const kManualText_part14 =
     "   key of every division), then a faster rate (up to 16 strikes a second).\n"
     "   No coupler is used: every division is struck itself. A wet set with several perspectives and\n"
     "   long releases reaches tens of thousands of voices with a handful of keys;\n"
@@ -3011,6 +3030,8 @@ static const char* const kManualText_part14 =
     "### Wind: two pipes' share of the full sag\n"
     "\n"
     "The sag with two keys held (default 50 %); from three keys on the rest of the\n"
+    ;
+static const char* const kManualText_part15 =
     "sag closes gradually. One and two pipes together shape how a single note, an\n"
     "interval and a chord differ.\n"
     "\n"
@@ -3030,8 +3051,6 @@ static const char* const kManualText_part14 =
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
     "default 90): 0 = the tone dips exactly when the level does, 90 = a quarter cycle\n"
-    ;
-static const char* const kManualText_part15 =
     "later, 180 = the tone dips when the level peaks. Real tremulants differ here;\n"
     "listen with a soft flute.\n"
     "\n"
@@ -3213,6 +3232,8 @@ static const char* const kManualText_part15 =
     "\n"
     "Where the cache files live. By default `FilledPipesCache` in the\n"
     "application-data folder, usually on the system drive; the row then says\n"
+    ;
+static const char* const kManualText_part16 =
     "\"(default)\". *Choose...* opens a folder dialog: pick a folder on a big drive\n"
     "(beside the samples, say). The files built so far are moved there at once, so\n"
     "nothing has to be rebuilt. The folder is remembered in the settings.\n"
@@ -3232,8 +3253,6 @@ static const char* const kManualText_part15 =
     "The *Treble per key* sliders of the voicing raise or lower everything above\n"
     "this frequency (120 to 5000 Hz, default 1800): a high shelf whose transition\n"
     "band runs from here to about twice this frequency. A pipe whose recorded\n"
-    ;
-static const char* const kManualText_part16 =
     "fundamental lies higher starts its shelf at that fundamental instead. The\n"
     "velocity treble cut uses the same frequency.\n"
     "\n"
@@ -3415,6 +3434,8 @@ static const char* const kManualText_part16 =
     "you remove is removed there too; GLOBAL RESET with the patterns ticked clears\n"
     "it to the defaults.\n"
     "\n"
+    ;
+static const char* const kManualText_part17 =
     "### One-shot stops (folder contains)\n"
     "\n"
     "Folders whose name matches one of these patterns hold samples that play once\n"
@@ -3434,8 +3455,6 @@ static const char* const kManualText_part16 =
     "skip\" in chapter 2). A pattern without a star matches anywhere, a\n"
     "star at the start anchors it to the end of the name, a star at the end to its\n"
     "start; underscores count. Applies to the next folder load.\n"
-    ;
-static const char* const kManualText_part17 =
     "\n"
     "### Perspective prefixes\n"
     "\n"
@@ -3617,6 +3636,8 @@ static const char* const kManualText_part17 =
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the filled pipes' copies - is noted in `CrashLogs\\activity.log`\n"
     "in the application-data folder; a crash writes a file beside it. When the\n"
+    ;
+static const char* const kManualText_part18 =
     "window answers nothing for eight seconds the log records where it was waiting.\n"
     "That folder is what a report needs - and *Report a problem...* sends it for\n"
     "you.\n"
@@ -3636,8 +3657,6 @@ static const char* const kManualText_part17 =
     "with *Add screenshot files...*. Then the GitHub bug report opens in your\n"
     "browser with its fields filled in from the dialog: drag `logs.zip` into\n"
     "\"Logs\" (the first field of the form) and the pictures into \"Screenshots\",\n"
-    ;
-static const char* const kManualText_part18 =
     "check the text, submit. The report folder itself opens in the file manager\n"
     "beside it, and the program's own message sits at the bottom of the screen,\n"
     "out of the way. The program puts the browser on the left half of the screen\n"

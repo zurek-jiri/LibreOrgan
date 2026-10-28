@@ -1843,12 +1843,19 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
                     if (rank.perspective.isEmpty() || rank.folder == juce::File()) continue;
                     for (const auto& stopFolder : stop.folders)
                     {
-                        if (rank.folder == stopFolder || !rank.folder.isAChildOf(stopFolder)) continue;
+                        // A FLAT layout (0.8.220, Bergen op Zoom: the rank folders lie directly in the
+                        // division tree, "pipes/03-ortf_HW_Octava2" / "04-ab_" / "05-rea_", the stop's
+                        // "folders" ARE the rank folders): the rank folder is the stop folder itself,
+                        // the prefix comes from the stop's other rank folders beside it (the common
+                        // ending rule below) - before, such stops were skipped and the patterns had no
+                        // prefix, so a further perspective loaded later was never recognised.
+                        const bool flat = rank.folder == stopFolder;
+                        if (!flat && !rank.folder.isAChildOf(stopFolder)) continue;
                         auto below = rank.folder;
-                        while (below.getParentDirectory() != stopFolder && below.getParentDirectory() != below) below = below.getParentDirectory();
-                        const auto name = below.getFileName(), stopName = stopFolder.getFileName();
+                        if (!flat) while (below.getParentDirectory() != stopFolder && below.getParentDirectory() != below) below = below.getParentDirectory();
+                        const auto name = below.getFileName(), stopName = flat ? juce::String() : stopFolder.getFileName();
                         juce::String prefix;
-                        if (name.length() > stopName.length() && name.endsWithIgnoreCase(stopName)) prefix = name.dropLastCharacters(stopName.length());
+                        if (!flat && name.length() > stopName.length() && name.endsWithIgnoreCase(stopName)) prefix = name.dropLastCharacters(stopName.length());
                         else
                         {
                             // The rank folder is not "<prefix><stop folder>" ("02-dir22-PED_Trombone_ATT_SE_SUMEM"
@@ -1878,6 +1885,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
                                 // The separator that follows belongs to the prefix ("02-dir22-", "01-ab_").
                                 for (int i = prefix.length(); i < name.length() && (name[i] == '-' || name[i] == '_' || name[i] == ' '); ++i) prefix << name[i];
                             }
+                            else if (flat) prefix = juce::String();   // a flat rank with no sibling to compare: no guess from its own name
                             else
                             {
                                 int cut = -1;

@@ -323,7 +323,9 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     //--------------------------------------------------------------------------
     // Division by division: trees, the Stop List rows, the perspectives' audio, MIDI.
     const bool addedMidi = (bool)added.getProperty("containsMidiMappings", false);
-    int stopsAdded = 0, stopsShared = 0, stopsRenamed = 0, perspectivesAdded = 0, perspectivesKept = 0;
+    int stopsAdded = 0, stopsShared = 0, stopsRenamed = 0, perspectivesAdded = 0, perspectivesKept = 0, stopsJoined = 0;
+    std::vector<juce::String> learnedPatterns;   // 0.8.220: "Label;prefix" of a perspective the added stops brought
+    juce::StringArray joinedPerspectiveNames;
     std::set<juce::String> keptStopKeys;   // "<manual>|<comparable name>" of the added stops that made it (for the voicing and the grid)
     std::map<juce::String, juce::String> sharedStopNames;   // "<manual>|<comparable added name>" -> the base row's name playing the same folder (0.8.161: the same organ in volumes)
     std::map<int, std::set<juce::String>> baseShown;   // per division: comparable names of the base's own grid rows (not the children of stop folders)
@@ -412,6 +414,61 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         for (const auto& entry : baseBuild.entries)
             for (const auto& [perspective, ref] : entry.folders)
                 baseFolders.emplace(juce::String(ref.tree) + "|" + pathKey(ref.relativePath), entry.name);
+        // 0.8.220: the added stops as ANOTHER PERSPECTIVE of the base rows (Bergen op Zoom: the
+        // "Wet - Distant" definition merged into the Surround one doubled every stop; its folders
+        // "06-far__HW_Octava2" are the base rows' "03-ortf_HW_Octava2" with another prefix). The
+        // name rule of matchFoldersAsPerspective, and for a definition the Hauptwerk stop names
+        // must agree as well: a foreign organ with the same folder stems is still foreign.
+        std::map<juce::String, size_t> perspectiveRow;   // lower-case added folder name -> base entry index
+        juce::String perspectiveHead;
+        juce::StringArray divisionJoinedLabels;   // the perspective(s) the joined folders brought to this division
+        {
+            std::vector<juce::String> names;
+            std::map<juce::String, const ManualConfig::StopBuild::Entry*> entryOfName;
+            for (const auto& entry : addedEntries)
+            {
+                bool shared = false;
+                for (const auto& [perspective, ref] : entry.folders)
+                    if (baseFolders.count(juce::String(ref.tree) + "|" + pathKey(ref.relativePath)) != 0) shared = true;
+                if (shared) continue;
+                for (const auto& [perspective, ref] : entry.folders)
+                {
+                    const auto last = slashesOf(ref.relativePath).fromLastOccurrenceOf("/", false, false);
+                    if (last.isEmpty() || last == ".") continue;
+                    names.push_back(last);
+                    entryOfName[last.toLowerCase()] = &entry;
+                }
+            }
+            if (!names.empty())
+            {
+                std::vector<juce::String> basePatterns;
+                if (auto* list = base.getProperty("perspectivePatterns", juce::var()).getArray()) for (const auto& item : *list) basePatterns.push_back(item.toString());
+                auto match = matchFoldersAsPerspective(names, baseBuild.entries, basePatterns);
+                if (match.matched > 0)
+                {
+                    // The stop names (aliases of an import) must agree where both sides have them.
+                    int withNames = 0, agree = 0;
+                    for (const auto& [name, row] : match.rowOfFolder)
+                    {
+                        const auto added = entryOfName.find(name);
+                        if (added == entryOfName.end() || row >= baseBuild.entries.size()) continue;
+                        const auto& a = added->second->alias, & b = baseBuild.entries[row].alias;
+                        if (a.isEmpty() || b.isEmpty()) continue;
+                        ++withNames;
+                        if (stopBuildKey(a) == stopBuildKey(b)) ++agree;
+                    }
+                    if (withNames >= 3 && agree * 5 < withNames * 4)
+                    {
+                        match.matched = 0;
+                        match.why = "the folder names repeat the division's after the prefix " + match.head + ", but the stop names agree on " + juce::String(agree) + " of " + juce::String(withNames) + " only - another organ";
+                    }
+                }
+                if (match.matched > 0) { perspectiveRow = match.rowOfFolder; perspectiveHead = match.head; }
+                CrashHandler::note("Merge configuration: " + divisionName + " " + (match.matched > 0
+                    ? "the added stops are another perspective of the loaded ones: the prefix " + match.head + " on " + juce::String(match.matched) + " of " + juce::String(match.candidates) + " folder(s)"
+                    : "the added stops are not a perspective of the loaded ones (" + match.why + ")"));
+            }
+        }
         for (auto entry : addedEntries)
         {
             bool shared = false;
@@ -419,13 +476,54 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                 if (const auto found = baseFolders.find(juce::String(ref.tree) + "|" + pathKey(ref.relativePath)); found != baseFolders.end())
                 { shared = true; sharedStopNames[juce::String(manual) + "|" + stopBuildKey(entry.name)] = found->second; }
             if (shared) { ++stopsShared; ignored.add(divisionName + " " + entry.name + ": its sample folder is already loaded (shared) - not added"); continue; }
+            // Another perspective of a base row: its folders join that row, no new stop.
+            if (!perspectiveRow.empty())
+            {
+                size_t row = baseBuild.entries.size();
+                for (const auto& [perspective, ref] : entry.folders)
+                {
+                    const auto found = perspectiveRow.find(slashesOf(ref.relativePath).fromLastOccurrenceOf("/", false, false).toLowerCase());
+                    if (found == perspectiveRow.end() || (row < baseBuild.entries.size() && found->second != row)) { row = baseBuild.entries.size(); break; }
+                    row = found->second;
+                }
+                if (row < baseBuild.entries.size())
+                {
+                    auto& target = baseBuild.entries[row];
+                    bool clash = false;
+                    for (const auto& [perspective, ref] : entry.folders)
+                    {
+                        const juce::String label = perspective.isEmpty() || perspective == "default" ? perspectiveLabelForHead(perspectiveHead, {}) : perspective;
+                        if (target.folders.count(label) != 0) clash = true;
+                    }
+                    if (!clash)
+                    {
+                        for (const auto& [perspective, ref] : entry.folders)
+                        {
+                            const juce::String label = perspective.isEmpty() || perspective == "default" ? perspectiveLabelForHead(perspectiveHead, {}) : perspective;
+                            target.folders[label] = ref;
+                            bool known = false;
+                            for (const auto& p : baseBuild.perspectives) if (p.equalsIgnoreCase(label)) known = true;
+                            if (!known) baseBuild.perspectives.push_back(label);
+                            learnedPatterns.push_back(label + ";" + perspectiveHead);
+                            joinedPerspectiveNames.addIfNotAlreadyThere(label);
+                            divisionJoinedLabels.addIfNotAlreadyThere(label);
+                        }
+                        sharedStopNames[juce::String(manual) + "|" + stopBuildKey(entry.name)] = target.name;
+                        ++stopsJoined;
+                        continue;
+                    }
+                }
+            }
             const juce::String originalName = entry.name;
             for (int suffix = 2; ; ++suffix)
             {
                 bool taken = false;
-                for (const auto& existing : baseBuild.entries) if (stopBuildKey(existing.name) == stopBuildKey(entry.name)) taken = true;
+                for (const auto& existing : baseBuild.entries)
+                    if (stopBuildKey(existing.name) == stopBuildKey(entry.name)
+                        || (entry.alias.isNotEmpty() && stopBuildKey(existing.alias) == stopBuildKey(entry.alias))) taken = true;   // 0.8.220: the caption (alias) too - the user sees that one
                 if (!taken) break;
                 entry.name = originalName + " (" + juce::String(suffix) + ")";
+                if (entry.alias.isNotEmpty() && !entry.alias.endsWith(")")) entry.alias = entry.alias + " (" + juce::String(suffix) + ")";
                 entry.customName = true;
             }
             if (entry.name != originalName) { ++stopsRenamed; renamed[juce::String(manual) + "|" + originalName] = entry.name; done.add(divisionName + " " + originalName + " added as \"" + entry.name + "\" (the name was taken)"); }
@@ -505,6 +603,30 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     addedPerspectiveNames.addIfNotAlreadyThere(name);
                     done.add(divisionName + " perspective " + name + ": route and settings of the added configuration taken (device: this computer's default)");
                 }
+            // 0.8.220: the perspective the joined folders brought (a single-perspective set has its
+            // route under "default" in the added configuration): a route of that name, the added
+            // default route's settings when there are any - counted as a new route, which it is.
+            for (const auto& label : divisionJoinedLabels)
+            {
+                bool known = false;
+                for (const auto& b : baseNames) if (b.equalsIgnoreCase(label)) known = true;
+                if (known) continue;
+                juce::var route;
+                if (auto* addedRoutes = addedItem.getProperty("perspectiveAudio", juce::var()).getArray())
+                    for (const auto& routeVar : *addedRoutes)
+                        if (routeVar.getProperty("name", "").toString() == "default") { route = routeVar.clone(); break; }
+                if (route.getDynamicObject() == nullptr) route = juce::var(new juce::DynamicObject());
+                if (auto* routeObject = route.getDynamicObject())
+                {
+                    routeObject->setProperty("name", label);
+                    routeObject->setProperty("reverbIr", juce::String());
+                }
+                routes.add(route);
+                baseNames.add(label);
+                ++perspectivesAdded;
+                addedPerspectiveNames.addIfNotAlreadyThere(label);
+                done.add(divisionName + " perspective " + label + ": a new route for the perspective the added folders brought (device: this computer's default)");
+            }
             baseItem->setProperty("perspectiveAudio", routes);
         }
         if (manual > baseCount && manual <= 7) mergedCount = juce::jmax(mergedCount, manual);
@@ -529,6 +651,17 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                 for (const auto& existing : merged) if (existing.toString().equalsIgnoreCase(item.toString())) present = true;
                 if (!present) merged.add(item);
             }
+        if (juce::String(key) == "perspectivePatterns" && !learnedPatterns.empty())
+        {
+            // 0.8.220: the prefix of the perspective the added stops brought ("Distant;06-far__") joins
+            // its label's line, so the loader knows it from now on (a tree of it loaded by hand too).
+            std::vector<juce::String> lines;
+            for (const auto& item : merged) lines.push_back(item.toString());
+            for (const auto& learned : learnedPatterns)
+                lines = patternsWithHead(lines, learned.upToFirstOccurrenceOf(";", false, false), learned.fromFirstOccurrenceOf(";", false, false));
+            merged.clear();
+            for (const auto& line : lines) merged.add(line);
+        }
         baseRoot->setProperty(key, merged);
     }
 
@@ -646,9 +779,10 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         + ": " + juce::String(stopsAdded) + " stop(s) added" + (stopsShared > 0 ? ", " + juce::String(stopsShared) + " shared (not added)" : juce::String())
         + (stopsRenamed > 0 ? ", " + juce::String(stopsRenamed) + " renamed" : juce::String()) + ", " + juce::String((int)newTrees.size()) + " new folder tree(s) ("
         + gb(addedBytes) + " of WAV files), " + juce::String(perspectivesAdded) + " new perspective route(s)"
+        + (stopsJoined > 0 ? ", " + juce::String(stopsJoined) + " stop(s) gained the perspective " + joinedPerspectiveNames.joinIntoString(", ") + " (the added folders joined the loaded stops: another perspective of the same organ)" : juce::String())
         + (perspectivesKept > 0 ? ", " + juce::String(perspectivesKept) + " perspective(s) kept as set up" : juce::String()) + ", divisions now " + juce::String(mergedCount + 1) + ".";
     CrashHandler::note("Merge configuration: " + summary + " | " + done.joinIntoString(" | ") + " | ignored: " + ignored.joinIntoString(" | "));
-    if (stopsAdded == 0 && newTrees.empty())
+    if (stopsAdded == 0 && stopsJoined == 0 && newTrees.empty())
     {
         queueNotice(juce::MessageBoxIconType::InfoIcon, "Merge configuration", summary + "\n\nNothing new to add"
             + (ignored.isEmpty() ? juce::String(".") : ":\n- " + ignored.joinIntoString("\n- ")), "OK", this);
