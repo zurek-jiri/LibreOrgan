@@ -463,6 +463,44 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                         match.why = "the folder names repeat the division's after the prefix " + match.head + ", but the stop names agree on " + juce::String(agree) + " of " + juce::String(withNames) + " only - another organ";
                     }
                 }
+                if (match.matched > 0)
+                {
+                    // 0.8.221 THE GATE (the user's law): the smpl tuning of the same-named files of the two
+                    // folders must be identical - decided folder by folder; a refused folder is a stop of its own.
+                    auto folderOf = [&](const ManualConfig::StopBuild::FolderRef& ref)
+                    {
+                        if (ref.tree < 0 || ref.tree >= (int)mergedPool.size()) return juce::File();
+                        const juce::File tree(mergedPool[(size_t)ref.tree]);
+                        const auto relative = slashesOf(ref.relativePath);
+                        return relative.isEmpty() || relative == "." ? tree : tree.getChildFile(relative.replaceCharacter('/', juce::File::getSeparatorChar()));
+                    };
+                    auto firstFolder = [&](const ManualConfig::StopBuild::Entry& entry)
+                    {
+                        for (const auto& [perspective, ref] : entry.folders)
+                        {
+                            const auto folder = folderOf(ref);
+                            if (folder != juce::File() && SampleFiles::isDirectory(folder)) return folder;
+                        }
+                        return juce::File();
+                    };
+                    std::map<juce::String, size_t> confirmed;
+                    int refused = 0;
+                    for (const auto& [name, row] : match.rowOfFolder)
+                    {
+                        const auto added = entryOfName.find(name);
+                        if (added == entryOfName.end() || row >= baseBuild.entries.size()) continue;
+                        const auto addedFolder = firstFolder(*added->second), baseFolder = firstFolder(baseBuild.entries[row]);
+                        if (addedFolder == juce::File() || baseFolder == juce::File()) { ++refused; continue; }
+                        const auto gate = compareFolderTuning(addedFolder, baseFolder);
+                        CrashHandler::note("Tuning gate: " + addedFolder.getFileName() + " vs " + baseFolder.getFileName() + " -> " + (gate.passed ? "the same pipes" : "NOT the same pipes") + " (" + gate.why + ")");
+                        if (gate.passed) confirmed[name] = row;
+                        else { ++refused; ignored.add(divisionName + " " + added->second->name + ": named like " + baseBuild.entries[row].name + " after the prefix " + match.head + ", but the tuning differs (" + gate.why + ") - added as a stop of its own"); }
+                    }
+                    match.rowOfFolder = confirmed;
+                    match.matched = (int)confirmed.size();
+                    if (confirmed.empty()) match.why = "the tuning gate refused every one of the " + juce::String(refused) + " folder(s) named like the division's after the prefix " + match.head;
+                    else if (refused > 0) CrashHandler::note("Merge configuration: " + divisionName + " the tuning gate confirmed " + juce::String((int)confirmed.size()) + " folder(s) and refused " + juce::String(refused));
+                }
                 if (match.matched > 0) { perspectiveRow = match.rowOfFolder; perspectiveHead = match.head; }
                 CrashHandler::note("Merge configuration: " + divisionName + " " + (match.matched > 0
                     ? "the added stops are another perspective of the loaded ones: the prefix " + match.head + " on " + juce::String(match.matched) + " of " + juce::String(match.candidates) + " folder(s)"

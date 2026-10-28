@@ -450,7 +450,7 @@ private:
     static const juce::Displays::Display* displayOfMainWindow();   // the screen the main window is on (0.8.146)
     std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> stopBuildMap(int manual) const;   // nullptr while inactive
     ManualConfig::StopBuild deriveStopBuildFromEngine(int manual) const;   // the table as the loaded stops are
-    void extendStopBuildWithTree(int manual, const juce::File& tree, int treeIndex);   // a tree added to a built division
+    void extendStopBuildWithTree(int manual, const juce::File& tree, int treeIndex);   // a tree added to a built division (pendingTreeJoin, when set for the tree, says which folders join rows)
     std::set<int> treeJoinedDivisions;   // 0.8.220: the OTHER divisions whose rows the last extendStopBuildWithTree gave a perspective (reloaded too)
     // 0.8.220: folders that are ANOTHER PERSPECTIVE of the division's rows (Bergen op Zoom: the Distant package's
     // "06-far__HW_Octava2" beside the rows' "03-ortf_HW_Octava2" / "04-ab_" / "05-rea_"). The new names share their
@@ -460,6 +460,26 @@ private:
     struct PerspectiveMatch { juce::String head; int candidates = 0, matched = 0; std::map<juce::String, size_t> rowOfFolder; juce::String why; };   // rowOfFolder: lower-case new folder name -> base entry index
     static PerspectiveMatch matchFoldersAsPerspective(const std::vector<juce::String>& newFolderNames, const std::vector<ManualConfig::StopBuild::Entry>& baseEntries,
                                                       const std::vector<juce::String>& knownPatterns);
+    // 0.8.221 THE GATE (the user's law: "perspektivy musí mít absolutně stejné ladění v smpl"): two folders are
+    // the same pipes from two microphones only when the smpl chunks (unity note + pitch fraction, bit for bit) of
+    // their same-named files agree - one difference refuses; a degenerate smpl (few distinct values, no chunk)
+    // falls back to the measured f0 of the lowest files within 2 cents. Header reads, no audio otherwise.
+    struct TuningGate { int compared = 0, same = 0, different = 0; bool degenerate = false, passed = false; juce::String why; };
+    static TuningGate compareFolderTuning(const juce::File& a, const juce::File& b, int maxFiles = 8);
+    // A tree offered to "Load folder": the name match and the gate decided before the table is touched.
+    struct TreeJoinPlan
+    {
+        juce::File tree;
+        juce::String head, label;
+        std::map<juce::String, std::pair<int, size_t>> rows;   // lower-case folder name -> (division, row) confirmed by the gate
+        int candidates = 0, named = 0, confirmed = 0, refused = 0, degenerate = 0;
+        juce::String why;
+        struct Pair { juce::String name; juce::File added, base; int manual = 0; size_t row = 0; };
+        std::vector<Pair> pairs;   // the name matches to be gated (filled on the message thread, gated on a worker)
+    };
+    std::unique_ptr<TreeJoinPlan> pendingTreeJoin;   // consumed by extendStopBuildWithTree
+    std::unique_ptr<TreeJoinPlan> planTreeJoin(const juce::File& tree, int manual);   // the name match over every division's rows
+    void gateTreeJoinsThen(std::vector<std::unique_ptr<TreeJoinPlan>> plans, std::function<void(std::vector<std::unique_ptr<TreeJoinPlan>>)> then);
     static juce::String perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns);   // "06-far__" -> "Far", or the label whose stem the head holds (dir/dif/rea)
     static std::vector<juce::String> patternsWithHead(const std::vector<juce::String>& patterns, const juce::String& label, const juce::String& head);   // the lines with "Label;head" added
     void applyStopBuild(int manual, const ManualConfig::StopBuild& build, bool arrangeGrid = false);

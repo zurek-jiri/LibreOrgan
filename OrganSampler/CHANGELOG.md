@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.221] - 2026-10-28
+
+### Changed
+- The join of a further perspective (0.8.220) is gated by the TUNING: two
+  folders are the same pipes only when the `smpl` chunks (unity note and
+  pitch fraction, bit for bit) of their same-named files agree on a clear
+  majority - the law of every multi-microphone recording (a producer's
+  retouch of a pipe or two in the later set is allowed; a foreign pipe never
+  matches bit for bit); a refused folder becomes a stop of its own. Files
+  without a usable `smpl` chunk are compared
+  by their measured pitch within two cents. Decided folder by folder, so a
+  second perspective need not carry every stop (the "four in five" rule of
+  0.8.220 is gone); the folder name less the prefix must be the whole name
+  of the row's folder less its known prefix. Another organ with the same
+  folder names, even at the same a1, is never fused any more. Load folder
+  reads the headers on a thread ("Comparing the tuning of the new folders
+  with the loaded stops"); the merge does it in place.
+
 ## [0.8.220] - 2026-10-28
 
 ### Added

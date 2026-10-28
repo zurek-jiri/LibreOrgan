@@ -16349,13 +16349,23 @@ void MainComponent::loadTreeIntoDivision(const juce::File& tree, int manual)
             if (!SampleFiles::isDirectory(old) && tail(old, components) == tail(tree, components)) relocate = (int)index;
         }
     if (relocate >= 0) { relocateTreeSmart(relocate, tree); return; }   // 0.8.202: the other missing trees around it too
-    if (addTreeToDivisionTable(tree, manual))
+    // 0.8.221: a further perspective of the loaded organ? The names now, the tuning gate on
+    // a worker thread, then the table (the confirmed folders join their rows) and the load.
+    std::vector<std::unique_ptr<TreeJoinPlan>> plans;
+    plans.push_back(planTreeJoin(tree, manual));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    gateTreeJoinsThen(std::move(plans), [safeThis, tree, manual](std::vector<std::unique_ptr<TreeJoinPlan>> gated)
     {
+        if (safeThis == nullptr || gated.empty()) return;
+        safeThis->pendingTreeJoin = std::move(gated.front());
+        const bool added = safeThis->addTreeToDivisionTable(tree, manual);
+        safeThis->pendingTreeJoin.reset();
+        if (!added) return;
         std::vector<int> reload { manual };
-        for (int other : treeJoinedDivisions) if (other != manual) reload.push_back(other);   // 0.8.220: rows of other divisions gained the perspective
+        for (int other : safeThis->treeJoinedDivisions) if (other != manual) reload.push_back(other);   // 0.8.220: rows of other divisions gained the perspective
         if (reload.size() > 1) CrashHandler::note("Load folder: division(s) " + juce::String(manual) + " and the other(s) whose rows gained the perspective are loaded again");
-        reloadDivisions(reload, tree.getFullPathName());
-    }
+        safeThis->reloadDivisions(reload, tree.getFullPathName());
+    });
 }
 
 bool MainComponent::addTreeToDivisionTable(const juce::File& tree, int manual)
@@ -16384,16 +16394,25 @@ void MainComponent::loadTreesIntoDivision(const std::vector<juce::File>& trees, 
     if (trees.empty() || activeFolderLoader != nullptr) return;
     if (trees.size() == 1) { loadTreeIntoDivision(trees.front(), manual); return; }
     if (!checkMemoryForFolders(trees)) return;
-    bool any = false;
-    std::vector<int> reload { manual };
-    for (const auto& tree : trees)
+    std::vector<std::unique_ptr<TreeJoinPlan>> plans;
+    for (const auto& tree : trees) if (poolIndexOf(tree.getFullPathName()) < 0) plans.push_back(planTreeJoin(tree, manual));   // 0.8.221: the names now, the gate on a thread
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    gateTreeJoinsThen(std::move(plans), [safeThis, trees, manual](std::vector<std::unique_ptr<TreeJoinPlan>> gated)
     {
-        any = addTreeToDivisionTable(tree, manual) || any;
-        for (int other : treeJoinedDivisions) if (std::find(reload.begin(), reload.end(), other) == reload.end()) reload.push_back(other);   // 0.8.220
-    }
-    if (any) reloadDivisions(reload);
-    else queueNotice(juce::MessageBoxIconType::InfoIcon, "Load folder",
-        "These folder trees are already loaded. Their folders are assigned in the Stop List.");
+        if (safeThis == nullptr) return;
+        bool any = false;
+        std::vector<int> reload { manual };
+        for (const auto& tree : trees)
+        {
+            for (auto& plan : gated) if (plan != nullptr && plan->tree == tree) safeThis->pendingTreeJoin = std::move(plan);
+            any = safeThis->addTreeToDivisionTable(tree, manual) || any;
+            safeThis->pendingTreeJoin.reset();
+            for (int other : safeThis->treeJoinedDivisions) if (std::find(reload.begin(), reload.end(), other) == reload.end()) reload.push_back(other);   // 0.8.220
+        }
+        if (any) safeThis->reloadDivisions(reload);
+        else queueNotice(juce::MessageBoxIconType::InfoIcon, "Load folder",
+            "These folder trees are already loaded. Their folders are assigned in the Stop List.");
+    });
 }
 
 void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folders, const std::vector<juce::File>& archivesChosen, bool unpackFirst,
@@ -16702,8 +16721,19 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
     // would be the same perspective twice). A foreign organ shares a name here and
     // there, never four in five with one prefix. The caller adds its own checks (the
     // Hauptwerk stop names of a merge).
+    // 0.8.221: the name rule only NAMES the candidates and the perspective's prefix - the
+    // tuning gate (compareFolderTuning) decides folder by folder whether they join (the
+    // user: a second perspective need not carry every stop, so no four-in-five rule any
+    // more); and the whole stem must match: the base folder's head must be one of the
+    // organ's known prefixes (or none), so "HW_Principal8" never equals "Principal8".
     PerspectiveMatch result;
     auto isSep = [](juce::juce_wchar c) { return c == '-' || c == '_' || c == ' ' || c == '.'; };
+    std::vector<juce::String> knownPrefixes;
+    for (const auto& line : knownPatterns)
+    {
+        auto tokens = juce::StringArray::fromTokens(line, ";", "");
+        for (int i = 1; i < tokens.size(); ++i) if (tokens[i].trim().isNotEmpty()) knownPrefixes.push_back(tokens[i].trim().toLowerCase());
+    }
     struct BaseName { juce::String name; size_t entry; };
     std::vector<BaseName> baseNames;
     for (size_t i = 0; i < base.size(); ++i)
@@ -16732,6 +16762,7 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
             if (cutB > 0 && !isSep(b.name[cutB - 1])) continue;
             const juce::String headN = n.substring(0, cutN), headB = b.name.substring(0, cutB);
             if (headN.isEmpty() || headN.equalsIgnoreCase(headB)) continue;   // no prefix, or the same prefix = the same perspective
+            if (headB.isNotEmpty() && std::find(knownPrefixes.begin(), knownPrefixes.end(), headB.toLowerCase()) == knownPrefixes.end()) continue;   // the ending must be the base folder's whole stem
             if (ending > bestLength) { bestLength = ending; bestEntry = b.entry; bestHead = headN; }
         }
         if (bestLength == 0) continue;
@@ -16749,14 +16780,253 @@ MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const s
         for (int i = 1; i < tokens.size(); ++i)
             if (tokens[i].trim().equalsIgnoreCase(result.head)) { result.why = "the prefix " + result.head + " is a perspective the organ has already"; result.matched = 0; return result; }
     }
-    if (result.matched < 3 || result.matched * 5 < result.candidates * 4)
+    if (result.matched < 3)
     {
-        result.why = juce::String(result.matched) + " of " + juce::String(result.candidates) + " folder(s) repeat a folder of the division after the prefix " + result.head + " (four in five and three at least are needed)";
+        result.why = juce::String(result.matched) + " of " + juce::String(result.candidates) + " folder(s) repeat a folder of the division after the prefix " + result.head + " (three at least are needed)";
         result.matched = 0;
         return result;
     }
     for (const auto& [n, entry] : byHead[head]) result.rowOfFolder[n.toLowerCase()] = entry;
     return result;
+}
+
+namespace
+{
+    // The smpl chunk's dwMIDIUnityNote and dwMIDIPitchFraction as they stand in the file (0.8.221):
+    // a header walk on the disk (the data chunk is seeked over), the whole entry out of an archive.
+    bool readSmplRaw(const juce::File& file, uint32_t& unity, uint32_t& fraction)
+    {
+        auto stream = SampleFiles::openInput(file);
+        if (stream == nullptr) return false;
+        char header[12];
+        if (stream->read(header, 12) < 12 || std::strncmp(header, "RIFF", 4) != 0) return false;
+        while (!stream->isExhausted())
+        {
+            char id[4];
+            uint32_t size = 0;
+            if (stream->read(id, 4) < 4 || stream->read(&size, 4) < 4) break;
+            if (std::strncmp(id, "smpl", 4) == 0)
+            {
+                if (size < 20) return false;
+                stream->skipNextBytes(12);
+                return stream->read(&unity, 4) == 4 && stream->read(&fraction, 4) == 4;
+            }
+            if (!stream->setPosition(stream->getPosition() + size + (size % 2))) break;
+        }
+        return false;
+    }
+
+    // The fallback for a degenerate smpl: f0 of half a second after the attack, in cents against
+    // 440 Hz (NaN when nothing periodic) - normalised autocorrelation, the first peak near the
+    // strongest, parabolic refinement. Precise on low pipes (long periods); the gate uses the lowest files.
+    double measuredPitchCents(const juce::File& file)
+    {
+        auto stream = SampleFiles::openInput(file);
+        if (stream == nullptr) return std::numeric_limits<double>::quiet_NaN();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(stream.release(), true));
+        if (reader == nullptr || reader->sampleRate <= 0 || reader->lengthInSamples < 4096) return std::numeric_limits<double>::quiet_NaN();
+        const double rate = reader->sampleRate;
+        const int skip = (int)std::min<juce::int64>(reader->lengthInSamples / 4, (juce::int64)(rate * 0.15));
+        const int frames = (int)std::min<juce::int64>(reader->lengthInSamples - skip, (juce::int64)(rate * 0.5));
+        if (frames < 4096) return std::numeric_limits<double>::quiet_NaN();
+        juce::AudioBuffer<float> buffer((int)reader->numChannels, frames);
+        if (!reader->read(&buffer, 0, frames, skip, true, true)) return std::numeric_limits<double>::quiet_NaN();
+        std::vector<double> mono((size_t)frames, 0.0);
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        {
+            const float* src = buffer.getReadPointer(ch);
+            for (int i = 0; i < frames; ++i) mono[(size_t)i] += (double)src[i] / (double)buffer.getNumChannels();
+        }
+        const int minLag = std::max(2, (int)(rate / 4000.0)), maxLag = std::min(frames / 2, (int)(rate / 20.0));
+        if (maxLag <= minLag + 2) return std::numeric_limits<double>::quiet_NaN();
+        std::vector<double> cum((size_t)frames + 1, 0.0);
+        for (int i = 0; i < frames; ++i) cum[(size_t)i + 1] = cum[(size_t)i] + mono[(size_t)i] * mono[(size_t)i];
+        const int window = frames - maxLag;
+        const double e1 = cum[(size_t)window] - cum[0];
+        if (e1 <= 1e-9) return std::numeric_limits<double>::quiet_NaN();
+        std::vector<double> corr((size_t)maxLag + 2, 0.0);
+        double best = 0.0;
+        for (int lag = minLag; lag <= maxLag; ++lag)
+        {
+            double s = 0.0;
+            const double* a = mono.data();
+            const double* b = mono.data() + lag;
+            for (int i = 0; i < window; ++i) s += a[i] * b[i];
+            const double e2 = cum[(size_t)(window + lag)] - cum[(size_t)lag];
+            corr[(size_t)lag] = e2 > 0.0 ? s / std::sqrt(e1 * e2) : 0.0;
+            best = std::max(best, corr[(size_t)lag]);
+        }
+        if (best < 0.5) return std::numeric_limits<double>::quiet_NaN();
+        int peak = -1;
+        for (int lag = minLag + 1; lag < maxLag; ++lag)
+            if (corr[(size_t)lag] >= 0.9 * best && corr[(size_t)lag] >= corr[(size_t)lag - 1] && corr[(size_t)lag] >= corr[(size_t)lag + 1]) { peak = lag; break; }
+        if (peak < 0) return std::numeric_limits<double>::quiet_NaN();
+        const double c0 = corr[(size_t)peak - 1], c1 = corr[(size_t)peak], c2 = corr[(size_t)peak + 1];
+        const double denominator = c0 - 2.0 * c1 + c2;
+        const double refined = (double)peak + (std::abs(denominator) > 1e-12 ? 0.5 * (c0 - c2) / denominator : 0.0);
+        if (refined <= 0.0) return std::numeric_limits<double>::quiet_NaN();
+        return 1200.0 * std::log2((rate / refined) / 440.0);
+    }
+}
+
+MainComponent::TuningGate MainComponent::compareFolderTuning(const juce::File& a, const juce::File& b, int maxFiles)
+{
+    TuningGate gate;
+    auto wavNames = [](const juce::File& dir)
+    {
+        std::vector<juce::String> names;
+        for (const auto& n : SampleFiles::fileNames(dir)) if (n.endsWithIgnoreCase(".wav")) names.push_back(n);
+        return names;
+    };
+    const auto namesA = wavNames(a), namesB = wavNames(b);
+    std::map<juce::String, juce::String> spellingB;
+    for (const auto& n : namesB) spellingB[n.toLowerCase()] = n;
+    std::vector<std::pair<juce::String, juce::String>> common;   // (name in A, name in B)
+    for (const auto& n : namesA)
+        if (const auto found = spellingB.find(n.toLowerCase()); found != spellingB.end()) common.push_back({ n, found->second });
+    if (common.empty()) { gate.why = "no file names in common"; return gate; }
+    // The lowest pipes first (precise f0 when the fallback is needed), then evenly over the rest.
+    std::stable_sort(common.begin(), common.end(), [](const auto& x, const auto& y)
+    {
+        const int mx = SamplerEngine::extractMidiFromFilename(x.first), my = SamplerEngine::extractMidiFromFilename(y.first);
+        return mx != my ? mx < my : x.first.compareIgnoreCase(y.first) < 0;
+    });
+    std::vector<std::pair<juce::String, juce::String>> chosen;
+    const int want = std::max(1, std::min(maxFiles, (int)common.size()));
+    for (int i = 0; i < want; ++i) chosen.push_back(common[(size_t)((juce::int64)i * (juce::int64)(common.size() - 1) / std::max(1, want - 1))]);
+    if (want == 1) chosen = { common.front() };
+    std::set<std::pair<uint32_t, uint32_t>> distinct;
+    int withSmpl = 0, zeroFractions = 0;
+    for (const auto& [na, nb] : chosen)
+    {
+        uint32_t ua = 0, fa = 0, ub = 0, fb = 0;
+        const bool okA = readSmplRaw(a.getChildFile(na), ua, fa), okB = readSmplRaw(b.getChildFile(nb), ub, fb);
+        if (!okA || !okB) continue;
+        ++withSmpl;
+        distinct.insert({ ua, fa });
+        if (fa == 0) ++zeroFractions;
+        ++gate.compared;
+        if (ua == ub && fa == fb) ++gate.same; else ++gate.different;
+    }
+    gate.degenerate = withSmpl == 0 || (int)distinct.size() < std::max(2, withSmpl / 2) || zeroFractions == withSmpl;
+    if (!gate.degenerate)
+    {
+        // A clear majority identical = the same pipes: Bergen's own Distant set has 4 of 67 files
+        // of Pos Principal 8 retuned against the Surround set (1 of 64 on Rohrflaut 8) - a producer's
+        // retouch; a foreign pipe never matches a fraction bit for bit, so foreign folders stand at 0.
+        gate.passed = gate.compared > 0 && gate.same >= std::min(3, gate.compared) && gate.same * 3 >= gate.compared * 2;
+        gate.why = "smpl tuning of " + juce::String(gate.compared) + " file(s): " + juce::String(gate.same) + " identical, " + juce::String(gate.different) + " different";
+        return gate;
+    }
+    // Degenerate smpl (none, or the same value everywhere): the measured pitch of the lowest files.
+    gate.compared = gate.same = gate.different = 0;
+    int measured = 0;
+    double worst = 0.0;
+    for (size_t i = 0; i < chosen.size() && measured < 4; ++i)
+    {
+        const double ca = measuredPitchCents(a.getChildFile(chosen[i].first)), cb = measuredPitchCents(b.getChildFile(chosen[i].second));
+        if (!std::isfinite(ca) || !std::isfinite(cb)) continue;
+        ++measured;
+        ++gate.compared;
+        const double diff = std::abs(ca - cb);
+        worst = std::max(worst, diff);
+        if (diff <= 2.0) ++gate.same; else ++gate.different;
+    }
+    gate.passed = measured >= 2 && gate.different == 0;
+    gate.why = "smpl tuning " + juce::String(withSmpl == 0 ? "absent" : "degenerate") + ", measured pitch of " + juce::String(measured) + " file(s): "
+        + (measured > 0 ? "largest difference " + juce::String(worst, 1) + " cents" : juce::String("nothing periodic"));
+    return gate;
+}
+
+std::unique_ptr<MainComponent::TreeJoinPlan> MainComponent::planTreeJoin(const juce::File& tree, int manual)
+{
+    // The name match of a tree offered to "Load folder" against the rows of every built
+    // division (a package holds several divisions' folders: Bergen 002082 = HW_ + Pos_);
+    // the pairs are gated on a worker thread (gateTreeJoinsThen), the rows filled there.
+    auto plan = std::make_unique<TreeJoinPlan>();
+    plan->tree = tree;
+    const auto assignments = engine.scanTreeAssignments(tree, true);
+    std::vector<juce::String> unplaced;
+    std::map<juce::String, juce::File> folderOfName;
+    for (const auto& a : assignments)
+        if (a.perspective.isEmpty() || a.perspective == "default") { unplaced.push_back(a.folder.getFileName()); folderOfName[a.folder.getFileName().toLowerCase()] = a.folder; }
+    plan->candidates = (int)unplaced.size();
+    if (unplaced.empty()) { plan->why = "every folder carries a known perspective prefix"; return plan; }
+    std::vector<ManualConfig::StopBuild::Entry> allEntries;
+    std::vector<std::pair<int, size_t>> placeOfEntry;
+    for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+    {
+        const auto& config = manualConfigs[(size_t)m];
+        const ManualConfig::StopBuild build = config.stopBuild.active ? config.stopBuild : deriveStopBuildFromEngine(m);
+        for (size_t i = 0; i < build.entries.size(); ++i) { allEntries.push_back(build.entries[i]); placeOfEntry.push_back({ m, i }); }
+    }
+    const auto patterns = engine.getPerspectivePatterns();
+    const auto match = matchFoldersAsPerspective(unplaced, allEntries, patterns);
+    plan->why = match.why;
+    if (match.matched == 0) return plan;
+    plan->head = match.head;
+    plan->label = perspectiveLabelForHead(match.head, patterns);
+    plan->named = match.matched;
+    for (const auto& [name, index] : match.rowOfFolder)
+    {
+        if (index >= placeOfEntry.size()) continue;
+        const auto& entry = allEntries[index];
+        juce::File base;
+        for (const auto& [perspective, ref] : entry.folders)
+        {
+            const auto folder = resolveStopBuildFolder(placeOfEntry[index].first, ref);
+            if (folder != juce::File() && SampleFiles::isDirectory(folder)) { base = folder; break; }
+        }
+        const auto added = folderOfName.find(name);
+        if (base == juce::File() || added == folderOfName.end()) continue;
+        plan->pairs.push_back({ name, added->second, base, placeOfEntry[index].first, placeOfEntry[index].second });
+    }
+    return plan;
+}
+
+void MainComponent::gateTreeJoinsThen(std::vector<std::unique_ptr<TreeJoinPlan>> plans, std::function<void(std::vector<std::unique_ptr<TreeJoinPlan>>)> then)
+{
+    // The tuning gate for every name-matched pair of the plans, on a thread with a progress
+    // window (header reads from the disk are quick; archive entries are read whole), then
+    // the continuation on the message thread with the rows of the confirmed pairs filled.
+    auto shared = std::make_shared<std::vector<std::unique_ptr<TreeJoinPlan>>>(std::move(plans));
+    size_t pairs = 0;
+    for (const auto& plan : *shared) pairs += plan->pairs.size();
+    if (pairs == 0) { then(std::move(*shared)); return; }
+    struct GateJob final : public juce::ThreadWithProgressWindow
+    {
+        GateJob(std::shared_ptr<std::vector<std::unique_ptr<TreeJoinPlan>>> p, size_t total, juce::Component* over)
+            : juce::ThreadWithProgressWindow("Comparing the tuning of the new folders with the loaded stops", true, false, 10000, {}, over), plans(std::move(p)), count(total) {}
+        void run() override
+        {
+            size_t done = 0;
+            for (auto& plan : *plans)
+                for (const auto& pair : plan->pairs)
+                {
+                    setStatusMessage(pair.name);
+                    setProgress((double)done / (double)std::max<size_t>(1, count));
+                    const auto gate = compareFolderTuning(pair.added, pair.base);
+                    if (gate.passed) { plan->rows[pair.name.toLowerCase()] = { pair.manual, pair.row }; ++plan->confirmed; }
+                    else ++plan->refused;
+                    if (gate.degenerate) ++plan->degenerate;
+                    CrashHandler::note("Tuning gate: " + pair.added.getFileName() + " vs " + pair.base.getFileName() + " -> " + (gate.passed ? "the same pipes" : "NOT the same pipes") + " (" + gate.why + ")");
+                    ++done;
+                }
+        }
+        std::shared_ptr<std::vector<std::unique_ptr<TreeJoinPlan>>> plans;
+        size_t count;
+    };
+    auto job = std::make_shared<GateJob>(shared, pairs, this);
+    job->launchThread();
+    auto poll = std::make_shared<std::function<void()>>();
+    *poll = [job, poll, then, shared]
+    {
+        if (job->isThreadRunning()) { juce::Timer::callAfterDelay(100, [poll] { (*poll)(); }); return; }
+        juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; });   // cleared after this call returns, never while it runs
+        then(std::move(*shared));
+    };
+    juce::Timer::callAfterDelay(100, [poll] { (*poll)(); });
 }
 
 juce::String MainComponent::perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns)
@@ -16812,36 +17082,27 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
     // The rows of EVERY built division are held against (a package carries the folders of
     // several divisions: Bergen's 002082 has HW_ and Pos_ folders): a folder that repeats a
     // row of another division joins that row there, and that division is loaded again too.
+    // 0.8.221: the decision was made before (planTreeJoin = the names, gateTreeJoinsThen = the
+    // tuning gate on a worker thread); here only the confirmed folders join their rows.
     std::map<juce::String, std::pair<int, size_t>> joinRow;   // lower-case folder name -> (division, row)
     juce::String joinLabel;
     treeJoinedDivisions.clear();
+    if (pendingTreeJoin != nullptr && pendingTreeJoin->tree == tree)
     {
-        std::vector<juce::String> unplaced;
-        for (const auto& a : assignments) if (a.perspective.isEmpty() || a.perspective == "default") unplaced.push_back(a.folder.getFileName());
-        if (!unplaced.empty())
+        const auto& plan = *pendingTreeJoin;
+        if (plan.confirmed > 0)
         {
-            std::vector<ManualConfig::StopBuild::Entry> allEntries;
-            std::vector<std::pair<int, size_t>> placeOfEntry;
-            for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
-            {
-                const auto& other = manualConfigs[(size_t)m].stopBuild;
-                if (!other.active) continue;
-                for (size_t i = 0; i < other.entries.size(); ++i) { allEntries.push_back(other.entries[i]); placeOfEntry.push_back({ m, i }); }
-            }
-            const auto patterns = engine.getPerspectivePatterns();
-            const auto match = matchFoldersAsPerspective(unplaced, allEntries, patterns);
-            if (match.matched > 0)
-            {
-                joinLabel = perspectiveLabelForHead(match.head, patterns);
-                for (const auto& [name, index] : match.rowOfFolder) if (index < placeOfEntry.size()) joinRow[name] = placeOfEntry[index];
-                engine.setPerspectivePatterns(patternsWithHead(patterns, joinLabel, match.head));
-                rememberPatterns(false);
-                CrashHandler::note("Load folder: " + tree.getFullPathName() + " is another perspective of the loaded organ - the prefix " + match.head
-                    + " on " + juce::String(match.matched) + " of " + juce::String(match.candidates) + " folder(s) repeats the rows' folder names; perspective \"" + joinLabel
-                    + "\" learned (pattern \"" + joinLabel + ";" + match.head + "\"), the folders join their rows");
-            }
-            else CrashHandler::note("Load folder: " + tree.getFullPathName() + " is not another perspective of the loaded organ (" + match.why + ")");
+            joinLabel = plan.label;
+            joinRow = plan.rows;
+            engine.setPerspectivePatterns(patternsWithHead(engine.getPerspectivePatterns(), joinLabel, plan.head));
+            rememberPatterns(false);
+            CrashHandler::note("Load folder: " + tree.getFullPathName() + " brings another perspective of the loaded organ - the prefix " + plan.head
+                + " on " + juce::String(plan.named) + " of " + juce::String(plan.candidates) + " folder(s) repeats the rows' folder names, the tuning gate confirmed "
+                + juce::String(plan.confirmed) + " and refused " + juce::String(plan.refused) + (plan.degenerate > 0 ? " (" + juce::String(plan.degenerate) + " by the measured pitch)" : juce::String())
+                + "; perspective \"" + joinLabel + "\" learned (pattern \"" + joinLabel + ";" + plan.head + "\"), the confirmed folders join their rows, the rest become new rows");
         }
+        else CrashHandler::note("Load folder: " + tree.getFullPathName() + " is not another perspective of the loaded organ ("
+            + (plan.named > 0 ? juce::String(plan.named) + " folder name(s) matched after the prefix " + plan.head + ", the tuning gate refused " + juce::String(plan.refused) : plan.why) + ")");
     }
     for (const auto& assignment : assignments)
     {

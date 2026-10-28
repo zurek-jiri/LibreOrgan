@@ -782,13 +782,22 @@ division - your rows take its cells too, so the picture is the full organ's
 page, without empty rows between the old and the new stops. What would collide is left as it is and listed in the message at the
 end: a stop whose sample folder is already loaded is shared and not added; a
 further perspective of the same organ (a "Wet - Distant" set beside the
-"Surround" set: every added stop a single new folder, all of them under one
-new prefix such as `06-far__`, named like your rows - the folder names less
-their prefix and, for a definition, the Hauptwerk stop names) does not add
-rows: each added folder joins the row of its stop as that perspective, the
+"Surround" set: every added stop a single new folder under a new prefix
+such as `06-far__`, named like your rows - the folder name less the prefix
+is the whole name of your folder less yours, and for a definition the
+Hauptwerk stop names agree) does not add rows: each added folder whose
+tuning passes the gate joins the row of its stop as that perspective, the
 prefix is learned, and the summary says "N stop(s) gained the perspective
-Distant" - the stops of another organ (other names, no single new prefix)
-are added as rows as ever, never fused; a
+Distant". The gate is the law of every multi-microphone recording: the
+same pipe has exactly the same tuning (the `smpl` chunk of the file: unity
+note and pitch fraction) in every perspective - the program reads the
+headers of a few same-named files of the two folders and the folder joins
+when a clear majority of them is identical (a producer may have retuned a
+pipe or two in the later set; a foreign pipe never matches bit for bit),
+else it is added as a stop of its own; files
+without a usable `smpl` chunk are compared by their measured pitch within
+two cents instead. So the stops of another organ, even one with the same
+folder names and the same a1, are added as rows as ever, never fused; a
 perspective your organ already has keeps its audio route and settings, a new
 perspective brings the added configuration's; a division that has stops
 keeps its MIDI keyboard, an empty one takes the added configuration's keys,
@@ -1022,8 +1031,9 @@ the new perspective, new stops are added ("Merging another configuration
 into the loaded organ"). A perspective set whose folders stand beside yours
 under a new prefix (`06-far__HW_Octava2` beside `03-ortf_HW_Octava2`) joins
 your rows the same way, in the merge and in *Load folder...* of the Stop
-List alike: the folders join the rows of their stops as the new perspective
-and the prefix is learned.
+List alike: the folders whose tuning is the same as your rows' (the `smpl`
+chunk, file by file) join the rows of their stops as the new perspective and
+the prefix is learned; the second set need not carry every stop.
 
 ### Sharing what you built
 
@@ -1635,12 +1645,17 @@ folder that plays that perspective of the stop.
   recognised, and it can be corrected where the rules could not pair the
   folders - when the perspectives of one stop live in two folder trees, for
   example. A tree loaded into a division that has rows already is first
-  tried as a further perspective of those rows: when its folders, less one
-  new prefix they all share (`06-far__`), are named like the rows' folders
-  less theirs (`HW_Octava2`), and the prefix is no perspective known yet,
-  the folders join their rows as the new perspective (the prefix is learned
-  into "Perspective patterns") and no row is added; otherwise the tree's
-  folders become new rows as ever.
+  tried as a further perspective of the loaded organ (its rows in every
+  division: a package may hold the folders of several): when at least
+  three of its folders, less one new prefix they share (`06-far__`), are
+  named exactly like the rows' folders less theirs (`HW_Octava2`), and the
+  prefix is no perspective known yet, each such folder is held against its
+  row's folder by the tuning of the same-named files (the `smpl` chunk of
+  the headers; "Comparing the tuning ..." shows while it reads) - the same
+  tuning means the same pipes, and the folder joins the row as the new
+  perspective (the prefix is learned into "Perspective patterns"); a folder
+  with other tuning is another organ's and becomes a row of its own, as
+  does every folder with no match.
 - The info line at the bottom counts the sample folders found in all trees,
   how many the table uses and how many are free.
 

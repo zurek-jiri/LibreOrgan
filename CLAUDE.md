@@ -1555,8 +1555,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   divisions reloaded / the organ loaded from the definition with all of them) and a queueNotice names them;
   ORGAN_TEST_NEIGHBOURS is no longer needed there. Why the box could not be answered was NOT found (the box is
   gone; if a box from a `then` of indexArchivesThen is ever needed again, check the modal stack first).
+  0.8.221 (28 Oct 2026, "go"): THE TUNING GATE for the perspective join. `MainComponent::compareFolderTuning(a, b,
+  maxFiles = 8)` (static, MainComponent.cpp before perspectiveLabelForHead): the same-named .wav files of the two
+  folders (`SampleFiles::fileNames`), sorted by the file number (the lowest pipes first) and spread evenly, their smpl
+  chunks read raw (`readSmplRaw`: dwMIDIUnityNote + dwMIDIPitchFraction through SampleFiles::openInput - a header walk
+  on the disk, the whole entry out of an archive) and compared bit for bit; PASSED when identical >= min(3, compared)
+  AND identical x 3 >= compared x 2 - NOT "one difference refuses": the user's law ("absolutně stejné ladění v smpl")
+  holds for the organ, not for every file - Bergen's own Distant set (002082) has 4 of 67 files of Pos Principal 8
+  and 1 of 64 of Rohrflaut 8 with another smpl than the Surround set (002085; ortf = ab on all 67), a producer's
+  retouch, and the strict rule refused those two real perspectives in the first run; a foreign pipe never matches a
+  fraction bit for bit (the Dry set 002061 vs far: 0 of 51; the test's altered copies: 0 of 8), so the majority rule
+  loses nothing. DEGENERATE smpl (no chunk, fewer distinct values than half the files, or every fraction 0) ->
+  `measuredPitchCents` fallback (juce::WavAudioFormat reader over openInput, 0.5 s after 0.15 s, normalised
+  autocorrelation 20 Hz-4 kHz, the first peak >= 0.9 x the best, parabolic refinement) on the 4 lowest files, within
+  2 cents, >= 2 measured. LOAD FOLDER flow: `planTreeJoin(tree, manual)` on the message thread (scanTreeAssignments,
+  the name match over EVERY division's rows - inactive tables derived -, `TreeJoinPlan::pairs` = new folder / the
+  row's first existing folder), `gateTreeJoinsThen(plans, then)` = a ThreadWithProgressWindow "Comparing the tuning
+  of the new folders with the loaded stops" running the gate per pair (log "Tuning gate: X vs Y -> the same pipes /
+  NOT the same pipes (why)"), then `pendingTreeJoin` is set and `addTreeToDivisionTable` -> `extendStopBuildWithTree`
+  joins the CONFIRMED folders only (the label learned when confirmed >= 1), the refused become new rows;
+  loadTreeIntoDivision and loadTreesIntoDivision both go through it. MERGE: the gate runs in place (message thread)
+  after the alias check, `folderOf(ref)` resolves against `mergedPool`; refused entries go to `ignored` ("named like
+  X after the prefix, but the tuning differs") and become rows. `matchFoldersAsPerspective`: NO four-in-five rule any
+  more (>= 3 name matches with one dominant head suffice - a second set need not carry every stop), and the WHOLE
+  STEM rule: the base folder's head must be a known pattern prefix or empty ("HW_Principal8" != "Principal8").
+  Tests: %TEMP%\test_loadtree221.ps1 [-Tree <tree> -Tag <x>] (default 002082/pipes: 15 of 15 confirmed, 6 rows of
+  I. + 9 of II. gain "Far", 42 rows; `-Tree %TEMP%\fake_far\pipes` = copies of 4 far folders x 10 lowest files with
+  the smpl fraction + 1, made by %TEMP%\make_fake_far.py: 4 refused "0 identical, 8 different", 4 new rows, no
+  pattern learned, 46 rows), %TEMP%\test_merge220.ps1 (42 joined, 0 added, 4 routes), %TEMP%\smpl_cmp.py <a> <b>
+  (the smpl comparison of two folders by hand). The gate reads 8 files x 2 folders per pair: Bergen's 15 pairs in
+  under a second from the SATA disk; an archive entry is read WHOLE (2 MB each) - a packed rar package of 40 folders
+  costs ~5-7 s on the progress window.
 ## Pending for the next session (delete when done)
-- PERSPECTIVE JOIN SAFEGUARDS (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
+- PERSPECTIVE JOIN SAFEGUARDS - DONE in 0.8.221 (the note above); kept here only for the reasoning: (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
   "rear_Principal8" of another - common stop names): the 0.8.220 rule (one new prefix on >= 3 and >= 80 % of the NEW
   folders, not a known prefix; HW names on an ODF merge) passes a SMALL foreign organ of the same producer's naming
   scheme with a usual disposition; the division mark in the stem does not protect (the longest common ENDING matches
