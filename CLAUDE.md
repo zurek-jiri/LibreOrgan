@@ -1624,6 +1624,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   its own", all 42 Distant stops added as rows (doubled again) and then fault (1) froze it. Fix: a head carried by
   >= 3 base folders under one perspective counts as a known prefix (derived from the rows, not the patterns).
   Verify all three on HIS files (Bergen op Zoom, Surround.json of 18:57 + the Bellevue json + the Distant ODF).
+  THE AGREED DESIGN (28 Oct 2026 evening, the user's rules; next build, on "go"): (a) THE UNIT IS THE STOP, not the
+  folder - a flat tree has AB_X, REA_X, 06-far__X side by side; the prefix of a perspective is the head carried by
+  ALL the stops of that perspective ("ne jen některé"); with an explicit Stop List table it is exact: the common
+  head of every folder in the perspective's column. (b) LEARNING + FILLING-IN RUNS ON EVERY LOAD PATH: the automatic
+  scan, Load folder, a configuration with explicit tables, the ODF import, the merge - the prefixes found go into
+  perspectivePatterns and are saved with the configuration (an old file without prefixes repairs itself at the
+  first load). Today the learning runs only in scanTreeAssignments(learn=true) = the automatic rules / Load folder,
+  never for an explicit table (every import). (c) A HEAD IS A PERSPECTIVE only when the same stop stems exist under
+  ANOTHER head (same tree, the loaded rows, another tree) and the tuning gate confirms the same pipes, OR the head
+  carries a perspective word (dir, dif, rea, far, near, close, dry, wet, front, rear, ab, ortf ...). A lone head with
+  no counterpart and no word stays "default" and nothing is stripped - "HW_"/"Ped_" (division marks) must never
+  become perspectives (HW_Principal8 and Ped_Principal8 would fuse into one button). (d) THE JOIN of a second
+  perspective (merge and Load folder) is decided stop by stop: the whole stem equal + the gate -> the folder joins
+  the row as the new perspective; the gate refused -> a row of its own; the second set need not carry every stop.
+  (e) The three merge faults above in the same build. Verification on HIS files: Bergen Surround.json (18:57) +
+  Distant ODF -> joined, no doubling, no freeze, patterns filled in; Bellevue.json into Bergen -> trees found, stops
+  added as another organ; the +5 c copies refused.
 - PERSPECTIVE JOIN SAFEGUARDS - DONE in 0.8.221 (the note above); kept here only for the reasoning: (28 Oct 2026, the user's question after 0.8.220: "AB_Principal8" of one organ vs
   "rear_Principal8" of another - common stop names): the 0.8.220 rule (one new prefix on >= 3 and >= 80 % of the NEW
   folders, not a known prefix; HW names on an ODF merge) passes a SMALL foreign organ of the same producer's naming
