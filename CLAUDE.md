@@ -1577,11 +1577,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   rejstříky"): MEASURED on Bergen HW Principal 8 - Surround 03-ortf (002086) vs far (002082): 32-40 of 67 files the
   SAME size, the rest within 1 % (24 header bytes or a few KB of release), 0 files missing = the same take from two
   microphones; the DRY set of the same organ (002061/hw/03-ortf_HW_Principal8 - the same folder names!) vs far: 0
-  equal, 17 % off, 45 files more = another recording. So: (a) a FILE-LENGTH filter first (headers only, free): the
-  same-named files of the pair within ~2 % on most pairs; (b) then the TUNING FINGERPRINT per pipe: f0 of 8-12
-  same-named files of both folders (first 0.3 s, the computeTuning440 analysis), the per-pipe cents must agree within
-  ~2 c (the same pipe from two mics), foreign organs scatter 5-15 c even at the same a1 - a1 alone is NO gate (many
-  sets retuned to 440); (c) decided PER FOLDER, not per package: name match + fingerprint -> joins the row, name
+  equal, 17 % off, 45 files more = another recording. BUT the user (28 Oct): "nemusí mít soubory stejnou délku,
+  historicky jsem některé zkracoval, o trošku" - the file length is NEVER a gate or a filter, a log line at most. So:
+  (b) the TUNING FINGERPRINT per pipe is the ONLY hard gate: f0 of 8-12 same-named files of both folders (the first
+  0.3 s after the onset - a trimmed END does not matter, the computeTuning440 analysis), the per-pipe cents must
+  agree within ~2 c (the same pipe from two mics), foreign organs scatter 5-15 c even at the same a1 - a1 alone is NO
+  gate (many sets retuned to 440); (c) decided PER FOLDER, not per package: name match + fingerprint -> joins the row, name
   match without -> a new row (a second perspective need not carry every stop); the 80 %/one-prefix rule then only
   LEARNS the perspective label, it no longer decides the join; (d) the whole stem after the prefix must be equal
   (the base folder's prefix a known pattern); (e) no question box. The decision moves into the loader (the analysis
