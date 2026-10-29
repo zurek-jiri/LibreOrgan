@@ -35,5 +35,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Beziers Cathedral Puget Organ](beziers-cathedral-puget-organ/README.md) | 4 | 56 | 7.8 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20beziers-cathedral-puget-organ&organ=beziers-cathedral-puget-organ) |
 | [Bergen op Zoom, Ibach organ](bergen-op-zoom-ibach-organ/README.md) | 4 | 54 | 8.7 GB | Diffuse, Direct, Rear, Distant | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bergen-op-zoom-ibach-organ&organ=bergen-op-zoom-ibach-organ) |
 | [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-lewis-organ&organ=ashton-lewis-organ) |
+| [Billerbeck Dom, Fleiter organ](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ) |
 
-10 configuration(s).
+11 configuration(s).

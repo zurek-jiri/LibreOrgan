@@ -35,5 +35,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Beziers Cathedral Puget Organ](beziers-cathedral-puget-organ/README.md) | 4 | 56 | 7.8 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20beziers-cathedral-puget-organ&organ=beziers-cathedral-puget-organ) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model) |
 | [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
+| [Billerbeck Dom, Fleiter organ](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ) |
 
-10 configuration(s).
+11 configuration(s).
