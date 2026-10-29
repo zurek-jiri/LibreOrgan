@@ -32,7 +32,8 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model) |
 | [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
 | [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
+| [Beziers Cathedral Puget Organ](beziers-cathedral-puget-organ/README.md) | 4 | 56 | 7.8 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20beziers-cathedral-puget-organ&organ=beziers-cathedral-puget-organ) |
 | [Bergen op Zoom, Ibach organ](bergen-op-zoom-ibach-organ/README.md) | 4 | 54 | 8.7 GB | Diffuse, Direct, Rear, Distant | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bergen-op-zoom-ibach-organ&organ=bergen-op-zoom-ibach-organ) |
 | [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-lewis-organ&organ=ashton-lewis-organ) |
 
-9 configuration(s).
+10 configuration(s).
