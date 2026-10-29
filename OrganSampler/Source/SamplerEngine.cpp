@@ -13601,6 +13601,49 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
                     }
                     int harmonic = 1;
                     if (!harmonics.empty()) { std::sort(harmonics.begin(), harmonics.end()); harmonic = harmonics[harmonics.size() / 2]; }
+                    // 0.8.225 (the user's rule, Billerbeck "P. Grosse flute 32" and "P. Bourdon 32" captioned 16'):
+                    // below 45 Hz a recording loses the fundamental (the 32' C of both: h1 47-59 dB under h2,
+                    // whatever the FFT size), while a fifth higher the same rank has h1 30-50 dB ABOVE h2. So
+                    // when the lowest pipes of the first segment say "harmonic > 1" and the lowest sounds below
+                    // 45 Hz, the pipes +6, +7, +9, +10 and +12 semitones up in the SAME smpl segment answer one
+                    // binary question only: do they have a clear fundamental? Two of them -> the rank has one and
+                    // the deep pipes merely lost it -> harmonic 1. A mixture never shows h1 there (its hidden
+                    // breaks change 3 to 2, never to 1), so k is only ever turned into 1, never 3 into 2.
+                    if (firstSegment && harmonic > 1)
+                    {
+                        double lowestHz = 0.0;
+                        for (size_t j = i; j < rd.notes.size() && juce::roundToInt(offsets[j]) == st && lowestHz <= 0.0; ++j)
+                        {
+                            const auto& variants = rank->samplesByNote[(size_t)rd.notes[j].note];
+                            if (!variants.empty() && variants[0] != nullptr && std::isfinite(variants[0]->smplPitch))
+                                lowestHz = 440.0 * std::pow(2.0, ((double)variants[0]->smplPitch - 69.0) / 12.0);
+                        }
+                        if (lowestHz > 0.0 && lowestHz < 45.0)
+                        {
+                            int confirmed = 0, looked = 0;
+                            for (const int delta : { 6, 7, 9, 10, 12 })
+                            {
+                                const int note = rd.notes[i].note + delta;
+                                bool inSegment = false;
+                                for (size_t j = i; j < rd.notes.size(); ++j)
+                                    if (rd.notes[j].note == note) { inSegment = juce::roundToInt(offsets[j]) == st; break; }
+                                if (!inSegment || note < 0 || note >= 128) continue;
+                                const auto& variants = rank->samplesByNote[(size_t)note];
+                                if (variants.empty() || variants[0] == nullptr || !std::isfinite(variants[0]->smplPitch)) continue;
+                                ++looked;
+                                const double f0 = 440.0 * std::pow(2.0, ((double)variants[0]->smplPitch - 69.0) / 12.0);
+                                if (lowestSoundingHarmonic(*variants[0], f0, nullptr, nullptr) == 1) ++confirmed;
+                            }
+                            if (confirmed >= 2)
+                            {
+                                CrashHandler::note("Tuning " + rank->name + (rank->perspective.isNotEmpty() ? " [" + rank->perspective + "]" : juce::String())
+                                    + ": the lowest pipes (" + juce::String(lowestHz, 1) + " Hz) measured harmonic " + juce::String(harmonic)
+                                    + " as the first sounding one, but " + juce::String(confirmed) + " of " + juce::String(looked)
+                                    + " pipe(s) up to an octave above have a clear fundamental - the recording lost the deep fundamental, the footage is the fundamental's");
+                                harmonic = 1;
+                            }
+                        }
+                    }
                     const int soundingSt = st + juce::roundToInt(12.0 * std::log2((double)harmonic));
                     if (firstSegment)
                     {

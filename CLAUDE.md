@@ -1649,6 +1649,33 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   or fstab -, the program mounts by label otherwise), 1.6 moved samples, 4.1 Unload folder. NO Projucer resave on Linux
   (do it on Windows next). Syntax check: g++ -fsyntax-only with -I ~/OrganSamplerC-linux/JUCE/modules (the NTFS
   checkout's JUCE is a symlink to C:\JUCE9 without modules) + -I .../ThirdParty/unarr-include -DORGAN_HAVE_UNARR=1.
+  0.8.225 (29 Oct 2026, Windows, "udělej to"): THE DEEP FUNDAMENTAL (the user: Billerbeck "P. Grosse flute 32" and
+  "P. Bourdon 32" captioned 16', "i voicing říká 32 (16)"). NOT the FFT size (his guess): `lowestSoundingHarmonic`
+  (SamplerEngine.cpp ~13203: 65 536 frames from 0.3 s, bin 0.73 Hz, Blackman-Harris; the first harmonic within
+  34 dB of the strongest and 12 dB above its floor; the "missing fundamental" exception needs the FOUR harmonics above
+  all within 34 dB) measured on the 32' C (16.35 Hz) h1 47 dB (flute) / 59 dB (Bourdon) UNDER h2, the same gap at
+  262 144 frames (%TEMP%\harm32.py <wav> <f0>): the recording has no 16 Hz, and h5 of a stopped pipe is 39 dB down,
+  so the exception failed -> "sounding harmonic 2" -> `lowestFootageSemitones` = 16' -> `Stop::displayName` (an
+  alias without footage, the import strips "32": line ~11180 uses the SOUNDING footage) and the voicing's "32' (16')".
+  A fifth up (043-G, 24.5 Hz) h1 is 39/54 dB ABOVE h2 - the loss is the deepest three pipes only. THE USER'S RULES:
+  the smpl is NOT the law here - a mixture shows its first sounding harmonic by custom, and a mixture's break
+  (2 2/3' -> 4') is often INVISIBLE in the smpl (f0 of the key on every pipe), so higher pipes must never decide
+  the harmonic NUMBER (the minimum over a segment would turn 2 2/3' into 4'); the odd-harmonic test is no help
+  either (a mixture has h3). What is done (computeTuning440, the sounding block ~13602): for the FIRST segment only,
+  when the median harmonic > 1 and the lowest pipe sounds below 45 Hz (the user's threshold: the whole bottom
+  octave of a 16' is 32.7-43.7 Hz), the pipes +6, +7, +9, +10, +12 semitones (the user's points) that exist in the
+  SAME smpl segment are asked one binary question - `lowestSoundingHarmonic(...) == 1`? - and TWO confirmations
+  turn the harmonic into 1 (never 3 into 2); log "Tuning <rank> [p]: the lowest pipes (N Hz) measured harmonic K ...
+  M of L pipe(s) up to an octave above have a clear fundamental - the recording lost the deep fundamental". A
+  mixture shows no h1 within an octave unless it has an 8' rank there (then 8' is right). Manual: the Orig. Pitch
+  bullet (4.3); CHANGELOG. Test %TEMP%\test_footage225.ps1 [-Cfg <json> -Tag <x>]: the Stop List dump of the same
+  configuration with the OLD exe (C:\OrganSampler\OrganSampler_0.8.223.exe) and the NEW one, diffed - Billerbeck
+  may change the two 32' captions only. WINDOWS CHECKOUT AFTER THE LINUX SESSION (0.8.224 was committed from
+  ~/OrganSamplerC-linux): `git fetch` + `git reset --mixed origin/main` as the LESSON says, BUT origin also carried
+  the user's new published configurations (bergen-op-zoom-ibach-organ, beziers-cathedral-puget-organ, INDEX*.md,
+  the generated remove form) which then show as DELETED/modified in the working tree - `git checkout --
+  configurations/ .github/ISSUE_TEMPLATE/organ_configuration_remove.yml` restores them BEFORE any `git add -u`
+  (a commit with -u would have deleted his organs from main); the rural README's version bump is redone after it.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.224, kept for the reasoning) LINUX: THE SAMPLE DISK UNDER /run/media IS NOT MOUNTED AT BOOT (29 Oct 2026, the user, Arnstadt "nenajde soubory":
   the Linux box's Hauptwerk disk sda2 (NTFS, label "Hauptwerk") had no mountpoint - udisks mounts it only when the

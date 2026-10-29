@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.225] - 2026-10-29
+
+### Fixed
+- A 32' stop (Billerbeck "P. Grosse flute 32", "P. Bourdon 32") was captioned
+  16': the first sounding harmonic is measured on the lowest pipes, and a
+  recording loses the fundamental of a 16 Hz pipe (50 dB under the second
+  harmonic, whatever the FFT size). Below 45 Hz the pipes +6, +7, +9, +10 and
+  +12 semitones up in the same segment are asked whether they have a clear
+  fundamental; two of them suffice and the stop keeps the fundamental's
+  footage. A mixture never shows a fundamental there, so its first sounding
+  harmonic and its hidden breaks stay as they were.
+
 ## [0.8.224] - 2026-10-29
 
 ### Changed

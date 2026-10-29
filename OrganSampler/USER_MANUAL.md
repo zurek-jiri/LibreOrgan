@@ -1498,7 +1498,13 @@ pitch information, the alias and the switches; the second line the sliders:
 - **Orig. Pitch / temperament** - a line of information: the recorded pitch
   (a1 = ... Hz), the footage read from the samples (with the sounding footage
   of a mixture or mutation in brackets, and the breaks), and the temperament
-  the recording was found to be in.
+  the recording was found to be in. The sounding footage is the first
+  harmonic the lowest pipes really carry; a recording loses the fundamental
+  of the deepest pipes (a 32' C at 16 Hz has it 50 dB under the second
+  harmonic), so below 45 Hz the pipes up to an octave above are asked
+  whether they have a clear fundamental - two of them suffice, and the stop
+  keeps its 32'. A mixture has no fundamental on any pipe and keeps its
+  first sounding harmonic, hidden breaks included.
 
 Under the sliders are two folding rows of per-key sliders (orange headers;
 each stop remembers its own folding):
