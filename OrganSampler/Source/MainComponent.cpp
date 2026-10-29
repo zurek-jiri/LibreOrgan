@@ -121,6 +121,17 @@ public:
     int columnWidth() const noexcept { return juce::jmax(1, getWidth() * 18 / 100); }   // LIMIT gets the rest (28 %)
     // The measurement's verdict into the LIMIT box at once, the caret in it or not (0.8.135).
     void refreshLimit() { limitEditor.giveAwayKeyboardFocus(); limitEditor.setText(juce::String(engine.getMaxPolyphony()), false); }
+    // Output discontinuities found in the last second (0.8.226, once a second from
+    // checkAudioCallbackHealth): the DSP cell shows "!N" in orange for ten seconds,
+    // N = the jumps of the last ten seconds.
+    void noteDiscontinuities(int count)
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        if (now > glitchUntil) glitchCount = 0;
+        glitchCount += count;
+        glitchUntil = now + 10000.0;
+        repaint();
+    }
     void paint(juce::Graphics& g) override
     {
         // Same look as the combination display: black, lime digits.
@@ -131,8 +142,9 @@ public:
         g.drawRoundedRectangle(r, 3.0f, 1.0f);
         const int column = columnWidth();
         const juce::String labels[5]{ "NOW", "PEAK", "DSP", "RAM GB", "LIMIT" };
+        const bool glitches = glitchCount > 0 && juce::Time::getMillisecondCounterHiRes() <= glitchUntil;
         const juce::String values[4]{ juce::String(current), juce::String(maximum),
-            juce::String(juce::roundToInt(loadPeak * 100.0f)) + " %", ramText };
+            juce::String(juce::roundToInt(loadPeak * 100.0f)) + " %" + (glitches ? " !" + juce::String(glitchCount) : juce::String()), ramText };
         const float valueFont = juce::jlimit(13.0f, 22.0f, (float)getHeight() * 0.32f);
         for (int i = 0; i < 5; ++i)
         {
@@ -142,7 +154,7 @@ public:
             g.drawText(labels[i], cell.withHeight(20).translated(0, 3), juce::Justification::centred);
             if (i < 4)
             {
-                const bool warn = (i == 2 && loadPeak > 0.85f) || (i == 3 && ramTight);
+                const bool warn = (i == 2 && (loadPeak > 0.85f || glitches)) || (i == 3 && ramTight);
                 g.setColour(warn ? juce::Colours::orange : juce::Colours::lime);
                 g.setFont(juce::FontOptions(valueFont, juce::Font::bold));
                 // Digits must always fit the column: shrink rather than clip.
@@ -207,6 +219,8 @@ private:
     int current = 0, maximum = 0;
     float load = 0.0f, loadPeak = 0.0f;
     double resetAt = -1.0, loadResetAt = -1.0;
+    int glitchCount = 0;            // output discontinuities shown in the DSP cell (0.8.226)
+    double glitchUntil = -1.0;      // ... until this time
     juce::TextEditor limitEditor;
 };
 
@@ -493,6 +507,7 @@ public:
                 if (outputs[channel] != nullptr)
                     juce::FloatVectorOperations::clear(outputs[channel], numSamples);
             if (deviceClock != nullptr) deviceClock->lastEnd.store(juce::Time::getHighResolutionTicks(), std::memory_order_relaxed);
+            resetEdgeDetector();   // the mute is a cut of its own: the detector starts afresh after it
             return;
         }
         // Routing is updated only when the user changes audio settings. Doing
@@ -545,6 +560,7 @@ public:
         }
         outputGain = gainEnd;
         const bool unity = gainStart >= 1.0f && gainEnd >= 1.0f;
+        int jumps = 0;
         for (int channel = 0; channel < numOutputs; ++channel)
             if (outputs[channel] != nullptr)
             {
@@ -559,7 +575,11 @@ public:
                 }
                 const auto range = juce::FloatVectorOperations::findMinAndMax(data, numSamples);
                 peak = juce::jmax(peak, std::abs(range.getStart()), std::abs(range.getEnd()));
+                // The discontinuity detector on the driver's buffer (0.8.226): a click
+                // that reaches the card is counted here whatever made it.
+                if (channel < 64 && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
             }
+        if (jumps > 0) edgeJumps.fetch_add(jumps, std::memory_order_relaxed);
         // Level evidence for the activity log: which device really carries audio.
         float known = statPeak.load(std::memory_order_relaxed);
         while (peak > known && !statPeak.compare_exchange_weak(known, peak, std::memory_order_relaxed)) {}
@@ -585,6 +605,8 @@ public:
     }
     // Peak output level since the last call (linear), for the periodic level log.
     float takePeak() noexcept { return statPeak.exchange(0.0f, std::memory_order_relaxed); }
+    // Discontinuities in the driver's buffer since the last call (0.8.226).
+    int takeEdgeJumps() noexcept { return edgeJumps.exchange(0, std::memory_order_relaxed); }
     juce::String label() const { return deviceLabel; }
     void audioDeviceAboutToStart(juce::AudioIODevice* device) override
     {
@@ -604,6 +626,7 @@ public:
             // the real-time callback never has to reallocate.
             scratch.setSize(channels, block * 4, false, false, true);
             scratch.clear();
+            resetEdgeDetector();   // a new stream: the detector starts afresh
             owner.engine.prepareRenderWorkers(channels, block);
             expectedBlock.store(block, std::memory_order_relaxed);
             expectedRate.store(device->getCurrentSampleRate(), std::memory_order_relaxed);
@@ -734,6 +757,12 @@ private:
     MainComponent::DeviceClock* deviceClock = nullptr;   // the clock of the device this route plays through
     juce::AudioBuffer<float> scratch;
     float outputGain = 1.0f;   // audio thread only: the level gliding towards owner.outputGainTarget
+    // Output discontinuity detector on what goes to the driver (0.8.226,
+    // SamplerEngine::outputEdgeJump): the last sample per channel, the jumps since
+    // the last query. Audio thread only (the count is read once a second).
+    SamplerEngine::EdgeState edge[64];
+    std::atomic<int> edgeJumps{ 0 };
+    void resetEdgeDetector() noexcept { for (auto& s : edge) s = SamplerEngine::EdgeState{}; }
     // health statistics
     std::atomic<int> statCallbacks{ 0 }, statMinFrames{ 1 << 30 }, statMaxFrames{ 0 }, statChannels{ 0 }, statLate{ 0 };
     std::atomic<float> statPeak{ 0.0f };
@@ -1069,7 +1098,7 @@ MainComponent::MainComponent()
     releaseFadeInLabel.setText("Release fade-in: 70 ms (def.)", juce::dontSendNotification);
 
     addAndMakeVisible(releaseScalingSlider);
-    releaseScalingSlider.setRange(-21.0, 6.0, 0.1); // -21 is the silence sentinel below -20 dB
+    releaseScalingSlider.setRange(-21.0, 10.0, 0.1); // -21 is the silence sentinel below -20 dB; +10 dB at most (0.8.226, was +6)
     releaseScalingSlider.setValue(0.0, juce::dontSendNotification);
     releaseScalingSlider.setTextValueSuffix(" dB");
     releaseScalingSlider.textFromValueFunction = [](double value)
@@ -2632,6 +2661,42 @@ void MainComponent::resized()
     stopsViewport.setViewPosition(0, 0);
 }
 
+#if JUCE_WINDOWS
+#pragma comment(lib, "winmm.lib")
+// Can this MIDI input be opened right now? (0.8.226) JUCE's Windows MIDI code
+// (juce_Midi_windows.cpp, InputDevice::openInternal) builds its device object
+// first and, when midiInOpen or midiInStart fails, lets it die - and that
+// destructor joins a thread that was never started: std::system_error out of a
+// destructor, std::terminate, the program gone (crash-20261029-183215: the user
+// switched his Fireface off while playing, Windows took its MIDI port away, the
+// device list changed and the open of a vanishing port failed). The port is
+// tried with WinMM here first, by name (JUCE numbers duplicate names "Name-2");
+// a port that will not open is skipped this round and tried at the next change.
+static bool midiInputOpensNow(const juce::String& name)
+{
+    const UINT count = midiInGetNumDevs();
+    for (UINT i = 0; i < count; ++i)
+    {
+        MIDIINCAPSW caps{};
+        if (midiInGetDevCapsW(i, &caps, sizeof(caps)) != MMSYSERR_NOERROR) continue;
+        const juce::String deviceName(caps.szPname);
+        if (deviceName != name && !name.startsWith(deviceName + "-")) continue;
+        HMIDIIN handle{};
+        const MMRESULT err = midiInOpen(&handle, i, 0, 0, CALLBACK_NULL);
+        if (err == MMSYSERR_NOERROR)
+        {
+            midiInClose(handle);
+            return true;
+        }
+        CrashHandler::note("MIDI input " + name + " cannot be opened now (WinMM error " + juce::String((int)err) + "): skipped until the device list changes again");
+        return false;
+    }
+    return true;   // no WinMM port of that name: JUCE's own decision
+}
+#else
+static bool midiInputOpensNow(const juce::String&) { return true; }
+#endif
+
 void MainComponent::reopenMidiInputs()
 {
     midiInputs.clear();
@@ -2639,6 +2704,7 @@ void MainComponent::reopenMidiInputs()
     auto devices = juce::MidiInput::getAvailableDevices();
     for (const auto& device : devices)
     {
+        if (!midiInputOpensNow(device.name)) continue;
         auto input = juce::MidiInput::openDevice(device.identifier, this);
         if (input)
         {
@@ -2668,6 +2734,7 @@ void MainComponent::midiDevicesChanged()
     for (const auto& device : devices)
     {
         if (std::find(midiInputIdentifiers.begin(), midiInputIdentifiers.end(), device.identifier) != midiInputIdentifiers.end()) continue;
+        if (!midiInputOpensNow(device.name)) continue;   // 0.8.226: a port that will not open would end the program inside JUCE
         auto input = juce::MidiInput::openDevice(device.identifier, this);
         if (input == nullptr) continue;
         input->start();
@@ -5694,7 +5761,12 @@ void MainComponent::toggleRecording()
     }
     const auto baseName = (currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("Organ"))
         .removeCharacters("\\/:*?\"<>|");
-    const auto start = (lastSettingsDirectory.isDirectory() ? lastSettingsDirectory
+    // The recordings have a folder of their own beside the configurations (0.8.226,
+    // the user: AudioRecordings next to Configurations), created on demand; the
+    // dialog starts there, the file may still be saved anywhere.
+    const juce::File recordings = configurationsDirectory().getParentDirectory().getChildFile("AudioRecordings");
+    recordings.createDirectory();
+    const auto start = (recordings.isDirectory() ? recordings
         : juce::File::getSpecialLocation(juce::File::userMusicDirectory))
         .getChildFile(baseName + " " + juce::Time::getCurrentTime().formatted("%Y-%m-%d %H-%M-%S") + ".wav");
     recordChooser = std::make_unique<juce::FileChooser>("Record the stereo mix to a WAV file", start, "*.wav");
@@ -6165,6 +6237,8 @@ void MainComponent::checkAudioCallbackHealth()
     juce::String levels;
     const double nowMs = juce::Time::getMillisecondCounterHiRes();
     std::set<juce::String> anomalousNow;
+    int deviceJumps = 0;            // output discontinuities on the way to the drivers (0.8.226)
+    juce::String deviceJumpDetail;
     auto check = [&](DivisionAudioCallback* callback)
     {
         if (callback == nullptr) return;
@@ -6192,11 +6266,36 @@ void MainComponent::checkAudioCallbackHealth()
         if (peak > 0.001f)
             levels << (levels.isEmpty() ? "" : " | ") << callback->label() << " "
                    << juce::String(juce::Decibels::gainToDecibels(peak), 1) << " dB";
+        if (const int jumps = callback->takeEdgeJumps(); jumps > 0)
+        {
+            deviceJumps += jumps;
+            deviceJumpDetail << (deviceJumpDetail.isEmpty() ? "" : "; ") << callback->label() << ": " << jumps;
+        }
     };
     check(primaryAudioCallback.get());
     for (auto& callback : extraAudioCallbacks) check(callback.get());
     for (auto& entry : perspectiveAudioRoutes)
         if (entry.second != nullptr) check(entry.second->callback.get());
+    {
+        // The output discontinuity detector (0.8.226): the program's own clicks,
+        // counted in the render (after the pool, at the route's end) and on the
+        // driver's buffer, logged every second they occur and shown in the DSP cell.
+        // The user's crackle of 29 Oct 2026 (a route's voices missing for one block)
+        // left no trace in the load figures - this is the figure for it.
+        juce::String engineDetail;
+        int noScratch = 0;
+        const int engineJumps = engine.takeOutputDiscontinuities(engineDetail, noScratch);
+        const int shown = juce::jmax(engineJumps, deviceJumps);
+        if (shown > 0 || noScratch > 0)
+        {
+            CrashHandler::note("Output discontinuities: " + juce::String(shown) + " in the last second - in the render: "
+                + (engineDetail.isEmpty() ? juce::String("none") : engineDetail) + " | on the way to the driver: "
+                + (deviceJumpDetail.isEmpty() ? juce::String("none") : deviceJumpDetail)
+                + (noScratch > 0 ? " | render lanes without a scratch buffer: " + juce::String(noScratch) : juce::String())
+                + "  render load " + juce::String(juce::roundToInt(engine.getRenderLoad() * 100.0f)) + " %");
+            if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->noteDiscontinuities(shown);
+        }
+    }
     for (auto it = audioAnomalyLastLogMs.begin(); it != audioAnomalyLastLogMs.end();)
     {
         if (anomalousNow.count(it->first) == 0)
@@ -7493,7 +7592,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 setupWindSlider(windFrequencySliders[(size_t)manual], windFrequencyLabels[(size_t)manual],
                     "Wind frequency", 10.0, " Hz", "windFrequency",
                     defaultWindFrequency[manual]);
-                windFrequencySliders[(size_t)manual].setRange(4.0, 10.0, 0.1);
+                windFrequencySliders[(size_t)manual].setRange(2.0, 10.0, 0.1);
                 setupWindSlider(windOscillationSliders[(size_t)manual], windOscillationLabels[(size_t)manual],
                     "Wind oscillations", 20.0, "x", "windOscillations",
                     defaultWindOscillations[manual]);
@@ -22754,7 +22853,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         };
         rows.push_back({ "Depth (maximum pitch sag)", 0.0, 50.0, 0.1, " cents", config.windDepthCents, 8.0,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windDepthCents = (float)value; applyWind(); } });
-        rows.push_back({ "Oscillation frequency", 4.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
+        rows.push_back({ "Oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windFrequencyHz = (float)value; applyWind(); } });
         rows.push_back({ "Number of oscillations", 0.0, 20.0, 0.1, "x", config.windOscillations, 7.0,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windOscillations = (float)value; applyWind(); } });
@@ -23005,7 +23104,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
             engine.setManualExpressionGain(manual, expressionGainFor(config));
         }
         else if (parameter == "windDepth") config.windDepthCents = scaled(0.0, 50.0);
-        else if (parameter == "windFrequency") config.windFrequencyHz = scaled(4.0, 10.0);
+        else if (parameter == "windFrequency") config.windFrequencyHz = scaled(2.0, 10.0);
         else if (parameter == "windOscillations") config.windOscillations = scaled(0.0, 20.0);
         else if (parameter == "windStrength") config.windOscillationStrength = scaled(0.0, 100.0);
         else if (parameter == "windSmoothing") config.windSmoothingMs = scaled(100.0, 400.0);
@@ -27085,7 +27184,7 @@ void MainComponent::showConfigurationEditor()
                 };
                 addSlider("Wind: depth (maximum pitch sag)", 0.0, 50.0, 0.1, " cents", config.windDepthCents, 8.0,
                     [&config, applyWind](double value) { config.windDepthCents = (float)value; applyWind(); });
-                addSlider("Wind: oscillation frequency", 4.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
+                addSlider("Wind: oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
                     [&config, applyWind](double value) { config.windFrequencyHz = (float)value; applyWind(); });
                 addSlider("Wind: number of oscillations", 0.0, 20.0, 0.1, "x", config.windOscillations, 7.0,
                     [&config, applyWind](double value) { config.windOscillations = (float)value; applyWind(); });

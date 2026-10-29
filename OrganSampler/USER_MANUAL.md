@@ -1172,7 +1172,8 @@ fired from a MIDI control: right-click it and choose *Learn MIDI On trigger*
 
 - **PANIC** silences every sounding pipe at once.
 - **Record** records the stereo mix of the organ to a WAV file (a file dialog
-  asks where); clicking again stops the recording with a short fade.
+  asks where, starting in the folder *AudioRecordings* beside the
+  configurations folder); clicking again stops the recording with a short fade.
 - **Stop List** opens the table of the whole organ: see "4. The Stop List
   (building the organ)".
 - **Guided tour** (shown on a teaching organ only: the Rural Organ
@@ -1249,7 +1250,12 @@ them is MIDI-learnable (right-click). The polyphony display shows the voices
 sounding now (*NOW*), the most at once over the last seconds (*PEAK*), the
 *DSP* load - the time the busiest audio thread needed for its last block as a
 share of the block's duration; above 100 % that thread could not deliver in
-time (crackle), see "Getting the most polyphony" -, the memory the program
+time (crackle), see "Getting the most polyphony"; the same cell turns orange
+and adds "!N" when the program found N discontinuities in its own output over
+the last ten seconds (a jump between two blocks that the sound itself does
+not explain - a click you hear, whatever the load figure says; the activity
+log names the route and whether it came from the rendering or appeared only
+on the way to the driver) -, the memory the program
 holds (*RAM GB*, whole gigabytes rounded up; orange when less than a tenth
 of the installed memory is free: the system then pages samples out and a
 block stalls on reading them back), and the polyphony *LIMIT* (editable; the
@@ -2362,7 +2368,9 @@ part of the configuration.
 ## 6.5 Recording
 
 *Record* in the top bar records the stereo mix to a WAV file; click again to
-stop (the recording ends with a short fade).
+stop (the recording ends with a short fade). The file dialog starts in the
+folder *AudioRecordings* beside the configurations folder (see "Where
+configurations and samples live"); the file may be saved anywhere.
 
 ---
 
@@ -2985,7 +2993,7 @@ held note and its release.
 
 ### Release sample volume
 
-The level of all release samples, -20 to +6 dB (default 0); the leftmost
+The level of all release samples, -20 to +10 dB (default 0); the leftmost
 position "-inf" silences them. Quieter releases make a drier organ without
 losing the room entirely.
 
@@ -3617,7 +3625,7 @@ set in Advanced global audio. 0 switches the wind model off for this division.
 
 ### Wind: oscillation frequency
 
-The frequency the wind pressure oscillates at after a key stroke (4 to 10 Hz,
+The frequency the wind pressure oscillates at after a key stroke (2 to 10 Hz,
 default 7.5), the "bounce" of the bellows.
 
 ### Wind: number of oscillations

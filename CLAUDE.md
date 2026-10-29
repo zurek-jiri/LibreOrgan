@@ -1676,7 +1676,75 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the generated remove form) which then show as DELETED/modified in the working tree - `git checkout --
   configurations/ .github/ISSUE_TEMPLATE/organ_configuration_remove.yml` restores them BEFORE any `git add -u`
   (a commit with -u would have deleted his organs from main); the rural README's version bump is redone after it.
+  0.8.226 (29 Oct 2026 evening, "udělej to, avšak snaž se nezkurvit kód na jiných místech"): THE PROGRAM HEARS ITS OWN
+  CLICKS. `SamplerEngine::outputEdgeJump(block, n, EdgeState&)` (EdgeState: last sample, mean step, peak of the previous
+  block): a jump = the step into the block > 12 x the mean step of this AND the previous block, > 2e-4 (-74 dBFS), and
+  the previous block's peak > 1e-3 (the FIRST version had no "sounding before" rule and flagged 22 voices starting
+  together on a silent route: a summed first sample of 0.00026 - a start is not a click). Counted per route at stage 0
+  (after the pool render, `countEdgeJumps` in renderRoute) and stage 1 (after separation/reverb/clip), and per device
+  callback on the driver's buffer (DivisionAudioCallback `edge[64]`, `takeEdgeJumps`); reset after a render gap > 250
+  ms, a device start, a mute. `takeOutputDiscontinuities(detail, noScratch)` once a second in checkAudioCallbackHealth
+  -> log "Output discontinuities: N in the last second - in the render: manual m p: a after the render, b at the
+  route's end | on the way to the driver: ... | render lanes without a scratch buffer: k" and the DSP cell shows
+  "!N" in orange for 10 s (`PolyphonyDisplay::noteDiscontinuities`). Stage 0 is the sharper one: with IR reverb on the
+  route the wet raises the mean step at stage 1 and masks a small dry step. THE POOL: `lanesJoined/lanesLeft` are
+  uint32 and NEVER reset (equality only; `Job::joinBase` = the count at the opening for maxWorkers and the lanesUsed
+  statistic; completedCount reset BEFORE nextVoice); a lane acquires its scratch BEFORE takeChunk and, with none free,
+  leaves without voices (`statNoScratch`) - the "render into nothing" path is gone. Whether this was the user's cause
+  is NOT proven (the race is nanoseconds wide); the detector is what will tell next time. MIDI: `midiInputOpensNow(name)`
+  (Windows: midiInGetDevCapsW by name, "Name-2" duplicates by prefix, midiInOpen/midiInClose probe; a failure is logged
+  and the port skipped until the next device-list change) before every MidiInput::openDevice in reopenMidiInputs and
+  midiDevicesChanged - JUCE's openInternal terminates the process when midiInOpen fails (the 18:32 crash). Record:
+  the chooser starts in `configurationsDirectory().getParentDirectory()/AudioRecordings` (created on demand). Wind
+  "Oscillation frequency" 2-10 Hz (engine clamp, two sliders, the settings dialog row, MIDI-learn scaled(2, 10));
+  Release sample volume up to +10 dB (slider + engine clamp). Dev hooks: `ORGAN_TEST_GLITCH=<n>` (every n-th block of
+  every route silenced after the render = the user's symptom made to order; the detector must count it at all three
+  stages - verified: "1 after the render, 2 at the route's end | driver: 2"), `ORGAN_EDGE_DEBUG=1` (one log line per
+  jump: last/first samples, active voices, releases, fading, voices in their first block, added, finished, polyphony,
+  limit - allocates, dev only). Tests: %TEMP%\test_glitch226.ps1 (Rural, ORGAN_TEST_CLICK "Configuration Editor|
+  Measure..." at 20 s = the measurement's stimulus up to 61 keys x 16 strikes/s: 0 discontinuities in four runs after
+  the silent-start rule; 6 false ones before it), test_glitch226_inject.ps1 (ORGAN_TEST_NOTE + ORGAN_TEST_GLITCH=200).
+  Self-test identical to 0.8.223's output line by line ("SOUNDS OUTSIDE THE COMPASS" on the transmission test is the
+  0.8.156 design, printed by both - not a regression). PROJUCER LESSON: `& C:\JUCE9\Projucer.exe --resave <abs>` from
+  the tool's PowerShell printed nothing and changed nothing again; `Start-Process -FilePath ... -ArgumentList
+  @("--resave", "`"<abs>`"") -Wait -NoNewWindow -RedirectStandardOutput` printed "Finished saving: Visual Studio 2026"
+  and worked - use that form; copy the .ico AFTER it.
 ## Pending for the next session (delete when done)
+- (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
+  EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
+  "prská i při měření polyfonie, DSP meter to nezaznamenal, error counter 0, je to náš program"): HIS RECORDING
+  F:\temp\Brasov Surround 2026-10-29 18-27-59.wav (22.6 s, 24-bit, peak -34 dBFS, no NaN) analysed with
+  %TEMP%\crackle.py / crackle2.py / crackle3.py: 41 discontinuities, 38 of them EXACTLY at the 256-frame block edges
+  (phase 255 mod 256; mod 512 splits 19/19 = per device block), 16 of them in PAIRS one block apart = one block whose
+  content differs (LOWER energy: voices missing for one block, the next block continues where the signal would have
+  been - timing intact), none with slow single tones, dense during runs (74 per second at 17-18 s). Timing was fine
+  throughout (42 275 voices clean, late callbacks 0, worst block 7 %). NOT the device: the recording is our buffer
+  before the driver, and the recorder's ring is 11 s per route (ringBits 19), so it drops nothing. Candidates, none
+  proven: (a) RenderPool - a lane's chunk rendered into the sink when `scratchFree` is empty (tryWork, "should be
+  impossible", scratches = workers + 2 = 17) or a lane's scratch left unmerged: needs leaked scratches or an
+  imbalance of lanesJoined/lanesLeft; the reset of both counters to 0 at every job acquisition (render(), after
+  nextVoice = 0) erases a join that lands between the stores (a worker preempted between its `open`/`nextVoice`
+  checks and its fetch_add) - nanoseconds wide, so improbable as the whole story; (b) nothing else found: suspend()
+  callers are all structural, findRoute is lock-free, audioMuted toggles only on device changes, the RouteCallback
+  gain glide is continuous, a voice that ends is gone for good (no pairs). THE WAY FORWARD (on his word): an output
+  DISCONTINUITY DETECTOR in the program - per route and per stage (after the pool render, after separation/reverb/
+  clip, at the device output after the gain): the first sample of a block against the last of the previous one
+  vs the block's own mean step; counted per second, logged "Output discontinuities: N (route X, stage Y)" and shown
+  beside the DSP figure (the user: "Program si neuvědomuje, že prská!"); counters "chunk without scratch", "lane
+  slot unmerged"; the pool counters hardened (lanesJoined/lanesLeft never reset - monotonic, equality only; a
+  worker re-checks `open` after joining; completedCount reset before nextVoice). CRASH 18:32:15
+  (crash-20261029-183215.txt): the user switched the Fireface OFF while playing -> Windows removed its MIDI port ->
+  JUCE's MidiDeviceListConnection callback -> our midiDevicesChanged -> MidiInput::openDevice ->
+  juce_Midi_windows.cpp InputDevice::openInternal: midiInOpen FAILED (line 2710 `return {}`) -> the half-built
+  InputDevice destroyed -> ~InputDevice calls blockQueueThread.join() on a thread never started -> std::system_error
+  "invalid argument" out of a destructor -> std::terminate. A JUCE bug (the submodule is upstream, never patched):
+  our side must PROBE before opening - midiInOpen/midiInClose on the WinMM index matched by name (or skip a device
+  whose open failed for a few seconds) in midiDevicesChanged AND reopenMidiInputs; the user's rule: "Musí zvládnout
+  vypnutí audio device používané za běhu!" - the audio side survived (routes stopped and restarted at 18:32:08), the
+  MIDI side killed the process. TO-DO (same build): AudioRecordings folder beside Configurations for the Record
+  button's files (default target, created on demand, the chooser starts there); wind model "Oscillation frequency"
+  slider lower limit 2 Hz (was 4: both sliders, the dialog rows, the MIDI-learn scaled(4, 10)); "Release scaling"
+  slider maximum +10 dB (was +6).
 - (DONE in 0.8.224, kept for the reasoning) LINUX: THE SAMPLE DISK UNDER /run/media IS NOT MOUNTED AT BOOT (29 Oct 2026, the user, Arnstadt "nenajde soubory":
   the Linux box's Hauptwerk disk sda2 (NTFS, label "Hauptwerk") had no mountpoint - udisks mounts it only when the
   file manager opens it; Locations.txt remembers /run/media/doma/Hauptwerk/Hauptwerk/HauptwerkSampleSetsAndComponents,

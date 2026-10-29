@@ -1132,6 +1132,21 @@ public:
     // Times the parts of every voice render (a few clock reads per voice): the
     // polyphony measurement switches it on for its run, off afterwards.
     void setVoiceProfiling(bool enabled) noexcept;
+    // Output discontinuity detector (0.8.226): true when the first sample of this
+    // block jumps from the last sample of the previous one by more than twelve times
+    // the mean step of either block, above -74 dBFS, while the previous block was
+    // sounding (its peak above -60 dBFS: a start out of silence is a start, not a
+    // click - 22 voices beginning together on a silent route summed to 0.00026).
+    // The state carries over between the blocks of one channel. Used after the pool
+    // render and at the end of every route render, and by the device callbacks on
+    // what goes to the driver.
+    struct EdgeState { float last = 0.0f, inner = 0.0f, peak = 0.0f; bool valid = false; };
+    static bool outputEdgeJump(const float* block, int n, EdgeState& state) noexcept;
+    // The jumps counted since the last call, summed over the routes (the larger of
+    // the two stages per route); detail names every route with its counts per
+    // stage; noScratchLanes = render lanes that found no scratch buffer (they took
+    // no voices - the others rendered them).
+    int takeOutputDiscontinuities(juce::String& detail, int& noScratchLanes);
 
     void setWindModel(int sourceManual, float depthCents, float frequencyHz,
         float oscillations, float oscillationStrength, float baseSmoothingMs,

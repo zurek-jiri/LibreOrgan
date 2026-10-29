@@ -12,6 +12,33 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.226] - 2026-10-29
+
+### Fixed
+- Clicks at the block edges with the load figures fine (a route's voices
+  missing for one block): the render pool's lane counters were reset at every
+  job, which could erase a lane that joined late; the poster then merged one
+  lane early and that lane's buffer was lost. The counters now count on and
+  only their equality matters; a lane that finds no scratch buffer takes no
+  voices (it rendered them into nothing before).
+- The program ended when an audio interface with a MIDI port was switched off
+  while playing: opening a vanishing MIDI port fails inside JUCE's Windows MIDI
+  code and that failure terminates the process. Every MIDI port is now tried
+  with the system first and skipped while it will not open.
+
+### Added
+- Output discontinuity detector: the program counts jumps between two blocks
+  of its own output (after the rendering, at the end of every route, and on
+  the way to the driver), shows "!N" in orange in the DSP cell for ten seconds
+  and writes "Output discontinuities: ..." with the route and the stage into
+  the activity log - a click is counted whether or not the load figure moves.
+
+### Changed
+- Recordings start in the folder AudioRecordings beside the configurations
+  folder (created on demand).
+- Wind model: the oscillation frequency goes down to 2 Hz (was 4).
+- Release sample volume: up to +10 dB (was +6).
+
 ## [0.8.225] - 2026-10-29
 
 ### Fixed

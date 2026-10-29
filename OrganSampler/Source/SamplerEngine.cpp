@@ -1440,6 +1440,13 @@ namespace
         std::atomic<double> lastRenderMs{ -1.0 };
         std::atomic<float> lastLoad{ 0.0f };
         std::atomic<uintptr_t> lastRenderThread{ 0 };
+        // Output discontinuity detector (0.8.226, SamplerEngine::outputEdgeJump): the
+        // last sample of the previous block per channel, stage 0 = after the pool
+        // render, stage 1 = at the end of renderRoute (after separation, reverb, clip);
+        // the jumps counted per stage since the last query. Render thread only.
+        SamplerEngine::EdgeState edge[2][64];
+        std::atomic<int> edgeJumps[2]{};
+        uint32_t edgeDebugBlocks = 0;               // dev hook ORGAN_TEST_GLITCH: blocks rendered, every n-th one silenced after the render
 
         // render private modulator state
         double clockMs = -1.0;
@@ -3614,11 +3621,18 @@ namespace
             job->maxWorkers = laneLimit > 1 ? laneLimit - 1
                 : (otherAudioThreads > 0 ? juce::jmax(1, numWorkers - otherAudioThreads) : 0);   // 0 = no limit
             job->lanesHint = numWorkers + 1;
-            job->nextVoice.store(0, std::memory_order_relaxed);
-            job->lanesJoined.store(0, std::memory_order_relaxed);
-            job->lanesLeft.store(0, std::memory_order_relaxed);
             job->completedCount.store(0, std::memory_order_relaxed);
             job->laneBusyTicks.store(0, std::memory_order_relaxed);
+            // The lane counters are NEVER reset (0.8.226): they count on across the
+            // uses of a job and only their equality matters. A reset to 0 erased a
+            // join that landed between the stores (a worker that had passed the
+            // open/nextVoice checks of the previous use and was preempted): its
+            // leave then stood against no join, the poster saw equality one lane
+            // early, that lane's scratch was never merged (a block with voices
+            // missing, a click at both block edges) and leaked. joinBase is the
+            // count at this opening: the lane limit and the statistics count from it.
+            job->joinBase = job->lanesJoined.load(std::memory_order_relaxed);
+            job->nextVoice.store(0, std::memory_order_relaxed);
             const int64_t jobStart = juce::Time::getHighResolutionTicks();
             job->openedTicks = jobStart;
             job->open.store(true, std::memory_order_release);
@@ -3694,7 +3708,7 @@ namespace
                 // lanes x the job's wall time (the rest: waiting for the slowest
                 // lane, the chunk hand-over, lanes arriving late).
                 const int64_t wall = juce::jmax<int64_t>(1, juce::Time::getHighResolutionTicks() - jobStart);
-                const int lanesUsed = juce::jmax(1, job->lanesJoined.load(std::memory_order_relaxed) + 1);
+                const int lanesUsed = juce::jmax(1, (int)(job->lanesJoined.load(std::memory_order_relaxed) - job->joinBase) + 1);
                 statJobs.fetch_add(1, std::memory_order_relaxed);
                 statWallTicks.fetch_add(wall, std::memory_order_relaxed);
                 statBusyTicks.fetch_add(job->laneBusyTicks.load(std::memory_order_relaxed) + posterBusy, std::memory_order_relaxed);
@@ -3812,7 +3826,11 @@ namespace
         {
             std::atomic<bool> inUse{ false };
             std::atomic<bool> open{ false };
-            std::atomic<int> nextVoice{ 0 }, lanesJoined{ 0 }, lanesLeft{ 0 }, completedCount{ 0 };
+            std::atomic<int> nextVoice{ 0 }, completedCount{ 0 };
+            // Lanes joined / left: monotonic across the uses of the job (0.8.226, see
+            // render()); unsigned so the wrap-around keeps the differences right.
+            std::atomic<uint32_t> lanesJoined{ 0 }, lanesLeft{ 0 };
+            uint32_t joinBase = 0;                     // lanesJoined when this use opened
             std::atomic<int64_t> laneBusyTicks{ 0 };   // the lanes' rendering time of this job, summed (utilisation statistics)
             int64_t openedTicks = 0;                   // when the job opened (the lanes' join delay, 0.8.143)
             const uint32_t* voices = nullptr;
@@ -3828,7 +3846,7 @@ namespace
         // callbacks of #46/#47 were the poster's own rendering, 2.3-2.5 ms).
         static int takeChunkAsPoster(Job& job, int& idxOut) noexcept
         {
-            const int working = job.lanesJoined.load(std::memory_order_relaxed) - job.lanesLeft.load(std::memory_order_relaxed);
+            const int working = (int)(job.lanesJoined.load(std::memory_order_relaxed) - job.lanesLeft.load(std::memory_order_relaxed));
             if (working > 0 && job.numVoices - job.nextVoice.load(std::memory_order_relaxed) <= working * 2) return 0;
             return takeChunk(job, idxOut);
         }
@@ -3896,35 +3914,31 @@ namespace
             {
                 if (!job.open.load(std::memory_order_acquire)) continue;
                 if (job.nextVoice.load(std::memory_order_relaxed) >= job.numVoices) continue;
-                if (job.maxWorkers > 0 && job.lanesJoined.load(std::memory_order_relaxed) >= job.maxWorkers) continue;
-                if (job.lanesJoined.fetch_add(1, std::memory_order_acq_rel) >= job.maxWorkers && job.maxWorkers > 0)
+                if (job.maxWorkers > 0 && (int)(job.lanesJoined.load(std::memory_order_relaxed) - job.joinBase) >= job.maxWorkers) continue;
+                if ((int)(job.lanesJoined.fetch_add(1, std::memory_order_acq_rel) - job.joinBase) >= job.maxWorkers && job.maxWorkers > 0)
                 {
                     job.lanesLeft.fetch_add(1, std::memory_order_acq_rel);   // over the limit, back off
                     continue;
                 }
+                // The scratch BEFORE the voices (0.8.226): a lane without a scratch
+                // takes no chunk at all - the poster and the other lanes render those
+                // voices. Until now it took the chunk first and, with no scratch left,
+                // rendered it into nothing: the voices advanced but were not heard for
+                // that block (a click at both block edges). It is counted, never silent.
+                const int scratchIndex = acquireScratch();
+                if (scratchIndex < 0)
+                {
+                    statNoScratch.fetch_add(1, std::memory_order_relaxed);
+                    job.lanesLeft.fetch_add(1, std::memory_order_acq_rel);
+                    continue;
+                }
                 int idx = 0, count = takeChunk(job, idx);
-                if (count <= 0) { job.lanesLeft.fetch_add(1, std::memory_order_acq_rel); continue; }
+                if (count <= 0) { releaseScratch(scratchIndex); job.lanesLeft.fetch_add(1, std::memory_order_acq_rel); continue; }
                 {
                     // How late this lane came to the job (the wake-up of a sleeping worker).
                     const int64_t delay = juce::Time::getHighResolutionTicks() - job.openedTicks;
                     int64_t known = statJoinDelayMax.load(std::memory_order_relaxed);
                     while (delay > known && !statJoinDelayMax.compare_exchange_weak(known, delay, std::memory_order_relaxed)) {}
-                }
-                const int scratchIndex = acquireScratch();
-                if (scratchIndex < 0)
-                {
-                    // Should be impossible (pool >= workers). Render into nothing
-                    // rather than skipping the voices, so their timing stays intact.
-                    LaneOutputs none;
-                    alignas(16) float sink[kFrames];
-                    none.sink = sink;
-                    none.numOuts = 0;
-                    const BlockContext& ctx = *job.ctx;
-                    do renderRange(job.voices, idx, idx + count, job.pool, ctx, none);
-                    while ((count = takeChunk(job, idx)) > 0);
-                    job.lanesLeft.fetch_add(1, std::memory_order_acq_rel);
-                    didWork = true;
-                    continue;
                 }
                 float* base = scratchStore[(size_t)scratchIndex].data();
                 float* wetBase = base + (size_t)kScratchChannels * kFrames;
@@ -4035,6 +4049,7 @@ namespace
         // reads them once a second): jobs, their wall time, the lanes' busy time,
         // lanes x wall ("slots"), the poster's own share.
         std::atomic<int64_t> statJobs{ 0 }, statWallTicks{ 0 }, statBusyTicks{ 0 }, statSlotTicks{ 0 }, statPosterTicks{ 0 }, statJoinDelayMax{ 0 };
+        std::atomic<int64_t> statNoScratch{ 0 };   // lanes that found no scratch buffer and took no voices (0.8.226)
         // The voice profile (gVoiceProfiling): the lanes' thread-local sums, folded here after every chunk.
         std::atomic<int64_t> statProfHeader{ 0 }, statProfSpans{ 0 }, statProfKernel{ 0 }, statProfPost{ 0 }, statProfUnpack{ 0 }, statProfVoices{ 0 };
         void foldVoiceProfile() noexcept
@@ -4050,6 +4065,7 @@ namespace
             p = VoiceProfile{};
         }
     public:
+        int takeNoScratch() noexcept { return (int)statNoScratch.exchange(0, std::memory_order_relaxed); }
         void takeStats(int& jobs, double& laneUtilisation, double& posterShare, double& jobSeconds,
             juce::int64& profVoices, double& headerNs, double& spansNs, double& kernelNs, double& postNs, double& unpackNs, double& joinDelayMaxNs) noexcept   // juce::int64: long long on Linux too
         {
@@ -6834,6 +6850,46 @@ struct SamplerEngine::Impl
         route.clockMs = tEnd;
     }
 
+    // The output discontinuity detector of a route at one stage (0.8.226): every
+    // output channel's first sample against the last sample of the previous block
+    // (SamplerEngine::outputEdgeJump); the jumps go to route.edgeJumps[stage], read
+    // once a second by takeOutputDiscontinuities. The program hears its own clicks:
+    // the user's crackle of 29 Oct 2026 (one route's voices missing for one block,
+    // the timing fine) showed in nothing the program measured.
+    void countEdgeJumps(Route& route, int stage, const juce::AudioBuffer<float>& buffer, const BlockContext& ctx, int usableOuts, int totalSamples, int added) noexcept
+    {
+        static const bool debug = std::getenv("ORGAN_EDGE_DEBUG") != nullptr;   // dev: one log line per jump (allocates - never in a release run)
+        int jumps = 0;
+        for (int ci = 0; ci < ctx.outCount; ++ci)
+        {
+            const int ch = ctx.outChannels[ci];
+            if (ch < 0 || ch >= usableOuts) continue;
+            const float before = route.edge[stage][ch].last;
+            if (!SamplerEngine::outputEdgeJump(buffer.getReadPointer(ch), totalSamples, route.edge[stage][ch])) continue;
+            ++jumps;
+            if (debug)
+            {
+                int finished = 0, releases = 0, fading = 0, fresh = 0;
+                for (const uint32_t idx : route.active)
+                {
+                    const Voice& v = voices[idx];
+                    if (v.finished) ++finished;
+                    if (v.detachedRelease) ++releases;
+                    if (v.fadingOut || v.killing) ++fading;
+                    if (v.pos < (uint64_t)totalSamples << 32) ++fresh;
+                }
+                const float* d = buffer.getReadPointer(ch);
+                CrashHandler::note("Edge jump: manual " + juce::String(route.manual) + " " + route.perspective + " stage " + juce::String(stage)
+                    + " ch " + juce::String(ch) + " last " + juce::String(before, 5) + " first " + juce::String(d[0], 5) + " then " + juce::String(d[1], 5)
+                    + " " + juce::String(d[2], 5) + " active " + juce::String((int)route.active.size()) + " (releases " + juce::String(releases)
+                    + ", fading " + juce::String(fading) + ", in their first block " + juce::String(fresh) + ") added " + juce::String(added)
+                    + " finished " + juce::String(finished) + " polyphony " + juce::String(owner.getCurrentPolyphony())
+                    + " limit " + juce::String(owner.maxPolyphony.load()));
+            }
+        }
+        if (jumps > 0) route.edgeJumps[stage].fetch_add(jumps, std::memory_order_relaxed);
+    }
+
     void renderRoute(Route& route, juce::AudioBuffer<float>& buffer, float masterGain, int laneLimit = 0)
     {
         const juce::SpinLock::ScopedLockType lk(route.renderLock);
@@ -6859,6 +6915,7 @@ struct SamplerEngine::Impl
         if (totalSamples <= 0 || numOuts <= 0) { route.lastRenderMs.store(now, std::memory_order_relaxed); return; }
 
         // Take newly published voices.
+        int added = 0;   // voices taken in this block (the discontinuity detector's debug line)
         {
             uint32_t head = route.addHead.load(std::memory_order_relaxed);
             const uint32_t tail = route.addTail.load(std::memory_order_acquire);
@@ -6871,11 +6928,19 @@ struct SamplerEngine::Impl
                 {
                     voices[idx].state.store(VoiceActive, std::memory_order_release);
                     route.active.push_back(idx);
+                    ++added;
                 }
             }
             route.addHead.store(head, std::memory_order_release);
         }
         lap(statRouteTake);
+        {
+            // A gap in the renders (a device stopped and started, the first block): the
+            // discontinuity detector starts afresh, the first block after it is no jump.
+            const double previous = route.lastRenderMs.load(std::memory_order_relaxed);
+            if (previous < 0.0 || now - previous > 250.0)
+                for (auto& stage : route.edge) for (auto& s : stage) s = SamplerEngine::EdgeState{};
+        }
         route.lastRenderMs.store(now, std::memory_order_relaxed);
         lastBlockMs.store(1000.0 * totalSamples / juce::jmax(1000.0, route.sampleRate.load(std::memory_order_relaxed)),
             std::memory_order_relaxed);
@@ -6935,6 +7000,20 @@ struct SamplerEngine::Impl
         }
 
         lap(statRouteLoop);
+        {
+            // Dev hook ORGAN_TEST_GLITCH=<n> (0.8.226): every n-th block of every route is
+            // silenced AFTER the render - the voices advance, their sound is missing for
+            // one block, the user's crackle of 29 Oct 2026 made to order. The detector
+            // below must count every one of them (one per channel per block).
+            static const int glitchEvery = std::getenv("ORGAN_TEST_GLITCH") != nullptr ? juce::jmax(0, juce::String(std::getenv("ORGAN_TEST_GLITCH")).getIntValue()) : 0;
+            if (glitchEvery > 0 && (++route.edgeDebugBlocks % (uint32_t)glitchEvery) == 0)
+                for (int ci = 0; ci < ctx.outCount; ++ci)
+                {
+                    const int ch = ctx.outChannels[ci];
+                    if (ch >= 0 && ch < usableOuts) juce::FloatVectorOperations::clear(buffer.getWritePointer(ch), totalSamples);
+                }
+        }
+        countEdgeJumps(route, 0, buffer, ctx, usableOuts, totalSamples, added);   // stage 0: straight after the pool render (0.8.226)
         if (prof) { statRoutePoolOwn.fetch_add(tlPoolOwnTicks, std::memory_order_relaxed); statRoutePoolWait.fetch_add(tlPoolWaitTicks, std::memory_order_relaxed); }
         // Compact: finished voices go back to the control thread.
         route.finishedScratch.clear();
@@ -7023,6 +7102,7 @@ struct SamplerEngine::Impl
         }
 
         lap(statRouteClip);
+        countEdgeJumps(route, 1, buffer, ctx, usableOuts, totalSamples, added);   // stage 1: the route's final output (0.8.226)
         // Recording: add this route's final output into the shared stereo ring.
         if (owner.recordingActive.load(std::memory_order_acquire) && recorder != nullptr
             && route.recRing[0].size() == (size_t)Recorder::ringSize)
@@ -7902,6 +7982,52 @@ void SamplerEngine::setRenderThreadCount(int workers, bool force)
 
 void SamplerEngine::prepareRenderWorkers(int, int) {}
 
+bool SamplerEngine::outputEdgeJump(const float* block, int n, EdgeState& state) noexcept
+{
+    if (block == nullptr || n <= 1) return false;
+    float inner = 0.0f, peak = std::abs(block[0]);
+    for (int i = 1; i < n; ++i)
+    {
+        inner += std::abs(block[i] - block[i - 1]);
+        peak = juce::jmax(peak, std::abs(block[i]));
+    }
+    inner /= (float)(n - 1);
+    bool jump = false;
+    if (state.valid)
+    {
+        // A jump: the step into this block is more than twelve times the mean step of
+        // this block and of the previous one, above -74 dBFS, and the previous block
+        // was sounding (a chord starting on a silent route is a start; a voice starting
+        // on a sounding route begins near zero; a loud block has a large mean step).
+        const float step = std::abs(block[0] - state.last);
+        jump = step > 2.0e-4f && state.peak > 1.0e-3f && step > 12.0f * (juce::jmax(inner, state.inner) + 1.0e-6f);
+    }
+    state.last = block[n - 1];
+    state.inner = inner;
+    state.peak = peak;
+    state.valid = true;
+    return jump;
+}
+
+int SamplerEngine::takeOutputDiscontinuities(juce::String& detail, int& noScratchLanes)
+{
+    detail.clear();
+    noScratchLanes = impl->pool != nullptr ? impl->pool->takeNoScratch() : 0;
+    int total = 0;
+    const int count = impl->routeCount.load(std::memory_order_acquire);
+    for (int i = 0; i < count; ++i)
+    {
+        Route& r = *impl->routes[(size_t)i];
+        const int afterRender = r.edgeJumps[0].exchange(0, std::memory_order_relaxed);
+        const int atEnd = r.edgeJumps[1].exchange(0, std::memory_order_relaxed);
+        if (afterRender == 0 && atEnd == 0) continue;
+        total += juce::jmax(afterRender, atEnd);
+        detail << (detail.isEmpty() ? "" : "; ") << "manual " << r.manual << " " << r.perspective << ": "
+               << afterRender << " after the render, " << atEnd << " at the route's end";
+    }
+    return total;
+}
+
 //------------------------------------------------------------------------------
 void SamplerEngine::noteOn(int midiNote, int velocity, int manualIndex)
 {
@@ -7996,7 +8122,7 @@ void SamplerEngine::setManualDivisionGain(int manualIndex, float gain)
 
 void SamplerEngine::setReleaseScalingDb(float db)
 {
-    releaseScalingGain.store(db < -20.5f ? 0.0f : juce::Decibels::decibelsToGain(juce::jlimit(-20.0f, 6.0f, db)));
+    releaseScalingGain.store(db < -20.5f ? 0.0f : juce::Decibels::decibelsToGain(juce::jlimit(-20.0f, 10.0f, db)));
 }
 
 void SamplerEngine::setGlobalPitchCents(float cents)
@@ -8375,7 +8501,7 @@ void SamplerEngine::setWindModel(int sourceManual, float depthCents, float frequ
     const juce::ScopedLock sl(controlLock);
     auto& state = impl->windSources[(size_t)sourceManual];
     state.depthCents = juce::jlimit(0.0f, 50.0f, depthCents);
-    state.frequencyHz = juce::jlimit(4.0f, 10.0f, frequencyHz);
+    state.frequencyHz = juce::jlimit(2.0f, 10.0f, frequencyHz);
     state.oscillations = juce::jlimit(0.0f, 20.0f, oscillations);
     // 50 % on the GUI slider arrives as 1.0; 100 % is a genuine 2.0 (no clamp at 50 %).
     state.oscillationStrength = juce::jlimit(0.0f, 2.0f, oscillationStrength);
