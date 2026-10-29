@@ -1630,7 +1630,40 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   42 rows, no freeze. Test: %TEMP%\test_merge223.ps1 [-Added bellevue -Tag bellevue] (his two jsons copied into
   %TEMP%\cfgtest223 as the configurations folder; the first run per division printed the per-division heads
   "03-ortf_P_" - the organ-wide union fixed it).
+  0.8.224 (29 Oct 2026, Linux session, "udělej všecka to-do"): (1) UNLOAD FOLDER REMOVES THE TREE'S ROWS (the user's
+  rule, the ONE exception to "a row is never removed by the program itself"): `unloadTreeFromPool` marks every row
+  whose folders ALL came from the unloaded tree (`emptiedByTree`, transmissions never) and removes them with their
+  buttons; a stop folder (a non-child row followed by child rows) goes only when its own folders are empty AND all
+  its children went that way; rows with a folder of another tree and every other empty row stay ("Remove empty
+  stops" as ever); log "rows left empty by it removed: N (...)". Dev hook `ORGAN_TEST_UNLOAD_TREE="<tree tail>
+  [|<seconds>]"` (the pool tree whose path ends with the tail; afterwards the configuration is saved and the Stop List
+  dumped as "<ORGAN_DUMP_STOPLIST>.unload.md"). (2) LINUX DISK MOUNT: `mountLinuxDiskFor(path)` (anonymous namespace
+  before resolveAndApplyPortableConfiguration, JUCE_LINUX): a path under /run/media/<user>/<label> or /media/<label>
+  whose mount folder does not exist -> the device by label in /dev/disk/by-label (`unescapeUdevName` for \x20) ->
+  `udisksctl mount -b <device>` (juce::ChildProcess, 60 s; polkit may show the desktop's password dialog for an
+  internal disk - HintSystem true on sda2 here), once per label and session, logged "Disk \"<label>\" (<device>) for
+  <path>: mounted / NOT mounted - <udisksctl output>"; called at the start of resolveAndApplyPortableConfiguration for
+  every sample location, every division's absolute folderPath and the file's sampleLibraryRootRelative. The missing-tree
+  notice's detail names "A remembered sample location is not there now - a disk not mounted?" + the paths. The manual:
+  "Where the files are" (the Linux /run/media paragraph: mount permanently - Disks & Devices "Mount at system startup"
+  or fstab -, the program mounts by label otherwise), 1.6 moved samples, 4.1 Unload folder. NO Projucer resave on Linux
+  (do it on Windows next). Syntax check: g++ -fsyntax-only with -I ~/OrganSamplerC-linux/JUCE/modules (the NTFS
+  checkout's JUCE is a symlink to C:\JUCE9 without modules) + -I .../ThirdParty/unarr-include -DORGAN_HAVE_UNARR=1.
 ## Pending for the next session (delete when done)
+- (DONE in 0.8.224, kept for the reasoning) LINUX: THE SAMPLE DISK UNDER /run/media IS NOT MOUNTED AT BOOT (29 Oct 2026, the user, Arnstadt "nenajde soubory":
+  the Linux box's Hauptwerk disk sda2 (NTFS, label "Hauptwerk") had no mountpoint - udisks mounts it only when the
+  file manager opens it; Locations.txt remembers /run/media/doma/Hauptwerk/Hauptwerk/HauptwerkSampleSetsAndComponents,
+  so every tree was "not on this computer" and the organ loaded empty). The user: "to je na hovno" - TO DO, both:
+  (1) THE MANUAL must say (Linux, "Where the files are" / 1.6): do not keep the sample disk on the automatic
+  /run/media mount - it is mounted only when clicked in the file manager and is NOT there after a reboot; mount it
+  permanently (fstab / "Mount at system startup" in the KDE Disks & Devices settings, or /mnt/<name>) and point the
+  locations there. (2) OR THE PROGRAM MOUNTS IT ITSELF: a remembered location or tree under /run/media/<user>/<label>
+  that does not exist -> find the block device by label (/dev/disk/by-label/<label>, the path's third part) and run
+  `udisksctl mount -b <device>` (no root; polkit may ask for the password once for an internal disk - the dialog is
+  the desktop's own) before the load, log "Disk <label> mounted at <path>" / the refusal, and only then look the trees
+  up; the notice "Sample folder not found" should name the unmounted disk ("the remembered location X does not
+  exist - a disk not mounted?"). Verify on this box: unmount sda2, load Arnstadt, the program mounts it and finds
+  the 6 trees.
 - THREE MERGE FAULTS - DONE in 0.8.223 (the note above). FOUND 28 Oct 2026 EVENING (the user: "jak to že nemohu mergovat Bellevue Casavant do Bergen
   Surround??? ... proč při mergi distant do surroundu to tak dlouho čeká a je jakoby zamrznuté?" - diagnosed from
   his activity.log 20:51-20:55, NOT coded, he said "nekóduj, jen řekni"): (1) INFINITE LOOP in the "(2)" rule of

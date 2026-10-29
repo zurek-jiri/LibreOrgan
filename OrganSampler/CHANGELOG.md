@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.224] - 2026-10-29
+
+### Changed
+- Unload folder (Stop List): the rows that had folders of the unloaded tree
+  only are removed with their buttons, and a stop folder whose indented rows
+  all went that way too - the one case a row leaves the table by itself. Rows
+  with a folder of another tree and every other empty row stay as before.
+- Linux: a sample location or tree under `/run/media/<you>/<label>` (or
+  `/media/<label>`) whose disk is not mounted at a load - the desktop mounts
+  such disks only when the file manager opens them - is mounted by the
+  program through udisks (`udisksctl mount`, found by the label, no root; an
+  internal disk may bring up the desktop's password dialog once) before the
+  trees are looked up; the log says "Disk ... mounted" or why not, and the
+  "Sample folder not found" notice names a remembered location that is not
+  there. The manual says how to mount the disk permanently instead.
+
 ## [0.8.223] - 2026-10-28
 
 ### Fixed

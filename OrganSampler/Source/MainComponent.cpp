@@ -1719,6 +1719,38 @@ MainComponent::MainComponent()
             });
         });
     }
+    // ORGAN_TEST_UNLOAD_TREE="<tree tail>[|<seconds>]" (tests, 0.8.224): "Unload folder" of the pool tree whose
+    // path ends with the tail, N s after the start (25 by default); then the configuration is saved and the
+    // Stop List dumped as "<ORGAN_DUMP_STOPLIST>.unload.md".
+    if (const char* unload = std::getenv("ORGAN_TEST_UNLOAD_TREE"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(unload), "|", "");
+        const juce::String tail = parts[0].trim();
+        const int seconds = parts.size() > 1 ? juce::jmax(5, parts[1].getIntValue()) : 25;
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(seconds * 1000, [safeThis, tail]
+        {
+            if (safeThis == nullptr) return;
+            juce::String found;
+            for (const auto& tree : safeThis->sampleTrees) if (tree.replaceCharacter('\\', '/').endsWithIgnoreCase(tail.replaceCharacter('\\', '/'))) found = tree;
+            CrashHandler::note("ORGAN_TEST_UNLOAD_TREE: " + tail + (found.isEmpty() ? " - no pool tree ends with it" : " -> " + found));
+            if (found.isEmpty()) return;
+            safeThis->unloadTreeFromPool(found);
+            juce::Timer::callAfterDelay(8000, [safeThis]
+            {
+                if (safeThis == nullptr) return;
+                safeThis->runWhenLoaded([safeThis]
+                {
+                    if (safeThis == nullptr) return;
+                    if (safeThis->currentConfigurationFile != juce::File()) safeThis->savePortableConfiguration(safeThis->currentConfigurationFile, true, false, false);
+                    if (const char* dump = std::getenv("ORGAN_DUMP_STOPLIST"))
+                        if (safeThis->voicer != nullptr)
+                            juce::File(juce::String(dump) + ".unload.md").replaceWithText(safeThis->voicer->stopListMarkdown());
+                    CrashHandler::note("ORGAN_TEST_UNLOAD_TREE: organ saved to " + safeThis->currentConfigurationFile.getFullPathName());
+                });
+            });
+        });
+    }
     // ORGAN_TEST_RELOCATE="<tree tail>|<folder>[|<seconds>]" (tests, 0.8.202): the
     // missing pool tree whose path ends with the tail is given the folder as the
     // notice's chooser would (relocateTreeSmart), 25 s after start by default; the
@@ -12637,9 +12669,89 @@ namespace
     }
 }
 
+#if JUCE_LINUX
+namespace
+{
+    // 0.8.224 (the user, 29 Oct 2026, Arnstadt "nenajde soubory": the Hauptwerk disk had no mountpoint -
+    // udisks mounts a disk under /run/media/<user>/<label> only when the file manager opens it, so a
+    // remembered location there is gone after every reboot): a path under /run/media/<user>/<label> or
+    // /media/<label> whose mount folder does not exist names a disk by its LABEL - the device is found
+    // in /dev/disk/by-label and mounted through udisks (`udisksctl mount -b`, no root; for an internal
+    // disk polkit may ask the desktop's own password dialog once). Tried once per label and session.
+    juce::String unescapeUdevName(const juce::String& name)
+    {
+        juce::String out;
+        for (int i = 0; i < name.length(); ++i)
+        {
+            if (name[i] == '\\' && i + 3 < name.length() && name[i + 1] == 'x')
+            {
+                out << juce::String::charToString((juce::juce_wchar)name.substring(i + 2, i + 4).getHexValue32());
+                i += 3;
+            }
+            else out << juce::String::charToString(name[i]);
+        }
+        return out;
+    }
+
+    bool mountLinuxDiskFor(const juce::String& path)
+    {
+        juce::StringArray parts;
+        parts.addTokens(path, "/", "");
+        parts.removeEmptyStrings();
+        int labelIndex = -1;
+        if (parts.size() >= 3 && parts[0] == "run" && parts[1] == "media") labelIndex = 3 <= parts.size() - 1 ? 3 : -1;   // /run/media/<user>/<label>
+        if (parts.size() >= 2 && parts[0] == "media") labelIndex = 1;                                                       // /media/<label>
+        if (labelIndex < 0 || labelIndex >= parts.size()) return false;
+        juce::String mountRoot;
+        for (int i = 0; i <= labelIndex; ++i) mountRoot << "/" << parts[i];
+        if (juce::File(mountRoot).isDirectory()) return false;   // mounted (or a plain folder) already
+        static juce::StringArray tried;
+        const auto label = parts[labelIndex];
+        if (tried.contains(label)) return false;
+        tried.add(label);
+        juce::File device;
+        for (const auto& link : juce::File("/dev/disk/by-label").findChildFiles(juce::File::findFilesAndDirectories, false))
+            if (unescapeUdevName(link.getFileName()) == label) { device = link; break; }
+        if (device == juce::File())
+        {
+            CrashHandler::note("Disk \"" + label + "\" for " + path + ": no device of that label in /dev/disk/by-label - not mounted");
+            return false;
+        }
+        juce::ChildProcess process;
+        juce::StringArray command { "udisksctl", "mount", "-b", device.getFullPathName() };
+        if (!process.start(command))
+        {
+            CrashHandler::note("Disk \"" + label + "\" (" + device.getFullPathName() + "): udisksctl could not be started - not mounted");
+            return false;
+        }
+        process.waitForProcessToFinish(60000);
+        const auto output = process.readAllProcessOutput().trim();
+        const bool mounted = juce::File(mountRoot).isDirectory();
+        CrashHandler::note("Disk \"" + label + "\" (" + device.getFullPathName() + ") for " + path + ": " + (mounted ? "mounted" : "NOT mounted")
+            + (output.isNotEmpty() ? " - " + output.replaceCharacters("\r\n", "  ") : juce::String()));
+        return mounted;
+    }
+}
+#endif
+
 void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration,
     const juce::File& configurationFile, const juce::File& selectedLibraryRoot)
 {
+#if JUCE_LINUX
+    // 0.8.224: a sample location (or a tree path of the file) on a disk that is not mounted - mounted first.
+    {
+        juce::StringArray places(gSampleLocations);
+        if (auto* array = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+            for (const auto& item : *array)
+            {
+                const auto absolute = item.getProperty("folderPath", "").toString();
+                if (absolute.isNotEmpty()) places.add(absolute);
+            }
+        const auto rootRelative = configuration.getProperty("sampleLibraryRootRelative", "").toString();
+        if (rootRelative.isNotEmpty()) places.add(configurationFile.getParentDirectory().getChildFile(rootRelative).getFullPathName());
+        for (const auto& place : places) mountLinuxDiskFor(place);
+    }
+#endif
     gChosenConfigurationDir = chosenConfigurationDir;   // 0.8.214: the chosen file's folder serves this load's lookups
     struct ClearChosen { juce::File& member; ~ClearChosen() { gChosenConfigurationDir = juce::File(); member = juce::File(); } } clearChosen{ chosenConfigurationDir };   // juce::File() spelt out: "= {}" is ambiguous for GCC
     auto manuals = configuration.getProperty("manualKeyboards", juce::var());
@@ -16566,23 +16678,47 @@ void MainComponent::unloadTreeFromPool(const juce::String& path)
     // Every division loses the folders of this tree; rows without folders go unless
     // they are stop folders with children. Later trees move down one index.
     std::vector<int> affected;
+    juce::StringArray rowsRemoved;
     for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
     {
         auto& build = manualConfigs[(size_t)manual].stopBuild;
         if (!build.active) continue;
         bool touched = false;
-        for (auto& entry : build.entries)
+        std::vector<bool> emptiedByTree(build.entries.size(), false);   // 0.8.224: rows that had folders of this tree only
+        for (size_t i = 0; i < build.entries.size(); ++i)
+        {
+            auto& entry = build.entries[i];
+            bool fromTree = false;
             for (auto it = entry.folders.begin(); it != entry.folders.end();)
             {
-                if (it->second.tree == index) { it = entry.folders.erase(it); touched = true; continue; }
+                if (it->second.tree == index) { it = entry.folders.erase(it); touched = true; fromTree = true; continue; }
                 if (it->second.tree > index) --it->second.tree;
                 ++it;
             }
-        // The rows that lost their folders stay as empty stops ("Remove empty stops" clears them).
+            emptiedByTree[i] = fromTree && entry.folders.empty() && !entry.isTransmission();
+        }
+        // 0.8.224 (the user's rule, the one case a row goes by itself): the rows left EMPTY BY THIS
+        // TREE - every folder they had came from it - are removed with their buttons, and a stop
+        // folder whose children all went that way and that has no folder of its own goes too. Other
+        // empty rows (stop folders, rows emptied before) stay as ever ("Remove empty stops").
+        for (size_t i = 0; i < build.entries.size(); ++i)
+        {
+            if (build.entries[i].child) continue;
+            size_t children = 0, gone = 0;
+            for (size_t j = i + 1; j < build.entries.size() && build.entries[j].child; ++j) { ++children; if (emptiedByTree[j]) ++gone; }
+            if (children > 0) emptiedByTree[i] = build.entries[i].folders.empty() && gone == children;   // a stop folder goes only with all its children
+        }
+        for (size_t i = build.entries.size(); i-- > 0;)
+            if (emptiedByTree[i])
+            {
+                rowsRemoved.add(build.entries[i].name + " (" + juce::String(manual) + ")");
+                build.entries.erase(build.entries.begin() + (long)i);
+            }
         if (touched) affected.push_back(manual);
     }
     sampleTrees.erase(sampleTrees.begin() + index);
-    CrashHandler::note("Tree " + path + " unloaded from the pool; divisions rebuilt: " + juce::String((int)affected.size()));
+    CrashHandler::note("Tree " + path + " unloaded from the pool; divisions rebuilt: " + juce::String((int)affected.size())
+        + "; rows left empty by it removed: " + juce::String(rowsRemoved.size()) + (rowsRemoved.isEmpty() ? juce::String() : " (" + rowsRemoved.joinIntoString(", ") + ")"));
     syncDivisionTreeLists();
     saveSettings();
     if (!affected.empty()) reloadDivisions(affected);
@@ -21612,7 +21748,11 @@ juce::String MainComponent::missingTreeNotice(int manual, bool detail) const
     }
     if (names.isEmpty()) return {};
     if (!detail) return (names.size() == 1 ? "Sample folder not found: " : "Sample folders not found: ") + names.joinIntoString(", ");
+    // 0.8.224: a remembered sample location that is not there now = most likely a disk not mounted.
+    juce::StringArray locationsGone;
+    for (const auto& location : sampleLocations) if (location.isNotEmpty() && !juce::File(location).isDirectory()) locationsGone.add(location);
     return "These sample folder trees of the division are not on this computer:\n" + paths.joinIntoString("\n")
+        + (locationsGone.isEmpty() ? juce::String() : "\n\nA remembered sample location is not there now - a disk not mounted?\n" + locationsGone.joinIntoString("\n"))
         + "\n\nClick, choose the tree and then ANY folder of the organ's samples - the tree itself, a folder above it (the numbered "
           "package or the whole library) or a neighbouring tree: the program finds the tree from there, looks for the other missing "
           "trees around it, loads them all and remembers the place for the next configuration. The stops keep their samples. "

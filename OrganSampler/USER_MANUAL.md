@@ -601,6 +601,20 @@ configuration names its folder trees relative to the library root
 (`OrganInstallationPackages/003135/pipe/HW`, with the root's name), never by
 an absolute path, so the same file serves on any disk and any computer.
 
+**Linux: a disk under `/run/media`** is mounted by the desktop only when you
+open it in the file manager, and it is NOT there after a reboot until you do -
+a sample location remembered there ("/run/media/you/Samples/...") is gone at
+the next start and every tree of the organ reads "not on this computer".
+Mount the sample disk permanently instead: "Mount at system startup" in the
+desktop's Disks & Devices settings, or a line in `/etc/fstab` to a folder such
+as `/mnt/samples`, and point the locations there. When a remembered location
+or a tree does lie under `/run/media/<you>/<label>` or `/media/<label>` and
+that folder is missing at a load, the program finds the disk by its label and
+asks udisks to mount it (`udisksctl mount`, no root - an internal disk may
+bring up the desktop's password dialog once), then looks the trees up; the
+activity log says "Disk ... mounted" or why not, and the "Sample folder not
+found" notice names a remembered location that is not there.
+
 **RAR archives**: expected nowhere. The program reads only the archives you
 chose yourself - in *Load folder*, *Load Configuration* or *Merge* - and
 never opens an archive it merely found lying somewhere.
@@ -1017,7 +1031,9 @@ and "The first start, step by step" takes you on to the audio (steps 5-7).
 Load the configuration as it is. The trees are looked for at their old
 place, then in every sample location and one level around each; what is
 not found shows the notice - one click as above puts everything right, and
-the new place is remembered. The Configuration Editor's *Sample and IR
+the new place is remembered. On Linux a disk that the desktop mounts only
+on demand (`/run/media/...`) is mounted by the program first, by its label
+("Where the files are"). The Configuration Editor's *Sample and IR
 locations* row adds a folder by hand when you know where the libraries are
 before the first load. A configuration never holds anything about your
 computer that cannot be found again this way.
@@ -1629,7 +1645,11 @@ folder that plays that perspective of the stop.
   cells of a missing tree are orange, their tooltip says NOT FOUND, and the
   line below the table counts the missing trees.
 - **Unload folder...** removes one tree from the whole organ after saying how
-  many stops lose their samples (their rows stay as empty stops); a tree
+  many stops lose their samples. The rows that had folders of that tree only
+  go with it, buttons and all - the one case a row leaves the table by
+  itself - and so does a stop folder whose indented rows all went that way;
+  a row that still has a folder of another tree, and every other empty row,
+  stays ("Remove empty stops" clears those). A tree
   that is not on this computer is marked NOT FOUND there, so you can drop
   it when it is not meant to come (a package you do not own). **Unload all
   folder trees** empties the organ; the Stop List opens again with the empty
