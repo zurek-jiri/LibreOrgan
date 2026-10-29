@@ -1710,6 +1710,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   @("--resave", "`"<abs>`"") -Wait -NoNewWindow -RedirectStandardOutput` printed "Finished saving: Visual Studio 2026"
   and worked - use that form; copy the .ico AFTER it.
 ## Pending for the next session (delete when done)
+- TO-DO (the user, 29 Oct 2026 evening, after 0.8.226 was tagged): the output discontinuity detector must be
+  OPTIONAL - an Editor toggle (machine-specific key, e.g. "outputDiscontinuityDetector", default ON while the crackle
+  is hunted) that skips `countEdgeJumps` at both stages and the device-callback pass. Its cost measured by reasoning:
+  3 stages x 2 channels x 256 frames of abs/diff/max per route block = ~1 500 operations per route block, ~10 us per
+  5.3 ms period for 15 routes on one thread - the work of about ten voices out of forty thousand, nothing the
+  measurement can see (Rural measured 5 300-5 600 with it on, the stimulus cap, as before). The user doubts it
+  ("zdá se, že toto bere strašně moc polyfonie") - the switch lets him compare himself; he agreed it may wait for the
+  next version ("dej to-do do další verze").
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
   "prská i při měření polyfonie, DSP meter to nezaznamenal, error counter 0, je to náš program"): HIS RECORDING
