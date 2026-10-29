@@ -19,9 +19,8 @@ the recordings themselves are the property of their producer and are obtained fr
 - **Expects:** library root of any name, holding the trees `002082/pipes`, `002083/pipes`, `002084/pipes`, `002085/pipes`, `002086/pipes`, `002087/pipes` and `002088/pipes`.
 - **Audio layout:** every division has the routes diffuse, direct, rear and distant; auxiliary (unused).
 - **RAM:**
-  - **8.3 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **44 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
-  - **83 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+  - **8.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
+  - **87 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
 - **Saved with:** OrganSampler 0.8.224.
 - **Author:** Jiri Zurek, 29 October 2026.
 
@@ -51,22 +50,22 @@ Put `Bergen op Zoom Ibach organ Surround 8-chan.portable.json` into your configu
 
 | Pedal | I | II | III |
 |---|---|---|---|
-| P. Principal 32' (Ext.) | 1. Principal 16' | 2. Bordun 16' | Salicet 16' (Ext.) |
-| P. Violonbass 64' (Ext.) | 1. Quintaton 16' | 2. Bassethorn 8' | 3. Salicional 8' |
+| P. Violonbass 64' (Ext.) | 1. Principal 16' | 2. Bordun 16' | Salicet 16' (Ext.) |
+| P. Principal 32' (Ext.) | 1. Quintaton 16' | 2. Bassethorn 8' | 3. Salicional 8' |
 | P. Principal 16' | 1. Principal 8' | 2. Principal 8' | 3. Dolce 8' |
 | P. Violonbass 16' | 1. Gemshorn 8' | 2. Rohrflaut 8' | 3. Flaut angelika 8' |
-| P. Octavbass 8' | 1. Octav 4' | 2. Octav 4' | 3. Quintaton 8' |
-| P. Subbass 16' | 1. Viola di gamba 8' | 2. Flautdolce 4' | 3. Viola 4' |
-| P. Quintbass 5 1/3' | 1. Quint 2 2/3' | 2. Mixtur 1' | 3. Flaut travers 4' |
-| P. Gedaktbass 8' | 1. Grossgedakt 8' | Nasat 2 2/3' (Ext.) | 3. Euphone 8' |
-| P. Octavbass 4' | 1. Octav 2' | 2. Fagottoboe 8' | 3. Flageolet 2' |
-| P. Jubal 8' | 1. Hohlflaut 4' | 2. Flautino 2' | 3. Euphone 16' (Ext.) |
-| P. Posaunenbass 32' (Ext.) | 1. Scharff 2' | Carillon [III] |  |
-| Cello 8' (Trsm.) | Terz 1 3/5' (Ext.) |  |  |
-| P. Posaunenbass 16' | 1. Fagott 16' |  |  |
+| P. Subbass 16' | 1. Grossgedakt 8' | 2. Octav 4' | 3. Quintaton 8' |
+| P. Gedaktbass 8' | 1. Viola di gamba 8' | 2. Flautdolce 4' | 3. Viola 4' |
+| P. Octavbass 8' | 1. Octav 4' | Nasat 2 2/3' (Ext.) | 3. Flaut travers 4' |
+| Cello 8' (Trsm.) | 1. Hohlflaut 4' | 2. Flautino 2' | 3. Flageolet 2' |
+| P. Jubal 8' | 1. Quint 2 2/3' | 2. Mixtur 1' | 3. Euphone 16' (Ext.) |
+| P. Quintbass 5 1/3' | 1. Octav 2' | Carillon [III] | 3. Euphone 8' |
+| P. Octavbass 4' | Terz 1 3/5' (Ext.) | 2. Fagottoboe 8' |  |
+| P. Posaunenbass 32' (Ext.) | 1. Scharff 2' |  |  |
 | 1. Trompete 16' (Trsm.) | 1. Cornett 4' |  |  |
-| P. Claironbass 4' | 1. Trompete 16' (Ext.) |  |  |
-| P. Trompetenbass 8' | 1. Trompete 8' |  |  |
+| P. Posaunenbass 16' | 1. Fagott 16' |  |  |
+| P. Trompetenbass 8' | 1. Trompete 16' (Ext.) |  |  |
+| P. Claironbass 4' | 1. Trompete 8' |  |  |
 |  | Clairon 4' (Ext.) |  |  |
 
-<!-- published by @zurek-jiri (issue #118, 2026-10-29) -->
+<!-- published by @zurek-jiri (issue #120, 2026-10-29) -->
