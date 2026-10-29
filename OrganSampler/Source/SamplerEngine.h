@@ -990,6 +990,13 @@ public:
     // (100 = untouched). Applies to releases started afterwards.
     void setReleaseCutPercent(float percent) noexcept { releaseCutPercent.store(juce::jlimit(5.0f, 100.0f, percent), std::memory_order_relaxed); }
     float getReleaseCutPercent() const noexcept { return releaseCutPercent.load(std::memory_order_relaxed); }
+    // Every release sample is played from this many milliseconds into its file
+    // (0.8.227, default 0): an aggressive release start is skipped; the fade-in
+    // runs from there. Applies to releases started afterwards, nothing is rebuilt.
+    void setReleasePlayedFromMs(float ms) noexcept { releasePlayedFromMs.store(juce::jlimit(0.0f, 300.0f, ms), std::memory_order_relaxed); }
+    // The output discontinuity detector of 0.8.226 on or off (0.8.227; the device
+    // callbacks have their own copy of the switch in MainComponent).
+    void setOutputDiscontinuityDetector(bool enabled) noexcept { outputDiscontinuityDetector.store(enabled, std::memory_order_relaxed); }
     void prepareRenderWorkers(int numChannels, int blockSize);
     // The control thread: the note bookkeeping (MIDI commands, attacks and
     // releases, reclaiming finished voices) runs on a thread of its own instead
@@ -1517,6 +1524,8 @@ private:
     std::atomic<float> tremulantShelfPhaseTurns{ 0.25f };
     std::atomic<float> windOneStopShare{ 0.2f }, windOnePipeShare{ 0.5f }, windTwoPipesShare{ 0.5f };
     std::atomic<float> releaseCutPercent{ 100.0f };
+    std::atomic<float> releasePlayedFromMs{ 0.0f };   // 0.8.227: every release starts this far into its file
+    std::atomic<bool> outputDiscontinuityDetector{ true };   // 0.8.227: the detector of 0.8.226 switchable
     std::atomic<float> toneStartHz{ 1800.0f };   // per-key tone shelf: start of the transition band
     std::atomic<float> sincKernelFromHz{ defaultSincKernelFromHz() };   // the sinc playback kernel from this sounding fundamental up (0.8.164; the default by CPU, 0.8.218)
     std::atomic<float> retuneLimitCents{ 200.0f };    // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165)

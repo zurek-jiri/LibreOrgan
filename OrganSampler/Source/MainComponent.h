@@ -611,6 +611,7 @@ private:
     std::atomic<int> listeningExpressionManual{ -1 };
     std::atomic<bool> applicationReady{ false };
     std::atomic<bool> audioMuted{ true };
+    std::atomic<bool> outputDiscontinuityDetector{ true };   // 0.8.227: the detector of 0.8.226 switchable (machine-specific key; read by the device callbacks)
     // The polyphony measurement renders everything as usual but hands the
     // devices the sound at -42 dB (the callbacks keep their real timing). The
     // callbacks glide to this target over about two seconds, so neither the
@@ -1055,6 +1056,7 @@ private:
     float transposeAttackTimingPct = 50.0f;     // method 2: share of the attack's length change given back (100 = source duration)
     float transposeReleaseTimingPct = 55.0f;    // methods 2-3: the same for the release (vocoder: upwards only)
     float transposeReleaseTrimMs = 140.0f;      // every pitch-shift method: a release copy is played from here (playback, no rebuild)
+    float releasePlayedFromMs = 0.0f;           // 0.8.227: EVERY release sample is played from here (the key "releasePlayedFromMs", travels with the organ)
     bool transposeReleaseLevelMatch = false;    // release copies at the source's level step (playback, no rebuild)
     // The "?" buttons: the About dialog on the manual, at the chapter of the option.
     void showManualSection(const juce::String& section, const juce::String& fallbackSection = {});

@@ -1271,7 +1271,8 @@ static const char* const kManualText_part6 =
     "the last ten seconds (a jump between two blocks that the sound itself does\n"
     "not explain - a click you hear, whatever the load figure says; the activity\n"
     "log names the route and whether it came from the rendering or appeared only\n"
-    "on the way to the driver) -, the memory the program\n"
+    "on the way to the driver; the switch is *Output discontinuity detector* in\n"
+    "the Configuration Editor) -, the memory the program\n"
     "holds (*RAM GB*, whole gigabytes rounded up; orange when less than a tenth\n"
     "of the installed memory is free: the system then pages samples out and a\n"
     "block stalls on reading them back), and the polyphony *LIMIT* (editable; the\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "its division or into another division. A click on empty workspace ends the\n"
     "mode. While arranging:\n"
     "\n"
-    "- Dragging a stop into another division's grid moves it there with its\n"
     ;
 static const char* const kManualText_part7 =
+    "- Dragging a stop into another division's grid moves it there with its\n"
     "  voicing and transmissions.\n"
     "- Dragging with the right mouse button, or with Shift held, makes a **copy**: a\n"
     "  new transmission of the stop appears where the copy lands (also in the\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "from the rel folder; a velocity without a release of its own takes the nearest\n"
     "one that exists. Filled pipes follow the layers as well.\n"
     "\n"
-    "The voicing row of a stop with layers shows a tick box per layer, named by the\n"
     ;
 static const char* const kManualText_part8 =
+    "The voicing row of a stop with layers shows a tick box per layer, named by the\n"
     "suffix (\"_070\"), and one for the plain files, the top layer (its box reads\n"
     "\"_128\"). Unticked, a\n"
     "layer's velocities use the next layer up or the plain samples; the plain layer\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "  the same device and channel a note \"Shared with ...\" appears (one key then\n"
     "  plays all of them). A keyboard plugged in while the program runs is opened\n"
     "  at once (the activity log says so) and MIDI learn hears it; open the\n"
-    "  Divisions dialog again to see it in the device list. One unplugged is let\n"
     ;
 static const char* const kManualText_part9 =
+    "  Divisions dialog again to see it in the device list. One unplugged is let\n"
     "  go and comes back when plugged in again.\n"
     "- *Ignore MIDI velocity (organ keys)*: every key is sent as full velocity.\n"
     "- *Bass octave layout*: Standard, Short octave, \"C D D# ...\", \"C D E ...\" for\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "- **Different latencies.** ASIO and WASAPI answer at different speeds, so\n"
     "  divisions on different drivers do not speak at the same moment after the\n"
     "  key is pressed. While playing this is confusing - though now and then it\n"
-    "  imitates, by accident, the different delays of the actions of a real\n"
     ;
 static const char* const kManualText_part10 =
+    "  imitates, by accident, the different delays of the actions of a real\n"
     "  organ's divisions.\n"
     "\n"
     "The best layout for the highest polyphony is therefore: one ASIO driver, all\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "  cores. This is the layout with the highest polyphony. The buffer size sets\n"
     "  how much time each block of audio may take: a buffer of 512 samples allows\n"
     "  twice the work of 256, at twice the latency.\n"
-    "- **The buffer size: do not chase the smallest one.** A small buffer\n"
     ;
 static const char* const kManualText_part11 =
+    "- **The buffer size: do not chase the smallest one.** A small buffer\n"
     "  (64 or 128 samples) cuts the reachable polyphony dramatically, because\n"
     "  every block must be rendered in a fraction of the time. An organ does not\n"
     "  need it: the action of a real organ has its own delay, and a latency of\n"
@@ -2423,9 +2424,9 @@ static const char* const kManualText_part11 =
     "\n"
     "Not every stop takes this well. Percussion and bell-like stops - Chimes,\n"
     "Glockenspiel, Celesta, Harp, a Carillon - have inharmonic partials and a\n"
-    "timbre that does not move with the pitch on the real instrument: a pipe of\n"
     ;
 static const char* const kManualText_part12 =
+    "timbre that does not move with the pitch on the real instrument: a pipe of\n"
     "theirs transposed by any of the methods below sounds plainly wrong, and so\n"
     "does the whole stop once it is retuned (a temperament, a retune to a1 =\n"
     "440 Hz, a transposition in the voicing row). For a stop of that kind leave the\n"
@@ -2625,9 +2626,9 @@ static const char* const kManualText_part12 =
     "### Render threads\n"
     "\n"
     "How many CPU threads render pipes for ASIO routes, the audio driver's own\n"
-    "thread included. (The note bookkeeping - MIDI commands, attacks and releases,\n"
     ;
 static const char* const kManualText_part13 =
+    "thread included. (The note bookkeeping - MIDI commands, attacks and releases,\n"
     "the return of finished voices - runs on a thread of its own beside them, so\n"
     "the audio callback only renders.) Default: all physical cores - keep it there.\n"
     "Hyper-threads\n"
@@ -2827,9 +2828,9 @@ static const char* const kManualText_part13 =
     "convolutions instead of six. The IR caption of a route that rides on\n"
     "another's convolution says *(shared)* and its tooltip names the route; a\n"
     "route whose settings differ in anything keeps its own convolution. Nothing\n"
-    "needs to be set: the grouping follows the settings and the devices.\n"
     ;
 static const char* const kManualText_part14 =
+    "needs to be set: the grouping follows the settings and the devices.\n"
     "\n"
     "### Maximum polyphony\n"
     "\n"
@@ -3011,17 +3012,17 @@ static const char* const kManualText_part14 =
     "sample takes over (default 110 ms). Too short and the join clicks or the pipe\n"
     "stops unnaturally; too long and the release sounds smeared. The value is for\n"
     "the sounding c1 (MIDI 60 of an 8' rank, the rank's footage counted in): pipes\n"
-    "below it get 1.5 times as much per octave, because a big pipe's sound cannot\n"
-    "stop as fast - with the default, 165 ms on the C of an 8' rank, 248 ms on a\n"
-    "16' C, 371 ms on a 32' C (3.4 times); higher pipes the value as set. A filled\n"
-    "pipe counts as the pipe it stands for.\n"
+    "below it get 1.25 times as much per octave, because a big pipe's sound cannot\n"
+    "stop as fast - with the default, 138 ms on the small c, 172 ms on the C of an\n"
+    "8' rank, 215 ms on a 16' C, 269 ms on a 32' C; higher pipes the value as set.\n"
+    "A filled pipe counts as the pipe it stands for.\n"
     "\n"
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in when the key is released (default 110\n"
-    "ms), scaled by pitch exactly like the sustain fade-out (165 / 248 / 371 ms on\n"
-    "the C of an 8' / 16' / 32' rank). The two together shape the join between the\n"
-    "held note and its release.\n"
+    "ms), scaled by pitch exactly like the sustain fade-out (138 / 172 / 215 / 269\n"
+    "ms on the small c and on the C of an 8' / 16' / 32' rank). The two together\n"
+    "shape the join between the held note and its release.\n"
     "\n"
     "### Release sample volume\n"
     "\n"
@@ -3029,13 +3030,24 @@ static const char* const kManualText_part14 =
     "position \"-inf\" silences them. Quieter releases make a drier organ without\n"
     "losing the room entirely.\n"
     "\n"
-    "### Release cutting\n"
     ;
 static const char* const kManualText_part15 =
+    "### Release cutting\n"
     "\n"
     "Release samples are faded out over this share of their length and end there\n"
     "(5 to 100 %, default 100 = the full release). Shorter releases free polyphony\n"
     "sooner on a weak computer and dry a wet set.\n"
+    "\n"
+    "### Release played from\n"
+    "\n"
+    "Every release sample is played from this many milliseconds into its file (0\n"
+    "to 300, default 0 = from its first sample), skipping its start; the fade-in\n"
+    "runs from there. For sets whose releases begin too aggressively. No limit: a\n"
+    "release shorter than the setting (a dry set with releases of 60 ms) is not\n"
+    "played at all, and the key ends with the sustain fade alone. Applied when a\n"
+    "key is released - nothing is rebuilt, the change is heard at once. Saved with\n"
+    "the organ. (A filled pipe's release copy skips at least what *Filled pipes:\n"
+    "release played from* says.)\n"
     "\n"
     "### Attack minimum time\n"
     "\n"
@@ -3220,6 +3232,8 @@ static const char* const kManualText_part15 =
     "stretched towards the length the resampling would give; shifts downwards are\n"
     "left alone. Changing it rebuilds the release copies.\n"
     "\n"
+    ;
+static const char* const kManualText_part16 =
     "### Filled pipes: release played from\n"
     "\n"
     "Every pitch-shift method. A filled pipe's release copy is played from this\n"
@@ -3232,8 +3246,6 @@ static const char* const kManualText_part15 =
     "### Filled pipes: release level matched to the source\n"
     "\n"
     "Every pitch-shift method. On: a filled pipe's release copy is played at the\n"
-    ;
-static const char* const kManualText_part16 =
     "level relation the source pipe's release has to its sustain (measured when the\n"
     "copy was built), so the step at the key release is the real pipe's. Off\n"
     "(default): the copy plays at its own level. Applied at playback, nothing is\n"
@@ -3422,6 +3434,8 @@ static const char* const kManualText_part16 =
     "Shows or hides the Unpack archive button (see \"Sample archives (RAR)\"): RAR\n"
     "archives of sample folders unpacked by the program into a folder of your\n"
     "choice. Hidden by default since *Load folder...* reads the archives itself\n"
+    ;
+static const char* const kManualText_part17 =
     "(and unpacks on request); the button beside this switch does the same\n"
     "without the top bar.\n"
     "\n"
@@ -3434,8 +3448,6 @@ static const char* const kManualText_part16 =
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held; when that key is released the coupler does not\n"
     "fall back to the next one. Off: the coupled note always follows the highest\n"
-    ;
-static const char* const kManualText_part17 =
     "(lowest) key currently held.\n"
     "\n"
     "### Melody couplers: legato grace time\n"
@@ -3457,6 +3469,16 @@ static const char* const kManualText_part17 =
     "dragged glows for a moment with the golden halo of the instruction video. Off:\n"
     "the console as it was, with no halo at all. The setting belongs to this\n"
     "computer, not to the organ.\n"
+    "\n"
+    "### Output discontinuity detector\n"
+    "\n"
+    "On by default. The program counts every jump between two blocks of its own\n"
+    "output that the sound itself does not explain - after the rendering, at the\n"
+    "end of every route and on the way to the driver -, writes \"Output\n"
+    "discontinuities\" with the route and the stage into the activity log every\n"
+    "second it happens and shows \"!N\" in orange in the DSP cell for ten seconds (N\n"
+    "= the jumps of the last ten seconds). It costs a few microseconds per audio\n"
+    "period. Off: nothing is counted. The setting belongs to this computer.\n"
     "\n"
     "### Samples' base temperament\n"
     "\n"
@@ -3614,6 +3636,8 @@ static const char* const kManualText_part17 =
     "The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the\n"
     "channels of that perspective's own device.\n"
     "\n"
+    ;
+static const char* const kManualText_part18 =
     "### Perspective volume\n"
     "\n"
     "The level of one perspective of this division (-31 to +6 dB, default 0); -31\n"
@@ -3636,8 +3660,6 @@ static const char* const kManualText_part17 =
     "\n"
     "(The Divisions dialog names it *Allow Pipe Coupling*.)\n"
     "On: pipes of the same pitch sounding together pull each other into tune a\n"
-    ;
-static const char* const kManualText_part18 =
     "little, as neighbouring pipes on one chest do. Off: every pipe keeps its own\n"
     "detune.\n"
     "\n"

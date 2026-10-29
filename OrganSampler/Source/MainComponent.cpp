@@ -561,6 +561,8 @@ public:
         outputGain = gainEnd;
         const bool unity = gainStart >= 1.0f && gainEnd >= 1.0f;
         int jumps = 0;
+        const bool detect = owner.outputDiscontinuityDetector.load(std::memory_order_relaxed);   // 0.8.227: switchable
+        if (!detect) resetEdgeDetector();   // off: nothing stale when it is switched on again
         for (int channel = 0; channel < numOutputs; ++channel)
             if (outputs[channel] != nullptr)
             {
@@ -577,7 +579,7 @@ public:
                 peak = juce::jmax(peak, std::abs(range.getStart()), std::abs(range.getEnd()));
                 // The discontinuity detector on the driver's buffer (0.8.226): a click
                 // that reaches the card is counted here whatever made it.
-                if (channel < 64 && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
+                if (detect && channel < 64 && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
             }
         if (jumps > 0) edgeJumps.fetch_add(jumps, std::memory_order_relaxed);
         // Level evidence for the activity log: which device really carries audio.
@@ -3741,6 +3743,7 @@ void MainComponent::applyAdvancedAudioSettings()
     engine.setVelocityShelfMs(velocityShelfMs);
     engine.setWindShares(windOneStopShare, windOnePipeShare, windTwoPipesShare);
     engine.setReleaseCutPercent(releaseCutPercent);
+    engine.setReleasePlayedFromMs(releasePlayedFromMs);
     engine.setWindMaxEffect(windMaxEffect);
     engine.setToneStartHz(toneStartHz);
 }
@@ -11056,7 +11059,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -20605,6 +20608,8 @@ void MainComponent::loadSettings()
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
     consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
+    outputDiscontinuityDetector.store(parsed.getProperty("outputDiscontinuityDetector", true));   // 0.8.227: on by default while the crackle is hunted
+    engine.setOutputDiscontinuityDetector(outputDiscontinuityDetector.load());
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
     treeRelativePaths.clear();   // 0.8.216
     if (auto* relatives = parsed.getProperty("treeRelativePaths", juce::var()).getDynamicObject())
@@ -20668,6 +20673,7 @@ void MainComponent::loadSettings()
     releaseCutPercent = juce::jlimit(5.0f, 100.0f, (float)(double)parsed.getProperty("releaseCutPercent", 100.0));
     releaseCutSlider.setValue(releaseCutPercent, juce::dontSendNotification);
     releaseCutLabel.setText("Release cut: " + juce::String(releaseCutPercent, 0) + " %", juce::dontSendNotification);
+    releasePlayedFromMs = juce::jlimit(0.0f, 300.0f, (float)(double)parsed.getProperty("releasePlayedFromMs", 0.0));   // 0.8.227
     applyAdvancedAudioSettings();
     undulationBeatRatio = juce::jlimit(1.0f, 20.0f, (float)(double)parsed.getProperty("undulationBeatRatio", 12.0));
     engine.setUndulationBeatRatio(undulationBeatRatio);
@@ -21275,6 +21281,7 @@ void MainComponent::saveSettings()
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
+    obj->setProperty("outputDiscontinuityDetector", outputDiscontinuityDetector.load());
     obj->setProperty("manualFontScale", (double)manualFontScale);
     {
         juce::DynamicObject::Ptr relatives = new juce::DynamicObject();   // 0.8.216
@@ -21336,6 +21343,7 @@ void MainComponent::saveSettings()
     obj->setProperty("windOnePipeShare", windOnePipeShare);
     obj->setProperty("windTwoPipesShare", windTwoPipesShare);
     obj->setProperty("releaseCutPercent", releaseCutPercent);
+    obj->setProperty("releasePlayedFromMs", releasePlayedFromMs);
     obj->setProperty("undulationBeatRatio", undulationBeatRatio);
     obj->setProperty("equalAt440", equalAt440);
     obj->setProperty("sampleStorageFloat", sampleStorageFloat);
@@ -23448,6 +23456,8 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     releaseCutSlider.setValue(100.0, juce::dontSendNotification);
     releaseCutLabel.setText("Release cut: 100 %", juce::dontSendNotification);
     engine.setReleaseCutPercent(100.0f);
+    releasePlayedFromMs = 0.0f;
+    engine.setReleasePlayedFromMs(0.0f);
     engine.setGlobalPitchCents(0.0f);
     engine.setMaxPolyphony(30000);
     engine.setReleaseFadeOutMs(70.0f);
@@ -26541,6 +26551,17 @@ void MainComponent::showConfigurationEditor()
             bindSlider("Release sample fade-in", o.releaseFadeInSlider, " ms", 70.0, MainComponent::gsReleaseFadeIn);
             bindSlider("Release sample volume", o.releaseScalingSlider, " dB", 0.0, MainComponent::gsReleaseScaling);
             bindSlider("Release cutting", o.releaseCutSlider, " %", 100.0, MainComponent::gsReleaseCut);
+            addSlider("Release played from", 0.0, 300.0, 5.0, " ms", o.releasePlayedFromMs, 0.0,
+                [&o](double value)
+                {
+                    o.releasePlayedFromMs = (float)value;
+                    o.engine.setReleasePlayedFromMs(o.releasePlayedFromMs);
+                    o.saveSettings();
+                }, "Every release sample is played from this many milliseconds into its file, skipping its start (default 0: "
+                   "from the first sample). For sets whose releases begin too aggressively; the fade-in runs from there. "
+                   "No limit: a release shorter than the setting (a dry set's releases of 60 ms) is not played at all - "
+                   "the key then ends with the sustain fade alone. Applied when a key is released - nothing is rebuilt, "
+                   "the change is heard at once. Saved with the organ.");
             bindSlider("Attack minimum time", o.attackMinimumSlider, " ms", 80.0, MainComponent::gsAttackMin);
             bindSlider("Attack minimum delay", o.attackMinimumDelaySlider, " ms", 2.0, MainComponent::gsAttackDelay);
 
@@ -26925,6 +26946,12 @@ void MainComponent::showConfigurationEditor()
                 { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
                 "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
                 "and every stop being dragged glows for a moment. Off: the console as it was.");
+            addToggle("Output discontinuity detector: count the clicks in the program's own output", o.outputDiscontinuityDetector.load(), [&o](bool state)
+                { o.outputDiscontinuityDetector.store(state); o.engine.setOutputDiscontinuityDetector(state); o.saveSettings(); },
+                "On: every jump between two blocks of the program's own output (after the rendering, at the end of every route, "
+                "on the way to the driver) is counted, written to the activity log as \"Output discontinuities\" with the route "
+                "and the stage, and shown as \"!N\" in the DSP cell for ten seconds. Its cost is a few microseconds per period. "
+                "Off: nothing is counted. The setting belongs to this computer.");
             // Where the configurations and the samples live (0.8.190).
             addButton("Configurations folder: " + o.configurationsDirectory().getFullPathName(), "Choose...", [&o]
                 {

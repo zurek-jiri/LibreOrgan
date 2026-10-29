@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.227] - 2026-10-29
+
+### Added
+- Global sound: "Release played from" (0 to 300 ms, default 0) - every
+  release sample is played from that far into its file, for sets whose
+  releases begin too aggressively; a release shorter than the setting is not
+  played at all. Saved with the organ.
+- Configuration Editor: the output discontinuity detector can be switched
+  off ("Output discontinuity detector", this computer's setting, on by default).
+
+### Changed
+- The sustain fade-out and the release fade-in grow by 1.25 per octave below
+  the sounding c1 (was 1.5): with the 110 ms default the C of an 8' rank gets
+  172 ms, a 16' C 215 ms, a 32' C 269 ms (was 248 / 371 / 557).
+
 ## [0.8.226] - 2026-10-29
 
 ### Fixed

@@ -6248,14 +6248,16 @@ struct SamplerEngine::Impl
 
     // The release fade-out of an attack voice and the fade-in of a release sample
     // (the global sliders) are set for the sounding c1 (MIDI 60 of an 8' rank);
-    // lower pipes get 1.5 times as much per octave below it (a 32' C: 3.4 times),
-    // higher pipes the value as set. The sounding pitch is the pipe shifted by
-    // the rank's footage - a filled pipe counts as the pipe it stands for.
+    // lower pipes get 1.25 times as much per octave below it (0.8.227, the user's
+    // figure; 1.5 before: with the 110 ms default the 8' C got 248 ms and a 32' C
+    // 557 ms, now 172 and 269), higher pipes the value as set. The sounding pitch
+    // is the pipe shifted by the rank's footage - a filled pipe counts as the pipe
+    // it stands for.
     static float fadeScale(const Stop* rank, int pipe)
     {
         const int sounding = pipe + (rank != nullptr && rank->footageKnown ? rank->footageSemitones + rank->sampleOffset : 0);   // the pipe's real footage plus the transposition
         const double octavesBelow = juce::jmax(0.0, (60.0 - (double)sounding) / 12.0);
-        return (float)std::pow(1.5, octavesBelow);
+        return (float)std::pow(1.25, octavesBelow);
     }
 
     void finishNoteOff(int sourceKey, const std::array<float, maxManuals>& releaseGains,
@@ -6441,6 +6443,12 @@ struct SamplerEngine::Impl
             const int routeIndex = rank->routeByManual[(size_t)expressionManual];
             if (routeIndex < 0 || routeIndex >= routeCount.load(std::memory_order_acquire)) return;
             Route& route = *routes[(size_t)routeIndex];
+            // "Release played from" (0.8.227): every release starts this far into its file,
+            // with NO limit (the user's rule) - a release shorter than the setting is not
+            // played at all (a dry set's 60 ms releases with 150 ms set: the key ends with
+            // the sustain fade alone).
+            const double playedFromFrames = (double)owner.releasePlayedFromMs.load(std::memory_order_relaxed) * 0.001 * releaseSample->sampleRate;
+            if (playedFromFrames >= (double)releaseSample->numFrames) return;
             makeRoomForVoice();
             uint32_t idx = 0;
             Voice* voice = allocVoice(idx);
@@ -6454,16 +6462,18 @@ struct SamplerEngine::Impl
             v.rank = rank;
             v.routeIndex = routeIndex;
             v.bus = (uint8_t)bus;
-            if (releasePreShifted)
             {
-                // A filled pipe's release copy: it starts past the trimmed milliseconds (the
-                // setting, applied here, so changing it rebuilds nothing), and when chosen
-                // its level is matched to the source's step at the key release (the gain
-                // measured when the copy was built).
-                const double skip = juce::jlimit(0.0, (double)releaseSample->numFrames / 2.0,
-                    (double)owner.transposeReleaseTrimMs.load(std::memory_order_relaxed) * 0.001 * releaseSample->sampleRate);
-                v.pos = (uint64_t)skip << 32;
-                if (owner.transposeReleaseLevelMatch.load(std::memory_order_relaxed)) routeGain *= releaseSample->releaseLevelGain;
+                // The release starts at "Release played from" (above); a filled pipe's
+                // release copy at the trimmed milliseconds of its own setting at least (up
+                // to half of the copy, as it always did; applied here, so changing either
+                // rebuilds nothing), and when chosen its level is matched to the source's
+                // step at the key release (the gain measured when the copy was built).
+                double skip = playedFromFrames;
+                if (releasePreShifted)
+                    skip = juce::jmax(skip, juce::jlimit(0.0, (double)releaseSample->numFrames / 2.0,
+                        (double)owner.transposeReleaseTrimMs.load(std::memory_order_relaxed) * 0.001 * releaseSample->sampleRate));
+                if (skip > 0.0) v.pos = (uint64_t)skip << 32;
+                if (releasePreShifted && owner.transposeReleaseLevelMatch.load(std::memory_order_relaxed)) routeGain *= releaseSample->releaseLevelGain;
             }
             v.sourceKey = (int16_t)sourceKey;
             v.manual = (int8_t)expressionManual;
@@ -6859,6 +6869,7 @@ struct SamplerEngine::Impl
     void countEdgeJumps(Route& route, int stage, const juce::AudioBuffer<float>& buffer, const BlockContext& ctx, int usableOuts, int totalSamples, int added) noexcept
     {
         static const bool debug = std::getenv("ORGAN_EDGE_DEBUG") != nullptr;   // dev: one log line per jump (allocates - never in a release run)
+        if (!owner.outputDiscontinuityDetector.load(std::memory_order_relaxed)) return;   // switched off (0.8.227): the state goes stale, the gap rule restarts it
         int jumps = 0;
         for (int ci = 0; ci < ctx.outCount; ++ci)
         {

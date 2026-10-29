@@ -1255,7 +1255,8 @@ and adds "!N" when the program found N discontinuities in its own output over
 the last ten seconds (a jump between two blocks that the sound itself does
 not explain - a click you hear, whatever the load figure says; the activity
 log names the route and whether it came from the rendering or appeared only
-on the way to the driver) -, the memory the program
+on the way to the driver; the switch is *Output discontinuity detector* in
+the Configuration Editor) -, the memory the program
 holds (*RAM GB*, whole gigabytes rounded up; orange when less than a tenth
 of the installed memory is free: the system then pages samples out and a
 block stalls on reading them back), and the polyphony *LIMIT* (editable; the
@@ -2979,17 +2980,17 @@ How long the sounding pipe fades out when its key is released and the release
 sample takes over (default 110 ms). Too short and the join clicks or the pipe
 stops unnaturally; too long and the release sounds smeared. The value is for
 the sounding c1 (MIDI 60 of an 8' rank, the rank's footage counted in): pipes
-below it get 1.5 times as much per octave, because a big pipe's sound cannot
-stop as fast - with the default, 165 ms on the C of an 8' rank, 248 ms on a
-16' C, 371 ms on a 32' C (3.4 times); higher pipes the value as set. A filled
-pipe counts as the pipe it stands for.
+below it get 1.25 times as much per octave, because a big pipe's sound cannot
+stop as fast - with the default, 138 ms on the small c, 172 ms on the C of an
+8' rank, 215 ms on a 16' C, 269 ms on a 32' C; higher pipes the value as set.
+A filled pipe counts as the pipe it stands for.
 
 ### Release sample fade-in
 
 How long the release sample fades in when the key is released (default 110
-ms), scaled by pitch exactly like the sustain fade-out (165 / 248 / 371 ms on
-the C of an 8' / 16' / 32' rank). The two together shape the join between the
-held note and its release.
+ms), scaled by pitch exactly like the sustain fade-out (138 / 172 / 215 / 269
+ms on the small c and on the C of an 8' / 16' / 32' rank). The two together
+shape the join between the held note and its release.
 
 ### Release sample volume
 
@@ -3002,6 +3003,17 @@ losing the room entirely.
 Release samples are faded out over this share of their length and end there
 (5 to 100 %, default 100 = the full release). Shorter releases free polyphony
 sooner on a weak computer and dry a wet set.
+
+### Release played from
+
+Every release sample is played from this many milliseconds into its file (0
+to 300, default 0 = from its first sample), skipping its start; the fade-in
+runs from there. For sets whose releases begin too aggressively. No limit: a
+release shorter than the setting (a dry set with releases of 60 ms) is not
+played at all, and the key ends with the sustain fade alone. Applied when a
+key is released - nothing is rebuilt, the change is heard at once. Saved with
+the organ. (A filled pipe's release copy skips at least what *Filled pipes:
+release played from* says.)
 
 ### Attack minimum time
 
@@ -3419,6 +3431,16 @@ coupler, a piston, a tremulant, a button of the top bar - and every stop being
 dragged glows for a moment with the golden halo of the instruction video. Off:
 the console as it was, with no halo at all. The setting belongs to this
 computer, not to the organ.
+
+### Output discontinuity detector
+
+On by default. The program counts every jump between two blocks of its own
+output that the sound itself does not explain - after the rendering, at the
+end of every route and on the way to the driver -, writes "Output
+discontinuities" with the route and the stage into the activity log every
+second it happens and shows "!N" in orange in the DSP cell for ten seconds (N
+= the jumps of the last ten seconds). It costs a few microseconds per audio
+period. Off: nothing is counted. The setting belongs to this computer.
 
 ### Samples' base temperament
 

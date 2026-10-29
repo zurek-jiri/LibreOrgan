@@ -1709,15 +1709,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the tool's PowerShell printed nothing and changed nothing again; `Start-Process -FilePath ... -ArgumentList
   @("--resave", "`"<abs>`"") -Wait -NoNewWindow -RedirectStandardOutput` printed "Finished saving: Visual Studio 2026"
   and worked - use that form; copy the .ico AFTER it.
+  0.8.227 (29 Oct 2026 evening, "tak to všecko udělej"): (1) `fadeScale` 1.5 -> 1.25 per octave below the sounding c1
+  (the user's figure; 110 ms default: c 138, 8' C 172, 16' C 215, 32' C 269 ms - the manual had said 165/248/371 for
+  the 8'/16'/32' C, an octave off the code's 248/371/557; both manual bullets corrected). The self-test's lines move
+  with it ("Release overlap ... silence 139 ms after it" was 165; "stacked release tails peak polyphony 4" was 124 -
+  the long low-pipe fades end sooner; EngineSelfTest keeps its own 70 ms) - not a regression, compare against
+  %TEMP%\selftest_227.txt from now on. (2) "Release played from" (`releasePlayedFromMs`, configuration key, 0-300 ms,
+  default 0; engine atomic + `setReleasePlayedFromMs`; Editor addSlider in Global sound right after "Release
+  cutting"; GLOBAL RESET; applied at the release voice start in SamplerEngine.cpp: `playedFromFrames` BEFORE
+  makeRoomForVoice - a release shorter than the setting is NOT STARTED at all (the user's rule, "Ne, žádné limit!
+  Prostě v tom případě se release nepřehraje vůbec"; the first version clamped to numFrames / 3 - rejected); a
+  pre-shifted copy starts at max(that, its own trim clamped to half)). FIXED ms, not scaled by pitch (the open
+  question was not answered; say so if asked). Rural's releases are ~60 ms (11 KB files; the user: "suché sety nemají
+  dlouhé releasy") - an A/B of the offset needs a wet set: Bergen op Zoom Surround, division 1, prefix "" (all
+  stops), the tail of B correlates with A shifted by +139 ms for 150 ms set (the runs are not sample-identical: wind
+  and loop phases differ, so subtraction proves nothing - correlate the tail). Verified by %TEMP%\test_release227.ps1 (two ORGAN_TEST_RECORD
+  runs, 0 vs 150 ms in the configuration copy, notune; the WAVs equal while held, different from the release on;
+  release227_cmp.py). (3) `outputDiscontinuityDetector` (machine-specific key, default true; MainComponent
+  std::atomic<bool> read by the device callbacks + engine atomic read at the top of countEdgeJumps; Editor toggle
+  after "Glow"; manual section "Output discontinuity detector" + the 2.4 sentence). Verified by
+  %TEMP%\test_detector_off227.ps1 (ORGAN_TEST_GLITCH=200 with the key false: zero "Output discontinuities" lines).
+  The bindSlider double-click defaults of the two fade sliders still say 70.0 (the defaults are 110 since 0.8.215) -
+  seen, left alone (not asked); fix with the next fade change.
 ## Pending for the next session (delete when done)
-- TO-DO (the user, 29 Oct 2026 evening, after 0.8.226 was tagged): the output discontinuity detector must be
-  OPTIONAL - an Editor toggle (machine-specific key, e.g. "outputDiscontinuityDetector", default ON while the crackle
-  is hunted) that skips `countEdgeJumps` at both stages and the device-callback pass. Its cost measured by reasoning:
-  3 stages x 2 channels x 256 frames of abs/diff/max per route block = ~1 500 operations per route block, ~10 us per
-  5.3 ms period for 15 routes on one thread - the work of about ten voices out of forty thousand, nothing the
-  measurement can see (Rural measured 5 300-5 600 with it on, the stimulus cap, as before). The user doubts it
-  ("zdá se, že toto bere strašně moc polyfonie") - the switch lets him compare himself; he agreed it may wait for the
-  next version ("dej to-do do další verze").
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
   "prská i při měření polyfonie, DSP meter to nezaznamenal, error counter 0, je to náš program"): HIS RECORDING
