@@ -1806,7 +1806,19 @@ MainComponent::MainComponent()
         // No configuration is open (its file stays remembered for "load at
         // start-up"): the title shows none, and quitting offers a new file.
         setCurrentConfigurationName({});
-        CrashHandler::note("Started without a configuration: the sample library starts empty");
+        // The pistons and the crescendo of the last organ go with its stops (0.8.242, the
+        // user: they looked filled over an empty instrument); both come back with the
+        // configuration that holds them.
+        combinations.clear();
+        activePiston = -1;
+        updateCombinationControls();
+        {
+            juce::DynamicObject::Ptr empty = new juce::DynamicObject();
+            empty->setProperty("stepCount", crescendoStepCount);
+            empty->setProperty("cancelsHandStops", crescendoCancelsHandStops);
+            crescendoFromVar(juce::var(empty.get()));
+        }
+        CrashHandler::note("Started without a configuration: the sample library starts empty, the pistons and the crescendo too");
     }
     if (willLoadLastConfiguration)
     {

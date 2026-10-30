@@ -31,6 +31,10 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   only and keep 16-128 as they are. Linux (menu entry, window icon) uses the same files.
 
 ## Versions and releases
+- THE USER'S RULE (30 Oct 2026, "musíš všecko pushovat na debilní gitHub? Tak tam dej jenom finální verzi. Nepal
+  mi tokeny zbytečně."): commit every version LOCALLY (the Linux clone / the Windows checkout), but push main and
+  the tag only for the FINAL version of a session, or when he says so - not a release per fix, no CI watch per
+  version. Each pushed version still gets its own tag and release as before.
 - Every delivered build is a new version. Bump it in ALL of: `OrganSampler/OrganSampler.jucer` (`version=`),
   `CMakeLists.txt` (`project(... VERSION ...)`), `site/config.js` (`version:` - app.js writes it into the page),
   `site/index.html` (`data-version` spans), `configurations/rural-organ/README.md` ("Saved with OrganSampler ..."),
@@ -1937,6 +1941,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (stepCount 40, cancelsHandStops true, no steps) when the file has no "crescendo". RULE for every per-organ
   state read in loadSettings: a missing key must RESET, not keep (combinations? `combinationsFromVar` - check the
   same when a report comes).
+  0.8.242 (the user, after seeing filled pistons at a start without a configuration; "udělej"): the start-clean
+  branch of the constructor (`!willLoadLastConfiguration`) now also clears `combinations` and the crescendo
+  (crescendoFromVar with an empty object, the step count kept) - they came from settings.json / the memories file
+  of the LAST organ. Both live in the configuration file and return with its load. LOCAL LINUX BUILD (30 Oct 2026,
+  GitHub's runners queued for hours): cmake + the CI's apt list installed by the user, submodules libarchive/unarr
+  fetched (`git submodule update --init --depth 1`), `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release` +
+  `cmake --build build --parallel 24` in ~/OrganSamplerC-linux (configure 59 s, build a few minutes on 32 threads),
+  the binary build/OrganSampler_artefacts/Release/OrganSampler -> ~/Downloads/OrganSampler. Its `--kerneltest` says
+  "2 MISMATCH" on "Réc. hautbois" here (the shell's locale is not UTF-8: JUCE's isLetter on é) while CI passes -
+  check with LANG=C.UTF-8 before believing it.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
