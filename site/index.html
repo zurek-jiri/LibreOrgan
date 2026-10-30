@@ -44,7 +44,7 @@
     </section>
     <div class="facts"><div class="wrap fact-grid">
       <p><strong>Your own organ, from any sources</strong><span>stops of different producers in one console, duplicated as transmissions and extensions, two configurations merged into one</span></p>
-      <p><strong>Light on RAM, CPU and disk</strong><span>16-bit storage, 32 kHz, FLAC-like packing in RAM, releases at half the rate - all together one tenth of the RAM, measured (83 GB &rarr; 8 GB); samples read straight from RAR archives; everything anti-aliased</span></p>
+      <p><strong>Light on RAM, CPU and disk</strong><span>an 80 GB sample set squeezed into 8 GB of RAM with the saving options on a modest computer; samples read from the packed archives, nothing unpacked on the disk; on a strong computer up to 500 000 pipes of polyphony</span></p>
       <p><strong>Any number of sound cards</strong><span>every perspective and division on its own device and channels</span></p>
       <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too; a Hauptwerk definition opens as well</span></p>
     </div></div>
@@ -75,26 +75,9 @@
         <article><span class="feature-number">04</span><h3>Missing pipes, filled</h3><p>A rank with gaps, or a stop that exists only as an 8', is completed by pitch-shifted copies of the neighbouring pipes - several transposition methods, rebuilt offline into a cache, so that nothing is interpolated on the fly and nothing is altered silently.</p></article>
         <article><span class="feature-number">05</span><h3>Fast, measured, honest</h3><p>The sound engine renders on all cores with a lock-free control thread; the polyphony display shows the real peak, the DSP field the busiest audio callback. Every start, device, load and crash is written to an activity log, and "Report a problem" in the Configuration Editor turns it into a bug report with one click.</p></article>
         <article><span class="feature-number">06</span><h3>The manual lives inside</h3><p>The complete user manual is embedded: the question mark beside every option of the Configuration Editor opens the chapter that explains it, chapter names in the text are links, and a Find box searches it. Nothing is read from beside the executable; one file is the whole program.</p></article>
-        <article><span class="feature-number">07</span><h3>Light on RAM, CPU and disk</h3><p>Every load offers its savings, and the choice travels with the organ: the samples kept as 16-bit integers instead of 32-bit floats (half the RAM), resampled to 32 kHz on loading (a third less again), packed losslessly in RAM like FLAC and unpacked on the fly (a further third to two thirds, for a little CPU), the releases stored at half the rate where their spectrum allows it. All of them together bring the organ down to one tenth of its RAM - measured, see the table below - and the sound stays acceptable; the figure is measured per organ and written into every published configuration. Sample folders are read straight from their RAR archives: nothing to unpack, nothing twice on the disk. And everything is anti-aliased - pitch-shifted copies through a long windowed-sinc filter, a retune through a resampling bus per route, the high pipes through a sinc playback kernel - so no foreign tone appears under a retuned pipe. With a strong computer the same choices go the other way, for the finest listening: 32-bit float storage, every set kept at its own rate (96 kHz stays 96 kHz), the releases at the full rate, no packing, the sinc kernel for every pipe (<em>Full kernel from</em> 0 Hz), a true-stereo four-channel impulse response on every route.</p></article>
+        <article><span class="feature-number">07</span><h3>Light on RAM, CPU and disk</h3><p>On a modest computer the saving options of the load box squeeze an 80 GB sample set into 8 GB of RAM, and the samples are read straight from their packed archives - nothing to unpack, no second copy on the disk. On a strong computer the same program reaches up to 500 000 pipes of polyphony; it measures what your machine can do and sets its limit itself.</p></article>
       </div>
-      <div class="ram-measured">
-        <h3>One organ, eight ways to load it: from 83 GB down to 8 GB</h3>
-        <p>How far the savings go, measured on one organ: Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), three perspectives, 53.9 GB of 32-bit float WAV files at 48 kHz. The figure is the whole program as loaded, the filled pipes' copies included, on a 16-core computer with 128 GB. The same organ, the same sound to any normal ear - and one tenth of the memory with every saving in force. That is the difference between an organ that needs a workstation and one that runs on a laptop.</p>
-        <table>
-          <thead><tr><th>Storage</th><th>Rate on loading</th><th>Releases</th><th>Packing in RAM</th><th>RAM</th></tr></thead>
-          <tbody>
-            <tr><td>32-bit float</td><td>48 kHz (as the files)</td><td>full rate</td><td>off</td><td><strong>83 GB</strong></td></tr>
-            <tr><td>32-bit float</td><td>48 kHz</td><td>full rate</td><td>on</td><td>29 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>full rate</td><td>off</td><td>49 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>full rate</td><td>on</td><td>15 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>off</td><td>32 GB</td></tr>
-            <tr><td>16-bit</td><td>48 kHz</td><td>half the rate</td><td>on</td><td>12 GB</td></tr>
-            <tr><td>16-bit</td><td>32 kHz</td><td>half the rate</td><td>on</td><td><strong>8 GB</strong></td></tr>
-          </tbody>
-        </table>
-        <p class="small">Measured with OrganSampler 0.8.206 on 24 October 2026. The packing is lossless for 16-bit samples and for 24-bit files; a 32-bit float file (as this organ's) is rounded to 24 bits first, half a converter step. Every load box offers these choices; the choice travels with the organ.</p>
-      </div>
-      <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. Every load offers the savings - 16-bit storage, 32 kHz, lossless packing, releases at half the rate - and with all of them the organ takes one tenth of its RAM (the table above).</p>
+      <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. The saving options of the load box bring a large organ down to a tenth of its RAM.</p>
     </section>
 
     <section id="download" class="band">

@@ -9,10 +9,6 @@ list, perform.
 
 [![The console with the Stralsund, St. Jakobi organ: four divisions with their stop buttons, stop folders, extensions and transmissions, the voicing bars under the stops, couplers and tremulants in the headers, the swell shutters at different positions, a combination engaged, the crescendo and the polyphony display above](site/assets/main.jpg)](site/assets/main.jpg)
 
-The program at work on the Stralsund organ, with sound - the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with the per-pipe sliders, arrange mode by a two-second press, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift) and transposed, couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List. Every frame and every note come from the program itself ([full size on the website](https://zurek-jiri.github.io/OrganSampler/)):
-
-https://github.com/user-attachments/assets/24b5890e-af7d-4d8e-b8a5-da2631e3529b
-
 OrganSampler plays sampled pipe organs from plain folders of WAV files - one
 folder per stop, its pipes as WAV files - and turns any number of such folders into
 an organ with up to seven manuals and a pedal: massive polyphony, per-key
@@ -30,24 +26,12 @@ console, duplicate a stop as a transmission or an extension (a 16' from an
 move stops between divisions, and a Hauptwerk organ definition opens as a
 configuration too.
 
-**Light on RAM, CPU and disk.** Every load offers its savings, and the choice
-travels with the organ: samples kept as 16-bit integers instead of floats
-(half the RAM), resampled to 32 kHz on loading (a third less again), packed
-losslessly in RAM like FLAC and unpacked on the fly (a further third to two
-thirds, for a little CPU), releases stored at half the rate where their
-spectrum allows it - together the organ takes one tenth of its RAM (the
-table below), measured per organ and written into every published
-configuration. Sample
-folders are read straight from their RAR archives: nothing to unpack, nothing
-twice on the disk. And everything is anti-aliased: pitch-shifted copies
-through a long windowed-sinc filter, a retune through a resampling bus per
-route, the high pipes through a sinc playback kernel - no foreign tone under
-a retuned pipe. And with a strong computer the same choices go the other
-way, for the finest listening: 32-bit float storage, every set kept at its
-own rate (96 kHz stays 96 kHz), the releases at the full rate, no packing,
-the sinc kernel for every pipe (*Full kernel from* 0 Hz), a true-stereo
-four-channel impulse response on every route. The program measures the
-polyphony your machine reaches and sets its limit itself.
+**Light on RAM, CPU and disk.** On a modest computer the saving options of
+the load box squeeze an 80 GB sample set into 8 GB of RAM (the table below),
+and the samples are read straight from their packed RAR archives - nothing to
+unpack, no second copy on the disk. On a strong computer the same program
+reaches up to 500 000 pipes of polyphony; it measures what your machine can do
+and sets its limit itself.
 
 **One organ, eight ways to load it: from 83 GB down to 8 GB.** Measured on
 Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), three
@@ -96,6 +80,12 @@ step. Every load box offers these choices; the choice travels with the organ.
    free instruments and impulse responses. Ready-made configurations for
    them: [`configurations/INDEX.md`](configurations/INDEX.md) (how to use and
    publish one: [`configurations/`](configurations/README.md)).
+
+## The program at work
+
+The program at work on the Stralsund organ, with sound - the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with the per-pipe sliders, arrange mode by a two-second press, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift) and transposed, couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List. Every frame and every note come from the program itself ([full size on the website](https://zurek-jiri.github.io/OrganSampler/)):
+
+https://github.com/user-attachments/assets/24b5890e-af7d-4d8e-b8a5-da2631e3529b
 
 ## Links
 
