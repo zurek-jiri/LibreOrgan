@@ -1833,7 +1833,10 @@ Names: a row is named after its stop folder as it stands on disk, with the
 definition's perspective prefix cut off ("Re_Principal32" becomes
 "Principal32" when "Re_" is the Rear prefix; a division mark like "Ped_"
 stays); the Hauptwerk stop name becomes the alias, without its footage (the
-caption's footage is the sounding one). A capital follows a division mark
+caption's footage is the sounding one). A configuration whose rows an older
+import named with the prefix is renamed the same way when it loads, every
+reference along (voicing, grid, combinations, crescendo, MIDI); a note in
+Messages says so, and Save Configuration keeps the new names. A capital follows a division mark
 ("P. Trombone 16", "G.O. Trompette 8", "ped subbass" -> "Ped Subbass").
 Transpositions come from the definition's pipe notes against the file names
 ("024" on key 36 gives -12). The configuration goes into the configurations

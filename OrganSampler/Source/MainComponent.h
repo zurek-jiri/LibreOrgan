@@ -581,6 +581,14 @@ private:
     static juce::var stopBuildToVar(const ManualConfig::StopBuild& build);
     static ManualConfig::StopBuild stopBuildFromVar(const juce::var& value);
     static juce::String stopBuildKey(const juce::String& name);   // comparable form of a stop name
+    // 0.8.229: a row's name without a perspective prefix (the patterns' prefixes, or a short head that begins one of the
+    // row's perspective words: "Re_" for Rear); the division's mark ("Ped_") stays. The Hauptwerk import and the
+    // migration of older configurations at load share the rule.
+    static juce::String rowNameWithoutPerspectivePrefix(const juce::String& name, const std::vector<juce::String>& prefixes, const juce::StringArray& perspectiveWords);
+    // 0.8.229: the rows an older import named with the perspective prefix are renamed without it in the configuration
+    // var, every reference along (voicing, grid cells, pool, combinations, registration, crescendo, MIDI bindings).
+    // Returns "old -> new" per row renamed; the names are saved with the next Save.
+    static juce::StringArray renameRowsWithoutPerspectivePrefixes(juce::var configuration);
     static juce::String uniqueStopBuildName(const std::vector<ManualConfig::StopBuild::Entry>& entries,
         const juce::String& wanted, const ManualConfig::StopBuild::Entry* except);
     std::unique_ptr<juce::DialogWindow> stopBuildWindow;

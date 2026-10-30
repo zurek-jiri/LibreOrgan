@@ -1855,7 +1855,10 @@ static const char* const kManualText_part9 =
     "definition's perspective prefix cut off (\"Re_Principal32\" becomes\n"
     "\"Principal32\" when \"Re_\" is the Rear prefix; a division mark like \"Ped_\"\n"
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
-    "caption's footage is the sounding one). A capital follows a division mark\n"
+    "caption's footage is the sounding one). A configuration whose rows an older\n"
+    "import named with the prefix is renamed the same way when it loads, every\n"
+    "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
+    "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
     "Transpositions come from the definition's pipe notes against the file names\n"
     "(\"024\" on key 36 gives -12). The configuration goes into the configurations\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
     "route of the next block, so it takes render time but never piles up on the\n"
+    ;
+static const char* const kManualText_part10 =
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
     "lanes still at work would finish them sooner. The workers and the control\n"
-    ;
-static const char* const kManualText_part10 =
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
     "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"

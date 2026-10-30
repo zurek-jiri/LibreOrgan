@@ -1759,6 +1759,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   showManualSection. MIDI velocity: `disableVelocity` is TRUE by default already ("Ignore MIDI velocity" ticked) -
   nothing changed. Both pattern dialog classes (PatternsDialog = one-shot, IgnoredPatternsDialog = ignored +
   perspectives) have the helpButton. NO Projucer resave (Linux) - Windows next.
+  0.8.229 (30 Oct 2026, Linux, the user: "Udělej pouze 4" + the Carillon "(apply first)"): (1) ROW NAMES MIGRATED AT
+  LOAD: `MainComponent::renameRowsWithoutPerspectivePrefixes(var)` (static, before applyPortableConfiguration; called
+  right after `root` is taken, so every later reader of the var sees the new names): prefixes = the file's
+  perspectivePatterns lines after the label; per division every non-custom row WITH folders gets
+  `rowNameWithoutPerspectivePrefix(name, prefixes, the row's perspective labels)` (the import's withoutPrefix lambda
+  now calls the same static); a collision with another row's key keeps the old name (logged); then the references:
+  voicingSettings.stops[] (name + primaryManual, transmissions[].groupMaster by t.manual), stopGrid keys and stopPool
+  names per division (plain name or "tr:<home>:<name>[#ordinal]"), combinationMemory.combinations[].stops,
+  registrationStops, crescendo.steps[].stops (name + primaryManual), midiButtonBindings "stop:<name>" (no division:
+  the first division renaming it). Log "Row names without the perspective prefix: N row(s) renamed - ..." + a
+  Messages note; nothing marks the configuration dirty - the migration repeats at every load until the user saves.
+  Dry run (python on his files): Bergen 42 rows "05-rea_Pos_Mixtur3" -> "Pos_Mixtur3", Brasov 35 "Re_Principal32"
+  -> "Principal32", no collision. Names stay as the folders spell them (no capitalisation). (2) STOP LIST "(apply
+  first)" ON A STOP FOLDER MADE ON THE GRID: `createStopFolderOnGrid` names the row "Stop folder" and
+  `engine.addContainerStop` the same; the dialog's `refreshContainerNames()` (rebuildGrid) renamed the DRAFT after its
+  children ("Pos_Flautino2 [II]") while the engine kept "Stop folder" -> liveStop nullptr -> "(apply first)", Apply
+  orange, and an Apply reloaded the division under the new name and LOST the folder's alias/grid cell (no
+  rename-with-references exists). Now a container row whose name the engine holds (`liveStop != nullptr`) keeps
+  its name. The Bergen file on this box: manualKeyboards[2].stopBuild.entries[9] = {"name": "Stop folder", "alias":
+  "Carillon", "folders": []} - the children were indented on the grid in the session he did not save.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

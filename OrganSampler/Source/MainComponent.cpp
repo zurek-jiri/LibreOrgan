@@ -11863,18 +11863,9 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 parts.addTokens(line, ";", "");
                 for (int i = 1; i < parts.size(); ++i) if (parts[i].trim().isNotEmpty()) prefixes.push_back(parts[i].trim());
             }
-            auto withoutPrefix = [&prefixes](juce::String name, const juce::String& perspectiveWord)
+            auto withoutPrefix = [&prefixes](const juce::String& name, const juce::String& perspectiveWord)
             {
-                for (const auto& prefix : prefixes)
-                    if (name.length() > prefix.length() && name.startsWithIgnoreCase(prefix)) { name = name.substring(prefix.length()); break; }
-                if (perspectiveWord.isNotEmpty())
-                    for (const auto separator : { '_', '-' })
-                    {
-                        const int at = name.indexOfChar(separator);
-                        if (at >= 1 && at <= 5 && perspectiveWord.startsWithIgnoreCase(name.substring(0, at))) { name = name.substring(at + 1); break; }
-                    }
-                const auto trimmed = name.trimCharactersAtStart("_- .");
-                return trimmed.isEmpty() ? name : trimmed;
+                return rowNameWithoutPerspectivePrefix(name, prefixes, juce::StringArray(perspectiveWord));   // 0.8.229: one rule, shared with the load
             };
             auto perspectiveWordOf = [&](const HauptwerkOdf::PlanStop& stop)
             {
@@ -13115,6 +13106,167 @@ void MainComponent::thawGrid()
     CrashHandler::note("Grid picture removed: the new grid stands");
 }
 
+juce::String MainComponent::rowNameWithoutPerspectivePrefix(const juce::String& original, const std::vector<juce::String>& prefixes, const juce::StringArray& perspectiveWords)
+{
+    juce::String name = original;
+    for (const auto& prefix : prefixes)
+        if (name.length() > prefix.length() && name.startsWithIgnoreCase(prefix)) { name = name.substring(prefix.length()); break; }
+    bool cut = false;
+    for (const auto& word : perspectiveWords)
+    {
+        if (word.isEmpty() || cut) continue;
+        for (const auto separator : { '_', '-' })
+        {
+            const int at = name.indexOfChar(separator);
+            if (at >= 1 && at <= 5 && word.startsWithIgnoreCase(name.substring(0, at))) { name = name.substring(at + 1); cut = true; break; }
+        }
+    }
+    const auto trimmed = name.trimCharactersAtStart("_- .");
+    return trimmed.isEmpty() ? original : trimmed;
+}
+
+juce::StringArray MainComponent::renameRowsWithoutPerspectivePrefixes(juce::var configuration)
+{
+    juce::StringArray log;
+    auto* root = configuration.getDynamicObject();
+    if (root == nullptr) return log;
+    std::vector<juce::String> prefixes;
+    if (auto* lines = root->getProperty("perspectivePatterns").getArray())
+        for (const auto& line : *lines)
+        {
+            juce::StringArray parts;
+            parts.addTokens(line.toString(), ";", "");
+            for (int i = 1; i < parts.size(); ++i) if (parts[i].trim().isNotEmpty()) prefixes.push_back(parts[i].trim());
+        }
+    // Per division: the comparable old name -> the new name. The table rows first.
+    std::map<int, std::map<juce::String, juce::String>> renames;
+    auto* manualsArray = root->getProperty("manualKeyboards").getArray();
+    if (manualsArray == nullptr) return log;
+    for (int manual = 0; manual < manualsArray->size(); ++manual)
+    {
+        auto* entries = manualsArray->getReference(manual).getProperty("stopBuild", juce::var()).getProperty("entries", juce::var()).getArray();
+        if (entries == nullptr) continue;
+        std::set<juce::String> taken;
+        for (const auto& item : *entries) taken.insert(stopBuildKey(item.getProperty("name", "").toString()));
+        std::map<juce::String, juce::String> map;
+        for (auto& item : *entries)
+        {
+            auto* obj = item.getDynamicObject();
+            if (obj == nullptr || (bool)obj->getProperty("customName")) continue;   // a typed name is the user's
+            auto* folders = obj->getProperty("folders").getArray();
+            if (folders == nullptr || folders->isEmpty()) continue;   // a stop folder's own row: named by the user or after its children
+            const auto name = obj->getProperty("name").toString();
+            juce::StringArray words;
+            for (const auto& folder : *folders)
+            {
+                const auto perspective = folder.getProperty("perspective", "").toString();
+                if (perspective.isNotEmpty() && !perspective.equalsIgnoreCase("default")) words.addIfNotAlreadyThere(perspective);
+            }
+            const auto renamed = rowNameWithoutPerspectivePrefix(name, prefixes, words);
+            if (renamed == name) continue;
+            const auto key = stopBuildKey(renamed);
+            if (taken.count(key) != 0) { CrashHandler::note("Row name \"" + name + "\" kept: another row of division " + juce::String(manual) + " is named \"" + renamed + "\""); continue; }
+            taken.insert(key);
+            map[stopBuildKey(name)] = renamed;
+            obj->setProperty("name", renamed);
+            log.add(name + " -> " + renamed);
+        }
+        if (!map.empty()) renames[manual] = map;
+    }
+    if (renames.empty()) return log;
+    auto renamedOf = [&renames](int manual, const juce::String& name) -> juce::String
+    {
+        const auto division = renames.find(manual);
+        if (division == renames.end()) return {};
+        const auto found = division->second.find(stopBuildKey(name));
+        return found == division->second.end() ? juce::String() : found->second;
+    };
+    // Items with "name" + "primaryManual" (the voicing state, combinations, the registration, crescendo steps) and the
+    // stop folder a stored transmission was indented under.
+    auto renameStopItems = [&renamedOf](juce::var list)
+    {
+        auto* array = list.getArray();
+        if (array == nullptr) return;
+        for (auto& item : *array)
+        {
+            auto* obj = item.getDynamicObject();
+            if (obj == nullptr) continue;
+            const auto renamed = renamedOf((int)obj->getProperty("primaryManual"), obj->getProperty("name").toString());
+            if (renamed.isNotEmpty()) obj->setProperty("name", renamed);
+            if (auto* transmissions = obj->getProperty("transmissions").getArray())
+                for (auto& t : *transmissions)
+                    if (auto* tObj = t.getDynamicObject())
+                    {
+                        const auto master = renamedOf((int)tObj->getProperty("manual"), tObj->getProperty("groupMaster").toString());
+                        if (master.isNotEmpty()) tObj->setProperty("groupMaster", master);
+                    }
+        }
+    };
+    // A grid or pool key: the stop's name, or "tr:<home division>:<name>[#ordinal]".
+    auto renamedKey = [&renamedOf](int manual, const juce::String& key) -> juce::String
+    {
+        if (!key.startsWith("tr:")) return renamedOf(manual, key);
+        const auto rest = key.fromFirstOccurrenceOf("tr:", false, false);
+        const int home = rest.upToFirstOccurrenceOf(":", false, false).getIntValue();
+        const auto nameAndOrdinal = rest.fromFirstOccurrenceOf(":", false, false);
+        const auto name = nameAndOrdinal.contains("#") ? nameAndOrdinal.upToLastOccurrenceOf("#", false, false) : nameAndOrdinal;
+        const auto ordinal = nameAndOrdinal.contains("#") ? "#" + nameAndOrdinal.fromLastOccurrenceOf("#", false, false) : juce::String();
+        const auto renamed = renamedOf(home, name);
+        return renamed.isEmpty() ? juce::String() : "tr:" + juce::String(home) + ":" + renamed + ordinal;
+    };
+    if (auto* voicing = root->getProperty("voicingSettings").getDynamicObject())
+    {
+        renameStopItems(voicing->getProperty("stops"));
+        if (auto* grid = voicing->getProperty("stopGrid").getDynamicObject())
+            for (const auto& division : grid->getProperties())
+                if (auto* cells = division.value.getDynamicObject())
+                {
+                    const int manual = division.name.toString().getIntValue();
+                    std::vector<std::pair<juce::String, juce::var>> moved;
+                    for (const auto& cell : cells->getProperties())
+                    {
+                        const auto key = renamedKey(manual, cell.name.toString());
+                        if (key.isNotEmpty()) moved.push_back({ cell.name.toString(), cell.value });
+                    }
+                    for (const auto& [oldKey, value] : moved)
+                    {
+                        cells->removeProperty(juce::Identifier(oldKey));
+                        cells->setProperty(juce::Identifier(renamedKey(manual, oldKey)), value);
+                    }
+                }
+        if (auto* pool = voicing->getProperty("stopPool").getDynamicObject())
+            for (const auto& division : pool->getProperties())
+                if (auto* names = division.value.getArray())
+                {
+                    const int manual = division.name.toString().getIntValue();
+                    for (auto& name : *names)
+                    {
+                        const auto key = renamedKey(manual, name.toString());
+                        if (key.isNotEmpty()) name = key;
+                    }
+                }
+    }
+    if (auto* scenes = root->getProperty("combinationMemory").getProperty("combinations", juce::var()).getArray())
+        for (const auto& scene : *scenes) renameStopItems(scene.getProperty("stops", juce::var()));
+    renameStopItems(root->getProperty("registrationStops"));
+    if (auto* steps = root->getProperty("crescendo").getProperty("steps", juce::var()).getArray())
+        for (const auto& step : *steps) renameStopItems(step.getProperty("stops", juce::var()));
+    if (auto* bindings = root->getProperty("midiButtonBindings").getArray())
+        for (auto& binding : *bindings)
+            if (auto* obj = binding.getDynamicObject())
+            {
+                const auto target = obj->getProperty("target").toString();
+                if (!target.startsWith("stop:")) continue;   // a binding names the stop alone: the first division renaming it decides
+                const auto name = target.fromFirstOccurrenceOf(":", false, false);
+                for (const auto& [manual, map] : renames)
+                {
+                    const auto renamed = renamedOf(manual, name);
+                    if (renamed.isNotEmpty()) { obj->setProperty("target", "stop:" + renamed); break; }
+                }
+            }
+    return log;
+}
+
 void MainComponent::applyPortableConfiguration(juce::var configuration,
     const juce::File& configurationFile, const juce::File& libraryRoot)
 {
@@ -13125,6 +13277,20 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     const auto localConfiguration = juce::JSON::parse(settingsFile.loadFileAsString());
     auto* root = configuration.getDynamicObject();
     if (root == nullptr) return;
+    {
+        // 0.8.229: rows an older Hauptwerk import named with the perspective prefix ("Re_Principal32") are
+        // renamed without it, every reference along; the file keeps them with the next Save.
+        const auto renamed = renameRowsWithoutPerspectivePrefixes(configuration);
+        if (!renamed.isEmpty())
+        {
+            CrashHandler::note("Row names without the perspective prefix: " + juce::String(renamed.size()) + " row(s) renamed - " + renamed.joinIntoString(", "));
+            juce::StringArray shown;
+            for (int i = 0; i < juce::jmin(6, renamed.size()); ++i) shown.add(renamed[i]);
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Stop names", juce::String(renamed.size()) + " row(s) of the Stop List were named with a "
+                "perspective prefix by an older import and are renamed without it: " + shown.joinIntoString(", ") + (renamed.size() > shown.size() ? ", ..." : "")
+                + ". Save Configuration keeps the new names.");
+        }
+    }
     // A portable configuration (from another computer) carries the organ only:
     // this computer keeps its own interface size, threads, windows, cache and
     // polyphony limit, and a message says what to set up once the organ is loaded.
@@ -19276,9 +19442,14 @@ void MainComponent::showStopBuildingDialog(int)
         // Empty stop folders follow their children's names.
         void refreshContainerNames()
         {
+            // A stop folder the engine holds keeps its name (0.8.229): the name is the
+            // stop's identity (its voicing, alias, grid cell, combinations), and the
+            // children-derived name given to a folder made on the grid ("Stop folder")
+            // made the table differ from the loaded organ - "(apply first)" on a row
+            // nobody had touched, an Apply that reloaded and lost the alias.
             for (int manual = 0; manual < kDivisions; ++manual)
                 for (auto& entry : drafts[(size_t)manual].entries)
-                    if (entry.folders.empty() && !entry.child) refreshName(manual, entry);
+                    if (entry.folders.empty() && !entry.child && liveStop(manual, entry.name) == nullptr) refreshName(manual, entry);
         }
         void commitName(size_t row, const juce::String& text)
         {

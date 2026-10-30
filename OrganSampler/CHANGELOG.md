@@ -12,6 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.229] - 2026-10-30
+
+### Changed
+- A configuration whose Stop List rows an older Hauptwerk import named with
+  the perspective prefix ("Re_Principal32", "05-rea_Pos_Mixtur3") is renamed
+  without it when it loads ("Principal32", "Pos_Mixtur3"; a division mark
+  such as "Ped_" stays), every reference along: the voicing, the grid cells,
+  the pool, combinations, the registration, the crescendo steps and the MIDI
+  bindings. A note in Messages lists the rows; Save Configuration keeps the
+  new names. A name typed by hand, and a row that would collide with another,
+  are left as they are.
+
+### Fixed
+- Stop List: a stop folder made on the grid ("Stop folder") with stops
+  indented under it showed "(apply first)" in its Transmissions cell and an
+  orange Apply right after a load, although nothing had been changed - the
+  dialog renamed the row after its children while the loaded organ kept the
+  name, and an Apply reloaded the division and lost the folder's alias. A
+  stop folder the engine holds keeps its name now.
+
 ## [0.8.228] - 2026-10-30
 
 ### Added
