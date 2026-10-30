@@ -1926,6 +1926,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   did it at the modal close). Still modal by design: the load box, Save Configuration, GLOBAL RESET, Set for
   all..., Report a problem, the measurement windows, MIDI Learn, long messages, questions. A DialogWindow built
   this way is VISIBLE at birth (0.8.213 lesson) - placeDialog after it.
+  0.8.240 (the user: "regres: kombinace naplněné nemají barvu jako crescendo steps"): the 0.8.228 colours were
+  MINE, not his: he asked for "filled darker, same content a shade or two darker, not black" and I took
+  off.darker(0.3) / .darker(0.22) - a grey and a near-black; the crescendo dialog paints a stored step
+  0xff7a5a1e (CrescendoContent) and that is the colour the pistons must share. Now filled = 0xff7a5a1e, same
+  registration (toggled, not selected) = brighter(0.45), selected = onColour. Before 0.8.228 a filled piston had
+  no colour of its own and the same-registration ones were off.darker(0.14).
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

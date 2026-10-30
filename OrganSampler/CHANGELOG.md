@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.240] - 2026-10-30
+
+### Fixed
+- Combination pistons: a filled piston wears the colour of a stored crescendo
+  step (0.8.228 made it a darker grey), the pistons holding the same
+  registration as the selected one are a lighter shade of it (they were
+  nearly black), the selected one is orange.
+
 ## [0.8.239] - 2026-10-30
 
 ### Changed

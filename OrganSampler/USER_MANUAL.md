@@ -405,9 +405,9 @@ combination files, and the crescendo.
 - Click a piston to recall its registration (stops, transmissions, couplers,
   tremulants, Unison Off). With *Set* on, a click stores the current
   registration in the piston.
-- A piston that holds a registration is a shade darker than an empty one.
-  The piston in use is orange; other pistons holding the same registration
-  are darker still.
+- A piston that holds a registration has the colour of a stored crescendo
+  step. The piston in use is orange; other pistons holding the same
+  registration are a lighter shade.
 - *<<*, *>>*, the bank buttons and every piston are MIDI-learnable
   (right-click). Combinations are part of the configuration.
 

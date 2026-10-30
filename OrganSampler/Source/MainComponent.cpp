@@ -23047,15 +23047,17 @@ void MainComponent::updateCombinationLights()
             const bool filled = combinations.find(combinationKey(currentBank, piston)) != combinations.end();
             const auto ordinaryOffColour = getLookAndFeel().findColour(
                 juce::TextButton::buttonColourId);
-            // A filled piston is a shade darker than an empty one (0.8.228, like a filled
-            // crescendo step); the pistons holding the same registration as the selected
-            // one are a shade or two darker still - never black.
-            const auto filledColour = ordinaryOffColour.darker(0.3f);
+            // A filled piston wears the colour of a stored crescendo step (0.8.240: 0.8.228 took a
+            // darker grey instead, and made the pistons holding the same registration as the
+            // selected one nearly black); those same-registration pistons are a lighter shade
+            // of it, the selected one is orange.
+            juce::ignoreUnused(ordinaryOffColour);
+            const juce::Colour filledColour(0xff7a5a1e);   // as CrescendoContent paints a stored step
             button->removeColour(juce::TextButton::buttonColourId);
             if (filled && !selectedMatch) button->setColour(juce::TextButton::buttonColourId, filledColour);
             button->setColour(juce::TextButton::buttonOnColourId,
                 selectedMatch ? onColour()
-                              : filledColour.darker(0.22f));
+                              : filledColour.brighter(0.45f));
             // Some JUCE look-and-feels do not redraw an already-toggled button when only
             // buttonOnColourId changes. Give the selected match an explicit base colour too.
             if (selectedMatch)
