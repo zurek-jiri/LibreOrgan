@@ -58,8 +58,11 @@ static const char* const kManualText_part0 =
     "organ definitions either - it has no use for them, the organ is built from the\n"
     "sample folders. Where a definition lies beside the samples it is read for two\n"
     "things only: where the sample folders are and how the stops are arranged in the\n"
-    "divisions; the microphone perspectives are deduced from that, and everything\n"
-    "else comes from the folders.\n"
+    "divisions. From that OrganSampler deduces the microphone perspectives and the\n"
+    "relative volumes of the stops, the divisions and, where needed, the pipes - a\n"
+    "computation of its own, beyond what the definition holds (Hauptwerk knows no\n"
+    "perspectives and no relative volumes, only absolute pipe levels and\n"
+    "\"stop-ranks\") - and everything else comes from the folders.\n"
     "\n"
     "## 1.2 Installation\n"
     "\n"
@@ -191,19 +194,22 @@ static const char* const kManualText_part0 =
     "`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`). OrganSampler does\n"
     "not load the definition - it builds the organ from the sample folders, as\n"
     "always. The definition is read for two things only: where the sample folders\n"
-    "are and how the stops are arranged in the divisions; the microphone\n"
-    "perspectives are deduced from that, and the rest - the pipes, their pitch,\n"
-    "footage and tuning - comes from the folders themselves. The result is an\n"
+    "are and how the stops are arranged in the divisions. From that OrganSampler\n"
+    "deduces the microphone perspectives and the relative volumes of the stops, the\n"
+    "divisions and the pipes - its own computation, which the definition does not\n"
+    "hold (Hauptwerk knows no perspectives and no relative volumes, only absolute\n"
+    "pipe levels and \"stop-ranks\") - and the rest - the pipes, their pitch, footage\n"
+    "and tuning - comes from the folders themselves. The result is an\n"
     "OrganSampler configuration in your configurations folder, which you shape and\n"
     "save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:\n"
+    ;
+static const char* const kManualText_part1 =
     "[Hauptwerk import rules](#104-hauptwerk-import-rules).\n"
     "\n"
     "### A set without a definition\n"
     "\n"
     "*Stop List* > *Load folder...* with the top folder of the samples, say which\n"
     "division, repeat per division, *Apply and reload*. [The Stop List](#4-the-stop-list) explains\n"
-    ;
-static const char* const kManualText_part1 =
     "the table, [How the sample folders must be organised](#17-how-the-sample-folders-must-be-organised) what the program makes\n"
     "of the folder names.\n"
     "\n"
@@ -242,7 +248,8 @@ static const char* const kManualText_part1 =
     "A configuration is one file holding the whole instrument. *Save Configuration*\n"
     "and *Load Configuration* are in the top bar; Load also takes a published\n"
     "`.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for\n"
-    "the folder paths and the stop arrangement only, the organ is built from the\n"
+    "the folder paths and the stop arrangement only; the perspectives and the\n"
+    "relative volumes are OrganSampler's own deduction, the organ is built from the\n"
     "folders). A configuration with unsaved\n"
     "changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.\n"
     "Before the samples load, a box asks how they are to be held in RAM (storage,\n"
@@ -397,6 +404,8 @@ static const char* const kManualText_part1 =
     "- **Guided tour** (on a teaching organ such as the Rural Organ demo) walks\n"
     "  through the console in ten steps with an arrow to every element.\n"
     "- **Couplers...** ([Couplers](#61-couplers)), **Temperaments** ([Temperaments](#63-temperaments)).\n"
+    ;
+static const char* const kManualText_part2 =
     "- **Hide all voicing** folds every open voicing row.\n"
     "- **Perspective Patterns..., Ignored Patterns..., One-shot Patterns...** -\n"
     "  the folder name lists ([Folder name patterns](#85-folder-name-patterns-one-per-line)).\n"
@@ -404,8 +413,6 @@ static const char* const kManualText_part1 =
     "  ([Stop-Merging](#36-stop-merging)).\n"
     "- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a file.\n"
     "- **Load Configuration / Save Configuration** - the instrument as a file; a\n"
-    ;
-static const char* const kManualText_part2 =
     "  right-click on Load offers the merge.\n"
     "- **Shut down PC** (hidden by default) saves everything, quits and shuts the\n"
     "  computer down without a question - for a console without a screen (a MIDI\n"
@@ -599,6 +606,8 @@ static const char* const kManualText_part2 =
     "### Undulation (beats/s at a1)\n"
     "\n"
     "For celestes: the stop beats this many times per second against an in-tune\n"
+    ;
+static const char* const kManualText_part3 =
     "rank at a1 (negative = flat). A rank recorded sharp or flat throughout is\n"
     "recognised as a celeste and starts with its recorded undulation. The line\n"
     "reads \"needs 440 Hz\" until the organ is retuned to a1 = 440 Hz\n"
@@ -606,8 +615,6 @@ static const char* const kManualText_part2 =
     "\n"
     "### Formants (filled pipes)\n"
     "\n"
-    ;
-static const char* const kManualText_part3 =
     "0-100 % (default 30): how far the body of the sound follows the pitch shift\n"
     "of the pipes this stop borrows from neighbours - [Filled pipes](#7-filled-pipes).\n"
     "\n"
@@ -801,6 +808,8 @@ static const char* const kManualText_part3 =
     "  silent on every stop of the division); *MIDI transposition*: the keyboard\n"
     "  plays this many semitones away.\n"
     "- The keyboard drawing shows the last key with its velocity.\n"
+    ;
+static const char* const kManualText_part4 =
     "\n"
     "## 5.2 Swell, tremulant, wind\n"
     "\n"
@@ -808,8 +817,6 @@ static const char* const kManualText_part3 =
     "\n"
     "The swell bar in the division header shows the shutters: drag it, or move the\n"
     "learned swell pedal. Right-click it: *Start MIDI Learn* (move the pedal through\n"
-    ;
-static const char* const kManualText_part4 =
     "its whole range, then *Finish MIDI Learn*), *Clear MIDI assignment*, *Swell\n"
     "settings...*. Its settings: [Swell: maximum attenuation when closed](#swell-maximum-attenuation-when-closed) and [Swell: shutter inertia (settling time)](#swell-shutter-inertia-settling-time) per division (the Divisions dialog, the\n"
     "division's section of the Editor, or the right-click menu), and [Swell: harmonic filter](#swell-harmonic-filter) for every\n"
@@ -1003,6 +1010,8 @@ static const char* const kManualText_part4 =
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
     "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
     "only*, *Melody couplers: legato grace time*).\n"
+    ;
+static const char* const kManualText_part5 =
     "\n"
     "## 6.2 Combinations and the crescendo\n"
     "\n"
@@ -1010,8 +1019,6 @@ static const char* const kManualText_part4 =
     "\n"
     "## 6.3 Temperaments\n"
     "\n"
-    ;
-static const char* const kManualText_part5 =
     "*Temperaments* (top bar): thirty historical temperaments and your own (\"+\"\n"
     "shows the cent deviations per pitch class; a custom one can be edited).\n"
     "\n"
@@ -1205,6 +1212,8 @@ static const char* const kManualText_part5 =
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
     "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
     "pipes carry next to nothing there, and hearing past fifty rarely reaches 17\n"
+    ;
+static const char* const kManualText_part6 =
     "kHz - and the RAM drops by a quarter or a third at the same cost per voice.\n"
     "*Keep each file's own rate* loads faster and plays by interpolation.\n"
     "\n"
@@ -1212,8 +1221,6 @@ static const char* const kManualText_part5 =
     "\n"
     "How the IR reverbs are convolved. *Full*: every route with its impulse\n"
     "response as it is - heavy on memory traffic; an old laptop cannot render\n"
-    ;
-static const char* const kManualText_part6 =
     "pipes beside six long true-stereo IRs. *Light*: the convolution at a quarter\n"
     "of the rate, the IR trimmed where it has fallen 60 dB, a true stereo IR\n"
     "reduced to its direct channels - a fraction of the work, the same room.\n"
@@ -1407,6 +1414,8 @@ static const char* const kManualText_part6 =
     "*Linear*, *Cubic interpolation* (images 20 dB lower), *Cubic + anti-alias\n"
     "filter* (default; also removes what folds back on upward shifts, a low-passed\n"
     "copy per such pipe). Real pipes are never touched.\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "### Filled pipes: transposition method\n"
     "\n"
@@ -1414,8 +1423,6 @@ static const char* const kManualText_part6 =
     "vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the\n"
     "cache when on); the sliders that do not apply are greyed out.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Missing pipes: neighbours borrowed as a group\n"
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
@@ -1609,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "One line per perspective: its name first, then its folder prefixes,\n"
     "separated by semicolons (\"Direct;01-dirMk2H-;dir-\"). The name is what the\n"
+    ;
+static const char* const kManualText_part8 =
     "Stop List column and the audio route are called; the prefixes are cut off the\n"
     "folder names. The order of the lines is the order of the perspectives\n"
     "everywhere (the Stop List columns, the voicing boxes, the audio tabs):\n"
@@ -1616,8 +1625,6 @@ static const char* const kManualText_part7 =
     "in a set are added by themselves; a perspective renamed in the Stop List\n"
     "(double-click the column header) renames the line.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
     "\n"
     "One collapsed section per division, the same settings as the Divisions\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
     "and fraction give the exact recorded pitch, from which the tuning, the\n"
     "temperament, the footage and the celeste detection follow. Files without the\n"
+    ;
+static const char* const kManualText_part9 =
     "chunk play as they are: no retuning, no temperament, the footage from the\n"
     "folder name only.\n"
     "\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "036-C.wav, 059-B3.wav). Several files of one key are round-robin variants\n"
     "played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);\n"
     "a two- or three-digit suffix after an underscore at the very end is a\n"
-    ;
-static const char* const kManualText_part9 =
     "velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release\n"
     "folders: `rel500` for keys held up to 500 ms, `rel1500` up to 1.5 s, plain\n"
     "`rel` (= `rel99999`) for the rest, files named like the attacks.\n"
@@ -1887,9 +1894,12 @@ static const char* const kManualText_part9 =
     "here, and the program would have no use for it - the organ is built from the\n"
     "sample folders, exactly as from a tree loaded by hand. A definition is read for\n"
     "two things only, where the sample folders are and how the stops are arranged in\n"
-    "the divisions, and the microphone perspectives are deduced from that; the pipes,\n"
-    "their pitch, footage, tuning and loops come from the folders. What follows is\n"
-    "how that arrangement is read.\n"
+    "the divisions. From that OrganSampler deduces the microphone perspectives and\n"
+    "the relative volumes of the stops, the divisions and the pipes: that is its\n"
+    "own computation, beyond the definition - Hauptwerk knows neither perspectives\n"
+    "nor relative volumes, it has absolute pipe levels and \"stop-ranks\" only. The\n"
+    "pipes, their pitch, footage, tuning and loops come from the folders. What\n"
+    "follows is how that arrangement is read.\n"
     "\n"
     "What the definition gives: the keyboards in their order (the pedal first)\n"
     "with their key ranges - a division of ours is a keyboard, and every Hauptwerk\n"
@@ -2010,6 +2020,8 @@ static const char* const kManualText_part9 =
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"
     "*Measurement limit of DSP power* and the driver never called late; the first\n"
+    ;
+static const char* const kManualText_part10 =
     "breakup narrowed down by keys, by rate and finally by the share of stops\n"
     "engaged, so that the result is what the computer renders, not the last\n"
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"
@@ -2020,8 +2032,6 @@ static const char* const kManualText_part9 =
     "The report: the CPU of the render cores (16 threads busy on a 32-thread\n"
     "processor are 100 %), the lane utilisation of the pool, the kernel's\n"
     "nanoseconds per voice and frame from cache and from RAM with the ceiling\n"
-    ;
-static const char* const kManualText_part10 =
     "that gives at this buffer, the cost of one voice per block in its parts\n"
     "(bookkeeping, spans, kernel, tone filter, unpacking), the callback split into\n"
     "a fixed part per block and a part per voice, and the device thread's own\n"

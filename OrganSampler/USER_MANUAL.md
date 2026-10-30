@@ -54,8 +54,11 @@ Configuration*, choose the file, play. OrganSampler does not load Hauptwerk
 organ definitions either - it has no use for them, the organ is built from the
 sample folders. Where a definition lies beside the samples it is read for two
 things only: where the sample folders are and how the stops are arranged in the
-divisions; the microphone perspectives are deduced from that, and everything
-else comes from the folders.
+divisions. From that OrganSampler deduces the microphone perspectives and the
+relative volumes of the stops, the divisions and, where needed, the pipes - a
+computation of its own, beyond what the definition holds (Hauptwerk knows no
+perspectives and no relative volumes, only absolute pipe levels and
+"stop-ranks") - and everything else comes from the folders.
 
 ## 1.2 Installation
 
@@ -187,9 +190,12 @@ found" shows the way.
 `OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`). OrganSampler does
 not load the definition - it builds the organ from the sample folders, as
 always. The definition is read for two things only: where the sample folders
-are and how the stops are arranged in the divisions; the microphone
-perspectives are deduced from that, and the rest - the pipes, their pitch,
-footage and tuning - comes from the folders themselves. The result is an
+are and how the stops are arranged in the divisions. From that OrganSampler
+deduces the microphone perspectives and the relative volumes of the stops, the
+divisions and the pipes - its own computation, which the definition does not
+hold (Hauptwerk knows no perspectives and no relative volumes, only absolute
+pipe levels and "stop-ranks") - and the rest - the pipes, their pitch, footage
+and tuning - comes from the folders themselves. The result is an
 OrganSampler configuration in your configurations folder, which you shape and
 save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:
 [Hauptwerk import rules](#104-hauptwerk-import-rules).
@@ -236,7 +242,8 @@ do not own.
 A configuration is one file holding the whole instrument. *Save Configuration*
 and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for
-the folder paths and the stop arrangement only, the organ is built from the
+the folder paths and the stop arrangement only; the perspectives and the
+relative volumes are OrganSampler's own deduction, the organ is built from the
 folders). A configuration with unsaved
 changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.
 Before the samples load, a box asks how they are to be held in RAM (storage,
@@ -1865,9 +1872,12 @@ OrganSampler does not load a Hauptwerk organ definition: nothing of it runs
 here, and the program would have no use for it - the organ is built from the
 sample folders, exactly as from a tree loaded by hand. A definition is read for
 two things only, where the sample folders are and how the stops are arranged in
-the divisions, and the microphone perspectives are deduced from that; the pipes,
-their pitch, footage, tuning and loops come from the folders. What follows is
-how that arrangement is read.
+the divisions. From that OrganSampler deduces the microphone perspectives and
+the relative volumes of the stops, the divisions and the pipes: that is its
+own computation, beyond the definition - Hauptwerk knows neither perspectives
+nor relative volumes, it has absolute pipe levels and "stop-ranks" only. The
+pipes, their pitch, footage, tuning and loops come from the folders. What
+follows is how that arrangement is read.
 
 What the definition gives: the keyboards in their order (the pedal first)
 with their key ranges - a division of ours is a keyboard, and every Hauptwerk

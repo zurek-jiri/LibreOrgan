@@ -19,8 +19,10 @@ general crescendo and combinations. No organ definition file is needed: you load
 the folders, the program proposes the organ, you shape it and save it as a
 configuration. OrganSampler does not load Hauptwerk organ definitions - it has
 no use for them; where one lies beside the samples it is read for the paths of
-the sample folders and the arrangement of the stops in the divisions only, the
-perspectives are deduced from that, and the organ is built from the folders.
+the sample folders and the arrangement of the stops in the divisions only. The
+microphone perspectives and the relative volumes of stops, divisions and pipes
+are OrganSampler's own deduction (a definition holds neither), and the organ is
+built from the folders.
 Free software under the GNU GPL v3. Windows, macOS and Linux.
 
 **Your own organ, from any sources.** This is what sets OrganSampler apart:
@@ -29,7 +31,9 @@ console, duplicate a stop as a transmission or an extension (a 16' from an
 8', a mutation from a principal), merge two configurations into one organ,
 move stops between divisions. A Hauptwerk organ definition is not loaded, but
 it serves as a map: its folder paths and stop arrangement become an
-OrganSampler configuration, built from the folders like any other.
+OrganSampler configuration, the perspectives and the relative volumes are
+deduced by OrganSampler itself, and the organ is built from the folders like
+any other.
 
 **Light on RAM, CPU and disk.** On a modest computer the saving options of
 the load box squeeze an 80 GB sample set into 8 GB of RAM (the table below),

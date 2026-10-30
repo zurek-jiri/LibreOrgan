@@ -12511,8 +12511,9 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             safeThis->hauptwerkImportReport.replaceWithText("Hauptwerk organ definition read: " + odfFile.getFullPathName() + "\n"
                 + juce::Time::getCurrentTime().toString(true, true, true, true) + ", OrganSampler " + ProjectInfo::versionString + "\n\n"
                 "OrganSampler does not load the organ definition: the organ is built from the sample folders. The definition was read "
-                "for two things only - where the sample folders are and how the stops are arranged in the divisions - and the microphone "
-                "perspectives were deduced from that; everything else comes from the folders.\n\n" + summary + "\n");
+                "for two things only - where the sample folders are and how the stops are arranged in the divisions. The microphone "
+                "perspectives and the relative volumes of the stops, divisions and pipes below are OrganSampler's own deduction (a "
+                "definition holds neither: absolute pipe levels and stop-ranks only); everything else comes from the folders.\n\n" + summary + "\n");
             CrashHandler::note("Hauptwerk import report: " + safeThis->hauptwerkImportReport.getFullPathName());
         }
         safeThis->hauptwerkImport = odf;
@@ -12724,7 +12725,8 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     text
          << "\n\nThe configuration is saved as\n" << configurationFile.getFullPathName()
          << "\n\nThe organ definition itself was not loaded - OrganSampler has no use for it: it was read for the sample folder paths and the "
-            "arrangement of the stops in the divisions only, the perspectives were deduced from that, and the organ is built from the folders. "
+            "arrangement of the stops in the divisions only; the perspectives and the relative volumes above are OrganSampler's own deduction, "
+            "and the organ is built from the folders. "
             "Everything else of the definition (combinations, displays, wind, noises) was ignored. "
             "Check the Stop List, the audio routes of the perspectives and the MIDI keyboards, then Save Configuration.\n";
     if (hauptwerkImportReport != juce::File() && hauptwerkImportReport.getParentDirectory().isDirectory())

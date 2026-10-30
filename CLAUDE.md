@@ -102,9 +102,12 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   README, website, release body, dialogs, tooltips or the import report mention a Hauptwerk organ definition, say that
   OrganSampler does NOT load it (it has no use for it: the organ is built from the sample folders), that the definition
   is read for TWO things only - where the sample folders are and how the stops are arranged in the divisions - that the
-  microphone perspectives are deduced from that, and that everything else comes from the folders. Never write "imports/
-  loads the ODF" or "opens as a configuration" without that frame. Done in 0.8.252 (manual 1.1, 1.6, Saving and loading,
-  10.4; README; site; the import report's header and closing sentence).
+  microphone PERSPECTIVES and the RELATIVE VOLUMES of stops, divisions and pipes are OrganSampler's OWN DEDUCTION (the
+  user, 30 Oct 2026: "Hauptwerk nezná perspektivy a nezná relativní hlasitosti, ten má pouze absolutní hlasitost píšťal a
+  všecko je pro něj stoprank" - here we go beyond Hauptwerk), and that everything else comes from the folders. Never
+  write "imports/loads the ODF" or "opens as a configuration" without that frame. Done in 0.8.253 (manual 1.1, 1.6,
+  Saving and loading, 10.4 - the technical list of 10.4 stays, the user wants it there; README; site; the import
+  report's header and closing sentence).
 - Hauptwerk ODF import (0.8.116, `Source/HauptwerkOdf.{h,cpp}`, `MainComponent::importHauptwerkOdf`): Load Configuration
   takes `*.Organ_Hauptwerk_xml` too. Only divisions (keyboard order, pedal first, compass from KeyboardKey), stop folders
   (the common ancestor of a stop's rank folders; their parents are the division trees), perspectives (rank names
