@@ -727,6 +727,12 @@ static const char* const kManualText_part3 =
     "patterns line, the routes and the saved voicing follow after *Apply and\n"
     "reload*. \"default\" is the route of folders without a perspective prefix.\n"
     "\n"
+    "**The order of the perspectives** - the columns here, the boxes of every\n"
+    "voicing row, the audio tabs of the Divisions dialog - is the order of the\n"
+    "lines in *Perspective prefixes*, \"default\" first. **Drag a column header\n"
+    "left or right** to change it: the lines take the new order, saved with the\n"
+    "configuration; nothing is reloaded.\n"
+    "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
     "*Ignored Patterns...* and *One-shot Patterns...* (top bar, or the\n"
@@ -802,14 +808,14 @@ static const char* const kManualText_part3 =
     "  with four channels), *Clear*, the IR caption (hover for its details,\n"
     "  right-click for the IR settings: high and low cut, pre-delay, wet volume,\n"
     "  decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.\n"
+    ;
+static const char* const kManualText_part4 =
     "- **Output channels**: tick any channels of the device, in any number. The\n"
     "  pipes are spread over them by key number, so a chord spreads across the\n"
     "  speakers like pipes across a windchest (a mono sample to one channel in\n"
     "  turn, a stereo sample to a pair; an odd number of channels lets the pairs\n"
     "  circulate). **Set for all divisions (this perspective)** above the list\n"
     "  copies these channels to the same perspective of every division.\n"
-    ;
-static const char* const kManualText_part4 =
     "- **The device box**: type, device, sample rate, buffer size; *Driver\n"
     "  Control Panel*, *Reopen device*, and **Set for all perspectives and\n"
     "  divisions**, which copies the device, rate and buffer size to every route\n"
@@ -1004,14 +1010,14 @@ static const char* const kManualText_part4 =
     "\n"
     "## 7.1 What a filled pipe is\n"
     "\n"
+    ;
+static const char* const kManualText_part5 =
     "Every rank is completed to the full keyboard: pipes it does not have are\n"
     "played from neighbouring real pipes, transposed - the extra octave of an\n"
     "extension, missing top or bottom keys, gaps inside the compass. Only the\n"
     "pipes a stop can be asked to play are filled (its division's compass and\n"
     "every transmission's shifted compass). A filled pipe has everything a real\n"
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
-    ;
-static const char* const kManualText_part5 =
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
     "the rank keeps its chromatic variety. A pipe switched off in the voicing row\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "MIDI-learnable there.\n"
     "\n"
     "### Master volume\n"
+    ;
+static const char* const kManualText_part6 =
     "\n"
     "The whole organ, -60 to +12 dB (default -18). Lower it when a full\n"
     "registration clips.\n"
     "\n"
     "### Global pitch\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "-200 to +200 cents (default 0) on top of the temperament, for playing with\n"
     "instruments tuned elsewhere than a1 = 440 Hz.\n"
     "\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "### Filled pipes: loudness kept when pitch shifting\n"
     "\n"
     "On (default): every shifted copy is brought to the loudness of its source.\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
     "\n"
     "On by default: the copies are written to files and read back at the next\n"
     "load - seconds instead of minutes. \"The cache\".\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Filled pipes cache: Empty the cache\n"
     "\n"
     "The size of the cache and its folder, with *Empty the cache*: every file\n"
@@ -1554,8 +1560,11 @@ static const char* const kManualText_part7 =
     "One line per perspective: its name first, then its folder prefixes,\n"
     "separated by semicolons (\"Direct;01-dirMk2H-;dir-\"). The name is what the\n"
     "Stop List column and the audio route are called; the prefixes are cut off the\n"
-    "folder names. Prefixes found in a set are added by themselves; a perspective\n"
-    "renamed in the Stop List (double-click the column header) renames the line.\n"
+    "folder names. The order of the lines is the order of the perspectives\n"
+    "everywhere (the Stop List columns, the voicing boxes, the audio tabs):\n"
+    "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
+    "in a set are added by themselves; a perspective renamed in the Stop List\n"
+    "(double-click the column header) renames the line.\n"
     "\n"
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
     "\n"
@@ -1607,6 +1616,8 @@ static const char* const kManualText_part7 =
     "### Swell: shutter inertia (settling time)\n"
     "\n"
     "How slowly the shutters follow the pedal (50 to 2000 ms, default 300).\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Division volume\n"
     "\n"
@@ -1616,8 +1627,6 @@ static const char* const kManualText_part7 =
     "\n"
     "The channels of the device the default perspective plays on, as numbers\n"
     "separated by commas (the same as the tick boxes of the audio tab). \"The audio\n"
-    ;
-static const char* const kManualText_part8 =
     "tabs\".\n"
     "\n"
     "### Perspective output channels\n"
@@ -1809,6 +1818,8 @@ static const char* const kManualText_part8 =
     "the root. What is found is taken silently and the root noted as a location;\n"
     "the list is `Locations.txt` (the folders, and the archives you chose - only\n"
     "those are read, never another archive lying beside them).\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "A clicked folder (\"Sample folders not found\") is searched from itself and up\n"
     "to four ancestors for the longest tail of the missing path that exists under\n"
@@ -1818,8 +1829,6 @@ static const char* const kManualText_part8 =
     "\n"
     "The relocation of a whole library: keep every tree of an organ under one\n"
     "root; the root's parent is what the program remembers. The configurations\n"
-    ;
-static const char* const kManualText_part9 =
     "folder can be moved as a whole: nothing in it points at its own place.\n"
     "\n"
     "## 10.4 Hauptwerk import rules\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "per device callback on the driver's buffer, on the route's own channels only.\n"
     "The log line names the route, the stage and the lanes that rendered without a\n"
     "scratch buffer; the counters reset after a render gap, a device start or a\n"
+    ;
+static const char* const kManualText_part10 =
     "mute. It costs a few microseconds per period; a 15-route organ at idle pays\n"
     "about 7 % of a 512-sample period for it.\n"
     "\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "route in turn, each route's voices become one job of the render pool, the\n"
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
-    ;
-static const char* const kManualText_part10 =
     "a pool task posted by the last route of its group and joined by the first\n"
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"

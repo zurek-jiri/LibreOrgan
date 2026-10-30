@@ -17272,13 +17272,8 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
                 nextAssignment:;
             }
         }
-    // "default" first, the perspectives in their natural order after it.
-    std::sort(build.perspectives.begin(), build.perspectives.end(), [](const juce::String& a, const juce::String& b)
-    {
-        const bool da = a.equalsIgnoreCase("default"), db = b.equalsIgnoreCase("default");
-        if (da != db) return da;
-        return a.compareNatural(b) < 0;
-    });
+    // "default" first, then the order of the perspective patterns (0.8.231).
+    engine.sortPerspectives(build.perspectives);
     return build;
 }
 
@@ -18922,8 +18917,9 @@ void MainComponent::showStopBuildingDialog(int)
             CrashHandler::note("Stop List: " + juce::String((int)treeInfos.size()) + " tree(s) scanned and the tables prepared in "
                 + juce::String(juce::Time::getMillisecondCounterHiRes() - startMs, 0) + " ms");
             showTransmissions = owner.stopListShowTransmissions;
-            originalDrafts = drafts;
             rebuildPerspectiveUnion();
+            originalDrafts = drafts;   // 0.8.231: AFTER the union - its sorting of the perspective lists made every division
+                                       // "changed" at every opening (an orange Apply that reloaded the whole organ for nothing)
 
             intro.setText("One row per stop of the whole organ: its division, transmissions, name, alias and the sample "
                 "folder of every perspective. Click a folder cell to pick one of the free folders (the x frees it), or drag "
@@ -19182,7 +19178,26 @@ void MainComponent::showStopBuildingDialog(int)
             std::unique_ptr<juce::TextButton> transmissions;
             std::vector<Cell> cells;
         };
-        struct HeaderCell { std::unique_ptr<juce::Label> label; std::unique_ptr<juce::TextButton> remove; };
+        // A perspective's column header: double-click renames, a drag left or right reorders the perspectives (0.8.231).
+        class HeaderLabel final : public juce::Label
+        {
+        public:
+            std::function<void(juce::Point<int>)> dropAt;   // screen position
+            void mouseDown(const juce::MouseEvent& event) override { dragging = false; juce::Label::mouseDown(event); }
+            void mouseDrag(const juce::MouseEvent& event) override
+            {
+                if (isBeingEdited()) { juce::Label::mouseDrag(event); return; }
+                if (!dragging && event.getDistanceFromDragStart() > 6) { dragging = true; setMouseCursor(juce::MouseCursor::DraggingHandCursor); }
+            }
+            void mouseUp(const juce::MouseEvent& event) override
+            {
+                if (dragging) { dragging = false; setMouseCursor(juce::MouseCursor::NormalCursor); if (dropAt) dropAt(event.getScreenPosition()); return; }
+                juce::Label::mouseUp(event);
+            }
+        private:
+            bool dragging = false;
+        };
+        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove; };
 
         MainComponent& owner;
         std::array<Build, kDivisions> drafts, originalDrafts;
@@ -19364,13 +19379,26 @@ void MainComponent::showStopBuildingDialog(int)
                     for (const auto& existing : perspectives) if (existing.equalsIgnoreCase(perspective)) present = true;
                     if (!present) perspectives.push_back(perspective);
                 }
-            std::sort(perspectives.begin(), perspectives.end(), [](const juce::String& a, const juce::String& b)
-            {
-                const bool da = a.equalsIgnoreCase("default"), db = b.equalsIgnoreCase("default");
-                if (da != db) return da;
-                return a.compareNatural(b) < 0;
-            });
+            owner.engine.sortPerspectives(perspectives);   // 0.8.231: the perspective patterns' order ("default" first), not the alphabet
             for (auto& draft : drafts) draft.perspectives = perspectives;
+        }
+        // A column header dragged left or right (0.8.231): the perspectives take that order
+        // everywhere - the patterns' lines, the voicing boxes, the audio tabs. No change
+        // of the table: the originals take the order too, so Apply stays grey.
+        void movePerspectiveColumn(size_t from, size_t to)
+        {
+            if (from >= perspectives.size() || to >= perspectives.size() || from == to) return;
+            const auto name = perspectives[from];
+            perspectives.erase(perspectives.begin() + (long)from);
+            perspectives.insert(perspectives.begin() + (long)to, name);
+            owner.reorderPerspectivePatterns(perspectives);
+            owner.engine.sortPerspectives(perspectives);   // "default" stays first
+            for (auto& draft : drafts) owner.engine.sortPerspectives(draft.perspectives);
+            for (auto& draft : originalDrafts) owner.engine.sortPerspectives(draft.perspectives);
+            juce::StringArray order;
+            for (const auto& p : perspectives) order.add(p);
+            CrashHandler::note("Perspective \"" + name + "\" moved: the order of the perspectives is " + order.joinIntoString(", "));
+            rebuildGrid();
         }
         std::vector<Build::Entry> allEntries() const
         {
@@ -19645,14 +19673,26 @@ void MainComponent::showStopBuildingDialog(int)
             for (size_t p = 0; p < perspectives.size(); ++p)
             {
                 HeaderCell cell;
-                cell.label = std::make_unique<juce::Label>();
+                cell.label = std::make_unique<HeaderLabel>();
                 cell.label->setText(perspectives[p], juce::dontSendNotification);
                 cell.label->setFont(juce::FontOptions(15.0f, juce::Font::bold));
-                cell.label->setTooltip("Perspective \"" + perspectives[p] + "\": one audio output per division. Double-click to rename it.");
+                cell.label->setTooltip("Perspective \"" + perspectives[p] + "\": one audio output per division. Double-click to rename it; "
+                    "drag it left or right to change the order of the perspectives (the Perspective prefixes, the voicing boxes and the audio tabs follow).");
                 cell.label->setEditable(false, true, false);   // double-click: rename (0.8.228)
                 {
                     auto* label = cell.label.get();
                     cell.label->onTextChange = [this, p, label] { renamePerspective(p, label->getText()); };
+                    cell.label->dropAt = [this, p](juce::Point<int> screen)
+                    {
+                        // The column under the mouse; beyond the last one: the last.
+                        size_t target = headers.empty() ? 0 : headers.size() - 1;
+                        for (size_t i = 0; i < headers.size(); ++i)
+                        {
+                            const auto bounds = headers[i].label->getScreenBounds();
+                            if (screen.x < bounds.getX() + (int)cellWidth) { target = i; break; }
+                        }
+                        movePerspectiveColumn(p, target);
+                    };
                 }
                 grid.addAndMakeVisible(*cell.label);
                 cell.remove = std::make_unique<juce::TextButton>("x");
@@ -27891,6 +27931,31 @@ void MainComponent::renamePerspectiveSettings(const juce::String& oldName, const
     rememberPatterns(true);
     saveSettings();
     CrashHandler::note("Perspective \"" + oldName + "\" renamed \"" + newName + "\": the routes' settings and the patterns line follow, the routes at Apply");
+}
+
+void MainComponent::reorderPerspectivePatterns(const std::vector<juce::String>& order)
+{
+    const auto lines = engine.getPerspectivePatterns();
+    auto labelOf = [](const juce::String& line) { return line.upToFirstOccurrenceOf(";", false, false).trim(); };
+    std::vector<juce::String> result;
+    std::vector<bool> used(lines.size(), false);
+    for (const auto& name : order)
+    {
+        if (name.equalsIgnoreCase("default")) continue;
+        bool found = false;
+        for (size_t i = 0; i < lines.size(); ++i)
+            if (!used[i] && labelOf(lines[i]).equalsIgnoreCase(name)) { result.push_back(lines[i]); used[i] = true; found = true; break; }
+        if (!found) result.push_back(name);   // a perspective without a line yet: the label alone holds its place
+    }
+    for (size_t i = 0; i < lines.size(); ++i) if (!used[i]) result.push_back(lines[i]);
+    engine.setPerspectivePatterns(result);
+    rememberPatterns(true);
+    configurationDirty = true;
+    saveSettings();
+    if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);   // the voicing rows' perspective boxes in the new order
+    juce::StringArray labels;
+    for (const auto& line : result) labels.add(labelOf(line));
+    CrashHandler::note("Perspective patterns reordered: " + labels.joinIntoString(", ") + " (the Divisions dialog's tabs follow at its next opening)");
 }
 
 void MainComponent::editFolderPatterns(bool perspectives)

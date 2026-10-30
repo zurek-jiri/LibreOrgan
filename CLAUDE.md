@@ -1792,6 +1792,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `legacyStopBindingKey` makes the menu's "Clear MIDI assignment" see and erase an old "stop:<name>" too. (3) Merge:
   name and alias suffixed independently (only what collides). NOT verified by a run (no local build): the Stop List
   dialog's own cross-division drag goes through Apply/reload and was not touched.
+  0.8.231 (30 Oct 2026, the user: "po loadingu Bergen ... zase chce oranžově Apply and reload?? ... To řazení
+  perspektiv je šílené"): THE ORANGE APPLY AFTER A LOAD = `rebuildPerspectiveUnion()` ran AFTER `originalDrafts =
+  drafts` and SORTED every draft's perspective list (his file: "Diffuse, Direct, Rear, Distant" from the merge; the
+  union "Diffuse, Direct, Distant, Rear") -> `changedDivisions()` (vector ==, order-sensitive) flagged all four
+  divisions -> Apply reloaded the whole organ (168 ranks adopted, still the whole "Compiling"); the second opening was
+  clean because the sorted order was stored - and he never saves (Don't Save at quit), so it recurred at every load.
+  Not the name migration. Fix: originals taken after the union. ORDER = THE PATTERNS: `SamplerEngine::
+  perspectiveOrderIndex(name)` (-1 default, else the line index of the label in perspectivePatterns, else size+1)
+  + `sortPerspectives(vector&)` (stable; ties natural) used by getPerspectivesForManual (tabs, routes, everything),
+  deriveStopBuildFromEngine, the dialog's union and the voicing row's rank boxes (voicer.cpp, rankSources sorted).
+  Stop List header = `HeaderLabel` (double-click rename, drag > 6 px -> dropAt -> `movePerspectiveColumn(from, to)`:
+  the union reordered, `MainComponent::reorderPerspectivePatterns(order)` rewrites the lines in that order (a label
+  without a line gets a bare line), rememberPatterns(true), configurationDirty, saveSettings, voicer->rebuildUI;
+  drafts AND originals re-sorted so Apply stays grey; the Divisions tabs follow at the next opening). Manual 4.3 +
+  8.5 say it. NEXT (the user's wish, not done): an "Explain feature"/manual link on every control's right-click menu
+  (showMidiLearnMenu is the one central menu: stops, transmissions, couplers, pistons, sliders, crescendo, swell,
+  header buttons) and/or F1 over the hovered control - proposed, waiting for his choice.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

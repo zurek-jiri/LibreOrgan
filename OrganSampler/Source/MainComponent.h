@@ -1415,6 +1415,9 @@ private:
     void editFolderPatterns(bool perspectives);
     void ensurePerspectivePatternLine(const juce::String& label);                               // 0.8.228
     void renamePerspectiveSettings(const juce::String& oldName, const juce::String& newName);  // 0.8.228
+    // 0.8.231: the Stop List's columns dragged into another order: the perspective patterns' lines take that order
+    // (the order of the perspectives everywhere), saved with the configuration and in Patterns.json.
+    void reorderPerspectivePatterns(const std::vector<juce::String>& order);
     // ========== KONEC PŘIDANÉ ČÁSTI ==========
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)

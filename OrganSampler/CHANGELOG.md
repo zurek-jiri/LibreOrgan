@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.231] - 2026-10-30
+
+### Changed
+- The perspectives stand in the order of the "Perspective prefixes" lines
+  everywhere ("default" first; names without a line after them) - the Stop
+  List columns, the boxes of a voicing row, the audio tabs of the Divisions
+  dialog, the routes - instead of the alphabet, which put Diffuse before
+  Direct. A column header of the Stop List dragged left or right changes
+  that order; the lines follow, saved with the configuration.
+
+### Fixed
+- The Stop List showed an orange "Apply and reload" right after a load, and
+  the Apply reloaded every division, when the perspectives of the file's
+  tables stood in another order than the dialog's sorted union (an organ
+  that gained a perspective by a merge): the dialog took its "original" of
+  the table before it sorted the lists. The order is no change of the table
+  any more.
+
 ## [0.8.230] - 2026-10-30
 
 ### Fixed

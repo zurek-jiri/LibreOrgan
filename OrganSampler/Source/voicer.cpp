@@ -273,6 +273,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(ranksLabel);
     std::vector<Stop*> rankSources{ stop };
     for (auto& rank : stop->ranks) rankSources.push_back(rank.get());
+    // The boxes in the order of the perspectives (0.8.231: the perspective patterns' order, like the Stop List columns).
+    std::stable_sort(rankSources.begin(), rankSources.end(), [this](const Stop* a, const Stop* b)
+    {
+        const int ia = this->engine.perspectiveOrderIndex(a->perspective), ib = this->engine.perspectiveOrderIndex(b->perspective);
+        return ia != ib ? ia < ib : a->perspective.compareNatural(b->perspective) < 0;
+    });
     for (auto* rank : rankSources)
     {
         auto* button = rankButtons.add(new juce::ToggleButton(rank->perspective));

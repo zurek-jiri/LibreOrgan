@@ -10880,6 +10880,24 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
 }
 
 //------------------------------------------------------------------------------
+int SamplerEngine::perspectiveOrderIndex(const juce::String& name) const
+{
+    if (name.equalsIgnoreCase("default")) return -1;
+    for (size_t i = 0; i < perspectivePatterns.size(); ++i)
+        if (perspectivePatterns[i].upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(name.trim())) return (int)i;
+    return (int)perspectivePatterns.size() + 1;
+}
+
+void SamplerEngine::sortPerspectives(std::vector<juce::String>& names) const
+{
+    std::stable_sort(names.begin(), names.end(), [this](const juce::String& a, const juce::String& b)
+    {
+        const int ia = perspectiveOrderIndex(a), ib = perspectiveOrderIndex(b);
+        if (ia != ib) return ia < ib;
+        return a.compareNatural(b) < 0;
+    });
+}
+
 std::vector<juce::String> SamplerEngine::getPerspectivesForManual(int manualIndex) const
 {
     std::vector<juce::String> result;
@@ -10895,7 +10913,7 @@ std::vector<juce::String> SamplerEngine::getPerspectivesForManual(int manualInde
             for (const auto& rank : stop->ranks) addUnique(rank->perspective);
         }
     if (result.empty()) result.push_back("default");
-    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.compareNatural(b) < 0; });
+    sortPerspectives(result);   // 0.8.231: the order of the perspective patterns, not the alphabet
     result.push_back(auxiliaryPerspectiveName());   // the division's downmix route, always last
     return result;
 }

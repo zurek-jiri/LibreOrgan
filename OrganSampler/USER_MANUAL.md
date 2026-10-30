@@ -717,6 +717,12 @@ its name in the column header** and type the new one: the column, the
 patterns line, the routes and the saved voicing follow after *Apply and
 reload*. "default" is the route of folders without a perspective prefix.
 
+**The order of the perspectives** - the columns here, the boxes of every
+voicing row, the audio tabs of the Divisions dialog - is the order of the
+lines in *Perspective prefixes*, "default" first. **Drag a column header
+left or right** to change it: the lines take the new order, saved with the
+configuration; nothing is reloaded.
+
 ## 4.4 Ignored and one-shot patterns
 
 *Ignored Patterns...* and *One-shot Patterns...* (top bar, or the
@@ -1536,8 +1542,11 @@ matching folders out of their rows.
 One line per perspective: its name first, then its folder prefixes,
 separated by semicolons ("Direct;01-dirMk2H-;dir-"). The name is what the
 Stop List column and the audio route are called; the prefixes are cut off the
-folder names. Prefixes found in a set are added by themselves; a perspective
-renamed in the Stop List (double-click the column header) renames the line.
+folder names. The order of the lines is the order of the perspectives
+everywhere (the Stop List columns, the voicing boxes, the audio tabs):
+reorder them here, or drag a column header in the Stop List. Prefixes found
+in a set are added by themselves; a perspective renamed in the Stop List
+(double-click the column header) renames the line.
 
 ## 8.6 Division sections (Pedal, Manual I ... Manual VII)
 

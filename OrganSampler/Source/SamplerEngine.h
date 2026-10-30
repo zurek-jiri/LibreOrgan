@@ -1481,6 +1481,11 @@ public:
     // Stop List's "Aliases from folders" fills in where no alias is set.
     juce::String folderStopAlias(const juce::File& folder) const;
     const std::vector<juce::String>& getPerspectivePatterns() const { return perspectivePatterns; }
+    // The order of the perspectives everywhere (0.8.231): "default" first, then the lines of
+    // the perspective patterns in their order, then names no line knows (natural order). The
+    // Stop List columns, the voicing row's boxes and the audio tabs of the Divisions dialog follow it.
+    int perspectiveOrderIndex(const juce::String& name) const;
+    void sortPerspectives(std::vector<juce::String>& names) const;
 
     struct Impl;
 
