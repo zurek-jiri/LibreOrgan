@@ -744,7 +744,8 @@ static const char* const kManualText_part3 =
     "voicing row, the audio tabs of the Divisions dialog - is the order of the\n"
     "lines in *Perspective prefixes*, \"default\" first. **Drag a column header\n"
     "left or right** to change it: the lines take the new order, saved with the\n"
-    "configuration; nothing is reloaded.\n"
+    "configuration, and the voicing boxes and the audio tabs follow at once;\n"
+    "nothing is reloaded.\n"
     "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "The *Tremulant* button in the division header is registration like a stop: it\n"
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
     "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
-    "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     ;
 static const char* const kManualText_part4 =
+    "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
     "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "  taken out and the target's put in - so both organs play the target\n"
     "  temperament in tune with each other. The base temperament shown is the one\n"
     "  that prevails among the ranks; a rank whose recording could not be\n"
-    "  measured takes that one.\n"
     ;
 static const char* const kManualText_part5 =
+    "  measured takes that one.\n"
     "\n"
     "**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded\n"
     "pitch to a1 = 440 Hz, so\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "overload fades old voices rather than crackles. It belongs to the organ\n"
     "(routes, IRs, drivers, buffers all change it) and is saved with the\n"
     "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
-    "registration of a wet set, many quick staccato notes over many keys, watch\n"
     ;
 static const char* const kManualText_part6 =
+    "registration of a wet set, many quick staccato notes over many keys, watch\n"
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
     "### Measurement limit of DSP power\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
     "\n"
-    "### Filled pipes: time stretch of the attack\n"
     ;
 static const char* const kManualText_part7 =
+    "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch: how far the attack is stretched back from the\n"
     "resampled length towards the source's (0 to 100 %, default 50, logarithmic).\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "The MIDI input that plays this division; several divisions may listen to the\n"
     "same device.\n"
     "\n"
-    "### MIDI channel\n"
     ;
 static const char* const kManualText_part8 =
+    "### MIDI channel\n"
     "\n"
     "1 to 16 on that device.\n"
     "\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "The transposition a folder gets by itself: the mode of (recorded pitch - file\n"
     "number) over the pipes against the footage in the folder's name, when three\n"
     "or more samples agree by 70 % and the difference is two semitones or more.\n"
-    "Stops with no footage in the name stay at 0.\n"
     ;
 static const char* const kManualText_part9 =
+    "Stops with no footage in the name stay at 0.\n"
     "\n"
     "## 10.2 How the footage of a stop is measured\n"
     "\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "one, no unused routes left open on the same endpoint), never the limit. The\n"
     "DSP cell can read lower than the limit when the run ends: it shows a fading\n"
     "peak, the judge takes the single longest callback.\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "## 10.9 Retune buses and the full kernel\n"
     "\n"
     "A pipe is retuned by its own recorded deviation (its rank's smpl pitches),\n"

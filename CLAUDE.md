@@ -1965,6 +1965,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   top-level window under the mouse (the dialog whose "?" was clicked) `toBehind(aboutWindow)` - toFront is not
   honoured everywhere (Wayland); the channels button is "Set these channels for all divisions (this perspective)"
   (manual Step 5 and 5.3 follow).
+  0.8.245 (the user: the Divisions tabs must reorder at once, even while the dialog is open): `MainComponent::
+  perspectiveOrderChanged()` = voicer->rebuildUI + `audioTabsReorder` (a std::function set by KeyboardsDialog's
+  constructor, cleared in its destructor: `reorderAudioTabs()` moves the tabs with TabbedComponent::moveTab to the
+  order of getPerspectivesForManual, the chosen tab kept by name); called from reorderPerspectivePatterns (the
+  column drag), the Perspective Patterns dialog's save and the Editor's "Perspective prefixes" field.
+  Colours 0.8.245: the user chose t = 0.12 after seeing 0.08 (filledColour 0.12, sameRegistrationColour 0.18).
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

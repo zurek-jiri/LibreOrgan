@@ -734,7 +734,8 @@ reload*. "default" is the route of folders without a perspective prefix.
 voicing row, the audio tabs of the Divisions dialog - is the order of the
 lines in *Perspective prefixes*, "default" first. **Drag a column header
 left or right** to change it: the lines take the new order, saved with the
-configuration; nothing is reloaded.
+configuration, and the voicing boxes and the audio tabs follow at once;
+nothing is reloaded.
 
 ## 4.4 Ignored and one-shot patterns
 

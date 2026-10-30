@@ -754,6 +754,7 @@ private:
     // Set by the open Divisions dialog: detach(true) before selectors are
     // recreated, rebind(false) afterwards, so the dialog can stay open.
     std::function<void(bool detach)> keyboardsDialogSelectorHook;
+    std::function<void()> audioTabsReorder;   // 0.8.245: the open Divisions dialog puts its audio tabs in the perspectives' order
 
     // Name of the portable configuration in use: window title and default recording name.
     juce::String currentConfigurationName;
@@ -1431,6 +1432,9 @@ private:
     // 0.8.231: the Stop List's columns dragged into another order: the perspective patterns' lines take that order
     // (the order of the perspectives everywhere), saved with the configuration and in Patterns.json.
     void reorderPerspectivePatterns(const std::vector<juce::String>& order);
+    // The order of the perspectives changed (a column dragged, the Perspective prefixes edited): the voicing rows'
+    // boxes and the open Divisions dialog's audio tabs follow at once (0.8.245).
+    void perspectiveOrderChanged();
     // ========== KONEC PŘIDANÉ ČÁSTI ==========
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)

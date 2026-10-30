@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.245] - 2026-10-30
+
+### Changed
+- The audio tabs of an open Divisions dialog take the perspectives' new order
+  at once when a column is dragged in the Stop List or the Perspective
+  prefixes are edited (the voicing rows' boxes too).
+- Combination pistons and crescendo steps: the filled colour a touch
+  stronger (12 % of the orange in the grey; the same registration 18 %).
+
 ## [0.8.244] - 2026-10-30
 
 ### Fixed

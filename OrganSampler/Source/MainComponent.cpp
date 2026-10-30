@@ -8048,13 +8048,30 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             addAndMakeVisible(closeButton);
             closeButton.setButtonText("Close");
             refreshControls();
+            owner.audioTabsReorder = [this] { reorderAudioTabs(); };
             startTimerHz(10);
+        }
+        // The audio tabs in the perspectives' order (0.8.245: a column dragged in the Stop List or the
+        // Perspective prefixes edited while this dialog is open); the chosen tab stays chosen.
+        void reorderAudioTabs()
+        {
+            if (onlyManual < 0) return;
+            const auto order = owner.engine.getPerspectivesForManual(onlyManual);   // the auxiliary route last
+            const auto chosen = audioTabs.getCurrentTabName();
+            for (int wanted = 0; wanted < (int)order.size(); ++wanted)
+            {
+                const int at = audioTabs.getTabNames().indexOf(order[(size_t)wanted]);
+                if (at >= 0 && at != wanted) audioTabs.moveTab(at, wanted, false);
+            }
+            const int selected = audioTabs.getTabNames().indexOf(chosen);
+            if (selected >= 0) audioTabs.setCurrentTabIndex(selected, false);
         }
 
         ~KeyboardsDialog() override
         {
             owner.stopPoolRefresh = nullptr;
             owner.keyboardsDialogSelectorHook = nullptr;
+            owner.audioTabsReorder = nullptr;
             owner.listeningManual.store(-1);
             owner.listeningExpressionManual.store(-1);
             audioTabs.clearTabs();
@@ -28150,7 +28167,7 @@ void MainComponent::showConfigurationEditor()
                 [&o](const juce::String& text) { o.engine.setIgnoredPatterns(textToPatterns(text)); o.saveSettings(); o.rememberPatterns(true); },
                 "Folders containing these words are not loaded. Applies to the next folder load.");
             addText("Perspective prefixes", patternsToText(engine.getPerspectivePatterns()), true,
-                [&o](const juce::String& text) { o.engine.setPerspectivePatterns(textToPatterns(text)); o.saveSettings(); o.rememberPatterns(true); },
+                [&o](const juce::String& text) { o.engine.setPerspectivePatterns(textToPatterns(text)); o.saveSettings(); o.rememberPatterns(true); o.perspectiveOrderChanged(); },
                 "Folder name prefixes that mark a microphone perspective (e.g. dir-, dif-, rear-). Applies to the next folder load.");
 
             //---------------------------------------------------------------- Divisions
@@ -28461,10 +28478,16 @@ void MainComponent::reorderPerspectivePatterns(const std::vector<juce::String>& 
     rememberPatterns(true);
     configurationDirty = true;
     saveSettings();
-    if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);   // the voicing rows' perspective boxes in the new order
+    perspectiveOrderChanged();
     juce::StringArray labels;
     for (const auto& line : result) labels.add(labelOf(line));
     CrashHandler::note("Perspective patterns reordered: " + labels.joinIntoString(", ") + " (the Divisions dialog's tabs follow at its next opening)");
+}
+
+void MainComponent::perspectiveOrderChanged()
+{
+    if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);   // the voicing rows' perspective boxes in the new order
+    if (audioTabsReorder) audioTabsReorder();                      // the open Divisions dialog's tabs
 }
 
 void MainComponent::editFolderPatterns(bool perspectives)
@@ -28575,6 +28598,7 @@ void MainComponent::editFolderPatterns(bool perspectives)
             else engine.setIgnoredPatterns(newPatterns);
             saveSettings();
             rememberPatterns(true);
+            if (perspectives) perspectiveOrderChanged();   // 0.8.245: the order of the lines is the order everywhere
         },
         [this, perspectives] { showManualSection(perspectives ? "Perspective prefixes" : "Ignored folders (folder contains)", "Folder name patterns"); });
     if (perspectives) content->instructionHeight = 66;
