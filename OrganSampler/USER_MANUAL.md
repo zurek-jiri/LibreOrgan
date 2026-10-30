@@ -91,7 +91,8 @@ device and channel can also be chosen by hand.)
 samples of one division - or the RAR archive(s) the set came in - and say
 which division its stops go to. Repeat for every division, or load one tree
 holding everything and move the stops between divisions in the table. *Apply
-and reload*: the stops appear as buttons. A bought RAR set, a configuration
+and reload*: the stops appear as buttons ([The loading window](#the-loading-window)).
+A bought RAR set, a configuration
 from GitHub or an installed Hauptwerk organ take shorter roads: "The ways to
 an organ".
 
@@ -231,6 +232,17 @@ Before the samples load, a box asks how they are to be held in RAM (storage,
 packing, rate - [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with the
 configuration. Paths are stored with "/" and work on every platform.
 
+### The loading window
+
+Three lines: what is being read, what the program does right now (the stop
+being decoded, the tuning analysis, the pipe fills), and the reading speed
+("Reading from the disk at N MB/s" - a big organ loads as fast as the disk
+delivers, about 500 MB/s from a SATA SSD, several times that from NVMe).
+Then *Compiling the Stop List* with its steps. *Cancel* stops the loading at
+the next stop; the instrument is built from what was loaded. Only after the
+window closes are the copies of the filled pipes built in the background (a
+dark track under a stop button, filling orange); the organ plays at once.
+
 ### Portable configuration (to share with others)
 
 Tick **Portable configuration (to share with others)** in the Save box. The
@@ -246,8 +258,7 @@ and your name; the README is written by the program.
 Then *Publish on GitHub*: the form opens in your browser with the title and the
 organ filled in, the `Publish` folder beside it - drag the zip into the form
 and submit. A robot checks it and proposes it; after the merge the organ is a
-line of `configurations/INDEX.md`. A new version replaces the old one; the
-*remove* link of the line takes it off again.
+line of `configurations/INDEX.md`. A new version replaces the old one.
 
 ### Merging another configuration into the loaded organ
 
@@ -329,10 +340,10 @@ renamed in the Stop List gets its line at once.
 Folders matching *One-shot stops (folder contains)* ("Chiff", "Chimes",
 "Tubular", "Celesta", "Harp", "Glockenspiel") play once from start to end
 whenever the key is released - chiffs, percussion, bells. Folders matching
-*Ignored folders (folder contains)* ("trem", "*_tr", "output") are not loaded;
+*Ignored folders (folder contains)* ("trem", "\*_tr", "output") are not loaded;
 tremmed recordings named after their sibling with "tr"/"trem" appended are
-skipped as well. A pattern without a star matches anywhere in the name, "*x"
-the end of it, "x*" its start.
+skipped as well. A pattern without a star matches anywhere in the name, "\*x"
+the end of it, "x\*" its start.
 
 ### Sample archives (RAR)
 
@@ -426,8 +437,8 @@ discontinuity detector").
 
 The loading never lets the system page: it stops when the memory is short,
 builds the instrument from the stops loaded so far and names the rest in a
-message; they stay in the pool of the Stop List. The loading window's
-*Cancel* button does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).
+message; they stay in the pool of the Stop List. The *Cancel* button of
+[The loading window](#the-loading-window) does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).
 
 ## 2.5 Division headers
 
@@ -498,7 +509,7 @@ another division. A click on empty workspace ends the mode.
   stop from the ready-made stops of the loaded folders that no division uses
   yet, and the division's pooled stops and transmissions.
 
-None of this loads anything again. The same can be done in the table of the
+The same can be done in the table of the
 Stop List ([The table](#42-the-table)).
 
 ## 3.3 The voicing row
@@ -742,17 +753,8 @@ their samples and copies; only new folders are read, only missing copies
 built; folders left out of the table are freed. Moving rows between
 divisions or into a stop folder reloads nothing. A stop with transmissions
 cannot be removed or renamed without a warning. Closing the window with
-changes not applied asks: *Apply and reload*, *Discard* or *Cancel*.
-
-## 4.6 The loading window
-
-Three lines: what is being read, what the program does right now (the stop
-being decoded, the tuning analysis, the pipe fills), and the reading speed
-("Reading from the disk at N MB/s" - a big organ loads as fast as the disk
-delivers, about 500 MB/s from a SATA SSD, several times that from NVMe).
-Then *Compiling the Stop List* with its steps. Only after the window closes
-are the copies of the filled pipes built in the background (a dark track
-under a stop button, filling orange); the organ plays at once.
+changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What
+the window shows while it loads: [The loading window](#the-loading-window).
 
 ---
 
@@ -771,19 +773,44 @@ audio tabs.
 - *Ignore MIDI velocity (organ keys)* (the dialog says *Disable MIDI
   velocity*): on by default - every key is a full stroke ([Velocity layers](#35-velocity-layers)).
 - *Bass octave layout* for historic bass octaves; *Compass*: the lowest and
-  highest key (keys outside are silent on every stop of the division);
-  *MIDI transposition*: the keyboard plays this many semitones away.
+  highest key (defaults: pedal 36 to 67, manuals 36 to 96; keys outside are
+  silent on every stop of the division); *MIDI transposition*: the keyboard
+  plays this many semitones away.
 - The keyboard drawing shows the last key with its velocity.
 
 ## 5.2 Swell, tremulant, wind
 
-The swell pedal is learned by right-clicking the swell bar in the header;
-*Swell: maximum attenuation when closed* and *Swell: shutter inertia* shape
-it. The *Tremulant* header opens rate, depth and the phase drift between
-ranks; the *Wind model* header depth, frequency, oscillations, strength,
-settling lag and the divisions fed from the same wind - all described in
-[Division sections](#86-division-sections-pedal-manual-i--manual-vii). The tremulant's strength wanders, and every key stroke
-shakes the wind a little, so nothing repeats mechanically.
+### The swell
+
+The swell bar in the division header shows the shutters: drag it, or move the
+learned swell pedal. Right-click it: *Start MIDI Learn* (move the pedal through
+its whole range, then *Finish MIDI Learn*), *Clear MIDI assignment*, *Swell
+settings...*. Its settings: [Swell: maximum attenuation when closed](#swell-maximum-attenuation-when-closed) and [Swell: shutter inertia (settling time)](#swell-shutter-inertia-settling-time) per division (the Divisions dialog, the
+division's section of the Editor, or the right-click menu), and [Swell: harmonic filter](#swell-harmonic-filter) for every
+division (the box also dulls the tone). The shutters follow the pedal with the
+inertia set, so a sudden stroke arrives smoothly.
+
+### The tremulant
+
+The *Tremulant* button in the division header is registration like a stop: it
+sits in combinations and crescendo steps and is MIDI-learnable (right-click:
+*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per
+division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,
+a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how
+much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the
+level). The strength wanders between 60 and 100 % of the depth from cycle to
+cycle, and the children of a stop folder are spread in phase like the ranks of
+a mixture, so nothing pulses mechanically.
+
+### The wind model
+
+The wind has no button: it sags under a heavy registration and many keys, and
+every key stroke shakes it a little. Right-click the division header's
+background for *Wind settings...* (or the Divisions dialog). Per division: [Wind: depth (maximum pitch sag)](#wind-depth-maximum-pitch-sag)
+(0 switches it off for the division), [Wind: oscillation frequency](#wind-oscillation-frequency), [Wind: number of oscillations](#wind-number-of-oscillations), [Wind: oscillation strength](#wind-oscillation-strength), [Wind: sag settling lag](#wind-sag-settling-lag) and [Wind: also affects divisions](#wind-also-affects-divisions) (the other
+divisions fed from the same wind get half of this one's sag); for every
+division: [Wind: harmonic filter](#wind-harmonic-filter), [Wind: volume change per cent of sag](#wind-volume-change-per-cent-of-sag), the shares of one stop, one pipe and two pipes in the full
+sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 % switches the whole model off).
 
 ## 5.3 The audio tabs
 
@@ -1530,11 +1557,11 @@ The "?" of the pattern dialogs opens these chapters.
 
 Folders whose name matches play once without looping (chiff, percussion,
 bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A
-pattern without a star matches anywhere, "*x" the end, "x*" the start.
+pattern without a star matches anywhere, "\*x" the end, "x\*" the start.
 
 ### Ignored folders (folder contains)
 
-Folders whose name matches are not loaded. Defaults: "trem", "*_tr",
+Folders whose name matches are not loaded. Defaults: "trem", "\*_tr",
 "output". Changed with an organ loaded, the next *Apply and reload* takes the
 matching folders out of their rows.
 

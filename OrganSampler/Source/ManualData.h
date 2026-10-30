@@ -95,7 +95,8 @@ static const char* const kManualText_part0 =
     "samples of one division - or the RAR archive(s) the set came in - and say\n"
     "which division its stops go to. Repeat for every division, or load one tree\n"
     "holding everything and move the stops between divisions in the table. *Apply\n"
-    "and reload*: the stops appear as buttons. A bought RAR set, a configuration\n"
+    "and reload*: the stops appear as buttons ([The loading window](#the-loading-window)).\n"
+    "A bought RAR set, a configuration\n"
     "from GitHub or an installed Hauptwerk organ take shorter roads: \"The ways to\n"
     "an organ\".\n"
     "\n"
@@ -201,9 +202,9 @@ static const char* const kManualText_part0 =
     "in *Load Configuration*. Volume by volume: load the first, then **right-click**\n"
     "*Load Configuration* > *Merge another configuration into this organ* with the\n"
     "second one's definition, configuration or archives. Stops you have gain the\n"
-    "new perspective, new stops are added. A perspective set whose folders stand\n"
     ;
 static const char* const kManualText_part1 =
+    "new perspective, new stops are added. A perspective set whose folders stand\n"
     "beside yours under a new prefix joins your rows the same way, in the merge and\n"
     "in *Load folder...* alike. How the program decides that two folders are the\n"
     "same pipes: [The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join).\n"
@@ -237,6 +238,17 @@ static const char* const kManualText_part1 =
     "packing, rate - [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with the\n"
     "configuration. Paths are stored with \"/\" and work on every platform.\n"
     "\n"
+    "### The loading window\n"
+    "\n"
+    "Three lines: what is being read, what the program does right now (the stop\n"
+    "being decoded, the tuning analysis, the pipe fills), and the reading speed\n"
+    "(\"Reading from the disk at N MB/s\" - a big organ loads as fast as the disk\n"
+    "delivers, about 500 MB/s from a SATA SSD, several times that from NVMe).\n"
+    "Then *Compiling the Stop List* with its steps. *Cancel* stops the loading at\n"
+    "the next stop; the instrument is built from what was loaded. Only after the\n"
+    "window closes are the copies of the filled pipes built in the background (a\n"
+    "dark track under a stop button, filling orange); the organ plays at once.\n"
+    "\n"
     "### Portable configuration (to share with others)\n"
     "\n"
     "Tick **Portable configuration (to share with others)** in the Save box. The\n"
@@ -252,8 +264,7 @@ static const char* const kManualText_part1 =
     "Then *Publish on GitHub*: the form opens in your browser with the title and the\n"
     "organ filled in, the `Publish` folder beside it - drag the zip into the form\n"
     "and submit. A robot checks it and proposes it; after the merge the organ is a\n"
-    "line of `configurations/INDEX.md`. A new version replaces the old one; the\n"
-    "*remove* link of the line takes it off again.\n"
+    "line of `configurations/INDEX.md`. A new version replaces the old one.\n"
     "\n"
     "### Merging another configuration into the loaded organ\n"
     "\n"
@@ -335,10 +346,10 @@ static const char* const kManualText_part1 =
     "Folders matching *One-shot stops (folder contains)* (\"Chiff\", \"Chimes\",\n"
     "\"Tubular\", \"Celesta\", \"Harp\", \"Glockenspiel\") play once from start to end\n"
     "whenever the key is released - chiffs, percussion, bells. Folders matching\n"
-    "*Ignored folders (folder contains)* (\"trem\", \"*_tr\", \"output\") are not loaded;\n"
+    "*Ignored folders (folder contains)* (\"trem\", \"\\*_tr\", \"output\") are not loaded;\n"
     "tremmed recordings named after their sibling with \"tr\"/\"trem\" appended are\n"
-    "skipped as well. A pattern without a star matches anywhere in the name, \"*x\"\n"
-    "the end of it, \"x*\" its start.\n"
+    "skipped as well. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
+    "the end of it, \"x\\*\" its start.\n"
     "\n"
     "### Sample archives (RAR)\n"
     "\n"
@@ -393,6 +404,8 @@ static const char* const kManualText_part1 =
     "## 2.2 The combination row\n"
     "\n"
     "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
+    ;
+static const char* const kManualText_part2 =
     "buttons *<<* / *>>*, the bank buttons, the display of the combination in use,\n"
     "*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for\n"
     "combination files, and the crescendo.\n"
@@ -404,8 +417,6 @@ static const char* const kManualText_part1 =
     "  The piston in use is orange; other pistons holding the same registration\n"
     "  are darker still.\n"
     "- *<<*, *>>*, the bank buttons and every piston are MIDI-learnable\n"
-    ;
-static const char* const kManualText_part2 =
     "  (right-click). Combinations are part of the configuration.\n"
     "\n"
     "## 2.3 The crescendo\n"
@@ -434,8 +445,8 @@ static const char* const kManualText_part2 =
     "\n"
     "The loading never lets the system page: it stops when the memory is short,\n"
     "builds the instrument from the stops loaded so far and names the rest in a\n"
-    "message; they stay in the pool of the Stop List. The loading window's\n"
-    "*Cancel* button does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).\n"
+    "message; they stay in the pool of the Stop List. The *Cancel* button of\n"
+    "[The loading window](#the-loading-window) does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).\n"
     "\n"
     "## 2.5 Division headers\n"
     "\n"
@@ -506,7 +517,7 @@ static const char* const kManualText_part2 =
     "  stop from the ready-made stops of the loaded folders that no division uses\n"
     "  yet, and the division's pooled stops and transmissions.\n"
     "\n"
-    "None of this loads anything again. The same can be done in the table of the\n"
+    "The same can be done in the table of the\n"
     "Stop List ([The table](#42-the-table)).\n"
     "\n"
     "## 3.3 The voicing row\n"
@@ -595,6 +606,8 @@ static const char* const kManualText_part2 =
     "\n"
     "### Volume per key and Treble per key\n"
     "\n"
+    ;
+static const char* const kManualText_part3 =
     "Two folding rows of per-key sliders (-9 to +9 dB; the treble is a high shelf\n"
     "above *Treble per key: shelf start frequency*). Under every note name a tick\n"
     "box switches the pipe on or off: an unticked pipe is silent and is never\n"
@@ -606,8 +619,6 @@ static const char* const kManualText_part2 =
     "\n"
     "## 3.4 Transmissions and extensions\n"
     "\n"
-    ;
-static const char* const kManualText_part3 =
     "A transmission is an extra button that plays the pipes of another stop, on\n"
     "any division (its own included). Made in the Stop List (the *Transmissions*\n"
     "cell) or on the grid (a right-button or Shift drag in arrange mode). Its\n"
@@ -752,17 +763,8 @@ static const char* const kManualText_part3 =
     "built; folders left out of the table are freed. Moving rows between\n"
     "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
     "cannot be removed or renamed without a warning. Closing the window with\n"
-    "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*.\n"
-    "\n"
-    "## 4.6 The loading window\n"
-    "\n"
-    "Three lines: what is being read, what the program does right now (the stop\n"
-    "being decoded, the tuning analysis, the pipe fills), and the reading speed\n"
-    "(\"Reading from the disk at N MB/s\" - a big organ loads as fast as the disk\n"
-    "delivers, about 500 MB/s from a SATA SSD, several times that from NVMe).\n"
-    "Then *Compiling the Stop List* with its steps. Only after the window closes\n"
-    "are the copies of the filled pipes built in the background (a dark track\n"
-    "under a stop button, filling orange); the organ plays at once.\n"
+    "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
+    "the window shows while it loads: [The loading window](#the-loading-window).\n"
     "\n"
     "---\n"
     "\n"
@@ -781,19 +783,46 @@ static const char* const kManualText_part3 =
     "- *Ignore MIDI velocity (organ keys)* (the dialog says *Disable MIDI\n"
     "  velocity*): on by default - every key is a full stroke ([Velocity layers](#35-velocity-layers)).\n"
     "- *Bass octave layout* for historic bass octaves; *Compass*: the lowest and\n"
-    "  highest key (keys outside are silent on every stop of the division);\n"
-    "  *MIDI transposition*: the keyboard plays this many semitones away.\n"
+    "  highest key (defaults: pedal 36 to 67, manuals 36 to 96; keys outside are\n"
+    "  silent on every stop of the division); *MIDI transposition*: the keyboard\n"
+    "  plays this many semitones away.\n"
     "- The keyboard drawing shows the last key with its velocity.\n"
     "\n"
     "## 5.2 Swell, tremulant, wind\n"
     "\n"
-    "The swell pedal is learned by right-clicking the swell bar in the header;\n"
-    "*Swell: maximum attenuation when closed* and *Swell: shutter inertia* shape\n"
-    "it. The *Tremulant* header opens rate, depth and the phase drift between\n"
-    "ranks; the *Wind model* header depth, frequency, oscillations, strength,\n"
-    "settling lag and the divisions fed from the same wind - all described in\n"
-    "[Division sections](#86-division-sections-pedal-manual-i--manual-vii). The tremulant's strength wanders, and every key stroke\n"
-    "shakes the wind a little, so nothing repeats mechanically.\n"
+    "### The swell\n"
+    "\n"
+    "The swell bar in the division header shows the shutters: drag it, or move the\n"
+    "learned swell pedal. Right-click it: *Start MIDI Learn* (move the pedal through\n"
+    "its whole range, then *Finish MIDI Learn*), *Clear MIDI assignment*, *Swell\n"
+    "settings...*. Its settings: [Swell: maximum attenuation when closed](#swell-maximum-attenuation-when-closed) and [Swell: shutter inertia (settling time)](#swell-shutter-inertia-settling-time) per division (the Divisions dialog, the\n"
+    "division's section of the Editor, or the right-click menu), and [Swell: harmonic filter](#swell-harmonic-filter) for every\n"
+    "division (the box also dulls the tone). The shutters follow the pedal with the\n"
+    "inertia set, so a sudden stroke arrives smoothly.\n"
+    "\n"
+    "### The tremulant\n"
+    "\n"
+    "The *Tremulant* button in the division header is registration like a stop: it\n"
+    "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
+    "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
+    "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
+    "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
+    "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
+    ;
+static const char* const kManualText_part4 =
+    "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
+    "cycle, and the children of a stop folder are spread in phase like the ranks of\n"
+    "a mixture, so nothing pulses mechanically.\n"
+    "\n"
+    "### The wind model\n"
+    "\n"
+    "The wind has no button: it sags under a heavy registration and many keys, and\n"
+    "every key stroke shakes it a little. Right-click the division header's\n"
+    "background for *Wind settings...* (or the Divisions dialog). Per division: [Wind: depth (maximum pitch sag)](#wind-depth-maximum-pitch-sag)\n"
+    "(0 switches it off for the division), [Wind: oscillation frequency](#wind-oscillation-frequency), [Wind: number of oscillations](#wind-number-of-oscillations), [Wind: oscillation strength](#wind-oscillation-strength), [Wind: sag settling lag](#wind-sag-settling-lag) and [Wind: also affects divisions](#wind-also-affects-divisions) (the other\n"
+    "divisions fed from the same wind get half of this one's sag); for every\n"
+    "division: [Wind: harmonic filter](#wind-harmonic-filter), [Wind: volume change per cent of sag](#wind-volume-change-per-cent-of-sag), the shares of one stop, one pipe and two pipes in the full\n"
+    "sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 % switches the whole model off).\n"
     "\n"
     "## 5.3 The audio tabs\n"
     "\n"
@@ -808,8 +837,6 @@ static const char* const kManualText_part3 =
     "  with four channels), *Clear*, the IR caption (hover for its details,\n"
     "  right-click for the IR settings: high and low cut, pre-delay, wet volume,\n"
     "  decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.\n"
-    ;
-static const char* const kManualText_part4 =
     "- **Output channels**: tick any channels of the device, in any number. The\n"
     "  pipes are spread over them by key number, so a chord spreads across the\n"
     "  speakers like pipes across a windchest (a mono sample to one channel in\n"
@@ -983,6 +1010,8 @@ static const char* const kManualText_part4 =
     "  measured takes that one.\n"
     "\n"
     "**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded\n"
+    ;
+static const char* const kManualText_part5 =
     "pitch to a1 = 440 Hz, so\n"
     "that the stops of different organs (recorded at 435, 440, 442, 465 Hz ...)\n"
     "agree, and celeste beats and the global *Pitch* mean what they say; the\n"
@@ -1010,8 +1039,6 @@ static const char* const kManualText_part4 =
     "# 7. Filled pipes\n"
     "\n"
     "## 7.1 What a filled pipe is\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "Every rank is completed to the full keyboard: pipes it does not have are\n"
     "played from neighbouring real pipes, transposed - the extra octave of an\n"
@@ -1185,6 +1212,8 @@ static const char* const kManualText_part5 =
     "registration of a wet set, many quick staccato notes over many keys, watch\n"
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Measurement limit of DSP power\n"
     "\n"
     "How much of its period the longest callback of the busiest device may take\n"
@@ -1212,8 +1241,6 @@ static const char* const kManualText_part5 =
     "Every slider has a checkbox that shows it on the main panel too; all are\n"
     "MIDI-learnable there.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "### Master volume\n"
     "\n"
     "The whole organ, -60 to +12 dB (default -18). Lower it when a full\n"
@@ -1387,6 +1414,8 @@ static const char* const kManualText_part6 =
     "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch: how far the attack is stretched back from the\n"
+    ;
+static const char* const kManualText_part7 =
     "resampled length towards the source's (0 to 100 %, default 50, logarithmic).\n"
     "Higher values fray the attack; lower it for a stop whose speaking turns rough.\n"
     "\n"
@@ -1414,8 +1443,6 @@ static const char* const kManualText_part6 =
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "On (default): every shifted copy is brought to the loudness of its source.\n"
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
@@ -1548,11 +1575,11 @@ static const char* const kManualText_part7 =
     "\n"
     "Folders whose name matches play once without looping (chiff, percussion,\n"
     "bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A\n"
-    "pattern without a star matches anywhere, \"*x\" the end, \"x*\" the start.\n"
+    "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
     "### Ignored folders (folder contains)\n"
     "\n"
-    "Folders whose name matches are not loaded. Defaults: \"trem\", \"*_tr\",\n"
+    "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
     "\"output\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
@@ -1589,6 +1616,8 @@ static const char* const kManualText_part7 =
     "### MIDI channel\n"
     "\n"
     "1 to 16 on that device.\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Ignore MIDI velocity (organ keys)\n"
     "\n"
@@ -1616,8 +1645,6 @@ static const char* const kManualText_part7 =
     "\n"
     "### Swell: shutter inertia (settling time)\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "How slowly the shutters follow the pedal (50 to 2000 ms, default 300).\n"
     "\n"
     "### Division volume\n"
@@ -1791,6 +1818,8 @@ static const char* const kManualText_part8 =
     "Stops with no footage in the name stay at 0.\n"
     "\n"
     "## 10.2 How the footage of a stop is measured\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "The footage shown as \"Orig. Pitch\" is the first harmonic the lowest pipes\n"
     "really carry, measured on the audio (65 536 frames from 0.3 s in, the first\n"
@@ -1818,8 +1847,6 @@ static const char* const kManualText_part8 =
     "another's place by its last folder name alone - only by the same path below\n"
     "the root. What is found is taken silently and the root noted as a location;\n"
     "the list is `Locations.txt` (the folders, and the archives you chose - only\n"
-    ;
-static const char* const kManualText_part9 =
     "those are read, never another archive lying beside them).\n"
     "\n"
     "A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up\n"
@@ -1993,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "## 10.9 Retune buses and the full kernel\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "A pipe is retuned by its own recorded deviation (its rank's smpl pitches),\n"
     "the temperament of the played key, the random detune, wind and tremulant,\n"
     "and the transposition of its transmission - every pipe and every rank for\n"
@@ -2020,8 +2049,6 @@ static const char* const kManualText_part9 =
     "small dry step at stage 1), after separation, reverb and clip (stage 1), and\n"
     "per device callback on the driver's buffer, on the route's own channels only.\n"
     "The log line names the route, the stage and the lanes that rendered without a\n"
-    ;
-static const char* const kManualText_part10 =
     "scratch buffer; the counters reset after a render gap, a device start or a\n"
     "mute. It costs a few microseconds per period; a 15-route organ at idle pays\n"
     "about 7 % of a 512-sample period for it.\n"

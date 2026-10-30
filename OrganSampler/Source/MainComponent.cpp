@@ -243,6 +243,22 @@ struct HelpKeyWatcher final : public juce::Timer
     bool wasDown = false;
 };
 
+// Every tooltip ends with "For details press F1." (0.8.233, the user: the user cannot know
+// about F1 otherwise); a control without a tooltip of its own but with a chapter gets the
+// line alone.
+class HelpTooltipWindow final : public juce::TooltipWindow
+{
+public:
+    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) {}
+    juce::String getTipFor(juce::Component& c) override
+    {
+        auto tip = juce::TooltipWindow::getTipFor(c);
+        if (tip.contains("press F1")) return tip;
+        if (tip.isEmpty() && MainComponent::manualChapterForComponent(&c).isEmpty()) return tip;
+        return (tip.isEmpty() ? juce::String() : tip + "\n") + "For details press F1.";
+    }
+};
+
 class MainComponent::MessageStrip final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
 public:
@@ -940,6 +956,7 @@ MainComponent::MainComponent()
     : AudioAppComponent()
 {
     noticeOwner = this;   // the notice queue (0.8.217)
+    tooltipWindow = std::make_unique<HelpTooltipWindow>();   // 0.8.233: "For details press F1." on every tip
     setOpaque(true);
     DBG("MainComponent constructor start");
     manualConfigs[0].compassHigh = 67;   // pedal: 32 keys by default
@@ -1671,7 +1688,7 @@ MainComponent::MainComponent()
     for (const auto& item : headerButtons())
     {
         item.button->getProperties().set("midiTarget", "header:" + juce::String(item.key));
-        item.button->getProperties().set("manualChapter", "Top bar buttons");
+        item.button->getProperties().set("manualChapter", manualChapterForTarget("header:" + juce::String(item.key)));   // the button's own chapter
         item.button->addMouseListener(this, false);
     }
     {
@@ -23193,9 +23210,27 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
     if (target.startsWith("stop:")) return "Stop buttons";
     if (target.startsWith("transmission:")) return "Transmissions and extensions";
     if (target.startsWith("coupler")) return "Couplers";
-    if (target.startsWith("tremulant:")) return "Swell, tremulant, wind";
+    if (target.startsWith("tremulant:")) return "The tremulant";
     if (target.startsWith("temperament:")) return "Temperaments";
-    if (target.startsWith("header:")) return "Top bar buttons";
+    if (target.startsWith("header:"))
+    {
+        // The top-bar button's own chapter (the user: never the generic "Top bar buttons" where a chapter exists).
+        const auto key = target.fromFirstOccurrenceOf(":", false, false);
+        if (key == "record") return "Recording";
+        if (key == "stopList") return "The Stop List";
+        if (key == "couplers") return "Couplers";
+        if (key == "temperaments") return "Temperaments";
+        if (key == "voicing") return "The voicing row";
+        if (key == "perspectivePatterns") return "Perspective prefixes";
+        if (key == "ignoredPatterns") return "Ignored folders (folder contains)";
+        if (key == "oneShotPatterns") return "One-shot stops (folder contains)";
+        if (key == "stopMerging") return "Stop-Merging";
+        if (key == "loadConfiguration" || key == "saveConfiguration") return "Saving and loading";
+        if (key == "configurationEditor") return "Configuration Editor reference";
+        if (key == "unpackArchive") return "Sample archives (RAR)";
+        if (key == "globalReset") return "GLOBAL RESET";
+        return "Top bar buttons";   // PANIC, Guided tour, Load/Save Voicing, Shut down PC: their bullets
+    }
     if (target == "slider:crescendo" || target.startsWith("crescendo")) return "The crescendo";
     if (target.startsWith("slider:global:"))
     {
@@ -23216,7 +23251,7 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
     if (target.startsWith("slider:perspective:")) return "Perspective volume";
     if (target.startsWith("slider:separation:")) return "Perspective channel separation";
     if (target.startsWith("slider:reverb:")) return "The audio tabs";
-    if (target.startsWith("swell")) return "Swell, tremulant, wind";
+    if (target.startsWith("swell")) return "The swell";
     return "The combination row";   // pistons, banks, Tutti, X, Set
 }
 
@@ -23230,20 +23265,19 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
         { "Measuring the maximum polyphony", "Measure the maximum polyphony" }, { "Maximum polyphony measured", "Measure the maximum polyphony" },
         { "One-shot Patterns", "One-shot stops (folder contains)" }, { "Ignored Patterns", "Ignored folders (folder contains)" },
         { "Perspective Patterns", "Perspective prefixes" }, { "Save Configuration", "Saving and loading" }, { "Load Configuration", "Saving and loading" },
-        { "Global Reset", "GLOBAL RESET" }, { "Swell settings", "Swell, tremulant, wind" }, { "Tremulant settings", "Swell, tremulant, wind" },
-        { "Wind settings", "Swell, tremulant, wind" }, { "Keyboard MIDI Learn", "Keyboard, MIDI and compass" }, { "Swell MIDI Learn", "Swell, tremulant, wind" },
+        { "Global Reset", "GLOBAL RESET" }, { "Swell settings", "The swell" }, { "Tremulant settings", "The tremulant" },
+        { "Wind settings", "The wind model" }, { "Keyboard MIDI Learn", "Keyboard, MIDI and compass" }, { "Swell MIDI Learn", "The swell" },
         { "MIDI Learn", "MIDI learn" }, { "Unpack", "Sample archives (RAR)" }, { "Loading", "The loading window" },
         { "Publish", "Portable configuration (to share with others)" }, { "Missing folders", "Sample folders not found" } };
     for (const auto& pair : pairs) if (title.startsWithIgnoreCase(pair.titleStart)) return pair.chapter;
     return {};
 }
 
-void MainComponent::openManualForMouse()
+juce::String MainComponent::manualChapterForComponent(juce::Component* under)
 {
-    auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
-    if (under == nullptr) return;
+    if (under == nullptr) return {};
     auto* top = under->getTopLevelComponent();
-    if (top != nullptr && top->getName().startsWith("About OrganSampler")) return;   // the manual itself
+    if (top != nullptr && top->getName().startsWith("About OrganSampler")) return {};   // the manual itself
     juce::String chapter;
     for (auto* c = under; c != nullptr && chapter.isEmpty(); c = c->getParentComponent())
     {
@@ -23255,6 +23289,15 @@ void MainComponent::openManualForMouse()
         }
     }
     if (chapter.isEmpty() && top != nullptr) chapter = manualChapterForWindowTitle(top->getName());
+    return chapter;
+}
+
+void MainComponent::openManualForMouse()
+{
+    auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
+    if (under == nullptr) return;
+    if (auto* top = under->getTopLevelComponent()) if (top->getName().startsWith("About OrganSampler")) return;
+    auto chapter = manualChapterForComponent(under);
     if (chapter.isEmpty()) chapter = "The main window";
     CrashHandler::note("F1: the manual at \"" + chapter + "\"");
     showManualSection(chapter);
@@ -23578,10 +23621,10 @@ void MainComponent::showSwellLearnMenu(int manualIndex)
     menu.addSeparator();
     menu.addItem(4, "Swell settings (attenuation, shutter inertia, harmonic filter)...");
     menu.addSeparator();
-    menu.addItem(5, "Manual: Swell, tremulant, wind");
+    menu.addItem(5, "Manual: The swell");
     menu.showMenuAsync(menuOptionsAtMouse(this),[this, manualIndex](int result)
     {
-        if (result == 5) { showManualSection("Swell, tremulant, wind"); return; }
+        if (result == 5) { showManualSection("The swell"); return; }
         if (result == 4) { showFeatureSettings(manualIndex, "swell"); return; }
         auto& config = manualConfigs[(size_t)manualIndex];
         if (result == 1)
@@ -26523,6 +26566,17 @@ void MainComponent::prepareManual()
             while (i < raw.length())
             {
                 const juce::juce_wchar c = raw[i];
+                if (c == '\\' && i + 1 < raw.length())
+                {
+                    // A Markdown escape (0.8.233): "\*_tr" is the pattern with its star, as GitHub shows it.
+                    const juce::juce_wchar next = raw[i + 1];
+                    if (next == '*' || next == '_' || next == '"' || next == '\\' || next == '[' || next == '`' || next == '#')
+                    {
+                        plain += juce::String::charToString(next);
+                        i += 2;
+                        continue;
+                    }
+                }
                 if (c == '[')
                 {
                     // A Markdown link "[text](#anchor)" (0.8.232: the manual on GitHub has live links): the text

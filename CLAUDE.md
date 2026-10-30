@@ -1834,10 +1834,32 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (`githubSlug`, `chapterBySlug`), another target shows the text alone; quoted names still link in the program.
   Keep NEW references as Markdown links. Manual errors found by the audit against the code (the old manual had
   them too): the Divisions box is UPPER LEFT; the 440 button is "Set diapason a1 = 440 Hz (all stops)"; the
-  Divisions dialog says "Disable MIDI velocity" / "Allow Random Tuning Error" / "Allow Pipe Coupling"; the compass
-  default is 36-96 for every division; the macOS claim. Verified right: "+"/"-" corner button, "Cornet [III]",
+  Divisions dialog says "Disable MIDI velocity" / "Allow Random Tuning Error" / "Allow Pipe Coupling"; the macOS
+  claim. The PEDAL compass default IS 36-67 (constructor `manualConfigs[0].compassHigh = 67`, loadSettings default
+  67 for division 0; the struct's 36-96 is overwritten) - my "36-96 for every division" was wrong. Verified right: "+"/"-" corner button, "Cornet [III]",
   "New stop folder here", Stop List button names, GLOBAL RESET boxes, NOW/PEAK/DSP/RAM GB/LIMIT, combination row
   captions, load box combos, "Portable configuration (to share with others)", the publish buttons.
+  0.8.233 (30 Oct 2026 evening): (1) `HelpTooltipWindow` (MainComponent.cpp after HelpKeyWatcher, friend; the
+  header's `std::unique_ptr<juce::TooltipWindow> tooltipWindow` created FIRST in the constructor body - it was a
+  plain member before) overrides `getTipFor`: every tip + "\nFor details press F1."; a component with no tip but a
+  chapter (`MainComponent::manualChapterForComponent(c)` = the shared resolution of openManualForMouse: property,
+  ancestors, midiTarget, window title; empty when nothing) shows the line alone. (2) THE USER'S RULE: F1 and
+  "Manual: ..." must land on the ELEMENT and its settings, never on a generic chapter - the Tremulant button went
+  to "Swell, tremulant, wind" (one paragraph) and a coupler button to "Division headers" (the coupler buttons are
+  children of the SectionHeader, no property of their own). Manual 5.2 is three ### now: "The swell", "The
+  tremulant", "The wind model", each naming the control, its right-click menu and every setting as a link;
+  targets: tremulant: -> "The tremulant", swell -> "The swell", titles Swell/Tremulant/Wind settings -> those,
+  coupler buttons tagged "Couplers" in SectionHeader::rebuildCouplers. When a new element gets a tag, make sure
+  its chapter describes THAT element. The top-bar buttons: `manualChapterForTarget("header:<key>")` maps record ->
+  Recording, stopList -> The Stop List, couplers, temperaments, voicing -> The voicing row, the three patterns ->
+  their 8.5 chapters, stopMerging, load/saveConfiguration -> Saving and loading, configurationEditor -> the
+  reference, unpackArchive -> Sample archives (RAR), globalReset; PANIC/Guided tour/Load/Save Voicing/Shut down PC
+  keep "Top bar buttons" (bullets only). (3) The manual parser reads Markdown escapes (`\*`, `\_`, `\"`, `\\`, `\[`,
+  `` \` ``, `\#` = the literal character); the patterns in 1.7/8.5 are written `\*_tr`, `\*x`, `x\*`. (4) Manual:
+  compass defaults in 5.1, "The loading window" moved into 1.6 after "Saving and loading" (linked from Step 4,
+  2.4, 4.5), the remove-link sentence and "None of this loads anything again" dropped. The patterns lists and the
+  perspective order ARE configuration keys (not machine-specific), merged into Patterns.json at every load on any
+  computer - told the user.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

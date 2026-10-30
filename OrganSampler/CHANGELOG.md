@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.233] - 2026-10-30
+
+### Added
+- Every tooltip ends with "For details press F1." (a control with a chapter
+  but no tooltip of its own shows that line alone).
+
+### Changed
+- F1 and the menus point at the element itself: the Tremulant button at "The
+  tremulant", the swell bar at "The swell", the wind settings at "The wind
+  model" (the manual's 5.2 split into those three, each naming its settings
+  with links), a coupler button at "Couplers" (it opened the division
+  header's chapter), every top-bar button at its own chapter (Record at
+  "Recording", Stop List at "The Stop List", the patterns at their lists,
+  Load/Save Configuration at "Saving and loading" ...).
+- Manual: the pattern stars are shown ("\*x", "x\*", "\*_tr" - Markdown ate
+  them on GitHub and in the program; the manual window reads the escapes);
+  the compass defaults (pedal 36 to 67, manuals 36 to 96); the loading window
+  described where the loading is (1.6), linked from Step 4, 2.4 and Apply and
+  reload; the remove-link sentence dropped; "None of this loads anything
+  again" dropped.
+
 ## [0.8.232] - 2026-10-30
 
 ### Added

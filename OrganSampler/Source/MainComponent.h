@@ -199,7 +199,8 @@ private:
     double missingTreeCheckAt = 0.0;
     // Shows the tooltips of every control in the application (there was no
     // TooltipWindow before, so none of the setTooltip texts ever appeared).
-    juce::TooltipWindow tooltipWindow{ nullptr, 600 };
+    // 0.8.233: a HelpTooltipWindow - every tip ends with "For details press F1."
+    std::unique_ptr<juce::TooltipWindow> tooltipWindow;
 
     LeftOnlyToggleButton combinationSetButton{ "Set" };
     LeftOnlyTextButton previousCombinationButton{ "<<" };
@@ -1074,6 +1075,8 @@ private:
     // 0.8.232: F1 over any control opens its chapter of the manual (the component's "manualChapter" property, an
     // ancestor's, a MIDI target's chapter, else the window's title); every right-click menu ends with "Manual: ...".
     void openManualForMouse();
+    // The chapter a component (or an ancestor, a MIDI target, the window's title) names; empty when none does.
+    static juce::String manualChapterForComponent(juce::Component* under);
     static juce::String manualChapterForTarget(const juce::String& midiTarget);
     static juce::String manualChapterForWindowTitle(const juce::String& title);
     juce::String copyCacheFolder;               // the cache folder chosen by the user (empty = FilledPipesCache in the application data)
@@ -1303,6 +1306,7 @@ private:
     static MainComponent* noticeOwner;   // the one instance, for the free function queueNotice (usable from any lambda or helper struct)
     friend void queueNotice(juce::MessageBoxIconType, const juce::String&, const juce::String&, const juce::String&, juce::Component*, juce::ModalComponentManager::Callback*);
     friend struct HelpKeyWatcher;   // 0.8.232: F1 -> openManualForMouse
+    friend class HelpTooltipWindow;   // 0.8.233: every tooltip ends with "For details press F1."
     void enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
                        juce::ModalComponentManager::Callback* callback);
     bool noticeBlocked() const;    // an alert box (ours, the loader's, a question) is up, or a loader runs

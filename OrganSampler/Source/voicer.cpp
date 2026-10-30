@@ -2325,8 +2325,8 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 getProperties().set("manualChapter", "Division headers");
                 title.getProperties().set("manualChapter", "Keyboard, MIDI and compass");
                 setup.getProperties().set("manualChapter", "Divisions and audio");
-                swell.getProperties().set("manualChapter", "Swell, tremulant, wind");
-                tremulant.getProperties().set("manualChapter", "Swell, tremulant, wind");
+                swell.getProperties().set("manualChapter", "The swell");
+                tremulant.getProperties().set("manualChapter", "The tremulant");
                 missing.getProperties().set("manualChapter", "Sample folders not found");
             }
             rebuildCouplers();
@@ -2540,6 +2540,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             for (const auto& info : couplerGetter(manual))
             {
                 auto* button = couplerButtons.add(new LeftOnlyTextButton(info.label));
+                button->getProperties().set("manualChapter", "Couplers");   // F1 (0.8.233): the coupler, not the header
                 button->getProperties().set("couplerId", info.id);
                 button->setToggleState(info.enabled, juce::dontSendNotification);
                 button->setColour(juce::TextButton::buttonColourId,
