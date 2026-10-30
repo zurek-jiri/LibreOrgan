@@ -1976,6 +1976,9 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   P_Cello8) - loaded after Bellevue before 0.8.241 emptied a missing crescendo, then saved. Not the renaming.
   Cure: Void everything + Save. A load-time sieve (drop step/piston entries naming no table row) was proposed, the
   user said no.
+  0.8.247 (the user: "nejsem s těmi barvami spokojen ... pouze ze šedé"): swatches ~/Downloads/piston_greys.png
+  (A-F darker/lighter); he took B reversed: filledColour = base.darker(0.40), sameRegistrationColour =
+  base.darker(0.25), the orange for the selected one alone. No orange tints anywhere else in the GUI.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
