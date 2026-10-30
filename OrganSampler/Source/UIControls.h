@@ -14,9 +14,11 @@ inline juce::Colour onColour() { return juce::Colour(0xffffa500).contrasting(0.0
 // by 25 % for the same registration (one grey for the pistons and the steps).
 inline juce::Colour filledColour(juce::Colour base) { return base.darker(0.40f); }
 inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.darker(0.25f); }
-// An empty crescendo step: a shade lighter than the button grey (0.8.250, the user: the empty
-// steps and the taught ones had too little contrast; the pistons keep the plain grey).
-inline juce::Colour emptyStepColour(juce::Colour base) { return base.brighter(0.25f); }
+// An empty crescendo step: the grey of an empty piston under the mouse, a touch lighter (0.8.254,
+// the user). JUCE's LookAndFeel_V4 paints a hovered button as base.withMultipliedSaturation(0.9)
+// .contrasting(0.05) = 5 % towards white; 0.08 is "one tone lighter than that". brighter(0.25) of
+// 0.8.250 (20 % towards white) was far too light. The pistons keep the plain grey.
+inline juce::Colour emptyStepColour(juce::Colour base) { return base.withMultipliedSaturation(0.9f).contrasting(0.08f); }
 
 // Section header that folds its section when clicked (the Configuration Editor
 // style: orange bold caption with a "+ " / "- " prefix). Shared by the dialogs.
