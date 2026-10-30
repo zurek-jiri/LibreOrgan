@@ -13,7 +13,7 @@ inline juce::Colour onColour() { return juce::Colour(0xffffa500).contrasting(0.0
 // holding the same registration as the selected one (a shade more of it). 'base' is the
 // look-and-feel's TextButton::buttonColourId - one grey for the pistons and the steps.
 inline juce::Colour filledColour(juce::Colour base) { return base.interpolatedWith(juce::Colour(0xffffa500), 0.12f); }   // the user's row t = 0.12 (0.8.245)
-inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.interpolatedWith(juce::Colour(0xffffa500), 0.18f); }
+inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.interpolatedWith(juce::Colour(0xffffa500), 0.22f); }   // t = 0.22: more contrast to the filled 0.12 (0.8.246)
 
 // Section header that folds its section when clicked (the Configuration Editor
 // style: orange bold caption with a "+ " / "- " prefix). Shared by the dialogs.

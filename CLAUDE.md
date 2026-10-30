@@ -1970,7 +1970,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   constructor, cleared in its destructor: `reorderAudioTabs()` moves the tabs with TabbedComponent::moveTab to the
   order of getPerspectivesForManual, the chosen tab kept by name); called from reorderPerspectivePatterns (the
   column drag), the Perspective Patterns dialog's save and the Editor's "Perspective prefixes" field.
-  Colours 0.8.245: the user chose t = 0.12 after seeing 0.08 (filledColour 0.12, sameRegistrationColour 0.18).
+  Colours 0.8.245: the user chose t = 0.12 after seeing 0.08 (filledColour 0.12); 0.8.246: sameRegistrationColour
+  0.22 ("chce to trochu větší kontrast"). BRASOV'S CRESCENDO (30 Oct 2026): the user's Brasov Surround.json (saved
+  09:30) carries BELLEVUE's crescendo (all 72 step names are Casavant stops: HW_GrandBourdon32, Ped_ContreBomb32,
+  P_Cello8) - loaded after Bellevue before 0.8.241 emptied a missing crescendo, then saved. Not the renaming.
+  Cure: Void everything + Save. A load-time sieve (drop step/piston entries naming no table row) was proposed, the
+  user said no.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
