@@ -839,6 +839,14 @@ to that device and those channels. Each tab, top to bottom:
   Control Panel*, *Reopen device*, and **Set for all perspectives and
   divisions**, which copies the device, rate and buffer size to every route
   (on the auxiliary tab: to the auxiliary routes of all divisions).
+- **A device that is not there** (switched off, unplugged, taken by another
+  program): the route keeps it and keeps its channels - the line under the
+  device box says *NOT AVAILABLE now* and the channel list shows the stored
+  channels greyed. The program tries to open it every 2 seconds, also while
+  this dialog is open, and the moment it answers every route set to it plays
+  again. A device missing at start is reported once, in a box, after a 6 s
+  wait. ASIO lists every installed driver whether its hardware is on or not;
+  only the attempt to open it tells.
 
 **The buffer size decides more than anything else.** 512 samples at 48 kHz
 (10.7 ms, unnoticeable on an organ) renders tens of thousands of voices; 64

@@ -4411,9 +4411,10 @@ void MainComponent::watchMissingAudioDevices()
 {
     if (activeFolderLoader != nullptr || applyAllWindow != nullptr) return;   // not while loading or "set for all" runs
     if (audioDeviceSelectionUnmuteAt > 0.0) return;                           // a device change is in progress
-    // While the user is choosing devices (the Divisions dialog is open, a menu
-    // or dialog is up) nothing may rebuild a selector under the mouse.
-    if (keyboardsWindow != nullptr && keyboardsWindow->isVisible()) return;
+    // While a menu or a dialog box is up nothing may rebuild a selector under the
+    // mouse. The Divisions dialog itself no longer pauses the watch (0.8.250, the
+    // user: he opens it to see whether the card came back - the selectors are
+    // rebound through keyboardsDialogSelectorHook when a route reopens).
     if (juce::Component::getCurrentlyModalComponent() != nullptr) return;
     struct Candidate { int manual; juce::String perspective; std::unique_ptr<juce::XmlElement> state; };
     std::vector<Candidate> candidates;
@@ -4472,31 +4473,43 @@ void MainComponent::watchMissingAudioDevices()
             missingDeviceNextTryMs[wanted] = nowMs + retryMs;
             continue;
         }
-        CrashHandler::note("Audio device '" + wanted + "' (" + typeName + ") is available again: reopening manual "
-            + juce::String(candidate.manual) + " perspective " + candidate.perspective);
-        if (isSharedHostType(typeName))
-            moveRouteToSharedDevice(candidate.manual, candidate.perspective, typeName, wanted);
-        else
+        // The device answers: every route set to it is reopened in this one pass
+        // (0.8.250 - one route per check took 43 s for the 15 Fireface routes of
+        // the user's organ; a shared host opens the driver once, the others join).
+        int reopenedRoutes = 0, failedRoutes = 0;
+        for (auto& route : candidates)
         {
-            audioMuted.store(true);
-            ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 4000.0);
-            manager->initialise(0, 2, candidate.state.get(), true);
-            if (keyboardsDialogSelectorHook) keyboardsDialogSelectorHook(false);
-            saveSettings();
-            audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1200.0;
-        }
-        {
-            // Did it open? Otherwise wait half a minute before the next silent attempt.
-            auto* reopened = managerForRoute(candidate.manual, candidate.perspective);
-            auto* device = reopened != nullptr ? reopened->getCurrentAudioDevice() : nullptr;
-            if (device == nullptr || device->getName() != wanted) missingDeviceNextTryMs[wanted] = nowMs + retryMs;   // the next check
+            auto* routeManager = managerForRoute(route.manual, route.perspective);
+            if (routeManager == nullptr) continue;
+            if (!route.state->getStringAttribute("deviceType").equalsIgnoreCase(typeName)
+                || route.state->getStringAttribute("audioOutputDeviceName") != wanted) continue;
+            CrashHandler::note("Audio device '" + wanted + "' (" + typeName + ") is available again: reopening manual "
+                + juce::String(route.manual) + " perspective " + route.perspective);
+            if (isSharedHostType(typeName))
+                moveRouteToSharedDevice(route.manual, route.perspective, typeName, wanted);
             else
             {
-                missingDeviceNextTryMs.erase(wanted);
-                forgetMissingAudioDevice(wanted);   // opened: nothing to report, the waiting box goes
+                audioMuted.store(true);
+                ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 4000.0);
+                routeManager->initialise(0, 2, route.state.get(), true);
+                if (keyboardsDialogSelectorHook) keyboardsDialogSelectorHook(false);
+                saveSettings();
+                audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1200.0;
             }
+            // Did it open?
+            auto* reopened = managerForRoute(route.manual, route.perspective);
+            auto* device = reopened != nullptr ? reopened->getCurrentAudioDevice() : nullptr;
+            if (device == nullptr || device->getName() != wanted) ++failedRoutes; else ++reopenedRoutes;
         }
-        return;   // one route per check; the next check follows in a few seconds
+        if (reopenedRoutes > 0)
+        {
+            missingDeviceNextTryMs.erase(wanted);
+            forgetMissingAudioDevice(wanted);   // opened: nothing to report, the waiting box goes
+            CrashHandler::note("Audio device '" + wanted + "': " + juce::String(reopenedRoutes) + " route(s) reopened"
+                + (failedRoutes > 0 ? ", " + juce::String(failedRoutes) + " still without it (the next check in a few seconds)" : juce::String()));
+        }
+        if (failedRoutes > 0) missingDeviceNextTryMs[wanted] = nowMs + retryMs;   // the next check
+        return;   // one device per check; the next check follows in a few seconds
     }
 }
 
@@ -7302,6 +7315,18 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 return owner.manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
             }
 
+            // The device this route is set to (its saved state), whether it is open or not
+            // (0.8.250: named in the tab while it is switched off or taken).
+            juce::String savedDeviceName()
+            {
+                auto& config = owner.manualConfigs[(size_t)manual];
+                const juce::String xmlText = perspective.equalsIgnoreCase("default") ? config.audioDeviceStateXml
+                    : config.perspectiveAudio[MainComponent::perspectiveRouteKey(manual, perspective)].audioDeviceStateXml;
+                if (xmlText.isEmpty()) return {};
+                const auto state = juce::parseXML(xmlText);
+                return state != nullptr ? state->getStringAttribute("audioOutputDeviceName") : juce::String();
+            }
+
             void hidePhysicalChannelList(juce::Component& parent)
             {
                 if (selector == nullptr) return;
@@ -7390,7 +7415,16 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         if (latency > 0) running << ", output latency " << latency << " samples";
                         else running << ", output latency not reported by the driver (at least one buffer)";
                     }
-                    else running = "No device open on this route.";
+                    else
+                    {
+                        // 0.8.250 (the user: a card switched off was still listed as if it played): the
+                        // route keeps the device it is set to; the tab says that it is not there now.
+                        const auto wanted = savedDeviceName();
+                        running = wanted.isNotEmpty()
+                            ? "\"" + wanted + "\" is NOT AVAILABLE now (switched off, unplugged or taken by another program) - "
+                              "tried again every 2 s; the stored channels are kept."
+                            : juce::String("No device open on this route.");
+                    }
                     if (deviceStatus.getText() != running) deviceStatus.setText(running, juce::dontSendNotification);
 #if !JUCE_LINUX
                     panelButton.setEnabled(device != nullptr && device->hasControlPanel());
@@ -7484,9 +7518,12 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 }
                 const auto identity = selector->deviceManager.getCurrentAudioDeviceType() + "|"
                     + (device == nullptr ? juce::String() : device->getName());
-                logicalLabel.setText("Independent output channels for this perspective:",
-                    juce::dontSendNotification);
-                logicalLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+                if (device != nullptr)   // without a device the label is set below, once per device change (0.8.250)
+                {
+                    logicalLabel.setText("Independent output channels for this perspective:",
+                        juce::dontSendNotification);
+                    logicalLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+                }
                 const double currentRate = device != nullptr ? device->getCurrentSampleRate() : 0.0;
                 if (count == knownChannelCount && identity == knownDevice)
                 {
@@ -7515,6 +7552,38 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 knownDevice = identity;
                 channelButtons.clear();
                 auto& selected = configuredChannels();
+                if (device == nullptr)
+                {
+                    // 0.8.250: the route's device is not open now (switched off, unplugged, taken
+                    // by another program). The stored channels are KEPT and shown ticked but
+                    // disabled - before, "count 0" dropped every channel as "beyond the device"
+                    // and the user had to tick them again once the card came back.
+                    const auto wanted = savedDeviceName();
+                    if (wanted.isNotEmpty())
+                    {
+                        logicalLabel.setText("Device not available now - channels kept:", juce::dontSendNotification);
+                        logicalLabel.setColour(juce::Label::textColourId, onColour());
+                        logicalLabel.setTooltip("\"" + wanted + "\" is not open now (switched off, unplugged or taken by another program). "
+                            "The route keeps it and these output channels; the program tries to open it every 2 s.");
+                    }
+                    else
+                    {
+                        logicalLabel.setText("Independent output channels for this perspective:", juce::dontSendNotification);
+                        logicalLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+                        logicalLabel.setTooltip({});
+                    }
+                    for (int channel : selected)
+                    {
+                        auto* button = channelButtons.add(new juce::ToggleButton(juce::String(channel + 1) + ": stored (the device is not open now)"));
+                        button->setToggleState(true, juce::dontSendNotification);
+                        button->setEnabled(false);
+                        channelContent.addAndMakeVisible(button);
+                    }
+                    owner.engine.setPerspectiveOutputChannels(manual, perspective, selected);
+                    resized();
+                    return;
+                }
+                logicalLabel.setTooltip({});
                 // Channels beyond the device drop out; a selection that is empty
                 // because of that gets the device's first pair. An empty selection
                 // the user made stays empty (no channel is none, on any device).
@@ -8604,6 +8673,13 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     placeDialog(*keyboardsWindow, "divisions", dialogWidth, dialogHeight);   // one position for all divisions
     keyboardsWindow->setVisible(true);
     keyboardsWindow->toFront(true);
+    // 0.8.250 (the user: he opens the dialog to see whether the card came back): a
+    // route whose device is missing is probed right now, not at the next 2 s tick.
+    if (applicationReady.load())
+    {
+        missingDeviceNextTryMs.clear();
+        watchMissingAudioDevices();
+    }
 }
 
 void MainComponent::loadBuiltInTemperaments()
@@ -9703,12 +9779,16 @@ void MainComponent::showCrescendoDialog()
                 const int step = i + 1;
                 const bool active = step == owner.crescendoStep;
                 const bool stored = owner.isCrescendoStepStored(step);
-                // The same grey as the pistons (0.8.243: the steps had darkgrey, the pistons the look-and-feel's).
+                // A taught step with nothing on counts as empty for the colour (0.8.250, the user:
+                // "when a combination or a step has nothing in it, the plain grey").
+                const bool hasContent = stored && !owner.registrationOnSet(owner.crescendoSteps[(size_t)step - 1]).empty();
+                // The same grey as the pistons (0.8.243: the steps had darkgrey, the pistons the look-and-feel's);
+                // an empty step a shade lighter (0.8.250).
                 const auto base = getLookAndFeel().findColour(juce::TextButton::buttonColourId);
                 stepButtons[i]->setColour(juce::TextButton::buttonColourId,
-                    active ? onColour() : (stored ? filledColour(base) : base));
+                    active ? onColour() : (hasContent ? filledColour(base) : emptyStepColour(base)));
                 stepButtons[i]->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-                stepButtons[i]->setTooltip(stored ? "Taught step" : "Empty step (changes nothing)");
+                stepButtons[i]->setTooltip(hasContent ? "Taught step" : stored ? "Taught step with nothing on" : "Empty step (changes nothing)");
             }
         }
         void resized() override
@@ -15067,7 +15147,8 @@ void MainComponent::dropNestedTrees()
     const juce::String list = fresh.joinIntoString("\n  - ");
     runWhenLoaded([this, list]
     {
-        queueNotice(juce::MessageBoxIconType::WarningIcon, "Nested folder trees",
+        // 0.8.250: an information, nothing lost - the Messages tab, no box (the user's rule).
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Nested folder trees",
             "These folder trees lie inside another loaded tree - the same folders twice. They were dropped from the pool; "
             "their stops now point into the outer tree, nothing is lost:\n  - " + list
             + "\n\nLoad a folder tree once: either the whole tree or its parts, never both. The configuration is saved without them.");
@@ -23170,13 +23251,16 @@ void MainComponent::updateCombinationLights()
         {
             const bool matches = matchesByPiston[(size_t)piston];
             const bool selectedMatch = matches && piston == activePiston;
-            const bool filled = combinations.find(combinationKey(currentBank, piston)) != combinations.end();
+            const auto found = combinations.find(combinationKey(currentBank, piston));
+            // A stored combination with nothing on is painted as an empty one (0.8.250, the
+            // user: "when a combination has nothing in it, the plain grey, not the shade of
+            // the same registration"); it still works as a cancel piston when pressed.
+            const bool filled = found != combinations.end() && !registrationOnSet(found->second).empty();
             const auto ordinaryOffColour = getLookAndFeel().findColour(
                 juce::TextButton::buttonColourId);
-            // A filled piston: the button grey with a touch of the orange (UIControls.h
-            // filledColour, the same as a taught crescendo step); the pistons holding the
-            // same registration as the selected one a shade more of it; the selected one
-            // orange (0.8.243, the user's choice from the swatches).
+            // A filled piston: the button grey darkened (UIControls.h filledColour, the same
+            // as a taught crescendo step); the pistons holding the same registration as the
+            // selected one a lighter shade of it; the selected one orange (0.8.247).
             button->removeColour(juce::TextButton::buttonColourId);
             if (filled && !selectedMatch) button->setColour(juce::TextButton::buttonColourId, filledColour(ordinaryOffColour));
             button->setColour(juce::TextButton::buttonOnColourId,
@@ -23186,7 +23270,7 @@ void MainComponent::updateCombinationLights()
             // buttonOnColourId changes. Give the selected match an explicit base colour too.
             if (selectedMatch)
                 button->setColour(juce::TextButton::buttonColourId, onColour());
-            button->setToggleState(matches, juce::dontSendNotification);
+            button->setToggleState(matches && (filled || selectedMatch), juce::dontSendNotification);
             button->repaint();
         }
     }

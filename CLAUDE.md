@@ -1992,6 +1992,27 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Exec = the script; `refreshLinuxLauncher()` at every start writes Executable.txt and, when the entry exists but
   does not run the script or the script's text differs, `installLinuxDesktopEntry(true)` (silent: no notice, the
   cache tools not waited for). A "program does not start" on Linux: `journalctl --user -b | grep -i organ` first.
+  0.8.250 (30 Oct 2026, Windows; the user's Fireface switched off at start, then on, then off again): (1) THE AUDIO
+  TAB ERASED THE CHANNELS: `AudioTabPanel::refreshChannels` filtered the stored selection to `channel < count` with the
+  device not open (count 0) - every channel gone, nothing refilled; now a route without a device keeps its selection,
+  shows it as ticked disabled buttons ("N: stored (the device is not open now)"), the label "Device not available now -
+  channels kept:" (orange, the device in its tooltip) and `deviceStatus` says "\"X\" is NOT AVAILABLE now (switched off,
+  unplugged or taken by another program) - tried again every 2 s; the stored channels are kept." (`savedDeviceName()`
+  parses the route's state XML). (2) `watchMissingAudioDevices` no longer pauses while the Divisions dialog is open (the
+  modal check stays), `showKeyboardsDialog` probes at once (missingDeviceNextTryMs cleared), and a device that answers
+  gets EVERY route set to it reopened in one pass (log "'X': N route(s) reopened") - one route per 2 s check took 43 s
+  for 15 routes (log 16:56:48-16:57:31). The ASIO list is the registry's drivers, hardware on or off: only the open
+  attempt tells; a route set to an absent device stays set to it (that is what brings it back). (3) COLOURS:
+  `emptyStepColour(base)` = base.brighter(0.25) for an empty crescendo step (the user: too little contrast to the
+  taught ones; the pistons keep the plain grey); a taught step / stored combination with NOTHING on
+  (`registrationOnSet(slot).empty()`) is painted as empty (no filled shade, no same-registration toggle; the active
+  one stays orange) - a cancel piston still works. (4) BOXES (the user: "do boxu nesmí jít nikdy ... jen v
+  nejdůležitějších případech", a WarningIcon notice is a box): a box only for a FAILED USER ACTION (merge, load,
+  import, record, unpack, IR, "Stop folder not empty", shut down), for SILENT AUDIO (devices missing after the 6 s wait,
+  the safe-start buffer) and for stops left out of a load ("Loading samples"); "Nested folder trees" went to the Messages
+  tab (InfoIcon). Anything informational is InfoIcon without a callback = the strip + Messages. Manual 5.3 has the
+  "A device that is not there" bullet. NOT verified with the hardware (no card to switch off here): the paths are the
+  same the log shows; the user tests it.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

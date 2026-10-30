@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.250] - 2026-10-30
+
+### Fixed
+- Opening the Divisions dialog while a route's sound card was switched off
+  erased that route's output channels (the empty device had "no channels",
+  so every stored channel was dropped as beyond it); the channels had to be
+  ticked again once the card was back. The stored channels are kept and
+  shown greyed until the device opens.
+- The watch for a missing audio device paused while the Divisions dialog was
+  open - exactly when the user looks whether the card came back. It runs
+  while the dialog is open, probes at once when the dialog opens, and
+  reopens every route of the device in one pass (one route per 2 s before:
+  43 s for 15 routes).
+
+### Changed
+- The audio tab names a device that is set but not open: "NOT AVAILABLE now
+  (switched off, unplugged or taken by another program)", tried every 2 s.
+- Crescendo steps: an empty step is a shade lighter than the button grey
+  (more contrast to the taught ones); a taught step or a stored combination
+  with nothing switched on is painted as empty (it still cancels when pressed).
+- "Nested folder trees" after a load goes to the Messages tab, not a box.
+
 ## [0.8.249] - 2026-10-30
 
 ### Fixed

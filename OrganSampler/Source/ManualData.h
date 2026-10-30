@@ -851,6 +851,14 @@ static const char* const kManualText_part4 =
     "  Control Panel*, *Reopen device*, and **Set for all perspectives and\n"
     "  divisions**, which copies the device, rate and buffer size to every route\n"
     "  (on the auxiliary tab: to the auxiliary routes of all divisions).\n"
+    "- **A device that is not there** (switched off, unplugged, taken by another\n"
+    "  program): the route keeps it and keeps its channels - the line under the\n"
+    "  device box says *NOT AVAILABLE now* and the channel list shows the stored\n"
+    "  channels greyed. The program tries to open it every 2 seconds, also while\n"
+    "  this dialog is open, and the moment it answers every route set to it plays\n"
+    "  again. A device missing at start is reported once, in a box, after a 6 s\n"
+    "  wait. ASIO lists every installed driver whether its hardware is on or not;\n"
+    "  only the attempt to open it tells.\n"
     "\n"
     "**The buffer size decides more than anything else.** 512 samples at 48 kHz\n"
     "(10.7 ms, unnoticeable on an organ) renders tens of thousands of voices; 64\n"
@@ -1002,6 +1010,8 @@ static const char* const kManualText_part4 =
     "  disagree, or the set has no pitch data, **double-click** the temperament\n"
     "  (or *Samples' base temperament* in the Configuration Editor). Every\n"
     "  stop's voicing row reports what its own ranks were found to be in.\n"
+    ;
+static const char* const kManualText_part5 =
     "- **The target temperament** is the temperament the organ plays in: a\n"
     "  **single click** (or *Target temperament*). Every pipe is retuned by the\n"
     "  difference; choosing the recorded temperament itself plays the samples as\n"
@@ -1010,8 +1020,6 @@ static const char* const kManualText_part4 =
     "  The retune works rank by rank - every rank's own recorded deviations are\n"
     "  taken out and the target's put in - so both organs play the target\n"
     "  temperament in tune with each other. The base temperament shown is the one\n"
-    ;
-static const char* const kManualText_part5 =
     "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
     "\n"
@@ -1204,6 +1212,8 @@ static const char* const kManualText_part5 =
     "\n"
     "### IR reverbs now\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "What the reverbs cost now. Information.\n"
     "\n"
     "### Maximum polyphony\n"
@@ -1212,8 +1222,6 @@ static const char* const kManualText_part5 =
     "are faded out beyond it. Set it below what the computer renders, so that an\n"
     "overload fades old voices rather than crackles. It belongs to the organ\n"
     "(routes, IRs, drivers, buffers all change it) and is saved with the\n"
-    ;
-static const char* const kManualText_part6 =
     "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
     "registration of a wet set, many quick staccato notes over many keys, watch\n"
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
@@ -1406,6 +1414,8 @@ static const char* const kManualText_part6 =
     "\n"
     "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
     "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
+    ;
+static const char* const kManualText_part7 =
     "and filled from its neighbours; its thumb turns green and the tooltip says\n"
     "so. Travels with the organ.\n"
     "\n"
@@ -1414,8 +1424,6 @@ static const char* const kManualText_part6 =
     "Pitch shift method: the decay of a filled pipe's release as a share of its\n"
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### Filled pipes: time stretch of the attack\n"
     "\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "The folder trees of this division and *Stop building...*, which opens the\n"
     "Stop List.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Shown in window\n"
     "\n"
     "With two program windows: which one shows this division.\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "\n"
     "The MIDI input that plays this division; several divisions may listen to the\n"
     "same device.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### MIDI channel\n"
     "\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "L or R right after the footage or at the end (\"AB_quintaton16L\" +\n"
     "\"AB_quintaton16R\") marks the two halves of one stop; a rank count (\"Mixtur4x\",\n"
     "\"Zimbel3\") is no such mark. A mutation written without spaces (\"Nasard 223\",\n"
+    ;
+static const char* const kManualText_part9 =
     "\"Terz 135\") is read as 2 2/3', 1 3/5'; the organ builders' shorthand \"3\",\n"
     "\"6\", \"12\", \"1 1/2\" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after\n"
     "its sibling or parent with \"tr\" or \"trem\" appended is the tremmed recording\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "\n"
     "The transposition a folder gets by itself: the mode of (recorded pitch - file\n"
     "number) over the pipes against the footage in the folder's name, when three\n"
-    ;
-static const char* const kManualText_part9 =
     "or more samples agree by 70 % and the difference is two semitones or more.\n"
     "Stops with no footage in the name stay at 0.\n"
     "\n"
@@ -2012,6 +2020,8 @@ static const char* const kManualText_part9 =
     "thread (a big organ over fifteen routes measures like ASIO, the whole organ\n"
     "on two routes is bound to two cores).\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "What it cannot see: a dropout made after the program's buffer - the\n"
     "system's shared mixer with many streams on one endpoint, a USB card starved\n"
     "by the system, an endpoint's \"audio enhancements\" boosting every quiet stream\n"
@@ -2020,8 +2030,6 @@ static const char* const kManualText_part9 =
     "the cure is the device layout (one driver for everything, ASIO where there is\n"
     "one, no unused routes left open on the same endpoint), never the limit. The\n"
     "DSP cell can read lower than the limit when the run ends: it shows a fading\n"
-    ;
-static const char* const kManualText_part10 =
     "peak, the judge takes the single longest callback.\n"
     "\n"
     "## 10.9 Retune buses and the full kernel\n"
