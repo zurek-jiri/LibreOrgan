@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.236] - 2026-10-30
+
+### Added
+- Every control has a tooltip: the top bar, the combination row, the global
+  sliders, the stop buttons, the voicing row's transposition, attack gain and
+  random pitch error, the division header's Settings, the Divisions dialog's
+  MIDI device, transposition, output channels, division volume, velocity,
+  random tuning, pipe coupling, swell attenuation and wind settling, the
+  crescendo dialog, the temperament dialog, the report dialog, the manual
+  window.
+- Arrange mode from the right-click menu of the empty workspace ("Enter
+  arrange mode" / "Leave arrange mode"), beside the two-second press.
+
+### Fixed
+- A tooltip stayed up for as long as the mouse rested on the control: it is
+  taken down after seven seconds and comes back only when the mouse has left
+  the control and returns to it.
+- The loading window's three lines were laid out anew when the reading speed
+  first appeared (the window grew with the longer text, the lines had wrapped
+  before): the third line is as long from the start.
+
 ## [0.8.235] - 2026-10-30
 
 ### Fixed

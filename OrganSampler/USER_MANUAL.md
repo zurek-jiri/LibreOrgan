@@ -483,9 +483,10 @@ division (a 16' or 4' extension of an 8' stop), "(Trsm.)" in another one.
 
 ## 3.2 Arranging the grid
 
-Press a stop button for two seconds, release: the console enters **arrange
-mode** - every stop and transmission can be dragged to another cell or into
-another division. A click on empty workspace ends the mode.
+Press a stop button for two seconds, release - or right-click the empty
+workspace and choose *Enter arrange mode*: every stop and transmission can
+be dragged to another cell or into another division. A click on empty
+workspace ends the mode.
 
 - Dragging a stop into another division moves it there with its voicing and
   transmissions. A name is unique within a division: a stop whose name the

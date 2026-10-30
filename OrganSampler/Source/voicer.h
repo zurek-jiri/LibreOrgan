@@ -418,6 +418,8 @@ public:
     // its table row (children included) and reloads both divisions; the grid cell
     // and the voicing state are already retargeted here.
     std::function<void(Stop*, int targetManual)> moveStopRequest;
+    // The manual at a chapter (0.8.236: "Manual: ..." of the workspace's right-click menu).
+    std::function<void(const juce::String&)> manualRequest;
     // Arrange mode: the "x" of a stop. The owner removes its Stop List row (after a
     // warning when it has transmissions) and reloads the division.
     std::function<void(Stop*)> removeStopRequest;

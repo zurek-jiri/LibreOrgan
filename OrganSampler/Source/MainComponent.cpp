@@ -250,13 +250,41 @@ struct HelpKeyWatcher final : public juce::Timer
 class HelpTooltipWindow final : public juce::TooltipWindow
 {
 public:
-    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) {}
+    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) { hider.startTimer(250); }
     juce::String getTipFor(juce::Component& c) override
     {
+        if (hider.suppressed != nullptr && hider.suppressed == &c) return {};   // shown long enough: not again until the mouse left the control
         auto tip = juce::TooltipWindow::getTipFor(c);
         if (tip.isEmpty() || tip.contains("press F1")) return tip;
         return tip + "\nFor details press F1.";
     }
+private:
+    // JUCE keeps a tooltip up for as long as the mouse rests on the control (0.8.236, the user:
+    // "je tam furt a otravuje to"): a tip is taken down after 7 seconds and comes back only
+    // when the mouse has left the control and returns to it.
+    struct Hider final : public juce::Timer
+    {
+        explicit Hider(HelpTooltipWindow& w) : window(w) {}
+        void timerCallback() override
+        {
+            auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
+            if (suppressed != nullptr && under != suppressed) suppressed = nullptr;
+            if (!window.isVisible()) { shownSince = 0; shownOver = nullptr; return; }
+            const auto now = juce::Time::getMillisecondCounter();
+            if (shownSince == 0 || under != shownOver) { shownSince = now; shownOver = under; return; }
+            if (now - shownSince > 7000)
+            {
+                suppressed = under;
+                window.hideTip();
+                shownSince = 0;
+                shownOver = nullptr;
+            }
+        }
+        HelpTooltipWindow& window;
+        juce::Component::SafePointer<juce::Component> suppressed, shownOver;
+        juce::uint32 shownSince = 0;
+    };
+    Hider hider{ *this };
 };
 
 class MainComponent::MessageStrip final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
@@ -973,6 +1001,7 @@ MainComponent::MainComponent()
     selectFolderButton.setButtonText("Select Top Folder with Stops");
     selectFolderButton.onClick = [this] { selectTopFolder(); };
 
+    panicButton.setTooltip("Silences every sounding pipe at once. Right-click: MIDI learn.");
     addAndMakeVisible(panicButton);
     panicButton.onClick = [this] { panic(); };
     panicButton.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
@@ -980,10 +1009,12 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(keyboardsButton);
     keyboardsButton.onClick = [this] { showKeyboardsDialog(); };
+    temperamentsButton.setTooltip("The temperaments: one click chooses the one the organ plays in, a double-click the one the samples were recorded in; a1 = 440 Hz for every stop.");
     addAndMakeVisible(temperamentsButton);
     temperamentsButton.onClick = [this] { showTemperamentsDialog(); };
     addAndMakeVisible(manualCountLabel);
     manualCountLabel.setJustificationType(juce::Justification::centredRight);
+    manualCountBox.setTooltip("How many manuals the console has (1 to 7); the pedal is always there.");
     addAndMakeVisible(manualCountBox);
     for (int count = 1; count < SamplerEngine::maxManuals; ++count)
         manualCountBox.addItem(juce::String(count) + "m.+P.", count);
@@ -1017,6 +1048,7 @@ MainComponent::MainComponent()
         saveSettings();
         refreshConfigurationEditor();
     };
+    toggleAllVoicingButton.setTooltip("Folds every open voicing row on the grid.");
     addAndMakeVisible(toggleAllVoicingButton);
     toggleAllVoicingButton.onClick = [this]
     {
@@ -1030,6 +1062,7 @@ MainComponent::MainComponent()
         if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
     };
 
+    resetButton.setTooltip("Resets the instrument: a box asks what to reset (everything, audio, MIDI, transmissions, patterns, couplers, the grid).");
     addAndMakeVisible(resetButton);
     resetButton.setButtonText("GLOBAL RESET");
     resetButton.onClick = [this] { performGlobalReset(); };
@@ -1044,49 +1077,61 @@ MainComponent::MainComponent()
         "for computers without an unpacker, macOS above all. Then load the folders in the Stop List.");
     unpackArchiveButton.onClick = [this] { unpackArchiveDialog(); };
 
+    enableAllButton.setTooltip("Tutti: every stop on. Right-click: MIDI learn.");
     addAndMakeVisible(enableAllButton);
     enableAllButton.setButtonText("Tutti");
     enableAllButton.onClick = [this] { enableAllStops(); };
 
+    disableAllButton.setTooltip("Every stop off. Right-click: MIDI learn.");
     addAndMakeVisible(disableAllButton);
     disableAllButton.setButtonText("X");
     disableAllButton.onClick = [this] { disableAllStops(); };
 
+    saveCombinationsButton.setTooltip("Writes all combination pistons to a file.");
     addAndMakeVisible(saveCombinationsButton);
     saveCombinationsButton.onClick = [this] { chooseCombinationsFileToSave(); };
+    loadCombinationsButton.setTooltip("Reads the combination pistons from a file.");
     addAndMakeVisible(loadCombinationsButton);
     loadCombinationsButton.onClick = [this] { chooseCombinationsFileToLoad(); };
 
+    saveStopSettingsButton.setTooltip("Writes the voicing of every stop to a file (it is saved with the configuration as well).");
     addAndMakeVisible(saveStopSettingsButton);
     saveStopSettingsButton.setButtonText("Save Voicing");
     saveStopSettingsButton.onClick = [this] { saveStopSettings(); };
     saveStopSettingsButton.setEnabled(false); // initially disabled until a folder is loaded
 
+    loadStopSettingsButton.setTooltip("Reads the voicing of the stops from a file.");
     addAndMakeVisible(loadStopSettingsButton);
     loadStopSettingsButton.setButtonText("Load Voicing");
     loadStopSettingsButton.onClick = [this] { loadStopSettings(); };
     loadStopSettingsButton.setEnabled(false);
 
+    mergeStopsButton.setTooltip("Renders the engaged stops and transmissions, with their voicing, into one new stop per perspective (WAV files in the loaded folder tree).");
     addAndMakeVisible(mergeStopsButton);
     mergeStopsButton.setButtonText("Stop-Merging");
     mergeStopsButton.onClick = [this] { mergeStops(); };
     mergeStopsButton.setEnabled(false);
 
+    loadConfigurationButton.setTooltip("Opens a configuration (.json or .zip), a Hauptwerk organ definition or RAR archives of a sample set. Right-click: merge another configuration into the loaded organ.");
     addAndMakeVisible(loadConfigurationButton);
     loadConfigurationButton.onClick = [this] { chooseConfigurationToLoad(); };
+    saveConfigurationButton.setTooltip("Writes the whole instrument into its configuration file; the box offers a portable export for publishing.");
     addAndMakeVisible(saveConfigurationButton);
     saveConfigurationButton.onClick = [this] { chooseConfigurationToSave(); };
 
     // ========== NOVÉ TLAČÍTKO PRO ONE‑SHOT PATTERNS ==========
+    oneShotPatternsButton.setTooltip("Folder name patterns of one-shot stops (chimes, percussion, bells): they play once from start to end.");
     addAndMakeVisible(oneShotPatternsButton);
     oneShotPatternsButton.setButtonText("One-shot Patterns...");
     oneShotPatternsButton.onClick = [this] { editOneShotPatterns(); };
     // ========== KONEC NOVÉ ČÁSTI ==========
 
     // ========== NOVÉ TLAČÍTKO PRO IGNORED PATTERNS ==========
+    ignoredPatternsButton.setTooltip("Folder name patterns that are never loaded (tremmed recordings and the like).");
     addAndMakeVisible(ignoredPatternsButton);
     ignoredPatternsButton.setButtonText("Ignored Patterns...");
     ignoredPatternsButton.onClick = [this] { editFolderPatterns(false); };
+    perspectivePatternsButton.setTooltip("The perspectives and their folder prefixes, one line each; the order of the lines is the order of the perspectives everywhere.");
     addAndMakeVisible(perspectivePatternsButton);
     perspectivePatternsButton.onClick = [this] { editFolderPatterns(true); };
     addAndMakeVisible(stopListButton);
@@ -1110,14 +1155,17 @@ MainComponent::MainComponent()
     generatingLabel.setJustificationType(juce::Justification::centred);
     generatingLabel.setFont(juce::FontOptions(17.0f, juce::Font::bold));
     generatingLabel.setInterceptsMouseClicks(false, false);
+    couplersButton.setTooltip("Which couplers each division shows on its rail: unison, 16', 4', melody and bass couplers, Unison Off.");
     addAndMakeVisible(couplersButton);
     couplersButton.onClick = [this] { showCouplersDialog(); };
+    configurationEditorButton.setTooltip("Every setting of the program in one window.");
     addAndMakeVisible(configurationEditorButton);
     configurationEditorButton.onClick = [this] { showConfigurationEditor(); };
     addAndMakeVisible(recordButton);
     recordButton.onClick = [this] { toggleRecording(); };
     // ========== KONEC NOVÉ ČÁSTI ==========
 
+    masterVolumeSlider.setTooltip("The level of the whole organ (-60 to +12 dB). Right-click: MIDI learn.");
     addAndMakeVisible(masterVolumeSlider);
     masterVolumeSlider.setRange(-60.0, 12.0, 0.1);
     masterVolumeSlider.setValue(kDefaultMasterDb, juce::dontSendNotification);
@@ -1179,6 +1227,7 @@ MainComponent::MainComponent()
     releaseFadeInLabel.setJustificationType(juce::Justification::centred);
     releaseFadeInLabel.setText("Release fade-in: 70 ms (def.)", juce::dontSendNotification);
 
+    releaseScalingSlider.setTooltip("The level of all release samples; the leftmost position silences them. Right-click: MIDI learn.");
     addAndMakeVisible(releaseScalingSlider);
     releaseScalingSlider.setRange(-21.0, 10.0, 0.1); // -21 is the silence sentinel below -20 dB; +10 dB at most (0.8.226, was +6)
     releaseScalingSlider.setValue(0.0, juce::dontSendNotification);
@@ -1206,6 +1255,7 @@ MainComponent::MainComponent()
     releaseScalingLabel.setJustificationType(juce::Justification::centred);
     releaseScalingLabel.setText("Release scaling: 0.0 dB", juce::dontSendNotification);
 
+    pitchSlider.setTooltip("Shifts the whole organ in cents on top of the temperament (-200 to +200). Right-click: MIDI learn.");
     addAndMakeVisible(pitchSlider);
     pitchSlider.setRange(-200.0, 200.0, 1.0);
     pitchSlider.setValue(0.0, juce::dontSendNotification);
@@ -1224,6 +1274,7 @@ MainComponent::MainComponent()
     messageStrip = std::make_unique<MessageStrip>(*this);
     addChildComponent(*messageStrip);
 
+    attackMinimumSlider.setTooltip("The shortest time a pipe sounds once started: even a brief touch lets the chiff be heard. Right-click: MIDI learn.");
     addAndMakeVisible(attackMinimumSlider);
     attackMinimumSlider.setRange(0.0, 500.0, 1.0);
     attackMinimumSlider.setValue(80.0, juce::dontSendNotification);
@@ -1239,6 +1290,7 @@ MainComponent::MainComponent()
     attackMinimumLabel.setJustificationType(juce::Justification::centred);
     attackMinimumLabel.setText("Attack min. time: 80 ms", juce::dontSendNotification);
 
+    attackMinimumDelaySlider.setTooltip("A small pause between the key press and the pipe's start, varied at random, so a chord's pipes do not all speak in the same instant. Right-click: MIDI learn.");
     addAndMakeVisible(attackMinimumDelaySlider);
     attackMinimumDelaySlider.setRange(0.0, 500.0, 1.0);
     attackMinimumDelaySlider.setValue(2.0, juce::dontSendNotification);
@@ -1272,6 +1324,7 @@ MainComponent::MainComponent()
 
     // Release cutting: release samples faded out over this share of their length
     // and freed from the polyphony there (100 % = full releases).
+    releaseCutSlider.setTooltip("Release samples are faded out over this share of their length and end there. Right-click: MIDI learn.");
     addAndMakeVisible(releaseCutSlider);
     releaseCutSlider.setRange(5.0, 100.0, 1.0);
     releaseCutSlider.setValue(100.0, juce::dontSendNotification);
@@ -1288,6 +1341,7 @@ MainComponent::MainComponent()
     makeGlobalSliderLearnable(releaseCutSlider, "releaseCut", 100.0);
 
     // Release played from (0.8.228 on the main panel like the other release sliders).
+    releasePlayedFromSlider.setTooltip("Every release sample is played from this far into its file; a release shorter than the setting is not played at all. Right-click: MIDI learn.");
     addAndMakeVisible(releasePlayedFromSlider);
     releasePlayedFromSlider.setRange(0.0, 300.0, 5.0);
     releasePlayedFromSlider.setValue(0.0, juce::dontSendNotification);
@@ -1321,19 +1375,24 @@ MainComponent::MainComponent()
     emptyHintPanel.setOpaque(true);
     addChildComponent(emptyHintPanel);
 
+    combinationSetButton.setTooltip("While on, clicking a piston stores the current registration (stops, transmissions, couplers, tremulants) in it.");
     addAndMakeVisible(combinationSetButton);
     combinationSetButton.setClickingTogglesState(true);
     combinationSetButton.setColour(juce::ToggleButton::tickColourId, juce::Colours::orange);
 
+    previousCombinationButton.setTooltip("The previous piston. Right-click: MIDI learn.");
     addAndMakeVisible(previousCombinationButton);
     previousCombinationButton.onClick = [this] { stepCombination(-1); };
+    nextCombinationButton.setTooltip("The next piston. Right-click: MIDI learn.");
     addAndMakeVisible(nextCombinationButton);
     nextCombinationButton.onClick = [this] { stepCombination(1); };
+    bankDownButton.setTooltip("The previous bank of pistons. Right-click: MIDI learn.");
     addAndMakeVisible(bankDownButton);
     bankDownButton.onStateChange = [this]
     {
         bankButtonStateChanged(-1, bankDownButton.isDown());
     };
+    bankUpButton.setTooltip("The next bank of pistons. Right-click: MIDI learn.");
     addAndMakeVisible(bankUpButton);
     bankUpButton.onStateChange = [this]
     {
@@ -1365,6 +1424,7 @@ MainComponent::MainComponent()
     addAndMakeVisible(crescendoButton);
     addAndMakeVisible(pistonCountLabel);
     pistonCountLabel.setJustificationType(juce::Justification::centredRight);
+    pistonCountBox.setTooltip("How many combination pistons the row has (0 to 10).");
     addAndMakeVisible(pistonCountBox);
     for (int count = 0; count <= maxPistons; ++count)
         pistonCountBox.addItem(juce::String(count), count + 1);
@@ -1621,6 +1681,7 @@ MainComponent::MainComponent()
     voicer->screenGetter = [this](int manual) { return twoWindows ? divisionScreen[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)] : 0; };
     // Arrange mode: a stop dragged into another division's grid moves house; its "x" removes it.
     voicer->moveStopRequest = [this](Stop* stop, int target) { moveStopToDivision(stop, target); };
+    voicer->manualRequest = [this](const juce::String& chapter) { showManualSection(chapter); };   // 0.8.236
     voicer->removeStopRequest = [this](Stop* stop) { removeStopFromGrid(stop); };
     voicer->indentStopRequest = [this](Stop* stop, Stop* master) { indentStopUnder(stop, master); };
     voicer->outdentStopRequest = [this](Stop* stop) { outdentStop(stop); };
@@ -3412,6 +3473,7 @@ void MainComponent::showCouplersDialog()
                 }
                 this->owner.saveSettings();
             };
+            newKeysOnly.setTooltip("A melody (bass) coupler couples a key only when it becomes the new highest (lowest) key held; when that key is released it does not fall back to the next one.");
             addAndMakeVisible(newKeysOnly);
             graceTime.setButtonText("Allow grace time (legato in melody couplers)");
             graceTime.setToggleState(owner.melodyBassGraceTime, juce::dontSendNotification);
@@ -3420,6 +3482,7 @@ void MainComponent::showCouplersDialog()
                 this->owner.melodyBassGraceTime = graceTime.getToggleState();
                 this->owner.saveSettings();
             };
+            graceTime.setTooltip("When the highest key changes in legato playing, the melody coupler waits a moment, so a brief overlap of two keys does not make the solo stop jump.");
             addAndMakeVisible(graceTime);
 
             static const juce::String names[8]{ "Pedal", "I", "II", "III", "IV", "V", "VI", "VII" };
@@ -5355,7 +5418,9 @@ namespace
             openForm.onClick = [this] { url.launchInDefaultBrowser(); if (arrange) juce::Timer::callAfterDelay(1500, arrange); };
             openFolder.onClick = [this] { folder.startAsProcess(); if (arrange) juce::Timer::callAfterDelay(1500, arrange); };
             done.onClick = [this] { closeButtonPressed(); };
+            openForm.setTooltip("Opens the GitHub form again (after the sign-in, for example).");
             content->addAndMakeVisible(openForm);
+            openFolder.setTooltip("Opens the folder in the file manager.");
             content->addAndMakeVisible(openFolder);
             content->addAndMakeVisible(done);
             content->setSize(640, 156);
@@ -5586,6 +5651,7 @@ void MainComponent::showProblemReportDialog()
             }
             windowShots.setButtonText("Screenshots of the program's windows (keep the dialog in question open)");
             windowShots.setToggleState(true, juce::dontSendNotification);
+            windowShots.setTooltip("Pictures of every open window of the program go into the report.");
             addAndMakeVisible(windowShots);
             addFiles.setButtonText("Add screenshot files...");
             addFiles.onClick = [this]
@@ -5600,6 +5666,7 @@ void MainComponent::showProblemReportDialog()
                     filesLabel.setText(names.isEmpty() ? juce::String("No files added.") : names.joinIntoString(", "), juce::dontSendNotification);
                 });
             };
+            addFiles.setTooltip("Adds screenshot files of your own to the report.");
             addAndMakeVisible(addFiles);
             label(filesLabel, "No files added.");
             filesLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -5629,6 +5696,7 @@ void MainComponent::showProblemReportDialog()
                 juce::Timer::callAfterDelay(9000, [folder] { MainComponent::arrangeReportWindows(folder); });    // a browser starting cold (0.8.185: it came up maximised, untouched, after the 4.5 s try)
                 juce::Timer::callAfterDelay(15000, [folder] { MainComponent::arrangeReportWindows(folder); });
             };
+            create.setTooltip("Writes the report folder (logs.zip, screenshots) and opens the GitHub form filled in.");
             addAndMakeVisible(create);
             cancel.setButtonText("Cancel");
             cancel.onClick = [this] { if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->exitModalState(0); };
@@ -7560,6 +7628,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 keyboards[(size_t)manual] = std::move(keyboard);
 
                 auto& device = deviceBoxes[(size_t)manual];
+                device.setTooltip("The MIDI input that plays this division (several divisions may listen to the same device).");
                 deviceLabels[(size_t)manual].setText("MIDI device", juce::dontSendNotification);
                 addAndMakeVisible(deviceLabels[(size_t)manual]);
                 device.addItem("None", 1);
@@ -7597,6 +7666,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
                 auto& velocity = velocityButtons[(size_t)manual];
                 velocity.setButtonText("Disable MIDI velocity");
+                velocity.setTooltip("Every key is sent as a full stroke: no velocity fade-in or treble cut, always the top velocity layer.");
                 velocity.getProperties().set("manualChapter", "Ignore MIDI velocity (organ keys)");   // F1 (0.8.232)
                 velocity.onClick = [this, manual]
                 {
@@ -7657,6 +7727,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 }
                 // MIDI transposition of the keyboard: the keys play this many semitones away.
                 transposeLabels[(size_t)manual].setText("MIDI transposition", juce::dontSendNotification);
+                transposeBoxes[(size_t)manual].setTooltip("The keyboard plays this many semitones away from what it sends (-24 to +24): with -12 the key 36 plays the pipe of 24.");
                 transposeLabels[(size_t)manual].setJustificationType(juce::Justification::centredLeft);
                 addAndMakeVisible(transposeLabels[(size_t)manual]);
                 {
@@ -7679,6 +7750,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 }
 
                 auto& outputs = outputEditors[(size_t)manual];
+                outputs.setTooltip("The output channels of the default perspective as numbers separated by commas (the same as the tick boxes of the audio tab).");
                 outputLabels[(size_t)manual].setText("Audio output channels (1,2,3...)", juce::dontSendNotification);
                 addAndMakeVisible(outputLabels[(size_t)manual]);
                 outputs.setTextToShowWhenEmpty("Outputs: 1,2...", juce::Colours::grey);
@@ -7698,6 +7770,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 addAndMakeVisible(outputs);
 
                 auto& divisionVolume = divisionVolumeSliders[(size_t)manual];
+                divisionVolume.setTooltip("The level of the whole division (-60 to +12 dB), for balancing the divisions against each other.");
                 divisionVolume.setSliderStyle(juce::Slider::LinearHorizontal);
                 divisionVolume.setTextBoxStyle(juce::Slider::TextBoxRight, false, 75, 22);
                 divisionVolume.setRange(-60.0, 12.0, 0.1);
@@ -7722,6 +7795,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
                 auto& randomTuning = randomTuningButtons[(size_t)manual];
                 randomTuning.setButtonText("Allow Random Tuning Error");
+                randomTuning.setTooltip("The pipes of the division get the small random detune set per stop in the voicing (Random pitch error).");
                 randomTuning.getProperties().set("manualChapter", "Random tuning error of pipes");
                 randomTuning.onClick = [this, manual]
                 {
@@ -7734,6 +7808,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 addAndMakeVisible(randomTuning);
                 auto& pipeCoupling = pipeCouplingButtons[(size_t)manual];
                 pipeCoupling.setButtonText("Allow Pipe Coupling");
+                pipeCoupling.setTooltip("Pipes of the same pitch sounding together pull each other into tune a little, as on one chest.");
                 pipeCoupling.getProperties().set("manualChapter", "Pipe coupling (detuned pipes pull together)");
                 pipeCoupling.onClick = [this, manual]
                 {
@@ -7800,6 +7875,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     "Windsag lag", 250.0, " ms", "windSmoothing",
                     defaultWindSmoothing[manual]);
                 windSmoothingSliders[(size_t)manual].setRange(100.0, 400.0, 1.0);
+                windSmoothingSliders[(size_t)manual].setTooltip("How long the wind pressure takes to settle after stops or keys change.");
                 windTargetLabels[(size_t)manual].setText("Wind affects:", juce::dontSendNotification);
                 addAndMakeVisible(windTargetLabels[(size_t)manual]);
                 // Folding section headers of the two models (Configuration Editor style;
@@ -7851,6 +7927,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 expressionSliders[(size_t)manual] = std::move(expression);
 
                 auto& attenuation = attenuationSliders[(size_t)manual];
+                attenuation.setTooltip("How much quieter the division is with the swell box fully closed (the harmonic filter dulls the tone as well).");
                 attenuation.setSliderStyle(juce::Slider::LinearHorizontal);
                 attenuation.setTextBoxStyle(juce::Slider::TextBoxRight, false, 75, 22);
                 attenuation.setRange(0.0, 60.0, 0.1);
@@ -8837,6 +8914,7 @@ void MainComponent::showTemperamentsDialog()
                     this->content.owner.applyTemperamentTuning();
                     this->content.owner.saveSettings();
                 };
+                rotationBox.setTooltip("The pitch class the temperament's pattern starts on (its rotation).");
                 addAndMakeVisible(rotationBox);
                 deleteButton.setButtonText("Delete custom");
                 deleteButton.setVisible(false);
@@ -8851,6 +8929,7 @@ void MainComponent::showTemperamentsDialog()
                         safeContent->rebuildRows();
                     });
                 };
+                deleteButton.setTooltip("Removes this custom temperament.");
                 addAndMakeVisible(deleteButton);
                 refreshDisplayedValues();
                 updateColour();
@@ -8950,6 +9029,7 @@ void MainComponent::showTemperamentsDialog()
             addAndMakeVisible(legend);
             addButton.setButtonText("Add custom temperament");
             addButton.onClick = [this] { addCustomTemperament(); };
+            addButton.setTooltip("A new custom temperament with editable cent deviations per pitch class.");
             addAndMakeVisible(addButton);
             hideDetailsButton.setButtonText("Hide all details");
             hideDetailsButton.onClick = [this]
@@ -8957,6 +9037,7 @@ void MainComponent::showTemperamentsDialog()
                 for (auto* row : rows) row->setExpanded(false);
                 layoutRows();
             };
+            hideDetailsButton.setTooltip("Folds the cent tables of every temperament.");
             addAndMakeVisible(hideDetailsButton);
             // Global normalisation of every stop from its recorded smpl pitches.
             equalButton.setButtonText("Set diapason a1 = 440 Hz (all stops)");
@@ -9502,6 +9583,7 @@ void MainComponent::showCrescendoDialog()
                 this->owner.saveSettings();
                 if (this->owner.crescendoEnabled) this->owner.applyCrescendoStep(this->owner.crescendoStep);
             };
+            cancelBox.setTooltip("On: a crescendo step may switch off stops registered by hand. Off: the steps only add.");
             addAndMakeVisible(cancelBox);
             stepsLabel.setText("Steps:", juce::dontSendNotification);
             stepsLabel.setJustificationType(juce::Justification::centredRight);
@@ -9514,6 +9596,7 @@ void MainComponent::showCrescendoDialog()
                 this->owner.setCrescendoStepCount(stepsBox.getSelectedId());
                 rebuildButtons();
             };
+            stepsBox.setTooltip("The number of crescendo steps.");
             addAndMakeVisible(stepsBox);
             setButton.setButtonText("Set");
             setButton.setClickingTogglesState(true);
@@ -9522,9 +9605,11 @@ void MainComponent::showCrescendoDialog()
             addAndMakeVisible(setButton);
             saveButton.setButtonText("Save...");
             saveButton.onClick = [this] { chooseFile(true); };
+            saveButton.setTooltip("Writes the crescendo steps to a file.");
             addAndMakeVisible(saveButton);
             loadButton.setButtonText("Load...");
             loadButton.onClick = [this] { chooseFile(false); };
+            loadButton.setTooltip("Reads the crescendo steps from a file.");
             addAndMakeVisible(loadButton);
             voidButton.setButtonText("Void everything");
             voidButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred);
@@ -13770,7 +13855,10 @@ public:
     }
     std::vector<Phase> phases;   // set by the owner before launchThread()
     juce::String progressLine, workLine;   // the two lines of the status (#79)
-    juce::String diskLine;                 // the third: the reading speed from the disk, every 5 s (0.8.205)
+    // The third line: the reading speed from the disk, every 5 s (0.8.205). Its placeholder is as long as
+    // the figure to come (0.8.236): the AlertWindow sizes its width from the whole text, and a shorter
+    // text at the start made a narrower window whose lines wrapped until the first figure widened it.
+    juce::String diskLine = "Reading from the disk ..." + juce::String::repeatedString(juce::String(juce::CharPointer_UTF8("\xc2\xa0")), 8);
     double diskAtMs = 0.0;                 // when the speed was last taken
     juce::int64 diskBytes = 0;             // ... and the engine's byte count then
     // Runs right after the commit, before anything can paint: a reload retires
@@ -26272,6 +26360,7 @@ void MainComponent::prepareManual()
                     chapterBox.addItem(juce::String::repeatedString(indent, juce::jmax(0, chapters[(size_t)i].level - 1)) + chapters[(size_t)i].heading, i + 1);
                 chapterBox.setTextWhenNothingSelected("Choose a chapter...");
                 chapterBox.onChange = [this] { if (chapterBox.getSelectedId() > 0) showChapter(chapterBox.getSelectedId() - 1); };
+                chapterBox.setTooltip("Jumps to a chapter of the manual.");
                 addChildComponent(chapterBox);
             }
             // The font size (0.8.213): "A-" / "A+" (Ctrl + wheel over the text does the same).
@@ -26294,9 +26383,11 @@ void MainComponent::prepareManual()
             addAndMakeVisible(findBox);
             findNext.setButtonText("Next");
             findNext.onClick = [this] { findText(true); };
+            findNext.setTooltip("The next occurrence of the search text.");
             addAndMakeVisible(findNext);
             findPrevious.setButtonText("Previous");
             findPrevious.onClick = [this] { findText(false); };
+            findPrevious.setTooltip("The previous occurrence of the search text.");
             addAndMakeVisible(findPrevious);
             close.setButtonText("Close");
             close.onClick = [this] { if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->closeButtonPressed(); };

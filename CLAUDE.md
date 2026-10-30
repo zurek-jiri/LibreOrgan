@@ -1878,6 +1878,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   component got a tooltip of its own: the line popped up everywhere and the real tooltip of a parent (a slider's
   text box, a button's child) was replaced by the child's made-up one. RULE: the line is appended to a NON-EMPTY
   tip only; never invent tooltips.
+  0.8.236 (30 Oct 2026 night, the user: "každý relevantní prvek má dostat tooltip", "musí vzniknout pravidlo, kdy
+  zase tooltip zmizí", the loading window's three lines, arrange mode by right-click): (1) HelpTooltipWindow::Hider
+  (a Timer inside, 250 ms): a tip visible > 7 s over the same component is hidden (`hideTip()`) and that component
+  is `suppressed` (getTipFor returns {} for it) until the mouse is over another component - JUCE would re-show at
+  the next tick otherwise (tipShowing is cleared by hideTip). (2) Tooltips audit: controls set up through a
+  helper (`setup(button, text, tip)` in the Stop List, `setupWindSlider`, the reset buttons' loop) HAVE tooltips -
+  the regex audit over-reported; the real gaps were the top bar (panic, temperaments, voicing, patterns, merge,
+  load/save voicing and configuration, couplers, editor, GLOBAL RESET), the combination row, 7 global sliders,
+  manualCountBox, voicer stopButton/shiftBox/gainSlider/randomPitchSlider/setup, the Divisions dialog's device/
+  transpose/outputs/divisionVolume/velocity/randomTuning/pipeCoupling/attenuation/windSmoothing, the crescendo,
+  temperament, report, couplers (newKeysOnly, graceTime) and manual-window buttons - all set now (inserted before
+  their addAndMakeVisible lines; the Divisions ones after their setButtonText/auto& anchors). (3) The loading window:
+  JUCE's AlertWindow width = sqrt(fontHeight x width of the WHOLE text) - the third line's " " placeholder made a
+  narrower window whose lines wrapped until "Reading from the disk at N MB/s" widened it; `diskLine` starts as
+  "Reading from the disk ..." + 8 NBSP. (4) `Voicer::manualRequest` (set by MainComponent) + the workspace
+  ExitListener's right-click menu: "Enter arrange mode (...)"/"Leave arrange mode" for the division whose grid area
+  holds the click (`divisionGridAreas`), "Manual: Arranging the grid". Manual 3.2 says so.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

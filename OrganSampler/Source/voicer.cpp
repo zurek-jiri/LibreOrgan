@@ -199,6 +199,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     stopButton.setButtonText(caption());
     stopButton.setColour(juce::TextButton::buttonColourId,
         routeEnabled() ? onColour() : juce::Colours::darkgrey);
+    stopButton.setTooltip(isTransmission() ? "A transmission: the pipes of another stop played here. Click: on or off. Right-click: MIDI learn. Press for two seconds: arrange mode." : "Click: the stop on or off. Right-click: MIDI learn. Press for two seconds: arrange mode (drag stops between cells and divisions).");
     addAndMakeVisible(stopButton);
     stopButton.addMouseListener(this, false);
     voicingToggle.setTooltip("Show/hide voicing controls");
@@ -470,6 +471,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 });
             }
         };
+        shiftBox.setTooltip("Transposition against the sample files on their own numbers: -12 an octave down (the file 024 on key 36), +12 up, each step a pure interval with the footage it gives. A change reloads the stop's samples.");
         addAndMakeVisible(shiftBox);
         if (t != nullptr)
         {
@@ -587,6 +589,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     gainSlider.setDoubleClickReturnValue(true, 0.0);
     gainSlider.addMouseListener(this, false);
     gainSlider.onValueChange = [this] { gainSliderChanged(); };
+    gainSlider.setTooltip("The start of every note raised or lowered by this much (-6 to +6 dB) for the Attack Time: more chiff or a softer speaking, the held tone untouched.");
     addAndMakeVisible(gainSlider);
     gainLabel.setText("Attack Gain", juce::dontSendNotification);
     gainLabel.setJustificationType(juce::Justification::centredLeft);
@@ -620,6 +623,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     randomPitchSlider.setDoubleClickReturnValue(true, 4.0);
     randomPitchSlider.addMouseListener(this, false);
     randomPitchSlider.onValueChange = [this] { randomPitchSliderChanged(); };
+    randomPitchSlider.setTooltip("Every pipe gets its own small random detune at every note, as real pipes never speak twice alike (the division's Random tuning error must be on).");
     addAndMakeVisible(randomPitchSlider);
     randomPitchLabel.setText("Random pitch error", juce::dontSendNotification);
     randomPitchLabel.setJustificationType(juce::Justification::centredLeft);
@@ -2305,6 +2309,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             addChildComponent(load);
             setup.setButtonText("Settings");
             setup.onClick = [settings, index] { if (settings) settings(index); };
+            setup.setTooltip("The Divisions dialog at this division: MIDI keyboard and compass, swell, tremulant, wind, the audio routes.");
             addAndMakeVisible(setup);
             addAndMakeVisible(swell);
             swell.setComponentID("swell");   // found by Voicer::headerSwell (the video script drives it)
@@ -2656,11 +2661,39 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     screenViewports[(size_t)screen] = &viewport;
     if (arrangeExitListener == nullptr)
     {
-        // A click on empty workspace ends arrange mode.
+        // A click on empty workspace ends arrange mode; a right-click offers it (0.8.236,
+        // the user: the two-second press is not the only way in).
         struct ExitListener final : public juce::MouseListener
         {
             explicit ExitListener(Voicer& v) : voicer(v) {}
-            void mouseDown(const juce::MouseEvent&) override { if (voicer.isArrangeModeActive()) voicer.exitArrangeMode(); }
+            void mouseDown(const juce::MouseEvent& event) override
+            {
+                if (event.mods.isPopupMenu())
+                {
+                    // The division whose grid the click is in (the arrange mode is entered for it), else the first.
+                    int manual = 0;
+                    if (auto* container = event.eventComponent)
+                    {
+                        const auto local = container->getLocalPoint(event.eventComponent, event.getPosition());
+                        for (const auto& area : voicer.divisionGridAreas())
+                            if (area.second.contains(local)) { manual = area.first; break; }
+                    }
+                    const bool active = voicer.isArrangeModeActive();
+                    juce::PopupMenu menu;
+                    menu.addItem(1, active ? "Leave arrange mode" : "Enter arrange mode (drag stops between cells and divisions)");
+                    menu.addSeparator();
+                    menu.addItem(2, "Manual: Arranging the grid");
+                    Voicer* v = &voicer;
+                    menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(juce::Rectangle<int>(event.getScreenX(), event.getScreenY(), 1, 1)),
+                        [v, manual, active](int result)
+                        {
+                            if (result == 1) { if (active) v->exitArrangeMode(); else v->enterArrangeMode(manual); }
+                            else if (result == 2 && v->manualRequest) v->manualRequest("Arranging the grid");
+                        });
+                    return;
+                }
+                if (voicer.isArrangeModeActive()) voicer.exitArrangeMode();
+            }
             Voicer& voicer;
         };
         arrangeExitListener = std::make_unique<ExitListener>(*this);
