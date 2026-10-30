@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.248] - 2026-10-30
+
+### Fixed
+- A first start (no settings yet) opened the window on the screen the
+  system calls primary, which on a Linux desktop may be the second monitor
+  (the window seemed not to come up), and sized the interface for it. The
+  window now opens on the screen under the mouse, else the largest one.
+
 ## [0.8.247] - 2026-10-30
 
 ### Changed

@@ -1979,6 +1979,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0.8.247 (the user: "nejsem s těmi barvami spokojen ... pouze ze šedé"): swatches ~/Downloads/piston_greys.png
   (A-F darker/lighter); he took B reversed: filledColour = base.darker(0.40), sameRegistrationColour =
   base.darker(0.25), the orange for the selected one alone. No orange tints anywhere else in the GUI.
+  0.8.248 (the user deleted ~/.config/OrganSampler: "on nenaskočí"): it DID start - on the second monitor
+  (activity.log: "Main window: work area 2560 360 1920 1080, interface 75 %"): JUCE's getPrimaryDisplay() is the
+  1920x1080 monitor at x = 2560 on this KDE Wayland box, not his 2560x1440 main one. `UIScale::startDisplay()` =
+  the display under the mouse, else the largest, else JUCE's primary - used by placeMainWindow's fresh-start
+  branch and by estimatePercent. A "does not start" report: read activity.log for the work area first.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

@@ -22444,7 +22444,7 @@ void MainComponent::placeMainWindow(juce::ResizableWindow& window)
     // screen pixels (the saved values are screen pixels); the window's own bounds
     // are in its scaled space (interface size, UIScale.h).
     const auto& displays = juce::Desktop::getInstance().getDisplays();
-    const auto* primary = displays.getPrimaryDisplay();
+    const auto* primary = UIScale::startDisplay();   // 0.8.248: the screen under the mouse, not JUCE's "primary" (the second monitor here)
     juce::Rectangle<int> work = primary != nullptr ? primary->userBounds.toNearestInt() : juce::Rectangle<int>(0, 0, 1920, 1080);
     if (savedWindowX != INT_MIN && savedWindowY != INT_MIN)
     {

@@ -45,10 +45,27 @@ namespace UIScale
     inline float factor() noexcept { return (float)percent() / 100.0f; }
     inline void set(int newPercent) noexcept { percentRef().store(clampPercent(newPercent), std::memory_order_relaxed); }
 
-    // The percentage that makes the primary screen hold what 2560 x 1440 holds at 100 %.
+    // The screen the program should start on (0.8.248, the user: "on nenaskočí" - the fresh
+    // start opened on the second monitor): what JUCE calls the primary display is not the
+    // user's main one on every X11/Wayland desktop, so the screen under the mouse (where the
+    // program was launched from) comes first, then the largest screen, then JUCE's primary.
+    inline const juce::Displays::Display* startDisplay()
+    {
+        const auto& displays = juce::Desktop::getInstance().getDisplays();
+        const auto mouse = juce::Desktop::getInstance().getMainMouseSource().getScreenPosition().roundToInt();
+        for (const auto& display : displays.displays)
+            if (display.totalArea.contains(mouse)) return &display;
+        const juce::Displays::Display* largest = nullptr;
+        for (const auto& display : displays.displays)
+            if (largest == nullptr || display.userBounds.getWidth() * display.userBounds.getHeight() > largest->userBounds.getWidth() * largest->userBounds.getHeight())
+                largest = &display;
+        return largest != nullptr ? largest : displays.getPrimaryDisplay();
+    }
+
+    // The percentage that makes the start screen hold what 2560 x 1440 holds at 100 %.
     inline int estimatePercent()
     {
-        const auto* primary = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+        const auto* primary = startDisplay();
         if (primary == nullptr) return 100;
         const double width = primary->userBounds.getWidth();
         const double height = primary->userBounds.getHeight();
