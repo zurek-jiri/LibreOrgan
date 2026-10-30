@@ -1932,6 +1932,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0xff7a5a1e (CrescendoContent) and that is the colour the pistons must share. Now filled = 0xff7a5a1e, same
   registration (toggled, not selected) = brighter(0.45), selected = onColour. Before 0.8.228 a filled piston had
   no colour of its own and the same-registration ones were off.darker(0.14).
+  0.8.241 (the user: a configuration without a crescendo showed the previous organ's steps): `crescendoFromVar`
+  returns for a non-object (right for a bad crescendo FILE at 9741); loadSettings now passes an empty object
+  (stepCount 40, cancelsHandStops true, no steps) when the file has no "crescendo". RULE for every per-organ
+  state read in loadSettings: a missing key must RESET, not keep (combinations? `combinationsFromVar` - check the
+  same when a report comes).
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

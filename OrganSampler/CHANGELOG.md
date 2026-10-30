@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.241] - 2026-10-30
+
+### Fixed
+- Loading a configuration without a crescendo or without combinations left
+  the previous organ's crescendo steps and pistons in place; they are emptied
+  now.
+
 ## [0.8.240] - 2026-10-30
 
 ### Fixed

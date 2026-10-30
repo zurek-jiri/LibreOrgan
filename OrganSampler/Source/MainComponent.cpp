@@ -13686,13 +13686,22 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     if (tremulantStates.isArray())
         for (const auto& item : *tremulantStates.getArray()) registration->tremulantData.add(item);
     pendingConfigurationRegistration = std::move(registration);
-    // Combination banks saved with the configuration replace the current ones.
+    // Combination banks saved with the configuration replace the current ones; a
+    // configuration without any EMPTIES them (0.8.241: the previous organ's pistons stayed).
     if (combinationsFromVar(root->getProperty("combinationMemory")))
     {
         activePiston = -1;
         pistonCountBox.setSelectedId(pistonCount + 1, juce::dontSendNotification);
         updateCombinationControls();
         saveMemories();
+    }
+    else if (!root->getProperty("combinationMemory").isObject() && !combinations.empty())
+    {
+        combinations.clear();
+        activePiston = -1;
+        updateCombinationControls();
+        saveMemories();
+        CrashHandler::note("Combinations: the configuration holds none - the pistons emptied");
     }
 
     audioMuted.store(true);
@@ -21261,7 +21270,20 @@ void MainComponent::loadSettings()
         currentConfigurationFile = path.isNotEmpty() ? juce::File(path) : juce::File();
     }
     currentConfigurationName = parsed.getProperty("configurationName", "").toString();
-    crescendoFromVar(parsed.getProperty("crescendo", juce::var()));
+    {
+        // A configuration without a crescendo EMPTIES it (0.8.241, the user: the steps of the
+        // organ before looked filled after a load) - crescendoFromVar leaves everything as it
+        // is for a missing object, which is right for a bad crescendo file, not for a load.
+        auto crescendoVar = parsed.getProperty("crescendo", juce::var());
+        if (!crescendoVar.isObject())
+        {
+            juce::DynamicObject::Ptr empty = new juce::DynamicObject();
+            empty->setProperty("stepCount", 40);
+            empty->setProperty("cancelsHandStops", true);
+            crescendoVar = juce::var(empty.get());
+        }
+        crescendoFromVar(crescendoVar);
+    }
     // Samples stay 32-bit float unless the user explicitly chooses 16-bit.
     sampleStorageFloat = parsed.getProperty("sampleStorageFloat", true);
     engine.setSampleStorageFloat(sampleStorageFloat);
