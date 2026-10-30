@@ -1027,7 +1027,7 @@ void StopRow::mouseDown(const juce::MouseEvent& event)
             midiLearnCallback("transmission:" + juce::String(t->manual) + ":" + juce::String(stop->primaryManual) + ":"
                 + stop->name + ":" + juce::String(stop->transmissionOrdinal(transmissionIndex)));
         else
-            midiLearnCallback("stop:" + stop->name);
+            midiLearnCallback("stop:" + juce::String(stop->primaryManual) + ":" + stop->name);   // 0.8.230: with the division - two divisions may hold a stop of one name
     }
     else if (event.eventComponent == &stopButton && event.mods.isLeftButtonDown())
     {
@@ -3747,9 +3747,12 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
     // moves its table row and reloads both divisions.
     stopCells[manual].erase(key);
     hiddenStops[manual].erase(key);
-    if (cellFree) stopCells[target->manual][key] = cell;
-    retargetSavedStop(source->name, manual, target->manual);
-    for (auto* child : groupChildren(source)) retargetSavedStop(child->name, manual, target->manual);
+    // The cell waits for the owner (0.8.230): the stop may take another name in the
+    // target division ("Principal8 (2)" when the name is taken there), and a cell
+    // written under the old name overwrote the cell of the target's own stop of that
+    // name. The owner names the stop, then stopMovedToDivision() places the cell and
+    // retargets the saved state (the children too).
+    pendingMoveCell = cellFree ? std::optional<std::pair<int, int>>(cell) : std::nullopt;
     // The arrange mode goes on (0.8.153): the owner moves the stop in place and
     // rebuilds the grid - the exit dated from the days the move reloaded both
     // divisions, and the user arranging several stops lost the mode at each.
@@ -3775,6 +3778,38 @@ juce::String Voicer::mergeFolderText(const juce::String& folderName, const juce:
         text << "The folder button " << button << " has no pipes of its own and would be left with nothing: it is removed.";
     text << "\n\nMerge?";
     return text;
+}
+
+void Voicer::stopMovedToDivision(int from, const juce::String& oldName, int to, const juce::String& newName, bool takesDroppedCell)
+{
+    const juce::String oldPrefix = "tr:" + juce::String(from) + ":" + oldName, newPrefix = "tr:" + juce::String(to) + ":" + newName;
+    auto renamedKey = [&](const juce::String& key) -> juce::String
+    {
+        if (key == oldPrefix) return newPrefix;
+        if (key.startsWith(oldPrefix + "#")) return newPrefix + key.substring(oldPrefix.length());
+        return {};
+    };
+    for (auto& division : stopCells)
+    {
+        std::vector<std::pair<juce::String, std::pair<int, int>>> moved;
+        for (const auto& cell : division.second) if (renamedKey(cell.first).isNotEmpty()) moved.push_back(cell);
+        for (const auto& [key, cell] : moved) { division.second.erase(key); division.second[renamedKey(key)] = cell; }
+    }
+    for (auto& division : hiddenStops)
+    {
+        std::vector<juce::String> moved;
+        for (const auto& key : division.second) if (renamedKey(key).isNotEmpty()) moved.push_back(key);
+        for (const auto& key : moved) { division.second.erase(key); division.second.insert(renamedKey(key)); }
+    }
+    if (takesDroppedCell && pendingMoveCell.has_value())
+    {
+        stopCells[to][newName] = *pendingMoveCell;
+        pendingMoveCell.reset();
+    }
+    // One retarget per stop: the saved state of (oldName, from) is read as (newName, to).
+    stateRetargets.erase(std::remove_if(stateRetargets.begin(), stateRetargets.end(),
+        [&](const StateRetarget& r) { return r.name == oldName && r.from == from; }), stateRetargets.end());
+    stateRetargets.push_back({ oldName, from, to, newName == oldName ? juce::String() : newName });
 }
 
 juce::String Voicer::transmissionKey(const Stop* stop, int index)
@@ -4083,7 +4118,12 @@ void Voicer::loadState(const juce::File& file)
                   return 0;
               }();
         for (const auto& retarget : retargets)
-            if (retarget.name == name && retarget.from == primaryManual) { primaryManual = retarget.to; break; }
+            if (retarget.name == name && retarget.from == primaryManual)
+            {
+                primaryManual = retarget.to;
+                if (retarget.newName.isNotEmpty()) name = retarget.newName;   // renamed on the move (0.8.230)
+                break;
+            }
         juce::DynamicObject::Ptr perNoteObj = nullptr;
         if (stopObj->hasProperty(juce::Identifier("perNoteDb")))
         {

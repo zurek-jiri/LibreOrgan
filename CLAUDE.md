@@ -1779,6 +1779,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   rename-with-references exists). Now a container row whose name the engine holds (`liveStop != nullptr`) keeps
   its name. The Bergen file on this box: manualKeyboards[2].stopBuild.entries[9] = {"name": "Stop folder", "alias":
   "Carillon", "folders": []} - the children were indented on the grid in the session he did not save.
+  0.8.230 (30 Oct 2026, the user: two stops of one name in two divisions / after a merge - "UUID je asi blbost.
+  nějak to vyřeš"): NO UUID - the identity stays (division, name), unique per division at every creation point
+  (`uniqueStopBuildName`: grid folder, dialog add, merge "(2)", cross-division moves). Fixed the holes: (1)
+  `Voicer::dropItem`'s move-house branch no longer writes the dropped cell under the OLD key (it overwrote the target
+  division's own stop of that name) nor retargets by the old name: it keeps `pendingMoveCell` and the owner
+  (`moveStopToDivision`, `indentStopUnder`, `mergeStopFolder` across divisions) calls
+  `Voicer::stopMovedToDivision(from, oldName, to, newName, takesDroppedCell)` after `uniqueStopBuildName`: the cell
+  under the new name, the keys "tr:<from>:<old>[#n]" of its transmissions in every division's cells/pool renamed,
+  `StateRetarget` with `newName` (loadState reads (old, from) as (new, to)). (2) MIDI stop binding "stop:<division>:
+  <name>" (voicer.cpp learn callback, the video hook); the dispatcher and the migration accept both forms;
+  `legacyStopBindingKey` makes the menu's "Clear MIDI assignment" see and erase an old "stop:<name>" too. (3) Merge:
+  name and alias suffixed independently (only what collides). NOT verified by a run (no local build): the Stop List
+  dialog's own cross-division drag goes through Apply/reload and was not touched.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

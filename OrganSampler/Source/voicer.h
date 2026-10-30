@@ -4,6 +4,7 @@
 #include "SamplerEngine.h"
 #include "UIControls.h"
 #include <atomic>
+#include <optional>
 #include <set>
 
 struct DivisionCouplerInfo
@@ -442,7 +443,11 @@ public:
     void setGridCell(int manual, const juce::String& key, int column, int row) { stopCells[manual][key] = { column, row }; }
     // The next loadState reads the saved state of (name, from) as belonging to
     // division 'to' (a stop moved between divisions keeps its voicing).
-    void retargetSavedStop(const juce::String& name, int from, int to) { stateRetargets.push_back({ name, from, to }); }
+    void retargetSavedStop(const juce::String& name, int from, int to) { stateRetargets.push_back({ name, from, to, {} }); }
+    // A stop that changed division under a new name (0.8.230: "Principal8" -> "Principal8 (2)" where the name was
+    // taken): the cell it was dropped on goes under the new name, the cells and pool entries of its transmissions
+    // ("tr:<from>:<old>[#n]") follow in every division, and the saved state is read as (newName, to).
+    void stopMovedToDivision(int from, const juce::String& oldName, int to, const juce::String& newName, bool takesDroppedCell);
     // Is the screen position over a division column with an open voicing? (The
     // mouse wheel then belongs to the sliders, elsewhere it scrolls the workspace.)
     bool wheelBlockedAt(juce::Point<int> screenPosition) const;
@@ -498,6 +503,7 @@ public:
 
 private:
     std::map<int, std::set<juce::String>> hiddenStops;
+    std::optional<std::pair<int, int>> pendingMoveCell;   // the cell a stop was dropped on in another division, written once the owner has named it (0.8.230)
     // Stop arrangement: per division a grid cell (column, row) for every stop the
     // user has placed. Unplaced stops fill the free cells column by column.
     std::map<int, std::map<juce::String, std::pair<int, int>>> stopCells;
@@ -562,7 +568,7 @@ private:
     void freeCellClicked(int manual, int column, int row, juce::Point<int> screenPosition);
     // The stop (and transmission index, -1 for the stop itself) a grid key of a division stands for.
     bool resolveItem(int manual, const juce::String& key, Stop*& stop, int& transmissionIndex) const;
-    struct StateRetarget { juce::String name; int from, to; };
+    struct StateRetarget { juce::String name; int from, to; juce::String newName; };   // newName empty: the same name
     std::vector<StateRetarget> stateRetargets;
     // The voicing of stops the state names but the engine does not hold right
     // now (folders not found on this machine, a tree not loaded yet): kept

@@ -485,7 +485,9 @@ static const char* const kManualText_part2 =
     "another division. A click on empty workspace ends the mode.\n"
     "\n"
     "- Dragging a stop into another division moves it there with its voicing and\n"
-    "  transmissions.\n"
+    "  transmissions. A name is unique within a division: a stop whose name the\n"
+    "  other division has already becomes \"Principal 8 (2)\" there, its cell and\n"
+    "  its transmissions' cells go with it.\n"
     "- Dragging with the **right mouse button**, or with **Shift** held, makes a\n"
     "  **copy**: a new transmission where the copy lands (in the stop's own\n"
     "  division: an extension).\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "\n"
     "## 3.4 Transmissions and extensions\n"
     "\n"
-    "A transmission is an extra button that plays the pipes of another stop, on\n"
-    "any division (its own included). Made in the Stop List (the *Transmissions*\n"
     ;
 static const char* const kManualText_part3 =
+    "A transmission is an extra button that plays the pipes of another stop, on\n"
+    "any division (its own included). Made in the Stop List (the *Transmissions*\n"
     "cell) or on the grid (a right-button or Shift drag in arrange mode). Its\n"
     "voicing row has its own **Transposition** (-24 to +24, a pure interval each:\n"
     "-12 makes a 16' extension of an 8' stop, +12 a 4' one; the caption follows),\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "  turn, a stereo sample to a pair; an odd number of channels lets the pairs\n"
     "  circulate). **Set for all divisions (this perspective)** above the list\n"
     "  copies these channels to the same perspective of every division.\n"
-    "- **The device box**: type, device, sample rate, buffer size; *Driver\n"
-    "  Control Panel*, *Reopen device*, and **Set for all perspectives and\n"
     ;
 static const char* const kManualText_part4 =
+    "- **The device box**: type, device, sample rate, buffer size; *Driver\n"
+    "  Control Panel*, *Reopen device*, and **Set for all perspectives and\n"
     "  divisions**, which copies the device, rate and buffer size to every route\n"
     "  (on the auxiliary tab: to the auxiliary routes of all divisions).\n"
     "\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "pipes a stop can be asked to play are filled (its division's compass and\n"
     "every transmission's shifted compass). A filled pipe has everything a real\n"
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
-    "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
-    "default) makes every missing pipe the octave transposition of a real one, so\n"
     ;
 static const char* const kManualText_part5 =
+    "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
+    "default) makes every missing pipe the octave transposition of a real one, so\n"
     "the rank keeps its chromatic variety. A pipe switched off in the voicing row\n"
     "is never filled.\n"
     "\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "\n"
     "### Global pitch\n"
     "\n"
-    "-200 to +200 cents (default 0) on top of the temperament, for playing with\n"
-    "instruments tuned elsewhere than a1 = 440 Hz.\n"
     ;
 static const char* const kManualText_part6 =
+    "-200 to +200 cents (default 0) on top of the temperament, for playing with\n"
+    "instruments tuned elsewhere than a1 = 440 Hz.\n"
     "\n"
     "### Sustain fade-out on key release\n"
     "\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "On by default: the copies are written to files and read back at the next\n"
     "load - seconds instead of minutes. \"The cache\".\n"
     "\n"
-    "### Filled pipes cache: Empty the cache\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "### Filled pipes cache: Empty the cache\n"
+    "\n"
     "The size of the cache and its folder, with *Empty the cache*: every file\n"
     "deleted, built again when needed.\n"
     "\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "\n"
     "The channels of the device the default perspective plays on, as numbers\n"
     "separated by commas (the same as the tick boxes of the audio tab). \"The audio\n"
-    "tabs\".\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "tabs\".\n"
+    "\n"
     "### Perspective output channels\n"
     "\n"
     "The same for a named perspective (Direct, Diffuse, Rear, auxiliary).\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "\n"
     "The relocation of a whole library: keep every tree of an organ under one\n"
     "root; the root's parent is what the program remembers. The configurations\n"
-    "folder can be moved as a whole: nothing in it points at its own place.\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "folder can be moved as a whole: nothing in it points at its own place.\n"
+    "\n"
     "## 10.4 Hauptwerk import rules\n"
     "\n"
     "What the definition gives: the keyboards in their order (the pedal first)\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "route in turn, each route's voices become one job of the render pool, the\n"
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
-    "a pool task posted by the last route of its group and joined by the first\n"
-    "route of the next block, so it takes render time but never piles up on the\n"
     ;
 static const char* const kManualText_part10 =
+    "a pool task posted by the last route of its group and joined by the first\n"
+    "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
     "lanes still at work would finish them sooner. The workers and the control\n"

@@ -477,7 +477,9 @@ mode** - every stop and transmission can be dragged to another cell or into
 another division. A click on empty workspace ends the mode.
 
 - Dragging a stop into another division moves it there with its voicing and
-  transmissions.
+  transmissions. A name is unique within a division: a stop whose name the
+  other division has already becomes "Principal 8 (2)" there, its cell and
+  its transmissions' cells go with it.
 - Dragging with the **right mouse button**, or with **Shift** held, makes a
   **copy**: a new transmission where the copy lands (in the stop's own
   division: an extension).

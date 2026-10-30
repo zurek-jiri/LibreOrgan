@@ -560,14 +560,17 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             // "zamrznuté" merge: 129 s in this loop).
             for (int suffix = 2; suffix < 200; ++suffix)
             {
-                bool taken = false;
+                // 0.8.230: the name and the alias each get the suffix only when THEY collide - two stop folders
+                // named "Stop folder" with the aliases "Carillon" and "Glocken" keep both aliases.
+                bool nameTaken = false, aliasTaken = false;
                 for (const auto& existing : baseBuild.entries)
-                    if (stopBuildKey(existing.name) == stopBuildKey(entry.name)
-                        || (entry.alias.isNotEmpty() && stopBuildKey(existing.alias) == stopBuildKey(entry.alias))) taken = true;   // 0.8.220: the caption (alias) too - the user sees that one
-                if (!taken) break;
-                entry.name = originalName + " (" + juce::String(suffix) + ")";
-                if (originalAlias.isNotEmpty()) entry.alias = originalAlias + " (" + juce::String(suffix) + ")";
-                entry.customName = true;
+                {
+                    if (stopBuildKey(existing.name) == stopBuildKey(entry.name)) nameTaken = true;
+                    if (entry.alias.isNotEmpty() && stopBuildKey(existing.alias) == stopBuildKey(entry.alias)) aliasTaken = true;   // 0.8.220: the caption (alias) too - the user sees that one
+                }
+                if (!nameTaken && !aliasTaken) break;
+                if (nameTaken) { entry.name = originalName + " (" + juce::String(suffix) + ")"; entry.customName = true; }
+                if (aliasTaken && originalAlias.isNotEmpty()) entry.alias = originalAlias + " (" + juce::String(suffix) + ")";
             }
             if (entry.name != originalName) { ++stopsRenamed; renamed[juce::String(manual) + "|" + originalName] = entry.name; done.add(divisionName + " " + originalName + " added as \"" + entry.name + "\" (the name was taken)"); }
             keptStopKeys.insert(juce::String(manual) + "|" + stopBuildKey(originalName));

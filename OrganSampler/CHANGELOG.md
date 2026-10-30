@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.230] - 2026-10-30
+
+### Fixed
+- A stop dragged into a division that already holds a stop of its name takes
+  the name "... (2)" there, as before, but its grid cell, the cells of its
+  transmissions and its saved voicing now follow the new name; before, the
+  cell was written under the old name and displaced the target division's own
+  stop, and the transmissions' cells were lost. The same when a stop is
+  indented under a folder of another division.
+- A MIDI control learned on a stop is stored with the stop's division
+  ("stop:<division>:<name>"), so two stops of one name in two divisions no
+  longer share a binding; bindings of older files ("stop:<name>") keep
+  working and are cleared through the stop's menu as well.
+- Merge: a stop added under a taken name gets " (2)" on the name alone when
+  only the name collides; its alias keeps its text unless the alias collides
+  too (two stop folders "Stop folder" with the aliases "Carillon" and
+  "Glocken" keep both aliases).
+
 ## [0.8.229] - 2026-10-30
 
 ### Changed

@@ -13256,11 +13256,19 @@ juce::StringArray MainComponent::renameRowsWithoutPerspectivePrefixes(juce::var 
             if (auto* obj = binding.getDynamicObject())
             {
                 const auto target = obj->getProperty("target").toString();
-                if (!target.startsWith("stop:")) continue;   // a binding names the stop alone: the first division renaming it decides
-                const auto name = target.fromFirstOccurrenceOf(":", false, false);
-                for (const auto& [manual, map] : renames)
+                if (!target.startsWith("stop:")) continue;
+                const auto rest = target.fromFirstOccurrenceOf(":", false, false);
+                const auto head = rest.upToFirstOccurrenceOf(":", false, false);
+                if (rest.contains(":") && head.isNotEmpty() && head.containsOnly("0123456789"))
                 {
-                    const auto renamed = renamedOf(manual, name);
+                    // "stop:<division>:<name>" (0.8.230)
+                    const auto renamed = renamedOf(head.getIntValue(), rest.fromFirstOccurrenceOf(":", false, false));
+                    if (renamed.isNotEmpty()) obj->setProperty("target", "stop:" + head + ":" + renamed);
+                    continue;
+                }
+                for (const auto& [manual, map] : renames)   // the older "stop:<name>": the first division renaming it decides
+                {
+                    const auto renamed = renamedOf(manual, rest);
                     if (renamed.isNotEmpty()) { obj->setProperty("target", "stop:" + renamed); break; }
                 }
             }
@@ -16170,7 +16178,7 @@ struct MainComponent::VideoScript final : private juce::Timer
             // -> the stop switches on and off three times as its MIDI control would.
             auto* row = findRow(part(0).getIntValue(), part(1));
             if (row == nullptr) { CrashHandler::note("Video: learnstop - no row " + arg); return; }
-            const juce::String target = "stop:" + row->getStop()->name;   // as StopRow's right click gives it
+            const juce::String target = "stop:" + juce::String(row->getStop()->primaryManual) + ":" + row->getStop()->name;   // as StopRow's right click gives it (0.8.230: with the division)
             Voicer::GridItem item;
             item.manual = part(0).getIntValue(); item.stop = row->getStop(); item.transmission = row->getTransmissionIndex(); item.folder = row->getStop()->container;
             highlight(&row->buttonComponent(), 1500.0);
@@ -17916,7 +17924,13 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
         }
         to.entries.push_back(entry);
     }
-    CrashHandler::note("Stop \"" + stop->name + "\" dragged from division " + juce::String(source) + " to " + juce::String(targetManual));
+    CrashHandler::note("Stop \"" + stop->name + "\" dragged from division " + juce::String(source) + " to " + juce::String(targetManual)
+        + (renamed.front().first != renamed.front().second ? " as \"" + renamed.front().second + "\" (the name was taken there)" : juce::String()));
+    // The grid cell it was dropped on, the cells of its transmissions and the saved
+    // voicing follow under the new names (0.8.230) - the folder first, then its children.
+    if (voicer)
+        for (size_t k = 0; k < renamed.size(); ++k)
+            voicer->stopMovedToDivision(source, renamed[k].first, targetManual, renamed[k].second, k == 0);
     // In place: the stops of the block (a folder with its children) change
     // division with their samples and copies; the new division's routes for
     // their perspectives are opened if it lacks them.
@@ -18040,6 +18054,7 @@ void MainComponent::indentStopUnder(Stop* stop, Stop* master)
     // samples and copies go along), the grouping is metadata.
     if (source != target)
     {
+        if (voicer) voicer->stopMovedToDivision(source, stop->name, target, entry.name, false);   // 0.8.230: its transmissions' cells and the saved state under the new name
         if (stop->name != entry.name) { const juce::ScopedLock sl(engine.getLock()); stop->name = entry.name; }
         engine.moveStopToDivision(stop, target);
         rebuildPerspectiveAudioRoutes();   // the division may lack this stop's perspectives' routes
@@ -18289,6 +18304,7 @@ void MainComponent::mergeStopFolderInto(Stop* folder, Stop* target)
         for (const auto& [oldName, newName] : renamed)
             if (auto* moving = stopNamed(source, oldName))
             {
+                if (voicer) voicer->stopMovedToDivision(source, oldName, dest, newName, false);   // 0.8.230
                 if (moving->name != newName) { const juce::ScopedLock sl(engine.getLock()); moving->name = newName; }
                 engine.moveStopToDivision(moving, dest);
             }
@@ -23066,6 +23082,16 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
     if (target.isNotEmpty()) showMidiLearnMenu(target);
 }
 
+// A stop binding is "stop:<division>:<name>" since 0.8.230; files of older versions hold "stop:<name>" (any
+// division). The older key of a new target, so that such a binding is seen and cleared through the stop's menu.
+static juce::String legacyStopBindingKey(const juce::String& target)
+{
+    if (!target.startsWith("stop:")) return {};
+    const auto rest = target.fromFirstOccurrenceOf(":", false, false);
+    const auto head = rest.upToFirstOccurrenceOf(":", false, false);
+    return rest.contains(":") && head.isNotEmpty() && head.containsOnly("0123456789") ? "stop:" + rest.fromFirstOccurrenceOf(":", false, false) : juce::String();
+}
+
 void MainComponent::showMidiLearnMenu(const juce::String& target)
 {
     juce::PopupMenu menu;
@@ -23078,6 +23104,8 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
     {
         const juce::ScopedLock lock(midiButtonBindingLock);
         hasBinding = midiButtonBindings.count(target.toStdString()) != 0;
+        const auto legacy = legacyStopBindingKey(target);
+        if (legacy.isNotEmpty() && midiButtonBindings.count(legacy.toStdString()) != 0) hasBinding = true;
     }
     menu.addSeparator();
     menu.addItem(3, "Clear MIDI assignment", hasBinding);
@@ -23148,6 +23176,8 @@ void MainComponent::clearMidiBinding(const juce::String& target)
 {
     const juce::ScopedLock lock(midiButtonBindingLock);
     midiButtonBindings.erase(target.toStdString());
+    const auto legacy = legacyStopBindingKey(target);
+    if (legacy.isNotEmpty()) midiButtonBindings.erase(legacy.toStdString());
     pendingButtonLearnTarget.clear();
     pendingButtonLearnContinuous = false;
     juce::MessageManager::callAsync([this] { saveSettings(); });
@@ -23756,9 +23786,13 @@ void MainComponent::activateMidiTarget(const juce::String& target, bool isOn, bo
     }
     if (target.startsWith("stop:"))
     {
-        const auto name = target.fromFirstOccurrenceOf(":", false, false);
+        // "stop:<division>:<name>" (0.8.230), or the older "stop:<name>" - any division, the first stop found.
+        auto name = target.fromFirstOccurrenceOf(":", false, false);
+        int manual = -1;
+        const auto head = name.upToFirstOccurrenceOf(":", false, false);
+        if (name.contains(":") && head.isNotEmpty() && head.containsOnly("0123456789")) { manual = head.getIntValue(); name = name.fromFirstOccurrenceOf(":", false, false); }
         for (auto* stop : engine.getStops())
-            if (stop->name == name)
+            if (stop->name == name && (manual < 0 || stop->primaryManual == manual))
             {
                 engine.setStopEnabled(stop, toggleBehaviour ? !stop->enabled : isOn);
                 if (voicer) voicer->updateStopStates();
