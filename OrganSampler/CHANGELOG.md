@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.239] - 2026-10-30
+
+### Changed
+- The Couplers dialog, the IR reverb settings and the Swell / Tremulant /
+  Wind settings dialogs are modeless like the patterns dialogs: their settings
+  act at once, so nothing waits for them; the console, the Stop List and the
+  manual stay usable while they are open.
+
 ## [0.8.238] - 2026-10-30
 
 ### Changed

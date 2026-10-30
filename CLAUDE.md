@@ -1918,6 +1918,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   vypnout a zapnout Show Trsm" - the combo/drag path and the toggle both end in rebuildGrid() on the same drafts
   (transmission rows are child rows of the block and move with it); not reproduced by reading; asked which state
   Show Trsm had - he answered "asi jo, při přesouvání divizí ve Stop Listu" (unclear). Wait for a log of 0.8.238.
+  0.8.239 (the user: "Totéž dialogy vlastností tremulantu a podobné. Proč jsou modální? Kde nemá modalita význam,
+  tam ji zruš."): `ModelessDialog` (MainComponent.cpp before MessageStrip: DialogWindow(title, darkgrey, escape
+  closes, on desktop), native title bar, setContentOwned, `onClose`, closeButtonPressed = hide + onClose,
+  UIScale desktop scale) for the Couplers dialog (`couplersWindow`), the IR reverb settings (`reverbToneWindow`)
+  and the feature settings (`featureWindow`, onClose = refreshConfigurationEditor - the FeatureContent destructor
+  did it at the modal close). Still modal by design: the load box, Save Configuration, GLOBAL RESET, Set for
+  all..., Report a problem, the measurement windows, MIDI Learn, long messages, questions. A DialogWindow built
+  this way is VISIBLE at birth (0.8.213 lesson) - placeDialog after it.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

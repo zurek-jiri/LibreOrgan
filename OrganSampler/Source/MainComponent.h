@@ -867,6 +867,7 @@ private:
     std::unique_ptr<juce::DialogWindow> temperamentsWindow;
     std::unique_ptr<juce::DialogWindow> configurationWindow;
     std::unique_ptr<juce::DialogWindow> patternsWindow;   // 0.8.238: the patterns dialogs are modeless (one at a time)
+    std::unique_ptr<juce::DialogWindow> couplersWindow, reverbToneWindow, featureWindow;   // 0.8.239: modeless too (their settings act at once)
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.
     std::function<void()> configEditorRefresh;

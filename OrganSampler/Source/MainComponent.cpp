@@ -287,6 +287,24 @@ private:
     Hider hider{ *this };
 };
 
+// A modeless dialog of the program (0.8.239, the user: "Kde nemá modalita význam, tam ji zruš"):
+// the settings in it act at once, so nothing waits for it; closing hides it, the owner keeps it
+// in a unique_ptr and makes the next one anew.
+class ModelessDialog final : public juce::DialogWindow
+{
+public:
+    ModelessDialog(const juce::String& title, juce::Component* contentOwned, bool resizable)
+        : juce::DialogWindow(title, juce::Colours::darkgrey, true, true)
+    {
+        setUsingNativeTitleBar(true);
+        setContentOwned(contentOwned, true);
+        setResizable(resizable, false);
+    }
+    std::function<void()> onClose;
+    void closeButtonPressed() override { setVisible(false); if (onClose) onClose(); }
+    float getDesktopScaleFactor() const override { return UIScale::factor(); }
+};
+
 class MainComponent::MessageStrip final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
 public:
@@ -3564,16 +3582,12 @@ void MainComponent::showCouplersDialog()
         juce::ToggleButton graceTime;
         juce::TextButton close;
     };
-    juce::DialogWindow::LaunchOptions options;
-    options.dialogTitle = "Couplers";
-    options.dialogBackgroundColour = juce::Colours::darkgrey;
     auto* editor = new Editor(*this);
     editor->setSize(1100, 760);
-    options.content.setOwned(new ScrollableContent(editor));   // scrollbars when the window is smaller
-    options.componentToCentreAround = this;   // also gives the dialog this window's interface size
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    if (auto* window = options.launchAsync()) placeDialog(*window, "couplers", 1100, 760);
+    couplersWindow = std::make_unique<ModelessDialog>("Couplers", new ScrollableContent(editor), true);   // modeless (0.8.239): the ticks act at once
+    placeDialog(*couplersWindow, "couplers", 1100, 760);
+    couplersWindow->setVisible(true);
+    couplersWindow->toFront(true);
 }
 
 void MainComponent::panic()
@@ -4035,23 +4049,17 @@ void MainComponent::showReverbToneDialog(int manualIndex, const juce::String& pe
 
     auto* content = new ToneContent(*this, manualIndex, perspective, key);
     content->setSize(640, 400);
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ScrollableContent(content));
-    options.dialogTitle = "IR reverb settings - " + names[manualIndex] + " / " + perspective;
-    options.dialogBackgroundColour = juce::Colours::darkgrey;
-    options.componentToCentreAround = this;
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    if (auto* window = options.launchAsync())
-    {
-        // New position key: the first version remembered a window too small for
-        // all the sliders. Never smaller than the content needs, resizable by mouse.
-        window->setResizeLimits(560, 400, 1400, 900);
-        placeDialog(*window, "reverbTone2", 640, 400);
-        if (window->getHeight() < 400 || window->getWidth() < 560)
-            window->setSize(juce::jmax(560, window->getWidth()), juce::jmax(400, window->getHeight()));
-    }
+    // Modeless (0.8.239): every slider acts at once. New position key "reverbTone2": the first
+    // version remembered a window too small for all the sliders. Never smaller than the content
+    // needs, resizable by mouse.
+    reverbToneWindow = std::make_unique<ModelessDialog>("IR reverb settings - " + names[manualIndex] + " / " + perspective, new ScrollableContent(content), true);
+    auto* window = reverbToneWindow.get();
+    window->setResizeLimits(560, 400, 1400, 900);
+    placeDialog(*window, "reverbTone2", 640, 400);
+    if (window->getHeight() < 400 || window->getWidth() < 560)
+        window->setSize(juce::jmax(560, window->getWidth()), juce::jmax(400, window->getHeight()));
+    window->setVisible(true);
+    window->toFront(true);
 }
 
 bool MainComponent::isAuxiliaryPerspective(const juce::String& perspective)
@@ -23768,21 +23776,20 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
     auto* content = new FeatureContent(*this, noteText, std::move(rows));
     const int height = content->neededHeight();
     content->setSize(700, height);
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(new ScrollableContent(content));
-    options.dialogTitle = title;
-    options.dialogBackgroundColour = juce::Colours::darkgrey;
-    options.componentToCentreAround = this;
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    if (auto* window = options.launchAsync())
+    // Modeless (0.8.239): the rows act at once; the Configuration Editor is refreshed when the window closes.
+    auto dialog = std::make_unique<ModelessDialog>(title, new ScrollableContent(content), true);
     {
-        window->setResizeLimits(560, height, 1400, 900);
-        placeDialog(*window, key, 700, height);
-        if (window->getHeight() < height || window->getWidth() < 560)
-            window->setSize(juce::jmax(560, window->getWidth()), juce::jmax(height, window->getHeight()));
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        dialog->onClose = [safeThis] { if (safeThis != nullptr) safeThis->refreshConfigurationEditor(); };
     }
+    featureWindow = std::move(dialog);
+    auto* window = featureWindow.get();
+    window->setResizeLimits(560, height, 1400, 900);
+    placeDialog(*window, key, 700, height);
+    if (window->getHeight() < height || window->getWidth() < 560)
+        window->setSize(juce::jmax(560, window->getWidth()), juce::jmax(height, window->getHeight()));
+    window->setVisible(true);
+    window->toFront(true);
 }
 
 void MainComponent::showSwellLearnMenu(int manualIndex)
