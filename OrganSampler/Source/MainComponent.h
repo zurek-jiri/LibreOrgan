@@ -1071,6 +1071,11 @@ private:
     bool transposeReleaseLevelMatch = false;    // release copies at the source's level step (playback, no rebuild)
     // The "?" buttons: the About dialog on the manual, at the chapter of the option.
     void showManualSection(const juce::String& section, const juce::String& fallbackSection = {});
+    // 0.8.232: F1 over any control opens its chapter of the manual (the component's "manualChapter" property, an
+    // ancestor's, a MIDI target's chapter, else the window's title); every right-click menu ends with "Manual: ...".
+    void openManualForMouse();
+    static juce::String manualChapterForTarget(const juce::String& midiTarget);
+    static juce::String manualChapterForWindowTitle(const juce::String& title);
     juce::String copyCacheFolder;               // the cache folder chosen by the user (empty = FilledPipesCache in the application data)
     std::unique_ptr<juce::FileChooser> cacheFolderChooser;
     float transposeReleaseLengthPct = 100.0f;   // pitch shift: a release copy's duration as % of its source's (both directions)
@@ -1291,11 +1296,13 @@ private:
     int unreadMessages = 0;
     class MessageStrip;
     std::unique_ptr<juce::Component> messageStrip;
+    std::unique_ptr<juce::Timer> helpKeyWatcher;   // 0.8.232: F1 polled (works in every window, whatever has the focus)
     void noteMessage(const juce::String& title, const juce::String& text);
     void showMessageStrip();
     bool noticeShowing = false, noticeRetryPending = false, noticeWaitLogged = false;
     static MainComponent* noticeOwner;   // the one instance, for the free function queueNotice (usable from any lambda or helper struct)
     friend void queueNotice(juce::MessageBoxIconType, const juce::String&, const juce::String&, const juce::String&, juce::Component*, juce::ModalComponentManager::Callback*);
+    friend struct HelpKeyWatcher;   // 0.8.232: F1 -> openManualForMouse
     void enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
                        juce::ModalComponentManager::Callback* callback);
     bool noticeBlocked() const;    // an alert box (ours, the loader's, a question) is up, or a loader runs

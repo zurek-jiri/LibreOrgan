@@ -12,6 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.232] - 2026-10-30
+
+### Added
+- F1 over any control of any window opens the manual at that control's
+  chapter (the stop buttons, every slider and box of a voicing row, the
+  division header, the top bar, the combination row, the crescendo, the
+  global sliders, every row of the Configuration Editor, the Stop List's
+  parts, the audio tabs, and every dialog by its title). Every right-click
+  menu ends with "Manual: <chapter>".
+- The manual on GitHub has live links: the chapter references and the
+  contents are Markdown links; the program's manual window reads them as its
+  own links.
+
+### Fixed
+- Manual: the Divisions box is in the upper left corner (not the right);
+  the temperament dialog's button is "Set diapason a1 = 440 Hz (all stops)";
+  the Divisions dialog's names of the velocity, random tuning and pipe
+  coupling switches are given beside the Editor's; the macOS paragraph
+  claims no more than the test machine.
+
 ## [0.8.231] - 2026-10-30
 
 ### Changed

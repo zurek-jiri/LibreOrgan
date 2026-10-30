@@ -13,23 +13,24 @@ This manual lives inside the program: *Configuration Editor > About &
 licences...*. The chapter box above the text jumps to any chapter, *Find*
 searches it, *A-* / *A+* (or Ctrl + wheel) change the text size. Text can be
 selected with the mouse and copied (Ctrl+C, or the right-click menu). Chapter
-names written in quotes are links. The "?" beside every option of the
-Configuration Editor opens the chapter of that option, with the heading at the
-top. Parts 1 to 7 explain the program as you use it, part 8 is the reference
-of every option, part 10 holds the technical details.
+names shown as links jump to the chapter. **F1** over any control of any
+window opens its chapter, and every right-click menu ends with *Manual: ...*;
+the "?" beside every option of the Configuration Editor does the same, with
+the heading at the top. Parts 1 to 7 explain the program as you use it, part
+8 is the reference of every option, part 10 holds the technical details.
 
 Contents
 
-1. Getting started
-2. The main window
-3. Stops and their voicing
-4. The Stop List
-5. Divisions and audio
-6. Playing
-7. Filled pipes
-8. Configuration Editor reference
-9. Messages, the activity log, reporting a problem, licences
-10. Technical details
+1. [Getting started](#1-getting-started)
+2. [The main window](#2-the-main-window)
+3. [Stops and their voicing](#3-stops-and-their-voicing)
+4. [The Stop List](#4-the-stop-list)
+5. [Divisions and audio](#5-divisions-and-audio)
+6. [Playing](#6-playing)
+7. [Filled pipes](#7-filled-pipes)
+8. [Configuration Editor reference](#8-configuration-editor-reference)
+9. [Messages, the activity log, reporting a problem, licences](#9-messages-the-activity-log-reporting-a-problem-licences)
+10. [Technical details](#10-technical-details)
 
 ---
 
@@ -74,8 +75,8 @@ your screen, move *Interface size* in the Configuration Editor.
 
 ### Step 2: Divisions
 
-The box in the upper right corner of the main window sets how many manuals the
-console has; the pedal is always there.
+The *Divisions:* box in the upper left corner of the main window sets how
+many manuals the console has; the pedal is always there.
 
 ### Step 3: MIDI
 
@@ -96,14 +97,13 @@ an organ".
 
 ### Step 5: Audio
 
-*Settings* in a division's header, then the audio tabs at the bottom of the
-Divisions dialog: one tab per perspective of the division and one *auxiliary*
-tab. On a tab choose the device type (Windows: ASIO when you have it), the
+*Settings* in a division's header, then the audio tabs of the Divisions
+dialog: one tab per perspective of the division and one *auxiliary* tab. On a tab choose the device type (Windows: ASIO when you have it), the
 device, 48 kHz, a buffer of 512 samples, and tick the output channels of the
 device the perspective plays through. *Set for all perspectives and divisions*
 copies the device to every route; *Set for all divisions (this perspective)*
 above the channel list copies the channels to the same perspective of every
-division. Leave the *auxiliary* tab at *none*. Details: "The audio tabs".
+division. Leave the *auxiliary* tab at *none*. Details: [The audio tabs](#53-the-audio-tabs).
 
 ### Step 6: Play
 
@@ -182,13 +182,13 @@ the divisions, the stops with their sample folders, the perspectives, the
 compass of every stop and the voicing of every pipe; couplers and the
 crescendo follow where the definition has them. The configuration goes into
 your configurations folder. Encrypted sets (`.hbw`) cannot be read. The rules:
-"Hauptwerk import rules".
+[Hauptwerk import rules](#104-hauptwerk-import-rules).
 
 ### A set without a definition
 
 *Stop List* > *Load folder...* with the top folder of the samples, say which
-division, repeat per division, *Apply and reload*. "The Stop List" explains
-the table, "How the sample folders must be organised" what the program makes
+division, repeat per division, *Apply and reload*. [The Stop List](#4-the-stop-list) explains
+the table, [How the sample folders must be organised](#17-how-the-sample-folders-must-be-organised) what the program makes
 of the folder names.
 
 ### A second volume or perspective set of the same organ
@@ -200,7 +200,7 @@ second one's definition, configuration or archives. Stops you have gain the
 new perspective, new stops are added. A perspective set whose folders stand
 beside yours under a new prefix joins your rows the same way, in the merge and
 in *Load folder...* alike. How the program decides that two folders are the
-same pipes: "The tuning gate of a perspective join".
+same pipes: [The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join).
 
 ### The samples moved, a new disk, a new computer
 
@@ -228,7 +228,7 @@ and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, a Hauptwerk definition or RAR archives. A configuration with unsaved
 changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.
 Before the samples load, a box asks how they are to be held in RAM (storage,
-packing, rate - "Sample storage in RAM"); the choice is saved with the
+packing, rate - [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with the
 configuration. Paths are stored with "/" and work on every platform.
 
 ### Portable configuration (to share with others)
@@ -297,12 +297,12 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
 - A file name begins with the MIDI key number, optionally with the note
   (036.wav, 036-C.wav, 059-B3.wav). Several files with the same number are
   round-robin variants; a two- or three-digit suffix after an underscore
-  (`060-C4_070.wav`) is a velocity layer ("Velocity layers").
+  (`060-C4_070.wav`) is a velocity layer ([Velocity layers](#35-velocity-layers)).
 - Mono and stereo files are both fine. Loop points and the recorded pitch come
-  from the WAV's smpl chunk ("The smpl chunk and the file names"); files
+  from the WAV's smpl chunk ([The smpl chunk and the file names](#101-the-smpl-chunk-and-the-file-names)); files
   without it play as they are, but cannot be retuned.
 - Missing pipes and missing loops are no obstacle: gaps are filled from the
-  neighbouring pipes ("What a filled pipe is"), a file without loops plays to
+  neighbouring pipes ([What a filled pipe is](#71-what-a-filled-pipe-is)), a file without loops plays to
   its end and loops as a whole.
 - A stop recorded as a left and a right half (`quintaton16L` and
   `quintaton16R`) is one stop with two folders.
@@ -354,26 +354,26 @@ folder tree as the archive has it).
 From top to bottom: the top bar of buttons, the combination row, the global
 sound sliders with the polyphony display, and the workspace - one column per
 division with its header and its stop grid. A message strip appears in the
-lower left corner when the program has something to say ("Messages").
+lower left corner when the program has something to say ([Messages](#91-messages)).
 
 ## 2.1 Top bar buttons
 
-Every button can be hidden (Configuration Editor > Console > "Top bar") and
+Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and
 fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned
 button fires even when hidden).
 
 - **PANIC** silences every sounding pipe.
 - **Record** records the stereo mix to a WAV file; click again to stop
-  ("Recording").
-- **Stop List** - the table of the whole organ ("The Stop List").
+  ([Recording](#65-recording)).
+- **Stop List** - the table of the whole organ ([The Stop List](#4-the-stop-list)).
 - **Guided tour** (on a teaching organ such as the Rural Organ demo) walks
   through the console in ten steps with an arrow to every element.
-- **Couplers...** ("Couplers"), **Temperaments** ("Temperaments").
+- **Couplers...** ([Couplers](#61-couplers)), **Temperaments** ([Temperaments](#63-temperaments)).
 - **Hide all voicing** folds every open voicing row.
 - **Perspective Patterns..., Ignored Patterns..., One-shot Patterns...** -
-  the folder name lists ("Folder name patterns").
+  the folder name lists ([Folder name patterns](#85-folder-name-patterns-one-per-line)).
 - **Stop-Merging** renders the engaged stops into one new stop
-  ("Stop-Merging").
+  ([Stop-Merging](#36-stop-merging)).
 - **Load Voicing / Save Voicing** (hidden by default) - the voicing as a file.
 - **Load Configuration / Save Configuration** - the instrument as a file; a
   right-click on Load offers the merge.
@@ -381,7 +381,7 @@ button fires even when hidden).
   computer down without a question - for a console without a screen (a MIDI
   piston). An instrument without a file is kept as "Shutdown rescue
   configuration.json" beside the settings.
-- **GLOBAL RESET** ("GLOBAL RESET"), **Configuration Editor** ("Configuration
+- **GLOBAL RESET** ([GLOBAL RESET](#global-reset)), **Configuration Editor** ("Configuration
   Editor reference").
 
 ## 2.2 The combination row
@@ -418,7 +418,7 @@ main panel (the checkbox beside them in the editor); all are MIDI-learnable.
 The polyphony display shows the voices sounding now (*NOW*), the most at once
 over the last seconds (*PEAK*), the *DSP* load (the time the busiest audio
 thread needed for its last block, as a share of the block; above 100 % the
-sound breaks - "Getting the most polyphony"), the memory the program holds
+sound breaks - [Getting the most polyphony](#57-getting-the-most-polyphony)), the memory the program holds
 (*RAM GB*; orange when the computer is nearly full) and the polyphony *LIMIT*
 (editable; the measurement writes its verdict there). The DSP cell shows
 "!N" in orange when the program found N clicks in its own output ("Output
@@ -427,7 +427,7 @@ discontinuity detector").
 The loading never lets the system page: it stops when the memory is short,
 builds the instrument from the stops loaded so far and names the rest in a
 message; they stay in the pool of the Stop List. The loading window's
-*Cancel* button does the same. Details: "Memory and the loading stop".
+*Cancel* button does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).
 
 ## 2.5 Division headers
 
@@ -468,7 +468,7 @@ itself). The numeral can be hidden per stop (*Rank count*).
 A caption ending in "(Ext.)" or "(Trsm.)" is a **transmission**: the pipes
 of another stop played here, possibly transposed - "(Ext.)" in the stop's own
 division (a 16' or 4' extension of an 8' stop), "(Trsm.)" in another one.
-"Transmissions and extensions".
+[Transmissions and extensions](#34-transmissions-and-extensions).
 
 ## 3.2 Arranging the grid
 
@@ -499,7 +499,7 @@ another division. A click on empty workspace ends the mode.
   yet, and the division's pooled stops and transmissions.
 
 None of this loads anything again. The same can be done in the table of the
-Stop List ("The table").
+Stop List ([The table](#42-the-table)).
 
 ## 3.3 The voicing row
 
@@ -547,7 +547,7 @@ routes' volumes in the Divisions dialog).
 
 ### Velocity layer boxes
 
-A tick box per layer and one for the plain files: "Velocity layers".
+A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).
 
 ### Stop volume
 
@@ -571,19 +571,19 @@ For celestes: the stop beats this many times per second against an in-tune
 rank at a1 (negative = flat). A rank recorded sharp or flat throughout is
 recognised as a celeste and starts with its recorded undulation. The line
 reads "needs 440 Hz" until the organ is retuned to a1 = 440 Hz
-("Temperaments").
+([Temperaments](#63-temperaments)).
 
 ### Formants (filled pipes)
 
 0-100 % (default 30): how far the body of the sound follows the pitch shift
-of the pipes this stop borrows from neighbours - "Filled pipes".
+of the pipes this stop borrows from neighbours - [Filled pipes](#7-filled-pipes).
 
 ### Orig. Pitch / temperament
 
 Information: the recorded pitch (a1 = ... Hz), the footage read from the
 samples (the sounding footage of a mixture or mutation in brackets, and the
 breaks) and the temperament the recording was found to be in. How the
-footage is measured: "How the footage of a stop is measured".
+footage is measured: [How the footage of a stop is measured](#102-how-the-footage-of-a-stop-is-measured).
 
 ### Volume per key and Treble per key
 
@@ -611,7 +611,7 @@ played key; the temperament follows the played key.
 A pipe sounds once however many keys hold it (the stop, a transmission, a
 coupler): the loudest route sets its volume, and it keeps the tuning of the
 key that started it until it stops. Keys beyond the rank's compass (the
-bottom octave of a 16' extension) play **filled pipes**: "Filled pipes".
+bottom octave of a 16' extension) play **filled pipes**: [Filled pipes](#7-filled-pipes).
 
 ## 3.5 Velocity layers
 
@@ -619,7 +619,7 @@ An organ key never plays softer when struck gently. A stop **with velocity
 layers** plays the layer the velocity falls into - a gentle stroke selects
 the recording of a gentle stroke. A stop **without layers** softens the
 attack of a gentle stroke in volume and colour over its first tens of
-milliseconds (the *Key velocity* settings of "Advanced global audio"), the
+milliseconds (the *Key velocity* settings of [Advanced global audio](#83-advanced-global-audio)), the
 held tone untouched. *Ignore MIDI velocity (organ keys)* in the division's
 settings - on by default - sends every key at full velocity.
 
@@ -659,10 +659,10 @@ can be done here as well, and this is where the organ is built from folders.
   loaded into an organ that has rows already is first tried as a further
   perspective of the loaded stops: folders named like the rows' folders under
   a new prefix, with the same tuning, join their rows as the new perspective
-  ("The tuning gate of a perspective join"); the rest become new rows.
+  ([The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join)); the rest become new rows.
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
-  computer...** ("Sample folders not found").
+  computer...** ([Sample folders not found](#sample-folders-not-found)).
 - **Unload folder...** removes one tree from the whole organ. The rows that
   had folders of that tree only leave the table with it, buttons and all -
   the one case a row goes by itself; a row with a folder of another tree
@@ -685,7 +685,7 @@ can be done here as well, and this is where the organ is built from folders.
 - **Stop folders:** drag a name a little to the **right** and the row is
   indented under the row above: it becomes that stop's child and sounds with
   it - that is a stop folder ("Cornet [III]"). Drag it **left** to take it
-  out again. One level only. (On the grid: "Arranging the grid".)
+  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)
 - **Folder cells:** click a cell to choose one of the free folders of all
   loaded trees (a folder serves one cell only); the x beside a cell frees its
   folder; a cell dragged onto another takes or swaps. The path shows in a
@@ -703,7 +703,7 @@ can be done here as well, and this is where the organ is built from folders.
   footage with its foot mark).
 - **Name** is the stop's identity (voicing, combinations, MIDI); derived from
   the folders, a typed name is kept until cleared. **Alias** is only what is
-  shown. **Transp.**: "Transposition" - empty means found by the program.
+  shown. **Transp.**: [Transposition](#transposition) - empty means found by the program.
 - **Swap divisions...** exchanges the stop lists of two divisions;
   **Reset division...** forgets one division's table.
 
@@ -726,7 +726,7 @@ configuration; nothing is reloaded.
 ## 4.4 Ignored and one-shot patterns
 
 *Ignored Patterns...* and *One-shot Patterns...* (top bar, or the
-Configuration Editor's "Folder name patterns") are lists of folder-name
+Configuration Editor's [Folder name patterns](#85-folder-name-patterns-one-per-line)) are lists of folder-name
 parts. A folder matching an ignored pattern is not loaded; when the list is
 changed with an organ loaded, the next *Apply and reload* takes the folders
 that match out of their rows (the log names them), so a rank you decided to
@@ -760,7 +760,7 @@ under a stop button, filling orange); the organ plays at once.
 
 *Settings* in a division header opens the Divisions dialog at that division.
 Its settings are the same as the division's section of the Configuration
-Editor ("Division sections"); the dialog adds the keyboard drawing and the
+Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing and the
 audio tabs.
 
 ## 5.1 Keyboard, MIDI and compass
@@ -768,8 +768,8 @@ audio tabs.
 - *MIDI keyboard device* and *MIDI channel* ("Shared with ..." appears when
   another division listens to the same). A keyboard plugged in while the
   program runs is opened at once.
-- *Ignore MIDI velocity (organ keys)*: on by default - every key is a full
-  stroke ("Velocity layers").
+- *Ignore MIDI velocity (organ keys)* (the dialog says *Disable MIDI
+  velocity*): on by default - every key is a full stroke ([Velocity layers](#35-velocity-layers)).
 - *Bass octave layout* for historic bass octaves; *Compass*: the lowest and
   highest key (keys outside are silent on every stop of the division);
   *MIDI transposition*: the keyboard plays this many semitones away.
@@ -782,7 +782,7 @@ The swell pedal is learned by right-clicking the swell bar in the header;
 it. The *Tremulant* header opens rate, depth and the phase drift between
 ranks; the *Wind model* header depth, frequency, oscillations, strength,
 settling lag and the divisions fed from the same wind - all described in
-"Division sections". The tremulant's strength wanders, and every key stroke
+[Division sections](#86-division-sections-pedal-manual-i--manual-vii). The tremulant's strength wanders, and every key stroke
 shakes the wind a little, so nothing repeats mechanically.
 
 ## 5.3 The audio tabs
@@ -890,7 +890,7 @@ cards are joined into one with *Audio MIDI Setup* (Utilities), which the
 program then plays through like any other device. The audio threads are
 given time-constraint priority by themselves. Two builds: Apple silicon
 (macOS 11 or newer) and Intel (macOS 10.11 or newer; an Intel Mac of 2010 on
-10.13 plays the demo and a mid-size organ).
+macOS 10.13 is one of the test machines).
 
 ## 5.6 Audio devices not ready at start
 
@@ -924,7 +924,7 @@ organ loaded (*Measure the maximum polyphony*). What decides:
 The *DSP* value is the whole callback of the busiest device as a share of
 its period; several hundred per cent means the audio thread was kept waiting
 by something else on the computer. What the measurement sees and what it
-cannot: "The polyphony measurement".
+cannot: [The polyphony measurement](#108-the-polyphony-measurement).
 
 ---
 
@@ -945,7 +945,7 @@ only*, *Melody couplers: legato grace time*).
 
 ## 6.2 Combinations and the crescendo
 
-"The combination row" and "The crescendo".
+[The combination row](#22-the-combination-row) and [The crescendo](#23-the-crescendo).
 
 ## 6.3 Temperaments
 
@@ -970,12 +970,13 @@ shows the cent deviations per pitch class; a custom one can be edited).
   that prevails among the ranks; a rank whose recording could not be
   measured takes that one.
 
-**a1 = 440 Hz** retunes every pipe from its recorded pitch to a1 = 440 Hz, so
+**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded
+pitch to a1 = 440 Hz, so
 that the stops of different organs (recorded at 435, 440, 442, 465 Hz ...)
 agree, and celeste beats and the global *Pitch* mean what they say; the
 merge switches it on. A large retune is applied to the mixed output of every
 route with a proper resampler, so the pipes keep their recorded speed
-("Retune buses and the full kernel").
+([Retune buses and the full kernel](#109-retune-buses-and-the-full-kernel)).
 
 ## 6.4 MIDI learn
 
@@ -1039,7 +1040,7 @@ stops; compare on the lowest keys of a reed extension.
 
 Until a pipe's copy is ready it plays by resampling; the stop buttons show
 the build (a dark track filling orange). The settings of the methods are
-their own options in "Filled pipes" of the reference; the per-stop
+their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop
 *Formants* is in the voicing row.
 
 ## 7.3 The cache
@@ -1083,7 +1084,7 @@ laptop as well. Hyper-threads render a tutti slower and with higher peaks
 (measured on 16 cores: never use the "logical" choices); fewer threads leave
 room for other programs. A hybrid processor (performance and efficiency
 cores) offers *Performance cores only*. The workers run at audio priority on
-every system ("The render pool and the threads").
+every system ([The render pool and the threads](#1011-the-render-pool-and-the-threads)).
 
 ### Interpolation kernel
 
@@ -1190,7 +1191,7 @@ seconds. The report says where the time went (the render cores, the pool,
 the kernel, the cost per voice) and what to change; it never forecasts other
 buffer sizes. One to two minutes; *Cancel* restores everything. Save the
 configuration afterwards; measure again after a change of routes, IRs,
-buffer or samples. Details: "The polyphony measurement".
+buffer or samples. Details: [The polyphony measurement](#108-the-polyphony-measurement).
 
 ## 8.2 Global sound
 
@@ -1308,7 +1309,7 @@ settings below ramp from velocity 1 to here.
 
 A gentle stroke on a stop without velocity layers starts with this fade-in at
 the lowest velocity (default 100 ms), shrinking to nothing at the full
-strike. "Velocity layers".
+strike. [Velocity layers](#35-velocity-layers).
 
 ### Key velocity: treble cut on the attack at the lowest velocity
 
@@ -1345,7 +1346,7 @@ copy per such pipe). Real pipes are never touched.
 ### Filled pipes: transposition method
 
 *Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase
-vocoder*: "The transposition methods". Switching rebuilds the copies (from the
+vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the
 cache when on); the sliders that do not apply are greyed out.
 
 ### Missing pipes: neighbours borrowed as a group
@@ -1402,7 +1403,7 @@ On (default): every shifted copy is brought to the loudness of its source.
 ### Filled pipes: keep the generated copies on disk (cache)
 
 On by default: the copies are written to files and read back at the next
-load - seconds instead of minutes. "The cache".
+load - seconds instead of minutes. [The cache](#73-the-cache).
 
 ### Filled pipes cache: Empty the cache
 
@@ -1498,11 +1499,11 @@ editor, the program reads it at the next load).
 
 The temperament the samples were recorded in - found by itself when two
 thirds of the ranks agree; set it by hand when they disagree or the set has
-no pitch data. "Temperaments".
+no pitch data. [Temperaments](#63-temperaments).
 
 ### Target temperament
 
-The temperament the organ plays in. "Temperaments".
+The temperament the organ plays in. [Temperaments](#63-temperaments).
 
 ### Window size
 
@@ -1514,7 +1515,7 @@ One switch per top-bar button: PANIC, Record, Stop List, Couplers,
 Temperaments, Hide/Show all voicing, Perspective Patterns, Ignored Patterns,
 One-shot Patterns, Stop-Merging, Load Voicing, Save Voicing, Load
 Configuration, Save Configuration, Shut down PC, Unpack archive, GLOBAL RESET
-("Top bar buttons"). A hidden button still fires from its learned MIDI
+([Top bar buttons](#21-top-bar-buttons)). A hidden button still fires from its learned MIDI
 control. The button beside each switch does the same as the one in the top
 bar.
 
@@ -1625,13 +1626,13 @@ the same sum.
 
 ### Random tuning error of pipes
 
-On: the pipes get the small random detune set per stop (*Random pitch
-error*).
+(The Divisions dialog says *Allow Random Tuning Error*.) On: the pipes get
+the small random detune set per stop (*Random pitch error*).
 
 ### Pipe coupling (detuned pipes pull together)
 
-On: pipes of the same pitch sounding together pull each other into tune a
-little, as on one chest.
+(The Divisions dialog says *Allow Pipe Coupling*.) On: the pipes of the same
+pitch sounding together pull each other into tune a little, as on one chest.
 
 ### Tremulant rate
 
@@ -1799,7 +1800,7 @@ the root. What is found is taken silently and the root noted as a location;
 the list is `Locations.txt` (the folders, and the archives you chose - only
 those are read, never another archive lying beside them).
 
-A clicked folder ("Sample folders not found") is searched from itself and up
+A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up
 to four ancestors for the longest tail of the missing path that exists under
 it; the tree found must hold at least one of the stop folders the rows
 expect, else the box refuses it; the other missing trees are looked for at
@@ -1974,8 +1975,8 @@ A pipe is retuned by its own recorded deviation (its rank's smpl pitches),
 the temperament of the played key, the random detune, wind and tremulant,
 and the transposition of its transmission - every pipe and every rank for
 itself, which is why two perspectives recorded with a real tuning difference
-are each pulled to the same pitch with *a1 = 440 Hz* on, and keep their
-difference with it off. The common part of a large retune (a1 = 440 Hz on an
+are each pulled to the same pitch with *Set diapason a1 = 440 Hz* on, and
+keep their difference with it off. The common part of a large retune (a1 = 440 Hz on an
 organ at 409 Hz, a big global pitch) is not played by speeding every pipe up:
 the route's voices of that retune are rendered into a bus and the bus is
 resampled once with a proper sinc filter into the route's output, so the
@@ -2039,7 +2040,7 @@ that is also on the disk wins over the archive.
 
 ## 10.13 Files written by the program
 
-In the settings folder ("Where the files are"): `settings.json` (this
+In the settings folder ([Where the files are](#14-where-the-files-are)): `settings.json` (this
 computer: devices, MIDI, the editor's machine settings, the last
 configuration) with `settings-<date>.json` snapshots; `Locations.txt`;
 `Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);

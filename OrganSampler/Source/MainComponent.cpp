@@ -228,6 +228,21 @@ private:
 // last title" for ten seconds, then "Messages (N new)" until the Messages tab of
 // the manual window has been looked at; a click opens that tab. It takes the
 // place of the message boxes that came long after an action was over.
+// F1 polled every 60 ms (0.8.232): a key listener would need the focus, and the help must work in every window
+// of the program over whatever control the mouse rests on.
+struct HelpKeyWatcher final : public juce::Timer
+{
+    explicit HelpKeyWatcher(MainComponent& o) : owner(o) { startTimer(60); }
+    void timerCallback() override
+    {
+        const bool down = juce::Process::isForegroundProcess() && juce::KeyPress::isKeyCurrentlyDown(juce::KeyPress::F1Key);
+        if (down && !wasDown) owner.openManualForMouse();
+        wasDown = down;
+    }
+    MainComponent& owner;
+    bool wasDown = false;
+};
+
 class MainComponent::MessageStrip final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
 public:
@@ -1656,7 +1671,33 @@ MainComponent::MainComponent()
     for (const auto& item : headerButtons())
     {
         item.button->getProperties().set("midiTarget", "header:" + juce::String(item.key));
+        item.button->getProperties().set("manualChapter", "Top bar buttons");
         item.button->addMouseListener(this, false);
+    }
+    {
+        // F1 over a control opens its chapter of the manual (0.8.232): the main window's parts.
+        auto chapter = [](juce::Component& c, const char* name) { c.getProperties().set("manualChapter", juce::String(name)); };
+        chapter(*this, "The main window");
+        chapter(masterVolumeSlider, "Master volume"); chapter(pitchSlider, "Global pitch");
+        chapter(releaseFadeOutSlider, "Sustain fade-out on key release"); chapter(releaseFadeInSlider, "Release sample fade-in");
+        chapter(releaseScalingSlider, "Release sample volume"); chapter(releaseCutSlider, "Release cutting");
+        chapter(releasePlayedFromSlider, "Release played from"); chapter(attackMinimumSlider, "Attack minimum time");
+        chapter(attackMinimumDelaySlider, "Attack minimum delay");
+        for (auto* row : { (juce::Component*)&combinationSetButton, (juce::Component*)&previousCombinationButton, (juce::Component*)&nextCombinationButton,
+            (juce::Component*)&bankDownButton, (juce::Component*)&bankUpButton, (juce::Component*)&bankLabel, (juce::Component*)&combinationDisplay,
+            (juce::Component*)&enableAllButton, (juce::Component*)&disableAllButton, (juce::Component*)&saveCombinationsButton,
+            (juce::Component*)&loadCombinationsButton, (juce::Component*)&pistonCountBox, (juce::Component*)&pistonCountLabel })
+            chapter(*row, "The combination row");
+        for (auto* piston : pistonButtons) chapter(*piston, "The combination row");
+        if (crescendoDisplay) chapter(*crescendoDisplay, "The crescendo");
+        chapter(crescendoButton, "The crescendo");
+        if (polyphonyDisplay) chapter(*polyphonyDisplay, "Global sound sliders and the polyphony display");
+        if (messageStrip) chapter(*messageStrip, "Messages");
+        chapter(manualCountBox, "Divisions"); chapter(manualCountLabel, "Divisions");
+        chapter(stopsViewport, "Stops and their voicing");
+        chapter(emptyHintPanel, "The first start, step by step");
+        chapter(couplerRailLabel, "Couplers");
+        helpKeyWatcher = std::make_unique<HelpKeyWatcher>(*this);
     }
     // Optional: re-open the configuration used last time (Configuration Editor >
     // Console). Off by default: launching alone never loads sample folders - and
@@ -6517,10 +6558,13 @@ void MainComponent::showKeyboardLearnMenu(int manualIndex)
     menu.addItem(1, "MIDI Learn...");
     menu.addItem(2, "Clear learned keyboard MIDI",
         manualConfigs[(size_t)manualIndex].deviceIdentifier.isNotEmpty());
+    menu.addSeparator();
+    menu.addItem(3, "Manual: Keyboard, MIDI and compass");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(menuOptionsAtMouse(this),[safeThis, manualIndex](int result)
     {
         if (safeThis == nullptr) return;
+        if (result == 3) { safeThis->showManualSection("Keyboard, MIDI and compass"); return; }
         if (result == 1)
         {
             safeThis->beginKeyboardLearn(manualIndex);
@@ -6912,12 +6956,15 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 {
                     juce::PopupMenu menu;
                     menu.addItem(1, "IR settings (high cut, low cut, pre-delay, wet level, decay)...");
+                    menu.addSeparator();
+                    menu.addItem(2, "Manual: The audio tabs");
                     MainComponent* target = &owner;
                     const int m = manual;
                     const juce::String p = perspective;
                     menu.showMenuAsync(menuOptionsAtMouse(target), [target, m, p](int result)
                     {
                         if (result == 1) target->showReverbToneDialog(m, p);
+                        else if (result == 2) target->showManualSection("The audio tabs");
                     });
                 }
             }
@@ -7431,6 +7478,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 if (auto* audio = owner.getAudioSettingsForPerspective(onlyManual, perspective))
                 {
                     auto* panel = audioPanels.add(new AudioTabPanel(owner, onlyManual, perspective, audio));
+                    panel->getProperties().set("manualChapter", MainComponent::isAuxiliaryPerspective(perspective) ? "The auxiliary route" : "The audio tabs");   // F1 (0.8.232)
                     audioTabs.addTab(perspective, juce::Colours::darkgrey, panel, false);
                 }
             // Lets MainComponent swap the audio selectors underneath this dialog
@@ -7532,6 +7580,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
                 auto& velocity = velocityButtons[(size_t)manual];
                 velocity.setButtonText("Disable MIDI velocity");
+                velocity.getProperties().set("manualChapter", "Ignore MIDI velocity (organ keys)");   // F1 (0.8.232)
                 velocity.onClick = [this, manual]
                 {
                     this->owner.manualConfigs[(size_t)manual].disableVelocity =
@@ -7656,6 +7705,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
                 auto& randomTuning = randomTuningButtons[(size_t)manual];
                 randomTuning.setButtonText("Allow Random Tuning Error");
+                randomTuning.getProperties().set("manualChapter", "Random tuning error of pipes");
                 randomTuning.onClick = [this, manual]
                 {
                     const bool allowed = randomTuningButtons[(size_t)manual].getToggleState();
@@ -7667,6 +7717,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 addAndMakeVisible(randomTuning);
                 auto& pipeCoupling = pipeCouplingButtons[(size_t)manual];
                 pipeCoupling.setButtonText("Allow Pipe Coupling");
+                pipeCoupling.getProperties().set("manualChapter", "Pipe coupling (detuned pipes pull together)");
                 pipeCoupling.onClick = [this, manual]
                 {
                     const bool allowed = pipeCouplingButtons[(size_t)manual].getToggleState();
@@ -9390,6 +9441,8 @@ void MainComponent::showCrescendoMenu()
     menu.addItem(2, "Clear MIDI assignment", hasBinding);
     menu.addSeparator();
     menu.addItem(3, "Crescendo settings...");
+    menu.addSeparator();
+    menu.addItem(4, "Manual: The crescendo");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(menuOptionsAtMouse(this),[safeThis](int result)
     {
@@ -9397,6 +9450,7 @@ void MainComponent::showCrescendoMenu()
         if (result == 1) safeThis->beginMidiLearn("slider:crescendo", false, true);
         else if (result == 2) safeThis->clearMidiBinding("slider:crescendo");
         else if (result == 3) safeThis->showCrescendoDialog();
+        else if (result == 4) safeThis->showManualSection("The crescendo");
     });
 }
 
@@ -15266,12 +15320,15 @@ void MainComponent::showMissingTreesMenu(int manual)
     if (!missing.empty()) menu.addSeparator();
     if (!missing.empty()) menu.addItem(1001, "Look for the missing folders in the archives beside this organ...");
     menu.addItem(1000, "Open the Stop List");
+    menu.addSeparator();
+    menu.addItem(1002, "Manual: Sample folders not found");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(juce::PopupMenu::Options(), [safeThis, manual](int result)
     {
         if (safeThis == nullptr || result <= 0) return;
         if (result == 1000) { safeThis->showStopBuildingDialog(manual); return; }
         if (result == 1001) { safeThis->offerNeighbourArchives(true); return; }
+        if (result == 1002) { safeThis->showManualSection("Sample folders not found"); return; }
         safeThis->chooseFolderForMissingTree(result - 1);
     });
 }
@@ -19029,6 +19086,15 @@ void MainComponent::showStopBuildingDialog(int)
                 rebuildGrid();
             };
             addAndMakeVisible(showTrsmButton);
+            {
+                // F1 over a part of the dialog opens its chapter (0.8.232).
+                auto chapter = [](juce::Component& c, const char* name) { c.getProperties().set("manualChapter", juce::String(name)); };
+                chapter(*this, "The Stop List");
+                chapter(loadFolderButton, "Folder trees and the pool"); chapter(unloadFolderButton, "Folder trees and the pool");
+                chapter(addStopButton, "The table"); chapter(removeEmptyButton, "The table"); chapter(aliasesButton, "The table");
+                chapter(swapButton, "The table"); chapter(resetButton, "The table"); chapter(showTrsmButton, "The table"); chapter(grid, "The table");
+                chapter(addPerspectiveButton, "Perspectives"); chapter(applyButton, "Apply and reload");
+            }
             rebuildGrid();
         }
 
@@ -23122,6 +23188,78 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
     if (target.isNotEmpty()) showMidiLearnMenu(target);
 }
 
+juce::String MainComponent::manualChapterForTarget(const juce::String& target)
+{
+    if (target.startsWith("stop:")) return "Stop buttons";
+    if (target.startsWith("transmission:")) return "Transmissions and extensions";
+    if (target.startsWith("coupler")) return "Couplers";
+    if (target.startsWith("tremulant:")) return "Swell, tremulant, wind";
+    if (target.startsWith("temperament:")) return "Temperaments";
+    if (target.startsWith("header:")) return "Top bar buttons";
+    if (target == "slider:crescendo" || target.startsWith("crescendo")) return "The crescendo";
+    if (target.startsWith("slider:global:"))
+    {
+        const auto which = target.fromLastOccurrenceOf(":", false, false);
+        if (which == "master") return "Master volume";
+        if (which == "pitch") return "Global pitch";
+        if (which == "sustainFade") return "Sustain fade-out on key release";
+        if (which == "releaseFade") return "Release sample fade-in";
+        if (which == "releaseScale") return "Release sample volume";
+        if (which == "releaseCut") return "Release cutting";
+        if (which == "releasePlayedFrom") return "Release played from";
+        if (which == "attackTime") return "Attack minimum time";
+        if (which == "attackDelay") return "Attack minimum delay";
+        return "Global sound";
+    }
+    if (target.startsWith("slider:division:")) return target.endsWith(":maxSwell") ? "Swell: maximum attenuation when closed" : "Division sections (Pedal, Manual I ... Manual VII)";
+    if (target.startsWith("slider:voicing:")) return "The voicing row";
+    if (target.startsWith("slider:perspective:")) return "Perspective volume";
+    if (target.startsWith("slider:separation:")) return "Perspective channel separation";
+    if (target.startsWith("slider:reverb:")) return "The audio tabs";
+    if (target.startsWith("swell")) return "Swell, tremulant, wind";
+    return "The combination row";   // pistons, banks, Tutti, X, Set
+}
+
+juce::String MainComponent::manualChapterForWindowTitle(const juce::String& title)
+{
+    struct Pair { const char* titleStart; const char* chapter; };
+    static const Pair pairs[]{
+        { "Couplers", "Couplers" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
+        { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
+        { "Report a problem", "Report a problem" }, { "IR reverb settings", "The audio tabs" }, { "Set for all", "The audio tabs" },
+        { "Measuring the maximum polyphony", "Measure the maximum polyphony" }, { "Maximum polyphony measured", "Measure the maximum polyphony" },
+        { "One-shot Patterns", "One-shot stops (folder contains)" }, { "Ignored Patterns", "Ignored folders (folder contains)" },
+        { "Perspective Patterns", "Perspective prefixes" }, { "Save Configuration", "Saving and loading" }, { "Load Configuration", "Saving and loading" },
+        { "Global Reset", "GLOBAL RESET" }, { "Swell settings", "Swell, tremulant, wind" }, { "Tremulant settings", "Swell, tremulant, wind" },
+        { "Wind settings", "Swell, tremulant, wind" }, { "Keyboard MIDI Learn", "Keyboard, MIDI and compass" }, { "Swell MIDI Learn", "Swell, tremulant, wind" },
+        { "MIDI Learn", "MIDI learn" }, { "Unpack", "Sample archives (RAR)" }, { "Loading", "The loading window" },
+        { "Publish", "Portable configuration (to share with others)" }, { "Missing folders", "Sample folders not found" } };
+    for (const auto& pair : pairs) if (title.startsWithIgnoreCase(pair.titleStart)) return pair.chapter;
+    return {};
+}
+
+void MainComponent::openManualForMouse()
+{
+    auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
+    if (under == nullptr) return;
+    auto* top = under->getTopLevelComponent();
+    if (top != nullptr && top->getName().startsWith("About OrganSampler")) return;   // the manual itself
+    juce::String chapter;
+    for (auto* c = under; c != nullptr && chapter.isEmpty(); c = c->getParentComponent())
+    {
+        chapter = c->getProperties()[juce::Identifier("manualChapter")].toString();
+        if (chapter.isEmpty())
+        {
+            const auto target = c->getProperties()[juce::Identifier("midiTarget")].toString();
+            if (target.isNotEmpty()) chapter = manualChapterForTarget(target);
+        }
+    }
+    if (chapter.isEmpty() && top != nullptr) chapter = manualChapterForWindowTitle(top->getName());
+    if (chapter.isEmpty()) chapter = "The main window";
+    CrashHandler::note("F1: the manual at \"" + chapter + "\"");
+    showManualSection(chapter);
+}
+
 // A stop binding is "stop:<division>:<name>" since 0.8.230; files of older versions hold "stop:<name>" (any
 // division). The older key of a new target, so that such a binding is seen and cleared through the stop's menu.
 static juce::String legacyStopBindingKey(const juce::String& target)
@@ -23173,12 +23311,16 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
         menu.addSeparator();
         menu.addItem(5, "Merge another configuration into this organ (OrganSampler .json, or a Hauptwerk organ definition)...");
     }
-    menu.showMenuAsync(menuOptionsAtMouse(this),[this, target, continuousTarget, feature, featureManual](int result)
+    const auto chapter = manualChapterForTarget(target);
+    menu.addSeparator();
+    menu.addItem(6, "Manual: " + chapter);   // 0.8.232: every menu ends with its chapter of the manual
+    menu.showMenuAsync(menuOptionsAtMouse(this),[this, target, continuousTarget, feature, featureManual, chapter](int result)
     {
         if (result == 1 || result == 2) beginMidiLearn(target, !continuousTarget && result == 2, continuousTarget);
         else if (result == 3) clearMidiBinding(target);
         else if (result == 4) showFeatureSettings(featureManual, feature);
         else if (result == 5) mergeConfigurationDialog();
+        else if (result == 6) showManualSection(chapter);
     });
 }
 
@@ -23233,6 +23375,8 @@ void MainComponent::showDivisionMenu(int manualIndex)
     menu.addSeparator();
     menu.addItem(4, "Division settings (keyboard, audio, perspectives)...");
     menu.addItem(5, "Configuration Editor...");
+    menu.addSeparator();
+    menu.addItem(6, "Manual: Division headers");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(menuOptionsAtMouse(this), [safeThis, manualIndex](int result)
     {
@@ -23242,6 +23386,7 @@ void MainComponent::showDivisionMenu(int manualIndex)
         else if (result == 3) safeThis->showFeatureSettings(manualIndex, "wind");
         else if (result == 4) safeThis->showKeyboardsDialog(manualIndex);
         else if (result == 5) safeThis->showConfigurationEditor();
+        else if (result == 6) safeThis->showManualSection("Division headers");
     });
 }
 
@@ -23432,8 +23577,11 @@ void MainComponent::showSwellLearnMenu(int manualIndex)
     menu.addItem(3, "Clear MIDI assignment", assigned || learningThis);
     menu.addSeparator();
     menu.addItem(4, "Swell settings (attenuation, shutter inertia, harmonic filter)...");
+    menu.addSeparator();
+    menu.addItem(5, "Manual: Swell, tremulant, wind");
     menu.showMenuAsync(menuOptionsAtMouse(this),[this, manualIndex](int result)
     {
+        if (result == 5) { showManualSection("Swell, tremulant, wind"); return; }
         if (result == 4) { showFeatureSettings(manualIndex, "swell"); return; }
         auto& config = manualConfigs[(size_t)manualIndex];
         if (result == 1)
@@ -26283,6 +26431,24 @@ void MainComponent::prepareManual()
         // The chapter a piece of text names: a heading equal to it, else (for a
         // long enough text) a heading beginning with it ("Filled pipes: release
         // length" names "Filled pipes: release length (pitch shift)").
+        // GitHub's anchor of a heading: lower case, letters, digits, "-" and "_" kept, spaces as "-", the rest dropped.
+        static juce::String githubSlug(const juce::String& heading)
+        {
+            juce::String out;
+            for (auto t = heading.toLowerCase().getCharPointer(); !t.isEmpty(); ++t)
+            {
+                const juce::juce_wchar c = *t;
+                if (juce::CharacterFunctions::isLetterOrDigit(c) || c == '-' || c == '_') out += juce::String::charToString(c);
+                else if (c == ' ') out += "-";
+            }
+            return out;
+        }
+        int chapterBySlug(const juce::String& slug) const
+        {
+            for (int i = 0; i < (int)chapters.size(); ++i)
+                if (githubSlug(chapters[(size_t)i].heading) == slug) return i;
+            return -1;
+        }
         int chapterNamed(const juce::String& name) const
         {
             const auto wanted = name.trimCharactersAtStart(juce::String(juce::CharPointer_UTF8(" \t\xC2\xA0"))).trimEnd();
@@ -26357,6 +26523,24 @@ void MainComponent::prepareManual()
             while (i < raw.length())
             {
                 const juce::juce_wchar c = raw[i];
+                if (c == '[')
+                {
+                    // A Markdown link "[text](#anchor)" (0.8.232: the manual on GitHub has live links): the text
+                    // shown, the chapter by the text or by the anchor; another target shows its text alone.
+                    const int close = raw.indexOf(i + 1, "](");
+                    const int end = close > 0 ? raw.indexOfChar(close + 2, ')') : -1;
+                    if (close > i + 1 && end > close)
+                    {
+                        const auto inner = raw.substring(i + 1, close).removeCharacters("*`");
+                        const auto link = raw.substring(close + 2, end);
+                        int chapter = chapterNamed(inner);
+                        if (chapter < 0 && link.startsWith("#")) chapter = chapterBySlug(link.substring(1));
+                        flushPlain();
+                        if (chapter >= 0) addLink(b, inner, chapter); else plain += inner;
+                        i = end + 1;
+                        continue;
+                    }
+                }
                 if (c == '"' || c == '*')
                 {
                     const int end = raw.indexOfChar(i + 1, c);
@@ -26635,6 +26819,7 @@ void MainComponent::showConfigurationEditor()
                 }
                 label->setMouseCursor(juce::MouseCursor::PointingHandCursor);
                 label->setTooltip("Click to show or hide this section");
+                label->getProperties().set("manualChapter", title);   // F1 (0.8.232)
                 label->onClick = [this, title]
                 {
                     collapsedSections[title] = ! collapsedSections[title];
@@ -26679,6 +26864,7 @@ void MainComponent::showConfigurationEditor()
             label->setJustificationType(juce::Justification::centredLeft);
             if (tooltip.isNotEmpty()) label->setTooltip(tooltip);
             if (!enabled) label->setAlpha(0.45f);
+            label->getProperties().set("manualChapter", helpSection.isNotEmpty() ? helpSection : currentSection);   // F1 (0.8.232)
             content.addAndMakeVisible(*label);
             row.label = std::move(label);
             if (control)
@@ -26686,6 +26872,7 @@ void MainComponent::showConfigurationEditor()
                 if (tooltip.isNotEmpty())
                     if (auto* client = dynamic_cast<juce::SettableTooltipClient*>(control.get()))
                         client->setTooltip(tooltip);
+                control->getProperties().set("manualChapter", helpSection.isNotEmpty() ? helpSection : currentSection);
                 control->setEnabled(enabled);
                 if (!enabled) control->setAlpha(0.45f);
                 content.addAndMakeVisible(*control);

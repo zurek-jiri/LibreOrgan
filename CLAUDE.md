@@ -1809,6 +1809,35 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   8.5 say it. NEXT (the user's wish, not done): an "Explain feature"/manual link on every control's right-click menu
   (showMidiLearnMenu is the one central menu: stops, transmissions, couplers, pistons, sliders, crescendo, swell,
   header buttons) and/or F1 over the hovered control - proposed, waiting for his choice.
+  0.8.232 (30 Oct 2026, "dej obojí"): F1 + "Manual: ..." menu items. `HelpKeyWatcher` (MainComponent.cpp, defined
+  before the MessageStrip class, friend of MainComponent; `std::unique_ptr<juce::Timer> helpKeyWatcher`, 60 ms poll of
+  `juce::KeyPress::isKeyCurrentlyDown(F1Key)` while the process is foreground - a key listener needs the focus) ->
+  `openManualForMouse()`: the component under the mouse and its ancestors are asked for the property "manualChapter"
+  (set on: the main window's parts in the constructor, the top-bar buttons, StopRow widgets in voicer.cpp (the row
+  "The voicing row", the button "Stop buttons"/"Transmissions and extensions", shiftBox "Transposition", aliasBox
+  "Alias", the sliders their chapters, rank boxes "Perspective boxes", key sliders "Volume per key and Treble per
+  key"), the SectionHeader (header "Division headers", title "Keyboard, MIDI and compass", setup "Divisions and
+  audio", swell/tremulant "Swell, tremulant, wind", missing "Sample folders not found"), the Editor's rows (label +
+  control = helpSection, section headers = the title), the Stop List's buttons/grid, the AudioTabPanel ("The audio
+  tabs"/"The auxiliary route"), the Divisions dialog's velocity/random/coupling switches), else the "midiTarget"
+  property through `manualChapterForTarget` (stop/transmission/coupler/tremulant/temperament/header/slider:global:*
+  ...), else the top-level window's title through `manualChapterForWindowTitle` (Couplers, Temperaments, General
+  Crescendo, Divisions, Stop List, Configuration Editor, Report a problem, IR reverb settings, Set for all,
+  Measuring..., patterns, Save/Load Configuration, Global Reset, Swell/Tremulant/Wind settings, MIDI Learn,
+  Unpack, Loading, Publish), else "The main window"; the About window itself is ignored. Menus: showMidiLearnMenu
+  item 6 "Manual: <chapter>", showDivisionMenu 6, showKeyboardLearnMenu 3, showCrescendoMenu 4, showSwellLearnMenu
+  5, showMissingTreesMenu 1002, the IR caption menu 2. A NEW CONTROL OR DIALOG: give it the property (or a title in
+  the map), else F1 lands on the window's chapter. MANUAL LINKS: USER_MANUAL.md references are Markdown links
+  `[Name](#github-slug)` (GitHub slug = lower case, letters/digits/-/_ kept, spaces "-", the rest dropped;
+  "4.2 The table" -> "42-the-table"); the contents list too; made by /tmp/fix_manual.py (quoted chapter names ->
+  links); the program's parser (`makeParagraph`) reads `[text](#anchor)` as a link by the text, else by the slug
+  (`githubSlug`, `chapterBySlug`), another target shows the text alone; quoted names still link in the program.
+  Keep NEW references as Markdown links. Manual errors found by the audit against the code (the old manual had
+  them too): the Divisions box is UPPER LEFT; the 440 button is "Set diapason a1 = 440 Hz (all stops)"; the
+  Divisions dialog says "Disable MIDI velocity" / "Allow Random Tuning Error" / "Allow Pipe Coupling"; the compass
+  default is 36-96 for every division; the macOS claim. Verified right: "+"/"-" corner button, "Cornet [III]",
+  "New stop folder here", Stop List button names, GLOBAL RESET boxes, NOW/PEAK/DSP/RAM GB/LIMIT, combination row
+  captions, load box combos, "Portable configuration (to share with others)", the publish buttons.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

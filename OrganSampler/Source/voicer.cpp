@@ -261,6 +261,25 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         }
     };
     addAndMakeVisible(voicingToggle);
+    {
+        // F1 over a control opens its chapter of the manual (0.8.232).
+        auto chapter = [](juce::Component& c, const char* name) { c.getProperties().set("manualChapter", juce::String(name)); };
+        const bool trsm = isTransmission();
+        chapter(*this, "The voicing row");
+        chapter(stopButton, trsm ? "Transmissions and extensions" : "Stop buttons");
+        chapter(voicingToggle, "The voicing row");
+        chapter(shiftBox, "Transposition"); chapter(transpositionLabel, "Transposition");
+        chapter(aliasBox, "Alias"); chapter(aliasLabel, "Alias");
+        chapter(oneShotToggle, "One-shot"); chapter(rankCountToggle, "Rank count");
+        chapter(globalSlider, trsm ? "Transmissions and extensions" : "Stop volume"); chapter(globalLabel, trsm ? "Transmissions and extensions" : "Stop volume");
+        chapter(gainSlider, "Attack Gain and Attack Time"); chapter(gainLabel, "Attack Gain and Attack Time");
+        chapter(attackSlider, "Attack Gain and Attack Time"); chapter(attackLabel, "Attack Gain and Attack Time");
+        chapter(randomPitchSlider, "Random pitch error"); chapter(randomPitchLabel, "Random pitch error");
+        chapter(undulationSlider, "Undulation (beats/s at a1)"); chapter(undulationLabel, "Undulation (beats/s at a1)");
+        chapter(formantSlider, "Formants (filled pipes)"); chapter(formantLabel, "Formants (filled pipes)");
+        chapter(diapasonLabel, "Orig. Pitch / temperament"); chapter(sourceLabel, "Transmissions and extensions");
+        chapter(volumeReset, "Volume per key and Treble per key"); chapter(toneReset, "Volume per key and Treble per key");
+    }
 
     static const juce::String manualNames[8] { "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
     transmissionLabel.setText("Transmissions:", juce::dontSendNotification);
@@ -282,6 +301,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     for (auto* rank : rankSources)
     {
         auto* button = rankButtons.add(new juce::ToggleButton(rank->perspective));
+        button->getProperties().set("manualChapter", "Perspective boxes");   // F1 (0.8.232)
         button->setToggleState(rank->rankEnabled, juce::dontSendNotification);
         button->onClick = [this, rank, button]
         {
@@ -657,6 +677,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         // Vertical slider: the volume of this key (-9..9 dB)
         auto* slider = new LearnableSlider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
         slider->setRange(-9.0, 9.0, 0.1);
+        slider->getProperties().set("manualChapter", "Volume per key and Treble per key");   // F1 (0.8.232)
         if (auto* t = transmission()) slider->setValue(t->keyDb[(size_t)note], juce::dontSendNotification);
         else slider->setValue(stop->getNoteDb(note), juce::dontSendNotification);
         slider->setTextValueSuffix("");
@@ -2299,6 +2320,15 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             missing.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
             missing.onClick = [this] { if (missingAction) missingAction(); else if (load.onClick) load.onClick(); };
             addChildComponent(missing);
+            {
+                // F1 over a part of the header opens its chapter of the manual (0.8.232).
+                getProperties().set("manualChapter", "Division headers");
+                title.getProperties().set("manualChapter", "Keyboard, MIDI and compass");
+                setup.getProperties().set("manualChapter", "Divisions and audio");
+                swell.getProperties().set("manualChapter", "Swell, tremulant, wind");
+                tremulant.getProperties().set("manualChapter", "Swell, tremulant, wind");
+                missing.getProperties().set("manualChapter", "Sample folders not found");
+            }
             rebuildCouplers();
             startTimerHz(25);
         }
