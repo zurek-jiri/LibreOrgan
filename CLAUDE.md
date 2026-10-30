@@ -1731,6 +1731,34 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   %TEMP%\test_detector_off227.ps1 (ORGAN_TEST_GLITCH=200 with the key false: zero "Output discontinuities" lines).
   The bindSlider double-click defaults of the two fade sliders still say 70.0 (the defaults are 110 since 0.8.215) -
   seen, left alone (not asked); fix with the next fade change.
+  0.8.228 (30 Oct 2026, Linux session, the user's big batch): THE MANUAL REWRITTEN (USER_MANUAL.md 3754 -> 2041
+  lines): parts 1-7 the program as used (ways to an organ in 1.5, "Sample folders not found" LAST; 3.3 voicing-row
+  bullets are ### subsections; 4.2 "The table" names the Stop List dialog and the indent gesture both ways; 4.3
+  Perspectives = rename by a double-click on the column header), part 8 = ONE ### per Editor option named EXACTLY
+  as its label (openChapter: exact heading first, then a heading containing the label, then the section - a new
+  Editor row needs its heading; the check script of the session: every add*("label") of the Editor against the
+  headings), part 9 Messages/log/report/licences, part 10 technical details linked by quoted headings (a quoted
+  text becomes a link only when a chapter is named so: chapterNamed = exact or unnumbered exact, else startsWith for
+  >= 14 chars). No version numbers in the manual. Duplicate headings are poison (the first wins): "Perspective boxes"
+  / "Velocity layer boxes" in 3.3, "Filled pipes cache: Empty the cache" (the row's helpSection) in 8.3. CODE:
+  ManualView text selection + Ctrl+C/Ctrl+A/right-click; `queueNotice` InfoIcon without callback -> `noteMessage` +
+  `MessageStrip` (bottom left, 10 s) + the "Messages" entry of the About window (AboutComponent takes a messages
+  getter; openChapter("Messages")); Stop List `renamePerspective` (header label editable on double-click ->
+  `renamePerspectiveSettings`: audio keys, patterns line), `addPerspective` -> `ensurePerspectivePatternLine`,
+  `dropIgnoredFolders()` at the top of apply(); Editor: `addSection(..., level 2)` nested collapse ("Filled pipes"
+  after Celeste beats: sliders first, then switches, then the cache rows; "Top bar" at the END of Console),
+  `addButtonWithNote` (the path AFTER the button: cache, cache folder, Configurations folder, Recordings folder,
+  Sample and IR locations), "Measurement limit of DSP power", the Linux ALSA-list toggle REMOVED (the Divisions
+  dialog's "List unusable devices" is the setting), Show -> Locations.txt; `gsReleasePlayedFrom` main-panel slider;
+  `recordingsFolder` / `recordingsDirectory()`; `SamplerEngine::perspectiveChannelMask` so the device-stage detector
+  scans the route's channels only (idle DSP 15 % -> the 18-channel clear/copy of 15 ASIO routes remains); Hauptwerk
+  rows `withoutPrefix` (the definition's perspective prefixes and a short head starting with the perspective word
+  cut: "Re_Principal32" -> "Principal32", "Ped_" stays); `applyPerspectiveChannelsEverywhere` + the AudioTabPanel
+  button "Set for all divisions (this perspective)" with a painted separator line; crescendo default 40; combination
+  colours (filled = off.darker(0.3), same content = filled.darker(0.22), selected = on); patterns dialogs' "?" ->
+  showManualSection. MIDI velocity: `disableVelocity` is TRUE by default already ("Ignore MIDI velocity" ticked) -
+  nothing changed. Both pattern dialog classes (PatternsDialog = one-shot, IgnoredPatternsDialog = ignored +
+  perspectives) have the helpButton. NO Projucer resave (Linux) - Windows next.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
@@ -2145,8 +2173,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   closed the program at 18:38:31 mid-build); 23 GB is the figure with the copies.
 - The #87 table (the user's measurements, Stralsund 53.9 GB float WAV, whole program with the copies): float 48 kHz
   85 GB; float packed 30; 16-bit 48 kHz 49 / packed 23; 16-bit half releases 33 / packed 13; 16-bit 32 kHz half
-  packed 8 - on the website (site/index.html `.ram-measured`) and README since 24 Oct 2026. Keep it when the text
-  changes; add a column or row only with a measured figure (never estimated).
+  packed 8 - in the README only since 30 Oct 2026 (the user: the WEBSITE names no technical detail - no 16-bit/32 kHz/
+  FLAC/half-rate, no table: the fact line and feature 07 say "an 80 GB sample set squeezed into 8 GB of RAM with the
+  saving options on a modest computer, samples read from the packed archives, up to 500 000 pipes of polyphony on a
+  strong one"; GitHub keeps the technical detail; the README's long RAM paragraph is the same short one and its video
+  sits under "Try it in five minutes" as "## The program at work"). Keep the README table when the text changes; add
+  a column or row only with a measured figure (never estimated).
 - Measurements 0.8.141 (#44/#45, Ultra 7 155H, Caen, 7 routes, WASAPI 480 = 10 ms): #44 (16 threads, IR on 6 routes,
   78 buttons) 42 200 = the stimulus cap (61 keys x 16 strikes, callback 53 %, "first failing level 0") - the log says
   so even though the user disputes it; #45 (6 P cores, 32 buttons, no IR) broke at 39 239 with callback 95 %.

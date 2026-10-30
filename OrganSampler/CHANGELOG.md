@@ -12,6 +12,54 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.228] - 2026-10-30
+
+### Added
+- The user manual rewritten from the user's point of view: short chapters in
+  the order the program is used, one chapter per option of the Configuration
+  Editor (the "?" lands on it with the heading at the top), the technical
+  details in a part of their own, linked from the chapters.
+- The manual window: text can be selected with the mouse and copied (Ctrl+C,
+  Ctrl+A, the right-click menu).
+- Messages: what the program has to say after an action (folders found,
+  what a merge did, what a load left out) goes to a strip in the lower left
+  corner of the main window and to the "Messages" entry of the About window
+  instead of a message box; questions, warnings and the polyphony report stay
+  boxes.
+- Stop List: a perspective is renamed by a double-click on its column header
+  (the patterns line, the routes and the voicing follow); a perspective added
+  with "Add perspective..." gets its line in "Perspective prefixes" at once.
+- Stop List: a change of the "Ignored folders" patterns with an organ loaded
+  takes the matching folders out of their rows at the next Apply and reload.
+- Console: "Recordings folder" (the Record button's files; "AudioRecordings"
+  beside the configurations folder by default).
+- Global sound: "Release played from" can be shown on the main panel like the
+  other sliders.
+- Divisions dialog: "Set for all divisions (this perspective)" above the
+  channel list copies the ticked output channels to the same perspective of
+  every division.
+- Configuration Editor: the Filled pipes settings in a subsection of their own
+  (sliders together, switches together; collapsed by default), the top-bar
+  switches in a "Top bar" subsection of Console, the paths of the cache,
+  configurations, recordings and locations rows after their buttons.
+- The patterns dialogs have a "?" to the manual.
+
+### Changed
+- Hauptwerk import: the rows are named after the stop folders without the
+  definition's perspective prefix ("Re_Principal32" -> "Principal32"; a
+  division mark such as "Ped_" stays); the Hauptwerk stop name is the alias.
+- The crescendo has 40 steps by default (was 30).
+- Combination pistons: a piston holding a registration is a shade darker than
+  an empty one, the pistons holding the same registration as the selected one
+  darker still (never black).
+- The output discontinuity detector looks at the route's own output channels
+  only (it scanned every channel of the device before: 7 % of DSP at idle on
+  15 routes of 18 channels).
+- "Measurement limit" is called "Measurement limit of DSP power".
+- Linux: the Configuration Editor's switch "Audio devices: list also the ALSA
+  devices that cannot be opened" is gone (the Divisions dialog's "List
+  unusable devices" is the same setting).
+
 ## [0.8.227] - 2026-10-29
 
 ### Added

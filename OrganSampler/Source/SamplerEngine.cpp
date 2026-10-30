@@ -8488,6 +8488,13 @@ void SamplerEngine::setPerspectiveSampleRate(int manualIndex, const juce::String
     if (changed != nullptr) impl->rebuildRouteReverb(*changed);
 }
 
+juce::uint64 SamplerEngine::perspectiveChannelMask(int manualIndex, const juce::String& perspective) const noexcept
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals) return 0;
+    const Route* r = impl->findRoute(manualIndex, perspective.isEmpty() ? juce::String("default") : perspective);
+    return r != nullptr ? (juce::uint64)r->channelMask.load(std::memory_order_relaxed) : 0;
+}
+
 void SamplerEngine::setPerspectiveVolumeDb(int manualIndex, const juce::String& perspective, float db)
 {
     if (manualIndex < 0 || manualIndex >= maxManuals || perspective.isEmpty()) return;

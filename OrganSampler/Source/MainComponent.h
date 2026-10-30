@@ -152,6 +152,8 @@ private:
     juce::Label attackMinimumDelayLabel{ "Attack min. delay (ms)" };
     LearnableSlider releaseCutSlider;          // release cutting (% of the release sample length)
     juce::Label releaseCutLabel{ "Release cut: 100 %" };
+    LearnableSlider releasePlayedFromSlider;   // every release played from this far into its file (0.8.227/0.8.228)
+    juce::Label releasePlayedFromLabel{ "Release from: 0 ms" };
 
     juce::Component stopsContent;
     NoWheelViewport stopsViewport;
@@ -772,6 +774,7 @@ private:
     // "Set effects for all": this route's IR, dry/wet, IR settings, volume and
     // channel separation for every route of its scope (ordinary or auxiliary).
     void applyEffectsToAllPerspectives(int sourceManual, const juce::String& sourcePerspective);
+    void applyPerspectiveChannelsEverywhere(int sourceManual, const juce::String& perspective);   // 0.8.228
     bool allRoutesShareEffects(bool auxiliary);
     // asioDeviceName: for ASIO, the driver to join (empty = the first open ASIO
     // host, or the default ASIO device when none is open yet).
@@ -911,7 +914,7 @@ private:
     std::unique_ptr<juce::FileChooser> crescendoFileChooser;
     std::function<void()> crescendoDialogRefresh;   // set by the open dialog
     std::function<void()> stopPoolRefresh;          // set by the open Division dialog: "Stops on the grid" lists
-    int crescendoStepCount = 30;
+    int crescendoStepCount = 40;   // 0.8.228: 40 by default (was 30)
     std::vector<MemorySlot> crescendoSteps;         // [step - 1]; empty stopData = not taught
     float crescendoPosition = 0.0f;                 // 0..1
     int crescendoStep = 0;                          // 0 = everything off (or the hand registration)
@@ -1014,10 +1017,10 @@ private:
     // Enum values are the storage indices (new sliders are appended so saved
     // flags keep their meaning); the main panel shows them in kGlobalSliderOrder.
     enum GlobalSlider { gsAttackDelay = 0, gsAttackMin, gsReleaseFadeOut, gsReleaseFadeIn, gsReleaseScaling,
-        gsPitch, gsMaster, gsReleaseCut, gsCount };
+        gsPitch, gsMaster, gsReleaseCut, gsReleasePlayedFrom, gsCount };
     static constexpr GlobalSlider kGlobalSliderOrder[gsCount]{ gsAttackDelay, gsAttackMin, gsReleaseFadeOut, gsReleaseFadeIn,
-        gsReleaseScaling, gsReleaseCut, gsPitch, gsMaster };
-    std::array<bool, gsCount> globalSliderShown{ true, true, true, true, true, true, true, false };
+        gsReleaseScaling, gsReleaseCut, gsReleasePlayedFrom, gsPitch, gsMaster };
+    std::array<bool, gsCount> globalSliderShown{ true, true, true, true, true, true, true, false, false };
     bool anyGlobalSliderShown() const noexcept
     {
         for (const bool shown : globalSliderShown) if (shown) return true;
@@ -1070,6 +1073,9 @@ private:
     // The one folder for the organ configurations of this computer (0.8.190; machine-specific):
     // every import writes there, Save and Load start there. Empty = Documents/OrganSampler/Configurations.
     juce::String configurationsFolder;
+    juce::String recordingsFolder;              // 0.8.228: this computer's folder for the Record button; empty = AudioRecordings beside the configurations folder
+    juce::File recordingsDirectory() const;     // created on demand
+    std::unique_ptr<juce::FileChooser> recordingsFolderChooser;
     juce::File configurationsDirectory() const;   // created on demand
     std::unique_ptr<juce::FileChooser> configurationsFolderChooser, sampleLocationChooser;
     // Folders under which sample trees and archives live (0.8.190; machine-specific): a
@@ -1269,6 +1275,16 @@ private:
     // one below unreachable). The same arguments as AlertWindow::showMessageBoxAsync.
     struct PendingNotice { juce::MessageBoxIconType icon; juce::String title, text, button; juce::ModalComponentManager::Callback* callback = nullptr; };
     std::deque<PendingNotice> pendingNotices;
+    // Every notice of this session (0.8.228): the "Messages" entry of the manual window
+    // lists them; an informative notice without a continuation is shown there and on
+    // the strip at the bottom-left of the console only, never as a box.
+    struct LoggedMessage { juce::Time time; juce::String title, text; };
+    std::vector<LoggedMessage> messageLog;
+    int unreadMessages = 0;
+    class MessageStrip;
+    std::unique_ptr<juce::Component> messageStrip;
+    void noteMessage(const juce::String& title, const juce::String& text);
+    void showMessageStrip();
     bool noticeShowing = false, noticeRetryPending = false, noticeWaitLogged = false;
     static MainComponent* noticeOwner;   // the one instance, for the free function queueNotice (usable from any lambda or helper struct)
     friend void queueNotice(juce::MessageBoxIconType, const juce::String&, const juce::String&, const juce::String&, juce::Component*, juce::ModalComponentManager::Callback*);
@@ -1389,6 +1405,8 @@ private:
 
     // ========== PŘIDANÁ METODA PRO IGNORED PATTERNS ==========
     void editFolderPatterns(bool perspectives);
+    void ensurePerspectivePatternLine(const juce::String& label);                               // 0.8.228
+    void renamePerspectiveSettings(const juce::String& oldName, const juce::String& newName);  // 0.8.228
     // ========== KONEC PŘIDANÉ ČÁSTI ==========
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)

@@ -224,6 +224,49 @@ private:
     juce::TextEditor limitEditor;
 };
 
+// The message strip (0.8.228): bottom-left of the console, "Messages (N new): the
+// last title" for ten seconds, then "Messages (N new)" until the Messages tab of
+// the manual window has been looked at; a click opens that tab. It takes the
+// place of the message boxes that came long after an action was over.
+class MainComponent::MessageStrip final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
+{
+public:
+    explicit MessageStrip(MainComponent& o) : owner(o) { setVisible(false); setMouseCursor(juce::MouseCursor::PointingHandCursor); }
+    void show(const juce::String& lastTitle)
+    {
+        last = lastTitle;
+        expandedUntil = juce::Time::getMillisecondCounterHiRes() + 10000.0;
+        setVisible(owner.unreadMessages > 0);
+        setTooltip("Click: the Messages tab of the manual window");
+        startTimer(500);
+        repaint();
+    }
+    void paint(juce::Graphics& g) override
+    {
+        const bool expanded = juce::Time::getMillisecondCounterHiRes() < expandedUntil && last.isNotEmpty();
+        const juce::String text = "Messages (" + juce::String(owner.unreadMessages) + " new)" + (expanded ? ": " + last : juce::String());
+        g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+        const int width = juce::jmin(getWidth(), (int)std::ceil(juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), text)) + 20);
+        const auto box = getLocalBounds().withWidth(width).toFloat();
+        g.setColour(juce::Colours::black.withAlpha(0.8f));
+        g.fillRoundedRectangle(box, 6.0f);
+        g.setColour(juce::Colours::orange);
+        g.drawRoundedRectangle(box.reduced(0.5f), 6.0f, 1.0f);
+        g.drawFittedText(text, box.reduced(8.0f, 0.0f).toNearestInt(), juce::Justification::centredLeft, 1);
+    }
+    void mouseDown(const juce::MouseEvent&) override { owner.showAboutDialog("Messages"); }
+private:
+    void timerCallback() override
+    {
+        if (owner.unreadMessages == 0) { setVisible(false); stopTimer(); return; }
+        repaint();
+        if (juce::Time::getMillisecondCounterHiRes() >= expandedUntil) stopTimer();
+    }
+    MainComponent& owner;
+    juce::String last;
+    double expandedUntil = 0.0;
+};
+
 // General crescendo display: the console display look (black rounded panel,
 // dark grey frame, lime), one evenly spaced segment per crescendo step and the
 // number of the active step at the right. Left click / drag / wheel move the
@@ -563,6 +606,10 @@ public:
         int jumps = 0;
         const bool detect = owner.outputDiscontinuityDetector.load(std::memory_order_relaxed);   // 0.8.227: switchable
         if (!detect) resetEdgeDetector();   // off: nothing stale when it is switched on again
+        // Only the route's own channels carry sound: the peak and the detector look at
+        // those alone (0.8.228 - with 15 routes on an 18-channel card the detector
+        // scanned 270 channels a period for 30 that sound: 7 % of the period).
+        const juce::uint64 mask = owner.engine.perspectiveChannelMask(manual, perspective);
         for (int channel = 0; channel < numOutputs; ++channel)
             if (outputs[channel] != nullptr)
             {
@@ -575,11 +622,12 @@ public:
                     float g = gainStart;
                     for (int i = 0; i < numSamples; ++i) { out[i] = data[i] * g; g += step; }
                 }
+                if (channel >= 64 || ((mask >> channel) & 1ull) == 0) continue;
                 const auto range = juce::FloatVectorOperations::findMinAndMax(data, numSamples);
                 peak = juce::jmax(peak, std::abs(range.getStart()), std::abs(range.getEnd()));
                 // The discontinuity detector on the driver's buffer (0.8.226): a click
                 // that reaches the card is counted here whatever made it.
-                if (detect && channel < 64 && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
+                if (detect && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
             }
         if (jumps > 0) edgeJumps.fetch_add(jumps, std::memory_order_relaxed);
         // Level evidence for the activity log: which device really carries audio.
@@ -1141,6 +1189,8 @@ MainComponent::MainComponent()
     pitchLabel.setJustificationType(juce::Justification::centred);
     polyphonyDisplay = std::make_unique<PolyphonyDisplay>(engine);
     addAndMakeVisible(*polyphonyDisplay);
+    messageStrip = std::make_unique<MessageStrip>(*this);
+    addChildComponent(*messageStrip);
 
     addAndMakeVisible(attackMinimumSlider);
     attackMinimumSlider.setRange(0.0, 500.0, 1.0);
@@ -1204,6 +1254,22 @@ MainComponent::MainComponent()
     addAndMakeVisible(releaseCutLabel);
     releaseCutLabel.setJustificationType(juce::Justification::centred);
     makeGlobalSliderLearnable(releaseCutSlider, "releaseCut", 100.0);
+
+    // Release played from (0.8.228 on the main panel like the other release sliders).
+    addAndMakeVisible(releasePlayedFromSlider);
+    releasePlayedFromSlider.setRange(0.0, 300.0, 5.0);
+    releasePlayedFromSlider.setValue(0.0, juce::dontSendNotification);
+    releasePlayedFromSlider.setTextValueSuffix(" ms");
+    releasePlayedFromSlider.onValueChange = [this]
+    {
+        releasePlayedFromMs = (float)releasePlayedFromSlider.getValue();
+        engine.setReleasePlayedFromMs(releasePlayedFromMs);
+        releasePlayedFromLabel.setText("Release from: " + juce::String(releasePlayedFromMs, 0) + " ms", juce::dontSendNotification);
+        saveSettings();
+    };
+    addAndMakeVisible(releasePlayedFromLabel);
+    releasePlayedFromLabel.setJustificationType(juce::Justification::centred);
+    makeGlobalSliderLearnable(releasePlayedFromSlider, "releasePlayedFrom", 0.0);
 
     addAndMakeVisible(stopsViewport);
     stopsViewport.setViewedComponent(&stopsContent, false);
@@ -2484,6 +2550,11 @@ void MainComponent::resized()
 {
     glowLayer.setBounds(getLocalBounds());
     glowLayer.toFront(false);
+    if (messageStrip != nullptr)
+    {
+        messageStrip->setBounds(6, getHeight() - 30, juce::jmin(560, getWidth() - 12), 24);
+        messageStrip->toFront(false);
+    }
     if (applicationReady.load() && (getWidth() != observedWindowWidth
         || getHeight() != observedWindowHeight))
     {
@@ -2530,9 +2601,9 @@ void MainComponent::resized()
     // combination row moves up and the polyphony display sits in that row.
     // Indexed by GlobalSlider (storage order); laid out in kGlobalSliderOrder.
     juce::Slider* sliders[gsCount]{ &attackMinimumDelaySlider, &attackMinimumSlider, &releaseFadeOutSlider,
-        &releaseFadeInSlider, &releaseScalingSlider, &pitchSlider, &masterVolumeSlider, &releaseCutSlider };
+        &releaseFadeInSlider, &releaseScalingSlider, &pitchSlider, &masterVolumeSlider, &releaseCutSlider, &releasePlayedFromSlider };
     juce::Label* sliderLabels[gsCount]{ &attackMinimumDelayLabel, &attackMinimumLabel, &releaseFadeOutLabel,
-        &releaseFadeInLabel, &releaseScalingLabel, &pitchLabel, &masterLabel, &releaseCutLabel };
+        &releaseFadeInLabel, &releaseScalingLabel, &pitchLabel, &masterLabel, &releaseCutLabel, &releasePlayedFromLabel };
     int shownCount = 0;
     for (int i = 0; i < gsCount; ++i)
     {
@@ -5595,6 +5666,40 @@ juce::AudioDeviceManager* MainComponent::managerForRoute(int manualIndex, const 
     return found == perspectiveAudioRoutes.end() ? nullptr : found->second->managerInUse;
 }
 
+// The output channels of one route for the same-named perspective of every other
+// division (0.8.228, the user: one choice for every Diffuse, one for every Rear):
+// the configuration and the engine follow at once; an Aggregated WASAPI route
+// re-selects its endpoints; the devices stay. The other divisions' tabs read the
+// configuration when they are opened.
+void MainComponent::applyPerspectiveChannelsEverywhere(int sourceManual, const juce::String& perspective)
+{
+    if (sourceManual < 0 || sourceManual >= SamplerEngine::maxManuals || perspective.isEmpty()) return;
+    const bool isDefault = perspective.equalsIgnoreCase("default");
+    const auto sourceKey = perspectiveRouteKey(sourceManual, perspective);
+    const std::vector<int> channels = isDefault ? manualConfigs[(size_t)sourceManual].outputChannels
+        : manualConfigs[(size_t)sourceManual].perspectiveAudio[sourceKey].outputChannels;
+    juce::StringArray done;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+    {
+        if (manual == sourceManual) continue;
+        bool has = false;
+        for (const auto& p : engine.getPerspectivesForManual(manual)) if (p.equalsIgnoreCase(perspective)) has = true;
+        if (!has) continue;
+        const auto key = perspectiveRouteKey(manual, perspective);
+        auto& target = isDefault ? manualConfigs[(size_t)manual].outputChannels : manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
+        target = channels;
+        engine.setPerspectiveOutputChannels(manual, perspective, channels);
+        if (auto* manager = managerForRoute(manual, perspective))
+            if (auto* device = manager->getCurrentAudioDevice()) applyAggregateSelection(manual, perspective, device);
+        done.add("division " + juce::String(manual));
+    }
+    juce::StringArray list;
+    for (const auto c : channels) list.add(juce::String(c + 1));
+    CrashHandler::note("Output channels " + list.joinIntoString("+") + " of manual " + juce::String(sourceManual) + " perspective " + perspective
+        + " set for the same perspective of " + (done.isEmpty() ? juce::String("no other division") : done.joinIntoString(", ")));
+    saveSettings();
+}
+
 void MainComponent::applyAudioSetupEverywhere(int sourceManual, const juce::String& sourcePerspective)
 {
     if (applyAllRunning) return;
@@ -5764,11 +5869,10 @@ void MainComponent::toggleRecording()
     }
     const auto baseName = (currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("Organ"))
         .removeCharacters("\\/:*?\"<>|");
-    // The recordings have a folder of their own beside the configurations (0.8.226,
-    // the user: AudioRecordings next to Configurations), created on demand; the
-    // dialog starts there, the file may still be saved anywhere.
-    const juce::File recordings = configurationsDirectory().getParentDirectory().getChildFile("AudioRecordings");
-    recordings.createDirectory();
+    // The recordings have a folder of their own (0.8.226: AudioRecordings beside the
+    // configurations; 0.8.228: or the folder chosen in the Editor), created on demand;
+    // the dialog starts there, the file may still be saved anywhere.
+    const juce::File recordings = recordingsDirectory();
     const auto start = (recordings.isDirectory() ? recordings
         : juce::File::getSpecialLocation(juce::File::userMusicDirectory))
         .getChildFile(baseName + " " + juce::Time::getCurrentTime().formatted("%Y-%m-%d %H-%M-%S") + ".wav");
@@ -6550,6 +6654,19 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     juce::dontSendNotification);
                 logicalLabel.setFont(juce::FontOptions(auxiliary ? 13.0f : 15.0f, juce::Font::bold));
                 addAndMakeVisible(logicalLabel);
+                // The channels of this route for the same perspective of every other
+                // division (0.8.228): one choice for every Diffuse, one for every Rear ...
+                channelsAll.setButtonText("Set for all divisions (this perspective)");
+                channelsAll.setTooltip("Copies the output channels ticked below to the \"" + this->perspective
+                    + "\" route of every other division. The devices stay as they are.");
+                channelsAll.onClick = [this]
+                {
+                    const int m = this->manual;
+                    const juce::String p = this->perspective;
+                    MainComponent* target = &this->owner;
+                    juce::MessageManager::callAsync([target, m, p] { target->applyPerspectiveChannelsEverywhere(m, p); });
+                };
+                addAndMakeVisible(channelsAll);
                 volumeLabel.setText("Perspective volume", juce::dontSendNotification);
                 volumeLabel.setJustificationType(juce::Justification::centredRight);
                 addAndMakeVisible(volumeLabel);
@@ -6857,11 +6974,19 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 }
             }
 
+            void paint(juce::Graphics& g) override
+            {
+                // A line between the channel buttons and the "Set for all" above them (0.8.228).
+                g.setColour(juce::Colours::grey.withAlpha(0.6f));
+                g.drawHorizontalLine(channelsAll.getBottom() + 4, (float)channelsAll.getX(), (float)(channelsAll.getRight()));
+            }
             void resized() override
             {
                 auto area = getLocalBounds().reduced(4);
                 auto channelsArea = area.removeFromLeft(372);
-                logicalLabel.setBounds(channelsArea.removeFromTop(44));
+                logicalLabel.setBounds(channelsArea.removeFromTop(26));
+                channelsAll.setBounds(channelsArea.removeFromTop(24).reduced(4, 1));
+                channelsArea.removeFromTop(10);
                 channelViewport.setBounds(channelsArea.reduced(2));
 
                 // Perspective volume belongs to the audio-device side only.
@@ -6996,6 +7121,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             juce::String perspective;
             juce::AudioDeviceSelectorComponent* selector = nullptr;
             juce::Label logicalLabel;
+            juce::TextButton channelsAll;   // 0.8.228: these output channels for the same perspective of every division
             juce::Label volumeLabel, separationLabel;
             LearnableSlider volumeSlider, separationSlider;
             juce::Viewport channelViewport, selectorViewport;
@@ -9229,7 +9355,7 @@ juce::var MainComponent::crescendoToVar() const
 void MainComponent::crescendoFromVar(const juce::var& data)
 {
     if (!data.isObject()) return;
-    crescendoStepCount = juce::jlimit(minCrescendoSteps, maxCrescendoSteps, (int)data.getProperty("stepCount", 30));
+    crescendoStepCount = juce::jlimit(minCrescendoSteps, maxCrescendoSteps, (int)data.getProperty("stepCount", 40));
     crescendoCancelsHandStops = (bool)data.getProperty("cancelsHandStops", true);
     crescendoSteps.assign((size_t)crescendoStepCount, MemorySlot());
     crescendoStep = 0;
@@ -11059,7 +11185,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -11726,6 +11852,39 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             // is the alias. (The automatic names of a tree scan were joined per
             // rank before: "PED Trombone - 05-reaSen-PED Trombone ATT SE SUMEM / ...",
             // as the scan did not know the perspectives yet.)
+            // A perspective's prefix is never part of a row's name (0.8.228, the user:
+            // "Re_Principal32"): the prefixes the definition's patterns name, and a short
+            // head of the folder's name that begins the rank's perspective word ("Re_" for
+            // Rear) are cut off; the division's mark ("Ped_", "II_") stays.
+            std::vector<juce::String> prefixes;
+            for (const auto& line : plan.perspectivePatterns)
+            {
+                juce::StringArray parts;
+                parts.addTokens(line, ";", "");
+                for (int i = 1; i < parts.size(); ++i) if (parts[i].trim().isNotEmpty()) prefixes.push_back(parts[i].trim());
+            }
+            auto withoutPrefix = [&prefixes](juce::String name, const juce::String& perspectiveWord)
+            {
+                for (const auto& prefix : prefixes)
+                    if (name.length() > prefix.length() && name.startsWithIgnoreCase(prefix)) { name = name.substring(prefix.length()); break; }
+                if (perspectiveWord.isNotEmpty())
+                    for (const auto separator : { '_', '-' })
+                    {
+                        const int at = name.indexOfChar(separator);
+                        if (at >= 1 && at <= 5 && perspectiveWord.startsWithIgnoreCase(name.substring(0, at))) { name = name.substring(at + 1); break; }
+                    }
+                const auto trimmed = name.trimCharactersAtStart("_- .");
+                return trimmed.isEmpty() ? name : trimmed;
+            };
+            auto perspectiveWordOf = [&](const HauptwerkOdf::PlanStop& stop)
+            {
+                for (const int rankId : stop.rankIds)
+                {
+                    const auto rankIt = odf->ranks.find(rankId);
+                    if (rankIt != odf->ranks.end() && rankIt->second.perspective.isNotEmpty()) return rankIt->second.perspective;
+                }
+                return juce::String();
+            };
             auto automaticName = [&](const HauptwerkOdf::PlanStop& stop)
             {
                 if (!stop.folders.empty())
@@ -11735,7 +11894,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     // A stop folder holding only this stop's rank folders: its own name.
                     // Rank folders taken one by one (the perspectives above the stops):
                     // the scan's name when it has one for that folder, else the folder's.
-                    return name.isNotEmpty() ? name : (found != automaticNameOfFolder.end() ? found->second : stop.name);
+                    return withoutPrefix(name.isNotEmpty() ? name : (found != automaticNameOfFolder.end() ? found->second : stop.name), perspectiveWordOf(stop));
                 }
                 juce::StringArray names;
                 for (const int rankId : stop.rankIds)
@@ -11744,7 +11903,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     if (rankIt == odf->ranks.end() || rankIt->second.folder == juce::File()) continue;
                     names.addIfNotAlreadyThere(rankIt->second.folder.getFileName());
                 }
-                return names.isEmpty() ? stop.name : names[0];
+                return names.isEmpty() ? stop.name : withoutPrefix(names[0], perspectiveWordOf(stop));
             };
             for (const auto& stop : plan.divisions[d].stops)
             {
@@ -19302,7 +19461,12 @@ void MainComponent::showStopBuildingDialog(int)
                 cell.label = std::make_unique<juce::Label>();
                 cell.label->setText(perspectives[p], juce::dontSendNotification);
                 cell.label->setFont(juce::FontOptions(15.0f, juce::Font::bold));
-                cell.label->setTooltip("Perspective \"" + perspectives[p] + "\": one audio output per division");
+                cell.label->setTooltip("Perspective \"" + perspectives[p] + "\": one audio output per division. Double-click to rename it.");
+                cell.label->setEditable(false, true, false);   // double-click: rename (0.8.228)
+                {
+                    auto* label = cell.label.get();
+                    cell.label->onTextChange = [this, p, label] { renamePerspective(p, label->getText()); };
+                }
                 grid.addAndMakeVisible(*cell.label);
                 cell.remove = std::make_unique<juce::TextButton>("x");
                 cell.remove->setTooltip("Remove this perspective column (its folders become free)");
@@ -19855,6 +20019,43 @@ void MainComponent::showStopBuildingDialog(int)
                 { if (result != 0 && safeThis != nullptr) doRemove(); }));
         }
 
+        // A folder whose name falls under the Ignored patterns now (the patterns were
+        // edited while the organ was loaded) leaves its row at Apply (0.8.228, the
+        // user's rule); the row stays, empty rows go with "Remove empty stops".
+        void dropIgnoredFolders()
+        {
+            const auto ignored = owner.engine.getIgnoredPatterns();
+            if (ignored.empty()) return;
+            auto hit = [&ignored](const juce::String& path)
+            {
+                const auto name = path.fromLastOccurrenceOf("/", false, false).fromLastOccurrenceOf("\\", false, false);
+                for (const auto& pattern : ignored) if (SamplerEngine::folderNameMatchesPattern(name, pattern)) return true;
+                return false;
+            };
+            juce::StringArray dropped;
+            for (int manual = 0; manual < kDivisions; ++manual)
+                for (auto& entry : drafts[(size_t)manual].entries)
+                {
+                    bool changed = false;
+                    for (auto it = entry.folders.begin(); it != entry.folders.end();)
+                    {
+                        juce::StringArray more;
+                        for (const auto& extra : it->second.morePaths) if (!hit(extra)) more.add(extra);
+                        if (more.size() != it->second.morePaths.size()) { it->second.morePaths = more; changed = true; }
+                        if (hit(it->second.relativePath))
+                        {
+                            dropped.add(entry.name + " / " + it->first + ": " + it->second.relativePath);
+                            it = entry.folders.erase(it);
+                            changed = true;
+                        }
+                        else ++it;
+                    }
+                    if (changed) refreshName(manual, entry);
+                }
+            if (!dropped.isEmpty())
+                CrashHandler::note("Ignored patterns at Apply: " + juce::String(dropped.size()) + " folder(s) left their rows: " + dropped.joinIntoString("; "));
+        }
+
         void addPerspectiveMenu()
         {
             commitEditors();
@@ -19899,6 +20100,40 @@ void MainComponent::showStopBuildingDialog(int)
             if (name.isEmpty() || name.equalsIgnoreCase("default")) return;
             for (const auto& existing : perspectives) if (existing.equalsIgnoreCase(name)) return;
             for (auto& draft : drafts) draft.perspectives.push_back(name);
+            rebuildPerspectiveUnion();
+            rebuildGrid();
+            owner.ensurePerspectivePatternLine(name);   // 0.8.228: the Perspective patterns get its line at once
+        }
+
+        // Rename a perspective column (0.8.228, double-click on its header): every
+        // division's column, every row's folder under it, the routes' audio settings
+        // and the Perspective patterns line follow; the routes themselves are rebuilt
+        // by Apply.
+        void renamePerspective(size_t index, const juce::String& newNameIn)
+        {
+            commitEditors();
+            const auto newName = newNameIn.trim();
+            if (index >= perspectives.size() || newName.isEmpty() || newName.equalsIgnoreCase("default")
+                || newName.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName())) { rebuildGrid(); return; }
+            const auto oldName = perspectives[index];
+            if (newName == oldName) return;
+            for (const auto& existing : perspectives)
+                if (existing.equalsIgnoreCase(newName)) { rebuildGrid(); return; }
+            for (int manual = 0; manual < kDivisions; ++manual)
+            {
+                auto& draft = drafts[(size_t)manual];
+                for (auto& p : draft.perspectives) if (p == oldName) p = newName;
+                for (auto& entry : draft.entries)
+                {
+                    const auto found = entry.folders.find(oldName);
+                    if (found == entry.folders.end()) continue;
+                    auto ref = found->second;
+                    entry.folders.erase(found);
+                    entry.folders[newName] = ref;
+                    refreshName(manual, entry);
+                }
+            }
+            owner.renamePerspectiveSettings(oldName, newName);
             rebuildPerspectiveUnion();
             rebuildGrid();
         }
@@ -20138,6 +20373,7 @@ void MainComponent::showStopBuildingDialog(int)
         void apply()
         {
             commitEditors();
+            dropIgnoredFolders();
             // Which divisions changed (table or trees): only those are loaded again.
             // Transmission rows are applied to the engine on their own, without a reload.
             const std::set<int> changed = changedDivisions();
@@ -20552,6 +20788,7 @@ void MainComponent::loadSettings()
         const bool allShown = parsed.getProperty("showGlobalSliders", true);
         globalSliderShown.fill(allShown);
         globalSliderShown[gsReleaseCut] = false;   // newer slider: hidden unless the settings say otherwise
+        globalSliderShown[gsReleasePlayedFrom] = false;
         if (auto* shown = parsed.getProperty("globalSlidersShown", juce::var()).getArray())
             for (int i = 0; i < gsCount && i < shown->size(); ++i)
                 globalSliderShown[(size_t)i] = (bool)shown->getReference(i);
@@ -20617,6 +20854,7 @@ void MainComponent::loadSettings()
             if (entry.value.toString().isNotEmpty()) treeRelativePaths[entry.name.toString()] = entry.value.toString();
     loadLastConfigurationAtStartup = parsed.getProperty("loadLastConfigurationAtStartup", false);
     configurationsFolder = parsed.getProperty("configurationsFolder", "").toString();   // 0.8.190
+    recordingsFolder = parsed.getProperty("recordingsFolder", "").toString();   // 0.8.228
     libraryRootName = parsed.getProperty("sampleLibraryRootName", "").toString();   // 0.8.216: never recomputed from the trees at hand
     readLocationsFile(parsed);   // 0.8.214: Locations.txt (the settings key taken over once)
     guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
@@ -20674,6 +20912,8 @@ void MainComponent::loadSettings()
     releaseCutSlider.setValue(releaseCutPercent, juce::dontSendNotification);
     releaseCutLabel.setText("Release cut: " + juce::String(releaseCutPercent, 0) + " %", juce::dontSendNotification);
     releasePlayedFromMs = juce::jlimit(0.0f, 300.0f, (float)(double)parsed.getProperty("releasePlayedFromMs", 0.0));   // 0.8.227
+    releasePlayedFromSlider.setValue(releasePlayedFromMs, juce::dontSendNotification);
+    releasePlayedFromLabel.setText("Release from: " + juce::String(releasePlayedFromMs, 0) + " ms", juce::dontSendNotification);
     applyAdvancedAudioSettings();
     undulationBeatRatio = juce::jlimit(1.0f, 20.0f, (float)(double)parsed.getProperty("undulationBeatRatio", 12.0));
     engine.setUndulationBeatRatio(undulationBeatRatio);
@@ -21294,6 +21534,7 @@ void MainComponent::saveSettings()
     obj->setProperty("transposeReleaseLevelMatch", transposeReleaseLevelMatch);
     obj->setProperty("loadLastConfigurationAtStartup", loadLastConfigurationAtStartup);
     obj->setProperty("configurationsFolder", configurationsFolder);   // 0.8.190
+    obj->setProperty("recordingsFolder", recordingsFolder);   // 0.8.228
     // The sample locations live in Locations.txt since 0.8.214 (no key in settings.json).
     {
         juce::Array<juce::var> dismissed;
@@ -21791,8 +22032,31 @@ void queueNotice(juce::MessageBoxIconType icon, const juce::String& title, const
 void MainComponent::enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
                                   juce::ModalComponentManager::Callback* callback)
 {
+    noteMessage(title, text);
+    // 0.8.228 (the user: "ty věčné msgboxy"): an informative notice that nothing waits
+    // for goes to the Messages tab and the strip only. A warning, or a notice with a
+    // continuation, stays a box.
+    if (icon == juce::MessageBoxIconType::InfoIcon && callback == nullptr)
+    {
+        CrashHandler::note("Message: \"" + title + "\" (the Messages tab, no box)");
+        showMessageStrip();
+        return;
+    }
     pendingNotices.push_back({ icon, title, text, button.isEmpty() ? juce::String("OK") : button, callback });
     showNextNotice();
+}
+
+void MainComponent::noteMessage(const juce::String& title, const juce::String& text)
+{
+    messageLog.push_back({ juce::Time::getCurrentTime(), title, text });
+    if (messageLog.size() > 500) messageLog.erase(messageLog.begin());
+    ++unreadMessages;
+}
+
+void MainComponent::showMessageStrip()
+{
+    if (auto* strip = dynamic_cast<MessageStrip*>(messageStrip.get()))
+        strip->show(messageLog.empty() ? juce::String() : messageLog.back().title);
 }
 
 bool MainComponent::noticeBlocked() const
@@ -21896,6 +22160,17 @@ void MainComponent::updateMissingTreeNotices()
     const bool wasAny = lastMissingTreeSummary.contains("not found"), isAny = summary.contains("not found");
     lastMissingTreeSummary = summary;
     if ((wasAny || isAny) && voicer) voicer->rebuildUI(stopsContent, stopsViewport);
+}
+
+// The folder of the Record button's files (0.8.228): the Editor's choice, else
+// AudioRecordings beside the configurations folder; created on demand.
+juce::File MainComponent::recordingsDirectory() const
+{
+    juce::File folder(recordingsFolder.isNotEmpty() ? juce::File(recordingsFolder) : juce::File());
+    if (folder == juce::File() || !(folder.isDirectory() || folder.getParentDirectory().isDirectory()))
+        folder = configurationsDirectory().getParentDirectory().getChildFile("AudioRecordings");
+    folder.createDirectory();
+    return folder;
 }
 
 juce::File MainComponent::configurationsDirectory() const
@@ -22274,12 +22549,18 @@ void MainComponent::updateCombinationLights()
         {
             const bool matches = matchesByPiston[(size_t)piston];
             const bool selectedMatch = matches && piston == activePiston;
+            const bool filled = combinations.find(combinationKey(currentBank, piston)) != combinations.end();
             const auto ordinaryOffColour = getLookAndFeel().findColour(
                 juce::TextButton::buttonColourId);
+            // A filled piston is a shade darker than an empty one (0.8.228, like a filled
+            // crescendo step); the pistons holding the same registration as the selected
+            // one are a shade or two darker still - never black.
+            const auto filledColour = ordinaryOffColour.darker(0.3f);
             button->removeColour(juce::TextButton::buttonColourId);
+            if (filled && !selectedMatch) button->setColour(juce::TextButton::buttonColourId, filledColour);
             button->setColour(juce::TextButton::buttonOnColourId,
                 selectedMatch ? onColour()
-                              : ordinaryOffColour.darker(0.14f));
+                              : filledColour.darker(0.22f));
             // Some JUCE look-and-feels do not redraw an already-toggled button when only
             // buttonOnColourId changes. Give the selected match an explicit base colour too.
             if (selectedMatch)
@@ -23075,6 +23356,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
     if (target == "slider:global:attackTime") { setSlider(attackMinimumSlider); return true; }
     if (target == "slider:global:attackDelay") { setSlider(attackMinimumDelaySlider); return true; }
     if (target == "slider:global:releaseCut") { setSlider(releaseCutSlider); return true; }
+    if (target == "slider:global:releasePlayedFrom") { setSlider(releasePlayedFromSlider); return true; }
     if (target == "slider:crescendo") { setCrescendoPosition((float)normalized); return true; }
     if (target.startsWith("slider:reverb:"))
     {
@@ -23458,6 +23740,8 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     engine.setReleaseCutPercent(100.0f);
     releasePlayedFromMs = 0.0f;
     engine.setReleasePlayedFromMs(0.0f);
+    releasePlayedFromSlider.setValue(0.0, juce::dontSendNotification);
+    releasePlayedFromLabel.setText("Release from: 0 ms", juce::dontSendNotification);
     engine.setGlobalPitchCents(0.0f);
     engine.setMaxPolyphony(30000);
     engine.setReleaseFadeOutMs(70.0f);
@@ -25257,6 +25541,7 @@ void MainComponent::editOneShotPatterns()
             auto buttons = area.removeFromTop(40);
             okButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
             cancelButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
+            helpButton.setBounds(buttons.removeFromRight(32).withHeight(32));
         }
 
         void buttonClicked(juce::Button* button) override
@@ -25289,7 +25574,7 @@ void MainComponent::editOneShotPatterns()
 
         juce::Label instructionLabel;
         juce::TextEditor textEditor;
-        juce::TextButton okButton, cancelButton;
+        juce::TextButton okButton, cancelButton, helpButton;
 
         juce::String getPatternsAsString() const
         {
@@ -25399,9 +25684,11 @@ void MainComponent::prepareManual()
     class AboutComponent final : public juce::Component, private juce::ListBoxModel
     {
     public:
-        AboutComponent(float fontScale, std::function<void(float)> scaleChanged) : onScaleChanged(std::move(scaleChanged))
+        AboutComponent(float fontScale, std::function<void(float)> scaleChanged,
+                       std::function<std::vector<MainComponent::LoggedMessage>()> messages, std::function<void()> messagesShown)
+            : onScaleChanged(std::move(scaleChanged)), messageSource(std::move(messages)), onMessagesShown(std::move(messagesShown))
         {
-            entryBlocks.resize(std::size(entries));
+            entryBlocks.resize(std::size(entries) + 1);   // + the Messages entry (0.8.228)
             view.setHighlightColour(onColour());
             view.setScale(fontScale);
             view.onLinkClicked = [this](int chapter) { showChapter(chapter); };
@@ -25544,6 +25831,12 @@ void MainComponent::prepareManual()
         // containing its name, else the heading of the option's section.
         void openChapter(const juce::String& section, const juce::String& fallback)
         {
+            if (section.equalsIgnoreCase("Messages"))   // the Messages entry (0.8.228)
+            {
+                list.selectRow(messagesRow());
+                selectedRowsChanged(messagesRow());
+                return;
+            }
             auto find = [this](const juce::String& wanted, bool exact)
             {
                 if (wanted.isEmpty()) return -1;
@@ -25608,14 +25901,32 @@ void MainComponent::prepareManual()
                 g.drawRoundedRectangle(frame.reduced(0.5f), 5.0f, 1.0f);
             }
         }
-        int getNumRows() override { return (int)std::size(entries); }
+        int messagesRow() const { return (int)std::size(entries); }
+        int getNumRows() override { return (int)std::size(entries) + 1; }
         void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override
         {
             if (row < 0 || row >= getNumRows()) return;
             if (selected) g.fillAll(onColour());
             g.setColour(juce::Colours::white);
             g.setFont(juce::FontOptions(14.0f));
-            g.drawText(entries[row].title, 8, 0, width - 12, height, juce::Justification::centredLeft, true);
+            g.drawText(row == messagesRow() ? juce::String("Messages") : juce::String(entries[row].title), 8, 0, width - 12, height, juce::Justification::centredLeft, true);
+        }
+        // The Messages entry (0.8.228): every notice of this session, the newest first.
+        void rebuildMessages()
+        {
+            auto& blocks = entryBlocks[(size_t)messagesRow()];
+            blocks.clear();
+            auto add = [&blocks](const juce::String& text, int level) { ManualView::Block b; b.text = text; b.level = level; blocks.push_back(std::move(b)); };
+            add("Messages", 1);
+            const auto messages = messageSource ? messageSource() : std::vector<MainComponent::LoggedMessage>();
+            if (messages.empty()) { add("No messages in this session yet.", 0); return; }
+            add("What the program had to say in this session, the newest first. Warnings and questions were shown as boxes as well.", 0);
+            for (auto it = messages.rbegin(); it != messages.rend(); ++it)
+            {
+                add(it->time.formatted("%H:%M:%S") + "   " + it->title, 3);
+                add(it->text, 0);
+            }
+            if (onMessagesShown) onMessagesShown();
         }
         // The find: block by block from the current selection on (round the end /
         // the start); the match is selected and shown a third down the view.
@@ -25670,7 +25981,8 @@ void MainComponent::prepareManual()
                 backButton.setVisible(manual);
                 resized();
             }
-            if (row == shownRow) return;
+            if (row == messagesRow()) rebuildMessages();
+            else if (row == shownRow) return;
             shownRow = row;
             highlightedChapter = -1;
             chapterBox.setSelectedId(0, juce::dontSendNotification);
@@ -25871,6 +26183,8 @@ void MainComponent::prepareManual()
         juce::TextButton backButton;
         std::vector<std::pair<int, int>> history;   // (scroll position, highlighted chapter)
         std::function<void(float)> onScaleChanged;
+        std::function<std::vector<MainComponent::LoggedMessage>()> messageSource;   // 0.8.228
+        std::function<void()> onMessagesShown;
         int shownRow = -1, highlightedChapter = -1;
     };
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -25879,7 +26193,9 @@ void MainComponent::prepareManual()
         if (safeThis == nullptr || std::abs(safeThis->manualFontScale - scale) < 0.001f) return;
         safeThis->manualFontScale = scale;
         safeThis->saveSettings();
-    });
+    },
+    [safeThis] { return safeThis != nullptr ? safeThis->messageLog : std::vector<MainComponent::LoggedMessage>(); },
+    [safeThis] { if (safeThis != nullptr) { safeThis->unreadMessages = 0; safeThis->showMessageStrip(); } });
     juce::Component::SafePointer<AboutComponent> safeContent(content);
     aboutOpenChapter = [safeContent](const juce::String& section, const juce::String& fallback) { if (safeContent != nullptr) safeContent->openChapter(section, fallback); };
     aboutRescroll = [safeContent] { if (safeContent != nullptr) safeContent->rescroll(); };
@@ -25988,17 +26304,22 @@ void MainComponent::showConfigurationEditor()
             const int width = juce::jmax(700, viewport.getWidth() - viewport.getScrollBarThickness() - 4);
             const int labelWidth = 330;
             int y = 4;
-            bool hidden = false;   // rows of a collapsed section are not shown
+            bool hidden = false;         // rows of a collapsed section are not shown
+            bool sectionHidden = false;  // the level-1 section is collapsed: its subsections hide with it (0.8.228)
             for (auto& row : rows)
             {
                 if (row.header)
                 {
-                    hidden = row.collapsible && collapsedSections[row.title];
+                    const bool collapsed = row.collapsible && collapsedSections[row.title];
+                    if (row.level == 1) { sectionHidden = collapsed; hidden = collapsed; }
+                    else { hidden = sectionHidden || collapsed; }
+                    row.label->setVisible(row.level == 1 || !sectionHidden);
+                    if (row.level > 1 && sectionHidden) continue;
                     if (auto* label = dynamic_cast<juce::Label*>(row.label.get()))
-                        label->setText(row.collapsible ? (hidden ? "+ " : "- ") + row.title : row.title,
+                        label->setText(row.collapsible ? (collapsed ? "+ " : "- ") + row.title : row.title,
                             juce::dontSendNotification);
-                    row.label->setBounds(4, y + 10, width - 8, 26);
-                    y += 42;
+                    if (row.level == 1) { row.label->setBounds(4, y + 10, width - 8, 26); y += 42; }
+                    else { row.label->setBounds(16, y + 6, width - 20, 22); y += 32; }
                     continue;
                 }
                 row.label->setVisible(! hidden);
@@ -26033,6 +26354,7 @@ void MainComponent::showConfigurationEditor()
             int height = 30;
             bool header = false;
             bool collapsible = false;
+            int level = 1;                            // a header: 1 = section, 2 = a subsection inside it (0.8.228)
             juce::String title;
         };
         // Section header that toggles its section when clicked.
@@ -26050,13 +26372,14 @@ void MainComponent::showConfigurationEditor()
         juce::Label aboutLabel;
         juce::Array<juce::MidiDeviceInfo> midiDevices;
 
-        void addSection(const juce::String& title, bool collapsible = false, bool collapsedByDefault = false)
+        void addSection(const juce::String& title, bool collapsible = false, bool collapsedByDefault = false, int level = 1)
         {
             Row row;
             auto label = std::make_unique<HeaderLabel>();
             label->setText(title, juce::dontSendNotification);
-            label->setFont(juce::FontOptions(18.0f, juce::Font::bold));
-            label->setColour(juce::Label::textColourId, juce::Colours::orange);
+            label->setFont(juce::FontOptions(level == 1 ? 18.0f : 15.0f, juce::Font::bold));
+            label->setColour(juce::Label::textColourId, level == 1 ? juce::Colours::orange : juce::Colours::orange.withAlpha(0.85f));
+            row.level = level;
             if (collapsible)
             {
                 // The folding is remembered across sessions (settings.json).
@@ -26145,6 +26468,42 @@ void MainComponent::showConfigurationEditor()
             label->setMinimumHorizontalScale(0.5f);
             dumpOption("info", text, value);
             addRow(text, std::move(label));
+        }
+
+        // A button with a note after it on the same row (0.8.228): a path, a size, a
+        // count - never in the row's label, which names the option alone.
+        struct ButtonWithNote final : public juce::Component
+        {
+            juce::TextButton button;
+            juce::Label note;
+            ButtonWithNote(const juce::String& caption, const juce::String& text) : button(caption)
+            {
+                note.setText(text, juce::dontSendNotification);
+                note.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+                note.setMinimumHorizontalScale(0.5f);
+                note.setTooltip(text);
+                addAndMakeVisible(button);
+                addAndMakeVisible(note);
+            }
+            void resized() override
+            {
+                auto area = getLocalBounds();
+                juce::GlyphArrangement glyphs;
+                glyphs.addLineOfText(button.getLookAndFeel().getTextButtonFont(button, getHeight()), button.getButtonText(), 0.0f, 0.0f);
+                const int wanted = juce::jmax(150, (int)std::ceil(glyphs.getBoundingBox(0, -1, true).getWidth()) + 30);
+                button.setBounds(area.removeFromLeft(juce::jmin(area.getWidth(), wanted)));
+                area.removeFromLeft(10);
+                note.setBounds(area);
+            }
+        };
+        void addButtonWithNote(const juce::String& text, const juce::String& caption, const juce::String& note, std::function<void()> onClick,
+            const juce::String& tooltip = {}, const juce::String& helpSection = {})
+        {
+            auto control = std::make_unique<ButtonWithNote>(caption, note);
+            control->button.onClick = std::move(onClick);
+            if (tooltip.isNotEmpty()) control->button.setTooltip(tooltip);
+            dumpOption("button \"" + caption + "\"", text, tooltip);
+            addRow(text, std::move(control), 30, tooltip, helpSection);
         }
 
         void addButton(const juce::String& text, const juce::String& caption, std::function<void()> onClick,
@@ -26299,18 +26658,6 @@ void MainComponent::showConfigurationEditor()
             addInfo("This computer", juce::SystemStats::getCpuModel().trim() + "  -  " + juce::String(physical)
                 + " physical cores, " + juce::String(logical) + " logical CPUs, "
                 + juce::String(juce::SystemStats::getMemorySizeInMegabytes() / 1024) + " GB RAM");
-#if JUCE_LINUX
-            addToggle("Audio devices: list also the ALSA devices that cannot be opened", o.showUnusableAudioDevices,
-                [&o](bool state)
-                {
-                    o.showUnusableAudioDevices = state;
-                    unusableAudioDevicesShown().store(state);
-                    o.saveSettings();
-                },
-                "Every ALSA device is tried when the list is made: one that cannot be opened at that moment (PipeWire, "
-                "PulseAudio or another program holds it) is left out, since chosen on a route it gives no channels or 'none'. "
-                "Tick to list everything. The ALSA list is rebuilt when a division's audio tab is next opened.");
-#endif
             {
                 // Presets first, then every explicit thread count (1 = the audio
                 // driver thread renders alone, no worker threads).
@@ -26487,7 +26834,7 @@ void MainComponent::showConfigurationEditor()
             addSlider("Maximum polyphony", 64.0, (double)SamplerEngine::maxVoices, 1.0, " voices", engine.getMaxPolyphony(), 30000.0,
                 [&o](double value) { o.engine.setMaxPolyphony((int)value); o.saveSettings(); },
                 "Oldest voices are faded out when this many pipes sound at once.");
-            addSlider("Measurement limit", 60.0, 100.0, 1.0, " %", (double)juce::roundToInt(o.measurementShareLimit * 100.0f), 85.0,
+            addSlider("Measurement limit of DSP power", 60.0, 100.0, 1.0, " %", (double)juce::roundToInt(o.measurementShareLimit * 100.0f), 85.0,
                 [&o](double value) { o.measurementShareLimit = juce::jlimit(0.6f, 1.0f, (float)(value / 100.0)); o.saveSettings(); },
                 "How much of its period the longest driver callback may take before the measurement calls a level broken. 85 % leaves "
                 "headroom for what the computer does besides (the window, the sound server, a browser, a stroke of many stops). Raise it to "
@@ -26551,17 +26898,7 @@ void MainComponent::showConfigurationEditor()
             bindSlider("Release sample fade-in", o.releaseFadeInSlider, " ms", 70.0, MainComponent::gsReleaseFadeIn);
             bindSlider("Release sample volume", o.releaseScalingSlider, " dB", 0.0, MainComponent::gsReleaseScaling);
             bindSlider("Release cutting", o.releaseCutSlider, " %", 100.0, MainComponent::gsReleaseCut);
-            addSlider("Release played from", 0.0, 300.0, 5.0, " ms", o.releasePlayedFromMs, 0.0,
-                [&o](double value)
-                {
-                    o.releasePlayedFromMs = (float)value;
-                    o.engine.setReleasePlayedFromMs(o.releasePlayedFromMs);
-                    o.saveSettings();
-                }, "Every release sample is played from this many milliseconds into its file, skipping its start (default 0: "
-                   "from the first sample). For sets whose releases begin too aggressively; the fade-in runs from there. "
-                   "No limit: a release shorter than the setting (a dry set's releases of 60 ms) is not played at all - "
-                   "the key then ends with the sustain fade alone. Applied when a key is released - nothing is rebuilt, "
-                   "the change is heard at once. Saved with the organ.");
+            bindSlider("Release played from", o.releasePlayedFromSlider, " ms", 0.0, MainComponent::gsReleasePlayedFrom);
             bindSlider("Attack minimum time", o.attackMinimumSlider, " ms", 80.0, MainComponent::gsAttackMin);
             bindSlider("Attack minimum delay", o.attackMinimumDelaySlider, " ms", 2.0, MainComponent::gsAttackDelay);
 
@@ -26652,7 +26989,60 @@ void MainComponent::showConfigurationEditor()
                     o.saveSettings();
                 }, "Off (default): a key whose velocity reaches no ticked layer plays the plain files (\"_128\") even when their box is "
                    "unticked, so no key falls silent. On: an unticked _128 never plays - such a key stays silent (0.8.192).");
-            // --- Missing pipes
+            addSlider("Treble per key: shelf start frequency", 120.0, 5000.0, 10.0, " Hz", o.toneStartHz, 1800.0,
+                [&o](double value) { o.toneStartHz = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
+                "The \"Treble per key\" sliders of the voicing raise or lower everything above this frequency (a high "
+                "shelf whose transition band runs from here to about twice this frequency). A pipe whose recorded "
+                "fundamental (smpl chunk) lies higher starts its shelf at that fundamental instead.");
+            // --- Celeste
+            addSlider("Celeste beats: top of compass vs bottom", 1.0, 20.0, 0.5, " x", o.undulationBeatRatio, 12.0,
+                [&o](double value)
+                {
+                    o.undulationBeatRatio = (float)value;
+                    o.engine.setUndulationBeatRatio(o.undulationBeatRatio);
+                    if (o.voicer) o.voicer->refreshUndulationLabels();   // the cents shown in the voicing rows
+                    o.saveSettings();
+                },
+                "Undulating (celeste) stops beat this many times faster at the top of their compass than at the "
+                "bottom; the a1 key always beats as set in the stop's voicing. Equal beats (1x) detune the bass most.");
+
+            // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
+            addSection("Filled pipes", true, true, 2);
+            addCombo("Filled pipes: resampling quality",
+                { "Linear (as every other voice)", "Cubic interpolation", "Cubic + anti-alias filter (default)" },
+                juce::jlimit(0, 2, o.transposeQuality), [&o](int index)
+                {
+                    o.transposeQuality = juce::jlimit(0, 2, index);
+                    o.engine.setTransposeQuality(o.transposeQuality);
+                    o.saveSettings();
+                },
+                "How the sample of a neighbouring pipe is played at another pitch. Cubic interpolation lowers the "
+                "interpolation images by about 20 dB; the anti-alias filter additionally removes what would fold back "
+                "when a pipe is transposed upwards (a low-passed copy of the source, built only for those filled pipes, "
+                "a few MB per rank). Real pipes are never touched.");
+            addCombo("Filled pipes: transposition method",
+                { "Resampling", "Pitch shift (resampling + timbre correction)",
+                  "Pitch shift + time stretch (attack and release)",
+                  "Phase vocoder (Signalsmith Stretch)" },
+                juce::jlimit(0, 3, o.transposeMethod), [&o](int index)
+                {
+                    o.transposeMethod = juce::jlimit(0, 3, index);
+                    o.engine.setTransposeMethod(o.transposeMethod);
+                    o.saveSettings();
+                    // The sliders that apply to this method light up, the others grey out.
+                    juce::MessageManager::callAsync([&o] { o.refreshConfigurationEditor(); });
+                },
+                "How a pipe beyond the compass (or a gap) gets its pitch from a neighbour's sample. Resampling plays the "
+                "sample faster or slower at every key press: an octave down lasts twice as long, release included, and "
+                "sounds like a slowed recording. Pitch shift builds a copy of every filled pipe's attacks and releases "
+                "when the stop loads or the compass changes (in the background; until then the pipe plays resampled): "
+                "the sample resampled with a windowed sinc - every harmonic kept, nothing added - its spectral envelope "
+                "(the formants) corrected by one static equaliser as the settings below say, the loops kept at whole "
+                "periods, the releases cut to the length below, the loudness matched. The copies cost RAM, a few MB per rank. "
+                "Pitch shift + time stretch: the same, and the attack (downwards) and the release are time-stretched back "
+                "towards the source's duration (the two time stretch sliders). Phase vocoder (Signalsmith): the length "
+                "and the loops kept, the block sized from the pitch so that deep pipes keep their harmonics - excellent "
+                "within an octave either way, two octaves lose level and body.");
             addSlider("Missing pipes: neighbours borrowed as a group", 1.0, 12.0, 1.0, " pipes", o.fillGroupSize, 12.0,
                 [&o](double value)
                 {
@@ -26677,29 +27067,6 @@ void MainComponent::showConfigurationEditor()
                 "the limit the pipe is retuned to its key (a1 = 440 Hz, the temperament); beyond it the pipe is switched off and played "
                 "from its neighbours like a missing pipe (the key's tooltip in the voicing says so) - a pipe a third off is a wrong file, "
                 "not a tuning. 200 cents (a whole tone) by default; the setting travels with the organ.");
-            addCombo("Filled pipes: transposition method",
-                { "Resampling", "Pitch shift (resampling + timbre correction)",
-                  "Pitch shift + time stretch (attack and release)",
-                  "Phase vocoder (Signalsmith Stretch)" },
-                juce::jlimit(0, 3, o.transposeMethod), [&o](int index)
-                {
-                    o.transposeMethod = juce::jlimit(0, 3, index);
-                    o.engine.setTransposeMethod(o.transposeMethod);
-                    o.saveSettings();
-                    // The sliders that apply to this method light up, the others grey out.
-                    juce::MessageManager::callAsync([&o] { o.refreshConfigurationEditor(); });
-                },
-                "How a pipe beyond the compass (or a gap) gets its pitch from a neighbour's sample. Resampling plays the "
-                "sample faster or slower at every key press: an octave down lasts twice as long, release included, and "
-                "sounds like a slowed recording. Pitch shift builds a copy of every filled pipe's attacks and releases "
-                "when the stop loads or the compass changes (in the background; until then the pipe plays resampled): "
-                "the sample resampled with a windowed sinc - every harmonic kept, nothing added - its spectral envelope "
-                "(the formants) corrected by one static equaliser as the settings below say, the loops kept at whole "
-                "periods, the releases cut to the length below, the loudness matched. The copies cost RAM, a few MB per rank. "
-                "Pitch shift + time stretch: the same, and the attack (downwards) and the release are time-stretched back "
-                "towards the source's duration (the two time stretch sliders). Phase vocoder (Signalsmith): the length "
-                "and the loops kept, the block sized from the pitch so that deep pipes keep their harmonics - excellent "
-                "within an octave either way, two octaves lose level and body.");
             addSlider("Filled pipes: release length (pitch shift)", 25.0, 200.0, 5.0, " %", o.transposeReleaseLengthPct, 100.0,
                 [&o](double value)
                 {
@@ -26755,14 +27122,6 @@ void MainComponent::showConfigurationEditor()
                    "level that does not follow the sustain). Applied when the key is released: nothing is rebuilt, the "
                    "change is heard at once.",
                 {}, o.transposeMethod >= 1);
-            addToggle("Filled pipes: release level matched to the source", o.transposeReleaseLevelMatch, [&o](bool state)
-                {
-                    o.transposeReleaseLevelMatch = state;
-                    o.engine.setTransposeReleaseLevelMatch(state);
-                    o.saveSettings();
-                }, "Every pitch-shift method: a filled pipe's release copy is played at the level relation the source "
-                   "pipe's release has to its sustain (measured when the copy was built), so the step at the key release "
-                   "is the real pipe's. Off: the copy plays at its own level. Applied at playback: nothing is rebuilt.");
             addSlider("Filled pipes: loop crossfade", 0.0, 100.0, 5.0, " %", o.transposeLoopCrossfadePct, 40.0,
                 [&o](double value)
                 {
@@ -26773,6 +27132,14 @@ void MainComponent::showConfigurationEditor()
                    "ordinary 50 ms splice (the loop points of a pitch-shifted copy are moved to whole periods of its "
                    "pitch anyway); a longer blend hides a seam that is not quite periodic, at the cost of a slight "
                    "chorus inside the loop. Applied to the existing copies at once, nothing is rebuilt.");
+            addToggle("Filled pipes: release level matched to the source", o.transposeReleaseLevelMatch, [&o](bool state)
+                {
+                    o.transposeReleaseLevelMatch = state;
+                    o.engine.setTransposeReleaseLevelMatch(state);
+                    o.saveSettings();
+                }, "Every pitch-shift method: a filled pipe's release copy is played at the level relation the source "
+                   "pipe's release has to its sustain (measured when the copy was built), so the step at the key release "
+                   "is the real pipe's. Off: the copy plays at its own level. Applied at playback: nothing is rebuilt.");
             addToggle("Filled pipes: loudness kept when pitch shifting", o.transposeKeepLoudness, [&o](bool state)
                 {
                     o.transposeKeepLoudness = state;
@@ -26791,8 +27158,7 @@ void MainComponent::showConfigurationEditor()
                    "the settings: a tree built with other settings replaces its file, so the cache never holds two versions "
                    "of the same copies and takes as much room as the copies in RAM. A copy is used only when the settings "
                    "it was built with match.");
-            addButton("Filled pipes cache: " + juce::File::descriptionOfSizeInBytes(o.engine.copyCacheBytes()) + " in "
-                + o.copyCacheDirectory().getFullPathName(), "Empty the cache", [&o]
+            addButtonWithNote("Filled pipes cache", "Empty the cache", juce::File::descriptionOfSizeInBytes(o.engine.copyCacheBytes()) + " in " + o.copyCacheDirectory().getFullPathName(), [&o]
                 {
                     o.engine.clearCopyCache();
                     o.refreshConfigurationEditor();
@@ -26805,7 +27171,7 @@ void MainComponent::showConfigurationEditor()
                         juce::String(removed) + " file(s) of stops that are not loaded removed.");
                 }, "Deletes the cache files of ranks that are not loaded now: the stops of other configurations and of "
                    "folders that are gone. The files of the loaded stops stay.");
-            addButton("Filled pipes cache folder" + juce::String(o.copyCacheFolder.isNotEmpty() ? "" : " (default)"), "Choose...", [&o]
+            addButtonWithNote("Filled pipes cache folder", "Choose...", o.copyCacheDirectory().getFullPathName() + juce::String(o.copyCacheFolder.isNotEmpty() ? "" : "  (default)"), [&o]
                 {
                     o.cacheFolderChooser = std::make_unique<juce::FileChooser>("Folder for the filled pipes cache", o.copyCacheDirectory());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -26830,35 +27196,6 @@ void MainComponent::showConfigurationEditor()
                 }, "Where the cache files live (the application-data folder by default). Choosing another folder moves the "
                    "files already built there, so a cache on a big drive beside the samples costs nothing in time.",
                 "Filled pipes cache folder");
-            addCombo("Filled pipes: resampling quality",
-                { "Linear (as every other voice)", "Cubic interpolation", "Cubic + anti-alias filter (default)" },
-                juce::jlimit(0, 2, o.transposeQuality), [&o](int index)
-                {
-                    o.transposeQuality = juce::jlimit(0, 2, index);
-                    o.engine.setTransposeQuality(o.transposeQuality);
-                    o.saveSettings();
-                },
-                "How the sample of a neighbouring pipe is played at another pitch. Cubic interpolation lowers the "
-                "interpolation images by about 20 dB; the anti-alias filter additionally removes what would fold back "
-                "when a pipe is transposed upwards (a low-passed copy of the source, built only for those filled pipes, "
-                "a few MB per rank). Real pipes are never touched.");
-            // --- Per-key tone
-            addSlider("Treble per key: shelf start frequency", 120.0, 5000.0, 10.0, " Hz", o.toneStartHz, 1800.0,
-                [&o](double value) { o.toneStartHz = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
-                "The \"Treble per key\" sliders of the voicing raise or lower everything above this frequency (a high "
-                "shelf whose transition band runs from here to about twice this frequency). A pipe whose recorded "
-                "fundamental (smpl chunk) lies higher starts its shelf at that fundamental instead.");
-            // --- Celeste
-            addSlider("Celeste beats: top of compass vs bottom", 1.0, 20.0, 0.5, " x", o.undulationBeatRatio, 12.0,
-                [&o](double value)
-                {
-                    o.undulationBeatRatio = (float)value;
-                    o.engine.setUndulationBeatRatio(o.undulationBeatRatio);
-                    if (o.voicer) o.voicer->refreshUndulationLabels();   // the cents shown in the voicing rows
-                    o.saveSettings();
-                },
-                "Undulating (celeste) stops beat this many times faster at the top of their compass than at the "
-                "bottom; the a1 key always beats as set in the stop's voicing. Equal beats (1x) detune the bass most.");
 
             //---------------------------------------------------------------- Console
             addSection("Console");
@@ -26912,22 +27249,6 @@ void MainComponent::showConfigurationEditor()
                     o.twoWindows ? 1 : 0, [&o](int index) { o.setTwoWindows(index == 1); },
                     "With two windows every division section below offers \"Shown in window\"; the second window "
                     "starts empty and can be moved to another screen. Its position is remembered.");
-                // Which buttons the top bar shows - and every one of them pressable
-                // right here, so that nobody has to put a button on the top bar to use it.
-                for (const auto& item : o.headerButtons())
-                {
-                    const juce::String key(item.key);
-                    if (key == "configurationEditor" || key == "guidedTour") continue;   // the way back here stays; the tour's button follows the organ (0.8.206)
-                    juce::Component::SafePointer<juce::Button> target(item.button);
-                    addToggleButton(juce::String("Top bar: ") + item.label, o.isHeaderButtonShown(key), [&o, key](bool state)
-                    {
-                        o.headerButtonShown[key] = state;
-                        o.saveSettings();
-                        o.resized();
-                    }, item.label, [target] { if (target != nullptr) target->triggerClick(); },
-                        "Shows or hides this button in the top bar of the main window; the button beside the switch does the same "
-                        "as the one in the top bar - without having to show it there.");
-                }
             }
             addToggle("Melody/bass couplers: new extreme key only", o.melodyBassNewKeysOnly, [&o](bool state)
             {
@@ -26953,7 +27274,7 @@ void MainComponent::showConfigurationEditor()
                 "and the stage, and shown as \"!N\" in the DSP cell for ten seconds. Its cost is a few microseconds per period. "
                 "Off: nothing is counted. The setting belongs to this computer.");
             // Where the configurations and the samples live (0.8.190).
-            addButton("Configurations folder: " + o.configurationsDirectory().getFullPathName(), "Choose...", [&o]
+            addButtonWithNote("Configurations folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
                 {
                     o.configurationsFolderChooser = std::make_unique<juce::FileChooser>("The folder for your organ configurations", o.configurationsDirectory());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -26972,8 +27293,25 @@ void MainComponent::showConfigurationEditor()
                    "there, Save Configuration and Load Configuration start there. Documents/OrganSampler/Configurations by default. "
                    "The folder can be moved or chosen anew at any time - the sample folders are found through the sample locations below.",
                 "Where configurations and samples live");
-            addButton("Sample and IR locations: " + (o.sampleLocations.isEmpty() && o.rememberedArchives.isEmpty() ? juce::String("none yet")
-                    : juce::String(o.sampleLocations.size()) + " folder(s), " + juce::String(o.rememberedArchives.size()) + " archive(s)"), "Add folder...", [&o]
+            addButtonWithNote("Recordings folder", "Choose...", o.recordingsDirectory().getFullPathName() + juce::String(o.recordingsFolder.isNotEmpty() ? "" : "  (default)"), [&o]
+                {
+                    o.recordingsFolderChooser = std::make_unique<juce::FileChooser>("The folder for your recordings", o.recordingsDirectory());
+                    juce::Component::SafePointer<MainComponent> safeThis(&o);
+                    o.recordingsFolderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                        [safeThis](const juce::FileChooser& chooser)
+                        {
+                            if (safeThis == nullptr) return;
+                            const auto folder = chooser.getResult();
+                            if (!folder.isDirectory()) return;
+                            safeThis->recordingsFolder = folder.getFullPathName();
+                            CrashHandler::note("Recordings folder: " + folder.getFullPathName());
+                            safeThis->saveSettings();
+                            safeThis->refreshConfigurationEditor();
+                        });
+                }, "Where the Record button's WAV files go (the file dialog starts there): AudioRecordings beside the configurations folder by default.",
+                "Recording");
+            addButtonWithNote("Sample and IR locations", "Add folder...", (o.sampleLocations.isEmpty() && o.rememberedArchives.isEmpty() ? juce::String("none yet")
+                    : juce::String(o.sampleLocations.size()) + " folder(s), " + juce::String(o.rememberedArchives.size()) + " archive(s)"), [&o]
                 {
                     o.sampleLocationChooser = std::make_unique<juce::FileChooser>("A folder under which sample folders or archives lie", juce::File());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -26994,10 +27332,10 @@ void MainComponent::showConfigurationEditor()
                    "the library root at a portable save, the root found at a load, the folder of every archive you choose, the collection of every "
                    "IR you choose; add one by hand when samples or IRs live elsewhere. The list is the text file Locations.txt beside the settings (one path per line, editable).",
                 "Where configurations and samples live");
-            addButton("Sample and IR locations: the file Locations.txt", "Show", [&o] { o.writeLocationsFile(); o.locationsFile().revealToUser(); },
-                "Opens the folder of Locations.txt - the list of sample locations and chosen archives as a text file, one path per line; edit it in any editor, "
-                "the program reads it at the next load.", "Where configurations and samples live");
-            addButton("Sample and IR locations: forget them all", "Forget", [&o]
+            addButton("Sample and IR locations: the file", "Show", [&o] { o.writeLocationsFile(); o.locationsFile().startAsProcess(); },
+                "Opens Locations.txt in your text editor - the sample locations and the chosen archives, one path per line; the program reads it at the next load.",
+                "Where configurations and samples live");
+            addButton("Sample and IR locations: forget the folders", "Forget", [&o]
                 {
                     o.sampleLocations.clear();
                     gSampleLocations.clear();
@@ -27022,6 +27360,27 @@ void MainComponent::showConfigurationEditor()
                 { o.selectTemperament(names[index]); });
             }
             addInfo("Window size", juce::String(o.getWidth()) + " x " + juce::String(o.getHeight()) + " (saved automatically)");
+
+            // --- Top bar (0.8.228: a subsection of its own, folded by default)
+            addSection("Top bar", true, true, 2);
+            {
+                // Which buttons the top bar shows - and every one of them pressable
+                // right here, so that nobody has to put a button on the top bar to use it.
+                for (const auto& item : o.headerButtons())
+                {
+                    const juce::String key(item.key);
+                    if (key == "configurationEditor" || key == "guidedTour") continue;   // the way back here stays; the tour's button follows the organ (0.8.206)
+                    juce::Component::SafePointer<juce::Button> target(item.button);
+                    addToggleButton(juce::String("Top bar: ") + item.label, o.isHeaderButtonShown(key), [&o, key](bool state)
+                    {
+                        o.headerButtonShown[key] = state;
+                        o.saveSettings();
+                        o.resized();
+                    }, item.label, [target] { if (target != nullptr) target->triggerClick(); },
+                        "Shows or hides this button in the top bar of the main window; the button beside the switch does the same "
+                        "as the one in the top bar - without having to show it there.", "Top bar");
+                }
+            }
 
             //---------------------------------------------------------------- Patterns
             addSection("Folder name patterns (one per line)");
@@ -27284,6 +27643,51 @@ void MainComponent::showConfigurationEditor()
 }
 
 // ========== NOVÁ METODA: IGNORED PATTERNS ==========
+// A perspective named in the Stop List gets a line of its own in the Perspective
+// patterns (0.8.228): the label alone - its prefixes come with the folders
+// (the scan and the tables learn them).
+void MainComponent::ensurePerspectivePatternLine(const juce::String& label)
+{
+    if (label.isEmpty() || label.equalsIgnoreCase("default")) return;
+    auto lines = engine.getPerspectivePatterns();
+    for (const auto& line : lines)
+        if (line.upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(label)) return;
+    lines.push_back(label);
+    engine.setPerspectivePatterns(lines);
+    rememberPatterns(true);
+    saveSettings();
+    CrashHandler::note("Perspective patterns: the line \"" + label + "\" added for the new perspective");
+}
+
+// A perspective renamed in the Stop List (0.8.228): the routes' audio settings of
+// every division move to the new name (device, channels, volume, IR), the
+// Perspective patterns line is relabelled; the routes themselves follow at Apply.
+void MainComponent::renamePerspectiveSettings(const juce::String& oldName, const juce::String& newName)
+{
+    for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+    {
+        auto& audio = manualConfigs[(size_t)manual].perspectiveAudio;
+        const auto oldKey = perspectiveRouteKey(manual, oldName), newKey = perspectiveRouteKey(manual, newName);
+        const auto found = audio.find(oldKey);
+        if (found == audio.end()) continue;
+        audio[newKey] = found->second;
+        audio.erase(oldKey);
+    }
+    auto lines = engine.getPerspectivePatterns();
+    bool relabelled = false;
+    for (auto& line : lines)
+    {
+        if (!line.upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(oldName)) continue;
+        line = newName + (line.contains(";") ? line.fromFirstOccurrenceOf(";", true, false) : juce::String());
+        relabelled = true;
+    }
+    if (!relabelled) lines.push_back(newName);
+    engine.setPerspectivePatterns(lines);
+    rememberPatterns(true);
+    saveSettings();
+    CrashHandler::note("Perspective \"" + oldName + "\" renamed \"" + newName + "\": the routes' settings and the patterns line follow, the routes at Apply");
+}
+
 void MainComponent::editFolderPatterns(bool perspectives)
 {
     class IgnoredPatternsDialog : public juce::Component,
@@ -27292,9 +27696,14 @@ void MainComponent::editFolderPatterns(bool perspectives)
     public:
         IgnoredPatternsDialog(const std::vector<juce::String>& initialPatterns,
             juce::String instruction,
-            std::function<void(const std::vector<juce::String>&)> onSave)
+            std::function<void(const std::vector<juce::String>&)> onSave,
+            std::function<void()> onHelp)
             : currentPatterns(initialPatterns), saveCallback(onSave)
         {
+            helpButton.setButtonText("?");
+            helpButton.setTooltip("Opens the user manual at this list's chapter");
+            helpButton.onClick = std::move(onHelp);
+            addAndMakeVisible(helpButton);
             addAndMakeVisible(instructionLabel);
             instructionLabel.setText(instruction, juce::dontSendNotification);
             instructionLabel.setFont(juce::FontOptions(12.0f));
@@ -27325,6 +27734,7 @@ void MainComponent::editFolderPatterns(bool perspectives)
             auto buttons = area.removeFromTop(40);
             okButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
             cancelButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
+            helpButton.setBounds(buttons.removeFromRight(32).withHeight(32));
         }
 
         void buttonClicked(juce::Button* button) override
@@ -27359,7 +27769,7 @@ void MainComponent::editFolderPatterns(bool perspectives)
 
         juce::Label instructionLabel;
         juce::TextEditor textEditor;
-        juce::TextButton okButton, cancelButton;
+        juce::TextButton okButton, cancelButton, helpButton;
 
         juce::String getPatternsAsString() const
         {
@@ -27376,9 +27786,9 @@ void MainComponent::editFolderPatterns(bool perspectives)
 
     auto* content = new IgnoredPatternsDialog(currentPatterns,
         perspectives
-            ? "One perspective prefix per line (for example dir-, dif-, rear-). Prefixes are removed before ranks are grouped into stops.\n"
-              "Several prefixes on ONE line separated by ';' (for example dirMk2H-; dirMk4-) form one perspective: all their ranks "
-              "play through one audio output, whose tab in the Division settings is named after the FIRST prefix of the line."
+            ? "One perspective per line: its NAME first, then its folder prefixes, separated by ';' (Direct;01-dirMk2H-;dir-).\n"
+              "The name is what the Stop List column and the audio route are called; the prefixes are cut off the folder names. "
+              "To rename a perspective, double-click its column header in the Stop List: the line here follows."
             : "Enter one pattern per line (e.g., trem). Folders whose name contains a pattern will NOT be loaded.",
         [this, perspectives](const std::vector<juce::String>& newPatterns)
         {
@@ -27386,7 +27796,8 @@ void MainComponent::editFolderPatterns(bool perspectives)
             else engine.setIgnoredPatterns(newPatterns);
             saveSettings();
             rememberPatterns(true);
-        });
+        },
+        [this, perspectives] { showManualSection(perspectives ? "Perspective prefixes" : "Ignored folders (folder contains)", "Folder name patterns"); });
     if (perspectives) content->instructionHeight = 66;
 
     juce::DialogWindow::LaunchOptions options;

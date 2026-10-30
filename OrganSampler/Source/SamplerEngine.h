@@ -899,6 +899,8 @@ public:
     void setManualSampleRate(int manualIndex, double sampleRate);
     void setPerspectiveOutputChannels(int manualIndex, const juce::String& perspective,
         std::vector<int> channels);
+    // The output channels of a route as a bit mask (0.8.228; lock-free, for the device callbacks).
+    juce::uint64 perspectiveChannelMask(int manualIndex, const juce::String& perspective) const noexcept;
     void setPerspectiveSampleRate(int manualIndex, const juce::String& perspective, double sampleRate);
     void setPerspectiveVolumeDb(int manualIndex, const juce::String& perspective, float db);
     // Channel separation of a route, 0..1 (1 = default): below 1 every channel of

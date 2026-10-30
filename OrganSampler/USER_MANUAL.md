@@ -1,141 +1,35 @@
 # OrganSampler - User Manual
 
 **PIPE ORGAN SAMPLER FOR CREATIVE MINDS.**
-**Design your console, Build your stop list, Perform ... !**
+**Design your console, build your stop list, perform!**
 
-OrganSampler plays sampled pipe organs: every pipe is a recording, every stop
-a folder of recordings, and the program turns any number of such folders into
-an organ with up to seven manuals and a pedal, with couplers, combinations, a
-crescendo, swell boxes, tremulants, a wind model, reverb per microphone
-perspective, and extensions and transmissions built from the stops you have.
+OrganSampler plays sampled pipe organs: every pipe is a recording, every stop a
+folder of recordings. The program turns any number of such folders into an
+organ with up to seven manuals and a pedal - couplers, combinations, crescendo,
+swell boxes, tremulants, a wind model, reverb per microphone perspective, and
+extensions and transmissions built from the stops you have.
 
-The whole manual is inside the program: *Configuration Editor > About &
-licences...* shows it as the first entry of the dialog, with a chapter box
-above the text that jumps to any chapter and a *Find* box that searches the
-text (type a word, press Enter for the next occurrence, *Previous* for the one
-before). Chapter names in the text, and "part N", are links: click them to
-go there. *A-* and *A+* beside the Find box make the text smaller or larger
-(Ctrl + the mouse wheel over the text does the same); the size is remembered
-on this computer. The "?" button beside every option of the Configuration Editor
-opens the same dialog at the chapter of that very option (part 8, the
-reference), the heading painted orange. Parts 1 to 7 explain the program
-feature by feature. When the program starts with an empty instrument, the stop
-workspace shows a short hint with a button that opens this manual; it
-disappears as soon as a folder or a configuration is loaded.
+This manual lives inside the program: *Configuration Editor > About &
+licences...*. The chapter box above the text jumps to any chapter, *Find*
+searches it, *A-* / *A+* (or Ctrl + wheel) change the text size. Text can be
+selected with the mouse and copied (Ctrl+C, or the right-click menu). Chapter
+names written in quotes are links. The "?" beside every option of the
+Configuration Editor opens the chapter of that option, with the heading at the
+top. Parts 1 to 7 explain the program as you use it, part 8 is the reference
+of every option, part 10 holds the technical details.
 
 Contents
 
 1. Getting started
-
-    1.1 What you need
-
-    1.2 Installation
-
-    1.3 The first start, step by step
-
-    1.4 How the sample folders must be organised
-
-    1.5 Configurations and settings
-
 2. The main window
-
-    2.1 Top bar buttons
-
-    2.2 The combination row
-
-    2.3 The crescendo
-
-    2.4 Global sound sliders and the polyphony display
-
-    2.5 Division headers
-
-    2.6 Two program windows
-
-    2.7 Screens and the size of the interface
-
-    2.8 Dialogs on small screens
-
-3. Stops on the grid and their voicing
-
-    3.1 Stop buttons
-
-    3.2 Arranging the grid
-
-    3.3 The voicing row
-
-    3.4 Transmissions and extensions
-
-    3.5 Velocity layers
-
-    3.6 Stop-Merging
-
-4. The Stop List (building the organ)
-
-    4.1 Folder trees and the pool
-
-    4.2 Editing the table
-
-    4.3 Apply and reload
-
-    4.4 What the loading dialog shows
-
-5. The Divisions dialog
-
-    5.1 Keyboard, MIDI and compass
-
-    5.2 Swell, tremulant, wind
-
-    5.3 The audio tabs
-
-    5.4 Sample channels and output channels
-
-    5.5 The auxiliary route
-
-    5.6 Audio drivers: many sound cards at once
-
-    5.7 Audio devices not ready when OrganSampler starts
-
-    5.8 Getting the most polyphony
-
-6. Playing aids
-
-    6.1 Couplers
-
-    6.2 Combinations and the crescendo
-
-    6.3 Temperaments
-
-    6.4 MIDI learn
-
-    6.5 Recording
-
-7. Filled pipes, extensions and the transposition methods
-
-    7.1 What a filled pipe is
-
-    7.2 The transposition methods
-
-    7.3 The settings that go with the methods
-
-    7.4 The cache
-
+3. Stops and their voicing
+4. The Stop List
+5. Divisions and audio
+6. Playing
+7. Filled pipes
 8. Configuration Editor reference
-
-    8.1 Engine
-
-    8.2 Global sound
-
-    8.3 Advanced global audio
-
-    8.4 Console
-
-    8.5 Folder name patterns (one per line)
-
-    8.6 Division sections (Pedal, Manual I ... Manual VII)
-
-    8.7 Keeping track: the activity log
-
-    8.8 Free software, licences, platforms
+9. Messages, the activity log, reporting a problem, licences
+10. Technical details
 
 ---
 
@@ -143,3612 +37,2005 @@ Contents
 
 ## 1.1 What you need
 
-- Samples: folders of WAV files, one folder per stop. Sonus Paradisi
-  sample folders (wave format) usually work with OrganSampler as they are.
-  Other samples must follow the conventions explained in "How the sample
-  folders must be organised" below.
-- An audio interface. ASIO gives the lowest latency and the most polyphony on
-  Windows; Windows Audio (WASAPI) works too. macOS uses CoreAudio, Linux ALSA
-  or JACK.
-- A MIDI keyboard or an organ console with MIDI out, one MIDI channel per
-  division.
+- Samples: folders of WAV files, one folder per stop. Sonus Paradisi sample
+  folders (wave format) work as they are, packed in their RAR archives or
+  unpacked. Other samples must follow "How the sample folders must be
+  organised".
+- An audio interface. ASIO on Windows gives the lowest latency and the most
+  polyphony; Windows Audio works too. macOS: CoreAudio. Linux: JACK (PipeWire)
+  or ALSA.
+- A MIDI keyboard or an organ console with MIDI out.
 
-No organ definition file is needed: you load the folder trees of your samples,
-build the stops and the whole virtual organ from them yourself (the program
-proposes a layout at once), play, and save the result as a configuration for
-the next time (see "Step 7: Save" below).
-
-If you already have a pre-saved organ configuration - someone kind has done
-this work for you - you save all of that time: *Load Configuration* in the
-top bar, choose the file, and voilà, the whole virtual organ is ready to play.
-You can of course go on improving it in any way you like, and save it again.
+No organ definition file is needed: load the folders, the program proposes the
+organ, you shape it and save it as a configuration. A configuration somebody
+else published for the same samples saves you all of that: *Load
+Configuration*, choose the file, play.
 
 ## 1.2 Installation
 
-OrganSampler is one executable file. It comes from the releases page as the
-archive native to your system - `OrganSampler-windows.zip` (with
-`OrganSampler.exe` inside), `OrganSampler-macos.zip` or
-`OrganSampler-macos-10.11-intel.zip` (the app), `OrganSampler-linux-x86_64.tar.gz`
-(`tar xzf`; the program stays executable). Unpack it, put the program
-anywhere and start it; no installation is needed, and nothing is read from
-beside it. Everything the program remembers
-(settings, voicing, combinations, the filled-pipes cache) lives in the user's
-application-data folder:
+One executable, no installation. Download the archive of your system from the
+releases page, unpack it, put the program anywhere, start it:
+`OrganSampler-windows.zip` (Windows 10/11, 64-bit), `OrganSampler-macos.zip`
+(Apple silicon, macOS 11 or newer), `OrganSampler-macos-10.11-intel.zip`
+(Intel Macs, macOS 10.11 or newer), `OrganSampler-linux-x86_64.tar.gz`
+(`tar xzf`; Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 or newer). The window
+title shows the version.
 
-- Windows: `%APPDATA%\OrganSampler`
-- macOS: `~/Library/Application Support/OrganSampler`
-- Linux: `~/.config/OrganSampler`
-
-The window title shows the program version.
-
-On Linux the executable file itself cannot carry an icon (unlike a Windows
-.exe): in the file manager it always shows the generic "executable" symbol,
-on every Linux program. The application menu, the dock and the task bar take
-the icon from a `.desktop` entry: *Install menu entry and icon* at the
-bottom of the Configuration Editor writes that entry
-(`~/.local/share/applications/organsampler.desktop`, pointing at the
-executable where it is now) and the icon in every size from 16 to 512 px
-under `~/.local/share/icons/hicolor` - the same hand-tuned images as the
-Windows icon, size for size. Then open the application menu (the launcher
-button in the panel, or the Super/Windows key) and type "Organ": OrganSampler
-is there, in the Multimedia (Sound & Video) group - Audio Production on
-Ubuntu Studio - with its icon; right-click
-it to pin it to the panel or the dock. Install again after moving the
-executable. On macOS the application bundle
-carries the icon. The window itself shows it on every platform.
+Linux: *Install menu entry and icon* at the bottom of the Configuration Editor
+puts the program into the application menu with its icon; install again after
+moving the executable.
 
 ## 1.3 The first start, step by step
 
 ### Step 1: Size
 
-The window opens sized for your screen; resize it by dragging its edges like
-any other window. If the elements of the console - buttons, sliders, text -
-are too big or too small for your screen, open *Configuration Editor* (top
-bar) and move *Interface size*.
+Resize the window like any other. If the console is too big or too small for
+your screen, move *Interface size* in the Configuration Editor.
 
 ### Step 2: Divisions
 
-The box in the upper right corner of the main window (or *Configuration
-Editor > Console > Divisions*) sets how many manuals the console has; the
-pedal is always there.
+The box in the upper right corner of the main window sets how many manuals the
+console has; the pedal is always there.
 
 ### Step 3: MIDI
 
-Click *Settings* in a division's header: the Divisions dialog opens. Choose
-the *MIDI keyboard device* and *MIDI channel* of every division. Press a key:
-the keyboard drawing of the division lights up. Quicker: right-click the
-keyboard icon beside the division's name in its header (or the keyboard
-drawing in the Divisions dialog), choose *MIDI Learn...* and press any key on
-that keyboard - the device and the channel are taken from it.
+Right-click the keyboard icon in a division's header, choose *MIDI Learn...*
+and press any key on the keyboard that is to play the division. Repeat for
+every division. (*Settings* in the header opens the Divisions dialog, where the
+device and channel can also be chosen by hand.)
 
 ### Step 4: Samples
 
-Click *Stop List* in the top bar, then *Load folder...* and choose the top
-folder of the samples for one division (the folder that holds that division's
-stop folders, see "How the sample folders must be organised") - or the RAR
-archive(s) the samples came in, which the program reads as the folders they
-hold (see "Sample archives (RAR)"). The program
-asks which division its stops go to. Repeat for every division; or load one
-tree holding everything and move stops between divisions in the table. Click
-*Apply and reload*. The stops appear as buttons on the grid. This step comes
-before the audio, because the perspectives of a division (and so the audio
-tabs for them) exist only once its stops have been built from the folders.
-A bought RAR set, a configuration downloaded from GitHub or an installed
-Hauptwerk organ take other roads to the same place: "The usual ways to an
-organ".
+*Stop List* in the top bar, *Load folder...*, choose the top folder of the
+samples of one division - or the RAR archive(s) the set came in - and say
+which division its stops go to. Repeat for every division, or load one tree
+holding everything and move the stops between divisions in the table. *Apply
+and reload*: the stops appear as buttons. A bought RAR set, a configuration
+from GitHub or an installed Hauptwerk organ take shorter roads: "The ways to
+an organ".
 
 ### Step 5: Audio
 
-Click *Settings* in a division's header again and go to the audio tabs at the
-bottom of the Divisions dialog: one tab per perspective of the division (the
-default perspective, or Direct, Diffuse, Rear ... as the folders had them) and
-one tab *auxiliary*. Every tab is an audio route with its own device, sample
-rate, buffer size and output channels. On the first tab choose the audio
-device type (on Windows preferably ASIO), the device, the sample rate and the
-buffer size (512 samples, about 10 ms, is a good choice: see "Getting the most
-polyphony"), and tick the output channels of the device in the list on the
-left of the tab - a stereo pair for this perspective, or more channels. Then
-either repeat this on every tab of every division - different channels for
-different divisions and perspectives are what a multi-channel interface is
-for - or, when all divisions are to play through the same device, tick *Set
-for all perspectives and divisions* on one tab: the device, sample rate and
-buffer size are copied to every route; the channels stay as ticked on each
-tab. Which drivers to use - ASIO for everything on Windows when you can, what
-WASAPI and the aggregated device are for, and what mixing them costs - is
-explained in "Audio drivers: many sound cards at once". How mono and stereo
-samples are spread over the ticked channels is explained in "Sample channels
-and output channels". Leave the *auxiliary* tab of every division at *none*
-for now ("The auxiliary route").
+*Settings* in a division's header, then the audio tabs at the bottom of the
+Divisions dialog: one tab per perspective of the division and one *auxiliary*
+tab. On a tab choose the device type (Windows: ASIO when you have it), the
+device, 48 kHz, a buffer of 512 samples, and tick the output channels of the
+device the perspective plays through. *Set for all perspectives and divisions*
+copies the device to every route; *Set for all divisions (this perspective)*
+above the channel list copies the channels to the same perspective of every
+division. Leave the *auxiliary* tab at *none*. Details: "The audio tabs".
 
 ### Step 6: Play
 
-Engage the stops and play.
+Draw the stops and play.
 
 ### Step 7: Save
 
-*Save Configuration* in the top bar writes everything - folders, stops,
-voicing, audio, MIDI, combinations, couplers, crescendo - into one file. The
-configuration is OrganSampler's counterpart of what other organ samplers call
-an organ definition file (ODF), with the difference that you never write it:
-you build the organ in the program and save it. *Load the last configuration
-at startup* (Configuration Editor > Console) opens it again next time;
-otherwise *Load Configuration*. Keep every folder tree of the organ on one
-disk (ideally under one folder): the configuration then stores the sample
-paths relative to that place and can move with it. Trees on another disk are
-stored with absolute paths; when such a tree is not found at the next load,
-the program asks where it is.
+*Save Configuration* writes everything - folders, stops, voicing, audio, MIDI,
+combinations, couplers, crescendo - into one file in your configurations
+folder. *Load the last configuration at startup* (Configuration Editor >
+Console) opens it again next time.
 
-## 1.4 How the sample folders must be organised
+## 1.4 Where the files are
 
-The samples form a tree of folders: a top folder (the one you load with *Load
-folder...*) holding one folder per stop, each stop folder holding the WAV
-files of its pipes and, inside it, the folders of the release samples. A set
-with several microphone perspectives has the stop folders several times, each
-with the prefix of its perspective. The whole tree of a small set:
+**Your samples: anywhere you like.** Keep every folder tree of an organ on one
+disk, under one folder, and never move it again: the configuration stores the
+paths relative to that place, and every place you once chose is remembered.
 
-```
-POS Organ Samples                <- the top folder: "Load folder..." in the Stop List
-├── Principal8                   <- one folder per stop (here without perspectives)
-│   ├── 036-C.wav                <- a WAV per pipe, named after its MIDI key (several for one key play in turn)
-│   ├── 037-C#.wav
-│   ├── ...
-│   └── rel                      <- the release samples, named like the attacks
-│       ├── 036-C.wav
-│       └── ...
-├── dir-Trompete 8               <- the "Direct" perspective of Trompete 8
-│   ├── 036-C.wav
-│   ├── ...
-│   ├── rel500                   <- releases for keys held up to 500 ms
-│   ├── rel1500                  <- ... up to 1500 ms
-│   └── rel                      <- ... and longer
-├── dif-Trompete 8               <- the "Diffuse" perspective of the same stop
-│   └── ...
-├── rear-Trompete_8              <- the "Rear" perspective, (underscore ignored) 
-│   └── ...
-├── Mixtura                      <- a stop without a footage in its name: fine
-│   ├── ...
-│   └── Chiff                    <- a one-shot stop (nested inside another stop's folder: allowed)
-│       └── ...
-└── Octava4
-    ├── direct-Octava4           <- the perspectives can be nested like this
-    │   └── ...
-    ├── diffuse-Octava4
-    │   └── ...
-    └── rear-Octava4
-        └── ...
-```
+**RAR archives: anywhere you like.** The program reads the samples straight
+out of the archives you choose - in *Load folder...*, *Load Configuration* or
+a merge - and remembers where they lie (`Locations.txt`, below), so the next
+configuration of the same set finds them without a question. It never opens an
+archive you did not choose.
 
-The rules, one by one:
+**Linux: mount the sample disk permanently.** A disk the desktop mounts only
+when you open it in the file manager (`/run/media/...`) is not there after a
+reboot. Give it a permanent mount ("Mount at system startup" in the desktop's
+Disks & Devices settings, or `/etc/fstab`) and point the locations there. If a
+remembered location does lie under `/run/media` and is missing at a load, the
+program mounts the disk by its label itself and says so in the activity log.
 
-- **One folder per stop.** Any folder that contains WAV samples is
-  interpreted as one stop (register), however deeply it is nested in the
-  folder tree. A folder whose name starts with "rel" is interpreted as the
-  releases of its parent folder; "rel" folders never form stops of their own.
-  The label of the stop is built from the folder path (not from the bare
-  folder name!), with slashes, underscores and similar characters left out.
-  The only exception: when a folder is nested inside a folder of the same
-  name - the perspective prefix, the footage and an L/R mark aside
-  (direct-Octava4 inside "Octava4" in the example above; "02-direct-HW_Bl.Flute"
-  inside "HW_Bl.Flute2") - the parent adds nothing and the label carries the
-  name once only ("Octava 4'"); this holds for folders read out of a RAR
-  archive as for unpacked ones. **Two components of one stop:** a stop
-  recorded as a left and a right half, the folders named alike with a single
-  L and R right after the footage or at the end of the name
-  ("AB_quintaton16L" + "AB_quintaton16R", "AB_glockentonL" + "AB_glockentonR"),
-  is ONE stop "quintaton 16'" whose two folders both play as its ranks (the
-  Stop List cell shows "+ half"); a rank count after a number ("Mixtur4x",
-  "Zimbel3") is no such mark. A bare footage number at the end of the folder name
-  (Nasat3, Nasat_3, Nasat 3 ...) is shown with its foot mark ("Nasat 3'") on
-  the stop label; a mutation written without spaces ("Nasard 223", "Terz
-  135", "Larigot 113") is read as 2 2/3', 1 3/5', 1 1/3', and the organ
-  builders' shorthand is understood: "3" is the quint 2 2/3', "6" the 5 1/3',
-  "12" the 10 2/3', "1 1/2" the 1 1/3' (no rank of 3' or 6' exists; the
-  transposition is counted against the real footage). A folder name
-  without a footage is no problem: the program learns everything it can about
-  the samples from their smpl chunk (next rule), and from that it knows the
-  footage, the tuning and the temperament of the rank.
-- **The smpl chunk** is a small block of data inside a WAV file that samplers
-  use; most audio editors and tools can write it. OrganSampler reads these
-  fields of it:
-  - *MIDI unity note* (dwMIDIUnityNote, 0 to 127): the measured pitch rounded
-    down (yes, rounded down!) to the nearest MIDI note. Zero is allowed, but
-    then every pipe counts as exactly in tune.
-  - *MIDI pitch fraction* (dwMIDIPitchFraction): the fractional offset above
-    the unity note - the fine tuning of the recorded pitch as a fraction of a
-    semitone, scaled from 0 to 2^32-1 for 0 to 100 cents. Combined with the
-    unity note it gives the exact recorded pitch, from which the tuning, the
-    temperament and the footage of the pipe are calculated. Note that
-    dwMIDIPitchFraction is always a positive number: a slightly flat A4 cannot
-    be coded into the smpl chunk as A4 minus 4 cents, only as G#4 plus 96
-    cents. This is of paramount importance for reading the pitch of a sample
-    correctly!
-  - *The loops* (cSampleLoops and the loop list, dwStart and dwEnd of each
-    loop in sample frames): the sustain is looped between these points while
-    the key is held. Several loops are allowed; the loop type and the other
-    fields of the chunk are ignored. A file without loops is looped as a
-    whole (see "Loop points and pitch" below).
-  When the files have no smpl chunk at all, it is no tragedy, though it does
-  limit what OrganSampler can do. The samples are loaded and played just as
-  they are: the program then knows nothing about their tuning (no retuning,
-  no temperament, no celeste detection; the footage is taken from the folder
-  name only, without correction) - but the stop plays.
-- **Missing pipes and missing loops** are no obstacle. Keys the folder has no
-  file for are filled by repitching the neighbouring samples (see "What a
-  filled pipe is"); a sample without loop points is marked by an orange key
-  number in the voicing and plays from start to end, then loops from the
-  start again.
-- **Which key a file belongs to is determined by its name.** The name of a
-  WAV sample must begin with the MIDI key number, optionally followed by the
-  note designation (036.wav, 036-C.wav, 059-B3.wav ...).
-  Several files with the same key number are round-robin variants of that
-  pipe, played in turn: whatever else the file name carries (`036_1.wav`,
-  `036-C_bis.wav`) marks a variant. The one exception is a two- or
-  three-digit suffix at the very end after an underscore (`060-C4_070.wav`):
-  that is a velocity layer (see "Velocity layers"). The two combine:
-  `036-C_bis_070.wav` is a round-robin variant inside the layer 070. Mono and
-  stereo files are both fine; how they are spread over the output channels is
-  explained in "Sample channels and output channels".
-- **Releases** (the sound after the key is let go) in a folder named `rel`
-  inside the stop folder, the files named like the attacks. Several release
-  folders for notes of different lengths are honoured: `rel500` holds the
-  releases for keys held up to 500 ms, `rel1500` up to 1.5 s, and the folder
-  with the largest number the rest - plain `rel` counts as `rel99999`, so it
-  takes everything the numbered folders do not. The program picks the folder
-  matching how long the key was held. A stop folder with its release folders
-  looks like this:
+**Your configurations** live in one folder: `Documents\OrganSampler\
+Configurations` (chosen anew in the Configuration Editor, *Configurations
+folder*). Every import writes there, Load and Save start there; a file opened
+from elsewhere is copied there by the load box, or loaded where it is. The
+exports for publishing go into its `Publish` subfolder; recordings into
+*Recordings folder* (`AudioRecordings` beside the configurations by default).
 
-```
-Principal 8
-    036-C.wav
-    037-C#.wav
-    ...
-    096-C.wav
-    rel500
-        036-C.wav
-        037-C#.wav
-        ...
-    rel1500
-        036-C.wav
-        ...
-    rel
-        036-C.wav
-        ...
-```
+**The settings of this computer**: `C:\Users\<you>\AppData\Roaming\OrganSampler`
+on Windows, `~/Library/OrganSampler` on macOS, `~/.config/OrganSampler` on
+Linux. In it `settings.json`, `Locations.txt` (the sample locations and the
+chosen archives, one path per line, editable), `Patterns.json` (your folder
+name patterns), the archive indexes, the filled pipes cache, the activity log
+and the reports. The Configuration Editor shows the locations (*Sample and IR
+locations*) and opens the file (*Show*).
 
-  A set with one release per pipe has just the folder `rel`. A stop without any
-  release folder plays as well: when the key is let go the sound fades out
-  (the *Sustain fade-out* of Global sound) and the voice falls silent, with no
-  room decay.
-- **Loop points and pitch** come from the WAV's smpl chunk. A sustained sample
-  without loop points is looped as a whole (a short fade at its end, no click).
-- **Microphone perspectives.** When the same stops exist under several
-  prefixes ("dir-Principal 8", "dif-Principal 8", "rear-Principal 8") the
-  prefixes are recognised as perspectives (Direct, Diffuse, Rear) and each
-  becomes an independent audio route with its own device, channels, volume and
-  reverb. The prefixes are listed in *Configuration Editor > Folder name
-  patterns > Perspective prefixes*, one line per perspective: all the prefixes
-  that belong to the same perspective stand on one line, separated by
-  semicolons, and the perspective is named after the first entry of its line
-  ("Direct;01-dirMk2H-;dir" is the perspective "Direct", whichever of the
-  three prefixes a folder carries). New prefixes found in a set are added
-  there by themselves: one sharing its stem with a known perspective joins its
-  line, an unknown one gets a line of its own, which you can then merge by
-  hand.
-- **Sample rates.** Everything is converted to 48 kHz while loading (96 and
-  44.1 kHz files included), with a high-quality filter, so samples of different
-  rates sound alike and need the same RAM. The audio device may run at any
-  rate.
-- **One-shot stops.** A folder whose name matches one of the patterns listed
-  in *One-shot stops (folder contains)* (defaults "Chiff", "Chimes", "Tubular",
-  "Celesta", "Harp", "Glockenspiel" - "Celesta" the keyboard instrument, not
-  the "Celeste" rank of strings) holds samples that
-  play once from start to end without looping, however long the key is held:
-  chiffs recorded separately, percussion, bells. Their files are named like
-  any other pipe's; no release folder is needed.
-- **Folders to skip** (tremulant recordings, say) are listed in *Ignored
-  folders (folder contains)* (defaults "trem", "*_tr" and "output" - the
-  summed or harmonic renderings some sets keep under a rank, "outputsum",
-  "outputharm"): such folders are not loaded. Besides the patterns, a folder
-  named after its sibling or its parent with "tr" or "trem" appended
-  ("Pos_Bourdontr" beside "Pos_Bourdon", "HW_Gedackt8TREM" beside
-  "HW_Gedackt8") is the tremmed recording of that stop and is skipped by every
-  tree scan too. A folder a Stop List row names explicitly is loaded whatever
-  its name.
-- **How the folder-name patterns match.** A pattern without a star matches
-  anywhere in the folder name ("trem" matches "Principal 8 trem" and
-  "tremulant"). A star at the start anchors the pattern to the end of the
-  name: "*_tr" matches only folders that end in "_tr" ("Principal8_tr"), not
-  "Principal_tremolo". A star at the end anchors it to the start ("dir-*").
-  Stars at both ends match anywhere, like no star at all. Capital letters do
-  not matter; underscores and other characters count exactly as written.
+How a configuration finds its folders on a new computer: "Where the program
+looks for folders".
 
-### Sample archives (RAR)
+## 1.5 The ways to an organ
 
-Sample folders are mostly distributed as RAR archives. They need not be
-unpacked: *Load folder...* in the Stop List takes the `.rar` file(s) as well
-as a folder, and reads the samples out of the archives.
+Every one of them ends with *Save Configuration*.
 
-- **Reading from the archives:** in *Load folder...* choose *Browse
-  archives...* (several with Ctrl or Shift; a multi-volume set by its first
-  part, `.part1.rar` or `.part01.rar`, the other parts lying beside it) or
-  paste the paths, one per line, and click *Load from the archive*. The
-  archive is read as the folders it holds: its top-level folders become
-  folder trees "beside" the archive, as if it had been unpacked there, and
-  the program finds their contents inside the archive. A configuration names
-  those folders exactly as it would name unpacked ones, so the same
-  configuration serves an unpacked and a packed set (a folder that is on the
-  disk always wins over the archive). When the archive holds a Hauptwerk
-  organ definition, the program offers to import it - the whole organ, read
-  from the archives. *Load Configuration* takes `.rar` files as well - one,
-  or several at once when an organ comes in several archives: the
-  configurations and definitions found inside are listed in a dialog of its
-  own ("Load which one", in the middle of the screen, closed only by Load or
-  Cancel) and the one you pick is loaded straight from the archives (the
-  others serve its sample folders). *Merge another configuration* (right-click Load Configuration)
-  takes archives the same way, so an organ can be put together archive after
-  archive.
-  Two steps happen, and they read different things. *Reading the archives*
-  reads the archive's headers only - what files it holds, how big they are
-  and where their bytes lie (a few megabytes: seconds on an SSD, a few
-  minutes for a 60 GB set on a hard disk, where every header is a seek). That
-  index is made once and kept under the settings folder; the next load finds
-  it there. *Loading saved divisions* then reads the samples themselves,
-  as any load does. The index must come first: the program has to know
-  which folders the archive holds before a definition can be planned or a
-  Stop List built from them.
-  Every file is then read on its own, so the loader reads the files in
-  parallel; a set that was stored without compression reads as fast as plain
-  files, a compressed one at the speed of the decompression (100-200 MB per
-  second and core, all cores at once). RAR 4 and RAR 5; a solid archive is
-  read in sequence, which is slower; password-protected archives are refused.
-  Two readers are built in: libarchive, and for the files it cannot unpack
-  (a definition packed as text, the archives of older WinRAR versions with
-  their filters - the Dom Bedos set) unarr; the program switches by itself
-  and the activity log says so.
-  What you gain: the disk space (a packed set is a half to two thirds of the
-  unpacked one), fewer bytes read from a slow disk, and nothing to unpack.
-  What you pay: the first load indexes the archive, and a compressed set
-  takes the decompression time at every load - from a fast SSD an unpacked
-  set loads faster.
-- **Which archives are read:** only the archives you choose - in *Load
-  folder...*, *Load Configuration* or a merge - with their parts, never
-  another archive that happens to lie beside them. Every chosen archive is
-  written into `Locations.txt` beside the settings (see "Where
-  configurations and samples live"; one path per line, editable by hand;
-  nothing is written beside a configuration), so the next start finds it
-  again; a folder `OrganRarPackages` beside the configurations folder stands
-  for every archive in it. A sample folder that
-  is not on the disk is looked for in those archives by the tail of its path
-  (`OrganInstallationPackages/002735/pipes` ...). The folder of every chosen
-  archive is also remembered as a sample location, so an unpacked set beside
-  its archives is found as well.
-- **Unpacking in OrganSampler:** tick *Unpack the archives into a folder
-  first* in the same window, choose the folder (proposed: the folder of the
-  first archive; each archive's own folder tree is created inside it) and
-  click *Unpack and load*: the archives are unpacked one after another with
-  one progress bar (it can be cancelled), then their folder trees are loaded.
-  The top-bar button *Unpack archive* does the unpacking alone; it is hidden
-  by default (Configuration Editor > Console shows it).
-- **With a free program:** 7-Zip on Windows (https://www.7-zip.org), Keka or
-  The Unarchiver on macOS, `unrar x` or `7z x` in a terminal on Linux. WinRAR
-  itself unpacks as well (as a trial). Right-click the archive, choose
-  "Extract to ...".
-- **A zip** needs no program at all: every system opens it by a double-click.
+### A set in RAR archives
 
-Unpacked or not, keep the folder structure as the archive has it: the
-configurations published for a set name its folders as the archive created
-them. Unpacked samples load faster from a fast disk (no decompression) and
-the archives can go; packed ones save the disk space.
-The whole road from the bought archives to the playing organ is in "The
-usual ways to an organ".
+Put all the archives of the set in one folder on your sample disk. *Load
+Configuration*, choose all of them at once (Ctrl or Shift in the file dialog):
+the program reads what they hold, offers the Hauptwerk organ definition (or a
+configuration) found inside and loads the whole organ from the archives. The
+archives are remembered. A set sold as several separate archives can be loaded
+from one of them: the others with a name like it are read too.
 
-## 1.5 Configurations and settings
+### A configuration published on GitHub
 
-A **configuration** is one file holding everything about an instrument: the
-folder trees, the Stop List, voicing, audio and MIDI settings, couplers,
-combinations, crescendo, window layout - the organ definition, written by the
-program. *Save Configuration* and *Load Configuration* are in the top bar;
-*Load Configuration* takes a configuration (`.json`, or the published `.zip`),
-a Hauptwerk organ definition (see "Loading a Hauptwerk organ definition
-(ODF)") or a RAR archive holding either, read straight from the archive ("The
-usual ways to an organ" walks through the common cases). A configuration
-counts as open once it was loaded or saved in the session (its name is in the
-window title). When you quit, or load another configuration, while the open
-configuration has unsaved changes, the program asks whether to save them
-first: *Save* writes them into the file and goes on, *Don't Save* goes on and
-leaves the file as it was, *Cancel* stays. An instrument built with no file
-open is offered a new file the same way (*Save As...*). *Shut down PC* never
-asks: it saves into the open configuration (or into a rescue file) and shuts
-down.
+Download the zip from `configurations/INDEX.md` of the project, *Load
+Configuration*, choose the zip as it is: the configuration inside is copied
+into your configurations folder and loaded. The samples are looked for in your
+sample locations; on a computer that knows none yet, "Sample folders not
+found" shows the way.
 
-Before the samples of a loaded configuration (or of a Hauptwerk organ
-definition) load, a box asks how they are to be held in RAM: *Sample storage
-in RAM*, *Compress samples in RAM* and *Sample rate on loading* (see the
-Configuration Editor's Engine section for what they mean). The box shows the
-configuration file's own values when it carries them, else this computer's
-last choices; what you choose loads and is saved with the configuration.
-*Cancel* leaves the loading alone. Starting the program without *Load the
-last configuration at startup* begins with an empty instrument; nothing stops
-you from loading folders and playing without any configuration at all.
+### A Hauptwerk organ already installed
 
-### Where the files are
+*Load Configuration*, choose the organ definition in Hauptwerk's
+`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`). The import takes
+the divisions, the stops with their sample folders, the perspectives, the
+compass of every stop and the voicing of every pipe; couplers and the
+crescendo follow where the definition has them. The configuration goes into
+your configurations folder. Encrypted sets (`.hbw`) cannot be read. The rules:
+"Hauptwerk import rules".
 
-**The settings of this computer** - the application-data folder:
+### A set without a definition
 
-- Windows: `C:\Users\<you>\AppData\Roaming\OrganSampler`
-- macOS: `~/Library/OrganSampler` (the `Library` folder of your home folder)
-- Linux: `~/.config/OrganSampler`
+*Stop List* > *Load folder...* with the top folder of the samples, say which
+division, repeat per division, *Apply and reload*. "The Stop List" explains
+the table, "How the sample folders must be organised" what the program makes
+of the folder names.
 
-In it: `settings.json` (the program's state, this computer's settings and the
-name of the open configuration), `Locations.txt` (where your samples and
-archives are - below), `Patterns.json` (your folder-name patterns),
-`ArchiveIndex` (the indexes of the RAR archives read), `FilledPipesCache` (the
-copies of the filled pipes, unless you chose another folder), `CrashLogs`
-(the activity log and crash reports), `Reports` (problem reports) and
-`ImportReports` (the Hauptwerk import reports).
+### A second volume or perspective set of the same organ
 
-**Your organ configurations** - the configurations folder:
-`C:\Users\<you>\Documents\OrganSampler\Configurations` on Windows,
-`~/Documents/OrganSampler/Configurations` on macOS and Linux; another folder
-is chosen in the Configuration Editor (*Configurations folder*). Every import
-writes there, *Save Configuration* and *Load Configuration* start there; a
-configuration opened from anywhere else (Downloads, a zip from GitHub, inside
-an archive) is copied there by the load box, or loaded where it is. The
-exports for publishing go into its `Publish` subfolder.
+Best: load all the volumes at once - choose every archive of the set together
+in *Load Configuration*. Volume by volume: load the first, then **right-click**
+*Load Configuration* > *Merge another configuration into this organ* with the
+second one's definition, configuration or archives. Stops you have gain the
+new perspective, new stops are added. A perspective set whose folders stand
+beside yours under a new prefix joins your rows the same way, in the merge and
+in *Load folder...* alike. How the program decides that two folders are the
+same pipes: "The tuning gate of a perspective join".
 
-**Sample folders**: anywhere you like - one place per disk is best. A
-configuration names its folder trees relative to the library root
-(`OrganInstallationPackages/003135/pipe/HW`, with the root's name), never by
-an absolute path, so the same file serves on any disk and any computer.
+### The samples moved, a new disk, a new computer
 
-**Linux: a disk under `/run/media`** is mounted by the desktop only when you
-open it in the file manager, and it is NOT there after a reboot until you do -
-a sample location remembered there ("/run/media/you/Samples/...") is gone at
-the next start and every tree of the organ reads "not on this computer".
-Mount the sample disk permanently instead: "Mount at system startup" in the
-desktop's Disks & Devices settings, or a line in `/etc/fstab` to a folder such
-as `/mnt/samples`, and point the locations there. When a remembered location
-or a tree does lie under `/run/media/<you>/<label>` or `/media/<label>` and
-that folder is missing at a load, the program finds the disk by its label and
-asks udisks to mount it (`udisksctl mount`, no root - an internal disk may
-bring up the desktop's password dialog once), then looks the trees up; the
-activity log says "Disk ... mounted" or why not, and the "Sample folder not
-found" notice names a remembered location that is not there.
+Load the configuration as it is: the trees are looked for at their old place,
+then in every remembered location. What is not found shows the notice below;
+one click puts everything right and the new place is remembered.
 
-**RAR archives**: expected nowhere. The program reads only the archives you
-chose yourself - in *Load folder*, *Load Configuration* or *Merge* - and
-never opens an archive it merely found lying somewhere.
+### Sample folders not found
 
-**How the program learns the places**: it remembers every place you choose -
-the library root of every configuration loaded or saved, the folder of every
-archive you open, the folder you point to when a tree is missing (the orange
-"Sample folder not found" notice under the division: click it and choose any
-folder of the set), the collection of every impulse response you choose - in
-the text file `Locations.txt` beside the settings, one path per line, folders
-and archives alike, readable and editable in any text editor. At a load every
-tree is looked for at the path it had, then under every remembered location,
-beside the configuration file, and on a fresh computer at the top of every
-fixed drive and in the Hauptwerk layout
-(`...\HauptwerkSampleSetsAndComponents\OrganInstallationPackages`). The
-Configuration Editor shows the list (*Sample and IR locations*: *Show*, *Add
-folder*, *Forget*). The details and the lookup order: "Where configurations
-and samples live".
+A division that misses a folder tree shows the orange notice "Sample folder
+not found" under its header. Click it, pick the tree, and choose **any folder
+of the set** - the tree itself, a folder above it, or a neighbouring tree. The
+program finds the tree from there, checks that it holds the stop folders the
+table expects, looks for the other missing trees around it, loads everything
+found and remembers the place. The Stop List offers the same for every missing
+tree (orange cells, *Load folder...*), and *Unload folder...* drops a tree you
+do not own.
 
-### Loading a Hauptwerk organ definition (ODF)
+## 1.6 Configurations
 
-*Load Configuration* also opens a Hauptwerk organ definition
-(`<organ>.Organ_Hauptwerk_xml`, the files in Hauptwerk's `OrganDefinitions`
-folder) and makes an OrganSampler configuration of it - the quick way to a
-sample set that came with a Hauptwerk definition (its place among the other
-roads: "The usual ways to an organ"). What is taken from the
-definition: the divisions in the order of their keyboards (the pedal first)
-with their key ranges - a division of ours is a keyboard, so every Hauptwerk
-division a keyboard plays joins it, the ones it plays only with a ventil
-drawn included (Caen: "Pedal" and "PedalAnches" are one division of ours,
-the reeds after the flues; the definition links keys to divisions through
-its switches, and the import follows those links) -, the stops with their
-sample folders, the perspectives
-(front, direct, diffuse, rear ... as the ranks are named, turned into the
-perspective patterns), and the per-pipe level adjustments as the voicing.
-Hauptwerk has no volume per perspective, only the pipes, so a perspective
-recorded quieter is quieter in every one of its pipes; OrganSampler has three
-steps, and the import uses them: the median of all pipe levels of a
-division's perspective becomes that route's volume (the division dialog's
-audio tab), the median of what is left becomes the stop's volume (averaged
-over its perspectives; most pipes stand at 0 dB, a few voiced ones must not
-pull the whole stop), the rest the per-key voicing. The way from a
-stop to its folders is the definition's own: stop > its StopRank rows > the
-ranks > the folders of their pipe samples; the folders decide what a stop
-is. Who owns a rank several stops play: the stop whose name the
-rank carries ("Rear: GO. Bombarde 16" belongs to "GO. Bombarde 16", whatever
-the file order - the pedal's "Ped. Bombarde 16" borrows it, not the other
-way round), else the stop playing it straight over its whole division, then
-the one with the most keys. A stop with ranks of its own is a stop of its
-own and is loaded from them, whatever it borrows besides (Billerbeck's "Tuba
-16" plays its own rank and takes three top keys from the "Tuba 4": the
-filled pipes cover those). A stop with NO rank of its own - its rows play
-another stop's ranks shifted (a 4' playing the 8' rank an octave up, a stop
-borrowed into another division) - is an extension or transmission in
-Hauptwerk's terms as in ours: it is made as a transmission of the owner it
-borrows the most keys from, with that shift, not loaded a second time. A
-stop goes to the division of ours whose keyboard plays its Hauptwerk
-division; a FLOATING division - one no keyboard reaches without a coupler
-(Bellevue's "Chamade", played from every keyboard through "Bom-Ped/Gt/Pos/Rec
-8") - is placed stop by stop where the name says ("GO. Trompette en chamade
-8" on the Great, "Ped. Clairon en chamade" on the Pedal, "5. Tuba 16" on V).
-A keyboard whose own division its keys reach only under a condition switch
-(Ashton: "1. unison off" conditions the link from the keys of 1. manual to
-the Choir) gets that switch as its Unison Off coupler. A stop
-none of whose ranks has release samples (a carillon, chimes) is a
-one-shot stop: its folder names join the One-shot Patterns of the
-configuration. The couplers of the definition (its KeyAction rows -
-the keys of one keyboard playing another keyboard or a division, shifted by
-0, 12 or -12 semitones, or the top note only) become the couplers of ours
-that exist for them - a keyboard pulling a higher division at 8', 16', 4' or
-as a melody coupler, itself at 16' and 4', I from II or III - and only those are
-shown on the console; a coupler of the definition OrganSampler has no
-coupler for (one to a floating division whose stops lie in several
-divisions, a 24' coupler) is named in the import's report. The catalog of
-couplers has the "downward" ones too - a keyboard pulling a lower
-manual, I/II, I/III, II/III and so on at 8', 16', 4', as a melody or bass
-coupler, listed after the usual ones and hidden until shown (Couplers
-dialog) or brought by an import; the bass couplers to the pedal are the
-"pedal from the manual" couplers (the manual's lowest key plays the pedal) -
-Doesburg's "bass_1" to "bass_4" become them. After an import the
-console shows exactly the definition's couplers: every other coupler of the
-catalog is hidden, whatever the organ before had shown. The
-stops take their places on the grid from the definition's jamb page - the
-page holding the most drawknobs ("Simple Jamb"): within every division,
-the drawknobs' columns and rows become the grid's columns and rows, the
-picture copied (a drawknob whose name the definition cut short is found
-all the same); a division laid out too wide or too tall to be ours stays
-in the table's order. A division column narrower than the page's
-columns folds the rightmost column into its neighbour (left, right, left,
-right ...); widen the division's column to see the page's layout. An extension's button carries the
-definition's name of it ("P. tuba 4"), not the owner's name with the
-footage shifted. The general crescendo takes them too: a stage
-that draws a coupler's drawstop switches it on in that step. A stop
-with several ranks in ONE perspective (Caen: a stereo stop recorded as a
-left and a right rank, "Quintaton 16 (L component)" and "(R component)",
-two folders for the same perspective) becomes a stop folder: its own row
-carries the Hauptwerk name and no folders, its children - one per rank, the
-ranks matched across the perspectives by their names - carry the folders,
-so the button plays them all. Ranks of different perspectives stay one
-stop with one folder per perspective, as ever. The compass of every stop
-comes from the definition too: the keys its StopRank rows give it
-- a Cornet from c1 up, a stop of several pieces as their union - and the
-keys of the division outside them are switched off in the stop's voicing,
-so they stay silent and no filled pipes are made for them (switch them on
-again in the voicing dialog if you want them filled). The speed of the
-definition's tremulant (the middle of the range it wanders in) becomes the
-tremulant rate of every division whose pipes it modulates; the tremulant
-itself stays off until you draw it. The definition's general crescendo
-becomes ours: Hauptwerk keeps one combination per stage
-("Cresc.Comb.1" to "Cresc.Comb.64"), the stops each stage draws become a
-step of our crescendo (every row on or off, the hand registration
-cancelled, as there); more than 60 stages are spread over our 60 steps, and
-couplers are not taken. The rows of
-the Stop List are named after the folders, as for any organ built from
-folders; the Hauptwerk stop name becomes the alias, the caption on the
-button. Everything else - couplers, combinations, tremulants, wind,
-displays, noises (blower, key and stop action, Zimbelstern...) - is ignored:
-the folder structure decides the organ, as always. Tremmed samples (the
-"tremmed" ranks, the `trem` folders, the `..._TR` sibling folders of the
-divisions, the `...tr` / `...TREM` siblings of the stop folders) are left out
-and the configuration starts with the default Ignored Patterns; OrganSampler
-has its own tremulant. (A stop the definition plays from folders named TREM
-only - Billerbeck's "Grosse flute 32" - is taken as Hauptwerk has it, and the
-import's report says so.) Names and aliases the import makes put a capital
-after a division abbreviation ("P. Trombone 16", "3 Geigenpr 8") and after
-a manual's mark as well - "HW Trombone 8", "RW Gedact 8",
-"G.O. Trompette 8", "Pos Flute 4", "Réc. Hautbois 8" (a mark is a token of
-up to five capitals, a known word like Pos/Rec/Ped/Man/Gt, or anything
-ending in "." or ":"), and the mark itself starts with a
-capital too ("ped subbass 16" -> "Ped Subbass 16", "g.o." -> "G.O.", a
-roman numeral whole: "ii." -> "II."); so do the row names of every tree
-scan. Encrypted
-sample sets (`.hbw` files) cannot be
-played and the import says so.
+### Saving and loading
 
-The samples must lie where Hauptwerk keeps them: the definition in
-`OrganDefinitions`, the packages in `OrganInstallationPackages/<six-digit
-id>` beside it (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents\...` on a
-usual installation) - or in the RAR archives the set came in, read without
-unpacking (see "Sample archives (RAR)"). The configuration is written as
-`<organ name>.json` into your configurations folder (see "Where
-configurations and samples live"; `Documents\OrganSampler\Configurations`
-by default), so nothing of ours lands inside Hauptwerk's tree and all your
-organs are in one place, the unpacked and the archived ones alike. The
-`OrganInstallationPackages` folder is its library root; the folder above it
-is remembered as a sample location, so the file works from anywhere.
-(Older versions wrote the file into an `OrganConfigurations` folder beside
-the samples or into the numbered package; those files keep working where
-they are.) The transpositions the definition implies (its pipe notes against the
-sample file names) are taken as they are, and every stop plays the keys of
-its own rows in the definition: a rank folder used by a bass stop and a
-treble stop is loaded ONCE, by the first stop, and the second stop becomes a
-transmission of it with the keys of its own rows (Adlington's "Bl. Flute
-Bass" and "Bl. Flute Treble"); the keys outside each stop's rows are
-switched off in its voicing (an extension's too). A folder is never loaded
-twice. A division played by
-several keyboards belongs to the keyboard with the most keys; a pedal
-keyboard that only pulls a manual's division down leaves P. empty (a note
-says so - couple it from that manual). It is loaded at once and saved
-again with the voicing once the folders are loaded. Then check
-the Stop List, give the perspectives their audio routes and the divisions
-their MIDI keyboards, and *Save Configuration* - as a portable one to
-publish it.
+A configuration is one file holding the whole instrument. *Save Configuration*
+and *Load Configuration* are in the top bar; Load also takes a published
+`.zip`, a Hauptwerk definition or RAR archives. A configuration with unsaved
+changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.
+Before the samples load, a box asks how they are to be held in RAM (storage,
+packing, rate - "Sample storage in RAM"); the choice is saved with the
+configuration. Paths are stored with "/" and work on every platform.
+
+### Portable configuration (to share with others)
+
+Tick **Portable configuration (to share with others)** in the Save box. The
+export holds the organ alone - folders, Stop List, voicing, IR reverbs,
+couplers, combinations, crescendo, temperaments - and nothing of your computer
+(no MIDI or audio devices; every route plays through the default device on the
+other computer). It never touches your ordinary configuration: it writes
+`<name>.portable.json`, `<name>.portable.zip` (the json with its README - the
+one file to upload) and `<name>.portable.README.md` into the `Publish`
+subfolder. The save asks once for the organ, the samples' producer, the link
+and your name; the README is written by the program.
+
+Then *Publish on GitHub*: the form opens in your browser with the title and the
+organ filled in, the `Publish` folder beside it - drag the zip into the form
+and submit. A robot checks it and proposes it; after the merge the organ is a
+line of `configurations/INDEX.md`. A new version replaces the old one; the
+*remove* link of the line takes it off again.
 
 ### Merging another configuration into the loaded organ
 
 Right-click *Load Configuration* > *Merge another configuration into this
-organ* adds a second configuration (an OrganSampler `.json`, or a Hauptwerk
-organ definition) to the one that is loaded, division by division: the added
-pedal joins your pedal, its first manual your first manual, and so on; a
-division you do not have yet is created. The added stops become further rows
-of the Stop List under the existing rows of their division (drag them where
-they belong), their folder trees join yours, and their voicing comes with
-them. On the grid the added stops keep the layout they came with (a
-Hauptwerk definition's jamb page), set right under your last row; when the
-added configuration is the same organ in a further volume (its stops share
-folders with your rows), its page becomes the layout of the whole
-division - your rows take its cells too, so the picture is the full organ's
-page, without empty rows between the old and the new stops. What would collide is left as it is and listed in the message at the
-end: a stop whose sample folder is already loaded is shared and not added; a
-further perspective of the same organ (a "Wet - Distant" set beside the
-"Surround" set: every added stop a single new folder under a new prefix
-such as `06-far__`, named like your rows - the folder name less the prefix
-is the whole name of your folder less yours, and for a definition the
-Hauptwerk stop names agree) does not add rows: each added folder whose
-tuning passes the gate joins the row of its stop as that perspective, the
-prefix is learned, and the summary says "N stop(s) gained the perspective
-Distant". The gate is the law of every multi-microphone recording: the
-same pipe has exactly the same tuning (the `smpl` chunk of the file: unity
-note and pitch fraction) in every perspective - the program reads the
-headers of a few same-named files of the two folders and the folder joins
-when two thirds of them are the same within 0.02 cent (a producer may have
-retuned a pipe or two in the later set, and each perspective is tuned to
-440 Hz on its own anyway; a foreign pipe differs by cents), else it is
-added as a stop of its own; files
-without a usable `smpl` chunk are compared by their measured pitch within
-two cents instead. So the stops of another organ, even one with the same
-folder names and the same a1, are added as rows as ever, never fused; a
-perspective your organ already has keeps its audio route and settings, a new
-perspective brings the added configuration's; a division that has stops
-keeps its MIDI keyboard, an empty one takes the added configuration's keys,
-wind, tremulant and (when included) MIDI; couplers, combinations, crescendo,
-temperament, the global sound settings and the MIDI buttons stay yours. Two
-stops of one name or one alias (the caption on the button) in one division:
-the added one gets "(2)". Two organs
-rarely stand at one pitch (a1 = 440, 415, 465 Hz ...), so the merge switches
-Temperaments > *Equal at 440 Hz* on: every stop of the merged organ is tuned
-to 440 Hz and they play together in tune. The same organ in a further volume
-(stops sharing folders with yours) keeps its pitch: nothing is retuned. Before anything
-is loaded the program sizes the added sample folders against the memory that
-is free now and refuses the merge when they would not fit (nothing is
-changed then). The merged organ is loaded but not saved: *Save Configuration*
-keeps it.
-
-### Portable configuration (to share with others)
-
-A configuration saved as it is carries the sound cards, the output channels
-and the MIDI keyboards of *your* computer, which another computer does not
-have. To give an organ to somebody else, tick **Portable configuration (to
-share with others)** in the *Save Configuration* box (its "?" opens this
-chapter). Such a configuration holds the
-organ only - the folder trees, the Stop List, the voicing, the IR reverbs of
-the routes, couplers, combinations, crescendo, temperaments - and nothing of
-the computer it came from: no MIDI devices, no audio devices (a route that
-was none stays none), every route on the output channels 1-2, no
-render-thread, interface-size, window or cache settings, no measured
-polyphony. Loaded on another computer, every route that had a device - the
-auxiliary routes with their reverbs included - plays through that
-computer's default sound device at once; the computer keeps its own
-interface size and thread settings, and the activity log notes it (no
-message box). Every configuration file, portable
-or not, leaves the settings of this computer alone: render threads, the
-sample storage and its rate, the window places, the measurement limit - a
-file saved with other ones never switches them behind your back. What to set up:
-the MIDI keyboard of every division (*Settings* in the division header,
-right-click the keyboard icon for *MIDI Learn*), the sound card, buffer and
-output channels of every route in the audio tabs, then *Measure the maximum
-polyphony* in the Configuration Editor and *Save Configuration*. Published
-configurations (see "Organ configurations" on the website) are saved this way.
-
-A portable save is an export: it never touches the ordinary
-configuration of your configurations folder (the one with your MIDI and
-audio devices). It writes three files into the `Publish` subfolder of the
-configurations folder: `<name>.portable.json`, the portable configuration
-itself; `<name>.portable.zip`, the same zipped together with the README (a
-zip is downloaded from GitHub with one click, a bare `.json` would open as
-text; the one zip is the whole upload); and
-`<name>.portable.README.md`, the README in the published form, for reading - the
-perspectives, the folders the
-configuration expects and where to put the file, the routes, the RAM as
-one bullet per figure with its storage options: the least the
-organ takes (16-bit, 32 kHz, releases at half the rate, packed - measured
-when it was loaded so, else estimated at the save from a share of the
-loaded samples), the figure measured at the save with the options the organ
-was loaded with, and the full quality (32-bit float, the files' own rate,
-full releases, no packing - roughly ten times the least)
-(`configurations/INDEX.md` shows the least as its RAM column; the price of
-those options is polyphony, see the storage options in the Configuration
-Editor chapter), the version, and the Stop List as a table in the order of
-your grid with the buttons' captions, transmissions and extensions
-included. The save asks you once for what the README cannot know - the
-organ (instrument, builder, place), the producer of the samples, the link
-to the page where the sample folders are bought or downloaded, your name -
-and keeps the answers in the configuration; nothing in the README is
-filled in by hand. Then the window *Publish the configuration* appears
-(like the one after a problem report): *Publish on GitHub* opens the
-form https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml
-in your browser with the title and the organ filled in (a free GitHub
-account is needed) and the `Publish` folder in the file manager, side by
-side - drag the zip into the form's *Files* field, tick the
-box and submit. A robot takes the README out of the zip and checks them - a
-real organ configuration saved with the organ loaded, and the README written
-for it -, proposes them
-as a pull request and answers in the form; nothing else is needed, no
-knowledge of Git. After the merge the organ appears as a line of
-`configurations/INDEX.md`, the list of all published organs, in a folder
-named after the organ as you named it at the save. A new version is sent
-the same way and replaces the old one by itself (the organ is known
-by that name, whatever the file is called); the form *Remove my
-configuration* (the *remove* link in the last column of its line in
-`configurations/INDEX.md` opens it) lists the published organs - tick the
-one (or several), submit, and a robot takes them off the list (when you are
-the one who published them); a field for a part of the name is there too.
-
-Paths inside a configuration are stored relative to the common folder of the
-sample trees where possible, so a configuration kept beside its sample folders
-travels with them (another drive letter, another computer). Trees on a
-different disk get absolute paths. A configuration whose trees are not on
-this computer loads all the same, with the trees that are here: every
-division that uses a missing tree shows an orange notice under its header,
-"Sample folder not found", with the folder's name (the full paths are in its
-tooltip). Click it: a menu offers *Replace "..." with a folder on this
-computer...* for every missing tree - choose the folder where that tree is
-now, whatever its name, and the stops come alive at once, their rows keep
-their folders -, *Look for the missing folders in the archives beside this
-organ...* (below), or *Open the Stop List*, where *Load folder...* offers the
-same for every missing tree (marked NOT FOUND) and *Unload folder...*
-removes a tree you no longer have.
-The notice goes when no tree of the division is missing; no message box
-reports the find, the activity log does.
-
-A set sold as several separate archives (not the parts of one archive:
-`bedos1_862.rar`, `bedos2_861.rar` ... and the definition in
-`BedosUpdate864_ODF.rar`) loads from the one archive you chose with most of
-its folders missing. The program then looks beside it - and beside the
-configuration - for other archives whose name shares a part with the
-chosen one or with the organ's name (`bedos`; a folder full of other organs'
-archives is left alone), reads the contents of those few, and when they hold
-the missing folders it takes them without asking: they join the archives
-this computer remembers, the divisions are loaded again, and a notice names
-them: "bedos1_862.rar: 000862\pipe\..., bedos2_861.rar: ...". The same look
-is in the notice's menu. And the other way round: when the archive you chose
-holds no definition at all (a package of samples alone), the program reads
-the archives beside it with a name like it and, when one of them holds the
-organ definition, loads the organ from the definition with every one of them
-- a notice lists the archives taken (several definitions among them: the
-choice box, as with several archives chosen at once). The simplest way is
-still to choose all the archives of the set at once in *Load Configuration*
-(Ctrl or Shift in the file dialog).
-
-Paths are stored with "/" and resolved on every platform; a configuration
-saved on Windows loads on Linux and macOS and the other way round.
-
-## 1.6 The usual ways to an organ
-
-The scenarios that come up again and again, in the order most people meet
-them. Every one of them ends with *Save Configuration*; the details are in
-the chapters named.
-
-### A freshly bought set in RAR archives
-
-Put all the archives of the set together in one folder on the disk where
-your samples live (`D:\Samples\Caen\`: the `.part1.rar`, `.part2.rar` ...
-side by side, or the one archive of a small set). Nothing needs unpacking.
-*Load Configuration* in the top bar, choose the archive (several with Ctrl
-or Shift when the organ comes in several separate archives - choose them
-all; if you chose one, the program offers the others with a name like it
-once the organ is up): the program reads what the
-archives hold, offers the Hauptwerk organ definition found inside (or a
-configuration, when one is packed with the set) and loads the whole organ
-straight from the archives - "Sample archives (RAR)" and "Loading a
-Hauptwerk organ definition (ODF)" say what happens. The archives you chose
-are remembered (`Locations.txt` beside the settings) and their folder joins
-the sample locations, so the configuration finds them again at every start, and every
-later configuration of the same set finds them too. Unpacking the archives
-first is allowed and loads faster from an SSD; keep the folder tree as the
-archive created it.
-
-### A configuration published on GitHub
-
-Someone built the organ for the same sample folders you own and published
-the configuration ("Portable configuration (to share with others)" is the
-other direction). Download the zip from the list of published
-configurations, then *Load Configuration* and choose the zip as it is: the
-program reads the `.json` inside and copies it into your configurations
-folder (the load box asks; "Where configurations and samples live"). Where
-the downloaded file lies does not matter - Downloads is fine - because the
-sample folders are not looked for beside it: they are looked for in your
-**sample locations**, the folders above your sample libraries that the
-program remembers from every organ loaded, every archive chosen and every
-folder you pointed to, and one level around each of them. (Putting the file
-beside the library root works as well: a configuration looks for its
-folders next to itself too. The same disk alone does nothing - the program
-never searches a whole disk.) When the locations are known, the organ loads
-without a question. When they are not yet - the first configuration on a
-new computer, a library the program has never seen - the divisions show
-"Sample folder not found": the next section.
-
-### Sample folders not found: one click finds them
-
-The configuration loads with what it finds; every division that misses a
-folder tree shows the orange notice "Sample folder not found: ..." under
-its header. Click it, pick the tree in the menu and choose **any folder of
-the set** in the dialog: the tree itself (`002067\pipes\bw`), a folder above
-it (the numbered package `002067`, the whole `OrganInstallationPackages`)
-or a neighbouring tree of the same organ (`002067\pipes\hw`). The program
-finds the tree from there - the longest end of the missing path that lies
-under or around the folder you chose -, checks that the folder holds what
-the Stop List expects in that tree (its stop folders; a folder holding none
-of them is refused with a box and never loaded blindly), then looks for
-every other missing tree of the organ around it: the same place under the
-new library (the other divisions of the package) and the end of each path
-under the folders above (the other packages of a Hauptwerk library lie side
-by side in `OrganInstallationPackages`). Everything found is loaded at
-once (the activity log lists what was found and what is still missing; the
-notice stays under a division that still misses a tree). The folder
-above the moved library is remembered as a sample location, so every
-configuration you load afterwards finds its folders there by itself. The
-same happens when you load a folder of the same name as a missing tree with
-*Load folder...* in the Stop List ("Folder trees and the pool"). Then *Save
-Configuration*: the paths are kept.
-
-### A Hauptwerk organ already installed
-
-*Load Configuration* and choose the organ definition in Hauptwerk's
-`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`): divisions,
-stops, perspectives, voicing, couplers, crescendo and tremulant rates come
-from the definition ("Loading a Hauptwerk organ definition (ODF)"), the
-configuration is written into your configurations folder and the library's
-place joins the sample locations. An encrypted set (`.hbw`) cannot be read.
-
-### A set without any definition: building from the Stop List
-
-Samples that came as plain folders of WAV files (or an archive without a
-definition): *Stop List* in the top bar, *Load folder...* with the top
-folder of the samples, say which division its stops go to, repeat for every
-division (or load one tree holding everything and move the stops in the
-table), then *Apply and reload*. Part 4 explains the table, "How the sample
-folders must be organised" says what the program makes of the folder names,
-and "The first start, step by step" takes you on to the audio (steps 5-7).
-
-### The samples moved, a new disk, a new computer
-
-Load the configuration as it is. The trees are looked for at their old
-place, then in every sample location and one level around each; what is
-not found shows the notice - one click as above puts everything right, and
-the new place is remembered. On Linux a disk that the desktop mounts only
-on demand (`/run/media/...`) is mounted by the program first, by its label
-("Where the files are"). The Configuration Editor's *Sample and IR
-locations* row adds a folder by hand when you know where the libraries are
-before the first load. A configuration never holds anything about your
-computer that cannot be found again this way.
-
-### A second volume or perspective set of the same organ
-
-A set sold in volumes (the direct perspective first, the rear one later):
-load the first as above, then right-click *Load Configuration* > *Merge
-another configuration* with the second one's definition or configuration
-(or its archives): the shared stops dissolve into the loaded organ and gain
-the new perspective, new stops are added ("Merging another configuration
-into the loaded organ"). A perspective set whose folders stand beside yours
-under a new prefix (`06-far__HW_Octava2` beside `03-ortf_HW_Octava2`) joins
-your rows the same way, in the merge and in *Load folder...* of the Stop
-List alike: the folders whose tuning is the same as your rows' (the `smpl`
-chunk, file by file) join the rows of their stops as the new perspective and
-the prefix is learned; the second set need not carry every stop.
-
-### Sharing what you built
-
-*Save Configuration* with *Portable configuration (to share with others)*
-ticked exports the organ without anything of your computer and opens the
-window that publishes it on GitHub ("Portable configuration (to share with
-others)"); whoever owns the same samples loads it as in "A configuration
-published on GitHub" above.
-
-## Where configurations and samples live
-
-Every organ configuration of a computer lives in ONE folder,
-the **configurations folder**: `Documents\OrganSampler\Configurations` by
-default (`~/Documents/OrganSampler/Configurations` on macOS and Linux),
-chosen anew in the Configuration Editor (*Configurations folder* > Choose).
-The Hauptwerk and RAR imports write there, *Save Configuration* and *Load
-Configuration* start there. A configuration loaded from anywhere else
-(Downloads, beside the samples, inside an archive, or the published `.zip`
-as downloaded from GitHub - *Load Configuration* opens it as it is)
-is copied into the folder by the load box (or loaded from its own
-folder, the second choice); the copy becomes the open file, the original
-stays. The copy of a portable file drops the `.portable` of its name
-(`Arnstadt Surround.portable.json` becomes `Arnstadt Surround.json`
-- it is the configuration you edit on this computer now, no export any
-more; a file of that name already in the folder makes the box ask, as
-below). Never a
-duplicate: the same file already in the folder is simply loaded
-from there; a file of the same name with other content makes the box ask -
-keep the one in the folder and load it, replace it with this file (the old
-one survives as `.json.bak`), or load this file from its own folder. A
-Hauptwerk import of an organ whose configuration is in the folder already
-asks the same way: replace it with the import, or keep the existing
-configuration and load it without importing. The folder can
-be moved: nothing in it points at its own place. The setting belongs to the
-computer, never to a configuration file.
-
-The samples and the impulse responses are found through the **sample and
-IR locations**: the folders under which your sample libraries, archives and
-IR collections lie (`D:\Hauptwerk\HauptwerkSampleSetsAndComponents`,
-`E:\sonus`, `D:\IR`, a USB disk). A configuration names its trees relative
-to its library root (`OrganInstallationPackages/003135/pipe/HW`) with the
-root's name, and an IR by its path inside the library (an IR packed with
-the organ, as in the Rural Organ) or by its full path (an IR of a
-collection elsewhere); at a load each is looked for at the path it had, then
-under every location - `<location>/<root name>/<path>`, `<location>/<path>`
-and the last one to three parts of the old path - and taken silently when
-found, so a sample set or a collection moved within a known location is
-found by its name; one level around every location is searched as well
-(the folder above it and its subfolders), so a place remembered one level
-too deep or too high serves the next configuration all the same. The
-program fills the list by itself - always a library root, never a single
-package of it: the folder above a root named as the configuration names it
-(else the root folder itself, whatever it is called) at every save, the root
-where it was found at a
-load, the folder of every archive you choose, the collection of every IR you
-choose, the folder you point to when a tree is asked for. The list is the
-text file `Locations.txt` beside the settings - the sample folders and the
-RAR archives you chose, one path per line, readable and editable in any
-editor; the Configuration Editor shows it (*Sample and IR locations*), opens
-it (*Show*), adds a folder by hand and forgets the folders. On a computer
-that knows no location yet, the library root is also looked for by its name
-at the top of every fixed drive, under every first-level folder of the drive
-and in the Hauptwerk layout (`<folder>\HauptwerkSampleSetsAndComponents\<root>`,
-so `D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages`
-is found without any help), and the folder of the file you chose is
-searched even when a copy of the configuration is loaded from the
-configurations folder. A tree found nowhere shows the "Sample folder not found"
-notice under its division: click it and choose any folder of the set - the
-program finds the tree from there, the other missing trees around it, loads
-them all and remembers the place ("Sample folders not found: one click
-finds them"); an IR found nowhere shows "FILE NOT FOUND - choose it" on its
-route in the Divisions dialog; the answer joins the locations.
-
-A word to the user: keeping track of where the sample folders and archives
-are is a nightmare for the programmer, and every move of a sample set is a
-question to you. Think well about where your sample folders go before you
-put them there, so that you never have to move them again - one disk, one
-folder for the libraries, the archives beside them.
-
-The filled pipes cache has its own folder in the same way (*Filled pipes
-cache folder* in the Configuration Editor), a setting of the computer.
-
-**Voicing** (everything set in the voicing rows of the stops) is saved
-automatically and also with the configuration; *Save Voicing* and *Load
-Voicing* (hidden from the top bar by default) exchange it as a separate file.
-
-A configuration holds only what the instrument uses now: the divisions in
-use, the audio routes that exist (the audio tabs of the Divisions dialog)
-and their settings. Nothing is kept for later. A division's own audio route
-that no stop plays through - every stop of the division has a perspective of
-its own - has no tab, and so it has no device either: the program closes it
-and remembers none. The same for the routes of divisions beyond the division
-count, for a route whose perspective is gone, and for the IR and other
-settings of an auxiliary route without a device. When you want something
-again, you set it up again.
+organ*. The added stops become further rows under the rows of their division
+(drag them where they belong), their folder trees join yours, their voicing
+comes along. When the program finds that an added folder is a further
+perspective of a stop you have, it joins that stop's row as the new
+perspective instead of adding a row. A stop whose folder is already loaded is
+shared, not added; two stops of one name get "(2)". Two organs rarely stand at
+one pitch, so the merge switches *Equal at 440 Hz* on. The merged organ is
+loaded, not saved: *Save Configuration* keeps it.
 
 ### GLOBAL RESET
 
-The *GLOBAL RESET* button of the top bar offers what to reset, all unticked:
-*Unload everything* empties the instrument completely (stops, folders,
-transmissions, couplers, patterns, MIDI, audio routing); the other options
-(audio, MIDI, transmissions, patterns, couplers, the grid) reset only what is
-ticked and keep the loaded stops.
+*GLOBAL RESET* (top bar) offers what to reset: *Unload everything* empties the
+instrument; the other boxes (audio, MIDI, transmissions, patterns, couplers,
+the grid) reset only what is ticked.
+
+## 1.7 How the sample folders must be organised
+
+### Folders and files
+
+A top folder holds one folder per stop; a stop folder holds the WAV files of
+its pipes and the folders of its releases. A set with several microphone
+perspectives has the stop folders several times, each with its perspective's
+prefix:
+
+```
+POS Organ Samples                <- the top folder: "Load folder..." in the Stop List
+├── Principal8                   <- one folder per stop
+│   ├── 036-C.wav                <- one WAV per pipe, named after its MIDI key
+│   ├── ...
+│   └── rel                      <- the releases, named like the attacks
+├── dir-Trompete 8               <- the "Direct" perspective of Trompete 8
+├── dif-Trompete 8               <- the "Diffuse" perspective of the same stop
+├── rear-Trompete 8              <- the "Rear" perspective
+└── Mixtura
+    └── Chiff                    <- a one-shot stop, nested: allowed
+```
+
+- Any folder holding WAV files is a stop, however deep it is nested. A folder
+  whose name starts with "rel" holds the releases of its parent. The stop's
+  name comes from the folder's name: a footage at its end ("Nasat 3" = 2 2/3')
+  is shown with its foot mark; a name without footage is fine, the pitch is
+  read from the samples.
+- A file name begins with the MIDI key number, optionally with the note
+  (036.wav, 036-C.wav, 059-B3.wav). Several files with the same number are
+  round-robin variants; a two- or three-digit suffix after an underscore
+  (`060-C4_070.wav`) is a velocity layer ("Velocity layers").
+- Mono and stereo files are both fine. Loop points and the recorded pitch come
+  from the WAV's smpl chunk ("The smpl chunk and the file names"); files
+  without it play as they are, but cannot be retuned.
+- Missing pipes and missing loops are no obstacle: gaps are filled from the
+  neighbouring pipes ("What a filled pipe is"), a file without loops plays to
+  its end and loops as a whole.
+- A stop recorded as a left and a right half (`quintaton16L` and
+  `quintaton16R`) is one stop with two folders.
+
+### Releases
+
+The folder `rel` inside the stop folder, files named like the attacks. Several
+folders for different note lengths are honoured: `rel500` for keys held up to
+500 ms, `rel1500` up to 1.5 s, plain `rel` for the rest. A stop without
+releases plays too: the sound fades out when the key goes up.
+
+### Microphone perspectives
+
+Folders of the same stops under several prefixes (`dir-`, `dif-`, `rear-`) are
+recognised as perspectives, each with its own audio route. The prefixes are
+listed in *Perspective prefixes* (Configuration Editor > Folder name patterns;
+also *Perspective Patterns...* in the top bar), one line per perspective: the
+name first, then every prefix of that perspective, separated by semicolons.
+New prefixes found in a set are added by themselves; a perspective added or
+renamed in the Stop List gets its line at once.
+
+### One-shot stops and folders to skip
+
+Folders matching *One-shot stops (folder contains)* ("Chiff", "Chimes",
+"Tubular", "Celesta", "Harp", "Glockenspiel") play once from start to end
+whenever the key is released - chiffs, percussion, bells. Folders matching
+*Ignored folders (folder contains)* ("trem", "*_tr", "output") are not loaded;
+tremmed recordings named after their sibling with "tr"/"trem" appended are
+skipped as well. A pattern without a star matches anywhere in the name, "*x"
+the end of it, "x*" its start.
+
+### Sample archives (RAR)
+
+Nothing needs unpacking. *Load folder...*, *Load Configuration* and *Merge*
+take `.rar` files (a multi-volume set by its first part, several archives at
+once with Ctrl or Shift) and read the samples out of them; a folder that is
+also on the disk wins over the archive. The first load of an archive reads its
+index (seconds on an SSD, minutes for a big set on a hard disk); the index is
+kept. A stored (uncompressed) archive reads as fast as plain files, a
+compressed one at the speed of the decompression. Only the archives you chose
+are ever read, and every one of them is remembered. *Unpack the archives into
+a folder first* in the Load folder window unpacks them instead (keep the
+folder tree as the archive has it).
 
 ---
 
 # 2. The main window
 
-From top to bottom: the top bar of buttons, the combination row, the row of
-global sound sliders with the polyphony display, and the stop workspace - one
-column per division with its header and its stop grid.
+From top to bottom: the top bar of buttons, the combination row, the global
+sound sliders with the polyphony display, and the workspace - one column per
+division with its header and its stop grid. A message strip appears in the
+lower left corner when the program has something to say ("Messages").
 
 ## 2.1 Top bar buttons
 
-Every button can be shown or hidden in *Configuration Editor > Console* ("Top
-bar: ..."); *Configuration Editor* itself always stays. Every button can be
-fired from a MIDI control: right-click it and choose *Learn MIDI On trigger*
-(a learned button fires even when the bar hides it).
+Every button can be hidden (Configuration Editor > Console > "Top bar") and
+fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned
+button fires even when hidden).
 
-- **PANIC** silences every sounding pipe at once.
-- **Record** records the stereo mix of the organ to a WAV file (a file dialog
-  asks where, starting in the folder *AudioRecordings* beside the
-  configurations folder); clicking again stops the recording with a short fade.
-- **Stop List** opens the table of the whole organ: see "4. The Stop List
-  (building the organ)".
-- **Guided tour** (shown on a teaching organ only: the Rural Organ
-  demo, or any configuration that carries `"guidedTour": true`) walks through
-  the console in ten steps, each with an arrow to the element it speaks of
-  and a link to the manual chapter that explains it: a stop and its corner
-  button, the voicing row, a stop folder, a transmission and an extension,
-  arranging the grid, the division header, the couplers, the Stop List, the
-  temperaments, saving. The tour starts by itself once the organ is loaded;
-  the console stays usable under it. *Don't show this tour again for this
-  organ* keeps it away, the button brings it back.
-- **Couplers...** opens the couplers dialog: see "Couplers".
-- **Temperaments** opens the temperament dialog: see "Temperaments".
-- **Hide all voicing** folds every open voicing row on the grid (each row
-  opens again with its own corner button).
-- **Perspective Patterns..., Ignored Patterns..., One-shot Patterns...** edit
-  the folder-name lists (the same lists as in the Configuration Editor, see
-  "Folder name patterns (one per line)").
-- **Stop-Merging** renders the enabled stops into one new stop: see
-  "Stop-Merging".
-- **Load Voicing / Save Voicing** (hidden by default): the voicing as a file.
-- **Load Configuration / Save Configuration**: the instrument as a file.
-- **Shut down PC** (hidden by default): saves the open configuration and the
-  settings, quits and shuts the computer down at once. No dialog, no question
-  about the configuration, nothing to answer: it is meant for headless
-  consoles (a MIDI piston on a console without a screen), where nobody could
-  react. An instrument without an open configuration file is kept as
-  "Shutdown rescue configuration.json" beside the settings.
-- **GLOBAL RESET**: see "GLOBAL RESET".
-- **Configuration Editor**: every program setting in one scrolling dialog:
-  see "8. Configuration Editor reference".
+- **PANIC** silences every sounding pipe.
+- **Record** records the stereo mix to a WAV file; click again to stop
+  ("Recording").
+- **Stop List** - the table of the whole organ ("The Stop List").
+- **Guided tour** (on a teaching organ such as the Rural Organ demo) walks
+  through the console in ten steps with an arrow to every element.
+- **Couplers...** ("Couplers"), **Temperaments** ("Temperaments").
+- **Hide all voicing** folds every open voicing row.
+- **Perspective Patterns..., Ignored Patterns..., One-shot Patterns...** -
+  the folder name lists ("Folder name patterns").
+- **Stop-Merging** renders the engaged stops into one new stop
+  ("Stop-Merging").
+- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a file.
+- **Load Configuration / Save Configuration** - the instrument as a file; a
+  right-click on Load offers the merge.
+- **Shut down PC** (hidden by default) saves everything, quits and shuts the
+  computer down without a question - for a console without a screen (a MIDI
+  piston). An instrument without a file is kept as "Shutdown rescue
+  configuration.json" beside the settings.
+- **GLOBAL RESET** ("GLOBAL RESET"), **Configuration Editor** ("Configuration
+  Editor reference").
 
 ## 2.2 The combination row
 
-The row holds the combination pistons (their number is set with the
-*Pistons* box in the row, or in *Configuration Editor > Console > Combination
-pistons*), the *Set* button, the *<<* and *>>* stepping buttons, the bank
-buttons (*Bank ▼* / *Bank ▲* with the bank's number), the display of the
-combination in use, *Tutti* and *X* (all stops on / all off), *Save* and
-*Load* for combination files, and the crescendo.
+The pistons (their number: the *Pistons* box in the row), *Set*, the stepping
+buttons *<<* / *>>*, the bank buttons, the display of the combination in use,
+*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for
+combination files, and the crescendo.
 
 - Click a piston to recall its registration (stops, transmissions, couplers,
-  tremulants, Unison Off).
-- With *Set* on, clicking a piston stores the current registration in it.
-- *<<* and *>>* step through the pistons, the bank buttons through the banks
-  of pistons; all are MIDI-learnable, as is every piston (right-click).
-- *Tutti* switches every stop on, *X* every stop off.
-- *Save* / *Load* write and read all pistons as one file. Combinations are also
-  part of the configuration.
+  tremulants, Unison Off). With *Set* on, a click stores the current
+  registration in the piston.
+- A piston that holds a registration is a shade darker than an empty one.
+  The piston in use is orange; other pistons holding the same registration
+  are darker still.
+- *<<*, *>>*, the bank buttons and every piston are MIDI-learnable
+  (right-click). Combinations are part of the configuration.
 
 ## 2.3 The crescendo
 
-The crescendo display is a row of segments, one per step (30 by default).
-Drag it, or move a learned MIDI controller (right-click the display: *Learn
-MIDI continuous controller*). *Cresc.* switches the crescendo on: switching it
-on remembers the registration set by hand, switching it off brings that
-registration back. *Crescendo settings...* (right-click the display) opens the
-dialog in which every step is taught: switch *Set* on, engage the stops, click
-the step. Moving from one step to the next switches only the difference: the
-stops, transmissions and couplers the two steps have in common stay as they
-sound, so a chord held through the crescendo never restarts; only what the
-new step adds starts to sound and only what it drops stops. The dialog also sets the
-number of steps, whether the crescendo may switch off hand-registered stops
-(otherwise the steps only add), clears all steps, and saves or loads the steps
-as a file.
+A row of segments, one per step (40 by default). Drag it or move a learned
+MIDI controller (right-click: *Learn MIDI continuous controller*). *Cresc.*
+switches it on; switching it off brings back the registration set by hand.
+*Crescendo settings...* (right-click the display) teaches the steps: *Set*
+on, engage the stops, click the step; the dialog also sets the number of
+steps, whether the crescendo may switch hand-registered stops off, and saves
+or loads the steps as a file. Moving between steps switches only the
+difference: a chord held through the crescendo never restarts.
 
 ## 2.4 Global sound sliders and the polyphony display
 
 The sliders of *Configuration Editor > Global sound* can each be shown on the
-main panel (the checkbox beside them in the editor). Master volume, pitch,
-sustain fade-out, release fade-in, release volume, release cutting, attack
-minimum time and delay: all are described in "Global sound". Every one of
-them is MIDI-learnable (right-click). The polyphony display shows the voices
-sounding now (*NOW*), the most at once over the last seconds (*PEAK*), the
-*DSP* load - the time the busiest audio thread needed for its last block as a
-share of the block's duration; above 100 % that thread could not deliver in
-time (crackle), see "Getting the most polyphony"; the same cell turns orange
-and adds "!N" when the program found N discontinuities in its own output over
-the last ten seconds (a jump between two blocks that the sound itself does
-not explain - a click you hear, whatever the load figure says; the activity
-log names the route and whether it came from the rendering or appeared only
-on the way to the driver; the switch is *Output discontinuity detector* in
-the Configuration Editor) -, the memory the program
-holds (*RAM GB*, whole gigabytes rounded up; orange when less than a tenth
-of the installed memory is free: the system then pages samples out and a
-block stalls on reading them back), and the polyphony *LIMIT* (editable; the
-measurement writes its verdict into it the moment its report opens).
+main panel (the checkbox beside them in the editor); all are MIDI-learnable.
+The polyphony display shows the voices sounding now (*NOW*), the most at once
+over the last seconds (*PEAK*), the *DSP* load (the time the busiest audio
+thread needed for its last block, as a share of the block; above 100 % the
+sound breaks - "Getting the most polyphony"), the memory the program holds
+(*RAM GB*; orange when the computer is nearly full) and the polyphony *LIMIT*
+(editable; the measurement writes its verdict there). The DSP cell shows
+"!N" in orange when the program found N clicks in its own output ("Output
+discontinuity detector").
 
-The loading never lets the system page: before every stop (and every 32
-files inside a large one) the program looks at the memory and stops loading
-when any sign says it is short - less free than 512 MB or a sixteenth of the
-installed memory, its own footprint within the system's share (1.5 GB or a
-fifth; 1 GB on a computer of 4 GB and less), the program swapped out by more
-than 256 MB since the load began (Linux; on macOS the system's compressor
-growing that much while less than twice the reserve is free - it grows as
-macOS squeezes other programs, which is what it should do), or the macOS
-kernel reporting memory pressure. The stops loaded so far make the
-instrument; a stop cut in the middle of its files, or with one perspective
-loaded and another not, is dropped whole, and every stop left out is named
-once in the message and stays in the pool of the Stop List - nothing stands
-on the grid half loaded. The polyphony report then says the loading stopped
-on purpose; it never claims the system is paging when it is not. A folder
-tree that lies inside another loaded tree (the whole library and one of its
-sub-folders both loaded) is the same folders twice: the inner tree is
-dropped from the pool, its stops point into the outer tree, and a message
-after the load names it - load a tree once, whole or in parts,
-never both. A stop
-whose samples the program holds already (a reload of the same organ: the
-new load adopts them, nothing is decoded) is loaded whatever the memory
-says. The loading dialog has a *Cancel* button: the loading stops
-at the next stop, the instrument is built from what was loaded, the rest is
-named like after a memory stop and stays in the pool. A stop left out of
-the load keeps its row in the Stop List and is offered in the pool of its
-division ("Add stop" on the grid): taking it reloads the division
-with that row, no second row is made.
-
-The report also profiles the device thread: per route callback,
-in microseconds, how much went into this thread's own rendering of voices,
-into waiting for the other lanes and merging their output, into the mixing
-(block context, harmonic shelf, channel separation, safety clip), into the
-IR hand-over (and of it, waiting for the convolution task) and into the
-bookkeeping (voices in and out, recording, load statistics); with the period
-for scale and the share of the time the device threads spent inside the
-callbacks, and the longest route callback of the run with its parts - the
-sound breaks on such a peak, never on the average, and how late a lane
-joined a job after it opened. It is what tells, on a
-computer whose render cores are not full when the sound breaks, where the
-time goes. The render workers wake ahead of every period
-(the cadence is known) instead of being woken by the job, and the device
-thread takes no more voices at the tail of a job when the lanes still at
-work finish them sooner: the peaks of 2-2.5 ms that limited a 16-core
-computer at 55 000 voices were the device thread rendering alone while the
-workers woke up. The limit the measurement judges by - how much of its period the
-longest driver callback may take - is the *Measurement limit* of the
-Configuration Editor: 85 % by default, which leaves headroom for
-what the computer does besides; up to 100 %, where a level counts as broken
-only when the driver actually called late - dangerous for playing, the
-limit it sets breaks up on the first callback that runs a little longer.
-The measurement does not start while the filled pipes are still being built
-(the orange tracks under the stop buttons), and the report says when the
-run ran out of keys and strikes before the computer did. The "free" figure is what the
-system could give the program now: Windows' available physical memory,
-Linux's MemAvailable (the reclaimable cache included), macOS's free and
-inactive pages; the footprint rule is the one that bites on an 8 GB machine.
+The loading never lets the system page: it stops when the memory is short,
+builds the instrument from the stops loaded so far and names the rest in a
+message; they stay in the pool of the Stop List. The loading window's
+*Cancel* button does the same. Details: "Memory and the loading stop".
 
 ## 2.5 Division headers
 
-Each division column starts with a one-line header: a keyboard icon that
-lights when a key is pressed (right-click it: *MIDI Learn...* learns the
-division's keyboard from the next key pressed, *Clear learned keyboard MIDI*
-forgets it), the division's name, the swell display (drag it, or right-click it
-to learn the swell pedal's MIDI controller), the *Tremulant* button
-(registration, like a stop) and *Settings*, which opens the Divisions dialog at
-that division. Drag the dividers between the columns to share out the width.
+Each column starts with a header: the keyboard icon (lights when a key is
+pressed; right-click: *MIDI Learn...*, *Clear learned keyboard MIDI*), the
+division's name, the swell bar (drag it; right-click to learn the swell pedal
+or open *Swell settings...*), the *Tremulant* button (registration, like a
+stop; right-click: *Tremulant settings...*) and *Settings*, which opens the
+Divisions dialog. A right-click on the header's background lists the swell,
+tremulant and wind settings of the division. Drag the dividers between the
+columns to share out the width. The mouse wheel scrolls the workspace, except
+over the sliders of an open voicing row.
 
-Every feature has its settings where it sits, by right-click: the swell bar's
-menu offers *Swell settings...* (maximum attenuation, shutter inertia,
-harmonic filter), the *Tremulant* button's menu *Tremulant settings...*
-(rate, depth, drift between ranks, volume per cent, harmonic filter and its
-phase), and a right-click on the header's own background lists the swell,
-tremulant and wind settings of the division together with the Divisions
-dialog and the Configuration Editor. The rows are the same as the
-Configuration Editor's and take effect at once; a row marked "(all
-divisions)" is one setting for every division. The crescendo display and
-the IR caption of an audio tab have such menus too.
-The mouse wheel scrolls the workspace everywhere - except inside the
-rectangle of an open voicing (a stop's row with its per-key sliders), where
-it moves the sliders; the rest of that division's column scrolls as usual.
-The button of a stop folder switches all its children with it, their buttons
-included; a child can still be switched alone to hear it by itself.
+## 2.6 Two program windows, screens, small screens
 
-## 2.6 Two program windows
-
-*Configuration Editor > Console > Program windows* opens a second window
-(empty at first). In the Configuration Editor's division sections, *Shown in
-window* moves a division to window 1 or 2; a division is in one window only.
-The second window's position is remembered; closing it returns to one window.
-
-## 2.7 Screens and the size of the interface
-
-Every size in the program is a design size for a 2560 x 1440 screen at the
-system's 100 %; the operating system's display scale applies on top. *Interface
-size* (Configuration Editor > Console) is the program's own factor over that,
-estimated at the first start so that Full HD, 4K and Retina screens show the
-same amount of console, then saved and never changed by the program. Dialogs,
-menus, tooltips and message boxes follow it; text stays sharp at every size.
-
-## 2.8 Dialogs on small screens
-
-Every dialog sits in a scrolling viewport: when its window is smaller than the
-dialog, scrollbars appear and every control stays reachable.
+*Console > Program windows* opens a second window; *Shown in window* in a
+division's section moves the division there. *Interface size* is the
+program's own scale over the system's display scale, estimated at the first
+start for Full HD, 4K and Retina screens alike. Every dialog scrolls when the
+window is smaller than its content.
 
 ---
 
-# 3. Stops on the grid and their voicing
+# 3. Stops and their voicing
 
 ## 3.1 Stop buttons
 
-A stop is a button on the grid of its division: click to engage it, click
-again to disengage it. Engaged buttons are orange. The small corner button of
-a stop ("+") opens its **voicing row**; "-" folds it again. *Hide all voicing*
-in the top bar folds every row.
+A stop is a button on its division's grid: click to engage (orange), click
+again to disengage. The small corner button ("+") opens its **voicing row**,
+"-" folds it.
 
-A button carrying "[+N]" is a **stop folder**: a stop with N other stops
-indented under it; its button switches them all. Open its voicing and the
-children appear under it, each with its own button (for voicing them one at a
-time) and voicing row.
+A button carrying a Roman numeral in brackets ("Cornet [III]") is a **stop
+folder**: a stop with other stops indented under it; its button switches
+them all. Open its voicing and the children appear under it, each with its
+own button and voicing row (a child can be switched alone to hear it by
+itself). The numeral can be hidden per stop (*Rank count*).
 
-A button whose caption ends in "(Trsm.)" or "(Ext.)" is a **transmission**:
-the pipes of another stop played here, possibly transposed. "(Ext.)" marks an
-extension - the stop's own pipes in its own division at another footage (a
-16' or 4' extension of an 8' stop); "(Trsm.)" marks a transmission into
-another division, at the same footage or at another one. An alias carries the
-same mark after it. "Transmissions and extensions" and "What a filled
-pipe is" explain transmissions and the pipes they
-need beyond the stop's compass.
+A caption ending in "(Ext.)" or "(Trsm.)" is a **transmission**: the pipes
+of another stop played here, possibly transposed - "(Ext.)" in the stop's own
+division (a 16' or 4' extension of an 8' stop), "(Trsm.)" in another one.
+"Transmissions and extensions".
 
 ## 3.2 Arranging the grid
 
-Press a stop button for two seconds, release, and the whole console enters
-**arrange mode**: every stop and transmission can be dragged to another cell of
-its division or into another division. A click on empty workspace ends the
-mode. While arranging:
+Press a stop button for two seconds, release: the console enters **arrange
+mode** - every stop and transmission can be dragged to another cell or into
+another division. A click on empty workspace ends the mode.
 
-- Dragging a stop into another division's grid moves it there with its
-  voicing and transmissions.
-- Dragging with the right mouse button, or with Shift held, makes a **copy**: a
-  new transmission of the stop appears where the copy lands (also in the
-  stop's own division, as an extension). A copied transmission keeps its
-  transposition.
-- Every button carries a red x in its top-left corner: it removes the stop (a
-  warning lists its transmissions first; they go with it) or the transmission.
-  A stop folder with stops still indented under it is not removed; take them
-  out first.
+- Dragging a stop into another division moves it there with its voicing and
+  transmissions.
+- Dragging with the **right mouse button**, or with **Shift** held, makes a
+  **copy**: a new transmission where the copy lands (in the stop's own
+  division: an extension).
+- The red x in a button's corner removes the stop (its transmissions go with
+  it, a warning lists them) or the transmission. A stop folder with children
+  is not removed; take them out first.
 - **Making a stop folder:** let the dragged item rest over another stop's
   button until a dim orange bar appears under that button, then pull it a
-  little *down* onto the bar; it lights up, and the drop indents the item under
-  that stop. Pull back up and the drop is an ordinary move or swap again. A
-  quick drop never indents. This works for a copy too: a new extension or
-  transmission dragged with the right button or with Shift and dropped on
-  the lit bar is created straight inside the folder. Dragging an item out of
-  an open voicing onto a cell of the grid takes it out of the folder.
-- A **free cell** (dashed) offers, on a click, "New stop folder here" (an empty
-  stop ready to take children), "New stop here" with the ready-made stops of
-  the loaded folders that no division of the instrument uses yet, and the
-  division's pooled stops and transmissions, which return to the grid in that
-  cell. A stop already in use anywhere is not offered: it is moved on the
-  grid (arrange mode) or given a transmission instead.
+  little *down* onto the bar - it lights up, and the drop indents the item
+  under that stop. Pull back up and the drop is an ordinary move again; a
+  quick drop never indents. A copy (right button or Shift) dropped on the lit
+  bar becomes an extension or transmission inside the folder. **Taking a stop
+  out:** open the folder's voicing and drag the child from there onto a cell
+  of the grid.
+- A **free cell** (dashed) offers on a click: a new empty stop folder, a new
+  stop from the ready-made stops of the loaded folders that no division uses
+  yet, and the division's pooled stops and transmissions.
 
-None of this loads anything again: stops keep their samples and the copies of
-their filled pipes.
+None of this loads anything again. The same can be done in the table of the
+Stop List ("The table").
 
 ## 3.3 The voicing row
 
-Open it with the corner button. Its first line shows the transposition, the
-perspectives, for a stop with velocity layers one tick box per layer, the
-pitch information, the alias and the switches; the second line the sliders:
+Open it with the corner button. The first line: transposition, perspectives,
+velocity layers, pitch information, alias and switches; the second line the
+sliders; under them two folding rows of per-key sliders.
 
-- **Transposition** (right after the button of every stop with pipes) - the
-  stop's transposition against its sample files on their own numbers (the
-  file "036" on key 36), every semitone from -24 to +24 as a pure interval
-  with the footage each step gives: "0 -> 8' (as the original)", "-12 -> 16'",
-  "+12 -> 4'", "+7 -> 5 1/3'", "+19 -> 2 2/3'", and for the other steps the
-  pure (just) interval's fraction - "+1 -> 7 1/2'", "+3 -> 6 2/3'",
-  "+5 -> 6'", "+9 -> 4 4/5'" (octaves printed bold). "The original" is what
-  the samples' own pitch (the smpl chunk) says the files sound at on their
-  numbers. -12 puts the file 024 on key 36, an octave down. The *Orig. Pitch*
-  line of the row shows that real footage of the files; the footage in
-  the button's caption follows the transposition, and so do the stop's transmissions and
-  extensions, which add their own transposition on top. A change loads the
-  stop's samples again on their keys at once (the fills follow; the keys
-  held fall silent first and the stop starts no voice while it reloads). The same
-  setting is the Stop List column "Transp.". Each key's tooltip in the rows
-  below names the file it plays.
-  The program sets it by itself where it can: a Hauptwerk import takes it
-  from the definition (its pipe notes against the file names: Doesburg's
-  files sound 8' on their numbers and the definition puts "024" on key 36,
-  so its 8' stops read "-12 -> 8'" and its 16' stops "-12 -> 16'"); a folder
-  loaded on its own gets it from the samples' pitch against the footage
-  written in the folder's name - "quintaton 16" whose files sound 8' on
-  their numbers gets -12, and the activity log says so ("Transposition of
-  ..."). Only a whole difference of two semitones or more, agreed by most
-  of the pipes, counts: an organ standing a semitone low or high as a whole
-  (a1 = 409 Hz) is a tuning, not a transposition, and stays at 0. The value
-  found is kept in the configuration; a folder without a footage in its name
-  is left at 0 - transpose it yourself. Clearing the Stop List cell makes the
-  program find it again at the next load.
-- **Alias** - the caption of the button. *Automatic* shows the folder name;
-  type any text to show that instead (an alias without a footage gets the
-  stop's footage appended, and a footage written in the alias follows the
-  transposition). The alias is only a caption: saved states,
-  combinations and MIDI learn keep using the stop's real name, so renaming
-  breaks nothing. A Hauptwerk import writes the definition's stop names
-  without their footage, so the footage shown is always the sounding one.
-- **One-shot** (after the alias, every stop with pipes) - the stop plays each
-  sample once from start to end whenever the key is released (chimes, harp,
-  celesta): nothing of it is cut or faded by the key going up. The switch
-  starts as the *One-shot Patterns* say for the folder's name and overrides
-  them for this stop once touched; saved with the voicing.
-- **Rank count [II]** (after the alias; shown on stop folders only, and on a
-  stop with items indented under it) - whether the button carries the Roman
-  numeral of the ranks that sound with it. Off: the name alone. On by
-  default; saved with the configuration.
-- **Perspectives** - the microphone perspectives this stop has, each with its
-  own on/off tick box (their volumes are the routes' volumes in the Divisions
-  dialog).
-- **Stop volume** (-24 to +12 dB, default 0) - the level of the whole stop.
-- **Velocity layers** - a tick box per layer and one for the plain files; see
-  "Velocity layers" below.
-- **Attack Gain** (-6 to +6 dB) - the start of every note is raised or
-  lowered by this much: more chiff, or a softer speaking, without touching the
-  held tone.
-- **Attack Time** (0-500 ms, default 150) - how long the attack gain acts at
-  the start of the note: it holds for the first half of this time and fades
-  back to the normal level over the second half.
-- **Random pitch error** (0-40 cents, default 4) - every pipe gets its own
-  small random detune at every note, as real pipes never speak twice alike.
-  The division's *Random tuning error of pipes* switch must be on.
-- **Undulation (beats/s at a1)** - for celestes: the stop beats this many
-  times per second against an in-tune rank at a1 (negative = flat). A rank
-  recorded sharp or flat throughout is recognised as a celeste and starts with
-  its recorded undulation; the slider overrides it once moved. How much faster
-  the top of the compass beats than the bottom is *Celeste beats* in the
-  Configuration Editor. The line reads "needs 440 Hz" when the set's pitch
-  has not been retuned to a1 = 440 Hz yet (Temperaments dialog).
-- **Formants (filled pipes)** (0-100 %, default 30) - the timbre of the pipes
-  this stop lacks and borrows from neighbours with a pitch shift: see "The
-  settings that go with the methods".
-- **Orig. Pitch / temperament** - a line of information: the recorded pitch
-  (a1 = ... Hz), the footage read from the samples (with the sounding footage
-  of a mixture or mutation in brackets, and the breaks), and the temperament
-  the recording was found to be in. The sounding footage is the first
-  harmonic the lowest pipes really carry; a recording loses the fundamental
-  of the deepest pipes (a 32' C at 16 Hz has it 50 dB under the second
-  harmonic), so below 45 Hz the pipes up to an octave above are asked
-  whether they have a clear fundamental - two of them suffice, and the stop
-  keeps its 32'. A mixture has no fundamental on any pipe and keeps its
-  first sounding harmonic, hidden breaks included.
+### Transposition
 
-Under the sliders are two folding rows of per-key sliders (orange headers;
-each stop remembers its own folding):
+The stop's transposition against its sample files on their own numbers (the
+file "036" on key 36): every semitone from -24 to +24, each as a pure
+interval with the footage it gives - "0 -> 8' (as the original)", "-12 ->
+16'", "+7 -> 5 1/3'", "+3 -> 6 2/3'" (octaves bold). The button's footage
+follows it, and so do the stop's transmissions. A change reloads the stop's
+samples at once. The program sets it by itself where it can: from a
+Hauptwerk definition, or from the samples' pitch against the footage in the
+folder's name ("quintaton 16" whose files sound 8' on their numbers gets
+-12). A whole organ standing a semitone off is a tuning, not a transposition,
+and stays at 0. The same setting is the Stop List column "Transp."; clearing
+that cell lets the program find it again.
 
-- **Volume per key** (-9 to +9 dB) - the level of every pipe. Under every note
-  name a tick box switches the pipe on or off: an unticked pipe is silent on
-  the stop's own button and is never filled from a neighbour, so a cornet or
-  any stop that must not have the full compass gets no extension. The stop's
-  transmissions are not affected (each transmission has its own boxes).
-- **Treble per key** (-9 to +9 dB) - a high shelf per pipe, above the
-  frequency set in *Treble per key: shelf start frequency* (default 1800 Hz).
-- A *Reset to 0 dB* button sits beside each header; dragging with the right
-  mouse button paints one value across a row of sliders.
-- The sliders light up while the key sounds. A **green thumb** marks a filled
-  pipe (hover it: the tooltip names the stop, the sample file and the shift it
-  was made with, "HW Tromp 16', sample 039-D#.wav, -12 st (from key 51)"). An
-  **orange note name** means the sample has no loop points. A **grey slider**
-  means the stop has no pipe there at all.
+### Alias
+
+The caption of the button. *Automatic* shows the folder name; type any text
+to show that instead (an alias without a footage gets the stop's footage
+appended). The alias is only a caption: saved states, combinations and MIDI
+bindings use the stop's real name.
+
+### One-shot
+
+The stop plays each sample once from start to end whenever the key is
+released (chimes, harp, celesta); nothing is cut or faded by the key going
+up. The switch starts as the *One-shot stops* patterns say and overrides
+them for this stop once touched.
+
+### Rank count
+
+On stop folders: whether the button carries the Roman numeral of the ranks
+that sound with it.
+
+### Perspective boxes
+
+One on/off box per microphone perspective of the stop (their volumes are the
+routes' volumes in the Divisions dialog).
+
+### Velocity layer boxes
+
+A tick box per layer and one for the plain files: "Velocity layers".
+
+### Stop volume
+
+-24 to +12 dB, the level of the whole stop.
+
+### Attack Gain and Attack Time
+
+The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for
+the first half of Attack Time (0-500 ms, default 150), fading back over the
+second half: more chiff or a softer speaking, the held tone untouched.
+
+### Random pitch error
+
+0-40 cents (default 4): every pipe gets its own small random detune at every
+note, as real pipes never speak twice alike. The division's *Random tuning
+error of pipes* must be on.
+
+### Undulation (beats/s at a1)
+
+For celestes: the stop beats this many times per second against an in-tune
+rank at a1 (negative = flat). A rank recorded sharp or flat throughout is
+recognised as a celeste and starts with its recorded undulation. The line
+reads "needs 440 Hz" until the organ is retuned to a1 = 440 Hz
+("Temperaments").
+
+### Formants (filled pipes)
+
+0-100 % (default 30): how far the body of the sound follows the pitch shift
+of the pipes this stop borrows from neighbours - "Filled pipes".
+
+### Orig. Pitch / temperament
+
+Information: the recorded pitch (a1 = ... Hz), the footage read from the
+samples (the sounding footage of a mixture or mutation in brackets, and the
+breaks) and the temperament the recording was found to be in. How the
+footage is measured: "How the footage of a stop is measured".
+
+### Volume per key and Treble per key
+
+Two folding rows of per-key sliders (-9 to +9 dB; the treble is a high shelf
+above *Treble per key: shelf start frequency*). Under every note name a tick
+box switches the pipe on or off: an unticked pipe is silent and is never
+filled from a neighbour - a cornet keeps its compass. *Reset to 0 dB* beside
+each header; dragging with the right mouse button paints one value across a
+row. The sliders light while the key sounds; a **green thumb** marks a filled
+pipe (hover it for its source), an **orange note name** a sample without
+loop points, a **grey slider** no pipe at all.
 
 ## 3.4 Transmissions and extensions
 
-A transmission is an extra button that plays the pipes of another stop, on any
-division (its own included). It is made in the Stop List (the *Transmissions*
-cell of the stop's row) or on the grid (a right-button or Shift drag in arrange
-mode). Each transmission has its own voicing row, opened like a stop's, with:
+A transmission is an extra button that plays the pipes of another stop, on
+any division (its own included). Made in the Stop List (the *Transmissions*
+cell) or on the grid (a right-button or Shift drag in arrange mode). Its
+voicing row has its own **Transposition** (-24 to +24, a pure interval each:
+-12 makes a 16' extension of an 8' stop, +12 a 4' one; the caption follows),
+*Taken from* (the source), *Volume vs. parent stop* (-10 to +10 dB), its own
+per-key sliders and pipe boxes, and *Formants* for the pipes only it asks for.
+The shifted pipe is retuned so that the new footage is a pure interval of the
+played key; the temperament follows the played key.
 
-- **Transposition (extension)** - the key sounds the pipe this many semitones
-  away, -24 to +24, every step a pure interval written as the footage it
-  gives (octaves printed bold). -12 makes a 16' extension of an 8' stop,
-  +12 a 4' one; the button caption follows: "Principal 16' (Ext.)" in the
-  stop's own division, "Principal 16' (Trsm.)" in another division.
-  It counts from the source stop as it sounds, its own transposition included.
-  The shifted pipe is retuned so that the new footage is a pure interval of
-  the played key (a 2 2/3' shifted by +5 gives an exact 2'), the temperament
-  follows the played key, wind, tremulant and detune stay with the pipe.
-- **Taken from** - the source stop, its division and footage.
-- **Volume vs. parent stop** (-10 to +10 dB), the per-key volume and treble
-  sliders and the pipe on/off boxes of the transmission alone.
-- **Formants (filled pipes)** for the pipes only this transmission asks for
-  (beyond the stop's compass).
-
-A pipe is one set of voices, no matter how many keys hold it: the same pipe
-reached through the stop itself, through a transmission and through a coupler
-sounds once, and stops only when no route holds it any more. While several
-routes hold it, the loudest of them sets its volume and the highest *Treble
-per key* setting among them sets its tone; when the loudest route lets go,
-the volume glides to the next loudest, and the tone follows in the same way.
-The tuning is different: a pipe can be retuned differently in different
-transpositions (the pure intervals of the extensions, see above), and a
-sounding pipe cannot change its pitch. So the pipe keeps the tuning of the
-key that started it for as long as it sounds - even after that key has been
-released, while other keys still hold it; only when it has stopped and is
-started again does it take the tuning of the new key. Switching a
-transmission off releases exactly the pipes that no other route holds.
-Keys whose pipe lies beyond the rank's compass (the bottom octave of a 16'
-extension) play **filled pipes**: see "What a filled pipe is".
+A pipe sounds once however many keys hold it (the stop, a transmission, a
+coupler): the loudest route sets its volume, and it keeps the tuning of the
+key that started it until it stops. Keys beyond the rank's compass (the
+bottom octave of a 16' extension) play **filled pipes**: "Filled pipes".
 
 ## 3.5 Velocity layers
 
-An organ key never plays softer when it is struck gently, so the velocity
-never changes the volume of the held note. What it does depends on the stop:
+An organ key never plays softer when struck gently. A stop **with velocity
+layers** plays the layer the velocity falls into - a gentle stroke selects
+the recording of a gentle stroke. A stop **without layers** softens the
+attack of a gentle stroke in volume and colour over its first tens of
+milliseconds (the *Key velocity* settings of "Advanced global audio"), the
+held tone untouched. *Ignore MIDI velocity (organ keys)* in the division's
+settings - on by default - sends every key at full velocity.
 
-- A stop **with velocity layers** plays the layer the velocity falls into, at
-  that layer's own level - a gentle stroke selects the recording of a gentle
-  stroke.
-- A stop **without velocity layers** softens the attack of a gentle stroke,
-  in volume and in colour, over its first few tens of milliseconds: the note
-  starts with a short fade-in (*Key velocity: fade-in at the lowest
-  velocity*, default 100 ms at the lowest velocity) and with its treble cut
-  (*Key velocity: treble cut on the attack at the lowest velocity*, default
-  9 dB), which opens up again over *Key velocity: treble cut opens over*
-  (default 180 ms). Both effects are strongest at velocity 1 and shrink to
-  nothing at the full-strike velocity (*Key velocity: full strike from
-  velocity*, default 80 - from there up every stroke is a full one);
-  the held tone is not touched. The result is a chiff that is blunted by a
-  gentle touch, as on a tracker action.
-
-A sample file is a velocity layer when its name ends in "_NNN" (two or three
-digits, 1 to 127, after an underscore): `060-C4_070.wav` plays for key
-velocities up to 70, above that the plain `060-C4.wav` plays, or the next
-layer up when there are several (`_025`, `_070`, `_100`). A key that has layers
-but no plain file plays its highest layer for every velocity. Release files
-carry the same suffix: the release of a "_070" attack is the "_070" release
-from the rel folder; a velocity without a release of its own takes the nearest
-one that exists. Filled pipes follow the layers as well.
-
-The voicing row of a stop with layers shows a tick box per layer, named by the
-suffix ("_070"), and one for the plain files, the top layer (its box reads
-"_128"). Unticked, a
-layer's velocities use the next layer up or the plain samples; the plain layer
-unticked sends its velocities to the highest ticked layer. When nothing is
-ticked the plain files play anyway - a key never falls silent (the switch
-*Velocity layers: an unticked _128 never plays* in the Configuration Editor
-makes such a key silent instead). The choice is
-saved with the voicing. The keyboard drawing of the Divisions dialog shows the
-MIDI velocity of the key pressed last in a small badge, so you can see which
-layer a stroke reaches. The special use the tick boxes are there for: some
-organs keep the original recordings as "_070" and fine-tuned versions (the
-harmonics tuned inside the audio, a rare treatment for detuned mixtures) as
-the plain files. Untick "_070" and only the fine-tuned samples sound, whatever
-the velocity. *Ignore MIDI velocity (organ keys)* in a division's settings
-sends every key as 127: always the top layer.
+A file is a layer when its name ends in "_NNN" (`060-C4_070.wav` plays up to
+velocity 70; above it the plain file or the next layer). The voicing row shows
+a tick box per layer and one for the plain files ("_128"). An unticked layer
+sends its velocities to the next layer up or the plain files; with nothing
+ticked the plain files play (*Velocity layers: an unticked _128 never plays*
+makes such a key silent instead). Some organs keep the original recordings as
+"_070" and fine-tuned versions as the plain files: untick "_070" and only the
+fine-tuned ones sound. The keyboard drawing of the Divisions dialog shows the
+velocity of the last key.
 
 ## 3.6 Stop-Merging
 
 *Stop-Merging* (top bar, hidden by default) renders the engaged stops and
-transmissions, with their whole voicing (volume, treble, attack, per-key
-settings, transposition), into one new stop per perspective: a folder named
-after the stops (`StopMerged_Principal_8_Octava_4`) inside the loaded folder
-tree, with proper WAV files, loop points and release folders, ready to load as
-an ordinary stop. A transmission merged alone gives a complete stop of the
-transposed rank - a way to turn a pitch-shifted extension into files. While
-the copies of a transmission's filled pipes are still being built the merge
-waits with a message.
+transmissions, with their whole voicing, into one new stop per perspective: a
+folder named after the stops (`StopMerged_Principal_8_Octava_4`) inside the
+loaded folder tree, with proper WAV files, loop points and release folders. A
+transmission merged alone turns a pitch-shifted extension into files.
 
 ---
 
-# 4. The Stop List (building the organ)
+# 4. The Stop List
 
-*Stop List* in the top bar (also *Stop building...* in the Divisions dialog and
-in every division section of the Configuration Editor) opens one table for
-the whole organ: one row per stop with its division, name, alias, "Files vs
-keys" and transmissions, and one column per perspective holding the sample
-folder that plays that perspective of the stop.
+*Stop List* in the top bar opens the **Stop List dialog**: one table for the
+whole organ, one row per stop with its division, name, alias, transposition
+and transmissions, and one column per perspective holding the sample folder
+that plays that perspective of the stop. Everything the grid does with stops
+can be done here as well, and this is where the organ is built from folders.
 
 ## 4.1 Folder trees and the pool
 
-- **Load folder...** loads a folder tree (the samples of an organ, or a part of them) and
-  asks which division its stops go to. One window: the folder tree, or the
-  RAR archive(s) the samples came in - read as the folders they hold, or
-  unpacked first when the switch says so (see "Sample archives (RAR)").
-  A tree is loaded once and its folders
-  can serve any division. When a tree of the organ is missing on this
-  computer (a configuration from elsewhere: the division header says
-  "Sample folder not found"), the menu lists it as **NOT FOUND on this
-  computer: replace "..." with a folder on this computer...** (only the
-  missing trees have such a line): choose any folder of the set,
-  the tree is found from there, the stops built from it keep their samples,
-  the other missing trees of the organ are looked for around it and loaded
-  as well, and the place is remembered ("Sample folders not found: one click
-  finds them"). A tree never takes the place of another one by its last
-  folder name alone - only by the same path below the library root - so a
-  missing tree stays missing until you replace it. In the table the folder
-  cells of a missing tree are orange, their tooltip says NOT FOUND, and the
-  line below the table counts the missing trees.
-- **Unload folder...** removes one tree from the whole organ after saying how
-  many stops lose their samples. The rows that had folders of that tree only
-  go with it, buttons and all - the one case a row leaves the table by
-  itself - and so does a stop folder whose indented rows all went that way;
-  a row that still has a folder of another tree, and every other empty row,
-  stays ("Remove empty stops" clears those). A tree
-  that is not on this computer is marked NOT FOUND there, so you can drop
-  it when it is not meant to come (a package you do not own). **Unload all
-  folder trees** empties the organ; the Stop List opens again with the empty
-  rows, *Remove empty stops* clears them and *Apply and reload* applies that
-  even though no tree is loaded. The same menu offers **Replace "..." with
-  another folder...** for every tree: the tree is taken from another folder
-  (a moved disk, a configuration from another computer) - any folder of the
-  set will do, the tree is found from it and the other missing trees around
-  it -, its rows keep their folders and the divisions that use it reload. A
-  folder that holds none of the stop folders the rows expect is refused
-  with a box, never loaded blindly.
-- The table starts out as the automatic rules built the divisions (from the
-  folder names and the perspective prefixes), so it shows what was
-  recognised, and it can be corrected where the rules could not pair the
-  folders - when the perspectives of one stop live in two folder trees, for
-  example. A tree loaded into a division that has rows already is first
-  tried as a further perspective of the loaded organ (its rows in every
-  division: a package may hold the folders of several): when at least
-  three of its folders, less one new prefix they share (`06-far__`), are
-  named exactly like the rows' folders less theirs (`HW_Octava2`), and the
-  prefix is no perspective known yet, each such folder is held against its
-  row's folder by the tuning of the same-named files (the `smpl` chunk of
-  the headers; "Comparing the tuning ..." shows while it reads) - the same
-  tuning means the same pipes, and the folder joins the row as the new
-  perspective (the prefix is learned into "Perspective patterns"); a folder
-  with other tuning is another organ's and becomes a row of its own, as
-  does every folder with no match. The prefixes are read off the table
-  itself as well: the head every folder of a perspective's column carries
-  ("03-ortf_" under Direct) joins "Perspective patterns" at every load,
-  import, merge and apply of the table, so an organ saved by an older
-  version without them repairs itself. In a tree with one perspective
-  only, a head that every stop folder carries and that names a perspective
-  (direct, diffuse, rear, far, near, close, dry, wet, front, ab, ortf ...)
-  is learned too; a lone head without such a word ("HW_", "Ped_") never is.
-- The info line at the bottom counts the sample folders found in all trees,
-  how many the table uses and how many are free.
+- **Load folder...** loads a folder tree (the samples of an organ, or part of
+  them) or the RAR archive(s) they came in, and asks which division its stops
+  go to. A tree is loaded once and its folders can serve any division. A tree
+  loaded into an organ that has rows already is first tried as a further
+  perspective of the loaded stops: folders named like the rows' folders under
+  a new prefix, with the same tuning, join their rows as the new perspective
+  ("The tuning gate of a perspective join"); the rest become new rows.
+  When a tree of the organ is missing on this computer, the menu lists it as
+  **NOT FOUND on this computer: replace "..." with a folder on this
+  computer...** ("Sample folders not found").
+- **Unload folder...** removes one tree from the whole organ. The rows that
+  had folders of that tree only leave the table with it, buttons and all -
+  the one case a row goes by itself; a row with a folder of another tree
+  stays. A tree not on this computer is marked NOT FOUND here, so a package
+  you do not own can be dropped. **Unload all folder trees** empties the
+  organ. **Replace "..." with another folder...** takes a tree from another
+  place (any folder of the set will do).
+- The table starts out as the automatic rules built the divisions from the
+  folder names and the perspective prefixes, and can be corrected wherever
+  the rules could not pair the folders.
+- The info line at the bottom counts the folders found, used, free and
+  missing.
 
-## 4.2 Editing the table
+## 4.2 The table
 
-- **Order:** drag a stop name up or down. The order is the load order and the
-  default order on the grid. When rows were dragged, *Apply* asks whether the
-  grid should follow the new order; otherwise every stop keeps its cell.
-- **Division:** drag a row into another division's block, or choose the
-  division in the row's combo box. The stop moves with its folders; voicing,
-  grid cell and transmissions start afresh.
-- **Stop folders:** drag a name a little to the *right* and the row is
+- **Order:** drag a stop name up or down (the load order and the default
+  grid order; *Apply* asks whether the grid should follow).
+- **Division:** drag a row into another division's block, or choose it in
+  the row's combo box. The stop moves with its folders.
+- **Stop folders:** drag a name a little to the **right** and the row is
   indented under the row above: it becomes that stop's child and sounds with
-  it. Drag it *left* to make it independent again. One level only.
-- **Folder cells:** click a cell to choose one of the *free* folders of all
-  loaded trees (a folder serves one cell only); the small x beside a cell
-  frees its folder. A cell can also be dragged onto another cell (empty: takes
-  the folder; occupied: swaps). The whole path appears in a tip while the
-  mouse rests on the cell.
-- **Transmissions:** the cell shows where the stop's transmissions go
-  (division and transposition); click it to add one into any division (its
-  own included, as often as wanted) or to remove one. Transmissions act at
-  once; they need no Apply. With **Show Trsm.** (bottom bar) every
-  transmission is also listed as a grey row of the division it plays in,
-  movable like a stop.
-- **Add stop...** adds, per division, an empty stop folder or one of the
-  ready-made stops of the loaded trees that no division uses yet (added
-  whole, with the folders of every perspective; a stop whose folders are in
-  the table already is not offered). The x at a row's start
-  removes the stop (its folders become free). **Remove empty stops** removes
-  every row without folders that has no children.
-- **Aliases from folders** gives every stop without an alias the bare name
-  of its sample folder: no parent folders ("TA - fletna" becomes "Fletna",
-  shown as "Fletna 8'"), no perspective prefix, a capital first letter, a
-  footage at the end of the folder name with its foot mark; a stop without a
-  footage in its name shows the measured one (a mixture's first sounding
-  harmonic). Aliases you typed stay. Applied with *Apply and reload*.
-- **Add perspective...** adds a column (a known perspective name or a new
-  one); the x right after the perspective's name in the column header
-  removes it. "default" is the route of folders without a perspective prefix.
-- **Swap divisions...** exchanges the whole stop lists of two divisions, as if
-  their folders had been swapped (combinations and MIDI bindings follow).
+  it - that is a stop folder ("Cornet [III]"). Drag it **left** to take it
+  out again. One level only. (On the grid: "Arranging the grid".)
+- **Folder cells:** click a cell to choose one of the free folders of all
+  loaded trees (a folder serves one cell only); the x beside a cell frees its
+  folder; a cell dragged onto another takes or swaps. The path shows in a
+  tip; an orange cell is a folder not on this computer.
+- **Transmissions:** the cell shows where the stop's transmissions go; click
+  it to add one into any division or to remove one. They act at once, no
+  Apply needed. *Show Trsm.* lists every transmission as a grey row of the
+  division it plays in.
+- **Add stop...** adds an empty stop folder or one of the ready-made stops no
+  division uses yet. The x at a row's start removes the stop (its folders
+  become free). **Remove empty stops** removes every row without folders and
+  children.
+- **Aliases from folders** gives every stop without an alias the bare name of
+  its sample folder (no parents, no perspective prefix, a capital, the
+  footage with its foot mark).
+- **Name** is the stop's identity (voicing, combinations, MIDI); derived from
+  the folders, a typed name is kept until cleared. **Alias** is only what is
+  shown. **Transp.**: "Transposition" - empty means found by the program.
+- **Swap divisions...** exchanges the stop lists of two divisions;
   **Reset division...** forgets one division's table.
-- **Name:** derived from the folders; a typed name is kept until the field is
-  cleared. The name is the stop's identity in voicing, combinations and
-  configurations; the alias is only what is shown.
-- **Transp.:** the stop's transposition in semitones against its files on
-  their own numbers; a pure interval: -12 puts the file 024 on key 36 (an
-  octave down: Doesburg's stops, a 16' made of files that sound 8'), +12 an
-  octave up, +7 a fifth. Empty ("auto"): found by the program from the
-  samples' pitch and the footage in the folder's name, or from a Hauptwerk
-  definition, and written here once found. The voicing of every stop offers
-  the same setting (with the footage each step gives) and applies it at once;
-  applied here with *Apply and reload* (see "The voicing row").
 
-## 4.3 Apply and reload
+## 4.3 Perspectives
 
-*Apply and reload* (grey while the table equals what is loaded) saves the table
-and loads the changed divisions from it; unchanged divisions are left alone.
-Stops whose folders are already loaded keep their samples and copies; only new
-folders are read and only missing copies are built. Folders left out of the
-table are removed from RAM. A stop that has transmissions cannot be removed or renamed
-without a warning: its transmissions die with it. The table travels with the
-configuration and is used at every later load. Closing the window with
-changes not applied asks: *Apply and reload*, *Discard* or *Cancel* (back to
-the table) - nothing is lost by the close button alone.
+Every perspective is a column of the table and an audio route of every
+division. **Add perspective...** adds a column (a known name or a new one)
+and writes its line into *Perspective prefixes*; the x after the name in the
+column header removes the column. **To rename a perspective, double-click
+its name in the column header** and type the new one: the column, the
+patterns line, the routes and the saved voicing follow after *Apply and
+reload*. "default" is the route of folders without a perspective prefix.
 
-## 4.4 What the loading dialog shows
+## 4.4 Ignored and one-shot patterns
 
-Loading is quick, so the dialog is rarely looked at: it shows the samples being
-read per division and in total, under it what the program does right now (the
-stop being decoded, the tuning analysis, the pipe fills), and on a third line
-the reading speed, "Reading from the disk at N MB/s", refreshed every five
-seconds - a big organ loads as fast as the disk delivers it: about
-500 MB/s from a SATA SSD, several times that from an NVMe one, far less from
-a hard disk or over USB; the log keeps one line per folder tree with the
-gigabytes read and the speed. Then *Compiling the Stop List*, the steps that
-build the console, each with its percentage. Opening an ASIO driver is a step
-of its own and can take a few seconds. Only when the dialog closes are the
-copies of the filled pipes (see "The transposition methods") built in the
-background: a dark track
-along the bottom of a stop button means the stop still waits, an orange fill
-shows the pipes done. The organ can be played at once; a filled pipe plays in
-a simpler way until its copy exists.
+*Ignored Patterns...* and *One-shot Patterns...* (top bar, or the
+Configuration Editor's "Folder name patterns") are lists of folder-name
+parts. A folder matching an ignored pattern is not loaded; when the list is
+changed with an organ loaded, the next *Apply and reload* takes the folders
+that match out of their rows (the log names them), so a rank you decided to
+skip disappears from the grid. The lists are saved with the configuration,
+and your own additions are kept on this computer (`Patterns.json`) through
+every load.
+
+## 4.5 Apply and reload
+
+*Apply and reload* (grey while the table equals what is loaded) saves the
+table and loads the changed divisions. Stops whose folders are loaded keep
+their samples and copies; only new folders are read, only missing copies
+built; folders left out of the table are freed. Moving rows between
+divisions or into a stop folder reloads nothing. A stop with transmissions
+cannot be removed or renamed without a warning. Closing the window with
+changes not applied asks: *Apply and reload*, *Discard* or *Cancel*.
+
+## 4.6 The loading window
+
+Three lines: what is being read, what the program does right now (the stop
+being decoded, the tuning analysis, the pipe fills), and the reading speed
+("Reading from the disk at N MB/s" - a big organ loads as fast as the disk
+delivers, about 500 MB/s from a SATA SSD, several times that from NVMe).
+Then *Compiling the Stop List* with its steps. Only after the window closes
+are the copies of the filled pipes built in the background (a dark track
+under a stop button, filling orange); the organ plays at once.
 
 ---
 
-# 5. The Divisions dialog
+# 5. Divisions and audio
 
-*Settings* in a division header opens the dialog at that division; the
-division is chosen at the top. The settings of a division are the same as in
-its section of the Configuration Editor ("Division sections (Pedal, Manual I
-... Manual VII)" describes every one of them); the dialog adds the keyboard
-drawing, the coupler and swell learning, and the audio tabs.
+*Settings* in a division header opens the Divisions dialog at that division.
+Its settings are the same as the division's section of the Configuration
+Editor ("Division sections"); the dialog adds the keyboard drawing and the
+audio tabs.
 
 ## 5.1 Keyboard, MIDI and compass
 
-- *MIDI keyboard device* and *MIDI channel*. When another division listens to
-  the same device and channel a note "Shared with ..." appears (one key then
-  plays all of them). A keyboard plugged in while the program runs is opened
-  at once (the activity log says so) and MIDI learn hears it; open the
-  Divisions dialog again to see it in the device list. One unplugged is let
-  go and comes back when plugged in again.
-- *Ignore MIDI velocity (organ keys)*: every key is sent as full velocity.
-- *Bass octave layout*: Standard, Short octave, "C D D# ...", "C D E ..." for
-  historic bass octaves.
-- *Compass*: two boxes for the lowest and the highest key of the division
-  (defaults: pedal 36 to 67, manuals 36 to 96). Keys outside are silent on
-  every stop and transmission of the division; the per-key voicing sliders
-  cover exactly this range. An extension ends with the compass.
-- *MIDI transposition* (the last line of the MIDI column, default 0): the
-  keys of the MIDI keyboard play this many semitones away. With -12 the key 036 plays the
-  samples of 024, with +12 those of 048. For a keyboard whose keys send the
-  wrong octave, or for playing a transposed part.
-- The keyboard drawing shows the key pressed last with its MIDI velocity in a
-  small badge, so you can see which velocity layer a stroke reaches.
+- *MIDI keyboard device* and *MIDI channel* ("Shared with ..." appears when
+  another division listens to the same). A keyboard plugged in while the
+  program runs is opened at once.
+- *Ignore MIDI velocity (organ keys)*: on by default - every key is a full
+  stroke ("Velocity layers").
+- *Bass octave layout* for historic bass octaves; *Compass*: the lowest and
+  highest key (keys outside are silent on every stop of the division);
+  *MIDI transposition*: the keyboard plays this many semitones away.
+- The keyboard drawing shows the last key with its velocity.
 
 ## 5.2 Swell, tremulant, wind
 
-The swell pedal is learned by right-clicking the swell bar in the division
-header. *Swell: maximum attenuation when closed* and *Swell: shutter inertia*
-shape it. The *Tremulant* header (click to fold) opens rate, depth and the
-phase drift between ranks; the *Wind model* header opens depth, frequency,
-oscillations, strength, settling lag and the divisions fed from the same wind.
-All of them are described in "Division sections (Pedal, Manual I ... Manual
-VII)", from "Swell: maximum attenuation when closed" on.
-
-The tremulant's strength wanders between 60 and 100 % of the set depth, and
-every key stroke shakes the wind with a random strength, so nothing repeats
-mechanically.
+The swell pedal is learned by right-clicking the swell bar in the header;
+*Swell: maximum attenuation when closed* and *Swell: shutter inertia* shape
+it. The *Tremulant* header opens rate, depth and the phase drift between
+ranks; the *Wind model* header depth, frequency, oscillations, strength,
+settling lag and the divisions fed from the same wind - all described in
+"Division sections". The tremulant's strength wanders, and every key stroke
+shakes the wind a little, so nothing repeats mechanically.
 
 ## 5.3 The audio tabs
 
-Every perspective of the division has an audio tab (the default perspective,
-Direct, Diffuse, Rear ... as the sample folders have them), plus one tab
-**auxiliary** (see "The auxiliary route" below). Every tab is one **audio
-route**: the pipes of that perspective rendered to that device and those
-channels. Which devices and drivers to use is explained in "Audio drivers:
-many sound cards at once" below. Each tab, top to bottom:
+Every perspective of the division has an audio tab, plus one **auxiliary**
+tab. Every tab is one **audio route**: the pipes of that perspective rendered
+to that device and those channels. Each tab, top to bottom:
 
 - **Perspective volume** (-31 dB switches the perspective off) and **Channel
-  separation**: at 100 % every pipe sounds only on its own channel pair (mono
-  samples are spread over the pairs, stereo samples keep theirs); below 100 %
-  every channel of the route also carries that share of the other channels; at
-  0 % all channels carry the same sum.
-- **IR reverb**: *Load IR* (a WAV, AIFF or FLAC impulse response: mono,
-  stereo, or true stereo with four channels LL LR RL RR), *Clear*, the IR
-  caption (hover it for everything known about the IR; right-click it for the
-  IR settings), *Reverb dry/wet*, and *Set effects for all ...*. The IR
-  settings: *High cut* and *Low cut* on the wet signal (they grow with the
-  dry/wet ratio; defaults 2000 Hz and 195 Hz, so more reverb also means a
-  rounder sound), *Pre-delay* (the wet signal runs one audio buffer behind
-  the dry one in any case - 5 ms at a buffer of 256, 10 ms on Windows Audio;
-  the set pre-delay includes that), *Wet volume* (default -4 dB, so that more wet
-  makes the whole quieter rather than louder), *Decay* (shortens the IR to
-  this share of its length) and *Fade-out* (the share of the used IR's end
-  that dies away along a gentle curve; proposed automatically when *Decay* is
-  moved; 0 % = the IR exactly as recorded).
-- **The device box**: audio device type, device, sample rate, buffer size,
-  and under it *Driver Control Panel* (the driver's own settings, e.g. the RME
-  buffer size), *Reopen device* and *Set for all ...*.
+  separation** (at 100 % every pipe sounds only on its own channel pair, at
+  0 % all channels carry the same sum).
+- **IR reverb**: *Load IR* (WAV, AIFF or FLAC; mono, stereo or true stereo
+  with four channels), *Clear*, the IR caption (hover for its details,
+  right-click for the IR settings: high and low cut, pre-delay, wet volume,
+  decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.
+- **Output channels**: tick any channels of the device, in any number. The
+  pipes are spread over them by key number, so a chord spreads across the
+  speakers like pipes across a windchest (a mono sample to one channel in
+  turn, a stereo sample to a pair; an odd number of channels lets the pairs
+  circulate). **Set for all divisions (this perspective)** above the list
+  copies these channels to the same perspective of every division.
+- **The device box**: type, device, sample rate, buffer size; *Driver
+  Control Panel*, *Reopen device*, and **Set for all perspectives and
+  divisions**, which copies the device, rate and buffer size to every route
+  (on the auxiliary tab: to the auxiliary routes of all divisions).
 
-*Set for all* copies the device, sample rate and buffer size of this tab (the
-rate and buffer size the device really runs at, as its boxes show them) to
-every perspective of every division ("none" is copied too); on the auxiliary
-tab it acts on the auxiliary routes of all divisions. *Set effects for all*
-does the same for the IR, dry/wet, IR settings, perspective volume and channel
-separation; the box unticks itself when one route's effects change afterwards.
+**The buffer size decides more than anything else.** 512 samples at 48 kHz
+(10.7 ms, unnoticeable on an organ) renders tens of thousands of voices; 64
+samples breaks at a few hundred. 512 is the default and the size to measure
+with. **One rate for every device**: the samples are loaded at 48 kHz, so
+give every device 48 kHz and the same buffer size; a device at another rate
+gets its pipes resampled on the way, at a small cost and a step below the
+quality of the resampling on load.
 
-## 5.4 Sample channels and output channels
+## 5.4 The auxiliary route
 
-Every route plays on the output channels ticked in the list on the left of
-its tab - any channels of the device, in any number. The pipes of the route
-are spread over those channels by their key number, so that neighbouring keys
-come from neighbouring channels and a chord spreads across the speakers like
-the pipes across a windchest:
+One more route per division: a mix of everything the division plays, every
+pipe rendered once more, with its own device, channels, volume, separation
+and IR. For monitoring (headphones, a control room), or to give a dry set a
+second room: the auxiliary route on the rear speakers with a different IR is
+a "Rear" perspective the set never had. It halves the reachable polyphony
+while it has a device; leave it at *none* otherwise - then it costs nothing.
 
-- A **mono sample** goes to one channel: key after key, the ticked channels
-  are taken in turn (with four channels: C on the first, C# on the second, D
-  on the third, D# on the fourth, E on the first again ...).
-- A **stereo sample** goes to a pair of channels, its left channel to one and
-  its right channel to the next. With an **even** number of ticked channels
-  the pairs are fixed (the first and second, the third and fourth ...) and
-  neighbouring keys alternate between the pairs. With an **odd** number of
-  ticked channels the pairs shift by one channel from key to key, so the
-  stereo samples circulate through all the channels.
-- With a single output channel everything plays on it (a stereo sample mixed
-  down).
+## 5.5 Sound cards on Windows, Linux and macOS
 
-*Channel separation* below 100 % lets every channel of the route also carry a
-share of the others, which softens this spreading; at 0 % all channels carry
-the same sum. The IR reverb of a route is convolved per pair of its channels.
+OrganSampler plays through **several sound cards at the same time**, every
+route on the device you choose, and can mix kinds of driver in one organ.
 
-## 5.5 The auxiliary route
+### Audio on Windows
 
-The **auxiliary** tab of every division is one more audio route: a mix of
-everything the division plays - all its perspectives together, every pipe
-rendered once more into it - with its own device, output channels, volume,
-channel separation and IR reverb.
+- **ASIO**: the professional driver of an interface - the lowest latency, the
+  most polyphony. One driver is opened once and shared by every route on it;
+  a second interface with its own driver is opened beside it. Its buffer size
+  is set in the driver's control panel. Use it for every route when you can.
+- **Windows Audio (WASAPI)**: any Windows sound device, the on-board chip
+  included. More latency, less polyphony per route.
+- **Aggregated WASAPI**: several Windows devices joined into one with all
+  their channels; every device is a stereo pair in the channel list and the
+  ticked channels are the devices the route opens. Keep its buffer at 480
+  samples or more (the Windows audio engine feeds 10 ms packets).
 
-What it is good for:
-
-- **Monitoring.** Send the auxiliary route to headphones or to the speakers of
-  a control room: you hear the whole division in one mix while the
-  perspectives play through their own outputs.
-- **Dry samples with IR reverb.** Here the auxiliary route is
-  irreplaceable. A dry set (close microphones, no room) gets its room from an
-  impulse response on its routes. Give the auxiliary route the rear speakers
-  and a *different* IR than the main routes (a rear or more distant impulse
-  response): the result is a fake "Rear" perspective that the set never had.
-
-What it costs: an auxiliary route with a device means every sounding pipe is
-rendered twice (once in its perspective, once in the mix), so it uses up the
-DSP time twice as fast and the reachable polyphony is halved. For normal use
-leave the auxiliary device at *none* - then the route costs nothing at all.
-With dry samples the halved polyphony does not matter: dry samples have a
-single perspective and are light to render anyway.
-
-*Set for the auxiliary routes of all divisions* on the auxiliary tab copies
-its device to the auxiliary routes of every division; with *none* it switches
-them all off at once.
-
-## 5.6 Audio drivers: many sound cards at once
-
-OrganSampler can play through **several sound cards at the same time** - every
-division, every perspective, every auxiliary route on the device you choose -
-and it can even **mix different kinds of driver** in one organ. An organ can
-spread over every output of every interface in the room: the Hauptwerk
-division on an RME, the Rückpositiv on a second card, the pedal on a third,
-headphones on the on-board sound chip. Which drivers there are and how to
-set them up differs by operating system: see "Audio on Windows", "Audio on
-Linux" and "Audio on macOS" below. Two things hold everywhere:
-
-**The buffer size decides more than anything else.** Every block of audio has
-exactly its buffer's duration to be rendered: at 64 samples (1.3 ms at
-48 kHz) the sound breaks at a few hundred voices, however the routes and
-IRs are set; at 512 samples (10.7 ms, unnoticeable on an organ) the same
-computer renders tens of thousands. 512 is the default for a device opened
-for the first time (ASIO keeps its control panel's size, JACK the server's
-shared clock), and the value to measure the polyphony with. A measurement
-that finds a buffer below 256 samples on any route says so first and asks
-for 512, or 256 at the least, before anything else.
-
-**One rate for every device.** Every audio route renders at the rate of its
-device, and the devices of one organ may run at different rates and buffer
-sizes - the program does not stop you. The samples are loaded at 48 kHz (see
-"Sample rate on loading"): a device at 44.1 or 96 kHz gets its route's pipes
-read at the matching speed, through the same interpolation as a transposed
-pipe, which costs a little more per voice and is a step below the quality of
-the resampling on load. So give every device 48 kHz and the same buffer size.
-A device opened for the first time, or chosen for a route that had none, runs
-at the loading rate, 48 kHz, when it offers it (a fresh device would
-otherwise open at the lowest rate from 44.1 kHz up); a device chosen for a
-route keeps the rate the route ran at when it offers it; a portable
-configuration carries the rate and buffer of every route with it. *Set for
-all* copies the rate the device of that tab really runs at - look at the
-rate box before you copy it.
-
-### Audio on Windows: many sound cards at once
-
-ASIO devices, Windows Audio (WASAPI) devices and the Aggregated WASAPI
-device can all be open at once. No other organ sampler on Windows does this.
-
-The kinds of driver:
-
-- **ASIO**: the professional driver of an audio interface. The lowest
-  latency, the most polyphony. One ASIO driver is opened once and shared by
-  every route that uses it; a second interface with its own ASIO driver is
-  opened beside it. Use ASIO for every route when you can. Its buffer size
-  is set in the driver's control panel (*Driver Control Panel* in the audio
-  tab opens it).
-- **Windows Audio (WASAPI)**: the driver of any Windows sound device, the
-  on-board chip included. Larger buffers, more latency, less polyphony per
-  route than ASIO, but it works with every device.
-- **Aggregated WASAPI**: several Windows sound devices joined into one device
-  with all their channels, for a route that must play on more channels than
-  one card has. Every Windows sound device appears as a stereo pair in the
-  channel list of the tab; the ticked channels are the devices the route
-  opens - exactly those, on every path (loading a configuration, *Set for
-  all*, a switch of the type, a reopen). A device that cannot be opened (an
-  unplugged interface, a digital output with no cable) is refused: its
-  channels are set to none, the list shows them unticked with the reason
-  after their names, and the activity log names them - the same as the
-  Windows Audio type, which refuses such a device outright. No ticked
-  channel means none: the route is silent until you tick some. Every
-  aggregated route is its own stream with its own thread (see "Render
-  threads for Aggregated WASAPI"). Keep its buffer at 480 samples or more
-  (the default): the Windows audio engine feeds a shared stream in 10 ms
-  packets of 480 samples at 48 kHz, so a smaller buffer only splits each
-  packet into shorter deadlines - an IR's tail FFT alone can exceed a block
-  of 256 - without lowering the latency at all.
-
-The price of mixing drivers (ASIO beside WASAPI in one organ) - read this
-before you do it:
-
-- **Less polyphony.** Every WASAPI route renders its pipes on its own thread,
-  separately from the ASIO routes; the processor's time is split, and the DSP
-  load reaches 100 % sooner than with ASIO alone.
-- **Different latencies.** ASIO and WASAPI answer at different speeds, so
-  divisions on different drivers do not speak at the same moment after the
-  key is pressed. While playing this is confusing - though now and then it
-  imitates, by accident, the different delays of the actions of a real
-  organ's divisions.
-
-The best layout for the highest polyphony is therefore: one ASIO driver, all
-routes on it, the output channels spread over its outputs.
+Mixing ASIO and WASAPI routes in one organ works, at a price: less polyphony
+(the time is split between threads) and different latencies per division.
+The highest polyphony: one ASIO driver, all routes on it.
 
 ### Audio on Linux
 
-**What Linux does with your sound cards.** Every current distribution runs
-the sound server PipeWire. It takes every sound card for itself and offers
-the programs a stereo "default" output - the desktop's mixer, in which every
-card is reduced to a single stereo pair (the profile "Analog Stereo Output",
-"Stereo Output 5/6" and the like). An eight-output interface is a stereo
-card to the desktop. An organ needs every output of every interface, so the
-first thing to do is to take the interface out of the desktop's mixer:
+Every current distribution runs PipeWire, which reduces every card to a
+stereo pair for the desktop. An organ needs every output, so:
 
-**Step 1 - set the interface to the "Pro Audio" profile.** With this profile
-PipeWire hands the card over as it is: every output and every input becomes
-a port of its own, nothing is mixed, remapped or volume-controlled on the
-way, and the card runs at PipeWire's clock. Where to set it:
+1. **Set the interface to the "Pro Audio" profile** (KDE: System Settings >
+   Sound, the card's Profile box; GNOME: Settings > Sound > Output >
+   Configuration; any desktop: `pavucontrol`, tab Configuration). The card
+   then appears under its own name with every channel; use the on-board chip
+   for the desktop.
+2. **Install PipeWire's JACK library**: `sudo apt install pipewire-jack
+   pipewire-bin pavucontrol` (Ubuntu, Debian, Mint), `sudo dnf install
+   pipewire-jack-audio-connection-kit pipewire-utils pavucontrol` (Fedora),
+   `sudo pacman -S pipewire-jack pavucontrol` (Arch), `sudo zypper install
+   pipewire-libjack-0_3 pipewire-tools pavucontrol` (openSUSE). Log out and
+   in again.
+3. **Realtime permission for your user**: `ulimit -r` must say 95 or more
+   and `groups` must list `audio`. If not:
+   ```
+   sudo usermod -aG audio $USER
+   sudo sh -c 'printf "@audio - rtprio 95\n@audio - memlock unlimited\n" > /etc/security/limits.d/audio.conf'
+   ```
+   then log out and in again. Without it the desktop pushes the audio thread
+   aside and the sound breaks long before the processor is busy. The activity
+   log says whether the thread was raised to realtime.
 
-- KDE Plasma (Ubuntu Studio, Kubuntu, Fedora KDE): *System Settings >
-  Sound*. Every card is listed with its *Profile* box; choose **Pro Audio**
-  for the interface the organ plays through.
-- GNOME (Ubuntu, Fedora): *Settings > Sound > Output*: pick the interface
-  under *Output Device* and set *Configuration* to **Pro Audio**.
-- Any desktop: the program `pavucontrol`, tab *Configuration*, the card's
-  profile box.
-
-The desktop's own sounds then no longer go to that interface unless you
-choose it as the system output; use the on-board chip for the desktop and
-the interface for the organ. After switching the profile the card appears
-under a new name (its own, "Komplete Audio 6" instead of "Analog Stereo
-1/2"), so choose it again in the audio tabs.
-
-**Step 2 - the packages.** OrganSampler needs PipeWire's JACK library and
-its command-line tools; most audio-oriented distributions have them, others
-do not. Open a terminal (*Konsole* or *Terminal* in the application menu;
-Ctrl+Alt+T on most desktops) and type the line for your distribution, then
-Enter and your password:
-
-- Ubuntu, Debian, Mint, Pop!_OS: `sudo apt install pipewire-jack pipewire-bin pavucontrol`
-- Fedora: `sudo dnf install pipewire-jack-audio-connection-kit pipewire-utils pavucontrol`
-- Arch, Manjaro: `sudo pacman -S pipewire-jack pavucontrol`
-- openSUSE: `sudo zypper install pipewire-libjack-0_3 pipewire-tools pavucontrol`
-
-To check that PipeWire is the server, type `pactl info | grep "Server Name"`:
-the answer should read "PulseAudio (on PipeWire ...)". Log out and in again
-after installing.
-
-**Step 3 - realtime permission for your user.** The thread that renders the
-audio must run with realtime scheduling, or the desktop, the browser and
-every other program can push it aside and the sound breaks up long before
-the processor is busy (measured: far less polyphony through ALSA than
-through JACK on the same card, for this reason alone). Linux grants
-realtime scheduling only to users with a realtime limit, which the audio
-distributions (Ubuntu Studio, AV Linux, Fedora Jam) set up for the group
-`audio`; a plain desktop installation does not. Check in a terminal:
-
-- `ulimit -r` - the answer must be 95 or more (0 means no realtime).
-- `groups` - the list must contain `audio`.
-- `cat /etc/security/limits.d/*audio*` - shows the rules themselves
-  (`@audio - rtprio 95`, `@audio - memlock unlimited`).
-- With the program running and a device open:
-  `ps -eLo tid,cls,rtprio,comm | grep -i organ` - one of its threads must
-  show `FF` (SCHED_FIFO) and a priority (70 under ALSA); under JACK the
-  realtime thread is PipeWire's own and does not appear here.
-
-If not, type these lines (each followed by Enter and, the first time, your
-password), then log out and in again:
-
-```
-sudo usermod -aG audio $USER
-sudo sh -c 'printf "@audio - rtprio 95\n@audio - memlock unlimited\n" > /etc/security/limits.d/audio.conf'
-```
-
-OrganSampler raises its audio thread to realtime by itself at the first
-callback of a device and writes the outcome into the activity log ("Audio
-thread of ... raised to realtime", "realtime already" under JACK, or
-"realtime refused" with the reason). Through JACK the thread is PipeWire's
-own, which the system has already made realtime; through ALSA it is the
-program's, and needs the permission above.
-
-**The two kinds of driver in OrganSampler:**
-
-- **JACK** - use this one. It is PipeWire itself: OrganSampler loads
-  PipeWire's own JACK library at start (the activity log says "JACK:
-  PipeWire's libjack loaded from ..."), no separate JACK server is needed
-  or wanted. Every card in the Pro Audio profile appears under its own name
-  with all its channels (a Komplete Audio 6: playback_AUX0 ... AUX5 =
-  outputs 1-6, the S/PDIF pair included); tick the channels of every route
-  as on Windows - where you send a route, there it plays. No patchbay
-  (qpwgraph, Patchance, Carla) is needed: OrganSampler connects its outputs
-  to the chosen channels itself. The list shows only clients with audio
-  ports (PipeWire also exposes MIDI bridges to JACK, which are no audio
-  devices). The buffer size and the sample rate are PipeWire's, the same
-  for every JACK route and every other program: choose them in the usual
-  *Audio buffer size* and *Sample rate* boxes of any JACK route; the choice
-  is handed to PipeWire, the program waits until the server runs the new
-  clock, then opens the route, and the other JACK routes follow by
-  themselves. (From a terminal the same is `pw-metadata -n settings 0
-  clock.force-quantum 512` and `pw-metadata -n settings 0 clock.force-rate
-  48000`.) *Reopen device* keeps the route's buffer size and rate (a JACK
-  device has no "driver's own" values to fall back to). The status line
-  under the boxes says "output latency not reported by the driver" for
-  JACK: PipeWire tells its clients no port latency, so the real latency is
-  at least one buffer. If the JACK type lists no device at all, the JACK
-  library was not found: install `pipewire-jack` as above, or start the
-  program with `pw-jack ./OrganSampler`.
-- Moving a route from JACK to ALSA on the same card: PipeWire keeps the
-  card for a few seconds after the last JACK client left it, so the ALSA
-  entry stays listed for that while and the program waits up to seven
-  seconds for the card to be released when you choose it. A card the
-  desktop uses as its system output is never released: pick another card
-  as the system output first.
-- **ALSA** - the plain Linux driver, for a quick start or a card that
-  PipeWire does not use. "PipeWire Sound Server" and "Default ALSA Output"
-  are the desktop's stereo output: two channels, the system mix. A card's
-  own entries ("Direct hardware device without any conversions", its S/PDIF
-  or HDMI entry) open only while nothing else holds the card; ALSA's
-  template entries (surround 4.0 ... 7.1, front, rear, dmix) are never
-  shown. When the list is made every device is tried, and one that cannot be
-  opened at that moment (held by PipeWire or another program) is left out,
-  with the reason in the activity log; a card PipeWire holds for one of this
-  program's own JACK routes stays listed. *List unusable devices too* in
-  the audio tab (where Windows has the driver control panel button) lists
-  everything regardless; the same switch is in the settings editor as *Audio
-  devices: list also the ALSA devices that cannot be opened*.
-
-A menu entry with the icon, so that the program starts from the
-application menu like any other: *Install menu entry and icon* in the
-Configuration Editor (see chapter 1).
+The two drivers: **JACK** (use this one - it is PipeWire itself; every card
+in the Pro Audio profile appears with all its channels, the program connects
+its outputs itself, the buffer size and rate chosen in any JACK route are
+handed to PipeWire for every program) and **ALSA** (the plain driver; the
+desktop's stereo output or a card nothing else holds; *List unusable
+devices* in the tab lists everything regardless). A card the desktop uses
+as its system output is never released to ALSA: pick another one as the
+system output first.
 
 ### Audio on macOS
 
-To be continued. macOS has one driver, CoreAudio, and joins several cards
-into an aggregate device itself (*Audio MIDI Setup* in the Utilities
-folder); OrganSampler lists the CoreAudio devices and should play through
-them like through Windows Audio. The project has no Mac to test this on;
-reports are welcome. Two builds: `OrganSampler-macos.zip` for Apple silicon
-Macs on **macOS 11 Big Sur or newer**, and `OrganSampler-macos-10.11-intel.zip`
-for Intel Macs on **macOS 10.11 El Capitan or newer** (10.11 is the oldest
-system the framework allows; a Mac on 10.10 needs the free upgrade to the
-newest system Apple offers for it, 10.13 High Sierra for the 2010 models).
+One driver, CoreAudio. Every audio device of the system is listed; several
+cards are joined into one with *Audio MIDI Setup* (Utilities), which the
+program then plays through like any other device. The audio threads are
+given time-constraint priority by themselves. Two builds: Apple silicon
+(macOS 11 or newer) and Intel (macOS 10.11 or newer; an Intel Mac of 2010 on
+10.13 plays the demo and a mid-size organ).
 
-## 5.7 Audio devices not ready when OrganSampler starts
+## 5.6 Audio devices not ready at start
 
-Devices that cannot be opened at start-up (unplugged, driver missing, or merely
-late - an RME interface registers a few seconds after it switches its sample
-rate) are waited for: a box "Waiting for audio devices" appears and the program
-checks every second for six seconds. Devices still absent afterwards are listed
-once in one message; their routes stay silent until the device appears, then
-reopen by themselves. A device you choose yourself is never swapped back.
+Devices that cannot be opened at start-up (unplugged, late - an RME
+registers a few seconds after a rate switch) are waited for six seconds;
+devices still absent are named once, their routes stay silent until the
+device appears and then reopen by themselves.
 
-## 5.8 Getting the most polyphony
+## 5.7 Getting the most polyphony
 
-Every sounding pipe is one **voice** per audio route of its division. A
-division with three perspectives (Direct, Diffuse, Rear) renders every pipe
-three times, one voice per route. The auxiliary route adds one more voice per
-pipe while it has a device. The *DSP* field of the main window shows how much
-of the available time the busiest audio thread needs; at 100 % the sound
-breaks up.
+Every sounding pipe is one **voice** per audio route of its division: three
+perspectives render every pipe three times, the auxiliary route once more.
+So the polyphony a computer reaches depends on the organ - the routes, the
+IRs on them, the drivers and buffer sizes, the samples - which is why
+*Maximum polyphony* is saved with the configuration and measured with the
+organ loaded (*Measure the maximum polyphony*). What decides:
 
-So the polyphony a computer reaches is not a property of the computer alone:
-it depends on the whole configuration of the organ - the number of audio
-routes (every perspective of every division, every auxiliary route with a
-device), the IR reverbs on them, the drivers and their buffer sizes, and the
-samples themselves (their number of perspectives, the length of their releases).
-The same computer that renders 25 000 voices of a one-perspective dry set
-may manage a third of that with three perspectives, an auxiliary route and
-IRs. This is why *Maximum polyphony* is saved with the configuration, and
-why "Measure the maximum polyphony" works only with the organ loaded and its
-audio outputs configured: a general value would not fit any organ. What
-decides how many voices fit:
+- **The buffer size**: 512 samples allows twice the work of 256; an organ
+  does not need a small buffer.
+- **The auxiliary route** halves the polyphony while it has a device.
+- **IR reverb** costs on every route that has one, whether pipes sound or
+  not (a silent route switches it off); true stereo IRs cost twice, long IRs
+  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.
+- **The driver layout**: all routes on one ASIO driver (or one Windows Audio
+  device) share the whole pool of render threads. Every open device has a
+  driver thread of its own, so an organ spread over several devices can
+  measure more than on one - at the price of different latencies.
+- **Compress samples in RAM** and **Full kernel from** on an old processor
+  cost render time; the report names what was in force.
 
-- **The auxiliary route.** With a device it renders every pipe once more and
-  halves the polyphony. Set it to *none* unless you need it (see "The
-  auxiliary route").
-- **IR reverb.** The convolution of an impulse response is heavy and its
-  cost does not depend on how many pipes sound: it is paid on every route
-  that has an IR, at every audio period. The convolutions run on the render
-  workers, in parallel, one buffer behind the dry signal (that buffer is
-  part of the pre-delay), so they take render time away from the pipes but
-  do not pile up on the audio thread. A true stereo IR (four channels)
-  costs twice as much as a stereo one, a long IR more than a short one
-  (*Decay* shortens it). A route that has been silent for longer than its
-  IR switches the convolution off until the next sound, so idle
-  perspectives cost nothing. Dry/wet at 0 %, or *Clear*, removes the cost
-  entirely.
-- **The full kernel on an old processor.** Engine > *Full kernel from*: on
-  a CPU without AVX2 every pipe above that pitch costs twice as much, so a
-  low value halves the polyphony of a Core 2 Duo; the default there is off
-  (20000 Hz). Two reports of the same laptop that differ only in this
-  setting differ by a factor of two to five.
-- **ASIO.** All routes on one ASIO driver are rendered by one audio thread
-  and the render workers behind it (*Render threads* in the Configuration
-  Editor): the voices of every route are shared out over all the processor's
-  cores. This is the layout with the highest polyphony. The buffer size sets
-  how much time each block of audio may take: a buffer of 512 samples allows
-  twice the work of 256, at twice the latency.
-- **The buffer size: do not chase the smallest one.** A small buffer
-  (64 or 128 samples) cuts the reachable polyphony dramatically, because
-  every block must be rendered in a fraction of the time. An organ does not
-  need it: the action of a real organ has its own delay, and a latency of
-  about 10 ms (512 samples at 48 kHz) is absolutely fine for organ playing -
-  even 20 ms (1024 samples) is still perfectly comfortable. Choose the
-  larger buffer and take the polyphony.
-- **Windows Audio.** All routes on one Windows Audio device share one stream
-  and one callback, rendered by the whole pool of *Render threads* - the
-  same layout as ASIO, with the 10 ms period of the Windows audio engine
-  (a buffer of 480 samples at 48 kHz) instead of the driver's buffer. Only
-  an Aggregated WASAPI route is rendered by its own thread (*Render threads
-  for Aggregated WASAPI*).
-- **Mixed ASIO and Windows Audio.** Works; the ASIO workers leave processor
-  time to the WASAPI threads. But see "Audio drivers: many sound cards at
-  once" for the price.
-- **Several devices against one.** Every open device - an ASIO driver, a
-  Windows Audio device - has a driver thread of its own, and the part of a
-  callback that is not shared out over the workers (the hand-over of each
-  route, the mix into the driver's buffer, the driver's own copy) runs on
-  it. With all routes on one device those parts run one after another on
-  one thread; spread over several devices they run beside each other. So an
-  organ spread over many Windows Audio devices, or over two ASIO interfaces,
-  can measure *more* than the same organ on one ASIO driver - that is
-  expected (at the price of the different latencies above). Which channels
-  the routes use on one device makes no difference: two routes on the same
-  pair cost the same as two routes on different pairs. The measurement
-  itself has a spread of some per cent between runs (the regulator ends at
-  the first late callback, and those are not quite repeatable), so a
-  difference of that size between two layouts says nothing.
-
-The *DSP* value is the whole callback of the busiest audio device - the
-render of all its routes, the note bookkeeping of attacks and releases, the
-copies to the device - as a share of the device's period, held at its peak
-for a moment. That is what decides about dropouts: at 100 % the next
-callback is late. A value of several hundred percent means the audio thread
-was kept waiting by something else on the computer, not that the voices took
-that long; the activity log notes every such event.
-
-### What moves the measured figure, and what the measurement cannot see
-
-Lessons from many runs on four computers (two-core laptops, a 16-core
-desktop, a 16-core notebook), 2026-10:
-
-- **The buffer size** is the first thing: on the same computer and organ a
-  buffer of 256 gave 1000 voices, 512 gave 2300-2900 and 1024 gave 3100-3800
-  (two cores); 49 000 / 64 000 / 74 000 on sixteen cores. Compare runs only
-  at the same buffer.
-- **The device path.** Linux: PipeWire's "Default ALSA Output" is one layer
-  further from the card than the card's own ALSA device ("Direct hardware
-  device") or JACK; on two cores half the runs on the default output ended
-  on a single callback of 107-130 % of its period (the system took the core
-  for a moment), none did on the direct device or on JACK. Measure on the
-  direct device or JACK. Windows: ASIO or one Windows Audio device for all
-  routes; macOS: Built-in Output or the card's own device.
-- **Compress samples in RAM** halves the figure, on a big organ more (Caen on
-  the 16-core notebook: 60 000 -> 25 000). Measure with it off unless you
-  will play with it on.
-- **Two-core laptops** scatter by a third between runs: the render worker
-  on the second core is taken by the system now and then (the report shows
-  it as "the latest a lane joined a job" of several milliseconds). Take the
-  median of three runs, not the best.
-- **Aggregated WASAPI** is a different animal: every route is a shared-mode
-  stream of its own, mixed by Windows. Each route renders on its own thread
-  (one lane, capped at cores / routes), so a big organ spread over fifteen
-  routes measures like ASIO (Doesburg, 16-core: 42 600 against 45 400 on
-  ASIO), while the whole organ on two routes is bound to two cores. The
-  mixer of Windows has its say after our buffer: an endpoint with "audio
-  enhancements" on (loudness equalisation) boosts every quiet stream on its
-  own, and fifteen streams of one route each came out some 20 dB louder than
-  the same organ on ASIO (the program's own levels in the activity log were
-  the same) - switch the enhancements off in the endpoint's properties, or
-  use ASIO or one Windows Audio device for the card.
-- **What the measurement cannot see.** It judges every callback of the
-  program's own audio threads (its length against the period, late calls).
-  A dropout made after our buffer leaves the program - a shared-mode mixer
-  of the system with many streams on one endpoint, an exclusive-mode device
-  of ours opened on the same endpoint and getting no callbacks, a USB card
-  starved by the system - is inaudible to it: the run is "clean" and the
-  sound is not. Such a case shows in the activity log as "Audio callback
-  anomaly: ... no callbacks" for a route, or not at all; the cure is the
-  device layout (one driver for everything, ASIO where there is one, no
-  unused routes left open on the same endpoint), not the limit.
+The *DSP* value is the whole callback of the busiest device as a share of
+its period; several hundred per cent means the audio thread was kept waiting
+by something else on the computer. What the measurement sees and what it
+cannot: "The polyphony measurement".
 
 ---
 
-# 6. Playing aids
+# 6. Playing
 
 ## 6.1 Couplers
 
-*Couplers...* (top bar) shows one column per division (the keyboard being
-played) with every coupler it can have: every division pulled at unison, at
-16' (sub-octave) and at 4' (super-octave) pitch - the division itself
-included, so "I/I 16'" is an octave coupler - plus the melody and bass
-couplers and **Unison Off** at the top of the column. Ticked couplers appear
-on the division's coupler rail in the main window, where they are shown like
-stops (named "II/I", "II/I 16'" and so on: the division pulled over the
-keyboard played). A coupler is registration: part of combinations and the
-crescendo, MIDI-learnable. The rail's buttons can be rearranged by dragging.
-
-- **Unison Off** silences the division's own pitch: key 60 held on that
-  division does not sound 60 there; its couplers still work.
-- **Melody coupler**: only the highest key held on the division is coupled;
-  **bass coupler**: only the lowest. *Melody/bass couplers: new extreme key
-  only* and *Melody couplers: legato grace time* (Configuration Editor >
-  Console) refine their behaviour.
+*Couplers...* (top bar): one column per division (the keyboard played) with
+every coupler it can have - every division at unison, 16' and 4' (the
+division itself included: "I/I 16'" is an octave coupler), the melody and
+bass couplers and **Unison Off**. Ticked couplers appear on the division's
+coupler rail in the main window, shown like stops ("II/I 16'" = division II
+pulled over keyboard I at 16'); they are registration (combinations,
+crescendo, MIDI). **Unison Off** silences the division's own pitch; its
+couplers still work. A **melody coupler** couples only the highest key held,
+a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key
+only*, *Melody couplers: legato grace time*).
 
 ## 6.2 Combinations and the crescendo
 
-See "The combination row" and "The crescendo".
+"The combination row" and "The crescendo".
 
 ## 6.3 Temperaments
 
-*Temperaments* (top bar) opens the temperament dialog: a list of thirty
-historical temperaments (Werckmeister, Kirnberger, Valotti, Neidhardt,
-meantone, Pythagorean, Silbermann, Sorge ...) and the custom ones you add. The
-"+" beside a temperament shows its cent deviations per pitch class; those of a
-custom temperament can be edited.
-
-Two temperaments matter:
+*Temperaments* (top bar): thirty historical temperaments and your own ("+"
+shows the cent deviations per pitch class; a custom one can be edited).
 
 - **The samples' base temperament** is the temperament the organ was
-  *recorded* in. The program reads the recorded pitch of every pipe from the
-  smpl chunks, measures how each pitch class deviates, and compares the
-  result with the tables. When two thirds or more of the ranks agree on one
-  temperament it is chosen by itself ("Base temperament set from the
-  samples" in the activity log) - for most sample folders you never touch it. When the
-  ranks disagree, or when the set has no smpl pitches, choose it by hand:
-  **double-click** the temperament in the dialog (or pick it in
-  *Configuration Editor > Console > Samples' base temperament*). The voicing
-  row of every stop reports what its own ranks were found to be in
-  ("temperament = ..."), which helps the choice. "Equal" is reported whenever
-  the recording matches equal temperament.
-- **The target temperament** is the temperament the organ *plays* in. A
-  **single click** on a temperament selects it (or *Target temperament* in
-  the Configuration Editor). Every pipe is then retuned by the difference
-  between the target and the base: the recorded pitches are taken out and
-  the chosen ones put in. Choosing the recorded temperament itself as the
-  target plays the samples exactly as recorded. Every temperament can be
-  switched from a MIDI control (right-click it).
+  recorded in. The program measures it from every rank's recorded pitches
+  and chooses it by itself when two thirds of the ranks agree ("Base
+  temperament set from the samples" in the activity log). When they
+  disagree, or the set has no pitch data, **double-click** the temperament
+  (or *Samples' base temperament* in the Configuration Editor). Every
+  stop's voicing row reports what its own ranks were found to be in.
+- **The target temperament** is the temperament the organ plays in: a
+  **single click** (or *Target temperament*). Every pipe is retuned by the
+  difference; choosing the recorded temperament itself plays the samples as
+  recorded. Every temperament is MIDI-learnable.
+- **Two organs merged**, each recorded in its own temperament: nothing to do.
+  The retune works rank by rank - every rank's own recorded deviations are
+  taken out and the target's put in - so both organs play the target
+  temperament in tune with each other. The base temperament shown is the one
+  that prevails among the ranks; a rank whose recording could not be
+  measured takes that one.
 
-**a1 = 440 Hz** (the button in the dialog) retunes every pipe from its recorded
-pitch to a1 = 440 Hz. Its purpose is to bring the samples of different organs
-onto one pitch: organs are recorded at different temperatures and different
-diapasons (a1 = 435, 440, 442, 465 Hz ...), and an organ built from the stops
-of two such organs would be out of tune with itself. With every organ at 440 Hz
-the stops agree, and celeste beats and the global *Pitch* slider (Global
-sound, cents on top of everything) mean what they say. The voicing row's
-*Undulation* line reads "needs 440 Hz" until this is done. A large retune
-(an organ far from 440 Hz - Adlington at a1 = 409 Hz is 128 cents away -
-or a big global Pitch) is not played by speeding every pipe up: the common
-part of it is applied once to the mixed output of every route with a proper
-resampler, so the pipes keep their recorded speed; only the
-cents of temperament and detune stay in the pipes themselves, and the high
-pipes play those through the full kernel (Engine > *Full kernel from*),
-so no foreign tone appears under a retuned top octave.
+**a1 = 440 Hz** retunes every pipe from its recorded pitch to a1 = 440 Hz, so
+that the stops of different organs (recorded at 435, 440, 442, 465 Hz ...)
+agree, and celeste beats and the global *Pitch* mean what they say; the
+merge switches it on. A large retune is applied to the mixed output of every
+route with a proper resampler, so the pipes keep their recorded speed
+("Retune buses and the full kernel").
 
 ## 6.4 MIDI learn
 
-Everything that can be played from a console can be learned: stops,
-transmissions, couplers, tremulants, pistons and the stepping buttons, the
-crescendo (a continuous controller), the swell of every division (the swell
-bar in the header), every global slider, every top-bar button, the keyboards
-themselves (right-click the keyboard icon beside the division's name in its
-header, or the keyboard drawing in the Divisions dialog). Right-click the control and choose the
-*Learn MIDI ...* entry, then move the control on the console. The bindings are
-part of the configuration.
+Everything a console can play is learned by a right-click and *Learn MIDI
+...*, then a move of the control: stops, transmissions, couplers, tremulants,
+pistons and stepping buttons, the crescendo, the swell bars, every global
+slider, every top-bar button, the keyboards themselves (the keyboard icon in
+the header). The bindings are part of the configuration.
 
 ## 6.5 Recording
 
 *Record* in the top bar records the stereo mix to a WAV file; click again to
-stop (the recording ends with a short fade). The file dialog starts in the
-folder *AudioRecordings* beside the configurations folder (see "Where
-configurations and samples live"); the file may be saved anywhere.
+stop (a short fade ends it). The file dialog starts in *Recordings folder*
+(Configuration Editor > Console; `AudioRecordings` beside the configurations
+folder by default).
 
 ---
 
-# 7. Filled pipes, extensions and the transposition methods
+# 7. Filled pipes
 
 ## 7.1 What a filled pipe is
 
 Every rank is completed to the full keyboard: pipes it does not have are
-played from neighbouring real pipes, transposed. This covers the extra octave
-of an extension (a 16' or 4' transmission of an 8' stop), sample folders whose
-top or bottom keys are missing, and gaps inside the compass. Only the pipes
-that a stop can be asked to play are filled: the compass of its own division and, for
-every transmission, the compass of the receiving division shifted by the
-transposition. A filled pipe keeps everything a real pipe has: its own voicing
-slider, random detune, wind and tremulant behaviour, release samples (from the
-same neighbour, treated the same way); it costs nothing while silent.
+played from neighbouring real pipes, transposed - the extra octave of an
+extension, missing top or bottom keys, gaps inside the compass. Only the
+pipes a stop can be asked to play are filled (its division's compass and
+every transmission's shifted compass). A filled pipe has everything a real
+pipe has (voicing slider, detune, wind, tremulant, releases) and costs
+nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by
+default) makes every missing pipe the octave transposition of a real one, so
+the rank keeps its chromatic variety. A pipe switched off in the voicing row
+is never filled.
 
-Which real pipe serves a missing one is decided by *Missing pipes: neighbours
-borrowed as a group*: with the default 12, every missing pipe is the
-octave transposition of a real one, so the chromatic variety of the rank is
-kept. A rank's fill map is sticky: when the compass grows (a new transmission)
-the pipes already filled keep their source, so their copies are never built
-again.
-
-Not every stop takes this well. Percussion and bell-like stops - Chimes,
-Glockenspiel, Celesta, Harp, a Carillon - have inharmonic partials and a
-timbre that does not move with the pitch on the real instrument: a pipe of
-theirs transposed by any of the methods below sounds plainly wrong, and so
-does the whole stop once it is retuned (a temperament, a retune to a1 =
-440 Hz, a transposition in the voicing row). For a stop of that kind leave the
-transposition at 0, keep the tuning as the recording has it, and switch off
-the keys it does not have in its voicing row rather than fill them (a key
-switched off is never filled) - or accept the sound as it comes.
+Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have
+inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and
+so does the stop once retuned. Leave such a stop at transposition 0, keep its
+tuning as recorded, and switch off the keys it does not have instead of
+filling them.
 
 ## 7.2 The transposition methods
 
-How the neighbour's sample gets its new pitch is *Filled pipes: transposition
-method* (Configuration Editor > Advanced global audio). The default is *Pitch
-shift + time stretch*, which gives the best results for most stops; the phase
-vocoder is an optional alternative for those who want it. Every method has
-its weakness; which one sounds best depends on the stop, the size of the shift
-and the ear. Listening tests with reeds (Trompete, Vox humana) show the
-differences most clearly; a 16' extension of an 8' reed is the typical case.
+*Filled pipes: transposition method* (Configuration Editor > Advanced global
+audio > Filled pipes). The default *Pitch shift + time stretch* suits most
+stops; compare on the lowest keys of a reed extension.
 
-**Resampling (pitch and length change together).** The sample is played faster
-or slower at every key press, like a tape. Every harmonic exact, nothing added,
-nothing to build: it plays at once. Weaknesses: an octave down lasts twice as
-long - the attack speaks slowly, the room decays for twice the time, two
-octaves down four times; the timbre moves fully with the pitch, so the
-transposed pipe sounds like a bigger or smaller pipe than it stands for. To
-soften that, a pipe resampled upwards automatically loses 0.1 dB of level and
-0.1 dB of treble per semitone (an octave up: -1.2 dB each), because a pipe
-played faster comes out brighter and louder than a real pipe of that pitch.
-This compensation belongs to plain resampling only: the three other methods
-settle the loudness and the timbre of their copies when they build them, and
-a pipe that still plays resampled while its copy is being built gets it until
-the copy is ready.
+- **Resampling**: the sample played faster or slower, like a tape. Exact,
+  nothing to build - but an octave down lasts twice as long and the timbre
+  moves fully with the pitch. (An upward resampled pipe loses 0.1 dB of
+  level and treble per semitone to sound like a pipe of its pitch.)
+- **Pitch shift**: a copy built in the background - resampled with the best
+  filter, the formants moved back by the stop's *Formants* value, loops on
+  whole periods, loudness matched, the release's decay laid out to the
+  source's duration. The attack still speaks at the resampled speed.
+- **Pitch shift + time stretch**: the same copy, the attack (downwards) and
+  the release stretched back towards the source's duration. Large shifts
+  downwards can fray the attack: lower the attack stretch or use the plain
+  pitch shift for such a stop.
+- **Phase vocoder**: keeps every length and loop point; excellent within an
+  octave, but it wobbles slightly upwards, loses body two octaves away and
+  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).
 
-The three other methods build a copy of every filled pipe in the background
-(when the stop loads, when its compass or a transmission changes, when a
-setting changes). Until a pipe's copy is ready the pipe plays by plain
-resampling, so the organ is playable from the first moment; the stop buttons
-show the build going on (a dark track along the bottom, filling orange), and
-the pipes switch to their copies one by one as they are finished.
+Until a pipe's copy is ready it plays by resampling; the stop buttons show
+the build (a dark track filling orange). The settings of the methods are
+their own options in "Filled pipes" of the reference; the per-stop
+*Formants* is in the voicing row.
 
-**Pitch shift (resampling + timbre correction).** A copy of every filled
-pipe's attacks and releases is built in the background when the stop loads or
-its compass changes: the sample resampled with the best filter, its spectral
-envelope (the formants, the body of the sound) moved back by the stop's
-*Formants* value, the loops set to whole periods, the loudness matched to the
-source, and the release's decay laid out again to the source's duration
-(*Filled pipes: release length*). Nothing in the copy varies with time, so
-nothing modulates or hisses. Weakness: the attack still speaks at the
-resampled speed - slow downwards, fast upwards.
+## 7.3 The cache
 
-**Pitch shift + time stretch (attack and release).** The same copy, and the
-attack (downwards) and the release are time-stretched back towards the
-source's duration (*time stretch of the attack*, *time stretch of the
-release*). Upwards the attack is left as resampled (shorter), which the ear
-accepts. Weaknesses: downwards the time stretch frays the attack - the
-speaking of the pipe becomes rough or choppy, worse the larger the shift; try
-a lower attack stretch for such a stop, or the pitch shift method without
-stretch.
-
-**Phase vocoder (Signalsmith Stretch).** Keeps every length and every loop
-point: the pipe speaks at its real speed and the room decays in its real time.
-The analysis block is sized from the pitch, so deep pipes keep their harmonics.
-Excellent within an octave either way. Weaknesses: upwards the vocoder
-slightly wobbles the pitch (a gentle unsteadiness of the tone); two octaves
-away the copy loses level and body; the attack's transient is smeared over the
-analysis block (half a second for a 32' pipe) and inharmonic content can
-tremulate. And it often breaks the loops: the loop points are kept, but the
-vocoder's output at the loop end no longer matches the loop start exactly, so
-the seam becomes audible as a click or a bump at every repeat. The setting
-*Filled pipes: loop crossfade* exists for this - a long blend over the seam
-hides it at least partly. The slowest build of the three, though still
-seconds per stop.
-
-The other methods can also worsen the seamlessness of a loop, unfortunately:
-every resampled copy has its loop points moved to whole periods of the new
-pitch, and a seam that was perfect in the recording is then only nearly
-perfect. The loop crossfade helps there too; listen to a held note of the
-lowest extension pipes and raise it when the loop is heard.
-
-Practical advice: stay with the default, *Pitch shift + time stretch*, unless a
-stop sounds wrong with it; then try the plain pitch shift (no frayed attack)
-or, for shifts within an octave, the phase vocoder (the speaking at its real
-speed, at the price of the loops). Compare on the lowest keys of a reed
-extension, where everything is heard.
-
-## 7.3 The settings that go with the methods
-
-All in *Configuration Editor > Advanced global audio* unless said otherwise;
-the sliders that do not apply to the chosen method are greyed out. Every one
-of them has its own chapter in "Advanced global audio".
-
-- **Formants (filled pipes)** - in every stop's and transmission's voicing
-  row (see "The voicing row"). How far the body of the sound follows the shift: 0 % keeps the
-  envelope where the recording had it (the brightest result), 100 % moves it
-  fully with the pitch (plain transposition, veiled two octaves down). The
-  value is for shifts downwards up to an octave; shifts upwards follow 30
-  points more; beyond an octave every further octave in either direction adds
-  15 points with the resampling methods and 25 with the phase vocoder, because
-  a copy two octaves away is a pipe of another size. A pipe is one copy: inside
-  the stop's own compass the stop's value applies; a pipe beyond it, asked for
-  by transmissions only, takes the value of the first transmission in the
-  stop's list whose shifted compass holds it. Changing it rebuilds only the
-  pipes concerned. Default 30 %; the right value is a matter of listening.
-- **Filled pipes: release length** (pitch shift method) - the decay of a
-  release copy laid out to this share of the source's duration (the room does
-  not grow or shrink with the pipe).
-- **Filled pipes: time stretch of the attack** (time stretch method) and
-  **time stretch of the release** (time stretch method both ways; the phase
-  vocoder upwards only, where the kept length is too long for a smaller pipe).
-- **Filled pipes: release played from** (default 140 ms) and **Filled pipes:
-  release level matched to the source** (off by default) act at playback and
-  rebuild nothing: the first skips the start of every release copy, where the
-  methods leave their worst; the second plays the copy at the level relation
-  the source pipe's release has to its sustain.
-- *Filled pipes: loop crossfade*, *Filled pipes: loudness kept when pitch
-  shifting*, *Filled pipes: resampling quality* - see their chapters.
-- The global **Sustain fade-out on key release** and **Release sample
-  fade-in** (Global sound) are set for the sounding c1 and grow 1.5 times per
-  octave below it, so a 32' extension gets the slow fades a big pipe needs; a
-  filled pipe counts as the pipe it stands for.
-
-## 7.4 The cache
-
-The copies of the filled pipes take a while to build for a large organ: a
-minute or more for a big set with many extensions, every time the organ loads.
-The cache keeps them on disk so that this happens once.
-
-**The switch.** *Configuration Editor > Advanced global audio > Filled
-pipes: keep the generated copies on disk (cache)*, on by default
-(the activity log's "Copy build" lines say when it is OFF). On,
-every copy that is built is also written to a file, and at the next load
-of the same stops with the same settings the copies are read from the files
-instead of being computed: the build after loading takes seconds instead of
-minutes. A long build that is interrupted (by an operation in the voicing)
-still writes the pipes it has finished.
-
-**What is stored.** One file per rank and folder tree (per perspective of a
-stop), whatever the settings. The settings a file was built with are written
-inside it; a file built with other settings is simply replaced by the new
-build, so the cache never holds two versions of the same copies and never
-plays a stale one. The cache therefore takes about as much room on disk as
-the copies take in RAM: tens of MB for a small set, hundreds of MB to a few GB
-for a large organ with many extensions. Files of an older cache format are
-removed by themselves.
-
-**The three buttons** (Configuration Editor, under the cache switch):
-
-- The row *Filled pipes cache: <size> in <folder>* shows how much the cache
-  holds and where. Its button **Empty the cache** deletes every file. Use it
-  to get the disk space back, or after replacing the samples wholesale; the
-  copies are built again (and cached again) the next time they are needed.
-  Nothing else is lost.
-- *Filled pipes cache: files of stops not loaded now* - **Remove them**
-  deletes only the files of ranks that are not loaded at the moment: the
-  stops of other configurations, of folders you have unloaded or deleted.
-  The files of the loaded organ stay, so its next load is still fast. This is
-  the button for routine housekeeping.
-- *Filled pipes cache folder* - **Choose...** picks another folder for the
-  cache (the default is `FilledPipesCache` in the application-data folder,
-  usually on the system drive). Choose a big drive, for example beside the
-  samples; the files built so far are moved there, so nothing has to be
-  rebuilt.
-
-The cache is a convenience, not a necessity: with it off everything works the
-same, only the build after each load takes its full time.
+*Filled pipes: keep the generated copies on disk (cache)* (on by default)
+writes every copy to a file, so the next load of the same stops with the
+same settings reads them instead of building them: seconds instead of
+minutes. One file per rank and tree; a file built with other settings is
+replaced. *Empty the cache*, *Remove them* (the files of stops not loaded
+now) and *Choose...* (another folder, the files moved there) are in the same
+section.
 
 ---
 
 # 8. Configuration Editor reference
 
-*Configuration Editor* (top bar) holds every setting of the program in one
-scrolling dialog, in sections: Engine, Global sound, Advanced global audio
-(collapsed by default: click its title), Console, Folder name patterns, and
-one section per division (collapsed by default). The folding is remembered.
-The "?" beside every option opens this manual at the option's chapter below.
-At the top: *About & licences...* with this manual (a chapter box jumps to any
-chapter), the program's licence and, in full, the licences of the software it
-contains. Every change is applied and saved at once; double-click a slider to
-return to its default.
-
-Beside it *Show settings.json* opens the settings file in the system's
-editor and *Refresh values* reads every control again from the program (after
-a change made elsewhere, a MIDI-learned control for example).
+*Configuration Editor* (top bar) holds every setting in one scrolling dialog:
+Engine, Global sound, Advanced global audio (with its Filled pipes
+subsection), Console (with Top bar), Folder name patterns, and one section
+per division. Collapsed sections open with a click on their title; the
+folding is remembered. Every change applies and saves at once; double-click
+a slider for its default. The "?" beside an option opens this manual at the
+option's chapter. At the top: *About & licences...* (this manual, the
+messages, the licences), *Report a problem...*, *Show settings.json*,
+*Refresh values* (reads every control again, after a MIDI-learned change for
+example) and, on Linux, *Install menu entry and icon*.
 
 ## 8.1 Engine
 
-### Audio devices: list also the ALSA devices that cannot be opened (Linux)
-
-Linux only. Off: the audio device lists hold only the ALSA devices the program
-could open when it looked. On: every device ALSA names is listed, a device
-in use by another program or without a working configuration included - for
-a device that shows up only once another program lets it go.
+Settings of this computer: a portable configuration carries none of them.
 
 ### This computer
 
-The processor, its physical cores and logical CPUs, and the RAM. Information
-only; it tells what the thread settings below can use.
+The processor, its physical cores and logical CPUs, the RAM. Information.
 
 ### Render threads
 
-How many CPU threads render pipes for ASIO routes, the audio driver's own
-thread included. (The note bookkeeping - MIDI commands, attacks and releases,
-the return of finished voices - runs on a thread of its own beside them, so
-the audio callback only renders.) Default: all physical cores - keep it there.
-Hyper-threads
-(the logical CPUs) share a core's execution units and memory pipeline: measured
-on a 16-core processor, 31 threads rendered a tutti slower than 16 (0.95 ms
-against 0.78 ms per block) and with peaks four times as high (up to 4.5 ms
-against 0.9 ms), and such peaks are what breaks the sound up. So the
-"logical" choices lower the reachable polyphony; never use them. Fewer threads
-leave room for other programs. Changing it briefly mutes the engine. The list
-holds only the choices this computer can tell apart: without hyper-threading
-"All logical CPUs" is the same as "All physical cores" and is not shown, a
-single core has no "all - 1". A hybrid processor (Intel 12th generation and
-later: performance and efficiency cores; Windows tells them apart) offers
-*Performance cores only*: a render worker on an efficiency core
-renders several times slower and the device thread waits for it - the
-measurement's longest callback of an Ultra 7 notebook was 2.6 ms of which
-2.4 ms waiting for the lanes; the report says so for such a processor. The
-setting belongs to the computer, never to an
-organ: a portable configuration carries none, and one of an older version that
-does is ignored (this computer's own setting stays). The default is every
-physical core on every computer: a setting that is not the default and was
-never chosen in this editor on this computer (older versions let a portable
-file bring it in - the Rural Organ file left two-core laptops rendering on one
-thread) goes back to the default at the next start; a choice made here stays.
-All physical cores means all of them on a two-core laptop as well. The render
-workers and the control thread run at audio priority on every system (Linux:
-SCHED_FIFO when the system allows it - the activity log says "Render worker:
-SCHED_FIFO" or "REFUSED" with what to allow; macOS: a time-constraint thread
-like CoreAudio's own), and on one or two cores the device thread yields the
-core while it waits for a lane and the lanes take small chunks, so the second
-thread helps instead of holding the block up.
+How many threads render pipes for ASIO and Windows Audio routes, the driver's
+thread included. Default and best: *All physical cores* - on a two-core
+laptop as well. Hyper-threads render a tutti slower and with higher peaks
+(measured on 16 cores: never use the "logical" choices); fewer threads leave
+room for other programs. A hybrid processor (performance and efficiency
+cores) offers *Performance cores only*. The workers run at audio priority on
+every system ("The render pool and the threads").
 
 ### Interpolation kernel
 
-The code that renders every pipe. *Automatic* (the default) takes
-the kernel this processor is known to run well: AVX2 (eight frames a step,
-current x86-64 processors), SSE2 (four frames, x86-64 without AVX2 such as a
-Core 2 Duo - measured with this switch on the same routes, SSE2 gave 2500
-voices against 1700 scalar on such a Mac) or NEON (four frames, Apple
-silicon and Linux arm64). The
-list holds every kernel this computer
-can run: *scalar* (one frame a step, every CPU), *SSE2* (four frames, every
-x86-64), *AVX2* (eight frames, when the CPU has it), *NEON* (arm64). Pick one
-to compare it with another: the change takes effect at once, no reload, and
-the polyphony measurement run with each tells which gives more pipes on this
-computer at this buffer - the report names the kernel it ran with. The
-setting belongs to the computer (a portable configuration carries none); a
-name this computer cannot run means Automatic. The environment variable
-`ORGAN_KERNEL=scalar`, `sse2`, `avx2` or `neon` sets the Automatic choice for
-one start (a script measuring one after another); the editor's choice wins
-over it. The self-test (`--kerneltest`) checks every kernel of the CPU against
-the scalar code and tells its speed; the activity log says which kernel runs
-("Render kernel: ...").
-
-### Full kernel from (sounding pitch)
-
-Every pipe whose sounding fundamental lies at or above this frequency plays
-through the 8-tap windowed-sinc kernel instead of the two-point linear one,
-for its whole length, loop splices included. The linear kernel leaves an
-image of a retuned high tone *below* its fundamental, 48000 x (ratio - 1)
-Hz under it at about -26 dB: a pipe at 9 kHz retuned by 20 cents (a
-temperament, Equal at 440 Hz) gets a foreign tone 560 Hz under it. Low
-pipes hide it (their image is 50 dB down and sits beside the partials), the
-top octaves do not. The sinc kernel puts it below -44 dB. The default
-depends on the processor: 3000 Hz (2/3' at c1) on a CPU with AVX2 - that
-covers the top octaves of the 2' and 1' stops and the mixtures at a few per
-cent of extra work; 20000 Hz (off) on a CPU without AVX2 (a Core 2 Duo and
-its kind, rendering with the SSE2 kernel), where the sinc doubles the cost
-of every voice it touches - measured on such a Mac: 3 900 voices with it
-off, 780 with it on at 3000 Hz. 0 gives the sinc to every pipe (three to
-five times the work per voice, the kerneltest prints the figure of this
-CPU - for a computer with CPU to spare), 20000 switches it off. The slider
-is logarithmic, so the low end is easy to reach. Takes effect for the next
-notes, no reload; this computer's setting - a value you set stays, only the
-default follows the CPU.
+The code that renders every pipe. *Automatic* takes the best this processor
+runs: AVX2 (current x86-64), SSE2 (older x86-64 - on a Core 2 Duo Mac 2500
+voices against 1700 scalar), NEON (Apple silicon, Linux arm64). Pick one to
+compare; the change takes effect at once and the measurement report names
+the kernel it ran with.
 
 ### Currently active
 
-The threads really rendering now and the interpolation kernel in use.
-Information only.
+The threads rendering now and the kernel in use. Information.
+
+### Full kernel from (sounding pitch)
+
+Pipes whose sounding fundamental lies at or above this frequency play through
+the 8-tap sinc kernel for their whole length. The plain linear kernel leaves
+an image of a retuned high tone *below* its fundamental (a pipe at 9 kHz
+retuned by 20 cents gets a foreign tone 560 Hz under it); the sinc puts it
+below -44 dB. Default 3000 Hz on a CPU with AVX2 (a few per cent of extra
+work), 20000 Hz (off) without AVX2, where the sinc doubles the cost of every
+voice it touches (a Core 2 Duo Mac: 3900 voices off, 780 on). 0 gives it to
+every pipe. Logarithmic slider, effect for the next notes.
 
 ### Render threads for Aggregated WASAPI
 
-Windows only. The threads used by routes on an Aggregated WASAPI device (the virtual
-device that joins several Windows Audio endpoints). Every aggregated route
-is a stream with a device thread of its own, so an organ with ten such
-routes already renders on ten threads beside each other; the default of 1
-(the device thread alone, no workers) is right for that layout, and more
-threads per route only fight each other there. Raise it when one or two
-aggregated routes carry the whole organ (a big division on a single route is
-otherwise bound to one core): the route then shares its pipes out over the
-set number of threads, like a route on ASIO does over all *Render threads*.
-Whatever is set, a route gets at most cores / aggregated routes lanes:
-fifteen routes with sixteen lanes each kept sixteen workers
-spinning for fifteen posters and starved the endpoint threads - the sound
-broke at one pipe, clean with one lane. The activity log says when the cap
-applies ("Aggregated WASAPI: N route(s) on M cores - L lane(s) per route").
-Routes on ASIO drivers and on Windows Audio devices do not use this setting:
-every such device is one stream with one callback, and all its routes are
-rendered by the whole pool of *Render threads*.
+Windows. The threads of a route on the Aggregated WASAPI device. Every such
+route is a stream with its own thread, so ten routes render on ten threads
+already: the default 1 is right for that. Raise it when one or two routes
+carry the whole organ. A route never gets more than cores / aggregated
+routes lanes.
 
 ### Sample storage in RAM
 
-*32-bit float* keeps the samples exactly as read (full fidelity); *16-bit
-integer* halves the RAM and allows more polyphony at the cost of a little
-hiss. *16-bit integer, releases at half the rate* stores the
-release samples - a large part of a set and a decaying tail - at half the
-storage rate: they lose what lies above 12 kHz (at the 48 kHz base) and take
-a quarter of the RAM they would; nothing is requantised, the room noise of
-the tail stays as recorded. The first 1.3 seconds of a halved release play
-through an eight-tap windowed-sinc kernel: the plain linear kernel
-let the images of what the file holds through at only 7-11 dB below it - a
-digital ringing at the start of a reed's release - and the sinc puts them
-40-50 dB down; after 1.3 s, where the treble has died, the linear kernel
-takes over. Only a release whose treble above 11 kHz is louder than -18 dB
-of the whole (a reed in the treble) keeps the full rate; a halved release
-with nothing above 6 kHz louder than -40 dB has nothing to mirror and plays
-through the cheap linear kernel (the sinc costs ten times the
-linear kernel - every release through it took half the polyphony of a
-two-core laptop). The log says how many went each way. Takes effect the
-next time a division's folders are loaded.
+*32-bit float* keeps the samples as read; *16-bit integer* halves the RAM
+with a little hiss; *16-bit integer, releases at half the rate* stores the
+releases - a large part of a set - at half the rate (they lose what lies
+above 12 kHz; a reed whose release is bright above 11 kHz keeps the full
+rate). Effect at the next load; the load box asks it before every load and
+saves it with the organ. What each choice costs, measured: "RAM: the storage
+options measured".
 
 ### Compress samples in RAM (lossless)
 
-Off by default. On, the 16-bit samples are packed in RAM the way
-FLAC packs a file: a predictor per block of 256 frames and the residuals
-with the bits they need. Every frame comes back exactly - loops, pitch and
-voicing are untouched - and a set takes about a third less RAM; the log
-says how much ("Packed samples: ..."). **The price:** every voice unpacks
-the piece it plays before every block, about as much work again as the
-interpolation itself, so half the polyphony is gone, up to two thirds on a
-big organ (Caen on a 16-core notebook: 60 000 to 25 000 voices) - measure it,
-the report shows the unpacking as its own figure. Use it only when an organ
-does not fit the memory otherwise. 32-bit float storage is packed as 24-bit
-integers: bit for bit when the files hold such integers (24-bit or 16-bit WAV),
-rounded to 24 bits for real floats (32-bit float WAV, a sample resampled on
-loading, a filled pipe's copy) - half a 24-bit step at most, below what any
-converter resolves; the log says how many were rounded. **Loading takes
-markedly longer with packing on** (every sample is packed and verified frame
-by frame while it loads: about 2.5 times the decoding), and longer again with
-*releases at half the rate* (every release is resampled through the sinc
-filter): a big organ that loads in a minute at 16-bit, 48 kHz takes several
-with both on. Takes effect the next time a division's folders are loaded.
+Off by default. The samples are packed in RAM like FLAC packs a file: every
+frame comes back exactly and a set takes a third less RAM; float storage is
+packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half
+a step at most). The price: every voice unpacks what it plays before every
+block, so about half the polyphony goes (a big organ: two thirds), and the
+load takes about 2.5 times as long. Use it when an organ does not fit the
+memory otherwise.
 
 ### Sample rate on loading
 
-*Resample everything to 48 kHz* (default): files recorded at 96, 88.2 or 44.1
-kHz are converted once while loading with a high-quality filter, so every set
-plays exactly like a 48 kHz one and a 96 kHz set needs half the RAM it would
-otherwise; loading takes longer. *36 kHz* and *32 kHz* store every
-file at that rate: what lies above 17 or 15 kHz goes - organ pipes carry next
-to nothing there - and the RAM drops by a quarter or a third; the kernel
-interpolates from the coarser grid at the same cost, so more stops fit and
-the polyphony stays. *Keep each file's own rate* loads faster and plays by
-interpolation. A filter alone would save nothing: a 16-bit sample is 16 bits
-whatever it holds; only the coarser grid saves. Takes effect at the next load.
-
-A word on who hears the difference. Hearing loses its top end with the
-years: past fifty, few people hear anything above 17 kHz, and past sixty the
-limit is nearer 15 kHz. An organist over fifty can take *36 kHz* and lose
-nothing audible; over sixty, *32 kHz* costs nothing either - what the coarser
-grid leaves out is already beyond reach - and saves a third of the RAM.
+*Resample everything to 48 kHz* (default): every file converted once with a
+high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -
+pipes carry next to nothing there, and hearing past fifty rarely reaches 17
+kHz - and the RAM drops by a quarter or a third at the same cost per voice.
+*Keep each file's own rate* loads faster and plays by interpolation.
 
 ### IR processing
 
-How the IR reverbs of the routes are convolved. *Full* convolves every route
-with its impulse response as it is. That is heavy on memory traffic rather
-than on arithmetic: a true stereo IR of 7 s on six routes (three divisions,
-each with its default and its auxiliary route, as in Rural Organ) streams
-more than 3 GB/s through the partitioned convolutions, and a weak computer -
-an old laptop, a Core 2 Duo - cannot render the pipes beside it; it crackles
-at a few dozen voices whatever the buffer size. *Light* runs the convolution
-at a quarter of the sample rate (half when the high cut of the wet signal
-lies above 2.5 kHz, so that the wet band stays intact), trims the IR where
-its energy has fallen 60 dB below the whole (a church IR of 7 s is there
-after 3.5 s; what follows is inaudible under the organ) and reduces a true
-stereo IR to its direct channels - a small fraction of the work, the same
-room, a little less air in the top of the reverb. *Automatic* (default)
-measures every reverb when it is built - two tail periods of noise through
-its engines, timed - and chooses Light when the routes' reverbs would take
-more than 18 % of a render thread per second of audio (35 % for a single
-route), or when a convolution falls behind its period twelve times in a row
-while playing; it remembers that choice for this computer and returns to
-Full when Full would clearly fit again (below 12 %). The line below the
-setting says what the reverbs cost now; the activity log records every
-measurement and choice. Full and Light set the mode by hand. The setting
-belongs to the computer, not to the organ: a portable configuration does not
-carry it.
+How the IR reverbs are convolved. *Full*: every route with its impulse
+response as it is - heavy on memory traffic; an old laptop cannot render
+pipes beside six long true-stereo IRs. *Light*: the convolution at a quarter
+of the rate, the IR trimmed where it has fallen 60 dB, a true stereo IR
+reduced to its direct channels - a fraction of the work, the same room.
+*Automatic* (default) measures every reverb when it is built and chooses
+Light when the reverbs would take more than 18 % of a render thread (35 %
+for a single route) or fall behind while playing. Routes with the same device,
+channels, IR and settings share one convolution ("(shared)" in the caption).
 
-Routes that share everything the reverb depends on share one convolution:
-rendered by the same audio device to the same output
-channels, with the same impulse response, dry/wet, wet volume, high and low
-cut, pre-delay, decay and fade-out. Convolution is linear - the reverb of the
-summed dry signal of such routes is the sum of their reverbs - so the sound is
-the same and the work is paid once per group: Rural Organ's three divisions on
-one device, each with its default and its auxiliary route, run two
-convolutions instead of six. The IR caption of a route that rides on
-another's convolution says *(shared)* and its tooltip names the route; a
-route whose settings differ in anything keeps its own convolution. Nothing
-needs to be set: the grouping follows the settings and the devices.
+### IR reverbs now
+
+What the reverbs cost now. Information.
 
 ### Maximum polyphony
 
-The number of voices that may sound at once (64 to 500000, default 30000).
-The ceiling is far above what a computer of 2026 renders - a 16-core machine
-manages 25 000 to 30 000 voices of a wet set with three perspectives at a
-buffer of 256 - and leaves room for the computers of the years to come; the
-program is as stable at any value, the ceiling only sizes the voice pool.
-When it is reached the oldest voices are faded out. Set it below what the
-computer can render so that an overload fades old voices rather than crackles:
-set the maximum polyphony so that the *DSP* value never exceeds 100 %, to
-avoid cracks and dropouts. The polyphony display of the main window shows
-*NOW* (the voices sounding), *PEAK* (the most that sounded since the last
-reset), *DSP* (the load) and *LIMIT* (this setting).
+The voices that may sound at once (64 to 500 000, default 30 000); the oldest
+are faded out beyond it. Set it below what the computer renders, so that an
+overload fades old voices rather than crackles. It belongs to the organ
+(routes, IRs, drivers, buffers all change it) and is saved with the
+configuration; *Measure the maximum polyphony* finds it. By hand: full
+registration of a wet set, many quick staccato notes over many keys, watch
+*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.
 
-The value belongs to the organ, not to the computer alone: the number of
-audio routes, the auxiliary routes, the IR reverbs, the drivers and the buffer
-sizes all change it (see "Getting the most polyphony"). It is saved with the
-configuration. Under it, *Measurement limit* (60-100 %, default 85 %) is the
-share of its period the longest driver callback may take before the
-measurement counts a level as broken - see "Measuring the maximum polyphony".
-The easiest way to find the polyphony is the button below,
-"Measure the maximum polyphony", once the organ is loaded and its audio
-outputs are configured. On a computer where the full registration breaks
-the sound up at the very first strike (no second stays clean), the
-measurement retreats by itself: the octave couplers go off, half of every
-division's stops are switched off, and the climb starts again from one key -
-up to five times, down to a thirty-second of the stops - until a second
-stays clean; the report then says with how many stops it measured, and the
-limit found is what the computer renders cleanly whatever the stops. By hand:
+### Measurement limit of DSP power
 
-1. Engage a large number of stops with long releases (a full registration of
-   wet samples).
-2. Bash the keys: play many quick staccato notes over many keys at once
-   (palm smearing - repeated fast strokes with the flat hands over the
-   keyboards), so that as many releases as possible sound at the same time:
-   that produces the highest polyphony. Remember:
-   the longer the release, the more polyphony it costs, because every voice
-   keeps its place in the polyphony until its release has died away
-   completely.
-3. Watch *DSP* and *PEAK* while you do it. At the moment the audio starts to
-   break up (crackle, dropouts), note the *PEAK* value.
-4. Enter a somewhat lower number as the limit.
-5. Repeat until no breaking up of the audio (dropouts, crackle) is ever heard.
-
-Everything in "Getting the most polyphony" (the auxiliary routes, the IR
-reverbs, the drivers) raises or lowers the number you will arrive at. Above
-all, do not be afraid of a larger audio buffer: a latency of about 10 ms
-(512 samples at 48 kHz) is absolutely fine for organ playing, and even 20 ms
-is still perfectly comfortable, while chasing the smallest buffer cuts the
-reachable polyphony dramatically.
+How much of its period the longest callback of the busiest device may take
+before the measurement counts a level as broken (60 to 100 %, default 85).
+85 leaves headroom for what the computer does besides; 100 counts a level
+as broken only when the driver really called late - the limit it finds breaks
+up on the first callback that runs a little longer.
 
 ### Measure the maximum polyphony
 
-*Measure...* does the procedure above for you, with the loaded organ and its
-configured audio outputs - every route, auxiliary route, IR reverb and
-driver as it is. The button is greyed out until samples are loaded: a
-measurement without the organ would not say anything about it. What
-happens:
-
-1. The sound is turned down to -52 dB at once (everything is rendered as
-   usual; you hear the storm very quietly). The polyphony limit is out of the
-   way (500 000) for the run, and so are *Attack minimum time* and *Attack
-   minimum delay*, which would hold the fast strikes back. The idle audio
-   devices are listened to for two seconds first. The progress window says
-   what is under test at its top - the number of stops, the routes by driver
-   type and device ("Windows Audio: 2 on "A", 1 on "B""), the number of
-   routes with an IR - and grows with that text; below it, the current
-   target, the stimulus and the voices now.
-2. Every stop is engaged and keys are struck again and again on every
-   division - each over its own compass, the pedal from its lowest key -
-   slowly at first: one key, twice a second. The voices are watched
-   every second - the most voices sounding at once in that second, counted
-   by the engine at every change (a stroke's attacks over the releases of
-   the last one), the same figure the limit is compared with. Whenever they stop rising below the current target, the
-   stimulus grows at once - more keys spread over the compass (up to every
-   key of every division), then a faster rate (up to 16 strikes a second).
-   No coupler is used: every division is struck itself. A wet set with several perspectives and
-   long releases reaches tens of thousands of voices with a handful of keys;
-   a dry set gives little more than what is being pressed, so it ends up with
-   every key hammered and the couplers on. The IR reverbs of the routes run
-   as they are: on a dry set they are the main cost, and the report says so.
-3. The target grows in steps of 2 000 voices (a tenth above 20 000). Every
-   target reached is held for four seconds and judged: clean means every
-   callback of the busiest device - the render of all its routes, the note
-   bookkeeping, everything on that thread - stayed within 85 % of its period,
-   no single route exceeded its budget, and the driver never called late (a
-   callback more than half a period behind its time is a dropout). The first
-   breakup ends the climb; the run then narrows down between the last clean
-   and the failing number of keys - twice, up to five times while the
-   failing level still lies more than a tenth above the clean one - letting
-   the tails die away in between. When the keys cannot be split any further
-   and the gap is still wide (a weak computer: clean at 474 voices, broken at
-   742), the run narrows down by stops as well: at the failing number of keys
-   a share of the registration is engaged - every button of the grid counts,
-   transmissions and extensions included - halved towards the clean side, up
-   to four times, so that the result is what the computer really renders, not
-   the last coarse step below it. When the clean and the failing level differ
-   in the rate (every key was down already), the rate between them is split
-   first. A level whose callbacks stay between 85 and 100 % of the period for
-   two seconds is neither clean nor a breakup: it counts as a failure, and the
-   run narrows down below it. Below 1 000 voices the result is taken as
-   measured, not rounded. When even all 61 keys struck 16 times a second produce no more
-   voices and the audio stays clean, the organ itself is the limit, not the
-   computer. The *DSP* field may read lower than 85 % at the moment the run
-   ends: it shows a peak that fades within a fraction of a second, while the
-   judge takes the single longest callback and every late one. Above the
-   measured value the sound is often still fine - until the first callback
-   that is not; that is what the margin is for.
-4. *Maximum polyphony* is set to the most voices that stayed clean. The
-   slider is yours afterwards: lower it for more headroom (couplers, long
-   releases, other programs running), raise it if you dare. The
-   registration and the two attack settings are restored; the release tails
-   of the run ring out at the measurement's low level for four seconds, then
-   the level rises 4.5 dB a second - about twelve seconds to normal (the
-   same after Cancel) - and the new limit takes effect eight seconds after
-   the end, once the tails are gone.
-5. The report names the result and gives advice: every route on a Windows
-   Audio device (rendered by its own thread alone) and every auxiliary route
-   with a device (every pipe once more), with the share of its period it
-   needed, and a larger ASIO buffer (set in the driver's control panel) when
-   the computer is the limit. Then it says where the time went - measured
-   on this computer during this run, not guessed:
-   - the CPU of the cores the program renders on (the render threads: 16
-     threads busy on a 32-thread processor are 100 % here and 50 % in a task
-     manager), on average and at the peak, and the whole computer's share;
-     when the sound broke while the render cores were less than 60 % busy,
-     the time went into one thread - the device callback - not into the
-     rendering;
-   - the render pool: how busy its lanes were inside the route jobs (the rest
-     is waiting for the slowest lane and the hand-over between the jobs, one
-     job per route and block);
-   - the kernel of this processor (AVX2, SSE2, NEON or scalar): nanoseconds
-     per voice and frame with the sample in the cache and streaming from RAM,
-     measured right then (about a second), and the ceiling that gives at this
-     buffer with these render cores - the measured limit as a share of it;
-   - what one voice cost a lane per block during the run, in its parts:
-     the bookkeeping (commands, pitch, gains, tone targets), the span logic
-     (loops, splices, envelopes), the interpolation kernel and the per-key
-     tone filtering - timed on the lanes themselves while the run went;
-   - the callback time of the run split into a fixed part per block (the
-     hand-over, the IR heads, the bookkeeping) and a part per voice. The
-     report does not forecast other buffer sizes: on a two-core laptop a
-     doubled buffer gave 17 % more voices, on a Ryzen a quarter of the
-     buffer still gave 62 % of the voices - no model fits, the buffer is
-     cheap to try and the measurement tells. A buffer below 256 samples
-     gets a recommendation to try 256 or 512, nothing more.
-   On Linux the report names the CPU governor ("performance" keeps the
-   clock up), on Windows the power plan; when the CPU clocks cannot be read
-   it says so. During the run the progress text shows the CPU of the render
-   cores and the lane utilisation every second. The measurement is also
-   started from the audio tab of a division's Settings (*Measure polyphony*,
-   beside *Reopen device*).
-
-Then save the configuration: the value belongs to this organ. Measure again
-after changing the audio routes, the IRs, the buffer size or the samples.
-The run takes one to two minutes; *Cancel* restores everything.
+*Measure...* runs the procedure above with the loaded organ and its audio
+routes as they are: the sound turned down to -52 dB, every stop engaged, keys
+struck on every division faster and wider until the voices stop rising, the
+target raised in steps and held four seconds each, the first breakup
+narrowed down by keys, rate and stops. *Maximum polyphony* is set to the
+most that stayed clean, the registration restored, the level returns within
+seconds. The report says where the time went (the render cores, the pool,
+the kernel, the cost per voice) and what to change; it never forecasts other
+buffer sizes. One to two minutes; *Cancel* restores everything. Save the
+configuration afterwards; measure again after a change of routes, IRs,
+buffer or samples. Details: "The polyphony measurement".
 
 ## 8.2 Global sound
 
-Every slider of this section has a checkbox that shows it on the main panel
-too (the shown sliders share a row with the polyphony display). All are
-MIDI-learnable (right-click the slider on the main panel).
+Every slider has a checkbox that shows it on the main panel too; all are
+MIDI-learnable there.
 
 ### Master volume
 
-The level of the whole organ, -60 to +12 dB (default -18 dB). Lower it when the
-output clips with full registration; the perspective and division volumes set
-the balance below it.
+The whole organ, -60 to +12 dB (default -18). Lower it when a full
+registration clips.
 
 ### Global pitch
 
-Shifts the whole organ by -200 to +200 cents (default 0) on top of the
-temperament, for playing with instruments tuned elsewhere than a1 = 440 Hz.
+-200 to +200 cents (default 0) on top of the temperament, for playing with
+instruments tuned elsewhere than a1 = 440 Hz.
 
 ### Sustain fade-out on key release
 
-How long the sounding pipe fades out when its key is released and the release
-sample takes over (default 110 ms). Too short and the join clicks or the pipe
-stops unnaturally; too long and the release sounds smeared. The value is for
-the sounding c1 (MIDI 60 of an 8' rank, the rank's footage counted in): pipes
-below it get 1.25 times as much per octave, because a big pipe's sound cannot
-stop as fast - with the default, 138 ms on the small c, 172 ms on the C of an
-8' rank, 215 ms on a 16' C, 269 ms on a 32' C; higher pipes the value as set.
-A filled pipe counts as the pipe it stands for.
+How long the sounding pipe fades when its key goes up and the release takes
+over (default 110 ms). Set for the sounding c1; pipes below it get 1.25 times
+as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215
+on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.
 
 ### Release sample fade-in
 
-How long the release sample fades in when the key is released (default 110
-ms), scaled by pitch exactly like the sustain fade-out (138 / 172 / 215 / 269
-ms on the small c and on the C of an 8' / 16' / 32' rank). The two together
-shape the join between the held note and its release.
+How long the release sample fades in (default 110 ms), scaled by pitch like
+the fade-out. The two together shape the join between the note and its
+release.
 
 ### Release sample volume
 
-The level of all release samples, -20 to +10 dB (default 0); the leftmost
-position "-inf" silences them. Quieter releases make a drier organ without
-losing the room entirely.
+All release samples, -20 to +10 dB (default 0); "-inf" silences them.
 
 ### Release cutting
 
-Release samples are faded out over this share of their length and end there
-(5 to 100 %, default 100 = the full release). Shorter releases free polyphony
-sooner on a weak computer and dry a wet set.
+Releases are faded out over this share of their length and end there (5 to
+100 %, default 100). Shorter releases free polyphony sooner and dry a wet set.
 
 ### Release played from
 
-Every release sample is played from this many milliseconds into its file (0
-to 300, default 0 = from its first sample), skipping its start; the fade-in
-runs from there. For sets whose releases begin too aggressively. No limit: a
-release shorter than the setting (a dry set with releases of 60 ms) is not
-played at all, and the key ends with the sustain fade alone. Applied when a
-key is released - nothing is rebuilt, the change is heard at once. Saved with
-the organ. (A filled pipe's release copy skips at least what *Filled pipes:
-release played from* says.)
+Every release is played from this many milliseconds into its file (0 to 300,
+default 0), skipping a start that begins too aggressively. A release shorter
+than the setting is not played at all - the key ends with the sustain fade
+alone. Heard at once.
 
 ### Attack minimum time
 
-The shortest time a pipe sounds once it has started (0 to 500 ms, default
-80): a key released sooner is released when this time is up, so even the
-briefest touch lets the pipe speak and lets its chiff be heard, as on a real
-action. Longer values make staccato playing more deliberate.
+The shortest time a pipe sounds once started (0 to 500 ms, default 80): even
+the briefest touch lets the chiff be heard.
 
 ### Attack minimum delay
 
-A small pause between the key press and the start of the pipe (0 to 500 ms,
-default 2), varied at random by a couple of milliseconds so that a chord's
-pipes do not all speak in the same instant. Keys repeated faster than the delay
-follow each other without it, and a key struck again right after its release
-gets only half or none of it, so fast repetitions stay crisp.
+A small pause between the key press and the pipe's start (0 to 500 ms,
+default 2), varied at random so that a chord's pipes do not all speak in the
+same instant; fast repetitions stay crisp.
 
 ## 8.3 Advanced global audio
 
 ### Swell: harmonic filter
 
-Closing the swell box does not only make the pipes quieter: it also takes away
-their brilliance. This is a high shelf above about 3 kHz that follows the
-shutters: this much loss with the box closed (0 to 12 dB, default 8). 0 dB =
-off. The
-three harmonic filters (swell, wind, tremulant) add up, capped at 12 dB; when
-all three are 0 dB the filter costs nothing.
+A closed swell box also takes the brilliance: a high shelf above about 3 kHz
+following the shutters, this much loss with the box closed (0 to 12 dB,
+default 8). The three harmonic filters (swell, wind, tremulant) add up,
+capped at 12 dB; at 0 dB they cost nothing.
 
 ### Wind: harmonic filter
 
-The same shelf following the wind sag: this much high-frequency loss at the
-full sag (default 2 dB). Big chords starve the wind, and a starved pipe is
-duller as well as flatter.
+The same shelf following the wind sag: this much loss at the full sag
+(default 2 dB).
 
 ### Wind: volume change per cent of sag
 
-How much quieter a pipe gets for every cent the wind sag lowers its pitch (0
-to 0.6 dB per cent, default 0.2). Together with the division's *Wind: depth*
-it decides how strongly a full chord sags in level.
+How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,
+default 0.2).
 
 ### Wind: one stop's share of the full sag
 
-The sag a single engaged 8' stop produces, relative to the sag with many stops
-engaged (2 to 100 %, default 20). Smaller footages count less. A lower value
-keeps a solo stop steady and lets the sag come with full registration.
+The sag a single engaged 8' stop produces, relative to many stops (2 to
+100 %, default 20); smaller footages count less.
 
 ### Wind: one pipe's share of the full sag
 
-The sag with one key held, relative to the sag with many keys held (default
-50 %).
+The sag with one key held, relative to many (default 50 %).
 
 ### Wind: two pipes' share of the full sag
 
-The sag with two keys held (default 50 %); from three keys on the rest of the
-sag closes gradually. One and two pipes together shape how a single note, an
-interval and a chord differ.
+The sag with two keys held (default 50 %); from three keys on the rest closes
+gradually.
 
 ### Wind: maximum wind model effect
 
-The strength of the whole wind model, 0 to 100 % (default 100). The steady sag
-of held keys and engaged stops follows it directly; every key stroke shakes the
-wind with a random 40 to 100 % of it, so repeated notes never sound mechanical.
-0 % switches the wind model off everywhere.
+The strength of the whole wind model, 0 to 100 % (default 100); every key
+stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.
 
 ### Tremulant: harmonic filter
 
-The shelf following the tremulant: this much high-frequency loss at the bottom
-of its dip (default 4 dB), so the tone breathes as well as the level.
+The shelf following the tremulant: this much loss at the bottom of its dip
+(default 4 dB).
 
 ### Tremulant: harmonic filter phase
 
 How far the tone oscillation lags the volume oscillation (0 to 360 degrees,
-default 90): 0 = the tone dips exactly when the level does, 90 = a quarter cycle
-later, 180 = the tone dips when the level peaks. Real tremulants differ here;
-listen with a soft flute.
-
-### Key velocity: full strike from velocity
-
-From this MIDI velocity up a stroke is a full one: no fade-in, no treble cut
-(2 to 127, default 80 - a normal stroke on most keyboards sends 80-127).
-The ramp of the two settings below runs from velocity 1, the
-gentlest stroke, to this value.
-
-### Key velocity: fade-in at the lowest velocity
-
-An organ key never plays softer when it is struck gently. Instead, a gentle
-stroke on a stop without velocity layers starts the note with a short fade-in:
-this long at the lowest velocity (default 100 ms), shrinking linearly to
-nothing at the full-strike velocity. Stops with velocity layers pick the layer
-instead and get no fade-in. With *Ignore MIDI velocity* on for a division
-there is never any. See "Velocity layers".
-
-### Key velocity: treble cut on the attack at the lowest velocity
-
-The chiff of a gently struck key is blunted: the pipe starts with this much
-high-frequency loss (a high shelf above the treble start frequency) at velocity
-1, less for firmer strokes, none from the full-strike velocity up (default
-9 dB). The level itself stays normal. Stops with velocity layers are not
-touched.
-
-### Key velocity: treble cut opens over
-
-How long the treble cut of a gentle key takes to open fully after the key goes
-down (5 to 1000 ms, default 180).
+default 90).
 
 ### Tremulant: volume change per cent of pitch
 
-The tremulant modulates pitch (the division's *Tremulant depth*) and level;
-this is the level modulation per cent of pitch modulation (default 0.187 dB
-per cent). Higher values give a tremulant that is more heard in the loudness
-than in the pitch.
+The level modulation per cent of pitch modulation (default 0.187 dB).
 
-### Missing pipes: neighbours borrowed as a group
+### Key velocity: full strike from velocity
 
-Pipes a rank does not have (beyond its compass, in gaps, the extra octave of an
-extension) are filled from the nearest real pipes: this many adjacent pipes are
-taken as a group and transposed by the group's width, and the group repeats for
-further pipes (1 to 12, default 12). With 12 every missing pipe is the octave
-transposition of a real one, so the rank's chromatic variety is kept; with 1
-the edge pipe alone serves all missing pipes. Fewer semitones of transposition
-sound better, so a last group smaller than the setting takes the outermost real
-pipes with the smallest shift possible. Changing it refills every stop and
-rebuilds the copies. See "What a filled pipe is".
+From this velocity up a stroke is a full one (2 to 127, default 80); the two
+settings below ramp from velocity 1 to here.
 
-### Retune limit per pipe
+### Key velocity: fade-in at the lowest velocity
 
-How far a pipe's recorded pitch (its smpl chunk) may lie from its key before
-the pipe counts as a faulty sample. Within the limit the pipe is retuned to
-its key when a1 = 440 Hz or a temperament asks for it; beyond it the pipe is
-switched off and played from its neighbours like a missing pipe: the key's
-thumb in the voicing turns green like a filled key's and its tooltip says so
-("Faulty pipe: its own sample 035-B.wav
-sounds 400 cents off its key, beyond the retune limit - switched off and
-taken from the neighbour"). A pipe a third off is a wrong file, not a
-tuning: Adlington's "Ch. Flute" has its 035 and 037 recorded a major third
-low. 200 cents (a whole tone) by default; the setting travels with the
-organ and takes effect at once (the fills and the copies of the stops are
-rebuilt).
+A gentle stroke on a stop without velocity layers starts with this fade-in at
+the lowest velocity (default 100 ms), shrinking to nothing at the full
+strike. "Velocity layers".
 
-### Filled pipes: transposition method
+### Key velocity: treble cut on the attack at the lowest velocity
 
-How a pipe beyond the compass (or in a gap) gets its pitch from a neighbour's
-sample: *Resampling*, *Pitch shift (resampling + timbre correction)*, *Pitch
-shift + time stretch (attack and release)* (the default) or *Phase vocoder
-(Signalsmith Stretch)* (optional, for those who prefer it). "The
-transposition methods" describes each with its strengths and weaknesses. Switching the method rebuilds the copies of every
-stop (from the cache when it is on); until a copy is ready the pipe plays
-resampled. The sliders below that do not apply to the chosen method are greyed
-out.
+The chiff of a gently struck key is blunted by this much high-frequency loss
+at velocity 1 (default 9 dB), less for firmer strokes.
 
-### Filled pipes: release length (pitch shift)
+### Key velocity: treble cut opens over
 
-Pitch shift method only. How long a filled pipe's release (the room decay) is,
-as a share of its source's duration (25 to 200 %, default 100). Resampling
-alone would make a release shifted two octaves down four times as long and one
-shifted two octaves up a quarter, but the room does not grow or shrink with the
-pipe, so the decay is laid out again to this length in both directions (100 % =
-exactly the source's duration). Longer than 100 % gives a bigger room to the
-extension than to the stop; shorter dries it. Changing it rebuilds the release
-copies.
+How long that cut takes to open after the key goes down (5 to 1000 ms,
+default 180).
 
-### Filled pipes: time stretch of the attack
+### Velocity layers: an unticked _128 never plays
 
-Pitch shift + time stretch only. How far the attack (everything before the
-first loop) is stretched back from the resampled length towards the source's
-(0 to 100 %, default 50). 0 % leaves it as resampled - two octaves down the
-attack is four times as slow; 100 % gives it the source's duration; 50 % is
-half way on a logarithmic scale (two octaves down: twice as slow, which the ear
-accepts where four times is too much). Applies to shifts downwards; upwards the
-attack stays as resampled. Higher values fray the attack more (see "The
-transposition methods"); lower
-the slider for a stop whose speaking turns rough. Changing it rebuilds the
-copies.
-
-### Filled pipes: time stretch of the release
-
-Pitch shift + time stretch: how far the release is stretched back from the
-resampled length towards the source's, in both directions (0 to 100 %, default
-55). 100 % gives it the source's duration (a 32' extension's room decay as long
-as the 8' pipe's), 0 % leaves it as resampled, 55 % lies between on a
-logarithmic scale. Phase vocoder (the label then reads "upwards"): a release
-shifted upwards keeps the source's length, too long for a smaller pipe, and is
-stretched towards the length the resampling would give; shifts downwards are
-left alone. Changing it rebuilds the release copies.
-
-### Filled pipes: release played from
-
-Every pitch-shift method. A filled pipe's release copy is played from this
-many milliseconds in (0 to 300, default 140), skipping its start, where the
-methods leave their worst: a stop transient that no longer belongs, a level
-that does not follow the sustain. Applied when the key is released: nothing is
-rebuilt, the change is heard at once. Lower it if the releases of an extension
-start too late or too softly, raise it if they begin with a bump.
-
-### Filled pipes: release level matched to the source
-
-Every pitch-shift method. On: a filled pipe's release copy is played at the
-level relation the source pipe's release has to its sustain (measured when the
-copy was built), so the step at the key release is the real pipe's. Off
-(default): the copy plays at its own level. Applied at playback, nothing is
-rebuilt; switch it on when the releases of an extension are clearly louder or
-softer than those of the real pipes beside them.
-
-### Filled pipes: loop crossfade
-
-The splice of the loops of the filled pipes' copies, as a share of each loop's
-length (0 to 100 %, default 40). 0 % is the ordinary short splice (the loop
-points of a copy are moved to whole periods of its pitch anyway); a longer
-blend hides a seam that is not quite periodic, at the cost of a slight chorus
-inside the loop. Applied to the existing copies at once. This is the remedy
-for the loops the phase vocoder breaks (its output at the loop end no longer
-matches the loop start) and for the seams the other methods make slightly
-worse; raise it when a held extension pipe clicks or bumps at every repeat of
-its loop. See "The transposition methods".
-
-### Filled pipes: loudness kept when pitch shifting
-
-Pitch shift methods. On (default): every shifted copy is brought to the
-loudness of its source sample, so a filled pipe is as strong as the pipe it was
-made from. Off: the copy keeps whatever level the shift left it with (a copy
-with its formants moved down loses level).
-
-### Filled pipes: keep the generated copies on disk (cache)
-
-On by default. On: the copies of the filled pipes are written to files as
-they are built and read back the next time the same stops load with the same
-settings, so the build after loading takes seconds instead of minutes - the
-build of a large organ otherwise takes a minute or more at every load. One
-file per rank and folder tree, whatever the settings: a tree built with other
-settings replaces its file, so the cache takes about as much room on disk as
-the copies in RAM (hundreds of MB for a large organ) and never plays a stale
-copy. Switch it on when the build after loading annoys you; switch it off
-when disk space is short - everything works the same without it. "The cache"
-describes it in full.
-
-### Filled pipes cache: Empty the cache
-
-The row shows the size of the cache and the folder it lives in. *Empty the
-cache* deletes every cached file at once - to get the disk space back, or
-after you have replaced your sample folders. The copies are built again, and
-cached again, the next time they are needed; nothing else is lost.
-
-### Filled pipes cache: files of stops not loaded now
-
-*Remove them* deletes only the cache files of ranks that are not loaded at
-this moment: the stops of other configurations, of folders you unloaded or
-deleted from the disk. The files of the loaded organ stay, so its next load
-is still fast. A message says how many files went. This is the button for
-routine housekeeping.
-
-### Filled pipes cache folder
-
-Where the cache files live. By default `FilledPipesCache` in the
-application-data folder, usually on the system drive; the row then says
-"(default)". *Choose...* opens a folder dialog: pick a folder on a big drive
-(beside the samples, say). The files built so far are moved there at once, so
-nothing has to be rebuilt. The folder is remembered in the settings.
-
-### Filled pipes: resampling quality
-
-How the sample of a neighbouring pipe is played at another pitch. *Linear* is
-the interpolation of every other voice (cheapest, audible images at large
-shifts). *Cubic interpolation* lowers the interpolation images by about 20 dB
-for these voices only. *Cubic + anti-alias filter* (default) also removes what
-would fold back when a pipe is transposed upwards: a low-passed copy of the
-source is built for each such filled pipe (a few MB per rank, nothing for stops
-without upward shifts). Real pipes are never touched.
+Off by default: with nothing ticked in a stop's velocity boxes the plain
+files play. On: such a key is silent.
 
 ### Treble per key: shelf start frequency
 
-The *Treble per key* sliders of the voicing raise or lower everything above
-this frequency (120 to 5000 Hz, default 1800): a high shelf whose transition
-band runs from here to about twice this frequency. A pipe whose recorded
-fundamental lies higher starts its shelf at that fundamental instead. The
-velocity treble cut uses the same frequency.
+The *Treble per key* sliders act above this frequency (120 to 5000 Hz,
+default 1800); a pipe whose fundamental lies higher starts there.
 
 ### Celeste beats: top of compass vs bottom
 
-Undulating (celeste) stops beat this many times faster at the top of their
-compass than at the bottom (1 to 20, default 12); the a1 key always beats as
-set in the stop's voicing. Equal beats everywhere (1x) detune the bass most,
-as a real celeste tuned to constant beats would.
+Celeste stops beat this many times faster at the top of the compass than at
+the bottom (1 to 20, default 12); a1 beats as the voicing says.
+
+### Filled pipes: resampling quality
+
+How a neighbour's sample is played at another pitch while no copy exists:
+*Linear*, *Cubic interpolation* (images 20 dB lower), *Cubic + anti-alias
+filter* (default; also removes what folds back on upward shifts, a low-passed
+copy per such pipe). Real pipes are never touched.
+
+### Filled pipes: transposition method
+
+*Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase
+vocoder*: "The transposition methods". Switching rebuilds the copies (from the
+cache when on); the sliders that do not apply are greyed out.
+
+### Missing pipes: neighbours borrowed as a group
+
+This many adjacent real pipes are taken as a group and transposed by the
+group's width for the missing ones (1 to 12, default 12: every missing pipe
+an octave transposition of a real one). Changing it refills every stop.
+
+### Retune limit per pipe
+
+How far a pipe's recorded pitch may lie from its key before the pipe counts
+as a faulty sample (default 200 cents). Beyond it the pipe is switched off
+and filled from its neighbours; its thumb turns green and the tooltip says
+so. Travels with the organ.
+
+### Filled pipes: release length (pitch shift)
+
+Pitch shift method: the decay of a filled pipe's release as a share of its
+source's duration (25 to 200 %, default 100) - the room does not grow with
+the pipe.
+
+### Filled pipes: time stretch of the attack
+
+Pitch shift + time stretch: how far the attack is stretched back from the
+resampled length towards the source's (0 to 100 %, default 50, logarithmic).
+Higher values fray the attack; lower it for a stop whose speaking turns rough.
+
+### Filled pipes: time stretch of the release
+
+The same for the release, both directions (default 55). Phase vocoder: a
+release shifted upwards is stretched towards the resampled length.
+
+### Filled pipes: release played from
+
+A filled pipe's release copy is played from this many milliseconds in (0 to
+300, default 140), skipping the start where the methods leave their worst.
+Heard at once.
+
+### Filled pipes: loop crossfade
+
+The splice of the copies' loops as a share of each loop (0 to 100 %, default
+40): a longer blend hides a seam that is not quite periodic. Raise it when a
+held extension pipe bumps at every repeat.
+
+### Filled pipes: release level matched to the source
+
+On: a release copy plays at the level relation the source's release has to
+its sustain. Off (default): at its own level.
+
+### Filled pipes: loudness kept when pitch shifting
+
+On (default): every shifted copy is brought to the loudness of its source.
+
+### Filled pipes: keep the generated copies on disk (cache)
+
+On by default: the copies are written to files and read back at the next
+load - seconds instead of minutes. "The cache".
+
+### Filled pipes cache: Empty the cache
+
+The size of the cache and its folder, with *Empty the cache*: every file
+deleted, built again when needed.
+
+### Filled pipes cache: files of stops not loaded now
+
+*Remove them* deletes the files of ranks not loaded now; the loaded organ's
+stay.
+
+### Filled pipes cache folder
+
+*Choose...* picks another folder (a big drive); the files are moved there.
 
 ## 8.4 Console
 
 ### Interface size
 
-The size of every window, button, slider and text, in per cent of the design
-size (50 to 300 %). The first start estimates it from the screen so that Full
-HD, 4K and Retina screens show the console alike; double-click returns to that
-estimate. Applied when the slider is released: every open window keeps its
-place and size on the screen, only its content changes size.
+Every window, button and text in per cent of the design size (50 to 300 %),
+estimated from the screen at the first start; applied when the slider is
+released.
 
 ### Divisions
 
-How many manuals the console has (1 to 7; the pedal is always there). Reducing
-the number forgets everything about the removed divisions (folders, audio,
-MIDI, grid); a division added later starts empty, with the wind and tremulant
-profiles of a neighbouring division.
+How many manuals the console has (1 to 7; the pedal is always there).
+Reducing it forgets the removed divisions.
 
 ### Combination pistons
 
-The number of combination pistons in the combination row (0 to 10). See "The
-combination row".
+The number of pistons in the combination row (0 to 10).
 
 ### Program windows
 
-*One window*, or *Two windows*: a second program window opens, and every
-division section below gets *Shown in window* to move a division there. The
-second window's position is remembered; closing it returns to one window.
-
-### Top bar: PANIC
-
-Shows or hides the PANIC button, which silences every sounding pipe at once.
-
-### Top bar: Record
-
-Shows or hides the Record button (the stereo mix to a WAV file).
-
-### Top bar: Stop List
-
-Shows or hides the Stop List button (see "4. The Stop List (building the
-organ)").
-
-### Top bar: Couplers
-
-Shows or hides the Couplers button (see "Couplers").
-
-### Top bar: Temperaments
-
-Shows or hides the Temperaments button (see "Temperaments").
-
-### Top bar: Hide/Show all voicing
-
-Shows or hides the *Hide all voicing* button, which folds every open voicing
-row.
-
-### Top bar: Perspective Patterns
-
-Shows or hides the button editing the perspective prefixes (the same list as
-*Folder name patterns > Perspective prefixes*).
-
-### Top bar: Ignored Patterns
-
-Shows or hides the button editing the ignored folders list.
-
-### Top bar: One-shot Patterns
-
-Shows or hides the button editing the one-shot stops list.
-
-### Top bar: Stop-Merging
-
-Shows or hides the Stop-Merging button (see "Stop-Merging"). Hidden by
-default.
-
-### Top bar: Load Voicing
-
-Shows or hides the Load Voicing button (the voicing from a file). Hidden by
-default.
-
-### Top bar: Save Voicing
-
-Shows or hides the Save Voicing button. Hidden by default.
-
-### Top bar: Load Configuration
-
-Shows or hides the Load Configuration button (an OrganSampler `.json`, or a
-Hauptwerk organ definition - see "Loading a Hauptwerk organ definition").
-Right-click: merge another configuration into the loaded organ.
-
-### Top bar: Save Configuration
-
-Shows or hides the Save Configuration button.
-
-### Top bar: Shut down PC
-
-Shows or hides the Shut down PC button (see "Top bar buttons"): save, quit and shut the
-computer down without any question. Hidden by default. A hidden button still
-fires from its learned MIDI control, which is how a headless console uses it.
-
-### Top bar: Unpack archive
-
-Shows or hides the Unpack archive button (see "Sample archives (RAR)"): RAR
-archives of sample folders unpacked by the program into a folder of your
-choice. Hidden by default since *Load folder...* reads the archives itself
-(and unpacks on request); the button beside this switch does the same
-without the top bar.
-
-### Top bar: GLOBAL RESET
-
-Shows or hides the GLOBAL RESET button (see "GLOBAL RESET").
+*One window* or *Two windows* ("Two program windows, screens, small
+screens").
 
 ### Melody/bass couplers: new extreme key only
 
 On (default): a melody (bass) coupler couples a key only when it becomes the
-new highest (lowest) key held; when that key is released the coupler does not
-fall back to the next one. Off: the coupled note always follows the highest
-(lowest) key currently held.
+new highest (lowest) key held. Off: the coupled note always follows the
+extreme key.
 
 ### Melody couplers: legato grace time
 
-On: when the highest key changes in legato playing, the melody coupler waits a
-moment before moving to the new key, so a brief overlap of two keys does not
-make the solo stop jump. Off: it follows at once.
+On: the melody coupler waits a moment when the highest key changes in legato,
+so a brief overlap does not make the solo stop jump.
 
 ### Load the last configuration at startup
 
-Off by default. On: the configuration file used last time is opened when the
-program starts. Otherwise the program starts with an empty instrument and
-nothing is loaded until you ask.
+Off by default. On: the configuration used last time opens at the start.
 
 ### Glow: a pressed button and a dragged stop glow for a moment
 
-Off by default. On: every button pressed with the left mouse button - a stop, a
-coupler, a piston, a tremulant, a button of the top bar - and every stop being
-dragged glows for a moment with the golden halo of the instruction video. Off:
-the console as it was, with no halo at all. The setting belongs to this
-computer, not to the organ.
+Off by default: the golden halo of the instruction video on every pressed
+button and dragged stop.
 
-### Output discontinuity detector
+### Output discontinuity detector: count the clicks in the program's own output
 
 On by default. The program counts every jump between two blocks of its own
-output that the sound itself does not explain - after the rendering, at the
-end of every route and on the way to the driver -, writes "Output
-discontinuities" with the route and the stage into the activity log every
-second it happens and shows "!N" in orange in the DSP cell for ten seconds (N
-= the jumps of the last ten seconds). It costs a few microseconds per audio
-period. Off: nothing is counted. The setting belongs to this computer.
+output that the sound does not explain - after the rendering, at the end of
+every route, on the way to the driver - logs it with the route and stage and
+shows "!N" in orange in the DSP cell. A few microseconds per period. "The
+discontinuity detector".
+
+### Configurations folder
+
+Where configurations live (`Documents\OrganSampler\Configurations` by
+default): every import and save goes there, Load starts there. *Choose...*
+picks another; the path stands after the button.
+
+### Recordings folder
+
+Where *Record* writes its files (`AudioRecordings` beside the configurations
+folder by default). *Choose...* picks another.
+
+### Sample and IR locations
+
+The places the program looks for sample trees and impulse responses - every
+folder and archive you ever chose, counted after the button. *Add folder...*
+adds one.
+
+### Sample and IR locations: the file
+
+*Show* opens `Locations.txt` (one path per line; edit it with any text
+editor, the program reads it at the next load).
+
+### Sample and IR locations: forget the folders
+
+*Forget* drops the folder lines; the archives chosen stay.
 
 ### Samples' base temperament
 
-The temperament the loaded samples were *recorded* in. It is found from the
-samples by itself when two thirds or more of the ranks agree (the activity
-log says so); set it by hand only when the ranks disagree or the set has no
-smpl pitches - the voicing row of every stop reports what its ranks were found
-to be in. Every pipe's retuning to the target temperament starts from here;
-a wrong base temperament puts the whole organ slightly out of tune. See
-"Temperaments".
+The temperament the samples were recorded in - found by itself when two
+thirds of the ranks agree; set it by hand when they disagree or the set has
+no pitch data. "Temperaments".
 
 ### Target temperament
 
-The temperament the organ *plays* in (see "Temperaments"). Every pipe is retuned by the
-difference between the target and the samples' base temperament, per pitch
-class. Choosing the base temperament itself plays the samples as recorded.
-The Temperaments dialog of the top bar does the same with one click, and
-every temperament can be switched from a MIDI control.
+The temperament the organ plays in. "Temperaments".
 
 ### Window size
 
-The size of the main window, saved automatically. Information only; the window
-returns to where it was last time, always with its title bar on the screen.
+The size of the main window, saved by itself. Information.
+
+### Top bar
+
+One switch per top-bar button: PANIC, Record, Stop List, Couplers,
+Temperaments, Hide/Show all voicing, Perspective Patterns, Ignored Patterns,
+One-shot Patterns, Stop-Merging, Load Voicing, Save Voicing, Load
+Configuration, Save Configuration, Shut down PC, Unpack archive, GLOBAL RESET
+("Top bar buttons"). A hidden button still fires from its learned MIDI
+control. The button beside each switch does the same as the one in the top
+bar.
 
 ## 8.5 Folder name patterns (one per line)
 
-The three lists travel with the organ (they are part of its configuration)
-and they belong to this computer as well: every pattern you ever add here is
-kept in `Patterns.json` beside the settings, each organ you load merges its
-own lists with that file, and the lists in force are written back whenever an
-organ is loaded or unloaded. A pattern added for one organ is therefore never
-lost when the organ is reloaded or another one loaded. Editing a list in these
-rows or in the top-bar dialogs sets the file as the list stands - a pattern
-you remove is removed there too; GLOBAL RESET with the patterns ticked clears
-it to the defaults.
+The three lists travel with the organ and belong to this computer as well:
+every pattern you add is kept in `Patterns.json` beside the settings and
+merged into every organ you load; a pattern you remove is removed there too.
+The "?" of the pattern dialogs opens these chapters.
 
 ### One-shot stops (folder contains)
 
-Folders whose name matches one of these patterns hold samples that play once
-without looping (chiff, percussion, bells). Defaults: "Chiff", "Chimes",
-"Tubular", "Celesta", "Harp", "Glockenspiel" (a Hauptwerk import adds the
-folders of every stop the definition plays without release samples). The patterns
-match like those of *Ignored folders (folder contains)* (a star at the start
-or the end anchors them). Applies to the next folder load.
+Folders whose name matches play once without looping (chiff, percussion,
+bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A
+pattern without a star matches anywhere, "*x" the end, "x*" the start.
 
 ### Ignored folders (folder contains)
 
-Folders whose name matches one of these patterns are not loaded at all
-(tremulant recordings, say). Defaults: "trem" (anywhere in the name),
-"*_tr" (names ending in "_tr") and "output" (the "outputsum"/"outputharm"
-renderings under a rank). A folder named after its sibling or parent with
-"tr"/"trem" appended is skipped by every tree scan besides (see "Folders to
-skip" in chapter 2). A pattern without a star matches anywhere, a
-star at the start anchors it to the end of the name, a star at the end to its
-start; underscores count. Applies to the next folder load.
+Folders whose name matches are not loaded. Defaults: "trem", "*_tr",
+"output". Changed with an organ loaded, the next *Apply and reload* takes the
+matching folders out of their rows.
 
 ### Perspective prefixes
 
-Folder name prefixes that mark a microphone perspective, one line per
-perspective. Every prefix that belongs to the same perspective must stand on
-that one line, separated by semicolons; the perspective takes its name from
-the first entry of the line ("Direct;01-dirMk2H-;dir" makes folders with any
-of the three prefixes the perspective "Direct"). Defaults: Direct, Diffuse and
-Rear. Prefixes found in a newly loaded set are added here by themselves (a
-prefix that shares its stem with a known perspective joins its line; an
-unknown one gets a line of its own - move it onto the right line if it is the
-same perspective). Applies to the next folder load.
+One line per perspective: its name first, then its folder prefixes,
+separated by semicolons ("Direct;01-dirMk2H-;dir-"). The name is what the
+Stop List column and the audio route are called; the prefixes are cut off the
+folder names. Prefixes found in a set are added by themselves; a perspective
+renamed in the Stop List (double-click the column header) renames the line.
 
 ## 8.6 Division sections (Pedal, Manual I ... Manual VII)
 
-One collapsed section per division; the same settings as in the Divisions
-dialog (see "Keyboard, MIDI and compass", "Swell, tremulant, wind" and "The
-audio tabs").
+One collapsed section per division, the same settings as the Divisions
+dialog.
 
 ### Stops and sample folders
 
-The folder trees loaded for this division, and the *Stop building...* button
-that opens the Stop List (see "Folder trees and the pool") at it.
+The folder trees of this division and *Stop building...*, which opens the
+Stop List.
 
 ### Shown in window
 
-With two program windows: the window this division is shown in. A division is
-in one window only; the divisions of each window share its width.
+With two program windows: which one shows this division.
 
 ### MIDI keyboard device
 
-The MIDI input that plays this division. Several divisions may listen to the
-same device (on different channels, or on the same channel to play them
-together).
+The MIDI input that plays this division; several divisions may listen to the
+same device.
 
 ### MIDI channel
 
-The MIDI channel (1 to 16) of the division on that device.
+1 to 16 on that device.
 
 ### Ignore MIDI velocity (organ keys)
 
-(The Divisions dialog names the same switch *Disable MIDI velocity*.)
-On: every key is sent as full velocity, so there is never a velocity fade-in
-or treble cut (see "Key velocity: fade-in at the lowest velocity") and always
-the top velocity layer (see "Velocity layers"). For consoles whose keys send
-unreliable velocities.
+On by default: every key is a full stroke - no velocity fade-in or treble
+cut, always the top velocity layer. Off for a stop with velocity layers you
+want to play by touch.
 
 ### Bass octave layout
 
-How the lowest octave of the keyboard is laid out, for playing historic music
-on a historic layout: *Standard*; *Short octave* (the bottom E key sounds C,
-F# sounds D, G# sounds E, the keys C to D# are silent); *C D D# ...* (no C#);
-*C D E ...* (no C# and no D#). The compass of the division is set on the same
-line of the Divisions dialog.
+*Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E
+...* for historic bass octaves.
 
 ### MIDI transposition
 
-The keys of this division's MIDI keyboard play this many semitones away from
-what they send (-24 to +24, default 0): with -12 the key 036 plays the pipe
-of 024, with +12 the pipe of 048. For a keyboard that sends the wrong octave,
-or for playing a part transposed. Keys that land outside the MIDI range are
-silent. In the Divisions dialog the box is the last line of the MIDI column.
+The keyboard plays this many semitones away from what it sends (-24 to +24).
 
 ### Swell pedal controller
 
-The MIDI controller learned for this division's swell (right-click the swell
-bar in the division header to learn it). Information only.
+The controller learned for the swell (right-click the swell bar). Information.
 
 ### Swell: maximum attenuation when closed
 
-How much quieter the division is with the swell box fully closed (0 to 60 dB,
-default 13). The harmonic filter (*Swell: harmonic filter*) dulls the tone at
-the same time.
+How much quieter the division is with the box closed (0 to 60 dB, default
+13).
 
 ### Swell: shutter inertia (settling time)
 
-How slowly the shutters follow the pedal (50 to 2000 ms, default 300). Larger
-= heavier, smoother movement; a sudden pedal stroke then takes this long to
-arrive.
+How slowly the shutters follow the pedal (50 to 2000 ms, default 300).
 
 ### Division volume
 
-The level of the whole division, -60 to +12 dB (default 0), for balancing the
-divisions against each other.
+-60 to +12 dB (default 0), for balancing the divisions.
 
 ### Audio output channels (default perspective)
 
-The channels of the division's audio device that the default perspective
-plays on, as numbers separated by commas (the same channels the Divisions
-dialog shows as a list of tick boxes on the audio tab; either place changes
-the other). Press Enter or click outside to apply. How mono and stereo
-samples are spread over these channels is
-explained in "Sample channels and output channels". The device itself is
-chosen in the Divisions dialog's audio tab; which devices and drivers to use,
-and what the auxiliary route is for, is explained in "Audio drivers: many
-sound cards at once" and "The auxiliary route".
+The channels of the device the default perspective plays on, as numbers
+separated by commas (the same as the tick boxes of the audio tab). "The audio
+tabs".
 
 ### Perspective output channels
 
-The same for one named perspective (Direct, Diffuse, Rear, auxiliary): the
-channels of that perspective's own device.
+The same for a named perspective (Direct, Diffuse, Rear, auxiliary).
 
 ### Perspective volume
 
-The level of one perspective of this division (-31 to +6 dB, default 0); -31
-dB switches the perspective off completely and saves its voices.
+-31 to +6 dB (default 0); -31 switches the perspective off and saves its
+voices.
 
 ### Perspective channel separation
 
-At 100 % (default) every pipe sounds only on its own channel pair of the
-perspective; less lets the other channels carry that share of it too; 0 % = all
-channels carry the same sum.
+100 % (default): every pipe only on its own channel pair; 0 %: all channels
+the same sum.
 
 ### Random tuning error of pipes
 
-(The Divisions dialog names it *Allow Random Tuning Error*.)
-On: the pipes of this division get the small random detune set per stop
-(*Random pitch error* in the voicing). Off: every pipe speaks exactly at its
-pitch.
+On: the pipes get the small random detune set per stop (*Random pitch
+error*).
 
 ### Pipe coupling (detuned pipes pull together)
 
-(The Divisions dialog names it *Allow Pipe Coupling*.)
 On: pipes of the same pitch sounding together pull each other into tune a
-little, as neighbouring pipes on one chest do. Off: every pipe keeps its own
-detune.
+little, as on one chest.
 
 ### Tremulant rate
 
-The speed of the division's tremulant (2 to 11 Hz, default 4.4).
+2 to 11 Hz (default 4.4).
 
 ### Tremulant depth
 
-The pitch modulation of the tremulant (0 to 50 cents, default 6); the level
-modulation follows it by *Tremulant: volume change per cent of pitch*. The
-strength wanders between 60 and 100 % of this from cycle to cycle.
+The pitch modulation, 0 to 50 cents (default 6); the strength wanders between
+60 and 100 % of it.
 
 ### Tremulant phase drift between ranks
 
-How far the ranks of the division drift apart in the tremulant's cycle (0 to
-360 degrees, default 260): with 0 every stop dips at the same moment, with a
-large value the stops of a full registration shimmer rather than pulse.
+0 to 360 degrees (default 260): with 0 every stop dips at once, with a large
+value a full registration shimmers.
 
 ### Wind: depth (maximum pitch sag)
 
-How far the pitch sags with the wind at its lowest (0 to 50 cents, default 8).
-The sag is reached with many stops engaged and many keys held, the shares being
-set in Advanced global audio. 0 switches the wind model off for this division.
+How far the pitch sags with the wind at its lowest (0 to 50 cents, default
+8); 0 switches the wind model off for this division.
 
 ### Wind: oscillation frequency
 
-The frequency the wind pressure oscillates at after a key stroke (2 to 10 Hz,
-default 7.5), the "bounce" of the bellows.
+The bounce of the bellows after a key stroke (2 to 10 Hz, default 7.5).
 
 ### Wind: number of oscillations
 
-How many oscillations die away after a stroke (0 to 20, default 7).
+How many die away after a stroke (0 to 20, default 7).
 
 ### Wind: oscillation strength
 
-The impulse a key stroke gives the wind (0 to 100 %, default 40); 100 % is
-twice the impulse of 50 %, and the sag ceiling grows with it.
+The impulse a key stroke gives the wind (0 to 100 %, default 40).
 
 ### Wind: sag settling lag
 
-How long the wind pressure takes to settle after stops or keys change (100 to
-400 ms, default 255). The same lag governs the volume glide when a pipe held
-through several routes passes from one route to another.
+How long the pressure takes to settle after stops or keys change (100 to 400
+ms, default 255).
 
 ### Wind: also affects divisions
 
-Tick the other divisions fed from this wind supply: they receive half of this
-division's sag, so a heavy chord on one manual disturbs the other.
+The other divisions fed from this wind: they receive half of this division's
+sag.
 
 ---
 
-## 8.7 Keeping track: the activity log
+# 9. Messages, the activity log, reporting a problem, licences
+
+## 9.1 Messages
+
+What the program has to tell after an action - a tree found, folders
+replaced, what a merge did, what the load left out - no longer interrupts
+you with a box: a strip in the lower left corner of the main window shows
+"Messages (N new)" with the last title for ten seconds, and the texts are
+collected under **Messages** in the *About & licences...* window (the entry
+above the manual; a click on the strip opens it). Questions, warnings and the
+polyphony report still come as boxes.
+
+## 9.2 The activity log
 
 Everything the program does at a coarse level - devices opened, divisions
-loaded, builds of the filled pipes' copies - is noted in `CrashLogs\activity.log`
-in the application-data folder; a crash writes a file beside it. When the
-window answers nothing for eight seconds the log records where it was waiting.
-That folder is what a report needs - and *Report a problem...* sends it for
-you.
+loaded, builds of the copies, the memory and disk figures of every load - is
+noted in `CrashLogs/activity.log` in the settings folder ("Where the files
+are"); a crash writes `crash-<date>.txt` beside it, and a window that
+answers nothing for eight seconds records where it was waiting.
+`settings.json` is the state of the program, `settings-<date>.json` the
+snapshot of each of the last seven days; if the program crashes at every
+start, move `settings.json` away and it starts clean.
 
-### Report a problem
+## 9.3 Report a problem
 
-*Report a problem...* at the top of the Configuration Editor opens a dialog
-for what happened and how to reproduce it. When you press *Create the report
-and open GitHub*, the program writes a folder `OrganSampler-report-<date>`
-into `Reports` in its application-data folder (nothing goes onto
-your Desktop) with `logs.zip` (the activity log, the crash reports,
-`settings.json`, the last self-test report and `system.txt` - the version,
-the computer, every audio route with its device, buffer, rate and channels;
-no samples, no voicing, no combinations) and PNG screenshots of every window
-of the program as it is at that moment (keep the dialog in question open;
-untick the box if you do not want them), plus any screenshot files you add
-with *Add screenshot files...*. Then the GitHub bug report opens in your
-browser with its fields filled in from the dialog: drag `logs.zip` into
-"Logs" (the first field of the form) and the pictures into "Screenshots",
-check the text, submit. The report folder itself opens in the file manager
-beside it, and the program's own message sits at the bottom of the screen,
-out of the way. The program puts the browser on the left half of the screen
-and the folder on the right half, side by side, so the zip is dragged across
-(Windows always, macOS through AppleScript - the browser only with
-the accessibility permission -, Linux where wmctrl is installed). The
-link carries the computer and the routes only while it stays short
-(GitHub answered a long one with an error after its sign-in) - the whole
-list is in `system.txt` of `logs.zip` in any case. A free
-GitHub account is needed to submit; the report is public, like every issue
-of a free program.
-
-GitHub may first ask you to sign in or to make the account, and after that
-it sometimes lands on another page instead of the form. The message that
-stays open in OrganSampler has *Open the GitHub form* for that: press it
-again, signed in, and the form opens filled in. The same link is in the
-report folder as `Report on GitHub.html` - a double-click opens it, even
+*Report a problem...* at the top of the Configuration Editor asks what
+happened and how to reproduce it. *Create the report and open GitHub* writes
+a folder `OrganSampler-report-<date>` into `Reports` in the settings folder
+with `logs.zip` (the activity log, the crash reports, `settings.json`, the
+last self-test, `system.txt` with the computer and every audio route - no
+samples, no voicing) and screenshots of every open window, then opens the
+GitHub form in your browser with its fields filled in and the folder beside
+it: drag `logs.zip` into "Logs" and the pictures into "Screenshots", submit.
+A free GitHub account is needed; the report is public. If GitHub lands
+elsewhere after the sign-in, *Open the GitHub form* in the program's message
+opens the form again, and `Report on GitHub.html` in the folder does the same
 days later.
 
-## 8.8 Free software, licences, platforms
+## 9.4 Free software, licences, platforms
 
-OrganSampler is free software under the GNU GPL v3; the source code is on
-GitHub and every release is built there from it. *About & licences...* at the
-top of the Configuration Editor shows this manual, the program's licence and
-the licences of the software it contains: JUCE (AGPLv3), the Steinberg ASIO SDK (under its
-GPLv3 option; ASIO is a trademark and software of Steinberg Media Technologies
-GmbH), Signalsmith Stretch and Signalsmith Linear (MIT). The same program is
-built for Windows, macOS and Linux; the macOS and Linux builds have had less
-playing time than the Windows build. What each build needs:
+OrganSampler is free software under the GNU GPL v3; the source is on GitHub
+and every release is built there. *About & licences...* shows the program's
+licence and those of the software it contains: JUCE (AGPLv3), the Steinberg
+ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies
+GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and
+unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple
+silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.
 
-- **Windows:** `OrganSampler-windows.zip` - Windows 10 or 11, 64-bit. ASIO,
-  Windows Audio (WASAPI) and the aggregated WASAPI device.
-- **macOS:** `OrganSampler-macos.zip` runs on Apple silicon Macs with macOS
-  11 Big Sur or newer; `OrganSampler-macos-10.11-intel.zip` on Intel Macs
-  with macOS 10.11 El Capitan or newer. CoreAudio.
-- **Linux:** `OrganSampler-linux-x86_64.tar.gz` - x86-64 with glibc 2.38 or
-  newer - a distribution of 2024 or later: Ubuntu 24.04, Linux Mint 22,
-  Debian 13, Fedora 39 and their successors. ALSA or JACK (PipeWire).
+---
 
-Where the program keeps its files (settings, the activity log, crash
-reports) - the "application-data folder" of this manual:
+# 10. Technical details
 
-- Windows: `%APPDATA%\OrganSampler` (`C:\Users\<you>\AppData\Roaming\OrganSampler`)
-- macOS: `~/Library/OrganSampler` (in Finder: *Go > Go to Folder...*, type
-  `~/Library/OrganSampler`)
-- Linux: `~/.config/OrganSampler`
+The chapters above link here. Nothing in this part is needed to play.
 
-`CrashLogs/activity.log` is the activity log, `CrashLogs/crash-<date>.txt`
-a crash report with the stack of the crash; macOS writes its own report as
-well, in `~/Library/Logs/DiagnosticReports` (named `OrganSampler_...`).
-`settings.json` is the state of the program, `settings-<date>.json` the
-snapshot of each of the last seven days. If the program crashes at every
-start, move `settings.json` away (keep it for the report) and it starts
-clean; a crash while an audio device was being opened is caught by the
-program itself: the next start opens that device with the default buffer
-and rate and says so.
+## 10.1 The smpl chunk and the file names
+
+The smpl chunk is a small block inside a WAV file that samplers use; most
+audio editors can write it. OrganSampler reads: *MIDI unity note*
+(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),
+*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction
+of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four
+cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's
+start and end in frames; several loops allowed, the type ignored). Unity note
+and fraction give the exact recorded pitch, from which the tuning, the
+temperament, the footage and the celeste detection follow. Files without the
+chunk play as they are: no retuning, no temperament, the footage from the
+folder name only.
+
+File names: the MIDI key number first, optionally a note name (036.wav,
+036-C.wav, 059-B3.wav). Several files of one key are round-robin variants
+played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);
+a two- or three-digit suffix after an underscore at the very end is a
+velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release
+folders: `rel500` for keys held up to 500 ms, `rel1500` up to 1.5 s, plain
+`rel` (= `rel99999`) for the rest, files named like the attacks.
+
+Folder names: the stop's label is built from the folder path; a folder nested
+inside a folder of the same name (perspective prefix, footage and an L/R mark
+aside: "02-direct-HW_Bl.Flute" inside "HW_Bl.Flute2") adds nothing. A single
+L or R right after the footage or at the end ("AB_quintaton16L" +
+"AB_quintaton16R") marks the two halves of one stop; a rank count ("Mixtur4x",
+"Zimbel3") is no such mark. A mutation written without spaces ("Nasard 223",
+"Terz 135") is read as 2 2/3', 1 3/5'; the organ builders' shorthand "3",
+"6", "12", "1 1/2" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after
+its sibling or parent with "tr" or "trem" appended is the tremmed recording
+and is skipped by every scan; a folder a Stop List row names explicitly is
+loaded whatever its name.
+
+The transposition a folder gets by itself: the mode of (recorded pitch - file
+number) over the pipes against the footage in the folder's name, when three
+or more samples agree by 70 % and the difference is two semitones or more.
+Stops with no footage in the name stay at 0.
+
+## 10.2 How the footage of a stop is measured
+
+The footage shown as "Orig. Pitch" is the first harmonic the lowest pipes
+really carry, measured on the audio (65 536 frames from 0.3 s in, the first
+harmonic within 34 dB of the strongest). A recording loses the fundamental of
+the deepest pipes - a 32' C at 16 Hz has it 50 dB under the second harmonic -
+so when the lowest pipe sounds below 45 Hz the pipes 6, 7, 9, 10 and 12
+semitones above are asked whether they have a clear fundamental; two of them
+suffice and the stop keeps its 32'. A mixture has no fundamental on any pipe
+and keeps its first sounding harmonic, hidden breaks included; the higher
+pipes never decide the harmonic number.
+
+## 10.3 Where the program looks for folders
+
+A configuration names its trees relative to its library root
+(`OrganInstallationPackages/003135/pipe/HW` with the root's name) and an IR by
+its path inside the library or by its full path. At a load each is looked for
+at the path it had; then under every sample location:
+`<location>/<root name>/<path>`, `<location>/<path>`, the last one to three
+parts of the old path, and one level around every location (the folder above
+and its first subfolders); then beside the configuration file (also the
+folder the file was chosen from when a copy is loaded); then, on a computer
+with no location yet, by the root's name at the top of every fixed drive,
+under every first-level folder and in the Hauptwerk layout
+(`<folder>\HauptwerkSampleSetsAndComponents\<root>`). A tree never takes
+another's place by its last folder name alone - only by the same path below
+the root. What is found is taken silently and the root noted as a location;
+the list is `Locations.txt` (the folders, and the archives you chose - only
+those are read, never another archive lying beside them).
+
+A clicked folder ("Sample folders not found") is searched from itself and up
+to four ancestors for the longest tail of the missing path that exists under
+it; the tree found must hold at least one of the stop folders the rows
+expect, else the box refuses it; the other missing trees are looked for at
+the same place under the new prefix, then by their tails.
+
+The relocation of a whole library: keep every tree of an organ under one
+root; the root's parent is what the program remembers. The configurations
+folder can be moved as a whole: nothing in it points at its own place.
+
+## 10.4 Hauptwerk import rules
+
+What the definition gives: the keyboards in their order (the pedal first)
+with their key ranges - a division of ours is a keyboard, and every Hauptwerk
+division a keyboard's keys reach through the definition's switches joins it
+(ventil-conditioned ones included; a division reached from several keyboards
+goes to the one with the most keys; a floating division no keyboard reaches
+without a coupler is placed stop by stop where the name says); the stops
+with their sample folders (stop > StopRank rows > ranks > pipe folders); the
+perspectives from the rank names ("Front A (direct): ..." -> Direct, the
+folder prefixes learned into the patterns); the compass of every stop from
+its own rows (keys outside switched off in the voicing, no fills); the
+per-pipe levels, split in three - the median of a division's perspective
+becomes the route volume, the median of the rest the stop volume, the
+remainder the per-key voicing; the tremulant rate (the middle of its range);
+the couplers the definition has that exist in our catalog, and only those
+shown; the general crescendo (one stage per Hauptwerk combination "Cresc...",
+spread over our steps when more than 60); the stops' places on the jamb page
+with the most drawknobs (columns and rows copied).
+
+Ownership: a rank several stops play belongs to the stop whose name it
+carries, else the stop playing it straight over the whole division, else the
+one with the most keys. A stop with ranks of its own is loaded from them; a
+stop with none becomes a transmission of the owner it borrows the most keys
+from, with that shift ("P. Tuba 4" = the Tuba 16' shifted). A folder is never
+loaded twice. A stop with several ranks in one perspective (a left and a
+right component) becomes a stop folder with one child per rank. Ranks
+without release samples make a one-shot stop. Tremmed ranks and the noise
+ranks (blower, action) are left out; combinations, wind, displays are ignored.
+Encrypted sets (.hbw/.hbx) refuse the import.
+
+Names: a row is named after its stop folder as it stands on disk, with the
+definition's perspective prefix cut off ("Re_Principal32" becomes
+"Principal32" when "Re_" is the Rear prefix; a division mark like "Ped_"
+stays); the Hauptwerk stop name becomes the alias, without its footage (the
+caption's footage is the sounding one). A capital follows a division mark
+("P. Trombone 16", "G.O. Trompette 8", "ped subbass" -> "Ped Subbass").
+Transpositions come from the definition's pipe notes against the file names
+("024" on key 36 gives -12). The configuration goes into the configurations
+folder as `<organ>.json`; the folder above `OrganInstallationPackages` is
+noted as a sample location. An import report with everything the plan
+decided is written to `ImportReports` in the settings folder.
+
+## 10.5 The tuning gate of a perspective join
+
+Two folders are the same pipes in two perspectives only when their files
+carry the same tuning: the smpl chunks (unity note and fraction) of the
+same-named files - eight per folder, spread from the lowest pipe up - must be
+equal within 0.02 cent on at least two thirds of them and on three files at
+least. A foreign pipe never matches a fraction bit for bit; a producer's
+retouch of a few headers does not refuse a real perspective. A folder with a
+degenerate smpl (no chunk, few distinct values, every fraction 0) is compared
+by its measured pitch instead (the four lowest files, within 2 cents). The
+name rule before the gate: the whole stem after the prefix must be equal
+("HW_Principal8" is not "Principal8"), the base folder's head a known
+perspective prefix, and the new head on three folders at least. The log
+says for every pair "Tuning gate: ... the same pipes / NOT the same pipes".
+
+A head is a perspective only when the same stems exist under another head
+(and the gate agrees) or when it carries a perspective word (dir, dif, rea,
+far, near, close, dry, wet, front, ab, ortf ...); a lone head such as "HW_"
+or "Ped_" is a division mark and never becomes a perspective.
+
+## 10.6 Memory and the loading stop
+
+Before every stop (and every 32 files inside a large one) the loader looks at
+the memory and stops when any sign says it is short: less free than 512 MB or
+a sixteenth of the installed memory, the program's footprint within the
+system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program
+swapped out by more than 256 MB since the load began (on macOS the
+compressor growing that much while less than twice the reserve is free), or
+the macOS kernel reporting memory pressure. The stops loaded so far make the
+instrument; a stop cut in the middle of its files is dropped whole and named
+in the message; the pool keeps them. A stop whose samples the program holds
+already (a reload) is adopted whatever the memory says. The copy build of
+the filled pipes stops the same way. Before the load the WAV bytes of the
+trees are estimated against the free memory and a warning is logged; the
+load is never refused.
+
+The "free" figure: Windows' available physical memory, Linux's MemAvailable,
+macOS's free and inactive pages. The *RAM GB* cell and the figures of a
+portable save are the process (Windows: the larger of working set and
+private bytes; macOS: the physical footprint; Linux: resident + swapped).
+
+## 10.7 RAM: the storage options measured
+
+One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of
+the filled pipes:
+
+| Storage | Rate on loading | Releases | Packing in RAM | RAM |
+|---|---|---|---|---|
+| 32-bit float | 48 kHz | full rate | off | 83 GB |
+| 32-bit float | 48 kHz | full rate | on | 29 GB |
+| 16-bit | 48 kHz | full rate | off | 49 GB |
+| 16-bit | 48 kHz | full rate | on | 15 GB |
+| 16-bit | 48 kHz | half the rate | off | 32 GB |
+| 16-bit | 48 kHz | half the rate | on | 12 GB |
+| 16-bit | 32 kHz | half the rate | on | 8 GB |
+
+A published configuration's README states the least RAM the organ takes with
+every saving option (measured when saved so, else estimated from a sample of
+the loaded pipes), and INDEX.md lists it. Loading takes markedly longer with
+packing (about 2.5 times) and with half-rate releases (every release through
+the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a
+SATA SSD), a load from the page cache many times faster - never compare the
+two.
+
+## 10.8 The polyphony measurement
+
+What it does: the level down to -52 dB, the limit out of the way, the attack
+minimum time and delay off, two seconds of idle listening; every stop
+engaged (every button of the grid, transmissions included); keys struck
+again and again on every division over its own compass, one key twice a
+second at first, more keys and a faster rate whenever the voices stop rising
+(up to every key, 16 strikes a second); the target raised in steps of 2000
+(a tenth above 20 000), each reached target held four seconds and judged
+clean when every callback of the busiest device stayed within the
+*Measurement limit of DSP power* and the driver never called late; the first
+breakup narrowed down by keys, by rate and finally by the share of stops
+engaged, so that the result is what the computer renders, not the last
+coarse step. Below 1000 voices the result is taken as measured. When all
+keys at the fastest rate produce no more voices and the sound stays clean,
+the organ itself is the limit. Afterwards the level glides up at 26 dB/s
+after a short hold and the new limit takes effect once the tails are gone.
+
+The report: the CPU of the render cores (16 threads busy on a 32-thread
+processor are 100 %), the lane utilisation of the pool, the kernel's
+nanoseconds per voice and frame from cache and from RAM with the ceiling
+that gives at this buffer, the cost of one voice per block in its parts
+(bookkeeping, spans, kernel, tone filter, unpacking), the callback split into
+a fixed part per block and a part per voice, and the device thread's own
+profile: own render, waiting for the lanes, mixing, IR hand-over,
+bookkeeping, the longest route callback of the run and the latest a lane
+joined a job. On Linux the CPU governor, on Windows the power plan.
+
+What moves the figure: the buffer size first (two cores: 1000 voices at
+256, 2300-2900 at 512, 3100-3800 at 1024; sixteen cores: 49 000 / 64 000 /
+74 000 - compare runs at one buffer only); the device path (Linux: measure
+on the card's direct ALSA device or JACK, not on PipeWire's default output;
+Windows: ASIO or one Windows Audio device for all routes); *Compress samples
+in RAM* halves the figure; *Full kernel from* on a processor without AVX2
+divides it by two to five; two-core laptops scatter by a third between runs
+(take the median of three); Aggregated WASAPI renders every route on its own
+thread (a big organ over fifteen routes measures like ASIO, the whole organ
+on two routes is bound to two cores).
+
+What it cannot see: a dropout made after the program's buffer - the
+system's shared mixer with many streams on one endpoint, a USB card starved
+by the system, an endpoint's "audio enhancements" boosting every quiet stream
+- leaves the run clean and the sound not. Such a case shows in the activity
+log as "Audio callback anomaly: ... no callbacks" for a route, or not at all;
+the cure is the device layout (one driver for everything, ASIO where there is
+one, no unused routes left open on the same endpoint), never the limit. The
+DSP cell can read lower than the limit when the run ends: it shows a fading
+peak, the judge takes the single longest callback.
+
+## 10.9 Retune buses and the full kernel
+
+A pipe is retuned by its own recorded deviation (its rank's smpl pitches),
+the temperament of the played key, the random detune, wind and tremulant,
+and the transposition of its transmission - every pipe and every rank for
+itself, which is why two perspectives recorded with a real tuning difference
+are each pulled to the same pitch with *a1 = 440 Hz* on, and keep their
+difference with it off. The common part of a large retune (a1 = 440 Hz on an
+organ at 409 Hz, a big global pitch) is not played by speeding every pipe up:
+the route's voices of that retune are rendered into a bus and the bus is
+resampled once with a proper sinc filter into the route's output, so the
+pipes keep their recorded speed and the images of the cheap kernel stay
+away. Up to three buses per route, joined within 6 cents. The cents that
+stay in the pipes themselves (temperament, detune) play through the linear
+kernel, or through the 8-tap sinc with phase interpolation above *Full
+kernel from (sounding pitch)*; the sinc also serves the first 1.3 s of a
+half-rate release and the loop splices of the high pipes. 32 or 36 kHz
+storage is no retune: its images stay.
+
+## 10.10 The discontinuity detector
+
+A jump is counted when the step from the last sample of a block to the first
+of the next is more than twelve times the mean step of this and the previous
+block, above -74 dBFS, and the previous block was not silent (a chord
+starting on a silent route is not a click). Counted per route after the pool
+render (stage 0, the sharpest: with IR reverb on the route the wet masks a
+small dry step at stage 1), after separation, reverb and clip (stage 1), and
+per device callback on the driver's buffer, on the route's own channels only.
+The log line names the route, the stage and the lanes that rendered without a
+scratch buffer; the counters reset after a render gap, a device start or a
+mute. It costs a few microseconds per period; a 15-route organ at idle pays
+about 7 % of a 512-sample period for it.
+
+## 10.11 The render pool and the threads
+
+The routes of one device are one stream: the driver's callback calls every
+route in turn, each route's voices become one job of the render pool, the
+device thread and the workers take chunks of it (lanes), the device thread
+merges their scratch buffers and mixes. The IR convolution of a route runs as
+a pool task posted by the last route of its group and joined by the first
+route of the next block, so it takes render time but never piles up on the
+audio thread. The workers wake ahead of every period (the cadence is known)
+and the device thread takes no more voices at the tail of a job when the
+lanes still at work would finish them sooner. The workers and the control
+thread (MIDI, attacks and releases, finished voices) run at audio priority:
+Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed
+(the log says "Render worker: SCHED_FIFO" or "REFUSED" with what to allow),
+macOS a time-constraint thread; a real-time thread waiting for another never
+yields the core (under SCHED_FIFO that starves the window thread). On one or
+two cores the device thread yields while it waits and the lanes take small
+chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;
+the self-test (`--kerneltest`) checks every kernel against the scalar code and
+prints its speed.
+
+## 10.12 RAR archives: how they are read
+
+The program keeps its own index of every archive you choose (a walk of the
+headers, cached under `ArchiveIndex` in the settings folder, keyed by the
+first volume's size and date; a minute for 18 000 headers on a hard disk,
+seconds on an SSD): the files with their volumes and pieces. A stored file
+is read straight from the volumes; a packed one is unpacked from its own
+bytes alone, so the loader reads files in parallel (100-120 MB/s per thread
+packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,
+multi-volume sets (.partNN, .r00), recovery records, unicode names;
+encrypted archives are refused. Archives packed with PPMd or old filters go
+through a second reader (unarr) after the first fails, logged once. A
+configuration never names an archive: every path is a disk path, and a folder
+that is also on the disk wins over the archive.
+
+## 10.13 Files written by the program
+
+In the settings folder ("Where the files are"): `settings.json` (this
+computer: devices, MIDI, the editor's machine settings, the last
+configuration) with `settings-<date>.json` snapshots; `Locations.txt`;
+`Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);
+`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;
+`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*
+without a file. In the configurations folder: `<organ>.json` and its
+`.json.bak`, `Publish/` with the exports, `../AudioRecordings` by default.
+A configuration file holds only what the instrument uses now - the divisions
+in use, the routes that exist and their settings; a route no stop plays
+through has no tab and no device. Paths are stored with "/"; every path under
+the library root is relative, only a tree outside it absolute. The voicing is
+saved automatically and with the configuration; *Save Voicing* / *Load
+Voicing* exchange it as a file.
