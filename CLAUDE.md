@@ -1959,6 +1959,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Colour questions: make a swatch picture (PIL is installed) instead of describing shades. Also 0.8.243: the
   Stop List's `automaticName` of an EMPTY folder returns {} - no more naming after the children (the user:
   "Může být stále Stop Folder"); refreshContainerNames is left in place (harmless).
+  0.8.244 (the user: no tooltips in Swell/Tremulant settings; the Ignored Patterns dialog stayed over the manual;
+  "Set for all divisions" unclear): FeatureContent rows get tooltip + "manualChapter" from a static table matched
+  by the row text's start (ORDER MATTERS: "Depth (maximum pitch sag)" before "Depth"); showAboutDialog puts the
+  top-level window under the mouse (the dialog whose "?" was clicked) `toBehind(aboutWindow)` - toFront is not
+  honoured everywhere (Wayland); the channels button is "Set these channels for all divisions (this perspective)"
+  (manual Step 5 and 5.3 follow).
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

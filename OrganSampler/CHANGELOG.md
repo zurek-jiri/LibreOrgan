@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.244] - 2026-10-30
+
+### Fixed
+- The Swell, Tremulant and Wind settings dialogs: every slider has its
+  tooltip, and F1 over it opens its option's chapter.
+- The manual opened by the "?" of a dialog comes up in front of that dialog.
+
+### Changed
+- Divisions dialog: the channels button reads "Set these channels for all
+  divisions (this perspective)".
+
 ## [0.8.243] - 2026-10-30
 
 ### Changed

@@ -102,7 +102,7 @@ an organ".
 dialog: one tab per perspective of the division and one *auxiliary* tab. On a tab choose the device type (Windows: ASIO when you have it), the
 device, 48 kHz, a buffer of 512 samples, and tick the output channels of the
 device the perspective plays through. *Set for all perspectives and divisions*
-copies the device to every route; *Set for all divisions (this perspective)*
+copies the device to every route; *Set these channels for all divisions (this perspective)*
 above the channel list copies the channels to the same perspective of every
 division. Leave the *auxiliary* tab at *none*. Details: [The audio tabs](#53-the-audio-tabs).
 
@@ -831,7 +831,7 @@ to that device and those channels. Each tab, top to bottom:
   pipes are spread over them by key number, so a chord spreads across the
   speakers like pipes across a windchest (a mono sample to one channel in
   turn, a stereo sample to a pair; an odd number of channels lets the pairs
-  circulate). **Set for all divisions (this perspective)** above the list
+  circulate). **Set these channels for all divisions (this perspective)** above the list
   copies these channels to the same perspective of every division.
 - **The device box**: type, device, sample rate, buffer size; *Driver
   Control Panel*, *Reopen device*, and **Set for all perspectives and

@@ -6805,7 +6805,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 addAndMakeVisible(logicalLabel);
                 // The channels of this route for the same perspective of every other
                 // division (0.8.228): one choice for every Diffuse, one for every Rear ...
-                channelsAll.setButtonText("Set for all divisions (this perspective)");
+                channelsAll.setButtonText("Set these channels for all divisions (this perspective)");
                 channelsAll.setTooltip("Copies the output channels ticked below to the \"" + this->perspective
                     + "\" route of every other division. The devices stay as they are.");
                 channelsAll.onClick = [this]
@@ -23680,6 +23680,37 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 label->setText(row.text, juce::dontSendNotification);
                 addAndMakeVisible(*label);
                 auto slider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+                {
+                    // The tooltip and the manual chapter of the row (0.8.244, the user: no tooltips here): the
+                    // Editor's option the row stands for, found by the row's text.
+                    struct Help { const char* textStart; const char* chapter; const char* tip; };
+                    static const Help helps[]{
+                        { "Maximum attenuation", "Swell: maximum attenuation when closed", "How much quieter the division is with the swell box fully closed (0 to 60 dB)." },
+                        { "Shutter inertia", "Swell: shutter inertia (settling time)", "How slowly the shutters follow the pedal: a sudden stroke takes this long to arrive." },
+                        { "Harmonic filter, shutters", "Swell: harmonic filter", "A closed box also takes the brilliance: a high shelf above about 3 kHz, this much loss with the box closed (every division)." },
+                        { "Rate", "Tremulant rate", "The speed of the division's tremulant (2 to 11 Hz)." },
+                        { "Depth (maximum pitch sag)", "Wind: depth (maximum pitch sag)", "How far the pitch sags with the wind at its lowest; 0 switches the wind model off for this division." },
+                        { "Depth", "Tremulant depth", "The pitch modulation of the tremulant (0 to 50 cents); its strength wanders between 60 and 100 % of it." },
+                        { "Phase drift", "Tremulant phase drift between ranks", "How far the ranks of the division drift apart in the tremulant's cycle: 0 = every stop dips at once, a large value lets a full registration shimmer." },
+                        { "Volume change per cent of pitch", "Tremulant: volume change per cent of pitch", "The level modulation per cent of pitch modulation (every division)." },
+                        { "Harmonic filter at the dip", "Tremulant: harmonic filter", "This much high-frequency loss at the bottom of the tremulant's dip, so the tone breathes with the level (every division)." },
+                        { "Harmonic filter phase", "Tremulant: harmonic filter phase", "How far the tone oscillation lags the volume oscillation (0 to 360 degrees; every division)." },
+                        { "Oscillation frequency", "Wind: oscillation frequency", "The bounce of the bellows after a key stroke (2 to 10 Hz)." },
+                        { "Number of oscillations", "Wind: number of oscillations", "How many oscillations die away after a stroke." },
+                        { "Oscillation strength", "Wind: oscillation strength", "The impulse a key stroke gives the wind." },
+                        { "Sag settling lag", "Wind: sag settling lag", "How long the wind pressure takes to settle after stops or keys change." },
+                        { "Maximum wind model effect", "Wind: maximum wind model effect", "The strength of the whole wind model (every division); 0 % switches it off everywhere." },
+                        { "Volume change per cent of sag", "Wind: volume change per cent of sag", "How much quieter a pipe gets for every cent the sag lowers its pitch (every division)." },
+                        { "Harmonic filter at full sag", "Wind: harmonic filter", "This much high-frequency loss at the full sag: a starved pipe is duller as well as flatter (every division)." } };
+                    for (const auto& help : helps)
+                        if (row.text.startsWith(help.textStart))
+                        {
+                            label->setTooltip(help.tip); slider->setTooltip(help.tip);
+                            label->getProperties().set("manualChapter", juce::String(help.chapter));
+                            slider->getProperties().set("manualChapter", juce::String(help.chapter));
+                            break;
+                        }
+                }
                 slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 84, 22);
                 slider->setRange(row.minimum, row.maximum, row.step);
                 slider->setTextValueSuffix(row.suffix);
@@ -26933,6 +26964,11 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
     if (wasVisible) if (auto* peer = aboutWindow->getPeer()) { peer->setVisible(false); peer->setVisible(true); }
    #endif
     aboutWindow->toFront(true);
+    // Opened by the "?" of a dialog (0.8.244, the user: the patterns dialog stayed over the manual): the
+    // dialog under the mouse steps behind the manual - toFront alone is not honoured everywhere.
+    if (auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse())
+        if (auto* top = under->getTopLevelComponent())
+            if (top != aboutWindow.get() && top != getTopLevelComponent() && top->isOnDesktop()) top->toBehind(aboutWindow.get());
     // Opened from a modal dialog (the patterns dialogs, the load box, a question): that dialog's modal state
     // would block every click in the manual (JUCE sends the events to the top modal component only) - the
     // manual joins the modal stack while a modal component exists; hiding it leaves the stack again (0.8.234).
