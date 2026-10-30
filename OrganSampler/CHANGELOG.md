@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.234] - 2026-10-30
+
+### Fixed
+- The "?" of a modal dialog (the patterns dialogs, the load box) opened the
+  manual behind the dialog and dead to clicks: the manual window joins the
+  modal stack while a modal dialog is up; on Linux a manual window already
+  open is mapped anew so that Wayland brings it to the top.
+- Stop List: a perspective column being dragged is seen - the column as it
+  stands follows the mouse half transparent, an orange line marks where it
+  lands.
+
 ## [0.8.233] - 2026-10-30
 
 ### Added

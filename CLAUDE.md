@@ -1860,6 +1860,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   2.4, 4.5), the remove-link sentence and "None of this loads anything again" dropped. The patterns lists and the
   perspective order ARE configuration keys (not machine-specific), merged into Patterns.json at every load on any
   computer - told the user.
+  0.8.234 (30 Oct 2026 evening, the user: "klik na otazníček v perspektiv patterns dialogu neotevře manuál vůbec"
+  + "není vidět divize při přesunu" (= the perspective column drag) + "proč kóduješ, když jsem ti to nezadal???
+  Ale kóduj, ale udělej zároveň všechna to-do"): (1) The log said "Manual: shown at Perspective prefixes" six
+  times - the window came up but was DEAD: the patterns dialogs are `launchAsync` = modal, and the kept About
+  window (options.create(), never modal; a hidden window loses its modal state anyway) gets no events while
+  another modal component exists. Now showAboutDialog enters the modal state (`enterModalState(false, nullptr,
+  false)`) when any modal component exists; hiding it leaves the stack. On JUCE_LINUX a window already visible
+  is remapped (peer setVisible false/true: Wayland lets no unfocused window raise itself). (2) Stop List column
+  drag: `columnGhost` (ImageComponent, a `createComponentSnapshot` of the column's visible part, alpha 0.55,
+  follows the mouse from `columnDragOver`), `GridArea::columnMarkerX` (an orange 3 px line at the target column),
+  `columnUnder`, `columnDrop`. LESSON: a question or a report from the user is answered, the code comes when he
+  says so; when he says "do all to-dos", every open item goes into ONE build.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

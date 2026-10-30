@@ -19027,6 +19027,9 @@ void MainComponent::showStopBuildingDialog(int)
             ghost.setColour(juce::Label::textColourId, juce::Colours::black);
             ghost.setInterceptsMouseClicks(false, false);
             ghost.setAlwaysOnTop(true);
+            addChildComponent(columnGhost);
+            columnGhost.setInterceptsMouseClicks(false, false);
+            columnGhost.setAlwaysOnTop(true);
 
             auto setup = [this](juce::TextButton& button, const juce::String& text, const juce::String& tip, std::function<void()> action)
             {
@@ -19198,6 +19201,7 @@ void MainComponent::showStopBuildingDialog(int)
         {
         public:
             int insertMarker = -1;                 // a dragged row lands before this row (-1 = none)
+            int columnMarkerX = -1;                // a dragged perspective column lands at this x (-1 = none; 0.8.234)
             juce::Rectangle<int> dropTarget;       // a dragged folder lands in this cell (empty = none)
             juce::Rectangle<int> dragSource;       // the cell the dragged folder leaves (empty = none)
             float phase = 0.0f;                    // marching border animation
@@ -19231,6 +19235,11 @@ void MainComponent::showStopBuildingDialog(int)
             }
             void paint(juce::Graphics& g) override
             {
+                if (columnMarkerX >= 0)
+                {
+                    g.setColour(onColour());
+                    g.fillRect(columnMarkerX - 1, 0, 3, getHeight());
+                }
                 if (insertMarker >= 0 && markerYFor)
                 {
                     g.setColour(onColour());
@@ -19265,12 +19274,13 @@ void MainComponent::showStopBuildingDialog(int)
         class HeaderLabel final : public juce::Label
         {
         public:
-            std::function<void(juce::Point<int>)> dropAt;   // screen position
+            std::function<void(juce::Point<int>)> dragOver, dropAt;   // screen position
             void mouseDown(const juce::MouseEvent& event) override { dragging = false; juce::Label::mouseDown(event); }
             void mouseDrag(const juce::MouseEvent& event) override
             {
                 if (isBeingEdited()) { juce::Label::mouseDrag(event); return; }
                 if (!dragging && event.getDistanceFromDragStart() > 6) { dragging = true; setMouseCursor(juce::MouseCursor::DraggingHandCursor); }
+                if (dragging && dragOver) dragOver(event.getScreenPosition());
             }
             void mouseUp(const juce::MouseEvent& event) override
             {
@@ -19428,6 +19438,8 @@ void MainComponent::showStopBuildingDialog(int)
         juce::Label divisionHeader, nameHeader, aliasHeader, offsetHeader, transmissionHeader;
         std::vector<HeaderCell> headers;
         std::vector<std::unique_ptr<Row>> rows;
+        juce::ImageComponent columnGhost;   // the dragged perspective column, half transparent (0.8.234)
+        int columnGhostGrab = 0, columnGhostTop = 0;
         juce::TextButton addStopButton, addPerspectiveButton, removeEmptyButton, aliasesButton, loadFolderButton, unloadFolderButton, swapButton,
             resetButton, applyButton, closeButton;
         HintSheen loadHint;   // the golden sheen and arrow on "Load folder..." while the table is empty (0.8.175)
@@ -19482,6 +19494,50 @@ void MainComponent::showStopBuildingDialog(int)
             for (const auto& p : perspectives) order.add(p);
             CrashHandler::note("Perspective \"" + name + "\" moved: the order of the perspectives is " + order.joinIntoString(", "));
             rebuildGrid();
+        }
+        // The column under the mouse; beyond the last one: the last.
+        size_t columnUnder(juce::Point<int> screen) const
+        {
+            size_t target = headers.empty() ? 0 : headers.size() - 1;
+            for (size_t i = 0; i < headers.size(); ++i)
+            {
+                const auto bounds = headers[i].label->getScreenBounds();
+                if (screen.x < bounds.getX() - 2 + (int)cellWidth) { target = i; break; }
+            }
+            return target;
+        }
+        // A perspective column being dragged (0.8.234, the user: "není vidět, že přesouvá"): the column as it
+        // stands - its part in view, half transparent - follows the mouse, an orange line marks where it lands.
+        void columnDragOver(size_t from, juce::Point<int> screen)
+        {
+            if (from >= headers.size()) return;
+            if (!columnGhost.isVisible())
+            {
+                const auto visible = view.getViewArea();
+                juce::Rectangle<int> column(headers[from].label->getX() - 2, visible.getY(), (int)cellWidth, visible.getHeight());
+                column = column.getIntersection(grid.getLocalBounds());
+                if (column.isEmpty()) return;
+                columnGhost.setImage(grid.createComponentSnapshot(column, true, 1.0f));
+                columnGhost.setImagePlacement(juce::RectanglePlacement::stretchToFit);
+                columnGhost.setSize(column.getWidth(), column.getHeight());
+                columnGhost.setAlpha(0.55f);
+                columnGhost.setVisible(true);
+                columnGhost.toFront(false);
+                columnGhostGrab = getLocalPoint(nullptr, screen).x - getLocalPoint(&grid, column.getPosition()).x;
+                columnGhostTop = getLocalPoint(&view, juce::Point<int>(0, 0)).y;
+            }
+            const auto local = getLocalPoint(nullptr, screen);
+            columnGhost.setTopLeftPosition(local.x - columnGhostGrab, columnGhostTop);
+            const size_t target = columnUnder(screen);
+            grid.columnMarkerX = target == from ? -1 : headers[target].label->getX() - 2;
+            grid.repaint();
+        }
+        void columnDrop(size_t from, juce::Point<int> screen)
+        {
+            columnGhost.setVisible(false);
+            grid.columnMarkerX = -1;
+            grid.repaint();
+            movePerspectiveColumn(from, columnUnder(screen));
         }
         std::vector<Build::Entry> allEntries() const
         {
@@ -19765,17 +19821,8 @@ void MainComponent::showStopBuildingDialog(int)
                 {
                     auto* label = cell.label.get();
                     cell.label->onTextChange = [this, p, label] { renamePerspective(p, label->getText()); };
-                    cell.label->dropAt = [this, p](juce::Point<int> screen)
-                    {
-                        // The column under the mouse; beyond the last one: the last.
-                        size_t target = headers.empty() ? 0 : headers.size() - 1;
-                        for (size_t i = 0; i < headers.size(); ++i)
-                        {
-                            const auto bounds = headers[i].label->getScreenBounds();
-                            if (screen.x < bounds.getX() + (int)cellWidth) { target = i; break; }
-                        }
-                        movePerspectiveColumn(p, target);
-                    };
+                    cell.label->dragOver = [this, p](juce::Point<int> screen) { columnDragOver(p, screen); };
+                    cell.label->dropAt = [this, p](juce::Point<int> screen) { columnDrop(p, screen); };
                 }
                 grid.addAndMakeVisible(*cell.label);
                 cell.remove = std::make_unique<juce::TextButton>("x");
@@ -26704,8 +26751,19 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
         options.resizable = true;
         aboutWindow.reset(options.create());   // kept from now on: closing hides it (0.8.212)
     }
+    const bool wasVisible = aboutWindow->isVisible();
     aboutWindow->setVisible(true);
+   #if JUCE_LINUX
+    // Wayland: a window without the focus cannot raise itself (the "?" of a dialog showed nothing while the
+    // manual stood open behind the main window); unmapping and mapping the peer maps it on top (0.8.234).
+    if (wasVisible) if (auto* peer = aboutWindow->getPeer()) { peer->setVisible(false); peer->setVisible(true); }
+   #endif
     aboutWindow->toFront(true);
+    // Opened from a modal dialog (the patterns dialogs, the load box, a question): that dialog's modal state
+    // would block every click in the manual (JUCE sends the events to the top modal component only) - the
+    // manual joins the modal stack while a modal component exists; hiding it leaves the stack again (0.8.234).
+    if (juce::ModalComponentManager::getInstance()->getNumModalComponents() > 0 && !aboutWindow->isCurrentlyModal())
+        aboutWindow->enterModalState(false, nullptr, false);
     if (manualSection.isNotEmpty() && aboutOpenChapter) aboutOpenChapter(manualSection, fallbackSection);
     // The window's final size is settled after this message: the chapter at the top again then.
     if (aboutRescroll) juce::MessageManager::callAsync([rescroll = aboutRescroll] { rescroll(); });
