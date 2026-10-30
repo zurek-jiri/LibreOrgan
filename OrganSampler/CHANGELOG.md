@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.249] - 2026-10-30
+
+### Fixed
+- Linux: the menu entry died when the executable was moved ("Could not find
+  the program"). The entry now runs a launcher script that starts the
+  executable noted at the last start, else the newest OrganSampler found in
+  Downloads, Desktop, Applications, bin or .local/bin, else shows a message;
+  every start notes its executable and repairs an outdated entry or script.
+
 ## [0.8.248] - 2026-10-30
 
 ### Fixed

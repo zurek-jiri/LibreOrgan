@@ -1795,6 +1795,9 @@ MainComponent::MainComponent()
         chapter(couplerRailLabel, "Couplers");
         helpKeyWatcher = std::make_unique<HelpKeyWatcher>(*this);
     }
+   #if JUCE_LINUX
+    refreshLinuxLauncher();   // 0.8.249: the menu entry follows the executable wherever it was started from
+   #endif
     // Optional: re-open the configuration used last time (Configuration Editor >
     // Console). Off by default: launching alone never loads sample folders - and
     // then the instrument starts clean: no trees in the pool, no stop tables
@@ -17006,11 +17009,84 @@ void MainComponent::startVideoScript(const juce::File& script, const juce::File&
     video = std::make_shared<VideoScript>(*this, script, folder);
 }
 
-void MainComponent::installLinuxDesktopEntry()
+juce::File MainComponent::linuxLauncherScript()
+{
+    return juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/bin/organsampler-start");
+}
+
+juce::File MainComponent::linuxExecutableNoteFile() const
+{
+    return settingsFile.getParentDirectory().getChildFile("Executable.txt");
+}
+
+// The launcher the menu entry runs (0.8.249, the user: a moved executable left the menu entry
+// dead - "Could not find the program"): the path noted by the last start, else the newest
+// OrganSampler executable in the usual folders, else a message instead of a silent failure.
+static juce::String linuxLauncherText()
+{
+    return juce::String(R"SH(#!/bin/sh
+# OrganSampler launcher, written by the program ("Install menu entry and icon"; kept up to date at every start).
+# Starts the executable noted at the last start, else the newest OrganSampler found in the usual folders.
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/OrganSampler/Executable.txt"
+exe=""
+[ -f "$cfg" ] && exe="$(head -n 1 "$cfg")"
+if [ -z "$exe" ] || [ ! -x "$exe" ]; then
+  exe=""
+  dl="$(xdg-user-dir DOWNLOAD 2>/dev/null)"; dt="$(xdg-user-dir DESKTOP 2>/dev/null)"
+  for dir in "$dl" "$dt" "$HOME/Downloads" "$HOME/Desktop" "$HOME/Applications" "$HOME/bin" "$HOME/.local/bin" "$HOME"; do
+    [ -n "$dir" ] && [ -d "$dir" ] || continue
+    for f in "$dir"/OrganSampler "$dir"/OrganSampler*/OrganSampler; do
+      if [ -f "$f" ] && [ -x "$f" ]; then
+        if [ -z "$exe" ] || [ "$f" -nt "$exe" ]; then exe="$f"; fi
+      fi
+    done
+  done
+fi
+if [ -z "$exe" ]; then
+  msg="OrganSampler was not found: the file the menu entry was made from is gone, and no OrganSampler executable lies in Downloads, Desktop, Applications, bin or .local/bin. Put it in one of them and start it once from the file manager; the menu entry follows it from then on."
+  if command -v kdialog >/dev/null 2>&1; then kdialog --error "$msg"
+  elif command -v zenity >/dev/null 2>&1; then zenity --error --text="$msg"
+  elif command -v notify-send >/dev/null 2>&1; then notify-send "OrganSampler" "$msg"
+  else echo "$msg" >&2; fi
+  exit 1
+fi
+exec "$exe" "$@"
+)SH");
+}
+
+void MainComponent::refreshLinuxLauncher()
+{
+   #if JUCE_LINUX
+    const auto exe = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+    linuxExecutableNoteFile().getParentDirectory().createDirectory();
+    linuxExecutableNoteFile().replaceWithText(exe.getFullPathName() + "\n", false, false, "\n");
+    // The entry exists (the user installed it once): it and the script are brought up to date
+    // when they lag - an old entry starting the executable by its path, or a script missing or
+    // outdated. Nothing is installed for a user who never asked for the entry.
+    const auto entry = juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/share/applications/organsampler.desktop");
+    if (!entry.existsAsFile()) return;
+    const auto script = linuxLauncherScript();
+    const bool entryRunsScript = entry.loadFileAsString().contains("Exec=" + script.getFullPathName().quoted());
+    const bool scriptCurrent = script.existsAsFile() && script.loadFileAsString() == linuxLauncherText();
+    if (entryRunsScript && scriptCurrent) return;
+    CrashHandler::note("Linux menu entry: " + juce::String(entryRunsScript ? "the launcher script" : "the entry") + " is out of date - installed again");
+    installLinuxDesktopEntry(true);
+   #endif
+}
+
+void MainComponent::installLinuxDesktopEntry(bool silent)
 {
    #if JUCE_LINUX
     const auto share = juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/share");
     const auto exe = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+    // The launcher script and the note of this executable (0.8.249): the entry runs the script,
+    // the script runs the noted executable or the newest one it finds.
+    const auto script = linuxLauncherScript();
+    script.getParentDirectory().createDirectory();
+    const bool scriptOk = script.replaceWithText(linuxLauncherText(), false, false, "\n")
+        && script.setExecutePermission(true);
+    linuxExecutableNoteFile().getParentDirectory().createDirectory();
+    linuxExecutableNoteFile().replaceWithText(exe.getFullPathName() + "\n", false, false, "\n");
     // The same icon as on Windows: the hand-tuned image of every size of the
     // .ico (16-256, made by Tools/make_small_icons.ps1), 512 from the 1024 px original.
     struct Sized { int size; const char* data; int bytes; };
@@ -17046,27 +17122,30 @@ void MainComponent::installLinuxDesktopEntry()
     const auto entry = apps.getChildFile("organsampler.desktop");
     juce::String text;
     text << "[Desktop Entry]\nType=Application\nName=OrganSampler\nComment=Pipe organ sampler for creative minds\n"
-         << "Exec=" << exe.getFullPathName().quoted() << "\nIcon=organsampler\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
+         << "Exec=" << (scriptOk ? script : exe).getFullPathName().quoted() << "\nIcon=organsampler\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
          << "StartupWMClass=OrganSampler\nStartupNotify=false\n";
     // Unix line endings: JUCE writes "\r\n" by default, and a .desktop file with
     // carriage returns is invalid (KDE and GNOME ignore it).
     const bool ok = entry.replaceWithText(text, false, false, "\n") && icons > 0;
     // The menu and icon caches, where the tools exist (harmless where they do not):
-    // GNOME reads the folder by itself, KDE needs its cache rebuilt.
+    // GNOME reads the folder by itself, KDE needs its cache rebuilt. The silent repair at a
+    // start does not wait for them.
     for (const auto& command : { "update-desktop-database " + apps.getFullPathName().quoted(),
                                  "gtk-update-icon-cache -f -t " + share.getChildFile("icons/hicolor").getFullPathName().quoted(),
                                  juce::String("kbuildsycoca6"), juce::String("kbuildsycoca5") })
     {
         juce::ChildProcess process;
-        if (process.start(command)) process.waitForProcessToFinish(8000);
+        if (process.start(command) && !silent) process.waitForProcessToFinish(8000);
     }
-    CrashHandler::note(juce::String("Linux desktop entry ") + (ok ? "installed: " : "FAILED: ") + entry.getFullPathName() + ", " + juce::String(icons) + " icon size(s)");
+    CrashHandler::note(juce::String("Linux desktop entry ") + (ok ? "installed: " : "FAILED: ") + entry.getFullPathName() + ", " + juce::String(icons) + " icon size(s), launcher "
+        + (scriptOk ? script.getFullPathName() : juce::String("NOT written")) + (silent ? " (repaired at the start)" : ""));
+    if (silent) return;
     queueNotice(ok ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon, "Menu entry and icon",
         ok ? "Installed: " + entry.getFullPathName() + " and the icon in " + juce::String(icons) + " sizes under ~/.local/share/icons/hicolor.\n\n"
              "Where to find it: open the application menu (the launcher button or the Super/Windows key) and type \"Organ\" - OrganSampler "
              "is in the Multimedia (Sound & Video) group - Audio Production on Ubuntu Studio - with its icon; right-click it there to pin it to the panel or dock.\n\n"
-             "The entry starts " + exe.getFullPathName() + " - install again after moving the executable. "
-             "Log out and in if the menu does not show it at once."
+             "The entry starts " + exe.getFullPathName() + " and follows it: start a moved or new executable once from the file manager and the entry "
+             "runs that one from then on (" + script.getFullPathName() + " finds it). Log out and in if the menu does not show it at once."
            : "The entry could not be written under ~/.local/share - see the activity log.");
    #endif
 }

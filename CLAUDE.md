@@ -1984,6 +1984,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   1920x1080 monitor at x = 2560 on this KDE Wayland box, not his 2560x1440 main one. `UIScale::startDisplay()` =
   the display under the mouse, else the largest, else JUCE's primary - used by placeMainWindow's fresh-start
   branch and by estimatePercent. A "does not start" report: read activity.log for the work area first.
+  0.8.249 (the user's "Launching organsampler failed": journalctl --user said `kf.kio.gui: Could not find the
+  program '/home/doma/Desktop/OrganSampler'` - the menu entry's Exec pointed at the moved binary; his settings
+  wipe was unrelated): `~/.local/bin/organsampler-start` (linuxLauncherText(), sh: Executable.txt of the settings
+  folder, else the newest OrganSampler in xdg DOWNLOAD/DESKTOP, ~/Downloads, ~/Desktop, ~/Applications, ~/bin,
+  ~/.local/bin, ~ and OrganSampler*/OrganSampler below them, else kdialog/zenity/notify-send message), the entry's
+  Exec = the script; `refreshLinuxLauncher()` at every start writes Executable.txt and, when the entry exists but
+  does not run the script or the script's text differs, `installLinuxDesktopEntry(true)` (silent: no notice, the
+  cache tools not waited for). A "program does not start" on Linux: `journalctl --user -b | grep -i organ` first.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

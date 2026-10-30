@@ -425,7 +425,12 @@ private:
     void offerDefinitionBeside(const std::vector<juce::File>& archives, bool merge);
     // Linux: a .desktop entry and the icon in every size under ~/.local/share, so
     // the program has its icon in the menu, the dock and the file manager.
-    void installLinuxDesktopEntry();
+    void installLinuxDesktopEntry(bool silent = false);
+    // 0.8.249: the menu entry runs a launcher script that finds the executable (Executable.txt, else the usual
+    // folders); at every start the program notes its path and repairs the entry and the script when they lag.
+    void refreshLinuxLauncher();
+    static juce::File linuxLauncherScript();
+    juce::File linuxExecutableNoteFile() const;
     void unloadTreeFromPool(const juce::String& path);     // the tree and every stop built from it, in every division
     void unloadAllTreesFromPool();                           // every tree: the rows stay as empty stops, every division reloads (empty)
     std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> stopMapForDivisions(const std::set<int>& divisions) const;

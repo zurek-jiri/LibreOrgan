@@ -63,8 +63,9 @@ releases page, unpack it, put the program anywhere, start it:
 title shows the version.
 
 Linux: *Install menu entry and icon* at the bottom of the Configuration Editor
-puts the program into the application menu with its icon; install again after
-moving the executable.
+puts the program into the application menu with its icon. The entry follows
+the executable: after moving it or downloading a new one, start that file
+once from the file manager and the menu runs it from then on.
 
 ## 1.3 The first start, step by step
 

@@ -67,8 +67,9 @@ static const char* const kManualText_part0 =
     "title shows the version.\n"
     "\n"
     "Linux: *Install menu entry and icon* at the bottom of the Configuration Editor\n"
-    "puts the program into the application menu with its icon; install again after\n"
-    "moving the executable.\n"
+    "puts the program into the application menu with its icon. The entry follows\n"
+    "the executable: after moving it or downloading a new one, start that file\n"
+    "once from the file manager and the menu runs it from then on.\n"
     "\n"
     "## 1.3 The first start, step by step\n"
     "\n"
@@ -201,9 +202,9 @@ static const char* const kManualText_part0 =
     "Best: load all the volumes at once - choose every archive of the set together\n"
     "in *Load Configuration*. Volume by volume: load the first, then **right-click**\n"
     "*Load Configuration* > *Merge another configuration into this organ* with the\n"
-    "second one's definition, configuration or archives. Stops you have gain the\n"
     ;
 static const char* const kManualText_part1 =
+    "second one's definition, configuration or archives. Stops you have gain the\n"
     "new perspective, new stops are added. A perspective set whose folders stand\n"
     "beside yours under a new prefix joins your rows the same way, in the merge and\n"
     "in *Load folder...* alike. How the program decides that two folders are the\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "\n"
     "## 2.2 The combination row\n"
     "\n"
-    "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
     ;
 static const char* const kManualText_part2 =
+    "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
     "buttons *<<* / *>>*, the bank buttons, the display of the combination in use,\n"
     "*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for\n"
     "combination files, and the crescendo.\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "breaks) and the temperament the recording was found to be in. How the\n"
     "footage is measured: [How the footage of a stop is measured](#102-how-the-footage-of-a-stop-is-measured).\n"
     "\n"
-    "### Volume per key and Treble per key\n"
     ;
 static const char* const kManualText_part3 =
+    "### Volume per key and Treble per key\n"
     "\n"
     "Two folding rows of per-key sliders (-9 to +9 dB; the treble is a high shelf\n"
     "above *Treble per key: shelf start frequency*). Under every note name a tick\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "\n"
     "The *Tremulant* button in the division header is registration like a stop: it\n"
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
-    "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     ;
 static const char* const kManualText_part4 =
+    "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "  The retune works rank by rank - every rank's own recorded deviations are\n"
     "  taken out and the target's put in - so both organs play the target\n"
     "  temperament in tune with each other. The base temperament shown is the one\n"
-    "  that prevails among the ranks; a rank whose recording could not be\n"
     ;
 static const char* const kManualText_part5 =
+    "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
     "\n"
     "**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "are faded out beyond it. Set it below what the computer renders, so that an\n"
     "overload fades old voices rather than crackles. It belongs to the organ\n"
     "(routes, IRs, drivers, buffers all change it) and is saved with the\n"
-    "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
     ;
 static const char* const kManualText_part6 =
+    "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
     "registration of a wet set, many quick staccato notes over many keys, watch\n"
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "Pitch shift method: the decay of a filled pipe's release as a share of its\n"
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
     "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch: how far the attack is stretched back from the\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "\n"
     "The MIDI input that plays this division; several divisions may listen to the\n"
     "same device.\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "### MIDI channel\n"
     "\n"
     "1 to 16 on that device.\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "\n"
     "The transposition a folder gets by itself: the mode of (recorded pitch - file\n"
     "number) over the pipes against the footage in the folder's name, when three\n"
-    "or more samples agree by 70 % and the difference is two semitones or more.\n"
     ;
 static const char* const kManualText_part9 =
+    "or more samples agree by 70 % and the difference is two semitones or more.\n"
     "Stops with no footage in the name stay at 0.\n"
     "\n"
     "## 10.2 How the footage of a stop is measured\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "the cure is the device layout (one driver for everything, ASIO where there is\n"
     "one, no unused routes left open on the same endpoint), never the limit. The\n"
     "DSP cell can read lower than the limit when the run ends: it shows a fading\n"
-    "peak, the judge takes the single longest callback.\n"
     ;
 static const char* const kManualText_part10 =
+    "peak, the judge takes the single longest callback.\n"
     "\n"
     "## 10.9 Retune buses and the full kernel\n"
     "\n"
