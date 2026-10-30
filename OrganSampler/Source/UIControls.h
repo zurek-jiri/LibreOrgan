@@ -8,6 +8,12 @@
 // tremulants, pistons, crescendo): orange one shade darker than before, which
 // was the mouse-over shade; the look-and-feel darkens it one more shade on hover.
 inline juce::Colour onColour() { return juce::Colour(0xffffa500).contrasting(0.05f); }
+// The colour of a filled combination piston or a taught crescendo step (0.8.243, the user: a
+// touch of the orange on the ordinary button grey, nothing conspicuous), and of a piston
+// holding the same registration as the selected one (a shade more of it). 'base' is the
+// look-and-feel's TextButton::buttonColourId - one grey for the pistons and the steps.
+inline juce::Colour filledColour(juce::Colour base) { return base.interpolatedWith(juce::Colour(0xffffa500), 0.08f); }
+inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.interpolatedWith(juce::Colour(0xffffa500), 0.14f); }
 
 // Section header that folds its section when clicked (the Configuration Editor
 // style: orange bold caption with a "+ " / "- " prefix). Shared by the dialogs.

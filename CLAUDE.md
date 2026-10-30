@@ -1951,6 +1951,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the binary build/OrganSampler_artefacts/Release/OrganSampler -> ~/Downloads/OrganSampler. Its `--kerneltest` says
   "2 MISMATCH" on "Réc. hautbois" here (the shell's locale is not UTF-8: JUCE's isLetter on é) while CI passes -
   check with LANG=C.UTF-8 before believing it.
+  0.8.243 (the user: "barva ... je jako hovno ... méně nápadného ... o jeden shade saturovanější"; swatches made
+  with PIL into ~/Downloads/piston_colours.png, he chose t = 0.08 for everything and ONE grey): UIControls.h
+  `filledColour(base)` = base.interpolatedWith(orange, 0.08), `sameRegistrationColour(base)` = 0.14, base = the
+  look-and-feel's TextButton::buttonColourId (0xff263238 in LookAndFeel_V4's dark scheme) for the pistons AND the
+  crescendo dialog's steps (they had juce::Colours::darkgrey as the empty colour - wrong, one grey now).
+  Colour questions: make a swatch picture (PIL is installed) instead of describing shades. Also 0.8.243: the
+  Stop List's `automaticName` of an EMPTY folder returns {} - no more naming after the children (the user:
+  "Může být stále Stop Folder"); refreshContainerNames is left in place (harmless).
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

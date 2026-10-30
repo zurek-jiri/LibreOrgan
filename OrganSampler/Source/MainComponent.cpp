@@ -9683,8 +9683,10 @@ void MainComponent::showCrescendoDialog()
                 const int step = i + 1;
                 const bool active = step == owner.crescendoStep;
                 const bool stored = owner.isCrescendoStepStored(step);
+                // The same grey as the pistons (0.8.243: the steps had darkgrey, the pistons the look-and-feel's).
+                const auto base = getLookAndFeel().findColour(juce::TextButton::buttonColourId);
                 stepButtons[i]->setColour(juce::TextButton::buttonColourId,
-                    active ? onColour() : (stored ? juce::Colour(0xff7a5a1e) : juce::Colours::darkgrey));
+                    active ? onColour() : (stored ? filledColour(base) : base));
                 stepButtons[i]->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
                 stepButtons[i]->setTooltip(stored ? "Taught step" : "Empty step (changes nothing)");
             }
@@ -19765,15 +19767,9 @@ void MainComponent::showStopBuildingDialog(int)
                 if (!present) names.add(name);
             }
             if (!names.isEmpty()) return names.joinIntoString(" / ");
-            // An empty stop folder is named after its children: all of them when
-            // that stays short, otherwise the first one and how many more.
-            const auto children = childrenOf(manual, entry);
-            juce::StringArray childNames;
-            for (const auto* child : children) if (!child->isTransmission()) childNames.add(child->name);   // never a transmission's caption (0.8.238)
-            if (childNames.isEmpty()) return {};
-            const auto joined = childNames.joinIntoString(" + ");
-            if (joined.length() <= 28 || childNames.size() == 1) return joined;
-            return childNames[0] + " [" + romanNumeral(childNames.size()) + "]";   // the number of ranks in the folder
+            // An empty stop folder keeps its name (0.8.243, the user: the grid never renamed a
+            // folder after its children and the table need not either - "Stop folder" will do).
+            return {};
         }
         void refreshName(int manual, Build::Entry& entry)
         {
@@ -23081,17 +23077,15 @@ void MainComponent::updateCombinationLights()
             const bool filled = combinations.find(combinationKey(currentBank, piston)) != combinations.end();
             const auto ordinaryOffColour = getLookAndFeel().findColour(
                 juce::TextButton::buttonColourId);
-            // A filled piston wears the colour of a stored crescendo step (0.8.240: 0.8.228 took a
-            // darker grey instead, and made the pistons holding the same registration as the
-            // selected one nearly black); those same-registration pistons are a lighter shade
-            // of it, the selected one is orange.
-            juce::ignoreUnused(ordinaryOffColour);
-            const juce::Colour filledColour(0xff7a5a1e);   // as CrescendoContent paints a stored step
+            // A filled piston: the button grey with a touch of the orange (UIControls.h
+            // filledColour, the same as a taught crescendo step); the pistons holding the
+            // same registration as the selected one a shade more of it; the selected one
+            // orange (0.8.243, the user's choice from the swatches).
             button->removeColour(juce::TextButton::buttonColourId);
-            if (filled && !selectedMatch) button->setColour(juce::TextButton::buttonColourId, filledColour);
+            if (filled && !selectedMatch) button->setColour(juce::TextButton::buttonColourId, filledColour(ordinaryOffColour));
             button->setColour(juce::TextButton::buttonOnColourId,
                 selectedMatch ? onColour()
-                              : filledColour.brighter(0.45f));
+                              : sameRegistrationColour(ordinaryOffColour));
             // Some JUCE look-and-feels do not redraw an already-toggled button when only
             // buttonOnColourId changes. Give the selected match an explicit base colour too.
             if (selectedMatch)

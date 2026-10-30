@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.243] - 2026-10-30
+
+### Changed
+- Combination pistons and crescendo steps share one grey (the steps had a
+  darker one); a filled piston or taught step is that grey with a touch of
+  the orange, a piston holding the same registration as the selected one a
+  shade more of it, the selected one orange.
+- Stop List: an empty stop folder keeps its name when stops are indented
+  under it (it was renamed after them; the grid never did that).
+
 ## [0.8.242] - 2026-10-30
 
 ### Fixed
