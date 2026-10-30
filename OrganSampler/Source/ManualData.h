@@ -700,8 +700,9 @@ static const char* const kManualText_part3 =
     "\n"
     "## 4.2 The table\n"
     "\n"
-    "- **Order:** drag a stop name up or down (the load order and the default\n"
-    "  grid order; *Apply* asks whether the grid should follow).\n"
+    "- **Order:** the rows open in the order of the grid (row by row, left to\n"
+    "  right). Drag a stop name up or down to change it; *Apply* asks whether the\n"
+    "  grid should follow.\n"
     "- **Division:** drag a row into another division's block, or choose it in\n"
     "  the row's combo box. The stop moves with its folders.\n"
     "- **Stop folders:** drag a name a little to the **right** and the row is\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
     "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
-    "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     ;
 static const char* const kManualText_part4 =
+    "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
     "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
     "cycle, and the children of a stop folder are spread in phase like the ranks of\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "  temperament in tune with each other. The base temperament shown is the one\n"
     "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "\n"
     "**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded\n"
     "pitch to a1 = 440 Hz, so\n"
     "that the stops of different organs (recorded at 435, 440, 442, 465 Hz ...)\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "(routes, IRs, drivers, buffers all change it) and is saved with the\n"
     "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
     "registration of a wet set, many quick staccato notes over many keys, watch\n"
-    "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     ;
 static const char* const kManualText_part6 =
+    "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
     "### Measurement limit of DSP power\n"
     "\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "the pipe.\n"
     "\n"
     "### Filled pipes: time stretch of the attack\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
     "Pitch shift + time stretch: how far the attack is stretched back from the\n"
     "resampled length towards the source's (0 to 100 %, default 50, logarithmic).\n"
     "Higher values fray the attack; lower it for a stop whose speaking turns rough.\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "same device.\n"
     "\n"
     "### MIDI channel\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "1 to 16 on that device.\n"
     "\n"
     "### Ignore MIDI velocity (organ keys)\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "number) over the pipes against the footage in the folder's name, when three\n"
     "or more samples agree by 70 % and the difference is two semitones or more.\n"
     "Stops with no footage in the name stay at 0.\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
     "## 10.2 How the footage of a stop is measured\n"
     "\n"
     "The footage shown as \"Orig. Pitch\" is the first harmonic the lowest pipes\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "DSP cell can read lower than the limit when the run ends: it shows a fading\n"
     "peak, the judge takes the single longest callback.\n"
     "\n"
-    "## 10.9 Retune buses and the full kernel\n"
     ;
 static const char* const kManualText_part10 =
+    "## 10.9 Retune buses and the full kernel\n"
     "\n"
     "A pipe is retuned by its own recorded deviation (its rank's smpl pitches),\n"
     "the temperament of the played key, the random detune, wind and tremulant,\n"

@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.238] - 2026-10-30
+
+### Changed
+- The Stop List opens with the rows in the order of the grid (row by row,
+  left to right; a stop folder as a block) - an Apply no longer overwrites
+  what was arranged on the console.
+- The patterns dialogs (Perspective, Ignored, One-shot) are modeless: the
+  Stop List and the manual stay usable while one is open.
+- A transmission indented under a stop folder on the grid opens the folder's
+  voicing, so the result is seen.
+
+### Fixed
+- An empty stop folder was named after a transmission's caption when only
+  transmissions stood under it; a folder's automatic name comes from stop
+  rows alone.
+
 ## [0.8.237] - 2026-10-30
 
 ### Fixed

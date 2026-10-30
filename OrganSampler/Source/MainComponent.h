@@ -866,6 +866,7 @@ private:
     std::unique_ptr<juce::DialogWindow> keyboardsWindow;
     std::unique_ptr<juce::DialogWindow> temperamentsWindow;
     std::unique_ptr<juce::DialogWindow> configurationWindow;
+    std::unique_ptr<juce::DialogWindow> patternsWindow;   // 0.8.238: the patterns dialogs are modeless (one at a time)
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.
     std::function<void()> configEditorRefresh;

@@ -690,8 +690,9 @@ can be done here as well, and this is where the organ is built from folders.
 
 ## 4.2 The table
 
-- **Order:** drag a stop name up or down (the load order and the default
-  grid order; *Apply* asks whether the grid should follow).
+- **Order:** the rows open in the order of the grid (row by row, left to
+  right). Drag a stop name up or down to change it; *Apply* asks whether the
+  grid should follow.
 - **Division:** drag a row into another division's block, or choose it in
   the row's combo box. The stop moves with its folders.
 - **Stop folders:** drag a name a little to the **right** and the row is

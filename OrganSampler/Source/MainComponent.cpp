@@ -19043,6 +19043,29 @@ void MainComponent::showStopBuildingDialog(int)
                         if (stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(entry.name))
                         { entry.alias = stop->alias; break; }
             }
+            // The rows in the order of the grid (0.8.238, the user: the table must take the
+            // grid's order, or an Apply overwrites what was arranged): per division the
+            // blocks (a stop with the rows indented under it) sorted by their cells, row by
+            // row from the left; stops without a cell keep their order after the placed ones.
+            if (owner.voicer != nullptr)
+                for (int manual = 0; manual <= owner.manualCount && manual < kDivisions; ++manual)
+                {
+                    auto& entries = drafts[(size_t)manual].entries;
+                    struct Block { std::vector<Build::Entry> rows; int order = 1 << 30; };
+                    std::vector<Block> blocks;
+                    for (size_t i = 0; i < entries.size(); ++i)
+                    {
+                        if (entries[i].child && !blocks.empty()) { blocks.back().rows.push_back(entries[i]); continue; }
+                        Block block;
+                        block.rows.push_back(entries[i]);
+                        int column = 0, row = 0;
+                        if (owner.voicer->gridCellOf(manual, entries[i].name, column, row)) block.order = row * 1000 + column;
+                        blocks.push_back(std::move(block));
+                    }
+                    std::stable_sort(blocks.begin(), blocks.end(), [](const Block& a, const Block& b) { return a.order < b.order; });
+                    entries.clear();
+                    for (auto& block : blocks) for (auto& entry : block.rows) entries.push_back(std::move(entry));
+                }
             // Transmissions as rows of their receiving division ("Show Trsm."): a
             // transmission indented under a stop folder follows the master's block,
             // the others come after the stops in the order of their grid cells.
@@ -19716,12 +19739,12 @@ void MainComponent::showStopBuildingDialog(int)
             // An empty stop folder is named after its children: all of them when
             // that stays short, otherwise the first one and how many more.
             const auto children = childrenOf(manual, entry);
-            if (children.empty()) return {};
             juce::StringArray childNames;
-            for (const auto* child : children) childNames.add(child->name);
+            for (const auto* child : children) if (!child->isTransmission()) childNames.add(child->name);   // never a transmission's caption (0.8.238)
+            if (childNames.isEmpty()) return {};
             const auto joined = childNames.joinIntoString(" + ");
-            if (joined.length() <= 28 || children.size() == 1) return joined;
-            return childNames[0] + " [" + romanNumeral((int)children.size()) + "]";   // the number of ranks in the folder
+            if (joined.length() <= 28 || childNames.size() == 1) return joined;
+            return childNames[0] + " [" + romanNumeral(childNames.size()) + "]";   // the number of ranks in the folder
         }
         void refreshName(int manual, Build::Entry& entry)
         {
@@ -26153,9 +26176,9 @@ void MainComponent::editOneShotPatterns()
                     saveCallback(newPatterns);
             }
 
-            // Close the dialog on OK, Cancel, or X button
+            // Close the dialog on OK, Cancel, or X button (modeless since 0.8.238: the close hides it)
             if (auto* dw = findParentComponentOfClass<juce::DialogWindow>())
-                dw->exitModalState(0);
+                dw->closeButtonPressed();
         }
 
     private:
@@ -26209,8 +26232,12 @@ void MainComponent::editOneShotPatterns()
     // Centred around the main component: the dialog takes its interface size as well.
     options.componentToCentreAround = this;
 
-    // Launch the dialog (non-blocking, automatic lifetime management)
-    if (auto* window = options.launchAsync()) placeDialog(*window, "oneShotPatterns", 600, 400);
+    // Modeless (0.8.238, the user: a modal patterns dialog served nothing - the manual's "?" was dead
+    // behind it and the Stop List unusable while it stood): kept in patternsWindow, closing hides it.
+    patternsWindow.reset(options.create());
+    placeDialog(*patternsWindow, "oneShotPatterns", 600, 400);
+    patternsWindow->setVisible(true);
+    patternsWindow->toFront(true);
 }
 
 //==============================================================================
@@ -28435,9 +28462,9 @@ void MainComponent::editFolderPatterns(bool perspectives)
                     saveCallback(newPatterns);
             }
 
-            // Close the dialog on OK, Cancel, or X button
+            // Close the dialog on OK, Cancel, or X button (modeless since 0.8.238: the close hides it)
             if (auto* dw = findParentComponentOfClass<juce::DialogWindow>())
-                dw->exitModalState(0);
+                dw->closeButtonPressed();
         }
 
         int instructionHeight = 35;   // the perspective instructions take three lines
@@ -28490,6 +28517,9 @@ void MainComponent::editFolderPatterns(bool perspectives)
     options.resizable = true;
     options.componentToCentreAround = this;
 
-    if (auto* window = options.launchAsync()) placeDialog(*window, "patternLists", 600, 400);
+    patternsWindow.reset(options.create());   // modeless (0.8.238)
+    placeDialog(*patternsWindow, "patternLists", 600, 400);
+    patternsWindow->setVisible(true);
+    patternsWindow->toFront(true);
 }
 // ========== KONEC NOVÉ METODY ==========

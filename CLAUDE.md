@@ -1905,6 +1905,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   forgetTransmissionCells), logged "... N transmission(s) indented under it moved". The indent/merge-folder paths
   re-parent transmissions themselves (voicer.cpp ~3596-3640). RULE: a stop folder's content = child ROWS + the
   TRANSMISSIONS whose groupMaster names it; every operation on a folder must handle both.
+  0.8.238 (30 Oct 2026 night): (1) THE STOP LIST OPENS IN GRID ORDER (the user: "stop table by měla přebírat
+  pořadí stop na gridu"): after the alias sync and before the transmission rows, every division's draft entries are
+  regrouped into blocks (a non-child row + its children) sorted by `voicer->gridCellOf(manual, name, col, row)`
+  (row * 1000 + column; no cell -> after the placed ones, stable), BEFORE originalDrafts - no "change". (2) The
+  patterns dialogs are MODELESS: `patternsWindow` (unique_ptr<DialogWindow>, options.create() + placeDialog +
+  setVisible/toFront; OK/Cancel call `dw->closeButtonPressed()` = DefaultDialogWindow::setVisible(false)); the
+  user: "Musí být patterns okno modální? Je to k něčemu?" (3) `automaticName` of an empty folder takes stop
+  children only (a transmission's caption "HW Trump 8' (Trsm.)" named a folder after a move). (4) voicer.cpp: a
+  transmission indented under a folder (new copy or an existing one moved) sets `master->voicingExpanded = true`
+  (0.8.211 did it for stops only). OPEN: the user's "změna divize ve Stop List tabulce neukáže hned trsm, musí se
+  vypnout a zapnout Show Trsm" - the combo/drag path and the toggle both end in rebuildGrid() on the same drafts
+  (transmission rows are child rows of the block and move with it); not reproduced by reading; asked which state
+  Show Trsm had - he answered "asi jo, při přesouvání divizí ve Stop Listu" (unclear). Wait for a log of 0.8.238.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

@@ -3638,6 +3638,7 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
                 if (source->samplesUnloaded) engine.reloadStopSamples(source);   // a pooled stop must sound through it
                 CrashHandler::note("Grid: new transmission of " + source->name + " (shift " + juce::String(shift)
                     + ") indented under \"" + master->name + "\" in division " + juce::String(master->primaryManual));
+                master->voicingExpanded = true;   // the result in sight (0.8.238): the folder opens, the new transmission stands under it
             }
             if (stateChanged) stateChanged();
             rebuildLater();
@@ -3697,6 +3698,7 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
             engine.replaceTransmissions(source, list);
             if (moved) forgetTransmissionCells(source);
             else { stopCells[manual].erase(key); hiddenStops[manual].erase(key); }
+            master->voicingExpanded = true;   // the result in sight (0.8.238)
             if (stateChanged) stateChanged();
             rebuildLater();
             return;
