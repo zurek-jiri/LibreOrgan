@@ -9,11 +9,20 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(OrganSampler VERSION 0.8.250 LANGUAGES C CXX)
+project(OrganSampler VERSION 0.8.251 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# THE RULE (30 Oct 2026): the released executable depends on NOTHING outside a plain operating
+# system - no Visual C++ redistributable, no DLL beside the exe, no installer. The C and C++ runtime
+# is linked statically into OrganSampler.exe and into every library built here (the Projucer build
+# does the same: useRuntimeLibDLL="0"). Before this the CI exe was /MD and a clean Windows without
+# the 2015-2022 redistributable could not start it (MSVCP140.dll / VCRUNTIME140.dll missing).
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
     message(FATAL_ERROR "JUCE not found in JUCE/. Clone with --recurse-submodules or run: git submodule update --init")

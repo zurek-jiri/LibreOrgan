@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.251] - 2026-10-30
+
+### Fixed
+- Windows: the released OrganSampler.exe needed the Visual C++ 2015-2022
+  redistributable (MSVCP140.dll, VCRUNTIME140.dll) - on a clean Windows it did
+  not start. The C and C++ runtime is now linked into the executable; the
+  program depends on nothing outside a plain Windows, macOS or Linux.
+
 ## [0.8.250] - 2026-10-30
 
 ### Fixed

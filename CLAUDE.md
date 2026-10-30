@@ -2014,6 +2014,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "A device that is not there" bullet. NOT verified with the hardware (no card to switch off here): the paths are the
   same the log shows; the user tests it.
 ## Pending for the next session (delete when done)
+- THE USER'S RULE (30 Oct 2026, "nesmíme vyžadovat žádné externí závislosti, ani Visual C++ redistributable!!! To je
+  zásadní!"): the released executables depend on NOTHING that is not part of a plain Windows/macOS/Linux - no VC++
+  redistributable, no DLL beside the exe, no installer. DONE in 0.8.251: `CMAKE_MSVC_RUNTIME_LIBRARY
+  "MultiThreaded$<$<CONFIG:Debug>:Debug>"` in CMakeLists.txt before add_subdirectory(JUCE) (CMake 3.22 -> CMP0091 NEW;
+  the CI exe was /MD before: MSVCP140.dll/VCRUNTIME140.dll of the 2015-2022 redistributable; the Projucer Release build
+  was always `/MT` = `useRuntimeLibDLL="0"` and links the same prebuilt archive.lib, so the static runtime is known to
+  link). After the release: `dumpbin /dependents OrganSampler.exe` of the CI zip must list system DLLs only (no
+  MSVCP*/VCRUNTIME*/api-ms-win-crt*). Linux: libstdc++/glibc are the system's (glibc 2.38+ stays the floor); macOS:
+  the system libc++. Background: a user's "nothing starts" on a clean Windows 11 24H2 (30 Oct 2026) - the other
+  candidates are Smart App Control (on by default on clean installs, blocks unsigned exes with a toast only),
+  Defender quarantine, or a hang before the first window (activity.log tells).
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words
   "prská i při měření polyfonie, DSP meter to nezaznamenal, error counter 0, je to náš program"): HIS RECORDING
