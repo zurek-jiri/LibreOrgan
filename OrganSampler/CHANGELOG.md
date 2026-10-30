@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.252] - 2026-10-30
+
+### Changed
+- Every text about a Hauptwerk organ definition (manual, README, website,
+  import report) now states what the program does: it does not load the
+  definition - the organ is built from the sample folders; the definition is
+  read only for where the sample folders are and how the stops are arranged in
+  the divisions, the microphone perspectives are deduced from that, and
+  everything else comes from the folders.
+
 ## [0.8.251] - 2026-10-30
 
 ### Fixed

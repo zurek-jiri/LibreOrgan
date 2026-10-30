@@ -12508,8 +12508,11 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             const auto reports = safeThis->settingsFile.getParentDirectory().getChildFile("ImportReports");
             reports.createDirectory();
             safeThis->hauptwerkImportReport = reports.getChildFile(fileName.trim() + "-" + juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M") + ".txt");
-            safeThis->hauptwerkImportReport.replaceWithText("Hauptwerk organ definition imported: " + odfFile.getFullPathName() + "\n"
-                + juce::Time::getCurrentTime().toString(true, true, true, true) + ", OrganSampler " + ProjectInfo::versionString + "\n\n" + summary + "\n");
+            safeThis->hauptwerkImportReport.replaceWithText("Hauptwerk organ definition read: " + odfFile.getFullPathName() + "\n"
+                + juce::Time::getCurrentTime().toString(true, true, true, true) + ", OrganSampler " + ProjectInfo::versionString + "\n\n"
+                "OrganSampler does not load the organ definition: the organ is built from the sample folders. The definition was read "
+                "for two things only - where the sample folders are and how the stops are arranged in the divisions - and the microphone "
+                "perspectives were deduced from that; everything else comes from the folders.\n\n" + summary + "\n");
             CrashHandler::note("Hauptwerk import report: " + safeThis->hauptwerkImportReport.getFullPathName());
         }
         safeThis->hauptwerkImport = odf;
@@ -12720,7 +12723,9 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
         text << "\nExtensions/transmissions made: " << extensionsMade << (extensionsMissed.isEmpty() ? juce::String(".") : " (not made: " + extensionsMissed.joinIntoString(", ") + ").");
     text
          << "\n\nThe configuration is saved as\n" << configurationFile.getFullPathName()
-         << "\n\nEverything else of the organ definition (combinations, displays, wind, noises) was ignored: the folder structure decides the organ in OrganSampler. "
+         << "\n\nThe organ definition itself was not loaded - OrganSampler has no use for it: it was read for the sample folder paths and the "
+            "arrangement of the stops in the divisions only, the perspectives were deduced from that, and the organ is built from the folders. "
+            "Everything else of the definition (combinations, displays, wind, noises) was ignored. "
             "Check the Stop List, the audio routes of the perspectives and the MIDI keyboards, then Save Configuration.\n";
     if (hauptwerkImportReport != juce::File() && hauptwerkImportReport.getParentDirectory().isDirectory())
     {

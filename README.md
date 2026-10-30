@@ -17,14 +17,19 @@ any number of sound cards, IR reverb per route, wind and tremulant models,
 temperaments, transmissions with transposition (extensions), velocity layers,
 general crescendo and combinations. No organ definition file is needed: you load
 the folders, the program proposes the organ, you shape it and save it as a
-configuration. Free software under the GNU GPL v3. Windows, macOS and Linux.
+configuration. OrganSampler does not load Hauptwerk organ definitions - it has
+no use for them; where one lies beside the samples it is read for the paths of
+the sample folders and the arrangement of the stops in the divisions only, the
+perspectives are deduced from that, and the organ is built from the folders.
+Free software under the GNU GPL v3. Windows, macOS and Linux.
 
 **Your own organ, from any sources.** This is what sets OrganSampler apart:
 mix stops from different sample folders and different producers into one
 console, duplicate a stop as a transmission or an extension (a 16' from an
 8', a mutation from a principal), merge two configurations into one organ,
-move stops between divisions, and a Hauptwerk organ definition opens as a
-configuration too.
+move stops between divisions. A Hauptwerk organ definition is not loaded, but
+it serves as a map: its folder paths and stop arrangement become an
+OrganSampler configuration, built from the folders like any other.
 
 **Light on RAM, CPU and disk.** On a modest computer the saving options of
 the load box squeeze an 80 GB sample set into 8 GB of RAM (the table below),

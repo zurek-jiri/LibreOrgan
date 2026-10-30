@@ -97,6 +97,14 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   or registration sets on/off states and must never replace, add to or remove from the list (0.8.92).
 - The voicing state keeps entries of stops the engine could not build (missing folders) and writes them back;
   never let a save drop voicing of a stop that merely failed to load.
+- THE USER'S RULE FOR EVERY TEXT (30 Oct 2026, "musíme jasně deklarovat, že neloudujeme HW ODF!!! ... A vždycky už se to
+  bude takhle říkat!" - the producer of the sets is angry at programs that load their definitions): wherever the manual,
+  README, website, release body, dialogs, tooltips or the import report mention a Hauptwerk organ definition, say that
+  OrganSampler does NOT load it (it has no use for it: the organ is built from the sample folders), that the definition
+  is read for TWO things only - where the sample folders are and how the stops are arranged in the divisions - that the
+  microphone perspectives are deduced from that, and that everything else comes from the folders. Never write "imports/
+  loads the ODF" or "opens as a configuration" without that frame. Done in 0.8.252 (manual 1.1, 1.6, Saving and loading,
+  10.4; README; site; the import report's header and closing sentence).
 - Hauptwerk ODF import (0.8.116, `Source/HauptwerkOdf.{h,cpp}`, `MainComponent::importHauptwerkOdf`): Load Configuration
   takes `*.Organ_Hauptwerk_xml` too. Only divisions (keyboard order, pedal first, compass from KeyboardKey), stop folders
   (the common ancestor of a stop's rank folders; their parents are the division trees), perspectives (rank names
