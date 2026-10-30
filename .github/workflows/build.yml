@@ -150,11 +150,7 @@ jobs:
             - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `OrganSampler-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
             - The two *Source code* entries are added by GitHub to every release: not needed for playing.
 
-            **An organ to play:** [the Rural Organ demo](https://github.com/zurek-jiri/OrganSampler/releases/tag/rural-organ-0.8) - a small village organ with its sample folders and configuration, dry recordings with IR reverb; *Load Configuration* opens the `.rar` itself.
-
-            **More organs:** [Configurations, Organs](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md) - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)).
-
-            **Changes:** [OrganSampler/CHANGELOG.md](https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/CHANGELOG.md).
+            **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/OrganSampler/releases/tag/rural-organ-0.8) brings its own sample folders.
       # Only the newest build stays on the releases page: every older v* release
       # (and its tag) is deleted; the Rural Organ demo release is kept.
       - name: Delete the older program releases
