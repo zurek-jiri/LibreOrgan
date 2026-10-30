@@ -1895,6 +1895,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "Reading from the disk ..." + 8 NBSP. (4) `Voicer::manualRequest` (set by MainComponent) + the workspace
   ExitListener's right-click menu: "Enter arrange mode (...)"/"Leave arrange mode" for the division whose grid area
   holds the click (`divisionGridAreas`), "Manual: Arranging the grid". Manual 3.2 says so.
+  0.8.237 (30 Oct 2026 night, the user's Arnstadt: a stop folder of II. with HW_Trump IN IT dragged to I. arrived
+  EMPTY, and a new "Stop folder" on II. had the Trumpet at once): the log says it - "new transmission of HW_Trump
+  (shift 0) indented under "Stop folder" in division 2", then "dragged from division 2 to 1 as "Stop folder
+  (2)"". The folder's content was a TRANSMISSION (groupMaster "Stop folder", manual 2 in HW_Trump's list), not a
+  child row; moveStopToDivision moves table rows only, so it stayed in II. and a new folder named "Stop folder"
+  there matched it by name. Fix in moveStopToDivision: every transmission with (manual == source, groupMaster ==
+  the folder's old name) gets the target division and the new name (replaceTransmissions +
+  forgetTransmissionCells), logged "... N transmission(s) indented under it moved". The indent/merge-folder paths
+  re-parent transmissions themselves (voicer.cpp ~3596-3640). RULE: a stop folder's content = child ROWS + the
+  TRANSMISSIONS whose groupMaster names it; every operation on a folder must handle both.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

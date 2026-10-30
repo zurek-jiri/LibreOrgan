@@ -18097,6 +18097,25 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
             if (moving->name != newName) { const juce::ScopedLock sl(engine.getLock()); moving->name = newName; }
             engine.moveStopToDivision(moving, targetManual);
         }
+    // The transmissions indented under the folder are no rows of the table: they live in
+    // their source stops' lists with the folder's division and name. They go with the
+    // folder (0.8.237, the user: a folder moved from II. to I. arrived EMPTY - its one
+    // "stop" was a transmission, left behind in II. under a folder that was gone).
+    {
+        const juce::String oldFolder = renamed.front().first, newFolder = renamed.front().second;
+        int carried = 0;
+        for (auto* s : engine.getStops())
+        {
+            std::vector<Stop::Transmission> list = s->transmissions;
+            bool changed = false;
+            for (auto& t : list)
+                if (t.manual == source && stopBuildKey(t.groupMaster) == stopBuildKey(oldFolder)) { t.manual = targetManual; t.groupMaster = newFolder; changed = true; ++carried; }
+            if (!changed) continue;
+            engine.replaceTransmissions(s, list);
+            if (voicer) voicer->forgetTransmissionCells(s);   // the cells of its transmissions: placed afresh (they sit inside the folder anyway)
+        }
+        if (carried > 0) CrashHandler::note("Stop folder \"" + newFolder + "\": " + juce::String(carried) + " transmission(s) indented under it moved to division " + juce::String(targetManual) + " with it");
+    }
     rebuildPerspectiveAudioRoutes();
     finishInPlaceStopEdit({ source, targetManual });
 }

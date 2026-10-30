@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.237] - 2026-10-30
+
+### Fixed
+- A stop folder dragged into another division arrived empty when what it held
+  was a transmission: a transmission indented under a folder is no row of the
+  table, it lives in its source stop with the folder's division and name, and
+  it stayed behind - and a new folder of the same name in the old division
+  took it over. The transmissions indented under a folder now move with it.
+
 ## [0.8.236] - 2026-10-30
 
 ### Added
