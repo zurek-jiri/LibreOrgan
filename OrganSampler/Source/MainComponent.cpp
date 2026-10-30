@@ -243,9 +243,10 @@ struct HelpKeyWatcher final : public juce::Timer
     bool wasDown = false;
 };
 
-// Every tooltip ends with "For details press F1." (0.8.233, the user: the user cannot know
-// about F1 otherwise); a control without a tooltip of its own but with a chapter gets the
-// line alone.
+// Every tooltip ends with "For details press F1." as its last line (0.8.233). ONLY as the last
+// line of a tooltip that exists: 0.8.233 also made the line up for every control without a
+// tooltip (every component of the main window resolves to some chapter), so it popped up
+// everywhere at once and pushed the real tooltips away (0.8.235, the user).
 class HelpTooltipWindow final : public juce::TooltipWindow
 {
 public:
@@ -253,9 +254,8 @@ public:
     juce::String getTipFor(juce::Component& c) override
     {
         auto tip = juce::TooltipWindow::getTipFor(c);
-        if (tip.contains("press F1")) return tip;
-        if (tip.isEmpty() && MainComponent::manualChapterForComponent(&c).isEmpty()) return tip;
-        return (tip.isEmpty() ? juce::String() : tip + "\n") + "For details press F1.";
+        if (tip.isEmpty() || tip.contains("press F1")) return tip;
+        return tip + "\nFor details press F1.";
     }
 };
 

@@ -1872,6 +1872,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   follows the mouse from `columnDragOver`), `GridArea::columnMarkerX` (an orange 3 px line at the target column),
   `columnUnder`, `columnDrop`. LESSON: a question or a report from the user is answered, the code comes when he
   says so; when he says "do all to-dos", every open item goes into ONE build.
+  0.8.235 (the user: "ty jsi debil ... For details press F1 nahradilo opravdové tooltipy ... objevuje se to ihned
+  a furt"): HelpTooltipWindow::getTipFor appended the line to an EMPTY tip whenever a chapter resolved - and inside
+  the main window every component resolves to a chapter (MainComponent carries "The main window"), so every
+  component got a tooltip of its own: the line popped up everywhere and the real tooltip of a parent (a slider's
+  text box, a button's child) was replaced by the child's made-up one. RULE: the line is appended to a NON-EMPTY
+  tip only; never invent tooltips.
 ## Pending for the next session (delete when done)
 - (DONE in 0.8.226 - the detector, the pool hardening, the MIDI probe, the three to-dos; the analysis kept) 29 Oct 2026
   EVENING (the user's live crackle on 0.8.225, Brasov Surround, ASIO Fireface USB, 15 routes; his words

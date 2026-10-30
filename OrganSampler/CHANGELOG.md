@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
 title shows the version. Released executables are named `OrganSampler_<version>.exe`.
 
+## [0.8.235] - 2026-10-30
+
+### Fixed
+- "For details press F1." appeared on its own over every part of the window,
+  at once and all the time, and pushed the real tooltips away (0.8.233 made
+  the line up for controls without a tooltip). It is the last line of a
+  tooltip that exists, nothing else.
+
 ## [0.8.234] - 2026-10-30
 
 ### Fixed
@@ -26,8 +34,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
 ## [0.8.233] - 2026-10-30
 
 ### Added
-- Every tooltip ends with "For details press F1." (a control with a chapter
-  but no tooltip of its own shows that line alone).
+- Every tooltip ends with "For details press F1.".
 
 ### Changed
 - F1 and the menus point at the element itself: the Tremulant button at "The
