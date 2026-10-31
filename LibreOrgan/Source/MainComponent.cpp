@@ -1834,7 +1834,16 @@ MainComponent::MainComponent()
     // Console). Off by default: launching alone never loads sample folders - and
     // then the instrument starts clean: no trees in the pool, no stop tables
     // (the Stop List opens empty), unless a development reload asks for them.
-    const bool willLoadLastConfiguration = loadLastConfigurationAtStartup && currentConfigurationFile.existsAsFile();
+    // A file dropped on the program's icon (0.9.16, startupFile) takes the place of the last configuration.
+    const bool startsWithFile = startupFile != juce::File() && SampleFiles::existsAsFile(startupFile);
+    const bool willLoadLastConfiguration = loadLastConfigurationAtStartup && currentConfigurationFile.existsAsFile() && !startsWithFile;
+    if (startsWithFile)
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        const juce::File file = startupFile;
+        CrashHandler::note("Started with the file " + file.getFullPathName() + (loadLastConfigurationAtStartup ? " (the last configuration is not loaded this time)" : ""));
+        juce::MessageManager::callAsync([safeThis, file] { if (safeThis != nullptr) safeThis->loadConfigurationFile(file); });   // after the window exists: the load box is a dialog of it
+    }
     if (!willLoadLastConfiguration && std::getenv("ORGAN_RELOAD_DIVISION") == nullptr)
     {
         clearSampleLibraryInMemory();
@@ -11154,6 +11163,19 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
         }), true);
 }
 
+juce::File MainComponent::startupFile;
+
+void MainComponent::openFileFromDesktop(const juce::File& file)
+{
+    // A file handed to the running program (dropped on its icon, "Open with": 0.9.16): exactly what
+    // choosing it in Load Configuration does - the unsaved changes of the organ in use are offered for
+    // saving first, then the file goes through loadConfigurationFile (the load box included).
+    if (!SampleFiles::existsAsFile(file)) { CrashHandler::note("File from the desktop: not a file - " + file.getFullPathName()); return; }
+    CrashHandler::note("File from the desktop: " + file.getFullPathName());
+    juce::Component::SafePointer<MainComponent> guard(this);
+    askToKeepChanges("Load Configuration", "load", [guard, file] { if (guard != nullptr) guard->loadConfigurationFile(file); });
+}
+
 void MainComponent::chooseConfigurationToLoad()
 {
     // The instrument in use first: its unsaved changes are offered for saving.
@@ -17530,7 +17552,7 @@ void MainComponent::installLinuxDesktopEntry(bool silent)
     const auto entry = apps.getChildFile("libreorgan.desktop");
     juce::String text;
     text << "[Desktop Entry]\nType=Application\nName=LibreOrgan\nComment=Pipe organ sampler for creative minds\n"
-         << "Exec=" << (scriptOk ? script : exe).getFullPathName().quoted() << "\nIcon=libreorgan\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
+         << "Exec=" << (scriptOk ? script : exe).getFullPathName().quoted() << " %f\nIcon=libreorgan\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
          << "StartupWMClass=LibreOrgan\nStartupNotify=false\n";
     // Unix line endings: JUCE writes "\r\n" by default, and a .desktop file with
     // carriage returns is invalid (KDE and GNOME ignore it).

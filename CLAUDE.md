@@ -2231,6 +2231,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   W x H, scrollbars: none|horizontal|vertical" (once per change; voicer.cpp). Test %TEMP%\test_window0915.ps1 -Manuals
   2|5 (works without any settings.json: the user wipes AppData): "scrollbars: none" at 2402 x 1065. RULE: content laid
   into a Viewport is never wider than the width the bars leave; round the LAST edge, not every part.
+  0.9.16 (31 Oct 2026, the user: a zip/rar dropped on the desktop icon starts the program but loads nothing):
+  the command line was never read for a file (only the --selftest/--asiotest/--kerneltest/--hauptwerk switches),
+  `anotherInstanceStarted` only said "already running". Now `fileFromCommandLine` (Main.cpp, a static member of the
+  application class: the whole line unquoted when it is one existing absolute path, else the first token that is no
+  "--" switch and exists) -> `MainComponent::startupFile` (public static, set BEFORE `new MainWindow`: the constructor
+  reads it, skips "Load the last configuration at startup" that start - log "Started with the file ... (the last
+  configuration is not loaded this time)" - and calls `loadConfigurationFile` by callAsync, so the load box comes as
+  with the button) and `MainComponent::openFileFromDesktop(file)` for a running instance (log "File from the
+  desktop: ...", `askToKeepChanges` first, then loadConfigurationFile; the "already running" box only without a
+  file). The Linux .desktop Exec line carries " %f" (the launcher script passes "$@" already). Test
+  %TEMP%\test_dropfile0916.ps1: Rural loaded from the command line with "Load" clicked by ORGAN_TEST_CLICK (the copy
+  landed in the temp configurations folder), a second start with TestingOrgan.json handed to the first. Declarations
+  of things Main.cpp uses go into the PUBLIC block of MainComponent.h (lines 38-61) - the kDefault* constants at line
+  136 are private (the Editor is a friend).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

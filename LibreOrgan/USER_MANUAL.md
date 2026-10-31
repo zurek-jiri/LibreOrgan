@@ -243,7 +243,8 @@ A configuration is one file holding the whole instrument. *Save Configuration*
 and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for
 the folder paths and the stop arrangement only, the organ is built from the
-folders). A configuration with unsaved changes asks at quit or at the next
+folders). Any of these files dropped on the program's icon (or opened with
+the program) is loaded the same way, by a running program too. A configuration with unsaved changes asks at quit or at the next
 load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks
 how they are to be held in RAM (storage, packing, rate -
 [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with

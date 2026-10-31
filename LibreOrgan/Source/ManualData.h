@@ -249,7 +249,8 @@ static const char* const kManualText_part1 =
     "and *Load Configuration* are in the top bar; Load also takes a published\n"
     "`.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for\n"
     "the folder paths and the stop arrangement only, the organ is built from the\n"
-    "folders). A configuration with unsaved changes asks at quit or at the next\n"
+    "folders). Any of these files dropped on the program's icon (or opened with\n"
+    "the program) is loaded the same way, by a running program too. A configuration with unsaved changes asks at quit or at the next\n"
     "load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks\n"
     "how they are to be held in RAM (storage, packing, rate -\n"
     "[Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "- **Guided tour** (on a teaching organ such as the Rural Organ demo) walks\n"
     "  through the console in ten steps with an arrow to every element.\n"
     "- **Couplers...** ([Couplers](#61-couplers)), **Temperaments** ([Temperaments](#63-temperaments)).\n"
-    "- **Hide all voicing** folds every open voicing row.\n"
     ;
 static const char* const kManualText_part2 =
+    "- **Hide all voicing** folds every open voicing row.\n"
     "- **Perspective Patterns..., Ignored Patterns..., One-shot Patterns...** -\n"
     "  the folder name lists ([Folder name patterns](#85-folder-name-patterns-one-per-line)).\n"
     "- **Stop-Merging** renders the engaged stops into one new stop\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "error of pipes* must be on.\n"
     "\n"
     "### Undulation (beats/s at a1)\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
     "For celestes: the stop beats this many times per second against an in-tune\n"
     "rank at a1 (negative = flat). A rank recorded sharp or flat throughout is\n"
     "recognised as a celeste and starts with its recorded undulation. The line\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "- *Bass octave layout* for historic bass octaves; *Compass*: the lowest and\n"
     "  highest key (defaults: pedal 36 to 67, manuals 36 to 96; keys outside are\n"
     "  silent on every stop of the division); *MIDI transposition*: the keyboard\n"
-    "  plays this many semitones away.\n"
     ;
 static const char* const kManualText_part4 =
+    "  plays this many semitones away.\n"
     "- The keyboard drawing shows the last key with its velocity.\n"
     "\n"
     "## 5.2 Swell, tremulant, wind\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "pulled over keyboard I at 16'); they are registration (combinations,\n"
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
-    "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
     ;
 static const char* const kManualText_part5 =
+    "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
     "only*, *Melody couplers: legato grace time*).\n"
     "\n"
     "## 6.2 Combinations and the crescendo\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
-    "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
     ;
 static const char* const kManualText_part6 =
+    "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
     "pipes carry next to nothing there, and hearing past fifty rarely reaches 17\n"
     "kHz - and the RAM drops by a quarter or a third at the same cost per voice.\n"
     "*Keep each file's own rate* loads faster and plays by interpolation.\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
     "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
-    "says so. Travels with the organ.\n"
     ;
 static const char* const kManualText_part7 =
+    "says so. Travels with the organ.\n"
     "\n"
     "### Replace pipes off by more than\n"
     "\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
     "### Ignored folders (folder contains)\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
     "\"output\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
     "\n"
-    "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     ;
 static const char* const kManualText_part9 =
+    "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     "minimum time and delay off, two seconds of idle listening; every stop\n"
     "engaged (every button of the grid, transmissions included); keys struck\n"

@@ -213,7 +213,26 @@ public:
         // A stall of the message thread (a frozen window) goes to the activity
         // log with the thread's stack, so it can be traced afterwards.
         stallWatchdog = std::make_unique<CrashHandler::StallWatchdog>();
+        MainComponent::startupFile = fileFromCommandLine(commandLine);   // before the MainComponent exists (0.9.16)
         mainWindow.reset(new MainWindow(getApplicationName()));
+    }
+
+    // A file named on the command line (0.9.16): a configuration, a published zip, a RAR archive or a
+    // Hauptwerk definition dropped on the program's icon ("Open with", the Linux entry's %f). The whole
+    // line unquoted when it is one path; else the first token that is no "--" switch and exists.
+    static juce::File fileFromCommandLine(const juce::String& commandLine)
+    {
+        const auto whole = commandLine.trim().unquoted().trim();
+        if (whole.isNotEmpty() && !whole.startsWith("--") && juce::File::isAbsolutePath(whole) && juce::File(whole).existsAsFile()) return juce::File(whole);
+        juce::StringArray tokens;
+        tokens.addTokens(commandLine, " ", "\"");
+        for (const auto& token : tokens)
+        {
+            const auto path = token.trim().unquoted().trim();
+            if (path.isEmpty() || path.startsWith("--") || !juce::File::isAbsolutePath(path)) continue;
+            if (juce::File(path).existsAsFile()) return juce::File(path);
+        }
+        return {};
     }
 
     void shutdown() override
@@ -249,6 +268,9 @@ public:
         {
             mainWindow->setMinimised(false);
             mainWindow->toFront(true);
+            // A file dropped on the icon while the program runs (0.9.16): the running instance loads it.
+            if (const auto file = fileFromCommandLine(commandLine); file != juce::File())
+                if (auto* main = dynamic_cast<MainComponent*>(mainWindow->getContentComponent())) { main->openFileFromDesktop(file); return; }
         }
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "LibreOrgan Sampler is already running",
             "Another LibreOrgan Sampler was started and closed again: only one instance can run at a time "

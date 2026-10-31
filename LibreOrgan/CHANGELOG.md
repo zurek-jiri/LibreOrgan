@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.16] - 2026-10-31
+
+### Added
+- A configuration, a published zip, a RAR archive or a Hauptwerk definition
+  dropped on the program's icon (or opened with the program) is loaded as
+  Load Configuration would load it - at the start (the last configuration is
+  skipped that time) and by a running program (the file goes to the running
+  instance; before, only "already running" was said). The Linux menu entry
+  takes a file too.
+
 ## [0.9.15] - 2026-10-31
 
 ### Fixed

@@ -54,6 +54,12 @@ public:
     void askToKeepChanges(const juce::String& title, const juce::String& continueVerb, std::function<void()> proceed);
     // Places the main window where it was last time (or maximised / centred); called by MainWindow.
     void placeMainWindow(juce::ResizableWindow& window);
+    // 0.9.16: a file dropped on the program's icon (the command line names it). Main.cpp sets it BEFORE the
+    // MainComponent is made: the constructor then skips "Load the last configuration at startup" and loads
+    // this file instead, through the same path as Load Configuration (.json, a published .zip, a RAR archive,
+    // a Hauptwerk definition). A file given to a running instance goes through openFileFromDesktop.
+    static juce::File startupFile;
+    void openFileFromDesktop(const juce::File& file);
    #if JUCE_LINUX
     void showMainWindow(juce::ResizableWindow& window);   // right after setVisible(true): the first paint at once (0.8.170)
    #endif
