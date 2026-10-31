@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.6] - 2026-10-31
+
+### Fixed
+- Grid: moving a stop folder that holds transmissions to another division
+  (or indenting a transmission into a folder of another division) forgot the
+  grid cells of EVERY transmission of the same source stop in every division -
+  the other extensions of that stop fell into a row. Only the transmission
+  that moved loses its old cell now.
+- Stop List: in a window narrower than about 1 525 px the Show Trsm. switch
+  (and then Swap, Unload folder) vanished; the folder buttons and Show Trsm.
+  move to a second row of buttons there.
+
 ## [0.9.5] - 2026-10-31
 
 ### Fixed

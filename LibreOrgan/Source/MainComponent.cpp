@@ -18486,11 +18486,18 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
         {
             std::vector<Stop::Transmission> list = s->transmissions;
             bool changed = false;
-            for (auto& t : list)
-                if (t.manual == source && stopBuildKey(t.groupMaster) == stopBuildKey(oldFolder)) { t.manual = targetManual; t.groupMaster = newFolder; changed = true; ++carried; }
+            std::vector<int> movedIndices;
+            for (int index = 0; index < (int)list.size(); ++index)
+            {
+                auto& t = list[(size_t)index];
+                if (t.manual == source && stopBuildKey(t.groupMaster) == stopBuildKey(oldFolder)) { t.manual = targetManual; t.groupMaster = newFolder; changed = true; ++carried; movedIndices.push_back(index); }
+            }
             if (!changed) continue;
             engine.replaceTransmissions(s, list);
-            if (voicer) voicer->forgetTransmissionCells(s);   // the cells of its transmissions: placed afresh (they sit inside the folder anyway)
+            // 0.9.6: the cells of the CARRIED transmissions alone (they sit inside the folder anyway) - the
+            // wholesale forget took the cells of every transmission of s in every division with it (the
+            // user's extensions of Principal 8 on I. fell into a row when the folder left the pedal).
+            if (voicer) for (int index : movedIndices) voicer->forgetTransmissionCell(s, index, source);
         }
         if (carried > 0) CrashHandler::note("Stop folder \"" + newFolder + "\": " + juce::String(carried) + " transmission(s) indented under it moved to division " + juce::String(targetManual) + " with it");
     }
@@ -18558,7 +18565,11 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
             Stop::Transmission t = stop->transmissions[(size_t)index];
             if (auto* edit = editAt[(size_t)index])
             {
-                if (edit->newManual >= 0 && edit->newManual != t.manual) { t.manual = edit->newManual; moved = true; changed = true; }
+                if (edit->newManual >= 0 && edit->newManual != t.manual)
+                {
+                    if (voicer != nullptr) voicer->forgetTransmissionCell(stop, index, t.manual);   // 0.9.6: this transmission's old cell alone
+                    t.manual = edit->newManual; moved = true; changed = true;
+                }
                 if (edit->master != t.groupMaster) { t.groupMaster = edit->master; changed = true; }
                 if (edit->alias != t.alias) { t.alias = edit->alias; changed = true; }
             }
@@ -18566,7 +18577,7 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
             editOfNew.push_back(editAt[(size_t)index]);
         }
         if (changed) engine.replaceTransmissions(stop, list);
-        if (moved && voicer != nullptr) voicer->forgetTransmissionCells(stop);
+        juce::ignoreUnused(moved);   // 0.9.6: the moved transmissions' old cells were forgotten one by one above
         for (int index = 0; index < (int)editOfNew.size(); ++index)
             if (editOfNew[(size_t)index] != nullptr) editOfNew[(size_t)index]->newKey = Voicer::transmissionKey(stop, index);
         if (changed) CrashHandler::note("Transmissions of \"" + stop->name + "\" edited in the Stop List: " + juce::String((int)list.size()) + " remain");
@@ -19630,7 +19641,12 @@ void MainComponent::showStopBuildingDialog(int)
         {
             auto area = getLocalBounds().reduced(12);
             intro.setBounds(area.removeFromTop(80));
-            auto buttons = area.removeFromBottom(36);
+            // 0.9.6: the buttons need about 1 525 px in one row; in a narrower window the folder buttons
+            // and Show Trsm. go on a second row (Show Trsm. was the last in line and the first to vanish).
+            const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 150 + 170 + 90;
+            const bool twoRows = area.getWidth() < oneRowWidth;
+            auto buttons = area.removeFromBottom(twoRows ? 72 : 36);
+            auto second = twoRows ? buttons.removeFromBottom(36) : juce::Rectangle<int>();
             closeButton.setBounds(buttons.removeFromRight(90).reduced(2));
             applyButton.setBounds(buttons.removeFromRight(170).reduced(2));
             resetButton.setBounds(buttons.removeFromRight(150).reduced(2));
@@ -19638,12 +19654,13 @@ void MainComponent::showStopBuildingDialog(int)
             addPerspectiveButton.setBounds(buttons.removeFromLeft(150).reduced(2));
             removeEmptyButton.setBounds(buttons.removeFromLeft(150).reduced(2));
             aliasesButton.setBounds(buttons.removeFromLeft(160).reduced(2));
-            buttons.removeFromLeft(12);
-            loadFolderButton.setBounds(buttons.removeFromLeft(120).reduced(2));
-            unloadFolderButton.setBounds(buttons.removeFromLeft(130).reduced(2));
-            swapButton.setBounds(buttons.removeFromLeft(140).reduced(2));
-            buttons.removeFromLeft(12);
-            showTrsmButton.setBounds(buttons.removeFromLeft(120).reduced(2));
+            juce::Rectangle<int>& folderRow = twoRows ? second : buttons;
+            if (!twoRows) folderRow.removeFromLeft(12);
+            loadFolderButton.setBounds(folderRow.removeFromLeft(120).reduced(2));
+            unloadFolderButton.setBounds(folderRow.removeFromLeft(130).reduced(2));
+            swapButton.setBounds(folderRow.removeFromLeft(140).reduced(2));
+            folderRow.removeFromLeft(12);
+            showTrsmButton.setBounds(folderRow.removeFromLeft(120).reduced(2));
             info.setBounds(area.removeFromBottom(24));
             view.setBounds(area);
             layoutGrid();

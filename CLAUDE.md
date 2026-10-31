@@ -2093,6 +2093,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   CONTENT, never by a folder name; the user's refused alternative (a warning box when a bare stop folder is loaded)
   was not needed. Test %TEMP%\test_fp095.ps1 (portable save of the one-stop tree = fingerprints written; the same file
   with the root renamed -> TA\Principal8 refused "65 WAV files, the configuration's tree had 9", not found).
+  0.9.6 (31 Oct 2026): (1) `Voicer::forgetTransmissionCells(stop)` (0.8.237) wipes the cells and pool entries of EVERY
+  transmission of the stop in EVERY division; moveStopToDivision called it for the source stop of each transmission
+  carried inside a moved stop folder - the user's other extensions of Principal 8 on I. lost their cells and fell into
+  a row. Now `forgetTransmissionCell(stop, index, oldManual)` (one key, the old division) in moveStopToDivision, the
+  indent/merge-folder/leave-folder paths of voicer.cpp and applyTransmissionPlan; the wholesale one stays for
+  `forgetStop` (the stop is removed). RULE: a transmission's cell key is "tr:<home>:<name>#n" and does not change with
+  the receiving division - forget only what moved, in the division it left. (2) Stop List buttons: one row needs
+  ~1 525 px; below it the folder buttons + Show Trsm. form a second row (the dialog's resized). Not verified by a
+  cross-division folder drag run (no hook for it); the Stop List layout pictured by ORGAN_TEST_DIALOG_SNAPSHOT at 1200 px.
+  THE USER'S DECISIONS (31 Oct 2026): a transmission's volume stays RELATIVE to its parent ("Volume vs. parent stop";
+  he asked, understood, "nic neměň"); "Transposition method" and all transpose* keys travel with the organ (not
+  machine-specific) - told him.
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is

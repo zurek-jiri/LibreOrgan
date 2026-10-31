@@ -3681,11 +3681,12 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
                     {
                         std::vector<Stop::Transmission> list = s->transmissions;
                         if (idx < 0 || idx >= (int)list.size()) continue;
-                        const bool moved = list[(size_t)idx].manual != master->primaryManual;
+                        const int oldManual = list[(size_t)idx].manual;
+                        const bool moved = oldManual != master->primaryManual;
                         list[(size_t)idx].groupMaster = master->name;
                         list[(size_t)idx].manual = master->primaryManual;
                         engine.replaceTransmissions(s, list);
-                        if (moved) forgetTransmissionCells(s);
+                        if (moved) forgetTransmissionCell(s, idx, oldManual);   // 0.9.6: this one alone, not every transmission of s
                     }
                     stopCells[manual].erase(key);
                     hiddenStops[manual].erase(key);
@@ -3707,11 +3708,12 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
             // A transmission: into the master's division when needed, then under the master.
             std::vector<Stop::Transmission> list = source->transmissions;
             auto& t = list[(size_t)sourceIndex];
-            const bool moved = t.manual != master->primaryManual;
+            const int oldManual = t.manual;
+            const bool moved = oldManual != master->primaryManual;
             t.manual = master->primaryManual;
             t.groupMaster = master->name;
             engine.replaceTransmissions(source, list);
-            if (moved) forgetTransmissionCells(source);
+            if (moved) forgetTransmissionCell(source, sourceIndex, oldManual);   // 0.9.6
             else { stopCells[manual].erase(key); hiddenStops[manual].erase(key); }
             master->voicingExpanded = true;   // the result in sight (0.8.238)
             if (stateChanged) stateChanged();
@@ -3751,11 +3753,12 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
     {
         std::vector<Stop::Transmission> list = source->transmissions;
         auto& t = list[(size_t)sourceIndex];
-        const bool moved = t.manual != target->manual;
+        const int oldManual = t.manual;
+        const bool moved = oldManual != target->manual;
         t.groupMaster.clear();
         t.manual = target->manual;
         engine.replaceTransmissions(source, list);
-        if (moved) forgetTransmissionCells(source);
+        if (moved) { forgetTransmissionCell(source, sourceIndex, oldManual); if (cellFree) stopCells[target->manual][key] = cell; }   // 0.9.6: its own cell alone; it takes the cell it was dropped on
         else if (cellFree) stopCells[target->manual][key] = cell;
         if (stateChanged) stateChanged();
         rebuildLater();
@@ -4524,6 +4527,14 @@ void Voicer::forgetTransmissionCells(const Stop* stop)
     for (auto& division : hiddenStops)
         for (auto it = division.second.begin(); it != division.second.end();)
             it = *it == prefix || it->startsWith(prefix + "#") ? division.second.erase(it) : std::next(it);
+}
+
+void Voicer::forgetTransmissionCell(const Stop* stop, int index, int oldManual)
+{
+    if (stop == nullptr || index < 0) return;
+    const auto key = transmissionKey(stop, index);
+    if (auto cells = stopCells.find(oldManual); cells != stopCells.end()) cells->second.erase(key);
+    if (auto hidden = hiddenStops.find(oldManual); hidden != hiddenStops.end()) hidden->second.erase(key);
 }
 
 void Voicer::forgetGridCells(int manual)
