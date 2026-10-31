@@ -2105,6 +2105,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   THE USER'S DECISIONS (31 Oct 2026): a transmission's volume stays RELATIVE to its parent ("Volume vs. parent stop";
   he asked, understood, "nic neměň"); "Transposition method" and all transpose* keys travel with the organ (not
   machine-specific) - told him.
+  0.9.7 (31 Oct 2026, the user: "udělej to" after the reverse case - the folder moved BACK to the pedal reset I.):
+  PERMANENT TRANSMISSION IDS. The 0.9.6 forget computed the key AFTER the list changed and the key's "#n" was the
+  ORDINAL among the stop's transmissions into the receiving division (Stop::transmissionOrdinal) - the carried
+  transmissions got pedal ordinals 3-6 and "#3".."#6" were erased from I., the user's extensions. The design flaw:
+  every reference (grid cells, pool, combinations/crescendo/registration `transmissions[]` on/off by position,
+  MIDI "transmission:<m>:<home>:<name>:<ordinal>", the Stop List's TransmissionEdit) used that ordinal, which shifts
+  with every move or removal. Now `Transmission::id` (per source stop from `Stop::nextTransmissionId`, never reused;
+  `assignTransmissionIds()` in addTransmission/replaceTransmissions, `transmissionIndexOfId`), saved as "id" in the
+  transmission entries + "nextTransmissionId" on the stop entry; `transmissionKey` = "tr:<home>:<name>#<id>";
+  `storedTransmissionsOn` returns {id, manual, ordinal} and `storedTransmissionIndex` resolves by id else by the old
+  pair (older memories keep working); registration keys "trans|base|id<N>"; MIDI learn key ":id<N>" (the dispatcher
+  reads both); TransmissionEdit::ordinal / Entry::trOrdinal CARRY THE ID (names kept); `Voicer::removeTransmission`
+  no longer shifts keys; `moveTransmissionCell(stop, index, oldManual)` moves a cell to the new division (the 0.9.6
+  forgetTransmissionCell is gone). MIGRATION `migrateTransmissionIds(parsed)` at the top of Voicer::loadState: ids
+  in list order for entries without one, the stopGrid/stopPool keys "tr:home:name[#ordinal]" per division -> "#id",
+  log "Transmission ids assigned ...". RULE: never identify a transmission by its position again.
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is

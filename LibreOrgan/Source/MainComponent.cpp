@@ -9410,11 +9410,13 @@ void MainComponent::setCrescendoEnabled(bool enabled)
 
 namespace
 {
-    // Transmissions switched on in a stored stop state, as (target division,
-    // ordinal within that division). Older memories store a bit mask (ordinal 0).
-    std::vector<std::pair<int, int>> storedTransmissionsOn(const juce::var& stopObj)
+    // Transmissions switched on in a stored stop state: by their permanent id (0.9.7) when the
+    // memory carries one, else as (target division, ordinal within that division) for older
+    // memories; the oldest store a bit mask (ordinal 0).
+    struct StoredTransmission { int id = 0, manual = 0, ordinal = 0; };
+    std::vector<StoredTransmission> storedTransmissionsOn(const juce::var& stopObj)
     {
-        std::vector<std::pair<int, int>> result;
+        std::vector<StoredTransmission> result;
         if (const auto* array = stopObj.getProperty("transmissions", juce::var()).getArray())
         {
             std::array<int, SamplerEngine::maxManuals> ordinals{};
@@ -9422,14 +9424,20 @@ namespace
             {
                 const int manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)item.getProperty("manual", 0));
                 const int ordinal = ordinals[(size_t)manual]++;
-                if ((bool)item.getProperty("enabled", false)) result.push_back({ manual, ordinal });
+                if ((bool)item.getProperty("enabled", false)) result.push_back({ juce::jmax(0, (int)item.getProperty("id", 0)), manual, ordinal });
             }
             return result;
         }
         const int mask = (int)stopObj.getProperty("transmissionEnabledMask", 0);
         for (int target = 0; target < SamplerEngine::maxManuals; ++target)
-            if ((mask & (1 << target)) != 0) result.push_back({ target, 0 });
+            if ((mask & (1 << target)) != 0) result.push_back({ 0, target, 0 });
         return result;
+    }
+    // The stored transmission in the stop's list now: by id, else by division and ordinal (-1 = gone).
+    int storedTransmissionIndex(const Stop* stop, const StoredTransmission& t)
+    {
+        if (t.id > 0) return stop->transmissionIndexOfId(t.id);
+        return stop->transmissionIndex(t.manual, t.ordinal);
     }
 }
 
@@ -9445,9 +9453,9 @@ std::set<std::string> MainComponent::registrationOnSet(const MemorySlot& memory)
         const auto perspective = canonicalPerspectiveName(stopObj.getProperty("perspective", "").toString()).toLowerCase();
         const auto base = juce::String(manual) + "|" + perspective + "|" + name;
         if ((bool)stopObj.getProperty("enabled", false)) keys.insert(("stop|" + base).toStdString());
-        for (const auto& [target, ordinal] : storedTransmissionsOn(stopObj))
-            keys.insert(("trans|" + base + "|" + juce::String(target)
-                + (ordinal > 0 ? "|" + juce::String(ordinal) : juce::String())).toStdString());
+        for (const auto& t : storedTransmissionsOn(stopObj))
+            keys.insert(("trans|" + base + "|" + (t.id > 0 ? "id" + juce::String(t.id)   // 0.9.7: the permanent id
+                : juce::String(t.manual) + (t.ordinal > 0 ? "|" + juce::String(t.ordinal) : juce::String()))).toStdString());
     }
     for (const auto& state : memory.couplerData)
         if (state.isObject() && (bool)state.getProperty("enabled", false))
@@ -9489,8 +9497,8 @@ bool MainComponent::isRegistrationItemOn(const std::string& key) const
     if (fields[0] == "stop") return stop->enabled;
     if (fields[0] == "trans" && fields.size() >= 5)
     {
-        const int index = stop->transmissionIndex(juce::jlimit(0, SamplerEngine::maxManuals - 1, fields[4].getIntValue()),
-            fields.size() >= 6 ? fields[5].getIntValue() : 0);
+        const int index = fields[4].startsWith("id") ? stop->transmissionIndexOfId(fields[4].substring(2).getIntValue())   // 0.9.7
+            : stop->transmissionIndex(juce::jlimit(0, SamplerEngine::maxManuals - 1, fields[4].getIntValue()), fields.size() >= 6 ? fields[5].getIntValue() : 0);
         return index >= 0 && stop->transmissions[(size_t)index].enabled;
     }
     return false;
@@ -9515,8 +9523,8 @@ void MainComponent::setRegistrationItem(const std::string& key, bool on)
     if (fields[0] == "stop") engine.setStopEnabled(stop, on);
     else if (fields[0] == "trans" && fields.size() >= 5)
     {
-        const int index = stop->transmissionIndex(juce::jlimit(0, SamplerEngine::maxManuals - 1, fields[4].getIntValue()),
-            fields.size() >= 6 ? fields[5].getIntValue() : 0);
+        const int index = fields[4].startsWith("id") ? stop->transmissionIndexOfId(fields[4].substring(2).getIntValue())   // 0.9.7
+            : stop->transmissionIndex(juce::jlimit(0, SamplerEngine::maxManuals - 1, fields[4].getIntValue()), fields.size() >= 6 ? fields[5].getIntValue() : 0);
         if (index >= 0) engine.setTransmissionEnabled(stop, index, on);
     }
 }
@@ -9557,9 +9565,9 @@ void MainComponent::applyRegistrationAdditive(const MemorySlot& memory)
         {
             if (stop != target) continue;
             if ((bool)stopObj.getProperty("enabled", false)) engine.setStopEnabled(stop, true);
-            for (const auto& [target, ordinal] : storedTransmissionsOn(stopObj))
+            for (const auto& stored : storedTransmissionsOn(stopObj))
             {
-                const int index = stop->transmissionIndex(target, ordinal);
+                const int index = storedTransmissionIndex(stop, stored);
                 if (index >= 0) engine.setTransmissionEnabled(stop, index, true);
             }
             break;
@@ -18494,10 +18502,10 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
             }
             if (!changed) continue;
             engine.replaceTransmissions(s, list);
-            // 0.9.6: the cells of the CARRIED transmissions alone (they sit inside the folder anyway) - the
-            // wholesale forget took the cells of every transmission of s in every division with it (the
-            // user's extensions of Principal 8 on I. fell into a row when the folder left the pedal).
-            if (voicer) for (int index : movedIndices) voicer->forgetTransmissionCell(s, index, source);
+            // 0.9.7: the cells of the CARRIED transmissions follow them (they sit inside the folder anyway);
+            // every other transmission of s keeps its key and cell (the keys are permanent ids now - the
+            // 0.8.237 wholesale forget and the 0.9.6 ordinal-based one both threw the user's layout away).
+            if (voicer) for (int index : movedIndices) voicer->moveTransmissionCell(s, index, source);
         }
         if (carried > 0) CrashHandler::note("Stop folder \"" + newFolder + "\": " + juce::String(carried) + " transmission(s) indented under it moved to division " + juce::String(targetManual) + " with it");
     }
@@ -18551,12 +18559,13 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
         for (auto& edit : plan)
         {
             if (edit.sourceManual != first.sourceManual || edit.source != first.source) continue;
-            const int index = stop->transmissionIndex(edit.originalManual, edit.ordinal);
+            const int index = stop->transmissionIndexOfId(edit.ordinal);   // 0.9.7: 'ordinal' carries the permanent id
             if (index < 0 || index >= count) continue;
             if (edit.remove) removed[(size_t)index] = 1;
             else editAt[(size_t)index] = &edit;
         }
         bool moved = false, changed = false;
+        std::vector<std::pair<int, int>> movedFrom;   // (id, the division left) - 0.9.7
         std::vector<Stop::Transmission> list;
         std::vector<TransmissionEdit*> editOfNew;
         for (int index = 0; index < count; ++index)
@@ -18567,7 +18576,7 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
             {
                 if (edit->newManual >= 0 && edit->newManual != t.manual)
                 {
-                    if (voicer != nullptr) voicer->forgetTransmissionCell(stop, index, t.manual);   // 0.9.6: this transmission's old cell alone
+                    movedFrom.push_back({ t.id, t.manual });   // 0.9.7: its cell follows it after the list is in place
                     t.manual = edit->newManual; moved = true; changed = true;
                 }
                 if (edit->master != t.groupMaster) { t.groupMaster = edit->master; changed = true; }
@@ -18577,7 +18586,9 @@ void MainComponent::applyTransmissionPlan(std::vector<TransmissionEdit>& plan)
             editOfNew.push_back(editAt[(size_t)index]);
         }
         if (changed) engine.replaceTransmissions(stop, list);
-        juce::ignoreUnused(moved);   // 0.9.6: the moved transmissions' old cells were forgotten one by one above
+        if (moved && voicer != nullptr)
+            for (const auto& [id, oldManual] : movedFrom)
+                voicer->moveTransmissionCell(stop, stop->transmissionIndexOfId(id), oldManual);
         for (int index = 0; index < (int)editOfNew.size(); ++index)
             if (editOfNew[(size_t)index] != nullptr) editOfNew[(size_t)index]->newKey = Voicer::transmissionKey(stop, index);
         if (changed) CrashHandler::note("Transmissions of \"" + stop->name + "\" edited in the Stop List: " + juce::String((int)list.size()) + " remain");
@@ -19473,7 +19484,7 @@ void MainComponent::showStopBuildingDialog(int)
                         item.entry.trSource = stop->name;
                         item.entry.trSourceManual = stop->primaryManual;
                         item.entry.trOriginalManual = manual;
-                        item.entry.trOrdinal = stop->transmissionOrdinal(index);
+                        item.entry.trOrdinal = t.id;   // 0.9.7: the permanent id (the field keeps its old name)
                         item.entry.trShift = t.shift;
                         item.entry.trMaster = t.groupMaster;
                         if (owner.voicer != nullptr)
@@ -23308,9 +23319,9 @@ void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includ
             }
             engine.setStopEnabled(target, shouldBeEnabled);
             std::vector<bool> on(target->transmissions.size(), false);
-            for (const auto& [division, ordinal] : storedTransmissionsOn(stopObj))
+            for (const auto& stored : storedTransmissionsOn(stopObj))
             {
-                const int index = target->transmissionIndex(division, ordinal);
+                const int index = storedTransmissionIndex(target, stored);
                 if (index >= 0) on[(size_t)index] = true;
             }
             for (int index = 0; index < (int)on.size(); ++index)
@@ -23362,7 +23373,8 @@ bool MainComponent::memoryMatchesCurrent(const MemorySlot& memory) const
         juce::String name, perspective;
         int primaryManual = 0;
         bool enabled = false;
-        std::vector<std::pair<int, int>> transmissionsOn;   // (target division, ordinal)
+        std::vector<StoredTransmission> transmissions;   // every transmission: id, division, ordinal (0.9.7: a stored entry is matched by id, an older one by division and ordinal)
+        std::vector<bool> transmissionOn;
     };
     std::vector<CurrentStopState> currentStops;
     {
@@ -23370,10 +23382,13 @@ bool MainComponent::memoryMatchesCurrent(const MemorySlot& memory) const
         currentStops.reserve((size_t)engine.getStops().size());
         for (auto* stop : engine.getStops())
         {
-            CurrentStopState state{ stop->name, stop->perspective, stop->primaryManual, stop->enabled, {} };
+            CurrentStopState state{ stop->name, stop->perspective, stop->primaryManual, stop->enabled, {}, {} };
             for (int index = 0; index < (int)stop->transmissions.size(); ++index)
-                if (stop->transmissions[(size_t)index].enabled)
-                    state.transmissionsOn.push_back({ stop->transmissions[(size_t)index].manual, stop->transmissionOrdinal(index) });
+            {
+                const auto& t = stop->transmissions[(size_t)index];
+                state.transmissions.push_back({ t.id, t.manual, stop->transmissionOrdinal(index) });
+                state.transmissionOn.push_back(t.enabled);
+            }
             currentStops.push_back(std::move(state));
         }
     }
@@ -23392,11 +23407,19 @@ bool MainComponent::memoryMatchesCurrent(const MemorySlot& memory) const
                         .equalsIgnoreCase(stop.perspective)))
             { saved = item; break; }
         if (!saved.isObject() || (bool)saved.getProperty("enabled", true) != stop.enabled) return false;
-        auto savedOn = storedTransmissionsOn(saved);
-        auto currentOn = stop.transmissionsOn;
-        std::sort(savedOn.begin(), savedOn.end());
-        std::sort(currentOn.begin(), currentOn.end());
-        if (savedOn != currentOn) return false;
+        // The stored "on" entries resolved to positions in the current list must be exactly the positions on now.
+        std::vector<bool> savedOn(stop.transmissions.size(), false);
+        for (const auto& stored : storedTransmissionsOn(saved))
+        {
+            int position = -1;
+            for (size_t i = 0; i < stop.transmissions.size() && position < 0; ++i)
+                if (stored.id > 0 ? stop.transmissions[i].id == stored.id
+                                  : (stop.transmissions[i].manual == stored.manual && stop.transmissions[i].ordinal == stored.ordinal))
+                    position = (int)i;
+            if (position < 0) return false;   // a transmission the memory switches on is gone
+            savedOn[(size_t)position] = true;
+        }
+        if (savedOn != stop.transmissionOn) return false;
     }
     for (const auto& state : memory.tremulantData)
         if (state.isObject())
@@ -24615,11 +24638,12 @@ void MainComponent::activateMidiTarget(const juce::String& target, bool isOn, bo
             const int targetManual = fields[1].getIntValue();
             const int sourceManual = fields[2].getIntValue();
             const auto name = fields[3];
-            const int ordinal = fields.size() >= 5 ? fields[4].getIntValue() : 0;
+            const bool byId = fields.size() >= 5 && fields[4].startsWith("id");   // 0.9.7: "id<N>"; older bindings carry the ordinal
+            const int number = fields.size() >= 5 ? (byId ? fields[4].substring(2).getIntValue() : fields[4].getIntValue()) : 0;
             for (auto* stop : engine.getStops())
                 if (stop->primaryManual == sourceManual && stop->name == name)
                 {
-                    const int index = stop->transmissionIndex(targetManual, ordinal);
+                    const int index = byId ? stop->transmissionIndexOfId(number) : stop->transmissionIndex(targetManual, number);
                     if (index < 0) return;
                     const bool currentlyOn = stop->transmissions[(size_t)index].enabled;
                     engine.setTransmissionEnabled(stop, index, toggleBehaviour ? !currentlyOn : isOn);

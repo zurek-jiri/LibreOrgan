@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.7] - 2026-10-31
+
+### Changed
+- Every transmission and extension has a permanent identity now (a number
+  from its source stop, never reused). The grid cells, the stop pool,
+  combinations, crescendo steps, the registration and MIDI bindings name a
+  transmission by it. Before they used its position among the stop's
+  transmissions into one division, which shifted whenever one was moved
+  between divisions or removed, and the layout of the others fell apart
+  (moving a stop folder with transmissions from a manual back to the pedal
+  reset the manual's grid). A state saved before gets its ids at the first
+  load and keeps its layout; it is saved with them from then on. Older
+  combinations and bindings are still read by the old position.
+
 ## [0.9.6] - 2026-10-31
 
 ### Fixed

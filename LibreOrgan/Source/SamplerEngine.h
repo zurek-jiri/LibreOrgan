@@ -442,8 +442,28 @@ struct Stop
         std::bitset<128> keyDisabled;      // keys switched off in this transmission's voicing (by key played; independent of the stop's pipes)
         juce::String groupMaster;          // a stop folder of the receiving division this transmission is indented under (switches with it)
         float formantFollow = 0.3f;        // formants follow the pitch shift (0..1, downwards; upwards 0.3 more) of the pipes only this transmission asks for
+        // 0.9.7: the transmission's permanent identity - a number from the source stop's counter, never
+        // reused, unchanged by moves between divisions, removals of other transmissions or reordering.
+        // Grid cells, the stop pool, combinations, crescendo steps, registrations and MIDI bindings name
+        // a transmission by it (before: by its ordinal among the stop's transmissions into one division,
+        // which shifted with every such change and lost the user's layout). 0 = not assigned yet.
+        int id = 0;
     };
     std::vector<Transmission> transmissions;
+    int nextTransmissionId = 0;   // the last id given out (saved with the voicing entry)
+    int transmissionIndexOfId(int id) const noexcept
+    {
+        if (id <= 0) return -1;
+        for (int i = 0; i < (int)transmissions.size(); ++i)
+            if (transmissions[(size_t)i].id == id) return i;
+        return -1;
+    }
+    // Every transmission without an id gets the next one (the counter never goes below any id present).
+    void assignTransmissionIds() noexcept
+    {
+        for (const auto& t : transmissions) nextTransmissionId = std::max(nextTransmissionId, t.id);
+        for (auto& t : transmissions) if (t.id <= 0) t.id = ++nextTransmissionId;
+    }
     int transmissionCount(int manual) const noexcept
     {
         int count = 0;

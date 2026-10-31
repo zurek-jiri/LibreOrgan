@@ -386,11 +386,10 @@ public:
     // The grid cells of every transmission of a stop are forgotten (their keys
     // changed with the receiving division); the next layout places them again.
     void forgetTransmissionCells(const Stop* stop);
-    // 0.9.6: ONE transmission that left a division - its cell and pool entry there alone. The wholesale
-    // version above wiped the cells of every transmission of the stop in every division (a stop folder
-    // carrying four transmissions of Principal 8 moved to another division threw the user's layout of
-    // that stop's other extensions on I. into a row).
-    void forgetTransmissionCell(const Stop* stop, int index, int oldManual);
+    // 0.9.7: a transmission that changed division (its 'manual' is the new one already) takes its grid
+    // cell and pool entry along from 'oldManual'. The keys are permanent ids, nothing else is touched -
+    // the wholesale forget above (kept for a stop that is removed) wiped every transmission of the stop.
+    void moveTransmissionCell(const Stop* stop, int index, int oldManual);
     // Before a stop is removed from the engine: nothing of the voicer may still
     // point at it (transmission cells, the scroll target, the drag state).
     void forgetStop(Stop* stop);

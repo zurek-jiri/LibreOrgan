@@ -12,6 +12,7 @@ juce::var Voicer::transmissionsToVar(const Stop* stop)
     for (const auto& t : stop->transmissions)
     {
         juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+        if (t.id > 0) obj->setProperty("id", t.id);   // 0.9.7: the permanent identity
         obj->setProperty("manual", t.manual);
         obj->setProperty("shift", t.shift);
         obj->setProperty("db", t.db);
@@ -59,6 +60,7 @@ std::vector<Stop::Transmission> Voicer::transmissionsFromVar(const juce::var& st
         {
             if (!item.isObject()) continue;
             Stop::Transmission t;
+            t.id = juce::jmax(0, (int)item.getProperty("id", 0));   // 0.9.7 (0: the engine assigns one)
             t.manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)item.getProperty("manual", 0));
             t.shift = juce::jlimit(-Stop::Transmission::maxShift, Stop::Transmission::maxShift, (int)item.getProperty("shift", 0));
             t.db = juce::jlimit(-10.0f, 10.0f, (float)(double)item.getProperty("db", 0.0));
@@ -1056,7 +1058,7 @@ void StopRow::mouseDown(const juce::MouseEvent& event)
     {
         if (auto* t = transmission())
             midiLearnCallback("transmission:" + juce::String(t->manual) + ":" + juce::String(stop->primaryManual) + ":"
-                + stop->name + ":" + juce::String(stop->transmissionOrdinal(transmissionIndex)));
+                + stop->name + ":id" + juce::String(t->id));   // 0.9.7: by the permanent id (older bindings carry the ordinal)
         else
             midiLearnCallback("stop:" + juce::String(stop->primaryManual) + ":" + stop->name);   // 0.8.230: with the division - two divisions may hold a stop of one name
     }
@@ -3324,11 +3326,14 @@ bool Voicer::resolveItem(int manual, const juce::String& key, Stop*& stop, int& 
         const auto rest = key.fromFirstOccurrenceOf("tr:", false, false);
         const int home = rest.upToFirstOccurrenceOf(":", false, false).getIntValue();
         auto nameAndOrdinal = rest.fromFirstOccurrenceOf(":", false, false);
-        const int ordinal = nameAndOrdinal.contains("#") ? nameAndOrdinal.fromLastOccurrenceOf("#", false, false).getIntValue() : 0;
-        const auto name = nameAndOrdinal.contains("#") ? nameAndOrdinal.upToLastOccurrenceOf("#", false, false) : nameAndOrdinal;
+        const bool hasNumber = nameAndOrdinal.contains("#");
+        const int number = hasNumber ? nameAndOrdinal.fromLastOccurrenceOf("#", false, false).getIntValue() : 0;
+        const auto name = hasNumber ? nameAndOrdinal.upToLastOccurrenceOf("#", false, false) : nameAndOrdinal;
         for (auto* candidate : engine.getStops())
             if (candidate->primaryManual == home && candidate->name == name) { stop = candidate; break; }
-        if (stop != nullptr) transmissionIndex = stop->transmissionIndex(manual, ordinal);
+        // 0.9.7: "#<id>"; a key without a number is the legacy first transmission into the division.
+        if (stop != nullptr) transmissionIndex = hasNumber ? stop->transmissionIndexOfId(number) : stop->transmissionIndex(manual, 0);
+        if (transmissionIndex >= 0 && stop->transmissions[(size_t)transmissionIndex].manual != manual) transmissionIndex = -1;
         if (transmissionIndex < 0) stop = nullptr;
         return stop != nullptr;
     }
@@ -3686,7 +3691,7 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
                         list[(size_t)idx].groupMaster = master->name;
                         list[(size_t)idx].manual = master->primaryManual;
                         engine.replaceTransmissions(s, list);
-                        if (moved) forgetTransmissionCell(s, idx, oldManual);   // 0.9.6: this one alone, not every transmission of s
+                        if (moved) moveTransmissionCell(s, idx, oldManual);   // 0.9.7: its cell follows it
                     }
                     stopCells[manual].erase(key);
                     hiddenStops[manual].erase(key);
@@ -3713,8 +3718,8 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
             t.manual = master->primaryManual;
             t.groupMaster = master->name;
             engine.replaceTransmissions(source, list);
-            if (moved) forgetTransmissionCell(source, sourceIndex, oldManual);   // 0.9.6
-            else { stopCells[manual].erase(key); hiddenStops[manual].erase(key); }
+            stopCells[manual].erase(key); hiddenStops[manual].erase(key);   // under the master now: no cell of its own
+            juce::ignoreUnused(moved, oldManual);
             master->voicingExpanded = true;   // the result in sight (0.8.238)
             if (stateChanged) stateChanged();
             rebuildLater();
@@ -3758,8 +3763,8 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
         t.groupMaster.clear();
         t.manual = target->manual;
         engine.replaceTransmissions(source, list);
-        if (moved) { forgetTransmissionCell(source, sourceIndex, oldManual); if (cellFree) stopCells[target->manual][key] = cell; }   // 0.9.6: its own cell alone; it takes the cell it was dropped on
-        else if (cellFree) stopCells[target->manual][key] = cell;
+        if (moved) { stopCells[oldManual].erase(key); hiddenStops[oldManual].erase(key); }   // 0.9.7: it takes the cell it was dropped on in the new division
+        if (cellFree) stopCells[target->manual][key] = cell;
         if (stateChanged) stateChanged();
         rebuildLater();
         return;
@@ -3904,11 +3909,14 @@ void Voicer::stopMovedToDivision(int from, const juce::String& oldName, int to, 
 
 juce::String Voicer::transmissionKey(const Stop* stop, int index)
 {
-    // Distinct from any stop name of the receiving division. The first
-    // transmission into a division keeps the key older layouts used.
-    const int ordinal = juce::jmax(0, stop->transmissionOrdinal(index));
-    return "tr:" + juce::String(stop->primaryManual) + ":" + stop->name
-        + (ordinal > 0 ? "#" + juce::String(ordinal) : juce::String());
+    // Distinct from any stop name of the receiving division. 0.9.7: "#<id>" - the
+    // transmission's permanent id, so the key survives moves and removals (the
+    // ordinal keys of older states are translated at load, see loadState).
+    if (stop == nullptr || index < 0 || index >= (int)stop->transmissions.size()) return {};
+    const int id = stop->transmissions[(size_t)index].id;
+    if (id > 0) return "tr:" + juce::String(stop->primaryManual) + ":" + stop->name + "#" + juce::String(id);
+    const int ordinal = juce::jmax(0, stop->transmissionOrdinal(index));   // not assigned yet (never after the engine took the list)
+    return "tr:" + juce::String(stop->primaryManual) + ":" + stop->name + (ordinal > 0 ? "#" + juce::String(ordinal) : juce::String());
 }
 
 juce::String Voicer::transmissionLabel(const Stop* stop, int index)
@@ -3932,29 +3940,11 @@ void Voicer::removeTransmission(Stop* stop, int index)
 {
     if (stop == nullptr || index < 0 || index >= (int)stop->transmissions.size()) return;
     const int targetManual = stop->transmissions[(size_t)index].manual;
-    const int ordinal = stop->transmissionOrdinal(index);
-    const int count = stop->transmissionCount(targetManual);
-    // Forget its grid cell and pool entry in the target division; the later
-    // transmissions into that division move down one ordinal.
-    auto& cells = stopCells[targetManual];
-    auto& pool = hiddenStops[targetManual];
-    auto keyFor = [stop, targetManual](int ord)
-    {
-        return "tr:" + juce::String(stop->primaryManual) + ":" + stop->name
-            + (ord > 0 ? "#" + juce::String(ord) : juce::String());
-    };
-    cells.erase(keyFor(ordinal));
-    pool.erase(keyFor(ordinal));
-    for (int ord = ordinal + 1; ord < count; ++ord)
-    {
-        if (const auto it = cells.find(keyFor(ord)); it != cells.end())
-        {
-            const auto cell = it->second;
-            cells.erase(it);
-            cells[keyFor(ord - 1)] = cell;
-        }
-        if (pool.erase(keyFor(ord)) > 0) pool.insert(keyFor(ord - 1));
-    }
+    // Its grid cell and pool entry in the target division go with it; the other
+    // transmissions keep their keys (0.9.7: the key is the permanent id, no shifting).
+    const auto key = transmissionKey(stop, index);
+    stopCells[targetManual].erase(key);
+    hiddenStops[targetManual].erase(key);
     engine.removeTransmission(stop, index);   // switches it off first (pipes released properly)
     // Callers may sit inside a control of the current UI: rebuild afterwards.
     juce::MessageManager::callAsync([this]
@@ -4026,6 +4016,7 @@ juce::var Voicer::createState() const
         }
         stopObj->setProperty(juce::Identifier("primaryManual"), stop->primaryManual);
         stopObj->setProperty("transmissions", transmissionsToVar(stop));
+        if (stop->nextTransmissionId > 0) stopObj->setProperty("nextTransmissionId", stop->nextTransmissionId);   // 0.9.7: ids are never reused
         stopObj->setProperty(juce::Identifier("voicingExpanded"), stop->voicingExpanded);
         stopObj->setProperty("volumeKeysExpanded", stop->volumeKeysExpanded);
         stopObj->setProperty("toneKeysExpanded", stop->toneKeysExpanded);
@@ -4117,6 +4108,84 @@ void Voicer::saveState(const juce::File& file)
     file.replaceWithText(juce::JSON::toString(createState(), true));
 }
 
+namespace
+{
+    // 0.9.7: a state saved before the permanent transmission ids. Every transmission without an
+    // "id" gets one (in list order, from the stop's counter), and the grid/pool keys of those
+    // transmissions - "tr:<home>:<name>" for the first one into a division, "#<ordinal>" for the
+    // next - become "#<id>". Done once; the next save writes the ids.
+    void migrateTransmissionIds(juce::var& parsed)
+    {
+        auto* stops = parsed.getProperty("stops", juce::var()).getArray();
+        if (stops == nullptr) return;
+        std::map<int, std::map<juce::String, juce::String>> renames;   // receiving division -> old key -> new key
+        int assigned = 0;
+        for (auto& stopVar : *stops)
+        {
+            auto* obj = stopVar.getDynamicObject();
+            if (obj == nullptr) continue;
+            auto* list = obj->getProperty("transmissions").getArray();
+            if (list == nullptr) continue;
+            bool missing = false;
+            int next = (int)obj->getProperty("nextTransmissionId");
+            for (const auto& t : *list) { const int id = (int)t.getProperty("id", 0); if (id <= 0) missing = true; next = juce::jmax(next, id); }
+            if (!missing) continue;
+            const int home = (int)obj->getProperty("primaryManual");
+            const juce::String prefix = "tr:" + juce::String(home) + ":" + obj->getProperty("name").toString();
+            std::array<int, SamplerEngine::maxManuals> ordinals{};
+            for (auto& t : *list)
+            {
+                auto* tObj = t.getDynamicObject();
+                if (tObj == nullptr) continue;
+                const int manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)tObj->getProperty("manual"));
+                const int ordinal = ordinals[(size_t)manual]++;
+                int id = (int)tObj->getProperty("id");
+                if (id <= 0) { id = ++next; tObj->setProperty("id", id); ++assigned; }
+                renames[manual][prefix + (ordinal > 0 ? "#" + juce::String(ordinal) : juce::String())] = prefix + "#" + juce::String(id);
+            }
+            obj->setProperty("nextTransmissionId", next);
+        }
+        if (assigned == 0) return;
+        if (auto* grid = parsed.getProperty("stopGrid", juce::var()).getDynamicObject())
+        {
+            std::vector<std::pair<juce::Identifier, juce::var>> replaced;
+            for (const auto& division : grid->getProperties())
+            {
+                const auto byDivision = renames.find(division.name.toString().getIntValue());
+                auto* cells = division.value.getDynamicObject();
+                if (byDivision == renames.end() || cells == nullptr) continue;
+                juce::DynamicObject::Ptr fresh = new juce::DynamicObject();
+                for (const auto& cell : cells->getProperties())
+                {
+                    const auto renamed = byDivision->second.find(cell.name.toString());
+                    fresh->setProperty(renamed != byDivision->second.end() ? juce::Identifier(renamed->second) : cell.name, cell.value);
+                }
+                replaced.push_back({ division.name, juce::var(fresh.get()) });
+            }
+            for (const auto& [name, value] : replaced) grid->setProperty(name, value);
+        }
+        if (auto* pool = parsed.getProperty("stopPool", juce::var()).getDynamicObject())
+        {
+            std::vector<std::pair<juce::Identifier, juce::var>> replaced;
+            for (const auto& division : pool->getProperties())
+            {
+                const auto byDivision = renames.find(division.name.toString().getIntValue());
+                auto* names = division.value.getArray();
+                if (byDivision == renames.end() || names == nullptr) continue;
+                juce::Array<juce::var> fresh;
+                for (const auto& name : *names)
+                {
+                    const auto renamed = byDivision->second.find(name.toString());
+                    fresh.add(renamed != byDivision->second.end() ? juce::var(renamed->second) : name);
+                }
+                replaced.push_back({ division.name, juce::var(fresh) });
+            }
+            for (const auto& [name, value] : replaced) pool->setProperty(name, value);
+        }
+        CrashHandler::note("Transmission ids assigned to a state saved without them: " + juce::String(assigned) + " transmission(s); the grid and pool keys follow");
+    }
+}
+
 void Voicer::loadState(const juce::File& file)
 {
     if (!file.existsAsFile()) return;
@@ -4124,6 +4193,7 @@ void Voicer::loadState(const juce::File& file)
     auto text = file.loadFileAsString();
     auto parsed = juce::JSON::parse(text);
     if (!parsed.isObject()) return;
+    migrateTransmissionIds(parsed);   // 0.9.7
 
     if (auto* gridObj = parsed.getProperty("stopGrid", juce::var()).getDynamicObject())
     {
@@ -4287,6 +4357,7 @@ void Voicer::loadState(const juce::File& file)
                         engine.setStopUndulation(stop, saved);
                     }
                 }
+                stop->nextTransmissionId = juce::jmax(stop->nextTransmissionId, (int)stopObj->getProperty("nextTransmissionId"));   // 0.9.7
                 engine.replaceTransmissions(stop, transmissionsFromVar(stopVar, stop->primaryManual));
                 // Loading a folder/state always starts with a compact stop list; the
                 // per-key folds are remembered (folded when the state does not say).
@@ -4529,12 +4600,22 @@ void Voicer::forgetTransmissionCells(const Stop* stop)
             it = *it == prefix || it->startsWith(prefix + "#") ? division.second.erase(it) : std::next(it);
 }
 
-void Voicer::forgetTransmissionCell(const Stop* stop, int index, int oldManual)
+void Voicer::moveTransmissionCell(const Stop* stop, int index, int oldManual)
 {
-    if (stop == nullptr || index < 0) return;
+    // 0.9.7: the key is the permanent id, so the cell of a transmission that changed
+    // division simply moves to the new division's map (unless the drop gave it one there).
+    if (stop == nullptr || index < 0 || index >= (int)stop->transmissions.size()) return;
+    const int newManual = stop->transmissions[(size_t)index].manual;
+    if (newManual == oldManual) return;
     const auto key = transmissionKey(stop, index);
-    if (auto cells = stopCells.find(oldManual); cells != stopCells.end()) cells->second.erase(key);
-    if (auto hidden = hiddenStops.find(oldManual); hidden != hiddenStops.end()) hidden->second.erase(key);
+    if (auto cells = stopCells.find(oldManual); cells != stopCells.end())
+        if (auto it = cells->second.find(key); it != cells->second.end())
+        {
+            if (stopCells[newManual].count(key) == 0) stopCells[newManual][key] = it->second;
+            cells->second.erase(it);
+        }
+    if (auto hidden = hiddenStops.find(oldManual); hidden != hiddenStops.end())
+        if (hidden->second.erase(key) > 0) hiddenStops[newManual].insert(key);
 }
 
 void Voicer::forgetGridCells(int manual)

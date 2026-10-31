@@ -11068,6 +11068,7 @@ int SamplerEngine::addTransmission(Stop* stop, int manual, int shift)
         transmission.shift = juce::jlimit(-Stop::Transmission::maxShift, Stop::Transmission::maxShift, shift);
         transmission.enabled = false;
         stop->transmissions.push_back(transmission);
+        stop->assignTransmissionIds();   // 0.9.7: its permanent id
         refillStopPipes(stop);
         index = (int)stop->transmissions.size() - 1;
     }
@@ -11103,6 +11104,7 @@ void SamplerEngine::replaceTransmissions(Stop* stop, std::vector<Stop::Transmiss
             t.enabled = false;
         }
         stop->transmissions = std::move(list);
+        stop->assignTransmissionIds();   // 0.9.7: new entries get ids, the others keep theirs
         refillStopPipes(stop);
     }
     buildAntiAliasCopies(stop, true);

@@ -559,7 +559,7 @@ private:
     struct TransmissionEdit
     {
         int sourceManual = -1; juce::String source;   // the source stop
-        int originalManual = -1, ordinal = 0;         // identity at the time the dialog opened
+        int originalManual = -1, ordinal = 0;         // identity at the time the dialog opened ('ordinal' = the permanent id since 0.9.7)
         int newManual = -1; juce::String master, alias;
         bool remove = false;
         juce::String newKey;                          // filled by applyTransmissionPlan: the grid key afterwards
