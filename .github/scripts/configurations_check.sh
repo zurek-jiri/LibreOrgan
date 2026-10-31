@@ -48,7 +48,7 @@ while IFS= read -r -d '' f; do
   if [ "$size" -gt 41943040 ]; then
     echo "::error file=$f::larger than 40 MB"; fail=1
   fi
-done < <(find configurations -type f -print0)
+done < <(find libreorgans -type f -print0)
 if [ "$fail" -ne 0 ]; then
   echo "The libreorgans folder takes, per organ, the zipped configuration (one .json inside) and its README.md - nothing else. Samples and impulse responses are bought or downloaded elsewhere (Sonus Paradisi)."
   exit 1

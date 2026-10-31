@@ -68,7 +68,7 @@ jobs:
             echo "sorted $base into libreorgans/$slug/"
           done
           python3 .github/scripts/configurations_index.py || true
-          git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
+          git add -A libreorgans .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
           if git diff --cached --quiet; then
             echo "nothing to commit"
             exit 0

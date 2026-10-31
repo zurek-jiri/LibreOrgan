@@ -2135,6 +2135,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (channelsLinked erased) and a Messages note names it (`applyPerspectiveChannelsEverywhere`, log "... NOT for ...").
   A device not open takes the channels as stored (0.8.250). The tab's own refresh still folds a stored selection
   beyond an OPEN device to the first pair (its old rule) - untouched.
+  v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
+  configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
+  configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
+  folder prints nothing). All replaced by libreorgans and pushed as a workflow-only commit after the tag. When a folder
+  of the repository is renamed, grep the WORKFLOWS and SCRIPTS for the bare name too, not only the sources.
   THE USER'S RULE FOR THE MANUAL (31 Oct 2026, "hlavně kvůli nepodstatným těmto detailům nezahlť user manual! Vždy
   stručnost, výstižnost, případně detaily do hyperlinku technických detailů"): a fix or a safeguard gets at most ONE
   short sentence in the user's chapters, or nothing (the log and the Messages carry the detail); technical detail

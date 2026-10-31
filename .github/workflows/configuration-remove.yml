@@ -88,11 +88,11 @@ jobs:
             removed="$removed"$'\n'"- libreorgans/$folder"
           done <<< "$wanted"
           if [ -z "$removed" ]; then
-            answer "$(printf 'Nothing removed:%s\n\nThe organs now:\n\n%s' "$problems" "$(ls -1 configurations | grep -v '\.md$' | sed 's/^/- /')")"
+            answer "$(printf 'Nothing removed:%s\n\nThe organs now:\n\n%s' "$problems" "$(ls -1 libreorgans | grep -v '\.md$' | sed 's/^/- /')")"
             exit 1
           fi
           python3 .github/scripts/configurations_index.py || true
-          git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
+          git add -A libreorgans .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
           git commit -m "libreorgans: removed$(printf '%s' "$removed" | tr '\n' ' ' | sed 's/- libreorgans\//  /g') (asked by @$who)"
           git push
           answer "$(printf 'Removed, INDEX.md regenerated:%s%s' "$removed" "${problems:+$'\n\nNot removed:'$problems}")" close

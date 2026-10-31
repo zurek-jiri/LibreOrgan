@@ -43,7 +43,7 @@ jobs:
           count=$(printf '%s' "$matches" | grep -c . || true)
           if [ "$count" -eq 0 ]; then
             echo "::error::No published configuration matches \"$wanted\". The organs now:"
-            ls -1 configurations | grep -v '\.md$' | grep -v '\.txt$' || true
+            ls -1 libreorgans | grep -v '\.md$' | grep -v '\.txt$' || true
             exit 1
           fi
           if [ "$count" -gt 1 ]; then
@@ -66,6 +66,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           python3 .github/scripts/configurations_index.py || true
-          git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
+          git add -A libreorgans .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
           git commit -m "configurations: $folder ${INPUT_ACTION}d (Feature a configuration, run by ${{ github.actor }})"
           git push

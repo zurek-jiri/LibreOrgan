@@ -73,7 +73,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$branch"
-          git add configurations
+          git add libreorgans
           git commit -m "Configuration from issue #$ISSUE_NUMBER: $base (by @$ISSUE_AUTHOR)"
           git push -f origin "$branch"
           if [ -n "$replaces" ]; then
