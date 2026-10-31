@@ -11548,6 +11548,86 @@ namespace
         for (int i = 0; i < r.size(); ++i) root = root.getParentDirectory();
         return root;
     }
+
+    // 0.9.5 TREE FINGERPRINTS (the user: "Musí to umět vždycky rozlišit Principal8 různých varhan!" - his
+    // one-stop tree "Principal8" was loaded from the Rural Organ's TA\Principal8 twice, by its name alone):
+    // a configuration remembers, per tree, WHAT is inside - the WAV file names (and sizes, on a disk) of up
+    // to three of the Stop List's folders of that tree (the first, the middle and the last by name; the tree
+    // itself when its one stop is the tree) - and a load takes a folder of the right name ONLY when it holds
+    // the same files. A folder with other samples is refused (logged, a Messages note), rather "not found"
+    // than another organ's pipes. Names are compared in lower case; the sizes only when both sides have
+    // them (a tree inside a RAR archive gives names alone).
+    struct FolderPrint { int files = 0; juce::int64 nameHash = 0, sizeHash = 0; bool sizes = false; };
+    FolderPrint folderPrintOf(const juce::File& folder)
+    {
+        FolderPrint print;
+        std::vector<std::pair<juce::String, juce::String>> wavs;   // lower-case name, the name as spelt
+        for (const auto& name : SampleFiles::fileNames(folder))
+            if (name.endsWithIgnoreCase(".wav")) wavs.push_back({ name.toLowerCase(), name });
+        std::sort(wavs.begin(), wavs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+        print.files = (int)wavs.size();
+        print.sizes = folder.isDirectory();   // on the disk: the sizes too
+        juce::String names, sizes;
+        for (const auto& [lower, spelt] : wavs)
+        {
+            names << lower << "\n";
+            if (print.sizes) sizes << juce::String(folder.getChildFile(spelt).getSize()) << "\n";
+        }
+        print.nameHash = names.hashCode64();
+        print.sizeHash = print.sizes ? sizes.hashCode64() : 0;
+        return print;
+    }
+    juce::File folderOfPrint(const juce::File& tree, const juce::String& relative)
+    {
+        return relative == "." || relative.isEmpty() ? tree : tree.getChildFile(relative.replaceCharacter('/', juce::File::getSeparatorChar()));
+    }
+    juce::String treeFingerprintOf(const juce::File& tree, juce::StringArray rowFolders)
+    {
+        if (!SampleFiles::isDirectory(tree)) return {};
+        rowFolders.sort(true);
+        juce::StringArray picked;
+        if (rowFolders.isEmpty()) picked.add(".");
+        else
+        {
+            picked.add(rowFolders[0]);
+            if (rowFolders.size() > 2) picked.add(rowFolders[rowFolders.size() / 2]);
+            if (rowFolders.size() > 1) picked.add(rowFolders[rowFolders.size() - 1]);
+        }
+        juce::StringArray parts;
+        for (const auto& relative : picked)
+        {
+            const juce::File folder = folderOfPrint(tree, relative);
+            if (!SampleFiles::isDirectory(folder)) continue;
+            const auto print = folderPrintOf(folder);
+            if (print.files == 0) continue;
+            parts.add(relative + "|" + juce::String(print.files) + "|" + juce::String(print.nameHash) + "|" + (print.sizes ? juce::String(print.sizeHash) : juce::String("-")));
+        }
+        return parts.joinIntoString(";");
+    }
+    // Does the tree hold the samples the fingerprint describes? An empty fingerprint checks nothing.
+    bool treeMatchesFingerprint(const juce::File& tree, const juce::String& fingerprint, juce::String* why)
+    {
+        if (fingerprint.isEmpty()) return true;
+        for (const auto& part : juce::StringArray::fromTokens(fingerprint, ";", ""))
+        {
+            const auto fields = juce::StringArray::fromTokens(part, "|", "");
+            if (fields.size() != 4) continue;
+            const juce::File folder = folderOfPrint(tree, fields[0]);
+            if (!SampleFiles::isDirectory(folder)) { if (why != nullptr) *why = "no folder " + fields[0]; return false; }
+            const auto print = folderPrintOf(folder);
+            if (print.files != fields[1].getIntValue())
+            { if (why != nullptr) *why = fields[0] + ": " + juce::String(print.files) + " WAV files, the configuration's tree had " + fields[1]; return false; }
+            if (juce::String(print.nameHash) != fields[2])
+            { if (why != nullptr) *why = fields[0] + ": other file names"; return false; }
+            if (fields[3] != "-" && print.sizes && juce::String(print.sizeHash) != fields[3])
+            { if (why != nullptr) *why = fields[0] + ": the same file names, other sizes"; return false; }
+        }
+        return true;
+    }
+    juce::String fingerprintOfTree(const juce::var& configuration, const juce::String& relativeText)
+    {
+        return configuration.getProperty("treeFingerprints", juce::var()).getProperty(juce::Identifier(relativeText), "").toString();
+    }
 }
 
 void MainComponent::savePortableConfiguration(const juce::File& file, bool includeMidi, bool portable, bool publishFiles)
@@ -11943,6 +12023,15 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                                             const auto found = remap.find((int)folder->getProperty("tree"));
                                             if (found != remap.end()) folder->setProperty("tree", found->second);
                                         }
+            // 0.9.5: what every tree holds, so a load never takes a folder of the right name with other samples.
+            juce::DynamicObject::Ptr prints = new juce::DynamicObject();
+            for (const auto& [from, to] : remap)
+            {
+                auto print = treeFingerprintOf(juce::File(pool->getReference(from).toString()), treeRowFolders(from));
+                if (print.isEmpty()) { const auto loaded = loadedTreeFingerprints.find(kept[to].toString()); if (loaded != loadedTreeFingerprints.end()) print = loaded->second; }   // a tree not here keeps the file's
+                if (print.isNotEmpty()) prints->setProperty(juce::Identifier(kept[to].toString()), print);
+            }
+            root->setProperty("treeFingerprints", juce::var(prints.get()));
             root->setProperty("sampleTrees", kept);
         }
         // No absolute path of this computer anywhere: the IRs and the trees of the
@@ -11981,6 +12070,15 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 }
                 kept.add(entry);
             }
+            // 0.9.5: the trees' fingerprints (see the portable branch).
+            juce::DynamicObject::Ptr prints = new juce::DynamicObject();
+            for (int i = 0; i < pool->size(); ++i)
+            {
+                auto print = treeFingerprintOf(juce::File(pool->getReference(i).toString()), treeRowFolders(i));
+                if (print.isEmpty()) { const auto loaded = loadedTreeFingerprints.find(kept[i].toString()); if (loaded != loadedTreeFingerprints.end()) print = loaded->second; }
+                if (print.isNotEmpty()) prints->setProperty(juce::Identifier(kept[i].toString()), print);
+            }
+            root->setProperty("treeFingerprints", juce::var(prints.get()));
             root->setProperty("sampleTrees", kept);
         }
         if (auto* array = manuals.getArray())
@@ -13224,6 +13322,22 @@ namespace
             }
         return {};
     }
+    // 0.9.5: the first candidate that exists AND holds the samples the fingerprint describes; the
+    // folders of the right name with other samples are listed in 'refused' (logged by the caller).
+    juce::File firstMatchingTree(const juce::Array<juce::File>& candidates, const juce::String& fingerprint, juce::StringArray* refused)
+    {
+        if (fingerprint.isEmpty()) return firstExistingDirectory(candidates);
+        for (int pass = 0; pass < 2; ++pass)
+            for (const auto& candidate : candidates)
+            {
+                const juce::File found = pass == 0 ? (SampleFiles::isDirectory(candidate) ? candidate : juce::File()) : resolveCaseInsensitive(candidate);
+                if (found == juce::File()) continue;
+                juce::String why;
+                if (treeMatchesFingerprint(found, fingerprint, &why)) return found;
+                if (refused != nullptr) refused->addIfNotAlreadyThere(found.getFullPathName() + " (" + why + ")");
+            }
+        return {};
+    }
 }
 
 #if JUCE_LINUX
@@ -13638,7 +13752,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                 if (relative.isNotEmpty())
                 {
                     const auto candidates = portableFolderCandidates(configuration, configurationFile, libraryRoot, relative, absolute);
-                    const auto found = firstExistingDirectory(candidates);
+                    const auto found = firstMatchingTree(candidates, fingerprintOfTree(configuration, slashes(relative)), nullptr);   // 0.9.5: the right content, not the name alone
                     if (found != juce::File())
                     {
                         item->setProperty("folderPath", found.getFullPathName());
@@ -13681,8 +13795,8 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                         for (const auto& extra : *extras)
                         {
                             if (extra.toString().isEmpty()) continue;
-                            const auto found = firstExistingDirectory(portableFolderCandidates(configuration, configurationFile,
-                                libraryRoot, extra.toString(), {}));
+                            const auto found = firstMatchingTree(portableFolderCandidates(configuration, configurationFile,
+                                libraryRoot, extra.toString(), {}), fingerprintOfTree(configuration, slashes(extra.toString())), nullptr);
                             if (found == juce::File()) continue;
                             resolved.add(found.getFullPathName());
                             rememberTreeRelative(found.getFullPathName(), extra.toString());
@@ -13780,7 +13894,30 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
             if (text.isEmpty() || (juce::File::isAbsolutePath(text) && !foreignAbsolute)) { resolved.add(entry); continue; }
             if (foreignAbsolute) { resolved.add(entry); continue; }   // nothing to resolve it against; the divisions' relative paths relocate it below
             const auto candidates = portableFolderCandidates(configuration, configurationFile, libraryRoot, text, {});
-            juce::File found = firstExistingDirectory(candidates);
+            // 0.9.5: a candidate must hold the samples the configuration's fingerprint describes; a folder of
+            // the right name with other samples is refused and said so (rather "not found" than another organ).
+            const auto fingerprint = fingerprintOfTree(configuration, text);
+            if (fingerprint.isNotEmpty()) loadedTreeFingerprints[text] = fingerprint;
+            juce::StringArray refused;
+            juce::File found = firstMatchingTree(candidates, fingerprint, &refused);
+            if (!refused.isEmpty())
+            {
+                CrashHandler::note("Sample folder tree \"" + text + "\": folder(s) of that name with OTHER samples refused - " + refused.joinIntoString("; ")
+                    + (found != juce::File() ? " - taken: " + found.getFullPathName() : juce::String(" - not found on this computer")));
+                if (found == juce::File())
+                    queueNotice(juce::MessageBoxIconType::InfoIcon, "Sample folders", "The folder tree \"" + text + "\" was not taken from " + refused.joinIntoString(", ")
+                        + ": the samples there are not the ones this configuration was saved with. Point the program to the right folder (Load folder..., or the notice under the division).");
+            }
+            else if (found != juce::File() && fingerprint.isEmpty())
+            {
+                // An older file without fingerprints: say when the tree was taken by its folder name ALONE
+                // (not under the library root's name) - the one weak case left.
+                const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+                const bool byRootName = rootName.isEmpty() || slashes(found.getFullPathName()).endsWithIgnoreCase("/" + rootName + "/" + text);
+                if (!byRootName)
+                    CrashHandler::note("Sample folder tree \"" + text + "\" taken by its folder name alone: " + found.getFullPathName()
+                        + " (this configuration carries no fingerprint of its trees yet - Save Configuration adds it)");
+            }
             if (found == juce::File() && !candidates.isEmpty()) found = candidates.getFirst();
             resolved.add(found != juce::File() ? found.getFullPathName() : entry.toString());
             if (found != juce::File()) rememberTreeRelative(found.getFullPathName(), text);   // found or the placeholder (0.8.216)
@@ -17761,7 +17898,7 @@ juce::File MainComponent::resolveTreeLikeALoad(const juce::var& configuration, c
         root = rootFromKnownRelative(absoluteTree, relativeTree);
         if (root != juce::File()) break;
     }
-    return firstExistingDirectory(portableFolderCandidates(configuration, configurationFile, root, relative, absolute));
+    return firstMatchingTree(portableFolderCandidates(configuration, configurationFile, root, relative, absolute), fingerprintOfTree(configuration, slashes(relative)), nullptr);   // 0.9.5
 }
 
 MainComponent::PerspectiveMatch MainComponent::matchFoldersAsPerspective(const std::vector<juce::String>& newNames, const std::vector<ManualConfig::StopBuild::Entry>& base,

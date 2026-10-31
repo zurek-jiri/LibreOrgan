@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.5] - 2026-10-31
+
+### Fixed
+- A folder tree is never taken by its name alone any more: the configuration
+  remembers what each tree holds (the WAV file names and sizes of up to three
+  of its stop folders) and a load accepts a folder of the right name only
+  with the same files. A same-named folder of another organ is refused (the
+  log and the Messages say which) - the tree counts as not found instead,
+  and the notice under the division offers the right folder. Configurations
+  saved before carry no fingerprints yet; one Save adds them.
+
 ## [0.9.4] - 2026-10-31
 
 ### Fixed

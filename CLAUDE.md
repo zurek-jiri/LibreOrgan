@@ -2077,6 +2077,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   and it SPREADS the items in their row order instead of erasing (log "Grid of division N: ... spread over K columns").
   Test %TEMP%\test_grid094.ps1 -Columns 0|2 (Rural's pedal stacked: spread / kept). RAM GB cell: one decimal below
   10 GB, whole GB rounded up from 10 (the user's figure).
+  0.9.5 (31 Oct 2026, the user: "Zas už slyším nějaký Tabor samply místo F:\temp\1Stop\Principal8 ... Musí to umět
+  vždycky rozlišit Principal8 různých varhan!" - he had MOVED the folder, the file's root "temp" + "Principal8" matched
+  nothing by the root's name, and the bare name found Rural's TA\Principal8 again): TREE FINGERPRINTS. The save writes
+  "treeFingerprints" {tree key as in sampleTrees: "<row folder>|<WAV count>|<hash of the lower-case names>|<hash of
+  the sizes or ->;..."} for up to 3 Stop List folders of the tree (first/middle/last by name; "." when the tree is the
+  stop), `treeFingerprintOf`/`folderPrintOf` (anonymous namespace before savePortableConfiguration; SampleFiles::fileNames,
+  sizes only on a disk); the load's `firstMatchingTree(candidates, fingerprint, refused)` (after firstExistingDirectory)
+  takes the first existing candidate whose content matches (`treeMatchesFingerprint`: count, names, sizes when both
+  sides have them) - used for the divisions' trees, the extras, the pool and the merge's resolveTreeLikeALoad; a
+  same-named folder with other samples is REFUSED (log "folder(s) of that name with OTHER samples refused", a Messages
+  note when nothing is left) - the tree is "not found" and the notice offers the right folder. `loadedTreeFingerprints`
+  (member) keeps the file's entry for a tree not here at the save. An old file without fingerprints behaves as before,
+  with the log "taken by its folder name alone" when no root-named form matched. RULE: a tree is identified by its
+  CONTENT, never by a folder name; the user's refused alternative (a warning box when a bare stop folder is loaded)
+  was not needed. Test %TEMP%\test_fp095.ps1 (portable save of the one-stop tree = fingerprints written; the same file
+  with the root renamed -> TA\Principal8 refused "65 WAV files, the configuration's tree had 9", not found).
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is

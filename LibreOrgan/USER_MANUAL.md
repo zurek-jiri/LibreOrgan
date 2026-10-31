@@ -224,8 +224,12 @@ same pipes: [The tuning gate of a perspective join](#105-the-tuning-gate-of-a-pe
 ### The samples moved, a new disk, a new computer
 
 Load the configuration as it is: the trees are looked for at their old place,
-then in every remembered location. What is not found shows the notice below;
-one click puts everything right and the new place is remembered.
+then in every remembered location. A folder of the right name is taken only
+when it holds the samples the configuration was saved with (the file names
+and sizes of a few of its stop folders are remembered with it) - a folder of
+another organ that happens to be named the same is refused and the Messages
+say so. What is not found shows the notice below; one click puts everything
+right and the new place is remembered.
 
 ### Sample folders not found
 

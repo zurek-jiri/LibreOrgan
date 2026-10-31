@@ -903,6 +903,7 @@ private:
     std::unique_ptr<juce::FileChooser> configurationRootChooser;
     juce::File lastSettingsDirectory;
     juce::File lastIrDirectory, lastSampleFolderDirectory;   // 0.9.1: Load IR and Load folder each start where they were last (lastdir.json)
+    std::map<juce::String, juce::String> loadedTreeFingerprints;   // 0.9.5: the loaded file's "treeFingerprints" by tree key, kept for a tree that is not here at the save
 
     double currentSampleRate = 48000.0;
     int savedWindowWidth = 1680;
