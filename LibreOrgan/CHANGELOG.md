@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.9] - 2026-10-31
+
+### Fixed
+- "Set these channels for all divisions": a division whose open device has
+  no such channels (17+18 on a two-channel card) used to get them anyway and
+  fell silent until its Divisions dialog was opened. It keeps its own channels
+  now, the box unticks and the Messages name the division.
+
 ## [0.9.8] - 2026-10-31
 
 ### Changed

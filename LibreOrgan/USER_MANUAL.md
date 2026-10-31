@@ -225,12 +225,9 @@ same pipes: [The tuning gate of a perspective join](#105-the-tuning-gate-of-a-pe
 ### The samples moved, a new disk, a new computer
 
 Load the configuration as it is: the trees are looked for at their old place,
-then in every remembered location. A folder of the right name is taken only
-when it holds the samples the configuration was saved with (the file names
-and sizes of a few of its stop folders are remembered with it) - a folder of
-another organ that happens to be named the same is refused and the Messages
-say so. What is not found shows the notice below; one click puts everything
-right and the new place is remembered.
+then in every remembered location; a folder of the right name but with other
+samples is refused. What is not found shows the notice below; one click puts
+everything right and the new place is remembered.
 
 ### Sample folders not found
 
@@ -701,9 +698,8 @@ can be done here as well, and this is where the organ is built from folders.
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).
-  A folder that itself holds the sample files named by key (one stop, no
-  stop folders below it) is loaded as a tree of that one stop. The folder
-  chooser starts where a sample folder or archive was chosen last.
+  A folder holding the sample files themselves is loaded as a tree of that
+  one stop.
 - **Unload folder...** removes one tree from the whole organ. The rows that
   had folders of that tree only leave the table with it, buttons and all -
   the one case a row goes by itself; a row with a folder of another tree
@@ -1424,12 +1420,9 @@ cache when on); the sliders that do not apply are greyed out.
 
 This many adjacent real pipes are taken as a group and transposed by the
 group's width for the missing ones (1 to 12, default 12: every missing pipe
-an octave transposition of a real one). Changing it refills every stop.
-In a sparse rank (a few pipes with holes between them) the group's source is
-often a hole itself; then the missing pipe takes one of the real pipes within
-the group's width on either side, the cheapest by transposition, and
-neighbouring filled pipes take turns between them so that a run of filled
-pipes is not one sample shifted step by step.
+an octave transposition of a real one). Changing it refills every stop. In a
+sparse rank neighbouring filled pipes take turns between the real pipes within
+that width.
 
 ### Retune limit per pipe
 

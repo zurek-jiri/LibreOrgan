@@ -5874,25 +5874,49 @@ void MainComponent::applyPerspectiveChannelsEverywhere(int sourceManual, const j
     const auto sourceKey = perspectiveRouteKey(sourceManual, perspective);
     const std::vector<int> channels = isDefault ? manualConfigs[(size_t)sourceManual].outputChannels
         : manualConfigs[(size_t)sourceManual].perspectiveAudio[sourceKey].outputChannels;
-    juce::StringArray done;
+    juce::StringArray list;
+    for (const auto c : channels) list.add(juce::String(c + 1));
+    juce::StringArray done, refused;
+    static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
     for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
     {
         if (manual == sourceManual) continue;
         bool has = false;
         for (const auto& p : engine.getPerspectivesForManual(manual)) if (p.equalsIgnoreCase(perspective)) has = true;
         if (!has) continue;
+        // 0.9.9 (the user): a division whose open device has no such channels (17+18 for a two-channel
+        // card) KEEPS its channels - never the first pair instead - and the Messages say so. A device
+        // not open now takes the channels as stored (0.8.250: judged when it opens).
+        juce::AudioIODevice* device = nullptr;
+        if (auto* manager = managerForRoute(manual, perspective)) device = manager->getCurrentAudioDevice();
+        if (device != nullptr)
+        {
+            const int count = device->getOutputChannelNames().size();
+            bool beyond = false;
+            for (const auto c : channels) if (c >= count) beyond = true;
+            if (beyond)
+            {
+                refused.add(names[juce::jlimit(0, 7, manual)] + " (" + device->getName() + ": " + juce::String(count) + " channel" + (count == 1 ? "" : "s") + ")");
+                continue;
+            }
+        }
         const auto key = perspectiveRouteKey(manual, perspective);
         auto& target = isDefault ? manualConfigs[(size_t)manual].outputChannels : manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
         target = channels;
         engine.setPerspectiveOutputChannels(manual, perspective, channels);
-        if (auto* manager = managerForRoute(manual, perspective))
-            if (auto* device = manager->getCurrentAudioDevice()) applyAggregateSelection(manual, perspective, device);
+        if (device != nullptr) applyAggregateSelection(manual, perspective, device);
         done.add("division " + juce::String(manual));
     }
-    juce::StringArray list;
-    for (const auto c : channels) list.add(juce::String(c + 1));
     CrashHandler::note("Output channels " + list.joinIntoString("+") + " of manual " + juce::String(sourceManual) + " perspective " + perspective
-        + " set for the same perspective of " + (done.isEmpty() ? juce::String("no other division") : done.joinIntoString(", ")));
+        + " set for the same perspective of " + (done.isEmpty() ? juce::String("no other division") : done.joinIntoString(", "))
+        + (refused.isEmpty() ? juce::String() : " - NOT for " + refused.joinIntoString(", ") + ": the device has no such channels, their channels stay"));
+    if (!refused.isEmpty())
+    {
+        channelsLinked.erase(perspective.toLowerCase());   // the routes do not agree: the box unticks
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Set these channels for all divisions",
+            "The channels " + list.joinIntoString("+") + " of the \"" + perspective + "\" route could not be set for " + refused.joinIntoString(", ")
+            + ": that device has no such channels. The channels of " + juce::String(refused.size() == 1 ? "that division" : "those divisions") + " stay as they were.");
+    }
     saveSettings();
 }
 

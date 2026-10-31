@@ -2127,6 +2127,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `propagateChannelsIfLinked(perspective)` (unticks), the refresh keeps it ticked only while
   `allDivisionsShareChannels(perspective)`. Manual Step 5 + 5.3 say "tick box". RULE: the three "set for all" of the
   audio tab look and behave the same (tick = copy now, a later change unticks).
+  0.9.9 (31 Oct 2026, the user's question "karta na I. 18 kanálů, 17+18, set for all, pedál má 2 kanály?"): the copy
+  wrote 17+18 into the pedal's config and route, the render sent those voices to the sink (a channel >= the device's
+  outputs = silence) until the pedal's Divisions tab was opened (its refresh drops the channels beyond the device and
+  falls back to the first pair). THE USER'S RULE: never a fallback pair ("nemusí brát kanály 1+2, to je blbost, byly-li
+  před tím vybrané např 3+4") - a division whose OPEN device lacks the channels keeps its own, the box unticks
+  (channelsLinked erased) and a Messages note names it (`applyPerspectiveChannelsEverywhere`, log "... NOT for ...").
+  A device not open takes the channels as stored (0.8.250). The tab's own refresh still folds a stored selection
+  beyond an OPEN device to the first pair (its old rule) - untouched.
+  THE USER'S RULE FOR THE MANUAL (31 Oct 2026, "hlavně kvůli nepodstatným těmto detailům nezahlť user manual! Vždy
+  stručnost, výstižnost, případně detaily do hyperlinku technických detailů"): a fix or a safeguard gets at most ONE
+  short sentence in the user's chapters, or nothing (the log and the Messages carry the detail); technical detail
+  goes to part 10 behind a link. The 0.9.1-0.9.9 additions were cut to that (1.6, 4.1, 5.3, Missing pipes).
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is
