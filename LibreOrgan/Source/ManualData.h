@@ -118,9 +118,10 @@ static const char* const kManualText_part0 =
     "dialog: one tab per perspective of the division and one *auxiliary* tab. On a tab choose the device type (Windows: ASIO when you have it), the\n"
     "device, 48 kHz, a buffer of 512 samples, and tick the output channels of the\n"
     "device the perspective plays through. *Set for all perspectives and divisions*\n"
-    "copies the device to every route; *Set these channels for all divisions (this perspective)*\n"
-    "above the channel list copies the channels to the same perspective of every\n"
-    "division. Leave the *auxiliary* tab at *none*. Details: [The audio tabs](#53-the-audio-tabs).\n"
+    "copies the device to every route; the tick box *Set these channels for all\n"
+    "divisions (this perspective)* above the channel list copies the channels to\n"
+    "the same perspective of every division (a later change of one route's\n"
+    "channels unticks it). Leave the *auxiliary* tab at *none*. Details: [The audio tabs](#53-the-audio-tabs).\n"
     "\n"
     "### Step 6: Play\n"
     "\n"
@@ -201,9 +202,9 @@ static const char* const kManualText_part0 =
     "deduces the microphone perspectives and the relative volumes of the stops, the\n"
     "divisions and the pipes - its own computation, which the definition does not\n"
     "hold (Hauptwerk knows no perspectives and no relative volumes, only absolute\n"
-    "pipe levels and \"stop-ranks\") - and the rest - the pipes, their pitch, footage\n"
     ;
 static const char* const kManualText_part1 =
+    "pipe levels and \"stop-ranks\") - and the rest - the pipes, their pitch, footage\n"
     "and tuning - comes from the folders themselves. The result is an\n"
     "LibreOrgan Sampler configuration in your LibreOrgans folder, which you shape and\n"
     "save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
     "button fires even when hidden).\n"
-    "\n"
     ;
 static const char* const kManualText_part2 =
+    "\n"
     "- **PANIC** silences every sounding pipe.\n"
     "- **Record** records the stereo mix to a WAV file; click again to stop\n"
     "  ([Recording](#65-recording)).\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "second half: more chiff or a softer speaking, the held tone untouched.\n"
     "\n"
     "### Random pitch error\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
     "0-40 cents (default 4): every pipe gets its own small random detune at every\n"
     "note, as real pipes never speak twice alike. The division's *Random tuning\n"
     "error of pipes* must be on.\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "audio tabs.\n"
     "\n"
     "## 5.1 Keyboard, MIDI and compass\n"
-    "\n"
     ;
 static const char* const kManualText_part4 =
+    "\n"
     "- *MIDI keyboard device* and *MIDI channel* (\"Shared with ...\" appears when\n"
     "  another division listens to the same). A keyboard plugged in while the\n"
     "  program runs is opened at once.\n"
@@ -873,8 +874,10 @@ static const char* const kManualText_part4 =
     "  pipes are spread over them by key number, so a chord spreads across the\n"
     "  speakers like pipes across a windchest (a mono sample to one channel in\n"
     "  turn, a stereo sample to a pair; an odd number of channels lets the pairs\n"
-    "  circulate). **Set these channels for all divisions (this perspective)** above the list\n"
-    "  copies these channels to the same perspective of every division.\n"
+    "  circulate). The tick box **Set these channels for all divisions (this\n"
+    "  perspective)** above the list copies these channels to the same perspective\n"
+    "  of every division; a later change of one route's channels unticks it, like\n"
+    "  the effects box.\n"
     "- **The device box**: type, device, sample rate, buffer size; *Driver\n"
     "  Control Panel*, *Reopen device*, and **Set for all perspectives and\n"
     "  divisions**, which copies the device, rate and buffer size to every route\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "\n"
     "---\n"
     "\n"
+    ;
+static const char* const kManualText_part5 =
     "# 6. Playing\n"
     "\n"
     "## 6.1 Couplers\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
     "every coupler it can have - every division at unison, 16' and 4' (the\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "saves it with the organ. What each choice costs, measured: \"RAM: the storage\n"
     "options measured\".\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Compress samples in RAM (lossless)\n"
     "\n"
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
-    ;
-static const char* const kManualText_part6 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "files play. On: such a key is silent.\n"
     "\n"
     "### Treble per key: shelf start frequency\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "## 8.5 Folder name patterns (one per line)\n"
     "\n"
     "The three lists travel with the organ and belong to this computer as well:\n"
+    ;
+static const char* const kManualText_part8 =
     "every pattern you add is kept in `Patterns.json` beside the settings and\n"
     "merged into every organ you load; a pattern you remove is removed there too.\n"
     "The \"?\" of the pattern dialogs opens these chapters.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### One-shot stops (folder contains)\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
+    ;
+static const char* const kManualText_part9 =
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "---\n"
     "\n"
     "# 10. Technical details\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "A published configuration's README states the least RAM the organ takes with\n"
     "every saving option (measured when saved so, else estimated from a sample of\n"
-    ;
-static const char* const kManualText_part10 =
     "the loaded pipes), and INDEX.md lists it. Loading takes markedly longer with\n"
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"

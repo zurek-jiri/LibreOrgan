@@ -743,6 +743,12 @@ private:
     bool applyingEffectsToAll = false;   // while "set effects for all" copies the values (they must not untick it)
     static bool isAuxiliaryPerspective(const juce::String& perspective);
     void propagateEffectsIfLinked(int manual, const juce::String& perspective);
+    // 0.9.8 (the user: the channels' "set for all" must be a tick box like the other two): the perspectives
+    // (lower-case) whose "Set these channels for all divisions" box is ticked; a later change of one
+    // route's channels unticks it, like the effects box.
+    std::set<juce::String> channelsLinked;
+    void propagateChannelsIfLinked(const juce::String& perspective);
+    bool allDivisionsShareChannels(const juce::String& perspective);
     struct ApplyAllStep { int manual; juce::String perspective; };
     std::vector<ApplyAllStep> applyAllQueue;           // processed one route per few GUI ticks
     std::unique_ptr<juce::XmlElement> applyAllState;   // device state being copied

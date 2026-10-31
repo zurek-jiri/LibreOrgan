@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.8] - 2026-10-31
+
+### Changed
+- Divisions dialog: "Set these channels for all divisions (this perspective)"
+  is a tick box like the two other "set for all" boxes; a later change of one
+  route's channels unticks it.
+
 ## [0.9.7] - 2026-10-31
 
 ### Changed

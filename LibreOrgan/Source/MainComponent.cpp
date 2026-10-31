@@ -4128,6 +4128,31 @@ void MainComponent::propagateEffectsIfLinked(int manual, const juce::String& per
     (isAuxiliaryPerspective(perspective) ? effectsLinkedAux : effectsLinked).store(false);
 }
 
+void MainComponent::propagateChannelsIfLinked(const juce::String& perspective)
+{
+    // A change of one route's channels ends "set these channels for all divisions" of that
+    // perspective: the routes no longer agree, the box unticks (0.9.8, like the effects box).
+    channelsLinked.erase(perspective.toLowerCase());
+}
+
+bool MainComponent::allDivisionsShareChannels(const juce::String& perspective)
+{
+    const bool isDefault = perspective.equalsIgnoreCase("default");
+    bool first = true;
+    std::vector<int> reference;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+    {
+        bool has = false;
+        for (const auto& p : engine.getPerspectivesForManual(manual)) if (p.equalsIgnoreCase(perspective)) has = true;
+        if (!has) continue;
+        const auto& channels = isDefault ? manualConfigs[(size_t)manual].outputChannels
+            : manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)].outputChannels;
+        if (first) { reference = channels; first = false; continue; }
+        if (channels != reference) return false;
+    }
+    return true;
+}
+
 bool MainComponent::allRoutesShareEffects(bool auxiliary)
 {
     bool first = true;
@@ -6832,11 +6857,14 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 // division (0.8.228): one choice for every Diffuse, one for every Rear ...
                 channelsAll.setButtonText("Set these channels for all divisions (this perspective)");
                 channelsAll.setTooltip("Copies the output channels ticked below to the \"" + this->perspective
-                    + "\" route of every other division. The devices stay as they are.");
-                channelsAll.onClick = [this]
+                    + "\" route of every other division. The devices stay as they are. Any later change of one route's channels "
+                      "unticks this box (the routes no longer agree): tick it again to copy the new state to all.");
+                channelsAll.onClick = [this]   // 0.9.8: a tick box like the other two "set for all"
                 {
-                    const int m = this->manual;
                     const juce::String p = this->perspective;
+                    if (!channelsAll.getToggleState()) { this->owner.channelsLinked.erase(p.toLowerCase()); return; }
+                    this->owner.channelsLinked.insert(p.toLowerCase());
+                    const int m = this->manual;
                     MainComponent* target = &this->owner;
                     juce::MessageManager::callAsync([target, m, p] { target->applyPerspectiveChannelsEverywhere(m, p); });
                 };
@@ -7148,6 +7176,10 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     auto& linked = auxiliary ? owner.effectsLinkedAux : owner.effectsLinked;
                     if (linked.load() && !owner.allRoutesShareEffects(auxiliary)) linked.store(false);
                     irApplyAll.setToggleState(linked.load(), juce::dontSendNotification);
+                    // The channels box the same way (0.9.8): ticked only while the divisions' routes of this perspective agree.
+                    const auto lower = perspective.toLowerCase();
+                    if (owner.channelsLinked.count(lower) != 0 && !owner.allDivisionsShareChannels(perspective)) owner.channelsLinked.erase(lower);
+                    channelsAll.setToggleState(owner.channelsLinked.count(lower) != 0, juce::dontSendNotification);
                 }
             }
 
@@ -7298,7 +7330,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             juce::String perspective;
             juce::AudioDeviceSelectorComponent* selector = nullptr;
             juce::Label logicalLabel;
-            juce::TextButton channelsAll;   // 0.8.228: these output channels for the same perspective of every division
+            juce::ToggleButton channelsAll;   // 0.8.228: these output channels for the same perspective of every division (0.9.8: a tick box, like the other two "set for all")
             juce::Label volumeLabel, separationLabel;
             LearnableSlider volumeSlider, separationSlider;
             juce::Viewport channelViewport, selectorViewport;
@@ -7647,6 +7679,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                                 .equalsIgnoreCase("Aggregated WASAPI"))
                             scheduleAggregateMaskUpdate();
                         owner.engine.setPerspectiveOutputChannels(manual, perspective, channels);
+                        owner.propagateChannelsIfLinked(perspective);   // 0.9.8: the routes no longer agree - the "for all" box unticks
+                        channelsAll.setToggleState(false, juce::dontSendNotification);
                         owner.saveSettings();
                     };
                     channelContent.addAndMakeVisible(button);

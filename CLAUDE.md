@@ -2121,6 +2121,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   forgetTransmissionCell is gone). MIGRATION `migrateTransmissionIds(parsed)` at the top of Voicer::loadState: ids
   in list order for entries without one, the stopGrid/stopPool keys "tr:home:name[#ordinal]" per division -> "#id",
   log "Transmission ids assigned ...". RULE: never identify a transmission by its position again.
+  0.9.8 (31 Oct 2026, the user: "set these channels ... je button, ostatní dva set for all je checkbox"): `channelsAll`
+  is a juce::ToggleButton with the effects box's semantics - `channelsLinked` (std::set of lower-case perspective
+  names, not saved), tick = `applyPerspectiveChannelsEverywhere` + linked, a channel button click calls
+  `propagateChannelsIfLinked(perspective)` (unticks), the refresh keeps it ticked only while
+  `allDivisionsShareChannels(perspective)`. Manual Step 5 + 5.3 say "tick box". RULE: the three "set for all" of the
+  audio tab look and behave the same (tick = copy now, a later change unticks).
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is
