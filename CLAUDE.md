@@ -2168,6 +2168,30 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   missing 8 s later a Messages note "No audio" + `PolyphonyDisplay::setDeviceSilent` (the DSP cell reads "no audio"
   in orange) until the device calls back again. NOT verified by a run (no way to hang a device on purpose; the user
   was playing). The log of such a case: "Audio callback anomaly: <device>: no callbacks, outputs 0  render load 0 %".
+  0.9.13 (31 Oct 2026, the user: St. Carlo imported after wiping the settings "nenašlo adresáře ... žádné LibreOrgans v
+  cestách k samplům nikdy nebylo"): THE LOOKUP RULE, from the code: a tree travels as `sampleLibraryRootName` + a path
+  BELOW it ("OrganInstallationPackages" + "000370/pipe"); `portableFolderCandidates` tries, in order, the configuration's
+  own folder forms (configDir/rootRelative/relative, configDir/rootName/relative, configDir/relative - the FIRST one is
+  the placeholder the notice shows, hence "LibreOrgans\OrganInstallationPackages\pipe" on the screen; nothing is
+  searched there beyond one directory test), then `<location>/<rootName>/<relative>` for every Locations.txt line, its
+  parent and children, then every fixed drive: `<drive>/<rootName>/<relative>`, `<drive>/HauptwerkSampleSetsAndComponents/
+  <rootName>/<relative>`, and the same under each first-level folder (0.8.214/0.8.215: the usual Hauptwerk place
+  D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages WITHOUT any location), the bare
+  `<location>/<relative>` forms last (0.9.3); `firstMatchingTree` then wants the fingerprint (0.9.5). THE FAULT: the
+  import's var holds ABSOLUTE trees (since 0.8.116; its own save turns them relative) and the save derived the root
+  from `treeRelativePaths` VOTES (0.8.216) - none for absolute trees - so it fell to the common ancestor of the trees at
+  hand = the package "000370", while 0.8.216 kept the NAME from the file ("OrganInstallationPackages"): the file said
+  root "OrganInstallationPackages" + tree "pipe", which exists nowhere; the location noted was ...\000370 (the root
+  itself, the name mismatching), and only that line made the next load work - a wiped Locations.txt broke it. Before
+  0.8.216 the name followed the computed root ("000370", location OrganInstallationPackages): consistent, but found
+  only through the remembered location too. Fix: `applyPortableConfiguration` remembers `relativeBelowNamedRoot
+  (absolute, rootName)` for every absolute tree found (pool entries, a division's absolute folderPath, extraFolderPaths)
+  and the save's vote block votes the same way for folders with no known relative - the root is the folder NAMED as the
+  file names it, the trees "000370/pipe", the location "...\HauptwerkSampleSetsAndComponents". The user's St. Carlo
+  json was patched by hand the same way (backup .before0913.bak). Test %TEMP%\test_carlo0913.ps1: the import into a
+  temp configurations folder writes ["000370/pipe"]; the json loaded with Locations.txt EMPTY finds the tree through
+  the drive's Hauptwerk layout (13 rows). RULE: the root in a file is the folder of the NAME the file gives, never
+  the common ancestor, whenever that name is in the trees' paths.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
