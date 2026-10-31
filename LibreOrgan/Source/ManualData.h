@@ -1421,6 +1421,19 @@ static const char* const kManualText_part7 =
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
     "\n"
+    "### Retune pipes off by more than\n"
+    "\n"
+    "A pipe further off its own rank's tuning than this is pulled to its key even\n"
+    "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
+    "says so. Travels with the organ.\n"
+    "\n"
+    "### Replace pipes off by more than\n"
+    "\n"
+    "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
+    "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
+    "and filled from its neighbours; its thumb turns green and the tooltip says\n"
+    "so. Travels with the organ.\n"
+    "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
@@ -1441,13 +1454,6 @@ static const char* const kManualText_part7 =
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
     "that width.\n"
-    "\n"
-    "### Retune limit per pipe\n"
-    "\n"
-    "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
-    "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
-    "and filled from its neighbours; its thumb turns green and the tooltip says\n"
-    "so. Travels with the organ.\n"
     "\n"
     "### Filled pipes: release length (pitch shift)\n"
     "\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "\n"
     "The three lists travel with the organ and belong to this computer as well:\n"
     "every pattern you add is kept in `Patterns.json` beside the settings and\n"
+    ;
+static const char* const kManualText_part8 =
     "merged into every organ you load; a pattern you remove is removed there too.\n"
     "The \"?\" of the pattern dialogs opens these chapters.\n"
     "\n"
     "### One-shot stops (folder contains)\n"
     "\n"
     "Folders whose name matches play once without looping (chiff, percussion,\n"
-    ;
-static const char* const kManualText_part8 =
     "bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A\n"
     "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
+    ;
+static const char* const kManualText_part9 =
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
     "---\n"
     "\n"
     "# 10. Technical details\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "The chapters above link here. Nothing in this part is needed to play.\n"
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "A published configuration's README states the least RAM the organ takes with\n"
     "every saving option (measured when saved so, else estimated from a sample of\n"
     "the loaded pipes), and INDEX.md lists it. Loading takes markedly longer with\n"
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"
     "SATA SSD), a load from the page cache many times faster - never compare the\n"
-    ;
-static const char* const kManualText_part10 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"

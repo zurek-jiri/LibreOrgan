@@ -231,6 +231,7 @@ namespace
     // sums, folded into the pool's statistics after every chunk. Off: one load.
     std::atomic<bool> gVoiceProfiling{ false };
     std::atomic<float> gRetuneLimitCents{ 200.0f };   // the retune limit (0.8.165) for the static tuning analysis; set with SamplerEngine::retuneLimitCents
+    std::atomic<float> gMistuneCorrectCents{ 50.0f }; // 0.9.10: a pipe off its rank by more than this is pulled to its key without the 440 mode (0 = never)
     struct VoiceProfile { int64_t header = 0, spans = 0, kernel = 0, post = 0, unpack = 0; int64_t voices = 0; };
     thread_local VoiceProfile tlVoiceProfile;
 
@@ -13608,6 +13609,8 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
         rank->tuningInfoAvailable = rd.valid;
         rank->measuredDiapasonHz = 0.0f;
         rank->tuning440Cents.fill(0.0f);
+        rank->rankDeviationCents.fill(0.0f);
+        rank->mistuneCents.fill(0.0f);
         if (!rd.valid) continue;
         std::vector<double> offsets(rd.notes.size(), 0.0);
         for (size_t i = 0; i < rd.notes.size(); ++i)
@@ -13868,11 +13871,20 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
         // mutation pipe on key C carries the deviation of C, as the engine also
         // applies the temperament by key), mean removed.
         std::array<double, 12> sum{}, count{};
+        const double correctFrom = (double)gMistuneCorrectCents.load(std::memory_order_relaxed);
+        int corrected = 0;
         for (size_t i = 0; i < rd.notes.size(); ++i)
         {
             const int pitchClass = ((rd.notes[i].note % 12) + 12) % 12;
             // detrended (celeste) and relative to this rank's own diapason
             const double deviation = residualCents[i] - trendCents[i] - (rankDiapason - organ) * 100.0;
+            const size_t note = (size_t)rd.notes[i].note;
+            rank->rankDeviationCents[note] = (float)deviation;
+            // 0.9.10: such a pipe is pulled to its key even with the 440 mode off (St. Carlo's bass
+            // C#, D#, F#, G# are the neighbouring naturals' files - a whole semitone off; Adlington's
+            // third-low pipes lie beyond the retune limit and stay faulty = replaced).
+            if (correctFrom > 0.0 && std::abs(deviation) > correctFrom && !rank->faultyPipes.test(note))
+            { rank->mistuneCents[note] = (float)-deviation; ++corrected; }
             // A pipe far off (a wrong unity note, a pipe a third low - Adlington's
             // bottom B and C#) is a mistuned pipe, never the temperament (0.8.159).
             if (std::abs(deviation) > 50.0) continue;
@@ -13892,7 +13904,33 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
                 rank->measuredTemperamentCents[(size_t)pc] = count[(size_t)pc] > 0.0
                     ? (float)(sum[(size_t)pc] / count[(size_t)pc] - mean) : 0.0f;
         }
+        if (corrected > 0)
+        {
+            juce::String list;
+            for (int note = 0; note < 128; ++note)
+                if (rank->mistuneCents[(size_t)note] != 0.0f)
+                    list << (list.isEmpty() ? "" : ", ") << note << " (" << (rank->mistuneCents[(size_t)note] > 0 ? "+" : "") << juce::String(rank->mistuneCents[(size_t)note], 0) << " c)";
+            CrashHandler::note("Tuning " + rank->name + " [" + rank->perspective + "]: " + juce::String(corrected) + " pipe(s) off the rank by more than "
+                + juce::String(correctFrom, 0) + " cents pulled to their keys without the 440 mode: " + list);
+        }
     }
+}
+
+void SamplerEngine::setMistuneCorrectCents(float cents)
+{
+    cents = juce::jlimit(0.0f, 1200.0f, cents);
+    if (std::abs(mistuneCorrectCents.exchange(cents, std::memory_order_acq_rel) - cents) < 0.01f) return;
+    gMistuneCorrectCents.store(cents, std::memory_order_relaxed);
+    const juce::ScopedLock sl(controlLock);
+    auto apply = [cents](Stop* rank)
+    {
+        for (int note = 0; note < 128; ++note)
+        {
+            const float deviation = rank->rankDeviationCents[(size_t)note];
+            rank->mistuneCents[(size_t)note] = cents > 0.0f && std::abs(deviation) > cents && !rank->faultyPipes.test((size_t)note) ? -deviation : 0.0f;
+        }
+    };
+    for (auto* stop : stops) { apply(stop); for (auto& rank : stop->ranks) apply(rank.get()); }
 }
 
 // Beats grow with the sounding frequency as f^alpha, alpha chosen so that the

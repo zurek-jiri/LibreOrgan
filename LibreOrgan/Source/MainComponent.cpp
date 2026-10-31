@@ -21756,6 +21756,8 @@ void MainComponent::loadSettings()
     engine.setFillGroupSize(fillGroupSize);
     retuneLimitCents = juce::jlimit(10.0f, 1200.0f, (float)(double)parsed.getProperty("retuneLimitCents", 200.0));
     engine.setRetuneLimitCents(retuneLimitCents);
+    mistuneCorrectCents = juce::jlimit(0.0f, 1200.0f, (float)(double)parsed.getProperty("mistuneCorrectCents", 50.0));   // 0.9.10
+    engine.setMistuneCorrectCents(mistuneCorrectCents);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -22463,6 +22465,7 @@ void MainComponent::saveSettings()
     }
     obj->setProperty("fillGroupSize", fillGroupSize);
     obj->setProperty("retuneLimitCents", retuneLimitCents);
+    obj->setProperty("mistuneCorrectCents", mistuneCorrectCents);   // 0.9.10
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -28209,6 +28212,32 @@ void MainComponent::showConfigurationEditor()
                 },
                 "Undulating (celeste) stops beat this many times faster at the top of their compass than at the "
                 "bottom; the a1 key always beats as set in the stop's voicing. Equal beats (1x) detune the bass most.");
+            // 0.9.10 (the user: here, not under Filled pipes): the two thresholds of a pipe off its rank, in the
+            // order they bite - retuned from N cents, replaced from M cents.
+            addSlider("Retune pipes off by more than", 0.0, 1200.0, 5.0, " cents", o.mistuneCorrectCents, 50.0,
+                [&o](double value)
+                {
+                    o.mistuneCorrectCents = juce::jlimit(0.0f, 1200.0f, (float)value);
+                    o.engine.setMistuneCorrectCents(o.mistuneCorrectCents);
+                    o.saveSettings();
+                    if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);   // the key tooltips name the corrected pipes
+                },
+                "A pipe whose recorded pitch (its smpl chunk) lies further than this from its own rank's tuning is pulled to its key even "
+                "while \"Equal at 440 Hz\" is off - a wrong file or a badly mistuned pipe (St. Carlo's bass C#, D#, F#, G# are the "
+                "neighbouring naturals' files, a whole semitone off). The rest of the rank plays as recorded. 0 = never; 50 cents by "
+                "default; the setting travels with the organ. New notes take the change.");
+            addSlider("Replace pipes off by more than", 10.0, 1200.0, 10.0, " cents", o.retuneLimitCents, 200.0,
+                [&o](double value)
+                {
+                    o.retuneLimitCents = juce::jlimit(10.0f, 1200.0f, (float)value);
+                    o.engine.setRetuneLimitCents(o.retuneLimitCents);
+                    o.saveSettings();
+                    if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);   // faulty pipes come and go with the limit: the open rows show it (0.8.172)
+                },
+                "A pipe whose recorded pitch (its smpl chunk) lies further than this from its key is a faulty sample: switched off and "
+                "played from its neighbours like a missing pipe (the key's tooltip in the voicing says so) - a pipe a third off is a wrong "
+                "file, not a tuning. Below it the pipe is retuned (the setting above, or \"Equal at 440 Hz\"). 200 cents (a whole tone) by "
+                "default; the setting travels with the organ.");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);
@@ -28259,18 +28288,6 @@ void MainComponent::showConfigurationEditor()
                 "filled from the nearest real pipes: this many adjacent pipes are taken as a group and transposed by the "
                 "group's width, the group repeats for further pipes. 12 = every missing pipe is the octave transposition "
                 "of a real one; 1 = the edge pipe serves alone.");
-            addSlider("Retune limit per pipe", 10.0, 1200.0, 10.0, " cents", o.retuneLimitCents, 200.0,
-                [&o](double value)
-                {
-                    o.retuneLimitCents = juce::jlimit(10.0f, 1200.0f, (float)value);
-                    o.engine.setRetuneLimitCents(o.retuneLimitCents);
-                    o.saveSettings();
-                    if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);   // faulty pipes come and go with the limit: the open rows show it (0.8.172)
-                },
-                "How far a pipe's recorded pitch (its smpl chunk) may lie from its key before the pipe counts as a faulty sample. Within "
-                "the limit the pipe is retuned to its key (a1 = 440 Hz, the temperament); beyond it the pipe is switched off and played "
-                "from its neighbours like a missing pipe (the key's tooltip in the voicing says so) - a pipe a third off is a wrong file, "
-                "not a tuning. 200 cents (a whole tone) by default; the setting travels with the organ.");
             addSlider("Filled pipes: release length (pitch shift)", 25.0, 200.0, 5.0, " %", o.transposeReleaseLengthPct, 100.0,
                 [&o](double value)
                 {

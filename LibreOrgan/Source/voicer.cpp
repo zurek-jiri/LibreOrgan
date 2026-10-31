@@ -858,7 +858,16 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 }
                 if (file.isNotEmpty())
                 {
-                    const juce::String tip = stop->displayName() + ", sample " + file + " on key " + juce::String(pipe);
+                    juce::String tip = stop->displayName() + ", sample " + file + " on key " + juce::String(pipe);
+                    // 0.9.10: a pipe pulled to its key without the 440 mode (off its rank by more than the setting).
+                    for (const auto* rank : rankSources)
+                        if (rank != nullptr && pipe >= 0 && pipe < 128 && rank->mistuneCents[(size_t)pipe] != 0.0f)
+                        {
+                            const float c = rank->mistuneCents[(size_t)pipe];
+                            tip << ". Corrected by " << (c > 0 ? "+" : "") << juce::String(c, 0) << " cents: the file sounds "
+                                << juce::String(std::abs(c), 0) << " cents " << (c > 0 ? "below" : "above") << " its key (\"Retune pipes off by more than\", Configuration Editor)";
+                            break;
+                        }
                     slider->setTooltip(tip);
                     tone->setTooltip(tip);
                     nameLabel->setTooltip(tip);

@@ -504,6 +504,13 @@ struct Stop
     // applied without the analysis.
     std::bitset<128> faultyPipes;
     std::array<float, 128> rawTuningCents{};
+    // 0.9.10: how far every measured pipe lies from its OWN rank's tuning (the rank's diapason and
+    // temperament, a celeste's trend removed), cents; and the correction played without "Equal at
+    // 440 Hz" for a pipe off its rank by more than the threshold (St. Carlo's bass C#/D#/F#/G# are
+    // the neighbouring naturals' files, a whole semitone off: pulled to their keys, the rest of the
+    // rank stays as recorded). Within the threshold 0 - the temperament modes handle the rest.
+    std::array<float, 128> rankDeviationCents{};
+    std::array<float, 128> mistuneCents{};
     // Pipes switched off in the voicing (checkbox under the key): never played,
     // never filled, an extension's anti-alias copies freed (a cornet must not
     // grow an extension). Kept on the logical stop; ranks follow it.
@@ -621,7 +628,8 @@ struct Stop
     bool adoptSamples = false;
     float tuningCentsFor(int note, bool tuned) const noexcept
     {
-        if (!tuned || note < 0 || note >= 128) return 0.0f;
+        if (note < 0 || note >= 128) return 0.0f;
+        if (!tuned) return mistuneCents[(size_t)note];   // 0.9.10: as recorded, but a pipe far off its rank is pulled to its key
         return tuning440Cents[(size_t)note] + undulationCents[(size_t)note];
     }
     // Additional perspective ranks belonging to this logical stop. The Stop
@@ -896,6 +904,10 @@ public:
     // from its neighbours; within it the pipe is retuned (a1 = 440 Hz, temperament).
     void setRetuneLimitCents(float cents);
     float getRetuneLimitCents() const noexcept { return retuneLimitCents.load(std::memory_order_relaxed); }
+    // 0.9.10: a pipe off its own rank's tuning by more than this (cents) is pulled to its key even
+    // without "Equal at 440 Hz" (0 = never); up to the retune limit, beyond which the pipe is replaced.
+    void setMistuneCorrectCents(float cents);
+    float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
     void setStopNoteTone(Stop* stop, int note, float db);
     void setTransmissionKeyTone(Stop* stop, int index, int key, float db);
     // Start frequency of the tone shelf for a pipe's sample: the global start, or
@@ -1556,6 +1568,7 @@ private:
     std::atomic<float> toneStartHz{ 1800.0f };   // per-key tone shelf: start of the transition band
     std::atomic<float> sincKernelFromHz{ defaultSincKernelFromHz() };   // the sinc playback kernel from this sounding fundamental up (0.8.164; the default by CPU, 0.8.218)
     std::atomic<float> retuneLimitCents{ 200.0f };    // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165)
+    std::atomic<float> mistuneCorrectCents{ 50.0f };  // a pipe off its rank by more than this is pulled to its key without the 440 mode (0.9.10; 0 = never)
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1
     std::atomic<int> fillGroupSize{ 12 };
     std::atomic<int> transposeQuality{ 2 };

@@ -2135,6 +2135,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (channelsLinked erased) and a Messages note names it (`applyPerspectiveChannelsEverywhere`, log "... NOT for ...").
   A device not open takes the channels as stored (0.8.250). The tab's own refresh still folds a stored selection
   beyond an OPEN device to the first pair (its old rule) - untouched.
+  0.9.10 (31 Oct 2026, St. Carlo "spodní půltóny o 100 centů rozladěné"): MEASURED (%TEMP%\carlo_pitch.py <folder> <lo>
+  <hi>: smpl + autocorrelation f0): Principale 037-c# smpl -90 c / audio -96 c (a C), 039 a D, 042 a G (+95), 044 an A
+  (+98) - the producer put the neighbouring NATURALS' files on the bass chromatics (Italian short octave); the smpl is
+  honest. Contrabassi's 037/039/042/044 are own pipes within +-10 c, the rank randomly +-25 c (temperament "unknown").
+  WHY "sometimes retuned": `tuningCentsFor(note, tuned)` returned 0 with "Equal at 440 Hz" OFF (equalAt440 false in
+  every import), and the temperament mode 2 corrects PITCH CLASSES (measured table minus selected), never a single
+  pipe; the > 50 c pipes are excluded from the table and left as recorded; mode 0 (no valid table) corrects nothing.
+  With 440 ON the per-pipe tuning440Cents pulled them (90-100 c < the 200 c limit). NOW: `Stop::rankDeviationCents`
+  (the pipe's deviation from its own rank: residual - celeste trend - rank diapason) and `mistuneCents` = -deviation
+  for |deviation| > `mistuneCorrectCents` (engine atomic + gMistuneCorrectCents, default 50, 0 = never, not faulty),
+  returned by tuningCentsFor when !tuned; `setMistuneCorrectCents` recomputes from rankDeviationCents (new notes take
+  it). Configuration key "mistuneCorrectCents" (travels with the organ), Editor slider "Retune pipes off by more
+  than" right BEFORE the old limit, which the user renamed: "Retune limit per pipe" -> "Replace pipes off by more
+  than" (key retuneLimitCents unchanged; the manual heading renamed - openChapter matches labels exactly); both sliders
+  sit in Advanced global audio right after "Celeste beats", NOT under Filled pipes (the user's wish). The
+  voicing key tooltip of an own pipe says "Corrected by +90 cents: the file sounds 90 cents below its key". Log
+  "Tuning <rank> [p]: N pipe(s) off the rank by more than 50 cents pulled to their keys without the 440 mode: 37 (+90 c) ...".
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

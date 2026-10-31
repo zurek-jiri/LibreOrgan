@@ -1403,6 +1403,19 @@ default 1800); a pipe whose fundamental lies higher starts there.
 Celeste stops beat this many times faster at the top of the compass than at
 the bottom (1 to 20, default 12); a1 beats as the voicing says.
 
+### Retune pipes off by more than
+
+A pipe further off its own rank's tuning than this is pulled to its key even
+with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip
+says so. Travels with the organ.
+
+### Replace pipes off by more than
+
+How far a pipe's recorded pitch may lie from its key before the pipe counts
+as a faulty sample (default 200 cents). Beyond it the pipe is switched off
+and filled from its neighbours; its thumb turns green and the tooltip says
+so. Travels with the organ.
+
 ### Filled pipes: resampling quality
 
 How a neighbour's sample is played at another pitch while no copy exists:
@@ -1423,13 +1436,6 @@ group's width for the missing ones (1 to 12, default 12: every missing pipe
 an octave transposition of a real one). Changing it refills every stop. In a
 sparse rank neighbouring filled pipes take turns between the real pipes within
 that width.
-
-### Retune limit per pipe
-
-How far a pipe's recorded pitch may lie from its key before the pipe counts
-as a faulty sample (default 200 cents). Beyond it the pipe is switched off
-and filled from its neighbours; its thumb turns green and the tooltip says
-so. Travels with the organ.
 
 ### Filled pipes: release length (pitch shift)
 

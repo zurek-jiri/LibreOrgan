@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.10] - 2026-10-31
+
+### Added
+- "Retune pipes off by more than" (Configuration Editor, default 50 cents,
+  travels with the organ): a pipe further off its own rank's tuning than this
+  is pulled to its key even with "Equal at 440 Hz" off - a wrong file or a
+  badly mistuned pipe (St. Carlo's bass C#, D#, F#, G# are the neighbouring
+  naturals' files, a whole semitone off) - while the rest of the rank plays
+  as recorded. The key's tooltip names the correction.
+
+### Changed
+- "Retune limit per pipe" is "Replace pipes off by more than": beyond it the
+  pipe is switched off and filled from its neighbours, as before.
+
 ## [0.9.9] - 2026-10-31
 
 ### Fixed
