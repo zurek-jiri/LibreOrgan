@@ -2245,6 +2245,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   landed in the temp configurations folder), a second start with TestingOrgan.json handed to the first. Declarations
   of things Main.cpp uses go into the PUBLIC block of MainComponent.h (lines 38-61) - the kDefault* constants at line
   136 are private (the Editor is a friend).
+  0.9.17 (31 Oct 2026, the user: "Dulce" added from the ready-made stops three times - the log shows "3man Dulce 8",
+  "(2)", "(3)" applied together): `readyStopsNotIn` (0.8.142, #44) counted a row's folders as used ONLY when the
+  engine held the stop (`stopLoaded`), meant for rows a memory-limited load left out - so a row just added from the
+  pool (a draft, not applied) and a row of a missing tree blocked nothing and the stop stayed on offer. Now that
+  exception applies only while `engine.lastLoadWasMemoryLimited()`; every other row with folders uses them from the
+  moment it exists (the Stop List's Add stop... and the grid's free cell both go through readyStopsNotIn). Not driven
+  by a run (no hook for the Add stop... menu); the rule is one condition at the top of the used-places loop.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

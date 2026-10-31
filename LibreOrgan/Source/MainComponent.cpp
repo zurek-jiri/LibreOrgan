@@ -18928,6 +18928,11 @@ std::vector<MainComponent::ReadyStop> MainComponent::readyStopsNotIn(const std::
     // A row whose stop the engine does not hold (left out of the load for memory,
     // #44) does not use its folders: the pool offers the stop, and taking it
     // reloads the row instead of adding a second one (addReadyStopToDivision).
+    // 0.9.17: ONLY after a load that stopped for memory - any other row the engine does not hold
+    // yet (a row just added from the pool, not applied; a row of a tree not on this computer)
+    // uses its folders, so the same stop cannot be added twice (the user: Dulce three times,
+    // "3man Dulce 8", "(2)", "(3)" applied together).
+    const bool memoryLimited = engine.lastLoadWasMemoryLimited();
     auto stopLoaded = [&](int manual, const juce::String& name)
     {
         for (auto* stop : engine.getStops())
@@ -18939,7 +18944,7 @@ std::vector<MainComponent::ReadyStop> MainComponent::readyStopsNotIn(const std::
         for (const auto& entry : allEntries[manual])
         {
             if (entry.isTransmission()) continue;
-            if (!entry.folders.empty() && (int)manual <= manualCount && !stopLoaded((int)manual, entry.name)) continue;
+            if (memoryLimited && !entry.folders.empty() && (int)manual <= manualCount && !stopLoaded((int)manual, entry.name)) continue;
             for (const auto& [perspective, used] : entry.folders)
             {
                 if (const auto place = placeOf(used); place.isNotEmpty()) usedPlaces.insert(place);

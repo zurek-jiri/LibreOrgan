@@ -52,7 +52,7 @@ Rural Organ/
 `Rural-Organ.zip` in this folder holds the same portable configuration as the
 package (`Rural Organ.json`): saved with "Portable configuration (to share
 with others)", so it carries the organ only - no MIDI devices, no audio
-devices, nothing of the computer it was made on. Saved with LibreOrgan Sampler 0.9.16.
+devices, nothing of the computer it was made on. Saved with LibreOrgan Sampler 0.9.17.
 
 - Organ: a Czech village organ, three divisions, recorded dry.
 - Samples: Sonus Paradisi, provided free of charge with LibreOrgan Sampler to try

@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.17] - 2026-10-31
+
+### Fixed
+- A ready-made stop added from the pool (Stop List *Add stop...*, the grid's
+  free cell) stayed on offer until *Apply and reload* and could be added
+  again and again - three "Dulce" rows of the same folders were applied at
+  once. A row's folders now count as used from the moment the row exists;
+  only after a load that stopped for memory are the rows the engine could not
+  load offered again (as before).
+
 ## [0.9.16] - 2026-10-31
 
 ### Added
