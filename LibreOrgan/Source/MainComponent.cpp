@@ -13132,11 +13132,18 @@ namespace
         // The sample locations of this computer (0.8.190): the library root by its
         // name under each, and each as the root itself - a configuration kept in the
         // LibreOrgans folder, away from the samples, finds them this way.
+        // 0.9.3 (the user's 1Stop: root "temp", tree "Principal8"; the locations held
+        // "...\Kobrle\Samply" before "F:", and the Rural Organ's own TA\Principal8 under
+        // Samply's children was taken for it - another organ's pipes under the stop):
+        // every form that carries the library root's NAME ("<where>/temp/Principal8")
+        // over all locations and the drives comes BEFORE any bare "<where>/Principal8"
+        // form - a folder name alone is the weakest evidence there is.
+        juce::Array<juce::File> named, bare;
         for (const auto& location : gSampleLocations)
         {
             const juce::File folder(location);
-            if (rootName.isNotEmpty()) candidates.add(folder.getChildFile(rootName).getChildFile(relative));
-            candidates.add(folder.getChildFile(relative));
+            if (rootName.isNotEmpty()) named.add(folder.getChildFile(rootName).getChildFile(relative));
+            bare.add(folder.getChildFile(relative));
             // The neighbourhood of a location (0.8.202, the user: "jestli tam nekde v
             // okoli nelezi onen cislovany adresar"): the folder above it and its own
             // subfolders, one level each - a place remembered one level too deep (the
@@ -13145,15 +13152,16 @@ namespace
             const auto above = folder.getParentDirectory();
             if (above != folder && above.getFullPathName().isNotEmpty())
             {
-                if (rootName.isNotEmpty()) candidates.add(above.getChildFile(rootName).getChildFile(relative));
-                candidates.add(above.getChildFile(relative));
+                if (rootName.isNotEmpty()) named.add(above.getChildFile(rootName).getChildFile(relative));
+                bare.add(above.getChildFile(relative));
             }
             for (const auto& child : locationChildren(folder))
             {
-                if (rootName.isNotEmpty()) candidates.add(child.getChildFile(rootName).getChildFile(relative));
-                candidates.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
+                if (rootName.isNotEmpty()) named.add(child.getChildFile(rootName).getChildFile(relative));
+                bare.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
             }
         }
+        candidates.addArray(named);
         // Last: the library root by its name at the top of every fixed drive (0.8.214 - a
         // clean computer knows no location yet; the user's "F:\haupwerk" beside a zip in F:\),
         // and one level down (0.8.215): under each first-level folder of the drive, and under
@@ -13172,6 +13180,7 @@ namespace
                     candidates.add(child.getChildFile("HauptwerkSampleSetsAndComponents").getChildFile(rootName).getChildFile(relative));
                 }
             }
+        candidates.addArray(bare);   // 0.9.3: the bare "<location>/<relative>" forms last (see above)
         return candidates;
     }
     // A folder whose path exists but for the case of its letters (0.8.147, #57: a

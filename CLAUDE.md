@@ -2058,6 +2058,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `configurationsFolder` at a temp folder, which needs an existing settings.json (none existed in %APPDATA%\LibreOrgan).
   (6) The checkout's folder is still OrganSampler/ on disk: commits go through a worktree on origin/main
   (C:\Temp\lo091, branch release-0.9.1, files copied into LibreOrgan/...), commit 37c6d4f + tag v0.9.1 local, NOT pushed.
+  The folders are renamed now (F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan); main was moved onto those commits with
+  `git reset --mixed`, the worktree and the branch are gone.
+  0.9.3 (31 Oct 2026, the user: "Nyní se ukazuje celý principál jako skutečně existující ... Tohle vůbec není
+  F:\temp\Principal8"): his 1Stop.json (root "temp", tree "Principal8", the location "F:" remembered at the save) was
+  loaded from the Rural Organ's `F:\Suchy_rejstrik\Kobrle\Samply\TA\Principal8` - `portableFolderCandidates` tried
+  the locations IN ORDER with the bare `<location>/<relative>` and `<child>/<relative>` forms of each before the next
+  location's `<location>/<rootName>/<relative>`, and "...\Samply" (with its child TA) stood before "F:". Now every
+  form carrying the root's NAME (all locations, their neighbourhood, the drives) precedes every bare form. The
+  log tells such a case: "Sample location remembered: <somewhere else>" + a tree line with more bytes/copies than
+  the folder has (0.07 GB and 14 copies for a 9-file folder). RULE: a folder NAME alone never outranks the root's name.
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is

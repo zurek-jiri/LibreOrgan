@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.3] - 2026-10-31
+
+### Fixed
+- A configuration whose folder tree is named like a folder under one of this
+  computer's sample locations (a one-stop tree "Principal8" in `F:\temp`, the
+  Rural Organ's own `TA\Principal8` under a remembered location) was loaded
+  from the wrong folder: the bare "location/name" forms were tried before the
+  forms carrying the library root's name. Every form with the root's name
+  (over all locations and drives) now comes first, the bare ones last.
+
 ## [0.9.2] - 2026-10-31
 
 ### Changed
