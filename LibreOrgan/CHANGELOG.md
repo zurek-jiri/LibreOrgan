@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.13] - 2026-10-31
+
+### Fixed
+- A configuration imported from a Hauptwerk definition wrote its sample folder
+  trees relative to the numbered package ("pipe") while naming the library
+  root "OrganInstallationPackages" (since 0.8.216): on a computer that had
+  forgotten the sample location - the settings wiped, another computer - the
+  trees were not found although the set stood in the usual Hauptwerk place.
+  The trees are written below the root's name again ("000370/pipe"), so the
+  usual place `<disk>\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages`
+  is searched and found without any remembered location.
+
 ## [0.9.12] - 2026-10-31
 
 ### Added

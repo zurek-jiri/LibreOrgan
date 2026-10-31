@@ -11886,6 +11886,13 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             if (const auto r = rootFromKnownRelative(absolute, relative); r != juce::File()) ++votes[r.getFullPathName()];
         };
         for (const auto& [absolute, relative] : treeRelativePaths) vote(absolute, relative);   // every tree the load resolved
+        // 0.9.13: a tree with no relative path known (an import's absolute paths) votes by the root's NAME in
+        // its own path - "D:\...\OrganInstallationPackages\000370\pipe" with the name "OrganInstallationPackages"
+        // says the root is that folder; before, such a file fell to the common-ancestor rule below ("000370")
+        // while keeping the name "OrganInstallationPackages", and its trees came out as "pipe" (St. Carlo).
+        for (const auto& folder : folders)
+            if (knownRelativeOf(folder.getFullPathName()).isEmpty())
+                vote(folder.getFullPathName(), relativeBelowNamedRoot(folder.getFullPathName(), libraryRootName));
         if (auto* array = manuals.getArray())
             for (const auto& itemVar : *array)
             {
@@ -13900,7 +13907,11 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                     // look for its tail under the root the user pointed to.
                     const auto found = firstExistingDirectory(portableFolderCandidates(configuration, configurationFile,
                         libraryRoot, {}, absolute));
-                    if (found != juce::File()) item->setProperty("folderPath", found.getFullPathName());
+                    if (found != juce::File())
+                    {
+                        item->setProperty("folderPath", found.getFullPathName());
+                        rememberTreeRelative(found.getFullPathName(), relativeBelowNamedRoot(found.getFullPathName(), configuration.getProperty("sampleLibraryRootName", "").toString()));   // 0.9.13: below the root's name (an import's absolute tree)
+                    }
                 }
                 // Further trees of a composite division: relative ones first, then the
                 // absolute ones (kept when they exist or are found under the chosen root).
@@ -13932,7 +13943,9 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
                             if (extra.toString().isEmpty()) continue;
                             const auto found = firstExistingDirectory(portableFolderCandidates(configuration, configurationFile,
                                 libraryRoot, {}, extra.toString()));
-                            if (found != juce::File()) resolved.add(found.getFullPathName());
+                            if (found == juce::File()) continue;
+                            resolved.add(found.getFullPathName());
+                            rememberTreeRelative(found.getFullPathName(), relativeBelowNamedRoot(found.getFullPathName(), configuration.getProperty("sampleLibraryRootName", "").toString()));   // 0.9.13
                         }
                     item->setProperty("extraFolderPaths", resolved);
                 }
@@ -14006,7 +14019,18 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         {
             const auto text = slashes(entry.toString());
             const bool foreignAbsolute = text.length() > 1 && text[1] == ':' && juce::File::getSeparatorChar() == '/';   // "F:/..." on Linux/macOS
-            if (text.isEmpty() || (juce::File::isAbsolutePath(text) && !foreignAbsolute)) { resolved.add(entry); continue; }
+            if (text.isEmpty() || (juce::File::isAbsolutePath(text) && !foreignAbsolute))
+            {
+                // 0.9.13: an absolute tree under the library root's NAME (a Hauptwerk import writes its trees so:
+                // "D:\...\OrganInstallationPackages\000370\pipe", root "OrganInstallationPackages") remembers its
+                // path below that name, so the save derives the root from it and writes "000370/pipe" - not the
+                // common ancestor of the trees at hand ("000370" -> "pipe"), which no computer without the
+                // remembered location could find again (the user's St. Carlo after wiping the settings).
+                if (!foreignAbsolute && text.isNotEmpty() && SampleFiles::isDirectory(juce::File(entry.toString())))
+                    rememberTreeRelative(entry.toString(), relativeBelowNamedRoot(entry.toString(), configuration.getProperty("sampleLibraryRootName", "").toString()));
+                resolved.add(entry);
+                continue;
+            }
             if (foreignAbsolute) { resolved.add(entry); continue; }   // nothing to resolve it against; the divisions' relative paths relocate it below
             const auto candidates = portableFolderCandidates(configuration, configurationFile, libraryRoot, text, {});
             // 0.9.5: a candidate must hold the samples the configuration's fingerprint describes; a folder of
