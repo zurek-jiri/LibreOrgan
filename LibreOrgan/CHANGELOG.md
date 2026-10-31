@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.14] - 2026-10-31
+
+A review of the whole changelog against the code (every version since 0.5.0);
+what it found is fixed here.
+
+### Fixed
+- The first start (no window place saved yet) opened the main window at
+  1680 x 900 in the middle of the screen; it now opens nearly as large as the
+  screen - the work area with the taskbar free and a margin at every edge -
+  and comes back where you left it from then on.
+- Tooltips: the Tremulant button, the swell bar, the keyboard icon and the
+  division name of a header, every coupler button, every combination piston,
+  the combination display and bank label, and every cell of the polyphony
+  display (NOW, PEAK, DSP, RAM GB, LIMIT) had none; they have them now.
+- The double-click default of "Sustain fade-out on key release" and "Release
+  sample fade-in" returned to 70 ms (the default is 110 ms since 0.8.215);
+  one constant serves the sliders, the settings and the reset now.
+- Manual: the configurations folder is `Documents\LibreOrgan\LibreOrgans`
+  (it still said Configurations); quoted chapter names are links; the
+  loading-stop, missing-device and full-kernel paragraphs cut to what a user
+  needs.
+
 ## [0.9.13] - 2026-10-31
 
 ### Fixed

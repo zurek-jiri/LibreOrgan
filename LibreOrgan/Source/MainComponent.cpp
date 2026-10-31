@@ -88,9 +88,22 @@ static juce::String canonicalPerspectiveName(juce::String name)
 // and must not disturb each other's "ignore the listener echo" flag.
 static thread_local bool suppressKeyboardStateNotesTL = false;
 
-class PolyphonyDisplay final : public juce::Component, private juce::Timer
+class PolyphonyDisplay final : public juce::Component, public juce::TooltipClient, private juce::Timer
 {
 public:
+    // 0.9.14: a tooltip per cell (the user: "ani nad hlavním displejem" - the display had none).
+    juce::String getTooltip() override
+    {
+        const int column = juce::jlimit(0, 4, getMouseXYRelative().x / columnWidth());
+        static const char* const tips[5]{
+            "NOW: the pipes sounding at this moment (attacks and release tails).",
+            "PEAK: the most pipes sounding at once in the last seconds.",
+            "DSP: the share of the audio period the busiest audio device thread needed for its last block; above 100 % the sound breaks. "
+            "\"!N\": N clicks found in the program's own output; \"no audio\": a device open without callbacks.",
+            "RAM GB: the memory the program holds; orange when less than a tenth of the installed memory is free.",
+            "LIMIT: the maximum polyphony; type a number and press Enter (the polyphony measurement writes its verdict here)." };
+        return tips[column];
+    }
     explicit PolyphonyDisplay(SamplerEngine& e) : engine(e)
     {
         limitEditor.setInputRestrictions(6, "0123456789");
@@ -107,6 +120,7 @@ public:
         };
         limitEditor.onReturnKey = [this, apply] { apply(); limitEditor.giveAwayKeyboardFocus(); };   // Enter: the caret leaves the box at once
         limitEditor.onFocusLost = apply;
+        limitEditor.setTooltip("LIMIT: the maximum polyphony; type a number and press Enter (the polyphony measurement writes its verdict here).");   // 0.9.14: the editor covers the LIMIT cell
         addAndMakeVisible(limitEditor);
         startTimerHz(25);
     }
@@ -1217,7 +1231,7 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(releaseFadeOutSlider);
     releaseFadeOutSlider.setRange(10.0, 500.0, 1.0);
-    releaseFadeOutSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
+    releaseFadeOutSlider.setValue(kDefaultFadeMs, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
     releaseFadeOutSlider.setTextValueSuffix(" ms");
     releaseFadeOutSlider.onValueChange = [this] {
         engine.setReleaseFadeOutMs((float)releaseFadeOutSlider.getValue());
@@ -1238,7 +1252,7 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(releaseFadeInSlider);
     releaseFadeInSlider.setRange(0.0, 200.0, 1.0);
-    releaseFadeInSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
+    releaseFadeInSlider.setValue(kDefaultFadeMs, juce::dontSendNotification);   // 0.8.215: 110 ms (the user; 70 before)
     releaseFadeInSlider.setTextValueSuffix(" ms");
     releaseFadeInSlider.onValueChange = [this] {
         engine.setReleaseFadeInMs((float)releaseFadeInSlider.getValue());
@@ -1344,8 +1358,8 @@ MainComponent::MainComponent()
     };
     makeGlobalSliderLearnable(masterVolumeSlider, "master", kDefaultMasterDb);
     makeGlobalSliderLearnable(pitchSlider, "pitch", 0.0);
-    makeGlobalSliderLearnable(releaseFadeOutSlider, "sustainFade", 70.0);
-    makeGlobalSliderLearnable(releaseFadeInSlider, "releaseFade", 70.0);
+    makeGlobalSliderLearnable(releaseFadeOutSlider, "sustainFade", kDefaultFadeMs);
+    makeGlobalSliderLearnable(releaseFadeInSlider, "releaseFade", kDefaultFadeMs);
     makeGlobalSliderLearnable(releaseScalingSlider, "releaseScale", 0.0);
     makeGlobalSliderLearnable(attackMinimumSlider, "attackTime", 80.0);
     makeGlobalSliderLearnable(attackMinimumDelaySlider, "attackDelay", 2.0);
@@ -1465,9 +1479,13 @@ MainComponent::MainComponent()
         resized();
     };
 
+    combinationDisplay.setTooltip("The piston in use and its bank.");
+    bankLabel.setTooltip("The bank of pistons in use; the bank buttons step it.");
     for (int i = 0; i < maxPistons; ++i)
     {
         auto* button = new LeftOnlyTextButton(juce::String(i));
+        button->setTooltip("Piston " + juce::String(i) + ": click recalls its registration (stops, transmissions, couplers, tremulants); "
+            "with Set on, a click stores the current registration in it. Right-click: MIDI learn.");
         button->onClick = [this, i] { pressPiston(i); };
         button->setColour(juce::TextButton::buttonOnColourId, onColour());
         pistonButtons.add(button);
@@ -22058,12 +22076,12 @@ void MainComponent::loadSettings()
     masterGainLinear.store(juce::Decibels::decibelsToGain((float)masterDb));
     masterLabel.setText("Master: " + juce::String(masterDb, 1) + " dB", juce::dontSendNotification);
 
-    const double releaseFadeOut = parsed.getProperty("releaseFadeOutMs", 110.0);   // 0.8.215: 110 ms for a file without the key
+    const double releaseFadeOut = parsed.getProperty("releaseFadeOutMs", kDefaultFadeMs);   // 0.8.215: 110 ms for a file without the key
     releaseFadeOutSlider.setValue(releaseFadeOut, juce::dontSendNotification);
     releaseFadeOutLabel.setText("Sustain fade-out: " + juce::String(releaseFadeOut, 0) + " ms", juce::dontSendNotification);
     engine.setReleaseFadeOutMs((float)releaseFadeOut);
 
-    const double releaseFadeIn = parsed.getProperty("releaseFadeInMs", 110.0);   // 0.8.215
+    const double releaseFadeIn = parsed.getProperty("releaseFadeInMs", kDefaultFadeMs);   // 0.8.215
     releaseFadeInSlider.setValue(releaseFadeIn, juce::dontSendNotification);
     releaseFadeInLabel.setText("Release fade-in: " + juce::String(releaseFadeIn, 0) + " ms", juce::dontSendNotification);
     engine.setReleaseFadeInMs((float)releaseFadeIn);
@@ -22954,8 +22972,14 @@ void MainComponent::placeMainWindow(juce::ResizableWindow& window)
     if (auto* peer = window.getPeer())
         if (const auto present = peer->getFrameSizeIfPresent()) frame = *present;
     const auto inner = frame.subtractedFrom(workAreaWithMargins(work));   // 2 % free above and below
-    int width = juce::jmin(savedWindowWidth, inner.getWidth());
-    int height = juce::jmin(savedWindowHeight, inner.getHeight());
+    // 0.9.14 (the user's rule): a FIRST start - no window place saved yet - opens the window nearly as
+    // large as the screen: the work area (the taskbar, dock or panel taken off) less the 2 % margins
+    // above and below and 2 % at either side; the 1680 x 900 of old is only the fallback for a saved
+    // size that is missing. Once the user has moved or sized the window, that place comes back.
+    const bool firstStart = savedWindowX == INT_MIN && savedWindowY == INT_MIN;
+    const auto sideMargin = juce::roundToInt(inner.getWidth() * 0.02);
+    int width = firstStart ? inner.getWidth() - 2 * sideMargin : juce::jmin(savedWindowWidth, inner.getWidth());
+    int height = firstStart ? inner.getHeight() : juce::jmin(savedWindowHeight, inner.getHeight());
     int x = savedWindowX != INT_MIN ? savedWindowX : inner.getCentreX() - width / 2;
     int y = savedWindowY != INT_MIN ? savedWindowY : inner.getCentreY() - height / 2;
     x = juce::jlimit(inner.getX(), juce::jmax(inner.getX(), inner.getRight() - width), x);
@@ -22967,7 +22991,7 @@ void MainComponent::placeMainWindow(juce::ResizableWindow& window)
     // does not fit the work area is shrunk and moved to the top until the whole
     // frame, title bar and close button included, is on the screen.
     CrashHandler::note("Main window: work area " + work.toString() + ", interface " + juce::String(UIScale::percent())
-        + " %, asked for " + juce::Rectangle<int>(x, y, width, height).toString());
+        + " %, asked for " + juce::Rectangle<int>(x, y, width, height).toString() + (firstStart ? " (first start: the work area with margins)" : ""));
     fitWindowOnScreen(window, "Main window");
     fitWindowOnScreenSoon(juce::Component::SafePointer<juce::Component>(&window), "Main window");
     if (!savedWindowMaximised) return;
@@ -24931,9 +24955,9 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     masterLabel.setText("Master: -18.0 dB", juce::dontSendNotification);
     pitchSlider.setValue(0.0, juce::dontSendNotification);
     pitchLabel.setText("Pitch: 0 cents", juce::dontSendNotification);
-    releaseFadeOutSlider.setValue(110.0, juce::dontSendNotification);   // 0.8.215: 110 ms
+    releaseFadeOutSlider.setValue(kDefaultFadeMs, juce::dontSendNotification);   // 0.8.215: 110 ms
     releaseFadeOutLabel.setText("Sustain fade-out: 110 ms", juce::dontSendNotification);
-    releaseFadeInSlider.setValue(110.0, juce::dontSendNotification);
+    releaseFadeInSlider.setValue(kDefaultFadeMs, juce::dontSendNotification);
     releaseFadeInLabel.setText("Release fade-in: 110 ms", juce::dontSendNotification);
     releaseScalingSlider.setValue(0.0, juce::dontSendNotification);
     releaseScalingLabel.setText("Release scaling: 0.0 dB", juce::dontSendNotification);
@@ -28174,8 +28198,8 @@ void MainComponent::showConfigurationEditor()
             };
             bindSlider("Master volume", o.masterVolumeSlider, " dB", kDefaultMasterDb, MainComponent::gsMaster);
             bindSlider("Global pitch", o.pitchSlider, " cents", 0.0, MainComponent::gsPitch);
-            bindSlider("Sustain fade-out on key release", o.releaseFadeOutSlider, " ms", 70.0, MainComponent::gsReleaseFadeOut);
-            bindSlider("Release sample fade-in", o.releaseFadeInSlider, " ms", 70.0, MainComponent::gsReleaseFadeIn);
+            bindSlider("Sustain fade-out on key release", o.releaseFadeOutSlider, " ms", MainComponent::kDefaultFadeMs, MainComponent::gsReleaseFadeOut);
+            bindSlider("Release sample fade-in", o.releaseFadeInSlider, " ms", MainComponent::kDefaultFadeMs, MainComponent::gsReleaseFadeIn);
             bindSlider("Release sample volume", o.releaseScalingSlider, " dB", 0.0, MainComponent::gsReleaseScaling);
             bindSlider("Release cutting", o.releaseCutSlider, " %", 100.0, MainComponent::gsReleaseCut);
             bindSlider("Release played from", o.releasePlayedFromSlider, " ms", 0.0, MainComponent::gsReleasePlayedFrom);

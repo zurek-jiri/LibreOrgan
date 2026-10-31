@@ -2192,6 +2192,28 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   temp configurations folder writes ["000370/pipe"]; the json loaded with Locations.txt EMPTY finds the tree through
   the drive's Hauptwerk layout (13 rows). RULE: the root in a file is the folder of the NAME the file gives, never
   the common ancestor, whenever that name is in the trees' paths.
+  0.9.14 (31 Oct 2026, the user: "okno maličké ... regres", "tooltipy nad Tremulant, žaluziemi, spojkami, pistony,
+  crescendem, hlavním displejem, posuvníky se neukazují", "projdi celou historii kódu, inventura regresů, manuál"):
+  THE INVENTORY = the whole CHANGELOG (5 312 lines, 0.5.0-0.9.13) read against the code, ~100 labels/keys counted in
+  the sources (%TEMP%\claimcheck.ps1), the setTooltip identifiers of v0.8.240 diffed against HEAD (%TEMP%\tipdiff.ps1:
+  133 -> 137 calls, NOTHING lost since). Findings: (1) WINDOW: no version ever opened a fresh window to the screen -
+  savedWindowWidth/Height 1680 x 900 since the first commit, the user had a saved maximised state for weeks and saw
+  the default first after the wipe; now a first start (savedWindowX/Y INT_MIN) takes the work area less the 2 % margins
+  (placeMainWindow, log "(first start: the work area with margins)"; test %TEMP%\test_window0914.ps1: 2442 x 1297 on
+  2560 x 1392). (2) TOOLTIPS: the 0.8.236 changelog claimed "every control" but the header's Tremulant, SwellBar (not a
+  TooltipClient), title/keyboard indicator, the coupler buttons, the pistons, combinationDisplay/bankLabel and the
+  PolyphonyDisplay cells NEVER had one (the audit of 0.8.236 over-reported) - set now (SectionHeader is a TooltipClient
+  for the painted indicator rect, SwellBar a SettableTooltipClient, PolyphonyDisplay::getTooltip per column, the
+  limitEditor covers LIMIT). The HelpTooltipWindow/Hider code read line by line: no runtime fault found; JUCE never shows
+  a tip at the position of the last mouse-down (a clicked button under a resting mouse shows none - standard, tell the
+  user when he reports "no tooltip" on a button he just pressed). (3) The fade sliders' double-click returned 70 ms
+  (makeGlobalSliderLearnable + bindSlider) while the default is 110 since 0.8.215 -> `MainComponent::kDefaultFadeMs`
+  used in all six places. (4) MANUAL: 1.4 said `Documents\LibreOrgan\Configurations` (wrong since 0.9.0); eight quoted
+  chapter names turned into Markdown links (%TEMP%\manual_links.py: 219 headings, 0 duplicate slugs, 0 broken links);
+  the 2.4 loading-stop, 5.3 missing-device, 8.1 full-kernel/storage and 4.1 unload paragraphs cut; the 1.1 and 1.6
+  Hauptwerk frames shortened to one sentence each with a link to 1.5 (the full frame stays in 1.5 and 10.4 - the
+  user's 0.8.253 rule). Everything else of the changelog is in the code (intentional later changes noted in the
+  entries themselves). The seven audit subagents of the session died on a billing error; the audit was done by hand.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

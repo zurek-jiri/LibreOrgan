@@ -2214,10 +2214,19 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         std::function<void(int, float, int, float)> setter;
     };
 
-    class SectionHeader final : public juce::Component, private juce::Timer
+    class SectionHeader final : public juce::Component, public juce::TooltipClient, private juce::Timer
     {
     public:
-        class SwellBar final : public juce::Component
+        // 0.9.14: the header's own tooltip is the keyboard indicator's (painted, no component of its own);
+        // elsewhere on the header background there is none.
+        juce::String getTooltip() override
+        {
+            return juce::Rectangle<int>(5, 7, 34, 24).contains(getMouseXYRelative())
+                ? "The division's MIDI keyboard: red while a key is pressed. Right-click: MIDI Learn of the keyboard. "
+                  "Right-click the header's background: the swell, tremulant and wind settings of the division."
+                : juce::String();
+        }
+        class SwellBar final : public juce::Component, public juce::SettableTooltipClient
         {
         public:
             SwellBar(int manual, std::function<float(int)> getter,
@@ -2324,6 +2333,9 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             addAndMakeVisible(setup);
             addAndMakeVisible(swell);
             swell.setComponentID("swell");   // found by Voicer::headerSwell (the video script drives it)
+            swell.setTooltip("The swell shutters: drag, or the mouse wheel; double-click opens them fully. Right-click: MIDI learn of the swell pedal, Swell settings...");
+            title.setTooltip("Division " + names[index] + ". Right-click the header's background: the swell, tremulant and wind settings.");
+            tremulant.setTooltip("The division's tremulant on or off (part of combinations and crescendo steps). Right-click: MIDI learn, Tremulant settings...");
             tremulant.setButtonText("Tremulant");
             tremulant.getProperties().set("tremulantManual", index);
             tremulant.setColour(juce::TextButton::buttonOnColourId, onColour());
@@ -2556,6 +2568,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             for (const auto& info : couplerGetter(manual))
             {
                 auto* button = couplerButtons.add(new LeftOnlyTextButton(info.label));
+                button->setTooltip("Coupler " + info.label + ": on or off, like a stop (part of combinations and crescendo steps). Right-click: MIDI learn. Hold for three seconds to arrange the couplers.");
                 button->getProperties().set("manualChapter", "Couplers");   // F1 (0.8.233): the coupler, not the header
                 button->getProperties().set("couplerId", info.id);
                 button->setToggleState(info.enabled, juce::dontSendNotification);

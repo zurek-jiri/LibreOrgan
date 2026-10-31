@@ -134,6 +134,7 @@ private:
     std::vector<HeaderButtonInfo> headerButtons();
 
     static constexpr double kDefaultMasterDb = -18.0;   // the master level a fresh start, a reset and a configuration without one get (0.8.128; -20 before)
+    static constexpr double kDefaultFadeMs = 110.0;     // sustain fade-out and release fade-in (0.8.215; 70 before) - ONE constant for the sliders' start values, the loadSettings fallbacks, the reset and the double-click defaults (0.9.14: the double-click still returned 70)
     LearnableSlider masterVolumeSlider;
     juce::Label masterLabel{ "Master: -20.0 dB" };
     LearnableSlider pitchSlider;

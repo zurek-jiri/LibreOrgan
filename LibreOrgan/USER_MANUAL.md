@@ -51,14 +51,10 @@ No organ definition file is needed: load the folders, the program proposes the
 organ, you shape it and save it as a configuration. A configuration somebody
 else published for the same samples saves you all of that: *Load
 Configuration*, choose the file, play. LibreOrgan Sampler does not load Hauptwerk
-organ definitions either - it has no use for them, the organ is built from the
-sample folders. Where a definition lies beside the samples it is read for two
-things only: where the sample folders are and how the stops are arranged in the
-divisions. From that LibreOrgan Sampler deduces the microphone perspectives and the
-relative volumes of the stops, the divisions and, where needed, the pipes - a
-computation of its own, beyond what the definition holds (Hauptwerk knows no
-perspectives and no relative volumes, only absolute pipe levels and
-"stop-ranks") - and everything else comes from the folders.
+organ definitions either: a definition beside the samples is read only for
+where the sample folders are and how the stops are arranged in the divisions;
+the perspectives and the relative volumes are the program's own deduction, and
+the organ is built from the folders ([A Hauptwerk organ already installed](#a-hauptwerk-organ-already-installed)).
 
 ## 1.2 Installation
 
@@ -69,9 +65,8 @@ releases page, unpack it, put the program anywhere, start it:
 (Intel Macs, macOS 10.11 or newer), `LibreOrgan-linux-x86_64.tar.gz`
 (`tar xzf`; Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 or newer),
 `LibreOrgan-linux-arm64.tar.gz` (a Raspberry Pi 4 or 5 with a 64-bit OS,
-Raspberry Pi OS Bookworm or newer - a test build, not yet tried on real
-hardware by the project; count on a few thousand pipes of polyphony and on
-the saving options of the load box). The window title shows the version.
+Raspberry Pi OS Bookworm or newer; a test build - count on a few thousand
+pipes of polyphony). The window title shows the version.
 
 Linux: *Install menu entry and icon* at the bottom of the Configuration Editor
 puts the program into the application menu with its icon. The entry follows
@@ -105,8 +100,8 @@ which division its stops go to. Repeat for every division, or load one tree
 holding everything and move the stops between divisions in the table. *Apply
 and reload*: the stops appear as buttons ([The loading window](#the-loading-window)).
 A bought RAR set, a configuration
-from GitHub or an installed Hauptwerk organ take shorter roads: "The ways to
-an organ".
+from GitHub or an installed Hauptwerk organ take shorter roads:
+[The ways to an organ](#15-the-ways-to-an-organ).
 
 ### Step 5: Audio
 
@@ -150,7 +145,7 @@ remembered location does lie under `/run/media` and is missing at a load, the
 program mounts the disk by its label itself and says so in the activity log.
 
 **Your configurations** live in one folder: `Documents\LibreOrgan\
-Configurations` (chosen anew in the Configuration Editor, *LibreOrgans
+LibreOrgans` (chosen anew in the Configuration Editor, *LibreOrgans
 folder*). Every import writes there, Load and Save start there; a file opened
 from elsewhere is copied there by the load box, or loaded where it is. The
 exports for publishing go into its `Publish` subfolder; recordings into
@@ -164,8 +159,8 @@ name patterns), the archive indexes, the filled pipes cache, the activity log
 and the reports. The Configuration Editor shows the locations (*Sample and IR
 locations*) and opens the file (*Show*).
 
-How a configuration finds its folders on a new computer: "Where the program
-looks for folders".
+How a configuration finds its folders on a new computer: [Where the program
+looks for folders](#103-where-the-program-looks-for-folders).
 
 ## 1.5 The ways to an organ
 
@@ -247,13 +242,12 @@ do not own.
 A configuration is one file holding the whole instrument. *Save Configuration*
 and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for
-the folder paths and the stop arrangement only; the perspectives and the
-relative volumes are LibreOrgan Sampler's own deduction, the organ is built from the
-folders). A configuration with unsaved
-changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.
-Before the samples load, a box asks how they are to be held in RAM (storage,
-packing, rate - [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with the
-configuration. Paths are stored with "/" and work on every platform.
+the folder paths and the stop arrangement only, the organ is built from the
+folders). A configuration with unsaved changes asks at quit or at the next
+load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks
+how they are to be held in RAM (storage, packing, rate -
+[Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with
+the configuration.
 
 ### The loading window
 
@@ -415,8 +409,8 @@ button fires even when hidden).
   computer down without a question - for a console without a screen (a MIDI
   piston). An instrument without a file is kept as "Shutdown rescue
   configuration.json" beside the settings.
-- **GLOBAL RESET** ([GLOBAL RESET](#global-reset)), **Configuration Editor** ("Configuration
-  Editor reference").
+- **GLOBAL RESET** ([GLOBAL RESET](#global-reset)), **Configuration Editor**
+  ([Configuration Editor reference](#8-configuration-editor-reference)).
 
 ## 2.2 The combination row
 
@@ -455,17 +449,17 @@ thread needed for its last block, as a share of the block; above 100 % the
 sound breaks - [Getting the most polyphony](#57-getting-the-most-polyphony)), the memory the program holds
 (*RAM GB*; orange when the computer is nearly full) and the polyphony *LIMIT*
 (editable; the measurement writes its verdict there). The DSP cell shows
-"!N" in orange when the program found N clicks in its own output ("Output
-discontinuity detector").
+"!N" in orange when the program found N clicks in its own output
+([The discontinuity detector](#1010-the-discontinuity-detector)) and "no
+audio" when a device is open but silent. Every cell has a tooltip.
 
-The loading never lets the system page: it stops when the memory is short,
-builds the instrument from the stops loaded so far and names the rest in a
-message; they stay in the pool of the Stop List. The *Cancel* button of
-[The loading window](#the-loading-window) does the same. Details: [Memory and the loading stop](#106-memory-and-the-loading-stop).
+A load stops by itself when the memory runs short; the stops left out are
+named in a message and stay in the pool of the Stop List
+([Memory and the loading stop](#106-memory-and-the-loading-stop)).
 
 ## 2.5 Division headers
 
-Each column starts with a header: the keyboard icon (lights when a key is
+Each column starts with a header: the keyboard icon (red while a key is
 pressed; right-click: *MIDI Learn...*, *Clear learned keyboard MIDI*), the
 division's name, the swell bar (drag it; right-click to learn the swell pedal
 or open *Swell settings...*), the *Tremulant* button (registration, like a
@@ -477,11 +471,13 @@ over the sliders of an open voicing row.
 
 ## 2.6 Two program windows, screens, small screens
 
-*Console > Program windows* opens a second window; *Shown in window* in a
-division's section moves the division there. *Interface size* is the
-program's own scale over the system's display scale, estimated at the first
-start for Full HD, 4K and Retina screens alike. Every dialog scrolls when the
-window is smaller than its content.
+The first start opens the main window nearly as large as the screen, with a
+margin at every edge and the taskbar free; from then on the window comes back
+where you left it. *Console > Program windows* opens a second window; *Shown
+in window* in a division's section moves the division there. *Interface
+size* is the program's own scale over the system's display scale, estimated
+at the first start for Full HD, 4K and Retina screens alike. Every dialog
+scrolls when the window is smaller than its content.
 
 ---
 
@@ -700,13 +696,11 @@ can be done here as well, and this is where the organ is built from folders.
   computer...** ([Sample folders not found](#sample-folders-not-found)).
   A folder holding the sample files themselves is loaded as a tree of that
   one stop.
-- **Unload folder...** removes one tree from the whole organ. The rows that
-  had folders of that tree only leave the table with it, buttons and all -
-  the one case a row goes by itself; a row with a folder of another tree
-  stays. A tree not on this computer is marked NOT FOUND here, so a package
-  you do not own can be dropped. **Unload all folder trees** empties the
-  organ. **Replace "..." with another folder...** takes a tree from another
-  place (any folder of the set will do).
+- **Unload folder...** removes one tree from the whole organ; the rows that
+  had folders of that tree only go with it, a row with a folder of another
+  tree stays. A tree not on this computer is marked NOT FOUND here, so a
+  package you do not own can be dropped. **Unload all folder trees** empties
+  the organ.
 - The table starts out as the automatic rules built the divisions from the
   folder names and the perspective prefixes, and can be corrected wherever
   the rules could not pair the folders.
@@ -867,15 +861,10 @@ to that device and those channels. Each tab, top to bottom:
   divisions**, which copies the device, rate and buffer size to every route
   (on the auxiliary tab: to the auxiliary routes of all divisions).
 - **A device that is not there** (switched off, unplugged, taken by another
-  program): the route keeps it and keeps its channels - the line under the
-  device box says *NOT AVAILABLE now* and the channel list shows the stored
-  channels greyed. The program tries to open it every 2 seconds, also while
-  this dialog is open, and the moment it answers every route set to it plays
-  again. A device missing at start is reported once, in a box, after a 6 s
-  wait. A device that opened but gives no audio is reopened once by itself;
-  when that does not help, the DSP cell reads *no audio* and the Messages
-  name it. ASIO lists every installed driver whether its hardware is on or not;
-  only the attempt to open it tells.
+  program): the route keeps it and its channels (*NOT AVAILABLE now* under the
+  device box), tries it every 2 seconds and plays again the moment it answers.
+  A device that opened but gives no audio is reopened by itself; when that
+  does not help, the DSP cell reads *no audio* and the Messages name it.
 
 **The buffer size decides more than anything else.** 512 samples at 48 kHz
 (10.7 ms, unnoticeable on an organ) renders tens of thousands of voices; 64
@@ -1170,13 +1159,12 @@ The threads rendering now and the kernel in use. Information.
 ### Full kernel from (sounding pitch)
 
 Pipes whose sounding fundamental lies at or above this frequency play through
-the 8-tap sinc kernel for their whole length. The plain linear kernel leaves
-an image of a retuned high tone *below* its fundamental (a pipe at 9 kHz
-retuned by 20 cents gets a foreign tone 560 Hz under it); the sinc puts it
-below -44 dB. Default 3000 Hz on a CPU with AVX2 (a few per cent of extra
-work), 20000 Hz (off) without AVX2, where the sinc doubles the cost of every
-voice it touches (a Core 2 Duo Mac: 3900 voices off, 780 on). 0 gives it to
-every pipe. Logarithmic slider, effect for the next notes.
+the finer (8-tap sinc) kernel for their whole length, which keeps a retuned
+high tone free of the foreign tone the plain kernel leaves under it. Default
+3000 Hz on a processor with AVX2 (a few per cent of extra work), 20000 Hz
+(off) without it, where the finer kernel doubles the cost of every voice it
+touches. 0 gives it to every pipe. Logarithmic slider, effect for the next
+notes ([Retune buses and the full kernel](#109-retune-buses-and-the-full-kernel)).
 
 ### Render threads for Aggregated WASAPI
 
@@ -1193,8 +1181,8 @@ with a little hiss; *16-bit integer, releases at half the rate* stores the
 releases - a large part of a set - at half the rate (they lose what lies
 above 12 kHz; a reed whose release is bright above 11 kHz keeps the full
 rate). Effect at the next load; the load box asks it before every load and
-saves it with the organ. What each choice costs, measured: "RAM: the storage
-options measured".
+saves it with the organ. What each choice costs, measured:
+[RAM: the storage options measured](#107-ram-the-storage-options-measured).
 
 ### Compress samples in RAM (lossless)
 
@@ -1515,8 +1503,8 @@ The number of pistons in the combination row (0 to 10).
 
 ### Program windows
 
-*One window* or *Two windows* ("Two program windows, screens, small
-screens").
+*One window* or *Two windows* ([Two program windows, screens, small
+screens](#26-two-program-windows-screens-small-screens)).
 
 ### Melody/bass couplers: new extreme key only
 
@@ -1540,11 +1528,10 @@ button and dragged stop.
 
 ### Output discontinuity detector: count the clicks in the program's own output
 
-On by default. The program counts every jump between two blocks of its own
-output that the sound does not explain - after the rendering, at the end of
-every route, on the way to the driver - logs it with the route and stage and
-shows "!N" in orange in the DSP cell. A few microseconds per period. "The
-discontinuity detector".
+On by default. The program counts every click between two blocks of its own
+output, logs it with the route and stage and shows "!N" in orange in the DSP
+cell. A few microseconds per period
+([The discontinuity detector](#1010-the-discontinuity-detector)).
 
 ### LibreOrgans folder
 
@@ -1684,8 +1671,8 @@ How slowly the shutters follow the pedal (50 to 2000 ms, default 300).
 ### Audio output channels (default perspective)
 
 The channels of the device the default perspective plays on, as numbers
-separated by commas (the same as the tick boxes of the audio tab). "The audio
-tabs".
+separated by commas (the same as the tick boxes of the audio tab -
+[The audio tabs](#53-the-audio-tabs)).
 
 ### Perspective output channels
 
@@ -1770,8 +1757,8 @@ polyphony report still come as boxes.
 
 Everything the program does at a coarse level - devices opened, divisions
 loaded, builds of the copies, the memory and disk figures of every load - is
-noted in `CrashLogs/activity.log` in the settings folder ("Where the files
-are"); a crash writes `crash-<date>.txt` beside it, and a window that
+noted in `CrashLogs/activity.log` in the settings folder ([Where the files
+are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that
 answers nothing for eight seconds records where it was waiting.
 `settings.json` is the state of the program, `settings-<date>.json` the
 snapshot of each of the last seven days; if the program crashes at every
