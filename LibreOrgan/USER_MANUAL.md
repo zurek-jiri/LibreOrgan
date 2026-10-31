@@ -344,9 +344,9 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
 ### Releases
 
 The folder `rel` inside the stop folder, files named like the attacks. Several
-folders for different note lengths are honoured: `rel500` for keys held up to
-500 ms, `rel1500` up to 1.5 s, plain `rel` for the rest. A stop without
-releases plays too: the sound fades out when the key goes up.
+folders for different note lengths are honoured: `rel500` (or `rel_0500`) for
+keys held up to 500 ms, `rel1500` up to 1.5 s, plain `rel` for the rest. A
+stop without releases plays too: the sound fades out when the key goes up.
 
 ### Microphone perspectives
 
@@ -1825,8 +1825,9 @@ File names: the MIDI key number first, optionally a note name (036.wav,
 played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);
 a two- or three-digit suffix after an underscore at the very end is a
 velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release
-folders: `rel500` for keys held up to 500 ms, `rel1500` up to 1.5 s, plain
-`rel` (= `rel99999`) for the rest, files named like the attacks.
+folders: `rel500` (also `rel_0500`, `rel-500`, `release 500ms`) for keys held
+up to 500 ms, `rel1500` up to 1.5 s, plain `rel` (= `rel99999`) for the rest,
+files named like the attacks.
 
 Folder names: the stop's label is built from the folder path; a folder nested
 inside a folder of the same name (perspective prefix, footage and an L/R mark

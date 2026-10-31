@@ -11513,13 +11513,18 @@ int SamplerEngine::extractVelocityLayerFromFilename(const juce::String& filename
 
 int SamplerEngine::extractReleaseHoldMs(const juce::String& folderName)
 {
+    // "rel100", "rel 100", "rel_0100", "rel-100", "release_250ms": the number is the longest
+    // key hold (ms) the release serves. 0.9.11: separators between the word and the number
+    // and a trailing "ms" are accepted - St. Carlo's "rel_0100/0250/0560" were skipped whole.
     if (!folderName.startsWithIgnoreCase("rel")) return -1;
-    int position = 3;
-    while (position < folderName.length() && juce::CharacterFunctions::isWhitespace(folderName[position])) ++position;
+    int position = folderName.startsWithIgnoreCase("release") ? 7 : 3;
+    auto isSeparator = [](juce::juce_wchar c) { return juce::CharacterFunctions::isWhitespace(c) || c == '_' || c == '-' || c == '.'; };
+    while (position < folderName.length() && isSeparator(folderName[position])) ++position;
     juce::String digits;
     while (position < folderName.length() && juce::CharacterFunctions::isDigit(folderName[position]))
         digits += folderName[position++];
-    while (position < folderName.length() && juce::CharacterFunctions::isWhitespace(folderName[position])) ++position;
+    while (position < folderName.length() && isSeparator(folderName[position])) ++position;
+    if (folderName.substring(position).equalsIgnoreCase("ms")) position = folderName.length();
     if (digits.isEmpty() || position != folderName.length()) return -1;
     const auto value = digits.getLargeIntValue();
     if (value < 0 || value > (juce::int64)(std::numeric_limits<int>::max)()) return -1;
@@ -13118,8 +13123,13 @@ void SamplerEngine::loadRankSamples(Stop* rank)
         int maxHoldMs = extractReleaseHoldMs(relName);
         if (maxHoldMs < 0)
         {
-            if (relName.trim().equalsIgnoreCase("rel")) maxHoldMs = 99999;
-            else continue;
+            if (relName.trim().equalsIgnoreCase("rel") || relName.trim().equalsIgnoreCase("release")) maxHoldMs = 99999;
+            else
+            {
+                // 0.9.11: never skipped in silence (St. Carlo's releases were missing without a word).
+                CrashHandler::note("Release folder \"" + relName + "\" of " + rank->name + " not understood (expected \"rel\" or \"rel <hold ms>\") - skipped");
+                continue;
+            }
         }
         loadSamplesIntoStop(rank, relFolder, true, maxHoldMs);
     }

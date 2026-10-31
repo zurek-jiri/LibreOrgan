@@ -2152,6 +2152,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   sit in Advanced global audio right after "Celeste beats", NOT under Filled pipes (the user's wish). The
   voicing key tooltip of an own pipe says "Corrected by +90 cents: the file sounds 90 cents below its key". Log
   "Tuning <rank> [p]: N pipe(s) off the rank by more than 50 cents pulled to their keys without the 440 mode: 37 (+90 c) ...".
+  0.9.11 (31 Oct 2026, the user: "proč to v St. Carlo nenačítá releasy? rel_027?"): `extractReleaseHoldMs` read only
+  whitespace between "rel" and the digits, so "rel_0100"/"rel_0250"/"rel_0560" (the hold-time multi-release folders of
+  every St. Carlo stop) returned -1 and `loadRankSamples` skipped them in SILENCE (3.39 GB read of 5.0 GB estimated).
+  Now "_", "-", ".", spaces and a trailing "ms" are accepted, "release" as the word too; a rel* folder still not
+  understood is logged "Release folder X of Y not understood ... skipped". RULE: a folder the loader skips by its
+  NAME is logged, never silent. Verify a set's releases by the tree's GB read vs the WAV estimate.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

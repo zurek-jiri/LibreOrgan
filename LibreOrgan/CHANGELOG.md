@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.11] - 2026-10-31
+
+### Fixed
+- Release folders named with a separator or a unit ("rel_0100", "rel-250",
+  "release_560ms") were skipped without a word: St. Carlo loaded without any
+  release. They are read now; a "rel..." folder the program still cannot read
+  is named in the log.
+
 ## [0.9.10] - 2026-10-31
 
 ### Added
