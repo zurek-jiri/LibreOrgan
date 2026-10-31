@@ -550,7 +550,9 @@ private:
         return screenContainers[1] != nullptr && screenGetter && screenGetter(manual) == 1 ? 1 : 0;
     }
     juce::Component* containerOf(int manual) const { return screenContainers[(size_t)screenOf(manual)]; }
-    void layoutScreen(int screen, juce::Component& container, juce::Viewport& viewport);
+    // Lays one screen out; returns true when the content is taller than the viewport (a vertical
+    // scrollbar will show - the layout is then done again with the bar's width reserved, 0.9.15).
+    bool layoutScreen(int screen, juce::Component& container, juce::Viewport& viewport, bool reserveVerticalBar);
     std::vector<Stop*> orderedDivisionStops(int manual) const;
     void enterArrangeMode(int manual);
     void dropItem(int manual, const juce::String& key, juce::Component* row, juce::Point<int> screenPosition, bool duplicate);

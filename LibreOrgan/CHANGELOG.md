@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.15] - 2026-10-31
+
+### Fixed
+- The workspace showed a horizontal and a vertical scrollbar on an empty
+  console (and both on a loaded organ whenever the stops reached below the
+  window): the division columns were rounded one by one and could exceed the
+  window's width by a pixel or two, and they were laid out over the whole
+  width even when a vertical scrollbar took part of it. The columns now add
+  up to the usable width exactly, and a screen whose content is taller than
+  the window is laid out again with the vertical bar's width reserved.
+
 ## [0.9.14] - 2026-10-31
 
 A review of the whole changelog against the code (every version since 0.5.0);

@@ -1941,16 +1941,35 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
 {
     // The first screen is the main window's workspace; a second one (another
     // program window) receives the divisions assigned to it.
-    stopRows.clear();
-    sectionHeaders.clear();
-    sectionDividers.clear();
-    compactCells.clear();
-    arrangeOverlays.clear();
     uiContainer = &container;
     uiViewport = &viewport;
-    layoutScreen(0, container, viewport);
-    if (screenContainers[1] != nullptr && screenViewports[1] != nullptr)
-        layoutScreen(1, *screenContainers[1], *screenViewports[1]);
+    // Two passes when needed (0.9.15): the first lays the columns over the whole viewport width; a
+    // screen whose content turns out taller than its viewport gets a vertical scrollbar, so it is laid
+    // out again with the bar's width reserved - otherwise the content, exactly as wide as the viewport,
+    // got a horizontal bar beside the vertical one.
+    const bool secondScreen = screenContainers[1] != nullptr && screenViewports[1] != nullptr;
+    bool reserve[2]{ false, false };
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        stopRows.clear();
+        sectionHeaders.clear();
+        sectionDividers.clear();
+        compactCells.clear();
+        arrangeOverlays.clear();
+        const bool taller0 = layoutScreen(0, container, viewport, reserve[0]);
+        const bool taller1 = secondScreen && layoutScreen(1, *screenContainers[1], *screenViewports[1], reserve[1]);
+        if ((taller0 == reserve[0] && taller1 == reserve[1]) || pass == 1) break;
+        reserve[0] = taller0;
+        reserve[1] = taller1;
+    }
+    {
+        static juce::String lastWorkspaceNote;   // one line per change (the tests read it; the console relays out often)
+        const juce::String note = "Workspace: content " + juce::String(container.getWidth()) + " x " + juce::String(container.getHeight())
+            + " in a viewport of " + juce::String(viewport.getWidth()) + " x " + juce::String(viewport.getHeight())
+            + ", scrollbars: " + (viewport.getHorizontalScrollBar().isVisible() ? "horizontal " : "") + (viewport.getVerticalScrollBar().isVisible() ? "vertical" : "")
+            + (!viewport.getHorizontalScrollBar().isVisible() && !viewport.getVerticalScrollBar().isVisible() ? "none" : "");
+        if (note != lastWorkspaceNote) { lastWorkspaceNote = note; CrashHandler::note(note); }
+    }
     // Development (0.8.153): ORGAN_DUMP_GRID=1 logs every grid item's button and
     // every free cell in SCREEN coordinates once the layout has settled - a test
     // script drives the mouse by them (the drag between divisions, #77).
@@ -2154,9 +2173,15 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
         });
 }
 
-void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport& viewport)
+bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport& viewport, bool reserveVerticalBar)
 {
     const auto oldViewPosition = viewport.getViewPosition();
+    // 0.9.15 (the user: "dementní modré posuvníky" on an empty console): the columns are laid out over
+    // the width the content can really use - less the vertical scrollbar when the content is taller
+    // than the viewport (the bar takes that width and the content, exactly as wide as the viewport,
+    // got a horizontal bar too) - and their widths add up to it EXACTLY (each column rounded on its
+    // own exceeded the width by a pixel or two on an odd width: a horizontal bar, then the vertical).
+    const int viewWidth = viewport.getWidth() - (reserveVerticalBar ? viewport.getScrollBarThickness() : 0);
     class DivisionDivider final : public juce::Component
     {
     public:
@@ -2773,7 +2798,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             }
     }
     const int narrowWidth = 335;
-    const int availableExpanded = viewport.getWidth() - margin * 2
+    const int availableExpanded = viewWidth - margin * 2
         - narrowWidth * juce::jmax(0, columnsHere - 1);
     int widestRankCount = 1;
     for (auto* stop : engine.getStops())
@@ -2812,14 +2837,19 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         totalColumnWeight += columnWeightGetter
             ? juce::jmax(0.15f, columnWeightGetter(manual)) : 1.0f;
     const int availableColumnWidth = juce::jmax(220 * columnsHere,
-        viewport.getWidth() - margin * (columnsHere + 1));
-    for (const int manual : manuals)
+        viewWidth - margin * (columnsHere + 1));
     {
-        const float weight = columnWeightGetter
-            ? juce::jmax(0.15f, columnWeightGetter(manual)) : 1.0f;
-        configuredWidths[(size_t)manual] = juce::jmax(220,
-            juce::roundToInt((float)availableColumnWidth * weight
-                / juce::jmax(0.15f, totalColumnWeight)));
+        // The columns' right edges from the cumulative weights, so the widths add up to the
+        // available width exactly (a column at its 220 px minimum may exceed it, as before).
+        int accumulated = 0;
+        float accumulatedWeight = 0.0f;
+        for (const int manual : manuals)
+        {
+            accumulatedWeight += columnWeightGetter ? juce::jmax(0.15f, columnWeightGetter(manual)) : 1.0f;
+            const int rightEdge = juce::roundToInt((float)availableColumnWidth * accumulatedWeight / juce::jmax(0.15f, totalColumnWeight));
+            configuredWidths[(size_t)manual] = juce::jmax(220, rightEdge - accumulated);
+            accumulated += configuredWidths[(size_t)manual];
+        }
     }
     // A voicing open on the other screen does not narrow the columns here.
     bool anyExpandedHere = false;
@@ -3283,6 +3313,7 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     scrollTarget = nullptr;
 
     container.repaint();
+    return totalHeight > viewport.getHeight();
 }
 
 std::vector<Stop*> Voicer::orderedDivisionStops(int manual) const

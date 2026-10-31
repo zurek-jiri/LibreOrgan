@@ -2214,6 +2214,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Hauptwerk frames shortened to one sentence each with a link to 1.5 (the full frame stays in 1.5 and 10.4 - the
   user's 0.8.253 rule). Everything else of the changelog is in the code (intentional later changes noted in the
   entries themselves). The seven audit subagents of the session died on a billing error; the audit was done by hand.
+  0.9.15 (31 Oct 2026, the user: "dementní modré posuvníky na pravém a spodním okraji" of the EMPTY console; and "netvrď
+  mi, že nikdy nebylo nastavení okna na maximální velikost ... tu spodní windows lištu jsme výslovně řešili"): (1) THE
+  WINDOW RULE THAT EXISTED, verbatim from the first commit (MainComponent constructor): "A clean installation must fit
+  comfortably on a 1920x1080 desktop, including room for the taskbar and native window frame. Preserve the established
+  larger workspace for users who already have settings." = the FIXED default 1680 x 900 chosen to fit Full HD with the
+  taskbar - never the screen's own size; on the user's 2560 x 1392 work area it is small. 0.9.14's first-start rule
+  (the work area with margins) is what he remembers wanting; say "the default was sized for Full HD" when it comes up
+  again, never "there was no rule". (2) SCROLLBARS: `Voicer::layoutScreen` rounded every column's width on its own
+  (available x weight / total) - with 3 columns on a width not divisible by 3 the sum exceeded the viewport by 1-2 px ->
+  a horizontal bar, which took height -> the vertical bar too (an empty console with the default 2 manuals = 3 columns:
+  2403 > 2402 here); and with an organ reaching below the window the vertical bar took width the columns had been
+  given -> both bars always. Now the right edges come from the cumulative weights (the sum is exact; a 220 px minimum
+  may still exceed), `layoutScreen(..., reserveVerticalBar)` returns "content taller than the viewport" and rebuildUI
+  lays a screen out a second time with the bar's width reserved when so. Log "Workspace: content W x H in a viewport of
+  W x H, scrollbars: none|horizontal|vertical" (once per change; voicer.cpp). Test %TEMP%\test_window0915.ps1 -Manuals
+  2|5 (works without any settings.json: the user wipes AppData): "scrollbars: none" at 2402 x 1065. RULE: content laid
+  into a Viewport is never wider than the width the bars leave; round the LAST edge, not every part.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
