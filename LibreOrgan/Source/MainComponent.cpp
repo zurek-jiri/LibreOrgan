@@ -1572,6 +1572,10 @@ MainComponent::MainComponent()
             {
                 DBG("Property 'lastDir' is empty.");
             }
+            const auto irDir = parsed.getProperty("lastIrDir", "").toString();          // 0.9.1
+            if (irDir.isNotEmpty()) lastIrDirectory = juce::File(irDir);
+            const auto folderDir = parsed.getProperty("lastFolderDir", "").toString();
+            if (folderDir.isNotEmpty()) lastSampleFolderDirectory = juce::File(folderDir);
         }
         else
         {
@@ -4151,8 +4155,9 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
     if (manualIndex < 0 || manualIndex >= SamplerEngine::maxManuals) return;
     const auto key = perspectiveRouteKey(manualIndex, perspective);
     const auto current = manualConfigs[(size_t)manualIndex].perspectiveAudio[key].reverbIrPath;
-    const auto start = juce::File(current).existsAsFile() ? juce::File(current).getParentDirectory()
-        : (lastSettingsDirectory.isDirectory() ? lastSettingsDirectory
+    // 0.9.1 (the user): Load IR starts where an IR was chosen last, not in the configurations' folder.
+    const auto start = lastIrDirectory.isDirectory() ? lastIrDirectory
+        : (juce::File(current).existsAsFile() ? juce::File(current).getParentDirectory()
             : juce::File::getSpecialLocation(juce::File::userMusicDirectory));
     irChooser = std::make_unique<juce::FileChooser>("Impulse response for this perspective (mono, stereo or true stereo WAV)",
         start, "*.wav;*.aif;*.aiff;*.flac");
@@ -4165,6 +4170,8 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
             if (!file.existsAsFile()) return;
             auto& config = safeThis->manualConfigs[(size_t)manualIndex].perspectiveAudio[key];
             config.reverbIrPath = file.getFullPathName();
+            safeThis->lastIrDirectory = file.getParentDirectory();   // 0.9.1: the next Load IR starts here
+            safeThis->saveLastDirectory();
             safeThis->noteSampleLocation(file.getParentDirectory().getParentDirectory());   // 0.8.191: the IR collection's folder - the IR is found by its tail there
             safeThis->applyPerspectiveReverb(manualIndex, perspective);
             safeThis->propagateEffectsIfLinked(manualIndex, perspective);
@@ -9889,6 +9896,8 @@ void MainComponent::saveLastDirectory()
 {
     juce::DynamicObject::Ptr obj = new juce::DynamicObject();
     obj->setProperty("lastDir", lastSettingsDirectory.getFullPathName());
+    if (lastIrDirectory != juce::File()) obj->setProperty("lastIrDir", lastIrDirectory.getFullPathName());                  // 0.9.1
+    if (lastSampleFolderDirectory != juce::File()) obj->setProperty("lastFolderDir", lastSampleFolderDirectory.getFullPathName());
 
     juce::String json = juce::JSON::toString(juce::var(obj.get()), true);
     DBG("Saving lastDir: " << json);
@@ -14403,7 +14412,8 @@ void MainComponent::selectManualFolder(int manualIndex)
             pathsLabel.setText("The sample folder tree, or the RAR archive(s) of the sample folders - one path per line:", juce::dontSendNotification);
             destinationLabel.setText("Unpack into this folder:", juce::dontSendNotification);
             hint.setText("An archive is read as the folders it holds (RAR 4 and 5, multi-volume sets by their first part). A Hauptwerk organ definition "
-                "found inside is offered for import. The folder tree is the folder that holds the stops' folders, or the division folders.", juce::dontSendNotification);
+                "found inside is offered for import. The folder tree is the folder that holds the stops' folders, or the division folders - "
+                "or one stop's folder itself (its WAV files named by key).", juce::dontSendNotification);
             hint.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
             hint.setJustificationType(juce::Justification::topLeft);
             hint.setFont(juce::FontOptions(14.0f));
@@ -14426,6 +14436,8 @@ void MainComponent::selectManualFolder(int manualIndex)
                     const auto folder = c.getResult();
                     if (folder == juce::File()) return;
                     paths.setText(folder.getFullPathName(), false);
+                    owner.lastSampleFolderDirectory = folder.getParentDirectory();   // 0.9.1: the next Load folder starts here
+                    owner.saveLastDirectory();
                     refresh();
                 });
             };
@@ -14442,6 +14454,8 @@ void MainComponent::selectManualFolder(int manualIndex)
                     for (const auto& file : c.getResults()) if (file.existsAsFile()) lines.add(file.getFullPathName());
                     if (lines.isEmpty()) return;
                     paths.setText(lines.joinIntoString("\n"), false);
+                    owner.lastSampleFolderDirectory = juce::File(lines[0]).getParentDirectory();   // 0.9.1
+                    owner.saveLastDirectory();
                     if (destination.getText().trim().isEmpty()) destination.setText(juce::File(lines[0]).getParentDirectory().getFullPathName(), false);
                     refresh();
                 });
@@ -14533,7 +14547,8 @@ void MainComponent::selectManualFolder(int manualIndex)
     // starts the choosers (0.8.183: it stood in the field, and "Load" without browsing
     // loaded the configuration's folder as a sample tree).
     const juce::File start = manualConfigs[(size_t)manualIndex].folderPath.isNotEmpty() ? juce::File(manualConfigs[(size_t)manualIndex].folderPath) : juce::File();
-    const juce::File browseStart = lastSettingsDirectory.isDirectory() ? lastSettingsDirectory : juce::File();
+    // 0.9.1 (the user): the choosers start where a sample folder or archive was chosen last, never in the configurations' folder.
+    const juce::File browseStart = lastSampleFolderDirectory.isDirectory() ? lastSampleFolderDirectory : juce::File();
     auto* window = new LoadWindow();
     auto* panel = new Panel(*this, manualIndex, start, browseStart);
     window->setContentOwned(panel, true);
@@ -21112,7 +21127,8 @@ void MainComponent::showStopBuildingDialog(int)
                 juce::MessageManager::callAsync([&o, builds, changed, plan, rowOrder, trChanged, arrange]() mutable
                 {
                     o.stopBuildWindow.reset();
-                    if (trChanged) o.applyTransmissionPlan(plan);
+                    auto planNow = plan;   // GCC 11 (arm64 CI) takes the nested capture for const; applyTransmissionPlan fills newKey
+                    if (trChanged) o.applyTransmissionPlan(planNow);
                     if (o.voicer != nullptr)
                         for (int m : arrange)
                         {
@@ -21120,7 +21136,7 @@ void MainComponent::showStopBuildingDialog(int)
                             for (const auto& [name, planIndex] : rowOrder[(size_t)m])
                             {
                                 if (planIndex < 0) keys.push_back(name);
-                                else if (planIndex < (int)plan.size() && plan[(size_t)planIndex].newKey.isNotEmpty()) keys.push_back(plan[(size_t)planIndex].newKey);
+                                else if (planIndex < (int)planNow.size() && planNow[(size_t)planIndex].newKey.isNotEmpty()) keys.push_back(planNow[(size_t)planIndex].newKey);
                             }
                             o.voicer->setArrangeOrder(m, keys);
                         }

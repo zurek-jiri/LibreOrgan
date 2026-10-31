@@ -706,6 +706,9 @@ static const char* const kManualText_part3 =
     "  When a tree of the organ is missing on this computer, the menu lists it as\n"
     "  **NOT FOUND on this computer: replace \"...\" with a folder on this\n"
     "  computer...** ([Sample folders not found](#sample-folders-not-found)).\n"
+    "  A folder that itself holds the sample files named by key (one stop, no\n"
+    "  stop folders below it) is loaded as a tree of that one stop. The folder\n"
+    "  chooser starts where a sample folder or archive was chosen last.\n"
     "- **Unload folder...** removes one tree from the whole organ. The rows that\n"
     "  had folders of that tree only leave the table with it, buttons and all -\n"
     "  the one case a row goes by itself; a row with a folder of another tree\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "  another division listens to the same). A keyboard plugged in while the\n"
     "  program runs is opened at once.\n"
     "- *Ignore MIDI velocity (organ keys)* (the dialog says *Disable MIDI\n"
+    ;
+static const char* const kManualText_part4 =
     "  velocity*): on by default - every key is a full stroke ([Velocity layers](#35-velocity-layers)).\n"
     "- *Bass octave layout* for historic bass octaves; *Compass*: the lowest and\n"
     "  highest key (defaults: pedal 36 to 67, manuals 36 to 96; keys outside are\n"
-    ;
-static const char* const kManualText_part4 =
     "  silent on every stop of the division); *MIDI transposition*: the keyboard\n"
     "  plays this many semitones away.\n"
     "- The keyboard drawing shows the last key with its velocity.\n"
@@ -858,7 +861,8 @@ static const char* const kManualText_part4 =
     "  separation** (at 100 % every pipe sounds only on its own channel pair, at\n"
     "  0 % all channels carry the same sum).\n"
     "- **IR reverb**: *Load IR* (WAV, AIFF or FLAC; mono, stereo or true stereo\n"
-    "  with four channels), *Clear*, the IR caption (hover for its details,\n"
+    "  with four channels; the chooser starts where an IR was chosen last),\n"
+    "  *Clear* (the reverb is gone at once), the IR caption (hover for its details,\n"
     "  right-click for the IR settings: high and low cut, pre-delay, wet volume,\n"
     "  decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.\n"
     "- **Output channels**: tick any channels of the device, in any number. The\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
     "every coupler it can have - every division at unison, 16' and 4' (the\n"
     "division itself included: \"I/I 16'\" is an octave coupler), the melody and\n"
+    ;
+static const char* const kManualText_part5 =
     "bass couplers and **Unison Off**. Ticked couplers appear on the division's\n"
     "coupler rail in the main window, shown like stops (\"II/I 16'\" = division II\n"
     "pulled over keyboard I at 16'); they are registration (combinations,\n"
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
-    ;
-static const char* const kManualText_part5 =
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
     "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
     "only*, *Melody couplers: legato grace time*).\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "a step at most). The price: every voice unpacks what it plays before every\n"
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
+    ;
+static const char* const kManualText_part6 =
     "memory otherwise.\n"
     "\n"
     "### Sample rate on loading\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
     "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
     "pipes carry next to nothing there, and hearing past fifty rarely reaches 17\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "\n"
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
-    ;
-static const char* const kManualText_part7 =
     "*Linear*, *Cubic interpolation* (images 20 dB lower), *Cubic + anti-alias\n"
     "filter* (default; also removes what folds back on upward shifts, a low-passed\n"
     "copy per such pipe). Real pipes are never touched.\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "### Ignored folders (folder contains)\n"
     "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
+    ;
+static const char* const kManualText_part8 =
     "\"output\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
     "### Perspective prefixes\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "One line per perspective: its name first, then its folder prefixes,\n"
     "separated by semicolons (\"Direct;01-dirMk2H-;dir-\"). The name is what the\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
+    ;
+static const char* const kManualText_part9 =
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
     "cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's\n"
-    ;
-static const char* const kManualText_part9 =
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
     "and fraction give the exact recorded pitch, from which the tuning, the\n"
     "temperament, the footage and the celeste detection follow. Files without the\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     "minimum time and delay off, two seconds of idle listening; every stop\n"
+    ;
+static const char* const kManualText_part10 =
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"
     "second at first, more keys and a faster rate whenever the voices stop rising\n"
     "(up to every key, 16 strikes a second); the target raised in steps of 2000\n"
-    ;
-static const char* const kManualText_part10 =
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"
     "*Measurement limit of DSP power* and the driver never called late; the first\n"

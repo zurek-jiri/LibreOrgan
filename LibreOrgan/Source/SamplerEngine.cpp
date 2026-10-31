@@ -5048,6 +5048,8 @@ struct SamplerEngine::Impl
             }
             else if (r.reverbIrFile != juce::File() && (r.reverb == nullptr || wasFollower || (rebuildChanged && &r == changed)))
                 rebuild.push_back(&r);
+            else if (r.reverbIrFile == juce::File() && r.reverb != nullptr)
+                rebuild.push_back(&r);   // 0.9.1: the IR was cleared - the convolution still installed goes (rebuild installs none)
         }
         for (auto* r : rebuild) rebuildRouteReverb(*r);
         if (shared != lastSharedReverbs)
@@ -11953,11 +11955,12 @@ bool SamplerEngine::folderHasNumberedSamples(const juce::File& folder)
 std::vector<juce::File> SamplerEngine::listSampleFolders(const juce::File& tree) const
 {
     std::vector<juce::File> result;
-    const auto allFolders = subdirectoriesRecursive(tree);
+    auto allFolders = subdirectoriesRecursive(tree);
+    if (folderHasNumberedSamples(tree)) allFolders.insert(allFolders.begin(), tree);   // 0.9.1: a single stop folder chosen as the tree is its one stop
     const auto folderKeys = folderKeysOf(allFolders);
     for (const juce::File& folder : allFolders)
     {
-        if (folder.getFileName().startsWithIgnoreCase("rel")) continue;
+        if (folder != tree && folder.getFileName().startsWithIgnoreCase("rel")) continue;
         if (isIgnoredFolderName(folder.getFileName()) || isTremmedVariantFolder(folder, folderKeys)) continue;
         if (!folderHasNumberedSamples(folder)) continue;
         result.push_back(folder);
@@ -11969,7 +11972,10 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
 {
     std::vector<juce::String> perspectives = perspectivePatterns;
     auto folderHasValidWavFiles = [](const juce::File& folder) { return folderHasNumberedSamples(folder); };
-    const auto allFolders = subdirectoriesRecursive(topFolder);
+    auto allFolders = subdirectoriesRecursive(topFolder);
+    // 0.9.1: the tree chosen IS a stop folder (its WAV files named by key, no folders of stops
+    // below it - "F:\temp\Principal8"): it is the one stop of the tree, named after itself.
+    if (folderHasNumberedSamples(topFolder)) allFolders.insert(allFolders.begin(), topFolder);
     const auto folderKeys = folderKeysOf(allFolders);
 
     // Perspective prefixes the folder names reveal themselves: when the same
@@ -12150,8 +12156,9 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
     std::vector<FolderAssignment> assignments;
     for (const juce::File& stopFolder : allFolders)
     {
-        if (stopFolder.getFileName().startsWithIgnoreCase("rel")) continue;
-        if (isIgnoredFolderName(stopFolder.getFileName()) || isTremmedVariantFolder(stopFolder, folderKeys)) continue;
+        const bool isTree = stopFolder == topFolder;   // 0.9.1: the tree itself as the one stop
+        if (!isTree && stopFolder.getFileName().startsWithIgnoreCase("rel")) continue;
+        if (!isTree && (isIgnoredFolderName(stopFolder.getFileName()) || isTremmedVariantFolder(stopFolder, folderKeys))) continue;
         if (!folderHasValidWavFiles(stopFolder)) continue;
 
         juce::String perspective;
@@ -12163,7 +12170,7 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
             perspectiveRoot = stopFolder;
             perspectiveRootName = leafName;
         }
-        else
+        else if (!isTree)   // the folders above the tree are nobody's perspective
         {
             for (auto ancestor = stopFolder.getParentDirectory(); ancestor != topFolder
                  && ancestor.getFullPathName().isNotEmpty(); ancestor = ancestor.getParentDirectory())
@@ -12191,7 +12198,7 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
         else
         {
             if (!patterned) perspective = "default";
-            auto displayParent = stopFolder.getParentDirectory();
+            auto displayParent = isTree ? topFolder : stopFolder.getParentDirectory();   // the tree's own name alone (0.9.1)
             // The parent named like the folder itself - perspective prefixes, the
             // footage and an L/R mark aside ("HW_Bl.Flute2" over "02-direct-HW_Bl.Flute",
             // 0.8.160) - adds nothing to the name: the last folder names the stop.
@@ -12309,7 +12316,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 if (assignment.folder == topFolder) { groupFor(manual).assignments.push_back(assignment); ++totalAssignments; }
                 continue;
             }
-            if (!assignment.folder.isAChildOf(topFolder) || !SampleFiles::isDirectory(assignment.folder)) continue;   // disk or archive (0.8.157)
+            if ((assignment.folder != topFolder && !assignment.folder.isAChildOf(topFolder)) || !SampleFiles::isDirectory(assignment.folder)) continue;   // disk or archive (0.8.157); the tree itself as the one stop (0.9.1)
             if (!folderHasNumberedSamples(assignment.folder)) continue;
             FolderAssignment copy = assignment;
             copy.grouped = true;

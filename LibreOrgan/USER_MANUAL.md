@@ -696,6 +696,9 @@ can be done here as well, and this is where the organ is built from folders.
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).
+  A folder that itself holds the sample files named by key (one stop, no
+  stop folders below it) is loaded as a tree of that one stop. The folder
+  chooser starts where a sample folder or archive was chosen last.
 - **Unload folder...** removes one tree from the whole organ. The rows that
   had folders of that tree only leave the table with it, buttons and all -
   the one case a row goes by itself; a row with a folder of another tree
@@ -846,7 +849,8 @@ to that device and those channels. Each tab, top to bottom:
   separation** (at 100 % every pipe sounds only on its own channel pair, at
   0 % all channels carry the same sum).
 - **IR reverb**: *Load IR* (WAV, AIFF or FLAC; mono, stereo or true stereo
-  with four channels), *Clear*, the IR caption (hover for its details,
+  with four channels; the chooser starts where an IR was chosen last),
+  *Clear* (the reverb is gone at once), the IR caption (hover for its details,
   right-click for the IR settings: high and low cut, pre-delay, wet volume,
   decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.
 - **Output channels**: tick any channels of the device, in any number. The

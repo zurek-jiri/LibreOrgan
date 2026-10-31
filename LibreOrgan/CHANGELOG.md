@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.1] - 2026-10-31
+
+### Fixed
+- *Clear* of an IR reverb left the convolution running (the caption said
+  "IR: none", the room stayed): the cleared route is rebuilt without it.
+- *Load IR* starts in the folder of the IR chosen last and *Load folder...*
+  where a sample folder or archive was chosen last (both began in the
+  configurations' folder); the configuration dialogs keep starting there.
+- *Load folder...* with the folder of ONE stop (its WAV files named by key,
+  no stop folders below) loaded nothing; it is now a tree of that one stop,
+  named after the folder.
+- Linux arm64 build (GCC 11): a nested lambda capture in the Stop List's
+  apply was taken for const.
+
 ## [0.9.0] - 2026-10-31
 
 ### Changed

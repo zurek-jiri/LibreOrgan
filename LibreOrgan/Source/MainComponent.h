@@ -902,6 +902,7 @@ private:
     std::map<std::pair<int, juce::String>, std::pair<int, int>> hauptwerkCompass;   // (division, row key) -> the keys of the stop's own rows in the definition (0.8.159)
     std::unique_ptr<juce::FileChooser> configurationRootChooser;
     juce::File lastSettingsDirectory;
+    juce::File lastIrDirectory, lastSampleFolderDirectory;   // 0.9.1: Load IR and Load folder each start where they were last (lastdir.json)
 
     double currentSampleRate = 48000.0;
     int savedWindowWidth = 1680;
