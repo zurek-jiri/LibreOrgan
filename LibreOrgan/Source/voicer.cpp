@@ -2936,21 +2936,36 @@ void Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         // column, not the width narrowed while a voicing is open elsewhere), so a
         // placement made beside an open voicing never ends up in a single column.
         const int placementColumns = juce::jmax(1, configuredWidths[(size_t)manual] / drawWidth);
+        if (manual >= 0 && manual < SamplerEngine::maxManuals) placementColumnsSeen[manual] = placementColumns;
         // A division whose every item sits in the first column while two or more
         // fit (placed once beside an open voicing, or in a narrow window) is laid
-        // out afresh across the columns; a layout the user made keeps other columns.
-        if (placementColumns >= 2 && items.size() >= 2)
+        // out afresh across the columns. 0.9.4 (the user: four stops dragged under
+        // each other - the LAST drop re-laid them side by side): judged ONCE per file
+        // loaded, never after a drop of this session, and only when the file says
+        // its cells were made with ONE column (or says nothing - an old file); and
+        // the items keep their order: spread over the columns row by row, nothing
+        // thrown away.
+        if (placementColumns >= 2 && items.size() >= 2 && firstColumnCheckPending.count(manual) != 0)
         {
+            firstColumnCheckPending.erase(manual);
+            const auto saved = savedGridColumns.find(manual);
+            const bool madeWithOneColumn = saved == savedGridColumns.end() || saved->second < 2;
             bool allFirstColumn = true;
-            size_t stored = 0;
+            std::vector<std::pair<int, const Item*>> stored;   // (row, item)
             for (const auto& item : items)
                 if (auto it = cellsOfManual.find(item.key); it != cellsOfManual.end())
                 {
-                    ++stored;
+                    stored.push_back({ it->second.second, &item });
                     if (it->second.first != 0) allFirstColumn = false;
                 }
-            if (stored == items.size() && allFirstColumn)
-                for (const auto& item : items) cellsOfManual.erase(item.key);
+            if (madeWithOneColumn && stored.size() == items.size() && allFirstColumn)
+            {
+                std::stable_sort(stored.begin(), stored.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+                for (size_t i = 0; i < stored.size(); ++i)
+                    cellsOfManual[stored[i].second->key] = { (int)i % placementColumns, (int)i / placementColumns };
+                CrashHandler::note("Grid of division " + juce::String(manual) + ": the file's single column (made with one column) spread over "
+                    + juce::String(placementColumns) + " columns in its order");
+            }
         }
         // 1. Stored cells go into a virtual grid that may be wider than the window.
         int storedColumns = juce::jmax(gridColumns, placementColumns);
@@ -4070,6 +4085,17 @@ juce::var Voicer::createState() const
         gridObj->setProperty(juce::Identifier(juce::String(division.first)), juce::var(cellsObj.get()));
     }
     root->setProperty("stopGrid", juce::var(gridObj.get()));
+    // 0.9.4: the columns each division's cells were laid out over (the one-column relayout
+    // rule at the next load applies only to cells made with a single column).
+    juce::DynamicObject::Ptr columnsObj = new juce::DynamicObject();
+    for (const auto& division : stopCells)
+    {
+        if (division.second.empty() || division.first < 0 || division.first >= SamplerEngine::maxManuals) continue;
+        int columns = placementColumnsSeen[division.first];
+        if (columns <= 0) { const auto saved = savedGridColumns.find(division.first); columns = saved != savedGridColumns.end() ? saved->second : 0; }
+        if (columns > 0) columnsObj->setProperty(juce::Identifier(juce::String(division.first)), columns);
+    }
+    root->setProperty("stopGridColumns", juce::var(columnsObj.get()));
     // Stops taken off the grid ("stop pool") per division.
     juce::DynamicObject::Ptr poolObj = new juce::DynamicObject();
     for (const auto& division : hiddenStops)
@@ -4099,8 +4125,14 @@ void Voicer::loadState(const juce::File& file)
     if (auto* gridObj = parsed.getProperty("stopGrid", juce::var()).getDynamicObject())
     {
         stopCells.clear();
+        savedGridColumns.clear();
+        firstColumnCheckPending.clear();
+        if (auto* columnsObj = parsed.getProperty("stopGridColumns", juce::var()).getDynamicObject())   // 0.9.4
+            for (const auto& division : columnsObj->getProperties())
+                savedGridColumns[division.name.toString().getIntValue()] = (int)division.value;
         for (const auto& division : gridObj->getProperties())
         {
+            firstColumnCheckPending.insert(division.name.toString().getIntValue());
             auto& cells = stopCells[division.name.toString().getIntValue()];
             if (auto* cellsObj = division.value.getDynamicObject())
                 for (const auto& cell : cellsObj->getProperties())

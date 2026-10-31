@@ -2068,6 +2068,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   form carrying the root's NAME (all locations, their neighbourhood, the drives) precedes every bare form. The
   log tells such a case: "Sample location remembered: <somewhere else>" + a tree line with more bytes/copies than
   the folder has (0.07 GB and 14 copies for a 9-file folder). RULE: a folder NAME alone never outranks the root's name.
+  0.9.4 (31 Oct 2026): GRID ONE-COLUMN RULE (the user: four stops dragged under each other, the LAST drop re-laid them
+  side by side): `Voicer::rebuildUI`'s "every item in column 0 while >= 2 columns fit -> lay out afresh" (meant for a
+  layout made in a narrow window) erased every cell as soon as the last drop completed the column. Now: the voicing
+  state carries "stopGridColumns" {division: the columns the last layout placed it over} (`placementColumnsSeen`,
+  `savedGridColumns`); the rule runs ONCE per loaded file (`firstColumnCheckPending`, set in loadState, cleared at the
+  first judgement - never after a drop of the session), only when the file says one column or nothing (an old file),
+  and it SPREADS the items in their row order instead of erasing (log "Grid of division N: ... spread over K columns").
+  Test %TEMP%\test_grid094.ps1 -Columns 0|2 (Rural's pedal stacked: spread / kept). RAM GB cell: one decimal below
+  10 GB, whole GB rounded up from 10 (the user's figure).
   0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
   from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
   took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is

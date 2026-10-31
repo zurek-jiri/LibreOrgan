@@ -179,9 +179,11 @@ private:
             const juce::int64 installed = (juce::int64)juce::SystemStats::getMemorySizeInMegabytes() * 1024 * 1024;
             if (used > 0)
             {
-                // Whole gigabytes, rounded up, the unit in the column's label: the
-                // cell is small on a small display and "1.2 GB" did not fit.
-                ramText = juce::String((int)std::ceil((double)used / 1073741824.0));
+                // The unit is in the column's label (the cell is small on a small display).
+                // 0.9.4 (the user): one decimal place below 10 GB ("9.9"), whole gigabytes
+                // rounded up from 10 on.
+                const double gb = (double)used / 1073741824.0;
+                ramText = gb < 9.95 ? juce::String(gb, 1) : juce::String((int)std::ceil(gb));
                 ramTight = installed > 0 && free >= 0 && free < installed / 10;
             }
         }

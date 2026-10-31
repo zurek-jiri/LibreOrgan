@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.4] - 2026-10-31
+
+### Fixed
+- Grid: dragging the last stop of a division under the others into one column
+  re-laid all of them side by side (a rule meant for a layout made in a
+  narrow window). The rule now runs once per loaded file, never after a drop,
+  only when the file says its cells were made with a single column (the
+  column count is saved with the grid), and it keeps the stops' order.
+
+### Changed
+- The RAM GB cell shows one decimal place below 10 GB ("9.9"), whole
+  gigabytes from 10 on.
+
 ## [0.9.3] - 2026-10-31
 
 ### Fixed

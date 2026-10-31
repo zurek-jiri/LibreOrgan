@@ -509,6 +509,11 @@ private:
     // Stop arrangement: per division a grid cell (column, row) for every stop the
     // user has placed. Unplaced stops fill the free cells column by column.
     std::map<int, std::map<juce::String, std::pair<int, int>>> stopCells;
+    // 0.9.4: the one-column relayout rule is judged ONCE per loaded file (never after the user's own drops),
+    // and only for cells made with a single column: the columns the layout had are saved as "stopGridColumns".
+    int placementColumnsSeen[SamplerEngine::maxManuals]{};   // per division: the columns the last layout placed its items over
+    std::map<int, int> savedGridColumns;                       // per division: the columns the loaded file's cells were made with (absent = unknown)
+    std::set<int> firstColumnCheckPending;                     // divisions whose cells came from a file and were not judged yet
     bool arrangeMode = false;
     int arrangeManual = -1;
     int couplerArrangeManual = -1;   // division whose coupler buttons are being arranged (survives rebuilds)
