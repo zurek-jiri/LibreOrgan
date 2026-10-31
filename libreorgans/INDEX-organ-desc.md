@@ -38,6 +38,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Ashton Lewis Organ](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-lewis-organ&organ=ashton-lewis-organ) |
 | [Arnstadt Bach Organ](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
 | [Altenbruch, Klapmeyer Organ](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
-| [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-organ&organ=adlington-hall-organ) |
+| [Adlington Hall Organ](adlington-hall-organ/README.md) | 3 | 15 | 3.1 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-organ&organ=adlington-hall-organ) |
 
 14 configuration(s).
