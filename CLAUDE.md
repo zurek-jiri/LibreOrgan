@@ -2041,6 +2041,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   tab (InfoIcon). Anything informational is InfoIcon without a callback = the strip + Messages. Manual 5.3 has the
   "A device that is not there" bullet. NOT verified with the hardware (no card to switch off here): the paths are the
   same the log shows; the user tests it.
+  0.9.1 (31 Oct 2026, Windows): (1) IR CLEAR: `regroupReverbs` skipped a route with an empty `reverbIrFile` from the
+  groups AND the rebuild condition wanted a file, so the convolution stayed installed ("IR: none", the room went on) -
+  a cleared route with `reverb != nullptr` is rebuilt (rebuildRouteReverb with no file swaps a null in). (2) lastdir.json
+  carries `lastIrDir` / `lastFolderDir` (`lastIrDirectory`, `lastSampleFolderDirectory`): Load IR and the Load folder
+  browsers start where they were last; Load/Save Configuration start in the LibreOrgans folder (the user: "Konfigurace
+  samozřejmě musí začínat v konfiguracích", everything else remembers its own folder). (3) A SINGLE STOP FOLDER as the
+  tree (F:\temp\Principal8, WAVs named by key, no subfolders): `scanTreeAssignments`/`listSampleFolders` put the tree
+  itself among the candidates when `folderHasNumberedSamples(topFolder)` (no perspective search above the tree,
+  displayParent = the tree -> the row is named after the folder), `loadManualFolder` accepts folder == topFolder; the
+  relative path "." was handled already (refOf/placeOf/resolve). Test %TEMP%\test_lone091.ps1. (4) GCC 11 (the arm64
+  runner is ubuntu-22.04-arm): a copy-captured vector used in a nested mutable lambda is taken for const - copy it
+  (`auto planNow = plan;`) before a non-const call; the x86 Linux job (newer GCC) passed. (5) TEST HYGIENE:
+  ORGAN_TEST_COPY_INTO_CONFIGURATIONS=1 writes the copy into the USER'S LibreOrgans folder (and the hook's save leaves
+  a .bak there) - look at CreationTime and delete what the test made; a test with ORGAN_LOAD_TREE must point
+  `configurationsFolder` at a temp folder, which needs an existing settings.json (none existed in %APPDATA%\LibreOrgan).
+  (6) The checkout's folder is still OrganSampler/ on disk: commits go through a worktree on origin/main
+  (C:\Temp\lo091, branch release-0.9.1, files copied into LibreOrgan/...), commit 37c6d4f + tag v0.9.1 local, NOT pushed.
 ## Pending for the next session (delete when done)
 - THE USER'S RULE (30 Oct 2026, "nesmíme vyžadovat žádné externí závislosti, ani Visual C++ redistributable!!! To je
   zásadní!"): the released executables depend on NOTHING that is not part of a plain Windows/macOS/Linux - no VC++
