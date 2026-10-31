@@ -1,12 +1,12 @@
 # Opens the Configuration Editor with NO sample folders loaded and screenshots it
 # (%TEMP%\editor_nosample.png): the "Measure the maximum polyphony" button must
 # be greyed out. Settings backed up and restored.
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe")
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe")
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 $waited = 0
-while ((Get-Process OrganSampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+while ((Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_en_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -15,7 +15,7 @@ $json | Add-Member -NotePropertyName loadLastConfigurationAtStartup -NotePropert
 [System.IO.File]::WriteAllText($file, ($json | ConvertTo-Json -Depth 30), (New-Object System.Text.UTF8Encoding($false)))
 $env:ORGAN_OPEN_CONFIG_EDITOR = "1"
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $shot = $false
 while (((Get-Date) - $t0).TotalSeconds -lt 60 -and -not $shot)
 {
@@ -27,7 +27,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 60 -and -not $shot)
     if ($editor -and ((Get-Date) - $t0).TotalSeconds -gt 12) { Save-WindowShot $editor.Handle "$env:TEMP\editor_nosample.png" | Out-Null; $shot = $true }
 }
 "screenshot: $shot"
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force }
 $env:ORGAN_OPEN_CONFIG_EDITOR = $null

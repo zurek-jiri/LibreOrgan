@@ -1,8 +1,8 @@
-# Puts a published configuration into the "Featured" table of configurations/INDEX.md
+# Puts a published configuration into the "Featured" table of libreorgans/INDEX.md
 # or takes it out again, without Git: GitHub > Actions > "Feature a configuration" >
 # Run workflow > any part of the organ's name (the folder, the README title or the organ
 # as named at the save; case does not matter) + feature / unfeature > Run workflow.
-# One match: configurations/FEATURED.txt is edited, INDEX.md regenerated, both committed
+# One match: libreorgans/FEATURED.txt is edited, INDEX.md regenerated, both committed
 # to main; several matches: they are listed and nothing happens. (Editing FEATURED.txt
 # by hand on GitHub does the same - the index job regenerates INDEX.md on the push.)
 name: Feature a configuration
@@ -33,7 +33,7 @@ jobs:
       INPUT_ACTION: ${{ github.event.inputs.action }}
     steps:
       - uses: actions/checkout@v4
-      - name: Find the organ, edit FEATURED.txt, write configurations/INDEX.md
+      - name: Find the organ, edit FEATURED.txt, write libreorgans/INDEX.md
         shell: bash
         run: |
           set -e
@@ -52,7 +52,7 @@ jobs:
             exit 1
           fi
           folder="$(printf '%s' "$matches" | cut -d'|' -f1)"
-          list=configurations/FEATURED.txt
+          list=libreorgans/FEATURED.txt
           [ -f "$list" ] || printf '# Featured configurations: one folder name per line.\n' > "$list"
           if [ "$INPUT_ACTION" = "feature" ]; then
             if grep -qix "$folder" "$list"; then echo "$folder is featured already"; exit 0; fi

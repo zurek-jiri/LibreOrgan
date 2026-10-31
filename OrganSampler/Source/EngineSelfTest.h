@@ -11,10 +11,10 @@
 
 //==============================================================================
 // Offline engine exercise, started with:
-//     OrganSampler.exe --selftest "<division sample folder>"
+//     LibreOrgan.exe --selftest "<division sample folder>"
 // Loads the folder as division 0, plays chords/tutti/repetitions through the
 // real render path (all worker threads) and writes timing and sanity results
-// to <AppData>/OrganSampler/selftest.txt. No audio device is opened.
+// to <AppData>/LibreOrgan/selftest.txt. No audio device is opened.
 //==============================================================================
 namespace EngineSelfTest
 {
@@ -268,7 +268,7 @@ namespace EngineSelfTest
         const std::vector<juce::String>& ignoredPatterns)
     {
         juce::String report;
-        report << "OrganSampler engine self test\n";
+        report << "LibreOrgan Sampler engine self test\n";
         for (const auto& folder : folders) report << "Folder: " << folder.getFullPathName() << "\n";
         report << "CPU: " << juce::SystemStats::getCpuModel() << " (" << juce::SystemStats::getNumCpus() << " logical)\n";
         if (folders.empty()) return report + "No folders given.\n";
@@ -1666,7 +1666,7 @@ namespace EngineSelfTest
                 // Copy cache: the copies one build writes to disk, the next build reads
                 // (same parameters, same sources) - identical samples, no computing.
                 {
-                    const auto cacheDir = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("OrganSampler_selftest_cache");
+                    const auto cacheDir = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("LibreOrgan_selftest_cache");
                     cacheDir.deleteRecursively();
                     auto waitForWorkers = [&] { for (int w = 0; w < 60000 && engine.pendingBackgroundWorkers() > 0; w += 20) juce::Thread::sleep(20); };
                     // Switched on with the copies already built: they are exported at once.
@@ -1867,7 +1867,7 @@ namespace EngineSelfTest
         }
         {
             const auto wav = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("selftest.wav");
+                .getChildFile("LibreOrgan").getChildFile("selftest.wav");
             const bool recording = engine.startRecording(wav);
             for (int note = 36; note < 97; ++note) noteOnAll(note);
             BlockStats s; renderBlocks(600, s); describe("61-note tutti (massive)", s);
@@ -1905,7 +1905,7 @@ namespace EngineSelfTest
             };
             strikeThreeTimes("61-note tutti struck 3x (tails stack)");
             const auto wav2 = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("selftest-recording.wav");
+                .getChildFile("LibreOrgan").getChildFile("selftest-recording.wav");
             const bool recording2 = engine.startRecording(wav2);
             strikeThreeTimes("61-note tutti struck 3x WHILE RECORDING");
             const double seconds2 = engine.getRecordedSeconds();

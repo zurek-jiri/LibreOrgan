@@ -4,7 +4,7 @@
 # containing its name, else the heading of its section. Prints what each option
 # would open; options that only reach their section (or nothing) are flagged.
 param([string]$Dump = "$env:TEMP\organ_options.txt",
-      [string]$Manual = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\USER_MANUAL.md")
+      [string]$Manual = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\USER_MANUAL.md")
 # Explicit help sections set in the code (addRow helpSection overrides the label).
 $overrides = @{
     'Filled pipes: time stretch of the release (upwards)' = 'Filled pipes: time stretch of the release'

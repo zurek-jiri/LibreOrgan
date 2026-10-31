@@ -20,5 +20,5 @@ body:
   - type: input
     id: version
     attributes:
-      label: OrganSampler version
+      label: LibreOrgan Sampler version
       placeholder: "0.8.49"

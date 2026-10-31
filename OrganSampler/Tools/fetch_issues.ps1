@@ -1,4 +1,4 @@
-# Downloads the GitHub issues of OrganSampler - text, comments and every
+# Downloads the GitHub issues of LibreOrgan Sampler - text, comments and every
 # attachment (log zips, screenshots, configuration files) - into a local
 # folder, one subfolder per issue, so they can be read and analysed offline
 # (by a person or by a coding agent working in this repository).
@@ -18,7 +18,7 @@
 #                         issues\<number>\files\        the attachments (zips are unpacked beside them)
 #                         issues\index.md               one line per issue
 param(
-    [string]$Repo = "zurek-jiri/OrganSampler",
+    [string]$Repo = "zurek-jiri/LibreOrgan",
     [string]$State = "open",
     [string]$Label = "",
     [string]$Since = "",
@@ -56,7 +56,7 @@ function Save-Attachment($url, $folder, $index) {
     if ($name -eq "" -or $name.Length -gt 80) { $name = "attachment$index" }
     $path = Join-Path $folder $name
     try {
-        $headers = @{ "User-Agent" = "OrganSampler-fetch_issues" }
+        $headers = @{ "User-Agent" = "LibreOrgan-fetch_issues" }
         if ($token -ne "") { $headers["Authorization"] = "Bearer $token" }
         $response = Invoke-WebRequest -Uri $url -Headers $headers -MaximumRedirection 5 -OutFile $path -PassThru
         # A content type tells the extension when the URL has none (user-attachments/assets).

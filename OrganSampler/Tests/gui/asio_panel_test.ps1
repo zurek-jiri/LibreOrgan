@@ -3,10 +3,10 @@
 # Settings" dialog through UI Automation (buffer size to another value, OK),
 # and checks the activity log for the reopen with the new buffer size; then a
 # second cycle puts the original value back. Settings are backed up/restored.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 Add-Type -AssemblyName UIAutomationClient; Add-Type -AssemblyName UIAutomationTypes
-if (Get-Process OrganSampler* -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+if (Get-Process LibreOrgan* -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $file = "$appData\settings.json"
 Copy-Item $file "$env:TEMP\backup_panel_settings.json" -Force
 $json = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
@@ -17,8 +17,8 @@ $json | Add-Member -NotePropertyName uiScalePercent -NotePropertyValue 100 -Forc
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
 $env:ORGAN_OPEN_KEYBOARDS = "0"
-$exe = if ($args.Count -ge 1) { $args[0] } else { "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe" }
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$exe = if ($args.Count -ge 1) { $args[0] } else { "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe" }
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $env:ORGAN_OPEN_KEYBOARDS = $null
 $dialog = $null
 for ($i = 0; $i -lt 120 -and -not $dialog; $i++) { Start-Sleep -Seconds 1; $dialog = Get-OrganWindows $p.Id | Where-Object { $_.Title -eq 'Divisions' } | Select-Object -First 1 }
@@ -103,11 +103,11 @@ foreach ($cycle in 1, 2) {
     $results += $reopened
     Start-Sleep -Seconds 3
 }
-$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
 Add-Type -Namespace Win -Name MsgP -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr w, IntPtr l);'
 if ($main) { [void][Win.MsgP]::PostMessage($main.Handle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
-for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit OrganSampler' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit LibreOrgan Sampler' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 3
 Copy-Item "$env:TEMP\backup_panel_settings.json" $file -Force
 "settings restored identical: " + ((Get-FileHash $file).Hash -eq (Get-FileHash "$env:TEMP\backup_panel_settings.json").Hash)

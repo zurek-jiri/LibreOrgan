@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Takes the files attached to an "Organ configuration" issue and puts them into
-configurations/ as the upload pair "<Name>.zip" + "<Name>.README.md".
+libreorgans/ as the upload pair "<Name>.zip" + "<Name>.README.md".
 
 The issue body (environment variable ISSUE_BODY) holds the attachments as
 GitHub links (https://github.com/user-attachments/files/<id>/<name> or the older
@@ -9,7 +9,7 @@ expected - the configuration .json and its README inside (0.8.213; an older
 export attaches the README .md beside the zip, still accepted); GitHub puts
 dots for spaces in attachment names, so the README is renamed after the zip.
 The pair is validated (configuration_tools.py: an organ configuration of
-OrganSampler, saved portable with the organ loaded, and the README the program
+LibreOrgan Sampler, saved portable with the organ loaded, and the README the program
 wrote for it); a new version of an organ already published replaces its folder
 after the merge - only its publisher or the repository's owner may send one
 (ISSUE_AUTHOR, REPO_OWNER). The README gets the publisher's login appended as
@@ -62,7 +62,7 @@ def main():
     urls += re.findall(r'https://[^\s)\]>"\']+\.(?:zip|md)\b', body)
     urls = list(dict.fromkeys(urls))   # unique, in order
     zips, readmes = [], []
-    os.makedirs('configurations', exist_ok=True)
+    os.makedirs('libreorgans', exist_ok=True)
     for url in urls:
         name = url.rsplit('/', 1)[-1]
         lower = name.lower()
@@ -70,7 +70,7 @@ def main():
             continue
         target = os.path.join('issue-files', name)
         os.makedirs('issue-files', exist_ok=True)
-        request = urllib.request.Request(url, headers={'User-Agent': 'OrganSampler-configurations'})
+        request = urllib.request.Request(url, headers={'User-Agent': 'LibreOrgan-configurations'})
         with urllib.request.urlopen(request, timeout=60) as response, open(target, 'wb') as out:
             out.write(response.read())
         (zips if lower.endswith('.zip') else readmes).append(target)
@@ -83,7 +83,7 @@ def main():
         if inner_readme and not readmes:
             readmes.append(inner_readme)
     if len(zips) != 1 or len(readmes) != 1:
-        print('The issue must carry exactly one zip - the one OrganSampler wrote beside the portable configuration, '
+        print('The issue must carry exactly one zip - the one LibreOrgan Sampler wrote beside the portable configuration, '
               'the configuration .json and its README inside (an older export: the zip and the README .md beside it). '
               'Found: %d zip, %d .md.' % (len(zips), len(readmes)))
         return 1
@@ -97,8 +97,8 @@ def main():
         print('The attached zip cannot be used: %s' % inner)
         return 1
     base = os.path.basename(inner)[:-5] if inner.lower().endswith('.json') else os.path.basename(zips[0])[:-4]
-    zip_target = os.path.join('configurations', base + '.zip')
-    readme_target = os.path.join('configurations', base + '.README.md')
+    zip_target = os.path.join('libreorgans', base + '.zip')
+    readme_target = os.path.join('libreorgans', base + '.README.md')
     os.replace(zips[0], zip_target)
     os.replace(readmes[0], readme_target)
     problems = tools.validate(zip_target, readme_target)
@@ -118,7 +118,7 @@ def main():
     for folder in replaces:
         publisher = tools.publisher_of_folder(folder)
         if author and owner and author != owner and publisher != author:
-            warning = ('configurations/%s holds this organ already, published by %s; this version comes from @%s - merge it only if that is right.'
+            warning = ('libreorgans/%s holds this organ already, published by %s; this version comes from @%s - merge it only if that is right.'
                        % (folder, ('@' + publisher) if publisher else 'somebody before the publisher was recorded', author))
     # The publisher, for the next version and for a removal (invisible on GitHub).
     with open(readme_target, encoding='utf-8') as f:
@@ -127,7 +127,7 @@ def main():
         readme = readme.rstrip('\n') + '\n\n<!-- published by @%s (issue #%s, %s) -->\n' % (author, issue or '?', datetime.date.today().isoformat())
         with open(readme_target, 'w', encoding='utf-8', newline='\n') as f:
             f.write(readme)
-    print('configurations/%s.zip and configurations/%s.README.md -> folder %s%s'
+    print('libreorgans/%s.zip and libreorgans/%s.README.md -> folder %s%s'
           % (base, base, slug, (' (replaces ' + ', '.join(replaces) + ')') if replaces else ''))
     if warning:
         print('WARNING: ' + warning)

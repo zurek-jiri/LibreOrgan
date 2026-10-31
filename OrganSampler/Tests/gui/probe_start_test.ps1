@@ -1,8 +1,8 @@
 # Watches a start with the Stralsund configuration at an interface size (<arg1>,
 # default 160) and ORGAN_OPEN_KEYBOARDS=1: process alive, windows, log, crash files.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $file = "$appData\settings.json"
 Copy-Item $file "$env:TEMP\backup_probe_settings.json" -Force
 $percent = if ($args.Count -ge 1) { [int]$args[0] } else { 160 }
@@ -14,9 +14,9 @@ $json | Add-Member -NotePropertyName configurationFile -NotePropertyValue "F:\ha
 $d = "$appData\CrashLogs"
 $before = (Get-Content "$d\activity.log").Count
 $env:ORGAN_OPEN_KEYBOARDS = "1"
-$exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe"
+$exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe"
 $t0 = Get-Date
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 for ($i = 0; $i -lt 45; $i++)
 {
     Start-Sleep -Seconds 2
@@ -30,7 +30,7 @@ for ($i = 0; $i -lt 45; $i++)
 $env:ORGAN_OPEN_KEYBOARDS = $null
 Get-Content "$d\activity.log" | Select-Object -Skip $before | Where-Object { $_ -notmatch 'Tuning |Audio levels' } | Select-Object -Last 12 | ForEach-Object { $_.Substring(0, [Math]::Min(170, $_.Length)) }
 Get-ChildItem "$d\crash-*.txt" | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-3) } | ForEach-Object { 'CRASH FILE ' + $_.Name; Get-Content $_.FullName -TotalCount 50 }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 Copy-Item "$env:TEMP\backup_probe_settings.json" $file -Force
 'settings restored: ' + ((Get-FileHash $file).Hash -eq (Get-FileHash "$env:TEMP\backup_probe_settings.json").Hash)

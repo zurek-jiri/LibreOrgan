@@ -3,11 +3,11 @@
 # file dialog, then record what is on the SCREEN while the stop list compiles
 # (lc_<n>.png every 200 ms, screen captures of the loading dialog's area, plus the
 # dialog's PrintWindow shots lcw_<n>.png). Settings backed up and restored.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
-$appData = "$env:APPDATA\OrganSampler"
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_lc_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -18,14 +18,14 @@ $json | Add-Member -NotePropertyName uiScalePercent -NotePropertyValue 100 -Forc
 Get-ChildItem "$env:TEMP\lc_*.png", "$env:TEMP\lcw_*.png" -ErrorAction SilentlyContinue | ForEach-Object { [IO.File]::Delete($_.FullName) }
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
-$exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe"
+$exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe"
 # The configuration file is handed to the app (ORGAN_LOAD_CONFIGURATION): the
 # "Load Configuration" button then skips the native file dialog - typing a path
 # into it fails on a Czech keyboard layout (the test used to wait for a hand).
 $configPath = 'F:\haupwerk\003136\Stralsund_Jakobi_Wegscheider.json'
 $t0 = Get-Date
 $env:ORGAN_LOAD_CONFIGURATION = $configPath
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $env:ORGAN_LOAD_CONFIGURATION = $null
 $main = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 40)
@@ -34,10 +34,10 @@ while (((Get-Date) - $t0).TotalSeconds -lt 40)
     $wins = @(Get-OrganWindows $p.Id)
     $alert = $wins | Where-Object { $_.Title -match 'Audio devices not available' } | Select-Object -First 1
     if ($alert) { 'audio alert: ' + (Click-InWindow $alert.Handle ([int]($alert.W / 2)) ($alert.H - 42)) }
-    $main = $wins | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+    $main = $wins | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
     if ($main -and ((Get-Date) - $t0).TotalSeconds -gt 12) { Start-Sleep -Seconds 2; break }
 }
-if (-not $main) { 'no main window'; Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false; exit 1 }
+if (-not $main) { 'no main window'; Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false; exit 1 }
 "main $($main.W)x$($main.H) at $($main.X),$($main.Y)"
 # "Load Configuration": its centre in the top bar of the maximised window (from the screenshots).
 $x = [int](1792 * $main.W / 2559.0)
@@ -55,7 +55,7 @@ if (-not $taken)
 {
     'CONFIGURATION NOT TAKEN - the Load Configuration click did not reach the app'
     Get-OrganWindows $p.Id | ForEach-Object { "window: '$($_.Title)' $($_.W)x$($_.H)" }
-    Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+    Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
     Start-Sleep -Seconds 2
     foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force }
     exit 1
@@ -67,7 +67,7 @@ while (((Get-Date) - $tLoad).TotalSeconds -lt 150)
 {
     Start-Sleep -Milliseconds 200
     $wins = @(Get-OrganWindows $p.Id)
-    $question = $wins | Where-Object { $_.Title -match 'Load configuration|Quit OrganSampler|unsaved' } | Select-Object -First 1
+    $question = $wins | Where-Object { $_.Title -match 'Load configuration|Quit LibreOrgan Sampler|unsaved' } | Select-Object -First 1
     $loader = $wins | Where-Object { $_.Title -match 'Loading saved divisions' } | Select-Object -First 1
     if ($loader) { $seenLoader = $true }
     if (-not $committing -and (Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'Committing' -Quiet)) { $committing = $true; $tCommit = Get-Date; "committing at $([int]((Get-Date) - $tLoad).TotalSeconds) s after the file was chosen" }
@@ -84,6 +84,6 @@ while (((Get-Date) - $tLoad).TotalSeconds -lt 150)
 Start-Sleep -Seconds 2
 Get-OrganWindows $p.Id | ForEach-Object { "window at the end: '$($_.Title)' $($_.W)x$($_.H)" }
 Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'Compiling|Committing|Loading|ERROR|missing|alert' | ForEach-Object { '  ' + $_.Line.Substring(0, [Math]::Min(150, $_.Line.Length)) }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force; "$name restored identical: " + ((Get-FileHash "$appData\$name").Hash -eq (Get-FileHash $backups[$name]).Hash) }

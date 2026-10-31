@@ -27,7 +27,7 @@ function Escape-Chunks([string]$text)
 }
 
 $items = @(
-    @{ Name = 'kLicenceOrganSampler';    File = (Join-Path $Root 'ThirdParty\notices\OrganSampler-notice.txt') },
+    @{ Name = 'kLicenceLibreOrgan';    File = (Join-Path $Root 'ThirdParty\notices\LibreOrgan-notice.txt') },
     @{ Name = 'kLicenceGpl3';            File = (Join-Path $Root 'ThirdParty\licence-texts\GPL-3.0.txt') },
     @{ Name = 'kLicenceJuceNotice';      File = (Join-Path $Root 'ThirdParty\notices\JUCE-notice.txt') },
     @{ Name = 'kLicenceAgpl3';           File = (Join-Path $Root 'ThirdParty\licence-texts\AGPL-3.0.txt') },

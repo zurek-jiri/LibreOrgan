@@ -8,7 +8,7 @@
 # sample jump per 10 ms window over the median, the self-test's measure) and the
 # spectral flux (mean frame-to-frame change of the magnitude spectrum, re the
 # input's own flux) of the result. No app involved - safe to run any time.
-$src = Get-Content "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Source\SamplerEngine.cpp" -Raw
+$src = Get-Content "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Source\SamplerEngine.cpp" -Raw
 $start = $src.IndexOf('    std::vector<std::vector<float>> wsolaResize('); $end = $src.IndexOf('    std::unique_ptr<Sample> makeResampledPitchCopy(')
 if ($start -lt 0 -or $end -lt 0) { 'wsolaResize not found'; exit 1 }
 $fn = $src.Substring($start, $end - $start)

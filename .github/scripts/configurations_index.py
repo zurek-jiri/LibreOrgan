@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes configurations/INDEX.md: one line per published organ configuration -
+"""Writes libreorgans/INDEX.md: one line per published organ configuration -
 the link to its README (which says how to download it), the divisions, the
 rows of the Stop List and the perspectives, read from the configuration file
 itself. Run by the Configurations check workflow on every push to main and
@@ -15,7 +15,7 @@ import sys
 import zipfile
 from urllib.parse import quote
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'configurations')
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'libreorgans')
 
 
 def main():
@@ -116,7 +116,7 @@ def main():
     def file_for(key, descending):
         return 'INDEX.md' if (key == 'organ' and not descending) else 'INDEX-%s-%s.md' % (key, 'desc' if descending else 'asc')
     # Two tables (25 Oct 2026, the user): "Featured" - the folders listed in
-    # configurations/FEATURED.txt (one folder name per line, as in the README links;
+    # libreorgans/FEATURED.txt (one folder name per line, as in the README links;
     # "#" lines are comments; the Rural Organ demo by default) - and all the others.
     # The maintainer edits FEATURED.txt on GitHub, or runs the "Feature a
     # configuration" workflow with any part of the organ's name.
@@ -158,7 +158,7 @@ def main():
         ]
         def remove_link(folder):
             # The issue form prefilled through the query string: the field id "organ" and the title.
-            return ('[remove](https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration_remove.yml'
+            return ('[remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml'
                     '&title=%s&organ=%s)' % (quote('[Remove configuration] ' + folder), quote(folder)))
         def table(entries):
             out = ['| ' + ' | '.join(header + ['Remove']) + ' |', '|---|---:|---:|---:|---|---|']
@@ -209,7 +209,7 @@ body:
       value: |
         Tick the organ (or several) in the list and press *Submit new issue*. A robot removes the folder when you are
         the one who published it (or the maintainer), answers here and closes this issue. The list is written by the
-        robot from [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md);
+        robot from [libreorgans/INDEX.md](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md);
         the *remove* link of an organ's line there opens this form with the organ ticked. To publish a new version
         instead, send the new zip with the "Organ configuration" form: it replaces the old one by itself.
   - type: dropdown

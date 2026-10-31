@@ -1,0 +1,24 @@
+LibreOrgan Sampler - a pipe organ sampler
+Copyright (C) 2025-2026 the LibreOrgan Sampler authors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License (the next entry of this
+list) for more details.
+
+Source code and releases: the LibreOrgan Sampler repository on GitHub (the address is
+in the README that accompanies every release).
+
+Third-party software in this program:
+ - JUCE 9 framework (Raw Material Software Limited) - GNU AGPLv3
+ - Steinberg ASIO SDK 2.3.4 (Steinberg Media Technologies GmbH) - GPLv3 option;
+   ASIO is a trademark and software of Steinberg Media Technologies GmbH
+ - Signalsmith Stretch and Signalsmith Linear (Signalsmith Audio Ltd) - MIT
+
+The full texts follow in the list on the left. No samples are part of this
+program; the sample folders you play remain the property of their authors.

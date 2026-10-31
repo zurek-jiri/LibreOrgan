@@ -2,9 +2,9 @@
 # Stralsund configuration, ORGAN_OPEN_KEYBOARDS=1 opens the Settings of manual I.
 # The dialog must fit the screen and show scrollbars rather than hide its lower
 # controls. Screenshots of the dialog; settings backed up and restored.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_ds_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -15,9 +15,9 @@ $json | Add-Member -NotePropertyName configurationFile -NotePropertyValue "F:\ha
 $json | Add-Member -NotePropertyName uiScalePercent -NotePropertyValue $percent -Force
 [System.IO.File]::WriteAllText($file, ($json | ConvertTo-Json -Depth 30), (New-Object System.Text.UTF8Encoding($false)))
 $env:ORGAN_OPEN_KEYBOARDS = "1"
-$exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe"
+$exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe"
 $t0 = Get-Date
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $dialog = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 120)
 {
@@ -34,7 +34,7 @@ if ($dialog)
     Save-WindowShot $dialog.Handle "$env:TEMP\ds_dialog.png" | Out-Null
 }
 else { 'no Divisions dialog'; Get-OrganWindows $p.Id | ForEach-Object { "window: '$($_.Title)' $($_.W)x$($_.H)" } }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force; "$name restored identical: " + ((Get-FileHash "$appData\$name").Hash -eq (Get-FileHash $backups[$name]).Hash) }
 Remove-Item Env:ORGAN_OPEN_KEYBOARDS -ErrorAction SilentlyContinue

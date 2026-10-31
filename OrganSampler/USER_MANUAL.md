@@ -1,9 +1,9 @@
-# OrganSampler - User Manual
+# LibreOrgan Sampler - User Manual
 
 **PIPE ORGAN SAMPLER FOR CREATIVE MINDS.**
 **Design your console, build your stop list, perform!**
 
-OrganSampler plays sampled pipe organs: every pipe is a recording, every stop a
+LibreOrgan Sampler plays sampled pipe organs: every pipe is a recording, every stop a
 folder of recordings. The program turns any number of such folders into an
 organ with up to seven manuals and a pedal - couplers, combinations, crescendo,
 swell boxes, tremulants, a wind model, reverb per microphone perspective, and
@@ -50,11 +50,11 @@ Contents
 No organ definition file is needed: load the folders, the program proposes the
 organ, you shape it and save it as a configuration. A configuration somebody
 else published for the same samples saves you all of that: *Load
-Configuration*, choose the file, play. OrganSampler does not load Hauptwerk
+Configuration*, choose the file, play. LibreOrgan Sampler does not load Hauptwerk
 organ definitions either - it has no use for them, the organ is built from the
 sample folders. Where a definition lies beside the samples it is read for two
 things only: where the sample folders are and how the stops are arranged in the
-divisions. From that OrganSampler deduces the microphone perspectives and the
+divisions. From that LibreOrgan Sampler deduces the microphone perspectives and the
 relative volumes of the stops, the divisions and, where needed, the pipes - a
 computation of its own, beyond what the definition holds (Hauptwerk knows no
 perspectives and no relative volumes, only absolute pipe levels and
@@ -64,11 +64,14 @@ perspectives and no relative volumes, only absolute pipe levels and
 
 One executable, no installation. Download the archive of your system from the
 releases page, unpack it, put the program anywhere, start it:
-`OrganSampler-windows.zip` (Windows 10/11, 64-bit), `OrganSampler-macos.zip`
-(Apple silicon, macOS 11 or newer), `OrganSampler-macos-10.11-intel.zip`
-(Intel Macs, macOS 10.11 or newer), `OrganSampler-linux-x86_64.tar.gz`
-(`tar xzf`; Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 or newer). The window
-title shows the version.
+`LibreOrgan-windows.zip` (Windows 10/11, 64-bit), `LibreOrgan-macos.zip`
+(Apple silicon, macOS 11 or newer), `LibreOrgan-macos-10.11-intel.zip`
+(Intel Macs, macOS 10.11 or newer), `LibreOrgan-linux-x86_64.tar.gz`
+(`tar xzf`; Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 or newer),
+`LibreOrgan-linux-arm64.tar.gz` (a Raspberry Pi 4 or 5 with a 64-bit OS,
+Raspberry Pi OS Bookworm or newer - a test build, not yet tried on real
+hardware by the project; count on a few thousand pipes of polyphony and on
+the saving options of the load box). The window title shows the version.
 
 Linux: *Install menu entry and icon* at the bottom of the Configuration Editor
 puts the program into the application menu with its icon. The entry follows
@@ -122,7 +125,7 @@ Draw the stops and play.
 ### Step 7: Save
 
 *Save Configuration* writes everything - folders, stops, voicing, audio, MIDI,
-combinations, couplers, crescendo - into one file in your configurations
+combinations, couplers, crescendo - into one file in your LibreOrgans
 folder. *Load the last configuration at startup* (Configuration Editor >
 Console) opens it again next time.
 
@@ -145,15 +148,15 @@ Disks & Devices settings, or `/etc/fstab`) and point the locations there. If a
 remembered location does lie under `/run/media` and is missing at a load, the
 program mounts the disk by its label itself and says so in the activity log.
 
-**Your configurations** live in one folder: `Documents\OrganSampler\
-Configurations` (chosen anew in the Configuration Editor, *Configurations
+**Your configurations** live in one folder: `Documents\LibreOrgan\
+Configurations` (chosen anew in the Configuration Editor, *LibreOrgans
 folder*). Every import writes there, Load and Save start there; a file opened
 from elsewhere is copied there by the load box, or loaded where it is. The
 exports for publishing go into its `Publish` subfolder; recordings into
-*Recordings folder* (`AudioRecordings` beside the configurations by default).
+*Recordings folder* (`LibreRecordings` beside the configurations by default).
 
-**The settings of this computer**: `C:\Users\<you>\AppData\Roaming\OrganSampler`
-on Windows, `~/Library/OrganSampler` on macOS, `~/.config/OrganSampler` on
+**The settings of this computer**: `C:\Users\<you>\AppData\Roaming\LibreOrgan`
+on Windows, `~/Library/LibreOrgan` on macOS, `~/.config/LibreOrgan` on
 Linux. In it `settings.json`, `Locations.txt` (the sample locations and the
 chosen archives, one path per line, editable), `Patterns.json` (your folder
 name patterns), the archive indexes, the filled pipes cache, the activity log
@@ -178,25 +181,25 @@ from one of them: the others with a name like it are read too.
 
 ### A configuration published on GitHub
 
-Download the zip from `configurations/INDEX.md` of the project, *Load
+Download the zip from `libreorgans/INDEX.md` of the project, *Load
 Configuration*, choose the zip as it is: the configuration inside is copied
-into your configurations folder and loaded. The samples are looked for in your
+into your LibreOrgans folder and loaded. The samples are looked for in your
 sample locations; on a computer that knows none yet, "Sample folders not
 found" shows the way.
 
 ### A Hauptwerk organ already installed
 
 *Load Configuration*, choose the organ definition in Hauptwerk's
-`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`). OrganSampler does
+`OrganDefinitions` folder (`<organ>.Organ_Hauptwerk_xml`). LibreOrgan Sampler does
 not load the definition - it builds the organ from the sample folders, as
 always. The definition is read for two things only: where the sample folders
-are and how the stops are arranged in the divisions. From that OrganSampler
+are and how the stops are arranged in the divisions. From that LibreOrgan Sampler
 deduces the microphone perspectives and the relative volumes of the stops, the
 divisions and the pipes - its own computation, which the definition does not
 hold (Hauptwerk knows no perspectives and no relative volumes, only absolute
 pipe levels and "stop-ranks") - and the rest - the pipes, their pitch, footage
 and tuning - comes from the folders themselves. The result is an
-OrganSampler configuration in your configurations folder, which you shape and
+LibreOrgan Sampler configuration in your LibreOrgans folder, which you shape and
 save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:
 [Hauptwerk import rules](#104-hauptwerk-import-rules).
 
@@ -243,7 +246,7 @@ A configuration is one file holding the whole instrument. *Save Configuration*
 and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for
 the folder paths and the stop arrangement only; the perspectives and the
-relative volumes are OrganSampler's own deduction, the organ is built from the
+relative volumes are LibreOrgan Sampler's own deduction, the organ is built from the
 folders). A configuration with unsaved
 changes asks at quit or at the next load: *Save*, *Don't Save* or *Cancel*.
 Before the samples load, a box asks how they are to be held in RAM (storage,
@@ -276,7 +279,7 @@ and your name; the README is written by the program.
 Then *Publish on GitHub*: the form opens in your browser with the title and the
 organ filled in, the `Publish` folder beside it - drag the zip into the form
 and submit. A robot checks it and proposes it; after the merge the organ is a
-line of `configurations/INDEX.md`. A new version replaces the old one.
+line of `libreorgans/INDEX.md`. A new version replaces the old one.
 
 ### Merging another configuration into the loaded organ
 
@@ -884,7 +887,7 @@ while it has a device; leave it at *none* otherwise - then it costs nothing.
 
 ## 5.5 Sound cards on Windows, Linux and macOS
 
-OrganSampler plays through **several sound cards at the same time**, every
+LibreOrgan Sampler plays through **several sound cards at the same time**, every
 route on the device you choose, and can mix kinds of driver in one organ.
 
 ### Audio on Windows
@@ -1046,7 +1049,7 @@ the header). The bindings are part of the configuration.
 
 *Record* in the top bar records the stereo mix to a WAV file; click again to
 stop (a short fade ends it). The file dialog starts in *Recordings folder*
-(Configuration Editor > Console; `AudioRecordings` beside the configurations
+(Configuration Editor > Console; `LibreRecordings` beside the LibreOrgans
 folder by default).
 
 ---
@@ -1525,15 +1528,15 @@ every route, on the way to the driver - logs it with the route and stage and
 shows "!N" in orange in the DSP cell. A few microseconds per period. "The
 discontinuity detector".
 
-### Configurations folder
+### LibreOrgans folder
 
-Where configurations live (`Documents\OrganSampler\Configurations` by
+Where configurations live (`Documents\LibreOrgan\LibreOrgans` by
 default): every import and save goes there, Load starts there. *Choose...*
 picks another; the path stands after the button.
 
 ### Recordings folder
 
-Where *Record* writes its files (`AudioRecordings` beside the configurations
+Where *Record* writes its files (`LibreRecordings` beside the LibreOrgans
 folder by default). *Choose...* picks another.
 
 ### Sample and IR locations
@@ -1760,7 +1763,7 @@ start, move `settings.json` away and it starts clean.
 
 *Report a problem...* at the top of the Configuration Editor asks what
 happened and how to reproduce it. *Create the report and open GitHub* writes
-a folder `OrganSampler-report-<date>` into `Reports` in the settings folder
+a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder
 with `logs.zip` (the activity log, the crash reports, `settings.json`, the
 last self-test, `system.txt` with the computer and every audio route - no
 samples, no voicing) and screenshots of every open window, then opens the
@@ -1773,7 +1776,7 @@ days later.
 
 ## 9.4 Free software, licences, platforms
 
-OrganSampler is free software under the GNU GPL v3; the source is on GitHub
+LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub
 and every release is built there. *About & licences...* shows the program's
 licence and those of the software it contains: JUCE (AGPLv3), the Steinberg
 ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies
@@ -1790,7 +1793,7 @@ The chapters above link here. Nothing in this part is needed to play.
 ## 10.1 The smpl chunk and the file names
 
 The smpl chunk is a small block inside a WAV file that samplers use; most
-audio editors can write it. OrganSampler reads: *MIDI unity note*
+audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*
 (dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),
 *MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction
 of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four
@@ -1863,16 +1866,16 @@ expect, else the box refuses it; the other missing trees are looked for at
 the same place under the new prefix, then by their tails.
 
 The relocation of a whole library: keep every tree of an organ under one
-root; the root's parent is what the program remembers. The configurations
+root; the root's parent is what the program remembers. The LibreOrgans
 folder can be moved as a whole: nothing in it points at its own place.
 
 ## 10.4 Hauptwerk import rules
 
-OrganSampler does not load a Hauptwerk organ definition: nothing of it runs
+LibreOrgan Sampler does not load a Hauptwerk organ definition: nothing of it runs
 here, and the program would have no use for it - the organ is built from the
 sample folders, exactly as from a tree loaded by hand. A definition is read for
 two things only, where the sample folders are and how the stops are arranged in
-the divisions. From that OrganSampler deduces the microphone perspectives and
+the divisions. From that LibreOrgan Sampler deduces the microphone perspectives and
 the relative volumes of the stops, the divisions and the pipes: that is its
 own computation, beyond the definition - Hauptwerk knows neither perspectives
 nor relative volumes, it has absolute pipe levels and "stop-ranks" only. The
@@ -1918,7 +1921,7 @@ reference along (voicing, grid, combinations, crescendo, MIDI); a note in
 Messages says so, and Save Configuration keeps the new names. A capital follows a division mark
 ("P. Trombone 16", "G.O. Trompette 8", "ped subbass" -> "Ped Subbass").
 Transpositions come from the definition's pipe notes against the file names
-("024" on key 36 gives -12). The configuration goes into the configurations
+("024" on key 36 gives -12). The configuration goes into the LibreOrgans
 folder as `<organ>.json`; the folder above `OrganInstallationPackages` is
 noted as a sample location. An import report with everything the plan
 decided is written to `ImportReports` in the settings folder.
@@ -2113,8 +2116,8 @@ configuration) with `settings-<date>.json` snapshots; `Locations.txt`;
 `Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);
 `CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;
 `ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*
-without a file. In the configurations folder: `<organ>.json` and its
-`.json.bak`, `Publish/` with the exports, `../AudioRecordings` by default.
+without a file. In the LibreOrgans folder: `<organ>.json` and its
+`.json.bak`, `Publish/` with the exports, `../LibreRecordings` by default.
 A configuration file holds only what the instrument uses now - the divisions
 in use, the routes that exist and their settings; a route no stop plays
 through has no tab and no device. Paths are stored with "/"; every path under

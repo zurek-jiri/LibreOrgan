@@ -1,7 +1,24 @@
-# OrganSampler - rules for every session (Windows and Linux)
+# LibreOrgan Sampler - rules for every session (Windows and Linux)
 
-The user writes Czech; answer in Czech; append a closing report to `OrganSampler/CLAUDE_REPORTS.md`
-(the copy on the NTFS disk: `F:\JUCE_PROJEKTY\OrganSamplerC` = `/mnt/pracovni/JUCE_PROJEKTY/OrganSamplerC`).
+The user writes Czech; answer in Czech; append a closing report to `LibreOrgan/CLAUDE_REPORTS.md`
+(the copy on the NTFS disk: `F:\JUCE_PROJEKTY\LibreOrgan` = `/mnt/pracovni/JUCE_PROJEKTY/LibreOrgan`).
+
+## The name (0.9.0, 31 Oct 2026 - the user: "OrganSampler" is an old VST on GitHub, never repeat that name)
+- The program is **LibreOrgan Sampler** in every title and text (window title, manual, README, website, dialogs);
+  EVERYTHING ELSE is **LibreOrgan**: the repository `zurek-jiri/LibreOrgan` (renamed through the API on 31 Oct 2026;
+  GitHub redirects the old URL), the website `zurek-jiri.github.io/LibreOrgan`, the executables and release archives
+  (`LibreOrgan.exe`, `LibreOrgan.app`, `LibreOrgan-windows.zip`, `LibreOrgan-macos.zip`, `LibreOrgan-macos-10.11-intel.zip`,
+  `LibreOrgan-linux-x86_64.tar.gz`, `LibreOrgan-linux-arm64.tar.gz`), the settings folder (`%APPDATA%\LibreOrgan`,
+  `~/.config/LibreOrgan`, `~/Library/LibreOrgan`), the project folder `LibreOrgan/` with `LibreOrgan.jucer`,
+  `LibreOrgan_icon.ico`, `Source/Icons/LibreOrgan.icns`, the CMake target/project `LibreOrgan`, the bundle id
+  `org.libreorgan.sampler`, the Linux entry `libreorgan.desktop` / `~/.local/bin/libreorgan-start` / pixmap
+  `libreorgan.png` / WM_CLASS `libreorgan`, the local exe `C:\LibreOrgan\LibreOrgan_<version>.exe`, the Linux clone
+  `~/LibreOrgan-linux`, the binary `~/Downloads/LibreOrgan`. "Everywhere Libre" (the user): the user's organs live in
+  `Documents\LibreOrgan\LibreOrgans` (exports in its `Publish`), the recordings in `Documents\LibreOrgan\LibreRecordings`,
+  the Editor row reads "LibreOrgans folder", and the published organs of the repository are in `libreorgans/` (INDEX.md,
+  the robots, the forms, the `raw/main/libreorgans/<slug>/` links). No migration of anything: nobody used the old name
+  but the user (he deletes the old folders himself). The old notes below keep their version numbers; the renaming was
+  done by %TEMP%\rename_libreorgan.py (ordered regex rules: identifiers -> LibreOrgan, prose -> LibreOrgan Sampler).
 
 ## "go" and the to-do list
 - THE USER'S RULE (26 Oct 2026): "go" means "continue, I have topped up the money" - never "do this one item now".
@@ -15,18 +32,18 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   named folders) dates from the first commit, not from a session - before blaming a session, `git blame` the line.
 
 ## Icons - do not touch without asking
-- The icon set is one per size and lives in git: `OrganSampler/Source/Icons/icon-{16,24,32,48,64,128,256}.png`
-  (16-128 hand-tuned: outlines, the smallest with thick pipes; 256 the picture), `OrganSampler/Source/AppIcon.png`
-  (1024, the website picture), `OrganSampler/OrganSampler_icon.ico` (all seven sizes, PNG entries),
-  `OrganSampler/Source/Icons/OrganSampler.icns` (sixteen entries: the classic RLE types is32/il32/ih32/it32 with
+- The icon set is one per size and lives in git: `LibreOrgan/Source/Icons/icon-{16,24,32,48,64,128,256}.png`
+  (16-128 hand-tuned: outlines, the smallest with thick pipes; 256 the picture), `LibreOrgan/Source/AppIcon.png`
+  (1024, the website picture), `LibreOrgan/LibreOrgan_icon.ico` (all seven sizes, PNG entries),
+  `LibreOrgan/Source/Icons/LibreOrgan.icns` (sixteen entries: the classic RLE types is32/il32/ih32/it32 with
   their masks for 16/32/48/128 - the Finder of macOS 10.7-10.13 shows PNG data in `icp4`/`icp5` as pixel garbage,
   so those two are never written - and PNG ic07-ic14 for 128-1024 and the @2x sizes; built by
-  `python OrganSampler/Tools/make_icns.py OrganSampler/Source/Icons OrganSampler/Source/AppIcon.png
-  OrganSampler/Source/Icons/OrganSampler.icns` from icon-16..512.png + AppIcon.png), `site/assets/icon.png` (= AppIcon).
+  `python LibreOrgan/Tools/make_icns.py LibreOrgan/Source/Icons LibreOrgan/Source/AppIcon.png
+  LibreOrgan/Source/Icons/LibreOrgan.icns` from icon-16..512.png + AppIcon.png), `site/assets/icon.png` (= AppIcon).
 - JUCE (CMake and Projucer alike) would rescale two of them into blurred icons: `CMakeLists.txt` overwrites JUCE's
   generated `icon.ico` / `AppIcon.icns` with ours after `juce_add_gui_app`; the jucer's VS exporter copies the .ico
   by `postExportShellCommandWin`, which `Projucer --resave` does NOT run - after a resave on Windows copy
-  `OrganSampler/OrganSampler_icon.ico` over `OrganSampler/Builds/VisualStudio2026/icon.ico` by hand.
+  `LibreOrgan/LibreOrgan_icon.ico` over `LibreOrgan/Builds/VisualStudio2026/icon.ico` by hand.
 - Never replace the icons by a rescaled or "improved" set. If a picture changes, rebuild the 256/1024 entries
   only and keep 16-128 as they are. Linux (menu entry, window icon) uses the same files.
 
@@ -35,11 +52,11 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   mi tokeny zbytečně."): commit every version LOCALLY (the Linux clone / the Windows checkout), but push main and
   the tag only for the FINAL version of a session, or when he says so - not a release per fix, no CI watch per
   version. Each pushed version still gets its own tag and release as before.
-- Every delivered build is a new version. Bump it in ALL of: `OrganSampler/OrganSampler.jucer` (`version=`),
+- Every delivered build is a new version. Bump it in ALL of: `LibreOrgan/LibreOrgan.jucer` (`version=`),
   `CMakeLists.txt` (`project(... VERSION ...)`), `site/config.js` (`version:` - app.js writes it into the page),
-  `site/index.html` (`data-version` spans), `configurations/rural-organ/README.md` ("Saved with OrganSampler ..."),
-  `OrganSampler/CHANGELOG.md`. Before tagging, grep the previous version string over the repo (CHANGELOG excepted).
-- Regenerate `OrganSampler/Source/ManualData.h` after any manual edit: `python OrganSampler/Tools/generate_manual_data.py`.
+  `site/index.html` (`data-version` spans), `libreorgans/rural-organ/README.md` ("Saved with LibreOrgan Sampler ..."),
+  `LibreOrgan/CHANGELOG.md`. Before tagging, grep the previous version string over the repo (CHANGELOG excepted).
+- Regenerate `LibreOrgan/Source/ManualData.h` after any manual edit: `python LibreOrgan/Tools/generate_manual_data.py`.
 - Commit (plain commit messages: no Co-Authored-By trailer, no assistant name anywhere in the repository - the
   user is the only contributor), push, tag `v<version>`; CI builds Windows,
   macOS (Apple silicon, macOS 11+), Intel macOS 10.11+ and Linux and publishes a pre-release; the release job deletes
@@ -47,8 +64,8 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   named for samples; never "sample set" - say sample folders / folder tree.
 - Intel macOS build (10.11+): never add `-D_LIBCPP_DISABLE_AVAILABILITY` (it makes the binary import libc++
   symbols of the build machine's macOS - dyld "Symbol not found" on 10.12-10.14). After each release download
-  `OrganSampler-macos-10.11-intel.zip` into a fresh temp folder and run
-  `python -I OrganSampler/Tools/check_macho_imports.py <app>/Contents/MacOS/OrganSampler`: it must end with
+  `LibreOrgan-macos-10.11-intel.zip` into a fresh temp folder and run
+  `python -I LibreOrgan/Tools/check_macho_imports.py <app>/Contents/MacOS/LibreOrgan`: it must end with
   "late symbols: 0".
 - Windows commit messages: write the message to a file WITHOUT BOM (`[IO.File]::WriteAllText(path, text)`) and
   `git commit -F <file>`; `-F -` with a here-string does not work in PowerShell 5.1 (the text becomes pathspecs,
@@ -56,15 +73,15 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   a BOM to the subject line. Tag only after `git log -1` shows the new commit.
 - Windows: `git` is not on PATH - use Visual Studio's
   (`C:\Program Files\Microsoft Visual Studio\18\Community\...\Team Explorer\Git\cmd\git.exe`); after pulling,
-  run `C:\JUCE9\Projucer.exe --resave "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\OrganSampler.jucer"` with the
+  run `C:\JUCE9\Projucer.exe --resave "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\LibreOrgan.jucer"` with the
   ABSOLUTE path and copy the .ico (above) (with a relative path the resave prints nothing and writes nothing - four
   tries in 0.8.145; check `versionString` in `JuceLibraryCode/JuceHeader.h`, it must print "Finished saving"), commit the regenerated
-  `Builds/VisualStudio2026` and `JuceLibraryCode`. Linux clone: `~/OrganSamplerC-linux` (git cannot run on the NTFS
-  checkout from Linux); Linux builds come from CI only: `OrganSampler-linux-x86_64.tar.gz`, unpacked to
-  `~/Downloads/OrganSampler`. Releases carry the native archive of each system, never a bare executable (0.8.110):
-  `OrganSampler-windows.zip` (OrganSampler.exe inside), `OrganSampler-macos.zip` / `OrganSampler-macos-10.11-intel.zip`
-  (the app), `OrganSampler-linux-x86_64.tar.gz` (keeps the executable bit); names without a version. On Linux `gh` is NOT on
-  PATH: use `~/tools/gh/bin/gh` (export PATH="$HOME/tools/gh/bin:$PATH"); never run `~/Downloads/OrganSampler` with
+  `Builds/VisualStudio2026` and `JuceLibraryCode`. Linux clone: `~/LibreOrgan-linux` (git cannot run on the NTFS
+  checkout from Linux); Linux builds come from CI only: `LibreOrgan-linux-x86_64.tar.gz`, unpacked to
+  `~/Downloads/LibreOrgan`. Releases carry the native archive of each system, never a bare executable (0.8.110):
+  `LibreOrgan-windows.zip` (LibreOrgan.exe inside), `LibreOrgan-macos.zip` / `LibreOrgan-macos-10.11-intel.zip`
+  (the app), `LibreOrgan-linux-x86_64.tar.gz` (keeps the executable bit); names without a version. On Linux `gh` is NOT on
+  PATH: use `~/tools/gh/bin/gh` (export PATH="$HOME/tools/gh/bin:$PATH"); never run `~/Downloads/LibreOrgan` with
   made-up flags such as `--version` - it starts the program.
 
 ## Configurations and paths
@@ -82,14 +99,14 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   disabled"), so the way is the issue form `organ_configuration.yml` (label `configuration`): the workflow
   `configuration-issue.yml` takes the attached `<Name>.zip` + `<Name>.README.md` from the issue body
   (`.github/scripts/configuration_from_issue.py`), runs `.github/scripts/configurations_check.sh`, pushes
-  the flat pair into `configurations/` on branch `configuration/issue-<n>` and opens the pull request
+  the flat pair into `libreorgans/` on branch `configuration/issue-<n>` and opens the pull request
   (closes the issue on merge), answering in the issue on success or failure. The check accepts that flat
-  pair; after the merge the `index` job moves it into `configurations/<slug>/` (README.md + zip) and
+  pair; after the merge the `index` job moves it into `libreorgans/<slug>/` (README.md + zip) and
   regenerates INDEX. `.github/PULL_REQUEST_TEMPLATE.md` is the checklist for hand-made pull requests.
   Repository setting needed (set 15 Oct 2026 via the API, `actions/permissions/workflow`): "Allow GitHub
   Actions to create and approve pull requests" ON - without it `gh pr create` fails with "GitHub Actions is
   not permitted to create or approve pull requests". The label `configuration` must exist (it does).
-- `configurations/<organ>/` holds exactly two files: the zipped `.json` and `README.md`. No IR files, no pictures,
+- `libreorgans/<organ>/` holds exactly two files: the zipped `.json` and `README.md`. No IR files, no pictures,
   no bare `.json`, nothing else (impulse responses belong to the sample folders); the CI check refuses anything else.
 - Transmissions grouped under a stop folder are NOT table rows: they live in the source stop's voicing entry
   (`voicingSettings.stops[].transmissions[]` with `groupMaster`). Search there before claiming they are gone.
@@ -100,9 +117,9 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
 - THE USER'S RULE FOR EVERY TEXT (30 Oct 2026, "musíme jasně deklarovat, že neloudujeme HW ODF!!! ... A vždycky už se to
   bude takhle říkat!" - the producer of the sets is angry at programs that load their definitions): wherever the manual,
   README, website, release body, dialogs, tooltips or the import report mention a Hauptwerk organ definition, say that
-  OrganSampler does NOT load it (it has no use for it: the organ is built from the sample folders), that the definition
+  LibreOrgan Sampler does NOT load it (it has no use for it: the organ is built from the sample folders), that the definition
   is read for TWO things only - where the sample folders are and how the stops are arranged in the divisions - that the
-  microphone PERSPECTIVES and the RELATIVE VOLUMES of stops, divisions and pipes are OrganSampler's OWN DEDUCTION (the
+  microphone PERSPECTIVES and the RELATIVE VOLUMES of stops, divisions and pipes are LibreOrgan Sampler's OWN DEDUCTION (the
   user, 30 Oct 2026: "Hauptwerk nezná perspektivy a nezná relativní hlasitosti, ten má pouze absolutní hlasitost píšťal a
   všecko je pro něj stoprank" - here we go beyond Hauptwerk), and that everything else comes from the folders. Never
   write "imports/loads the ODF" or "opens as a configuration" without that frame. Done in 0.8.253 (manual 1.1, 1.6,
@@ -124,8 +141,8 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   divisions by number; shared folders -> stop not added; same name -> "(2)"; new perspectives bring their routes;
   empty division takes the added keys/MIDI; couplers/combinations/crescendo/temperament/global stay; free RAM
   (`availablePhysicalMemoryBytes`) vs 0.7 x WAV bytes of the new trees, refused when short; result as a message.
-  Dev check without the GUI: `OrganSampler.exe --hauptwerk "<odf>"` prints the parse and the plan (also to
-  `%APPDATA%\OrganSampler\hauptwerk.txt`); the in-app path is `ORGAN_LOAD_CONFIGURATION=<odf>` + `ORGAN_DUMP_STOPLIST=`.
+  Dev check without the GUI: `LibreOrgan.exe --hauptwerk "<odf>"` prints the parse and the plan (also to
+  `%APPDATA%\LibreOrgan\hauptwerk.txt`); the in-app path is `ORGAN_LOAD_CONFIGURATION=<odf>` + `ORGAN_DUMP_STOPLIST=`.
   Stralsund (3135+3136) must give trees `00313x/pipe/{PE,HW,OW,UW}`, 13+14+12+12 stops, patterns Direct/Diffuse/Rear.
   0.8.118: the way is stop > StopRank rows (h/i/j = first key, count, increment) > rank > folder. A rank belongs to the
   stop that plays it with increment 0; a stop whose rows borrow one other stop's ranks with one increment is an
@@ -257,7 +274,7 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   edge (Stop List buttons unreachable by wheel). `showLongMessage(title, body)` = `LongMessageComponent` (read-only
   editor + OK, `placeDialog` key "longMessage") for the Hauptwerk summary; the polyphony report uses the same component.
   Save prompt = Save / Don't Save / Cancel ("Save As..." without a file). Linux window icon = icon48 (X11 takes one
-  image); the desktop-entry installer also writes ~/.local/share/pixmaps/organsampler.png (48) for antiX-like WMs.
+  image); the desktop-entry installer also writes ~/.local/share/pixmaps/libreorgan.png (48) for antiX-like WMs.
   0.8.137 device-thread profile (while `gVoiceProfiling`): `renderRoute` laps `statRouteTake/Loop/Compact/Separation/
   Reverb/Clip/Record/Stats` (profiling clock, ten reads per route callback), the pool fills `tlPoolOwnTicks` (the
   poster's own chunks) and `tlPoolWaitTicks` (the rest of pool->render: waiting for lanes, merging their scratch),
@@ -402,7 +419,7 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   0.8.150 WAYLAND (the AMD KDE box runs Plasma 6.6 on Wayland, XDG_SESSION_TYPE=wayland): the X11 `_NET_CLIENT_LIST`
   holds XWayland windows only (Dolphin/Firefox invisible, "windows seen:" empty) and an XWayland client cannot place
   itself - KWin's placement put the report box in the top-left corner (and that is the user's "miniature Configuration
-  Editor in the corner" too, most likely). `LinuxWindowPlacement::placeThroughKWin`: a JS file in ~/.config/OrganSampler
+  Editor in the corner" too, most likely). `LinuxWindowPlacement::placeThroughKWin`: a JS file in ~/.config/LibreOrgan
   loaded over D-Bus (`gdbus call --session --dest org.kde.KWin --object-path /Scripting --method
   org.kde.kwin.Scripting.loadScript <file> <name>` -> "(N,)" - gdbus prints the int32 WITHOUT a type word; 0.8.150
   looked for "int32 N", took every answer for a refusal and fell back to X11 (fixed 0.8.151: the number after "(" is
@@ -530,10 +547,10 @@ The user writes Czech; answer in Czech; append a closing report to `OrganSampler
   Dev hook `ORGAN_TEST_CLICK="<button text>|..."` (MainComponent.cpp, with the other hooks): the named console
   buttons `triggerClick()`ed 3 s after the start, 2 s apart (Wayland has no xdotool; /tmp/test_click.sh) - verified
   0.8.173: "Couplers..." opens centred on the main window and stays. 0.8.174 TEXTS: the website (site/index.html),
-  README.md, the release body in build.yml, configurations/README.md and the Rural Organ README said "unpack it -
+  README.md, the release body in build.yml, libreorgans/README.md and the Rural Organ README said "unpack it -
   Unpack archive button" and "300 000 voices" long after 0.8.157 (RAR read in place: Load Configuration opens the
   .rar) and 0.8.146 (500 000); the README said 950 MB for a 725 MB demo. When a feature changes what the user DOES
-  (loading, unpacking, limits), grep the site, README, build.yml body and configurations/*README* in the same session.
+  (loading, unpacking, limits), grep the site, README, build.yml body and libreorgans/*README* in the same session.
   0.8.175 (Windows): HintSheen::follow(buttons, arrowFromAbove) paints, beside the band, a golden half-transparent
   arrow sliding 90 px towards the button (eased, alpha sin(pi p) x 0.6) - from below on the console's top row, from
   above on the Stop List's "Load folder..." (StopListDialog::loadHint, visible while 
@@ -568,7 +585,7 @@ ows.empty() && active(),
   (ensureRoute). Never judge sync by the mp4 alone: compare audio.wav seconds with the frames' span first.
   GITHUB VIDEO: a README renders a player only for a video uploaded through GitHub's web UI (user-attachments URL);
   a repo file or a Pages URL is a link - the user drags the mp4 into an issue comment and gives the URL. A free
-  account takes videos up to 10 MB ("Failed to upload" above): make_video's organsampler-github.mp4 (1280 px, crf 30,
+  account takes videos up to 10 MB ("Failed to upload" above): make_video's libreorgan-github.mp4 (1280 px, crf 30,
   64 kbps AAC, 7.1 MB) is the one to upload; the README holds
   https://github.com/user-attachments/assets/28361fcc-1bc5-4f94-ba3f-d0d28406af0a (the out20 video, 26 Oct 2026) on a
   line of its own; the GIF is gone from the repo (15 MB, no longer shown).
@@ -605,17 +622,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   10 2/3', "1 1/2" = 1 1/3'; no rank of 3'/6'/12' exists) - ootageFromName maps the parsed feet before the semitone
   count; the caption still shows the name's text ("Nasat 3'") for an untransposed stop and the MEASURED footage once
   transposed. "CH RohrNasat 3" (files sounding 1 1/3' on their numbers) got -14 before, -12 now like the rest of the
-  set (the Aeolian files are numbered 024 = key 36 on every stop). Commits from ~/OrganSamplerC-linux (the NTFS checkout edited,
+  set (the Aeolian files are numbered 024 = key 36 on every stop). Commits from ~/LibreOrgan-linux (the NTFS checkout edited,
   files copied over); NO Projucer resave on Linux - do it on Windows next (the VS2026 files lag 0.8.165).
-  `OrganSampler/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
+  `LibreOrgan/CLAUDE_REPORTS.md` is GITIGNORED (local only, never committed): a `git add` naming it fails, and a
   chained `add && commit; ... && git tag` then tagged the OLD commit (v0.8.169 first landed on 83e888a: the run
   cancelled, the tag deleted and re-pushed on 5685fd9). Never chain the tag after the commit in one command: tag in
   a separate step after `git log -1` shows the new commit, on Linux as on Windows.
   24 Oct 2026 (0.8.179): a push to main was REJECTED - the "Configurations check" index job commits to main by itself
-  after any change under configurations/ (the old Stralsund folder removed -> "INDEX.md regenerated" on origin) - and
+  after any change under libreorgans/ (the old Stralsund folder removed -> "INDEX.md regenerated" on origin) - and
   the tag push went through, so v0.8.179 pointed at a commit off main (the 0.8.147 situation again). Resolved by a MERGE
   (`git pull --no-rebase`), never a rebase, so the tag stays an ancestor of main. Always `git fetch` + `git status -sb`
-  before a push that follows a configurations/ change, and push main BEFORE tagging.
+  before a push that follows a libreorgans/ change, and push main BEFORE tagging.
   0.8.164 FULL KERNEL FOR HIGH PIPES (the user: the foreign tone BELOW a retuned high tone is not a beat; "440 on
   is essential"; the slider must reach very low for people with CPU to spare): `Voice::fullKernel` set at every voice
   start by `wantsFullKernel(rank, pipe)` (sounding Hz from pipe + footageSemitones + sampleOffset, like fadeScale,
@@ -805,7 +822,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ENDARC; split before/after -> `Entry::pieces` {volume, headerOffset/Length, dataOffset/Length}; per volume the
   main block and the end block offsets; `solid`, `stored` (RAR4 method 0x30 / RAR5 method 0), `encrypted` (RAR4
   FHD_PASSWORD, RAR5 extra record 1, CRYPT block -> refused), RAR4 unicode names ported from libarchive's
-  decoder). Cache `%APPDATA%\OrganSampler\ArchiveIndex\<hash>.idx` v2 ("V main|end" per volume, "D path",
+  decoder). Cache `%APPDATA%\LibreOrgan\ArchiveIndex\<hash>.idx` v2 ("V main|end" per volume, "D path",
   "F order|size|stored|encrypted|pieces|path"), keyed by the first volume's size+mtime; written through a
   MemoryOutputStream (a juce::String appended 18 000 times took MINUTES - O(n^2)). READING: `readEntryAlone` - a
   stored file straight from the volumes; a packed one through libarchive fed by `VirtualStream` with the file's
@@ -892,7 +909,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0.8.149 (Linux): `AfterReportWindow` (MainComponent.cpp, modeless DialogWindow, always on top, `gAfterReportBox`)
   replaces the modal AlertWindow after a report (#58 keyboard, #67 invisible blocker behind the main window on KDE,
   #64 macOS buttons shrunk: the System Events fallback resized OUR front window - now skipped when the frontmost app
-  is OrganSampler/Finder/empty; `AfterReportWindow::resized` puts its size back). `ORGAN_TEST_REPORT_WINDOWS=<folder>`
+  is LibreOrgan/Finder/empty; `AfterReportWindow::resized` puts its size back). `ORGAN_TEST_REPORT_WINDOWS=<folder>`
   shows the box + placement 4 s after the start (open the folder and a browser by hand first). LinuxWindowPlacement:
   `wmSupports("_NET_MOVERESIZE_WINDOW")` -> EWMH message alone, else XMoveResizeWindow (never both); file manager by
   class when the title lacks the folder; the note lists the windows seen. `HauptwerkOdf::spelledAsOnDisk` (rank
@@ -1063,8 +1080,8 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   REMOVING a published configuration (24 Oct 2026, the user: "musĂ­m mĂ­t jednoduchou moĹľnost na GitHubu"): the workflow
   `.github/workflows/configuration-remove.yml` ("Remove a configuration", workflow_dispatch with the input `folder`):
   Actions > Remove a configuration > Run workflow > the folder's name as in INDEX.md > Run. It `git rm`s
-  configurations/<folder>, runs configurations_index.py, commits and pushes to main (refuses rural-organ, paths with
-  "/" or "..", and a folder that does not exist - it lists the folders). Documented in configurations/README.md.
+  libreorgans/<folder>, runs configurations_index.py, commits and pushes to main (refuses rural-organ, paths with
+  "/" or "..", and a folder that does not exist - it lists the folders). Documented in libreorgans/README.md.
   0.8.180 (the user: "proÄŤ se ztratilo dvouĹ™ĂˇdkovĂ© loading"): NOT a regression in the code - `git log -S` shows the
   loader's two lines (0.8.159) and the engine's only two `loadStatusCallback` calls ("Compiling the Stop List: tuning..."
   / "pipe fills") unchanged since the first commit; the second line existed only in those phases of each tree (a second
@@ -1116,8 +1133,8 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (no screen capture, no mouse); `ORGAN_TEST_EXPAND="<manual>|<stop>|<delay ms>"` opens a voicing row later
   (with ORGAN_TEST_RECORD: the row opens while the key sounds; %TEMP%\test_expand.ps1 + dropouts.py analyse
   the WAV); %TEMP%\test_savebox.ps1 pictures the Save box with Portable ticked. A change that touches a
-  dialog, a row widget or a caption without such a run is not done. And the process name is OrganSampler_<v>:
-  `Get-Process OrganSampler*` before any test run (the user plays through the day).
+  dialog, a row widget or a caption without such a run is not done. And the process name is LibreOrgan_<v>:
+  `Get-Process LibreOrgan*` before any test run (the user plays through the day).
   0.8.183 PACKED FLOAT SAMPLES (#87, the user: "komprese nefunguje na 32 bitech"): `Sample::compress32` packs a
   float sample as the INTEGERS its file held - the scale 1/32768 (16-bit) or 1/2^23 (24-bit) is the first one
   every frame fits bit-exactly (JUCE's readers give v / 2^23 for 24-bit files, exact in float); the same block
@@ -1142,7 +1159,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
 - A configuration README has exactly this, in this order, and nothing more (people do not read):
   title; one opening paragraph (what it is, the perspectives - they make the recording unique -, divisions, the
   number of Stop List rows) + "No samples are published here"; "The configuration" bullets Organ, Samples
-  (producer, product, link, packages, WAV, perspectives, required OrganSampler version), Expects (trees), Audio
+  (producer, product, link, packages, WAV, perspectives, required LibreOrgan Sampler version), Expects (trees), Audio
   layout (routes, unused ones marked), RAM = ONE figure since 0.8.186: the least the organ takes with every saving
   option (measured when saved so, else the estimate) + "at the full quality count on roughly ten times as much" -
   never two figures (two columns of the same 7 GB were "absurd"); INDEX.md has the one "RAM" column the same way
@@ -1152,27 +1169,27 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `measuredRamStorage` in the json, `processMemoryBytes()`; INDEX.md shows it as a sortable column - never typed,
   never estimated), Saved with, Author + date; "Where to put the file" (the packages are now
   known: one sentence + the tree diagram, never a made-up parent folder like `haupwerk`); last the "Stop List"
-  table of the row names by division. Never mention what OrganSampler does natively (couplers, voicing,
+  table of the row names by division. Never mention what LibreOrgan Sampler does natively (couplers, voicing,
   crescendo, combinations). No "What you need", no "Using it", no prose about the divisions.
-- Configurations live ONLY in `configurations/<organ>/` on GitHub as `README.md` + `<Name>.zip` (the one `.json`
+- Configurations live ONLY in `libreorgans/<organ>/` on GitHub as `README.md` + `<Name>.zip` (the one `.json`
   inside; a zip downloads from GitHub, a bare `.json` opens as text - never "Download raw file" instructions).
   The portable save writes `<name>.zip` and `<name>.README.md` beside the `.json`; the README's Download line
-  is `[<Name>.zip](<Name>.zip?raw=true)`. The list of all organs is `configurations/INDEX.md` (README link,
+  is `[<Name>.zip](<Name>.zip?raw=true)`. The list of all organs is `libreorgans/INDEX.md` (README link,
   divisions, Stop List rows, routes: the perspectives as named - `default` stays `default`, never "-" - plus
   `auxiliary` when a division uses it; what they carry is the organ README's job, e.g. Rural Organ: default =
   front, auxiliary = rear; a Markdown table cannot be sorted by a click, so the header's ▲▼ are links to the
   pre-sorted copies `INDEX-<column>-<asc|desc>.md`, all generated), written by `.github/scripts/configurations_index.py` in the
   `Configurations check` workflow (job `index`) and committed back - never a list on the website, never a
-  release for configurations, never a list in `configurations/README.md` (there will be thousands). The
+  release for configurations, never a list in `libreorgans/README.md` (there will be thousands). The
   website section and the release body only link to INDEX.md. Configuration file names may have spaces (0.8.195:
   the robot names the pair after the .json inside the zip, whatever GitHub did to the attachment's name); the
-  README's Download line is `https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/<organ slug>/<name>.zip`.
+  README's Download line is `https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/<organ slug>/<name>.zip`.
 - Stop List counting: every row counts - stops, stop folders, transmissions and extensions (transmissions
   are rows of their receiving division, `transmissions[]` with `manual`) - except the rows nested in a stop
   folder (`groupMaster` set). The table is NEVER typed by hand: it comes from the program, in grid order (row by
   row, left to right - the organ builder's order the user arranged) with the exact button captions (footages,
   "(Ext.)"/"(Trsm.)", a stop folder's "[III]"):
-  `ORGAN_DUMP_STOPLIST=<out.md> ORGAN_LOAD_CONFIGURATION=<cfg.json> OrganSampler.exe` writes it once the load is
+  `ORGAN_DUMP_STOPLIST=<out.md> ORGAN_LOAD_CONFIGURATION=<cfg.json> LibreOrgan.exe` writes it once the load is
   over (use a non-portable configuration of this machine, a portable one would ask for the root); quit the program
   afterwards. No legend above the table. Every README looks the same. Stralsund: 53 + 18 = 71.
 
@@ -1195,7 +1212,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Editor's toggles); auto-start through runWhenLoaded + a 1.5 s retry while `ModalComponentManager` holds anything
   (the Rural "Nested folder trees" box stood over the box), never under ORGAN_LOAD_CONFIGURATION / ORGAN_VIDEO_SCRIPT;
   "guidedTourDismissed" = a machine-specific StringArray of configuration names. The key is in
-  F:\Suchy_rejstrik\Kobrle\Rural Organ.json and in configurations/rural-organ/Rural-Organ.zip's json (%TEMP%\rural_tour.py).
+  F:\Suchy_rejstrik\Kobrle\Rural Organ.json and in libreorgans/rural-organ/Rural-Organ.zip's json (%TEMP%\rural_tour.py).
   (4) VIDEO SCRIPT: `MainComponent::VideoScript` (a nested struct defined late in the cpp -> a `std::shared_ptr`
   member: a unique_ptr needs the complete type at ~MainComponent), hook `ORGAN_VIDEO_SCRIPT=<file>` +
   `ORGAN_VIDEO_OUT=<folder>` started by runWhenLoaded: one command per line (window / wait / waitfor BUTTON|MS / caption
@@ -1355,7 +1372,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (5) Manual 7.1: percussion/bell stops sound wrong retuned or filled. (6) `consoleGlow` default OFF. (7) ONE ZIP:
   the export's zip holds the .json AND the README (the README beside it stays); `configuration_from_issue.py
   split_readme_out` takes the README out of the attached zip and rewrites the zip with the rest, an attached README
-  beside the zip still accepted; the form, configurations/README.md, the manual, the site and the publish window say
+  beside the zip still accepted; the form, libreorgans/README.md, the manual, the site and the publish window say
   "the zip". Test: %TEMP%\test_zip213.ps1 + zip213\robot\check.py (members before/after, read_config, validate -
   the hook's export fails validate only for the unnamed organ, as expected). Origin moved meanwhile by the user's
   publish of Bellevue (issue #107, the old two-file way - still accepted): a rejected notes push (2>$null hid it)
@@ -1399,7 +1416,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   and writes narration.wav; make_video.ps1 mixes it: organ loudnorm -18 LUFS ducked by sidechaincompress under the
   speech (-15 LUFS). The texts are the user's wish: "trochu poeticky", every step told. Tools/make_video.ps1 runs the
   program (ORGAN_LOAD_CONFIGURATION + the script; settings.json restored) and ffmpeg (concat + audio [+ narration] ->
-  organsampler.mp4: x264 crf 20, 30 fps, 1920 wide; organsampler.gif: 8 fps, 960 px, 128 colours);
+  libreorgan.mp4: x264 crf 20, 30 fps, 1920 wide; libreorgan.gif: 8 fps, 960 px, 128 colours);
   Tools/video_debug_menu.txt = the notice/menu/chooser alone (a 1.5-minute check); Tools/video_stralsund.txt = the Stralsund script (divisions
   0 Ped, 1 UW, 2 HW, 3 OW; stops by name prefix - "HW Tromp 16" in division 0 is the transmission row, "Tromp" alone
   would hit "Ped Trompete 8'" by caption; the coupler id "3-2-4" = OW on HW at 4', label "III/II 4'", the dialog's
@@ -1410,7 +1427,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   to be told before a recording, and watches the run (his remarks come mid-recording). Website: the video is a TAB of
   the screenshot switcher ("Video, with sound", data-view="video": #video-figure shown, #screenshot-figure hidden;
   the screenshot stays the default - the user: "ten existující screenshot nezahazuj"); README: the screenshot first,
-  organsampler.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
+  libreorgan.gif under it linked to the mp4 on the Pages site (a GitHub README renders no <video>). (5) `portableFolderCandidates` adds `<child>/<relative>` for the children of a location (0.8.202's
   children form was rootName-only; the user's old Stralsund files name the root "haupwerk").
   0.8.217 (27 Oct 2026, the user's batch): (1) NOTICE QUEUE: `queueNotice(icon, title, text[, button, component,
   callback])` is a FREE function declared after the class in MainComponent.h (friend; the same arguments as
@@ -1464,7 +1481,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   = now + 5000 (the level stays at -52 dB five seconds after the run and the report, then 26 dB/s). (4) MANUAL: no
   version number anywhere any more ("každá verze si nese svůj manuál" - never write "(0.8.xxx)" or "since 0.8.xxx"
   into USER_MANUAL.md again); 1.5 has "### Where the files are" (settings folder per OS: Windows
-  `C:\Users\<you>\AppData\Roaming\OrganSampler`, macOS `~/Library/OrganSampler`, Linux `~/.config/OrganSampler`; the
+  `C:\Users\<you>\AppData\Roaming\LibreOrgan`, macOS `~/Library/LibreOrgan`, Linux `~/.config/LibreOrgan`; the
   configurations folder; samples anywhere, relative to the library root; RAR archives expected NOWHERE - only the chosen
   ones; Locations.txt). (5) REMOVE A CONFIGURATION = the *remove* link column of INDEX.md (configurations_index.py
   `remove_link`: the issue form prefilled by query string `?template=organ_configuration_remove.yml&title=...&organ=
@@ -1509,7 +1526,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   organ_configuration_remove.yml` with a `dropdown` (id organ, `multiple: true`, options = the folder names, rural-organ
   left out) + an `input` (id name, "Or any part of its name"); an issue TEMPLATE may be pushed by GITHUB_TOKEN (only
   .github/workflows may not), so the index job, the remove and the feature workflows `git add` the template with
-  configurations/. `configuration-remove.yml` reads the dropdown ("a, b" = several; "_No response_" = none) and the
+  libreorgans/. `configuration-remove.yml` reads the dropdown ("a, b" = several; "_No response_" = none) and the
   input, removes every match in ONE commit and answers "Removed: ... / Not removed: ..." (rural, foreign publisher,
   no match, several matches). INDEX.md's remove link `?...&organ=<folder>` stays (a dropdown prefill when GitHub
   honours it). (2) `MainComponent::archivesNamedLike(folders, like, nameWords, exclude)` = the name sieve of 0.8.218
@@ -1625,7 +1642,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `suffix < 200`. (2) The merge's `resolveTree` falls back to `MainComponent::resolveTreeLikeALoad(configuration,
   file, relative, absolute)` = `firstExistingDirectory(portableFolderCandidates(..., root, ...))` with root =
   `rootFromKnownRelative` of the first `treeRelativePaths` entry (the loaded organ's root) - Bellevue.json from the
-  Configurations folder: 10 trees, 63 stops added. (3) `perspectiveHeadsOfEntries(entries)` (static): label -> the
+  LibreOrgans folder: 10 trees, 63 stops added. (3) `perspectiveHeadsOfEntries(entries)` (static): label -> the
   head ALL folders of that perspective's column carry (common prefix cut right after a separator run, >= 2 folders,
   stems left; "default" none) and `learnPrefixesFromTables()`: computed over the UNION of every active division's
   entries (per division the head is "03-ortf_HW_" with the division mark; the organ's is "03-ortf_"), new heads
@@ -1662,7 +1679,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   notice's detail names "A remembered sample location is not there now - a disk not mounted?" + the paths. The manual:
   "Where the files are" (the Linux /run/media paragraph: mount permanently - Disks & Devices "Mount at system startup"
   or fstab -, the program mounts by label otherwise), 1.6 moved samples, 4.1 Unload folder. NO Projucer resave on Linux
-  (do it on Windows next). Syntax check: g++ -fsyntax-only with -I ~/OrganSamplerC-linux/JUCE/modules (the NTFS
+  (do it on Windows next). Syntax check: g++ -fsyntax-only with -I ~/LibreOrgan-linux/JUCE/modules (the NTFS
   checkout's JUCE is a symlink to C:\JUCE9 without modules) + -I .../ThirdParty/unarr-include -DORGAN_HAVE_UNARR=1.
   0.8.225 (29 Oct 2026, Windows, "udělej to"): THE DEEP FUNDAMENTAL (the user: Billerbeck "P. Grosse flute 32" and
   "P. Bourdon 32" captioned 16', "i voicing říká 32 (16)"). NOT the FFT size (his guess): `lowestSoundingHarmonic`
@@ -1684,12 +1701,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   M of L pipe(s) up to an octave above have a clear fundamental - the recording lost the deep fundamental". A
   mixture shows no h1 within an octave unless it has an 8' rank there (then 8' is right). Manual: the Orig. Pitch
   bullet (4.3); CHANGELOG. Test %TEMP%\test_footage225.ps1 [-Cfg <json> -Tag <x>]: the Stop List dump of the same
-  configuration with the OLD exe (C:\OrganSampler\OrganSampler_0.8.223.exe) and the NEW one, diffed - Billerbeck
+  configuration with the OLD exe (C:\LibreOrgan\LibreOrgan_0.8.223.exe) and the NEW one, diffed - Billerbeck
   may change the two 32' captions only. WINDOWS CHECKOUT AFTER THE LINUX SESSION (0.8.224 was committed from
-  ~/OrganSamplerC-linux): `git fetch` + `git reset --mixed origin/main` as the LESSON says, BUT origin also carried
+  ~/LibreOrgan-linux): `git fetch` + `git reset --mixed origin/main` as the LESSON says, BUT origin also carried
   the user's new published configurations (bergen-op-zoom-ibach-organ, beziers-cathedral-puget-organ, INDEX*.md,
   the generated remove form) which then show as DELETED/modified in the working tree - `git checkout --
-  configurations/ .github/ISSUE_TEMPLATE/organ_configuration_remove.yml` restores them BEFORE any `git add -u`
+  libreorgans/ .github/ISSUE_TEMPLATE/organ_configuration_remove.yml` restores them BEFORE any `git add -u`
   (a commit with -u would have deleted his organs from main); the rural README's version bump is redone after it.
   0.8.226 (29 Oct 2026 evening, "udělej to, avšak snaž se nezkurvit kód na jiných místech"): THE PROGRAM HEARS ITS OWN
   CLICKS. `SamplerEngine::outputEdgeJump(block, n, EdgeState&)` (EdgeState: last sample, mean step, peak of the previous
@@ -1710,7 +1727,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (Windows: midiInGetDevCapsW by name, "Name-2" duplicates by prefix, midiInOpen/midiInClose probe; a failure is logged
   and the port skipped until the next device-list change) before every MidiInput::openDevice in reopenMidiInputs and
   midiDevicesChanged - JUCE's openInternal terminates the process when midiInOpen fails (the 18:32 crash). Record:
-  the chooser starts in `configurationsDirectory().getParentDirectory()/AudioRecordings` (created on demand). Wind
+  the chooser starts in `configurationsDirectory().getParentDirectory()/LibreRecordings` (created on demand). Wind
   "Oscillation frequency" 2-10 Hz (engine clamp, two sliders, the settings dialog row, MIDI-learn scaled(2, 10));
   Release sample volume up to +10 dB (slider + engine clamp). Dev hooks: `ORGAN_TEST_GLITCH=<n>` (every n-th block of
   every route silenced after the render = the user's symptom made to order; the detector must count it at all three
@@ -1762,7 +1779,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `renamePerspectiveSettings`: audio keys, patterns line), `addPerspective` -> `ensurePerspectivePatternLine`,
   `dropIgnoredFolders()` at the top of apply(); Editor: `addSection(..., level 2)` nested collapse ("Filled pipes"
   after Celeste beats: sliders first, then switches, then the cache rows; "Top bar" at the END of Console),
-  `addButtonWithNote` (the path AFTER the button: cache, cache folder, Configurations folder, Recordings folder,
+  `addButtonWithNote` (the path AFTER the button: cache, cache folder, LibreOrgans folder, Recordings folder,
   Sample and IR locations), "Measurement limit of DSP power", the Linux ALSA-list toggle REMOVED (the Divisions
   dialog's "List unusable devices" is the setting), Show -> Locations.txt; `gsReleasePlayedFrom` main-panel slider;
   `recordingsFolder` / `recordingsDirectory()`; `SamplerEngine::perspectiveChannelMask` so the device-stage detector
@@ -1958,8 +1975,8 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   of the LAST organ. Both live in the configuration file and return with its load. LOCAL LINUX BUILD (30 Oct 2026,
   GitHub's runners queued for hours): cmake + the CI's apt list installed by the user, submodules libarchive/unarr
   fetched (`git submodule update --init --depth 1`), `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release` +
-  `cmake --build build --parallel 24` in ~/OrganSamplerC-linux (configure 59 s, build a few minutes on 32 threads),
-  the binary build/OrganSampler_artefacts/Release/OrganSampler -> ~/Downloads/OrganSampler. Its `--kerneltest` says
+  `cmake --build build --parallel 24` in ~/LibreOrgan-linux (configure 59 s, build a few minutes on 32 threads),
+  the binary build/LibreOrgan_artefacts/Release/LibreOrgan -> ~/Downloads/LibreOrgan. Its `--kerneltest` says
   "2 MISMATCH" on "Réc. hautbois" here (the shell's locale is not UTF-8: JUCE's isLetter on é) while CI passes -
   check with LANG=C.UTF-8 before believing it.
   0.8.243 (the user: "barva ... je jako hovno ... méně nápadného ... o jeden shade saturovanější"; swatches made
@@ -1990,16 +2007,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0.8.247 (the user: "nejsem s těmi barvami spokojen ... pouze ze šedé"): swatches ~/Downloads/piston_greys.png
   (A-F darker/lighter); he took B reversed: filledColour = base.darker(0.40), sameRegistrationColour =
   base.darker(0.25), the orange for the selected one alone. No orange tints anywhere else in the GUI.
-  0.8.248 (the user deleted ~/.config/OrganSampler: "on nenaskočí"): it DID start - on the second monitor
+  0.8.248 (the user deleted ~/.config/LibreOrgan: "on nenaskočí"): it DID start - on the second monitor
   (activity.log: "Main window: work area 2560 360 1920 1080, interface 75 %"): JUCE's getPrimaryDisplay() is the
   1920x1080 monitor at x = 2560 on this KDE Wayland box, not his 2560x1440 main one. `UIScale::startDisplay()` =
   the display under the mouse, else the largest, else JUCE's primary - used by placeMainWindow's fresh-start
   branch and by estimatePercent. A "does not start" report: read activity.log for the work area first.
-  0.8.249 (the user's "Launching organsampler failed": journalctl --user said `kf.kio.gui: Could not find the
-  program '/home/doma/Desktop/OrganSampler'` - the menu entry's Exec pointed at the moved binary; his settings
-  wipe was unrelated): `~/.local/bin/organsampler-start` (linuxLauncherText(), sh: Executable.txt of the settings
-  folder, else the newest OrganSampler in xdg DOWNLOAD/DESKTOP, ~/Downloads, ~/Desktop, ~/Applications, ~/bin,
-  ~/.local/bin, ~ and OrganSampler*/OrganSampler below them, else kdialog/zenity/notify-send message), the entry's
+  0.8.249 (the user's "Launching libreorgan failed": journalctl --user said `kf.kio.gui: Could not find the
+  program '/home/doma/Desktop/LibreOrgan'` - the menu entry's Exec pointed at the moved binary; his settings
+  wipe was unrelated): `~/.local/bin/libreorgan-start` (linuxLauncherText(), sh: Executable.txt of the settings
+  folder, else the newest LibreOrgan Sampler in xdg DOWNLOAD/DESKTOP, ~/Downloads, ~/Desktop, ~/Applications, ~/bin,
+  ~/.local/bin, ~ and LibreOrgan*/LibreOrgan below them, else kdialog/zenity/notify-send message), the entry's
   Exec = the script; `refreshLinuxLauncher()` at every start writes Executable.txt and, when the entry exists but
   does not run the script or the script's text differs, `installLinuxDesktopEntry(true)` (silent: no notice, the
   cache tools not waited for). A "program does not start" on Linux: `journalctl --user -b | grep -i organ` first.
@@ -2031,7 +2048,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "MultiThreaded$<$<CONFIG:Debug>:Debug>"` in CMakeLists.txt before add_subdirectory(JUCE) (CMake 3.22 -> CMP0091 NEW;
   the CI exe was /MD before: MSVCP140.dll/VCRUNTIME140.dll of the 2015-2022 redistributable; the Projucer Release build
   was always `/MT` = `useRuntimeLibDLL="0"` and links the same prebuilt archive.lib, so the static runtime is known to
-  link). After the release: `dumpbin /dependents OrganSampler.exe` of the CI zip must list system DLLs only (no
+  link). After the release: `dumpbin /dependents LibreOrgan.exe` of the CI zip must list system DLLs only (no
   MSVCP*/VCRUNTIME*/api-ms-win-crt*). Linux: libstdc++/glibc are the system's (glibc 2.38+ stays the floor); macOS:
   the system libc++. Background: a user's "nothing starts" on a clean Windows 11 24H2 (30 Oct 2026) - the other
   candidates are Smart App Control (on by default on clean installs, blocks unsigned exes with a toast only),
@@ -2067,7 +2084,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   our side must PROBE before opening - midiInOpen/midiInClose on the WinMM index matched by name (or skip a device
   whose open failed for a few seconds) in midiDevicesChanged AND reopenMidiInputs; the user's rule: "Musí zvládnout
   vypnutí audio device používané za běhu!" - the audio side survived (routes stopped and restarted at 18:32:08), the
-  MIDI side killed the process. TO-DO (same build): AudioRecordings folder beside Configurations for the Record
+  MIDI side killed the process. TO-DO (same build): LibreRecordings folder beside Configurations for the Record
   button's files (default target, created on demand, the chooser starts there); wind model "Oscillation frequency"
   slider lower limit 2 Hz (was 4: both sliders, the dialog rows, the MIDI-learn scaled(4, 10)); "Release scaling"
   slider maximum +10 dB (was +6).
@@ -2094,7 +2111,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   mergeConfiguration at line 561 for 8/69/129 s). Fix: always suffix the alias (strip an old " (n)" first) and cap
   the loop. (2) MERGE OF A .json FROM THE CONFIGURATIONS FOLDER FINDS NO TREES: `resolveTree` (MainComponentMerge.cpp
   ~235) looks beside the ADDED FILE only (dir/rootRelative/relative, dir/rootName/relative, dir/relative, absolute);
-  since 0.8.190 the configurations live in Documents\OrganSampler\Configurations away from the samples, so
+  since 0.8.190 the configurations live in Documents\LibreOrgan\LibreOrgans away from the samples, so
   "Casavant, Bellevue, Surround.json" (trees "002098/ped" ..., root OrganInstallationPackages, all present on D:)
   gave "0 new tree(s), 0 stop(s) added". Fix: resolve like a load does - the base organ's resolved root, the sample
   locations (Locations.txt), `portableFolderCandidates`. (3) THE WHOLE-STEM RULE of 0.8.221 needs the base folder's
@@ -2223,7 +2240,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0.8.188 PUBLISHING MECHANISM (the user: "mazání a nové uploadování je kravina"): an organ is identified by
   `publication.organ` of the json (`configuration_tools.py slugify`: lower case, [^a-z0-9]+ -> "-"; the program's
   `configurationReadme` writes the Download link with the same rule from `publicationOrgan`, the zip's name when none)
-  - the folder `configurations/<organ slug>/`; `same-organ` = folders of that slug or whose json has the same organ;
+  - the folder `libreorgans/<organ slug>/`; `same-organ` = folders of that slug or whose json has the same organ;
   the index job (`configurations.yml`) `git rm`s them before moving the new pair in, so a new version REPLACES the
   old folder whatever the file was called (stralsund-jakobi-wegscheider-portable -> stralsund-st-jakobi-kr-wegscheider
   at the next publish). The issue workflow appends `<!-- published by @login (issue #n, date) -->` to the flat README;
@@ -2237,13 +2254,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `organ_configuration_remove.yml`; the label must exist - created 25 Oct via the API). `validate` (called by
   `configurations_check.sh` for every zip: full checks for an upload pair, json-only for a folder so old READMEs pass):
   one .json that parses to an object with portableConfigurationVersion, divisions, a sample tree, voicing stops,
-  measuredRamBytes > 0, no MIDI mappings; the README's title = the zip's name, "Written by OrganSampler", no "(fill
+  measuredRamBytes > 0, no MIDI mappings; the README's title = the zip's name, "Written by LibreOrgan Sampler", no "(fill
   in:", a Stop List table whose cells equal the "N rows" claim, the divisions, every `sampleTrees` entry named, the
   organ, the Download link's folder = the slug (an older README is refused: "save it again with 0.8.188"). Tested
   on the user's new pair (valid, slug stralsund-st-jakobi-kr-wegscheider, replaces the old folder), both published
   folders, a zip of config.js (refused). README RAM line 0.8.188: not saved at the least -> "; measured N GB when this
   file was saved, the organ loaded as <measuredRamStorage>" beside the estimate. Report folder 0.8.188:
-  `settingsFile.getParentDirectory()/Reports/OrganSampler-report-<stamp>` (never the Desktop again). FOUND BY THE
+  `settingsFile.getParentDirectory()/Reports/LibreOrgan-report-<stamp>` (never the Desktop again). FOUND BY THE
   HOOK TEST (test_save188.ps1, Rural saved after Stralsund): the `publication` members (organ, producer, product,
   link) stayed from the organ loaded before when the next file had no block - the Rural README said "Stralsund" and
   the organ-named folder would have REPLACED the published Stralsund; the parse now clears them (the author stays).
@@ -2258,7 +2275,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   0.8.190 WHERE CONFIGURATIONS AND SAMPLES LIVE (the user: "je nepřijatelné, že si to všude píše OrganConfigurations
   foldery"; symlinks/shortcuts rejected - privileges on Windows, not on exFAT, Finder aliases, and a link is an absolute
   path in disguise; "beside the binary" rejected - /Applications, Program Files): `configurationsFolder` (machine-
-  specific key; `configurationsDirectory()` = it or Documents/OrganSampler/Configurations, created on demand) - the
+  specific key; `configurationsDirectory()` = it or Documents/LibreOrgan/LibreOrgans, created on demand) - the
   Hauptwerk import retargets `plan.configurationFile` there (HauptwerkOdf::configurationFolderFor still computes the
   old default, unused by MainComponent), Save/Load/Merge choosers start there. `sampleLocations` (machine-specific
   StringArray, mirrored into the anonymous-namespace `gSampleLocations` for `portableFolderCandidates`, which appends
@@ -2266,7 +2283,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   tails under every location). Filled by `noteSampleLocation`: the root's parent at a portable save, the root found at
   a load (`found` minus the relative path's depth; its parent when named like the root), the folder of a chosen
   archive (registerArchive), the first mismatch from the end between the old and the new path in the "Replace ... with
-  a folder" chooser; Editor rows "Configurations folder" / "Sample locations" (Add folder..., Forget) after "Load the
+  a folder" chooser; Editor rows "LibreOrgans folder" / "Sample locations" (Add folder..., Forget) after "Load the
   last configuration at startup", help section "Where configurations and samples live" (manual chapter of that name,
   with the user's "nightmare" paragraph). README "Where to put the file" = the configurations folder + the trees
   expected under a sample location (no json line in the diagram). Test: %TEMP%\test_locations190.ps1 (Rural saved
@@ -2330,7 +2347,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "03-ortf_RP_BlockFl2", "Dulcian16trRP"). `folderNameMatchesPattern`: no star = contains, "*x" = ends with,
   "x*" = starts with, case-insensitive. Test: %TEMP%\test_patterns198.ps1 ("*zzztest" in settings survives an import).
   0.8.199 (the user: "když dám uložit, otevře se to v Configurations, nikoli v Publish"): the Save chooser of a
-  PORTABLE save starts in `Configurations/Publish/<base>.portable.json` (the toggle's state is known before the
+  PORTABLE save starts in `LibreOrgans/Publish/<base>.portable.json` (the toggle's state is known before the
   chooser opens); the Publish folder is opened with `explorer.exe /select,"<zip>"` (a NEW window, the zip selected;
   a plain `folder.startAsProcess()` became a tab of an open Explorer window on Windows 11 - the probe showed the
   window titled after the folder) and `arrangeReportWindows` logs "Report windows: the file manager window ...
@@ -2377,7 +2394,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "<tree tail>|<folder>[|<seconds>]"` (the box is logged as "refused" there). Manual chapter "1.6 The usual ways
   to an organ" (RAR set, GitHub configuration, not found, installed Hauptwerk, no definition, moved samples, second
   volume, sharing) linked by its quoted heading from 1.3 step 4, the RAR section, 1.5, "Where configurations...",
-  4.1 and the ODF section; site "Using one" and configurations/README.md rewritten (they still said "put the .json
+  4.1 and the ODF section; site "Using one" and libreorgans/README.md rewritten (they still said "put the .json
   beside the samples" since 0.8.190). The "same disk" idea: a configuration looks beside ITSELF (configDir forms)
   and in the locations - never over a disk; told the user. 0.8.203 LESSON (found by the Rural test): a pool path
   saved on Windows and read on Linux/macOS ("F:\Suchy_rejstrik\Kobrle\Samply", kept when the file carries an
@@ -2387,7 +2404,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   where below = the tree's parts under the common folder of the MISSING trees' parents (the portable save's root
   rule: one tree -> its parent; Rural -> Suchy_rejstrik, Hauptwerk -> HauptwerkSampleSetsAndComponents). Tests
   (~/tools/test_relocate_any.sh <exe> <cfg> <tail> <chosen> '<locations json>' [s]; the CI Linux binary in
-  ~/Downloads/OrganSampler): Rural copy in /tmp/rt with Kobrle chosen -> Samply found (14/14 row folders), a
+  ~/Downloads/LibreOrgan): Rural copy in /tmp/rt with Kobrle chosen -> Samply found (14/14 row folders), a
   neighbour Tabor chosen -> corrected to Samply, /tmp/rt2 chosen -> refused (0 of 14); location one level too
   deep -> found at load; Altenbruch (002067+002068) with 002067 chosen -> 4 trees, location HSSC, 35 rows; the
   published Arnstadt with the whole OrganInstallationPackages chosen -> 6 trees, 21 rows; Altenbruch with only
@@ -2433,7 +2450,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   only path that saves and then ends in order - the log now says "Quit requested" and "Unsaved changes (quit):
   Save chosen"; read those lines before calling a save a crash.
   FEATURED (25 Oct 2026, the user: two tables, "Featured" and the others, Rural by default, easy in/out):
-  `configurations/FEATURED.txt` = folder names one per line ("#" comments); `configurations_index.py` renders
+  `libreorgans/FEATURED.txt` = folder names one per line ("#" comments); `configurations_index.py` renders
   "## Featured" + "## All the others" (one table when nothing is featured) in INDEX.md and every sorted copy;
   `configurations_check.sh` skips FEATURED.txt; the workflow `configuration-feature.yml` (workflow_dispatch:
   organ = any part of the name via `find`, action feature/unfeature) edits the file, regenerates INDEX, commits
@@ -2442,7 +2459,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   list's "trem" rule); (f) arrangeReportWindows retried at 9 and 15 s (a cold browser came up maximised).
   (g) WASAPI "much quieter than ASIO at the same volume" (the user, 20:14): the render chain is one for every
   device type; the difference lies after our buffer - the Windows volume mixer's per-app session volume (per exe
-  NAME: OrganSampler_0.8.184.exe is a new app to the mixer) and the endpoint's level/enhancements; told so.
+  NAME: LibreOrgan_0.8.184.exe is a new app to the mixer) and the endpoint's level/enhancements; told so.
   Remove a configuration: GitHub's own "Run workflow" form has two clicks (open the
   form, then the green Run workflow) - nothing of ours asks; the 15:02 run removed the folder fine, the 14:34 one
   failed on the name. The "13 GB" at 16-bit 48 kHz packed = read while the copies were still building (the user
@@ -2467,7 +2484,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Before: upside down for a moment while loading but crisp. FINDING 0.8.171: in this JUCE `DocumentWindow::setIcon`
   only stores `titleBarIcon` (the JUCE-drawn title bar) and NO JUCE code calls `ComponentPeer::setIcon`, so our
   `setIcon` never reaches `_NET_WM_ICON`; the title-bar icon seen on KDE comes from the desktop entry (WM_CLASS) -
-  look there (the installer's ~/.local/share/pixmaps/organsampler.png, 48 px) before blaming JUCE's X11 path. NEVER a
+  look there (the installer's ~/.local/share/pixmaps/libreorgan.png, 48 px) before blaming JUCE's X11 path. NEVER a
   rescaled icon.
 - Device-thread peaks (0.8.138 reports): #34 Ultra 7 155H (P+E cores): longest route callback 2616 us of which WAITING
   FOR THE LANES 2412 us - a worker on an E core (or preempted) holds the poster; try lanes on P cores only / smaller
@@ -2487,7 +2504,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   other system. #58 (Linux, two monitors): the KDE AMD box runs WAYLAND - the X11 way finds nothing there; the KWin
   scripting way (0.8.150, working since 0.8.151) is to be confirmed by the user's own report. The NTFS checkout is the user's (git cannot
   run there from Linux: "expected submodule path 'JUCE' not to be a symbolic link"). After each release copy the Linux
-  binary to `~/Downloads/OrganSampler`.
+  binary to `~/Downloads/LibreOrgan`.
 - Windows builds: never run two MSBuilds of the solution at once - the second fails with C1041 (PDB) and can
   leave orphaned `cl.exe` processes (0 s CPU, parent gone) holding the PDB; stop them before the next build.
 - The dual boot clock is settled: Windows and Linux both keep the hardware clock in local time
@@ -2498,24 +2515,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
 - `g++ -std=c++17 -fsyntax-only -w -DJUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 -DJUCE_STANDALONE_APPLICATION=1
   -DJUCE_USE_CURL=0 -DJUCE_WEB_BROWSER=0 -DJUCE_MODULE_AVAILABLE_juce_dsp=1 -DJUCE_LINUX=1 -DNDEBUG
   -I JuceLibraryCode -I ../JUCE/modules -I ../ThirdParty/signalsmith -I /tmp/stubinc Source/<file>.cpp` (run in
-  `~/OrganSamplerC-linux/OrganSampler`) checks a source in seconds (SamplerEngine.cpp 4 s, MainComponent.cpp
+  `~/LibreOrgan-linux/LibreOrgan`) checks a source in seconds (SamplerEngine.cpp 4 s, MainComponent.cpp
   longer). `/tmp/stubinc/alsa/asoundlib.h` is a stub of the seven ALSA symbols PlatformAudio.h uses
   (snd_pcm_t, snd_pcm_open/close, snd_strerror, snd_device_name_hint/get_hint/free_hint, SND_PCM_STREAM_PLAYBACK,
   SND_PCM_NONBLOCK; libasound2-dev is not installed); recreate it when /tmp was cleared. Real builds come from CI.
-- Never start `~/Downloads/OrganSampler` with a made-up flag such as `--version`: it opens the program (kill it).
+- Never start `~/Downloads/LibreOrgan` with a made-up flag such as `--version`: it opens the program (kill it).
   `--selftest "<folder>;<folder>"` is the offline test (folders separated by ';'), with `ORGAN_SELFTEST_IR=<wav>`,
   `ORGAN_IR_LIGHT=1`. `gh` is not installed on Linux: the GitHub API with the token from `git credential fill`.
 
 ## Testing
-- Windows delivery: after every release build copy the exe to `C:\OrganSampler\OrganSampler_<version>.exe`
+- Windows delivery: after every release build copy the exe to `C:\LibreOrgan\LibreOrgan_<version>.exe`
   (the local MSBuild Release build or the CI exe) and retarget the EXISTING desktop shortcut in place
-  (today `OrganSampler_0.8.98.exe – zástupce.lnk`; find it by its TargetPath under `C:\OrganSampler\`; WScript.Shell
+  (today `LibreOrgan_0.8.98.exe – zástupce.lnk`; find it by its TargetPath under `C:\LibreOrgan\`; WScript.Shell
   CreateShortcut, set TargetPath + IconLocation, Save). NEVER delete, rename or recreate the shortcut: Explorer
   keeps icon positions by file name and a new file lands anywhere on the desktop. The user starts the program
   from that shortcut.
-- The Windows process is named after the exe (`OrganSampler_0.8.181`): check `Get-Process OrganSampler*`, never
-  `Get-Process OrganSampler` (it finds nothing and the 0.8.182 deploy ran while the user played - harmless only
+- The Windows process is named after the exe (`LibreOrgan_0.8.181`): check `Get-Process LibreOrgan*`, never
+  `Get-Process LibreOrgan Sampler` (it finds nothing and the 0.8.182 deploy ran while the user played - harmless only
   because a new file name was written and the shortcut retargeted; still, check first).
 - Never build or launch the program while the user runs it. Linux test: `~/tools/linux_test.sh <exe> <seconds>`
   with `CFG=`, `ORGAN_OPEN_STOP_LIST=`, `ORGAN_JACK_BUFFER=`, `ORGAN_SAVE_PORTABLE=` hooks; the activity log is
-  `~/.config/OrganSampler/CrashLogs/activity.log` (Windows: `%APPDATA%\OrganSampler\CrashLogs\activity.log`).
+  `~/.config/LibreOrgan/CrashLogs/activity.log` (Windows: `%APPDATA%\LibreOrgan\CrashLogs\activity.log`).

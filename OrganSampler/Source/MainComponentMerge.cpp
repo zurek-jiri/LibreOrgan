@@ -184,7 +184,7 @@ void MainComponent::mergeConfigurationDialog()
     const auto start = configurationsDirectory();   // 0.8.190: the one folder of the configurations
     juce::Component::SafePointer<MainComponent> safeThis(this);
     configurationFileChooser = std::make_unique<juce::FileChooser>(
-        "Merge another configuration into the loaded one (OrganSampler .json, a Hauptwerk organ definition, or RAR archives holding one)", start, "*.json;*.Organ_Hauptwerk_xml;*.xml;*.rar");
+        "Merge another configuration into the loaded one (LibreOrgan Sampler .json, a Hauptwerk organ definition, or RAR archives holding one)", start, "*.json;*.Organ_Hauptwerk_xml;*.xml;*.rar");
     configurationFileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
         [safeThis](const juce::FileChooser& chooser)
         {
@@ -208,7 +208,7 @@ void MainComponent::mergeConfigurationFile(const juce::File& file)
     if (!configuration.isObject() || !configuration.getProperty("manualKeyboards", juce::var()).isArray())
     {
         queueNotice(juce::MessageBoxIconType::WarningIcon,
-            "Merge configuration", "The selected file is not a valid OrganSampler configuration.");
+            "Merge configuration", "The selected file is not a valid LibreOrgan Sampler configuration.");
         return;
     }
     mergeConfiguration(configuration, file, file.getFileNameWithoutExtension(), {});
@@ -246,7 +246,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         }
         if (absolute.isNotEmpty() && juce::File::isAbsolutePath(absolute)) candidates.add(juce::File(absolute));
         for (const auto& candidate : candidates) if (SampleFiles::isDirectory(candidate)) return candidate;   // on the disk or inside a RAR archive (0.8.160)
-        // 0.8.223: a configuration kept in the configurations folder (away from the samples) - the
+        // 0.8.223: a configuration kept in the LibreOrgans folder (away from the samples) - the
         // loaded organ's root, the sample locations, the drives, as Load Configuration looks.
         return resolveTreeLikeALoad(added, addedFile, relative, absolute);
     };

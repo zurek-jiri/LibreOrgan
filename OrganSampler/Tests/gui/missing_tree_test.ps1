@@ -5,12 +5,12 @@
 # that tree. The Stralsund configuration is copied to %TEMP% with its pool paths
 # pointed at a drive that does not exist. Screenshots mt_before.png / mt_after.png
 # in %TEMP%; the settings are backed up and restored.
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe")
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe")
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 $waited = 0
-while ((Get-Process OrganSampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+while ((Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_mt2_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 # The patched copy: every pool path on a drive that does not exist.
@@ -30,7 +30,7 @@ $log = "$appData\CrashLogs\activity.log"
 $before = if (Test-Path $log) { (Get-Content $log).Count } else { 0 }
 $env:ORGAN_LOAD_TREE = "0|F:\haupwerk\003136\pipe\PE"
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $env:ORGAN_LOAD_TREE = $null
 $shotBefore = $false; $shotAfter = $false
 while (((Get-Date) - $t0).TotalSeconds -lt 75)
@@ -39,12 +39,12 @@ while (((Get-Date) - $t0).TotalSeconds -lt 75)
     $wins = @(Get-OrganWindows $p.Id)
     $alert = $wins | Where-Object { $_.Title -match 'Audio devices not available' } | Select-Object -First 1
     if ($alert) { 'audio alert: ' + (Click-InWindow $alert.Handle ([int]($alert.W / 2)) ($alert.H - 42)) }
-    $main = $wins | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 800 } | Select-Object -First 1
+    $main = $wins | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 800 } | Select-Object -First 1
     $elapsed = ((Get-Date) - $t0).TotalSeconds
     if ($main -and -not $shotBefore -and $elapsed -ge 18) { Save-WindowShot $main.Handle "$env:TEMP\mt_before.png" | Out-Null; $shotBefore = $true; "before: $($main.Title)" }
     if ($main -and -not $shotAfter -and $elapsed -ge 60) { Save-WindowShot $main.Handle "$env:TEMP\mt_after.png" | Out-Null; $shotAfter = $true; "after: $($main.Title)"; break }
 }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force }
 Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'Load Configuration|not on this computer|takes the place|ORGAN_LOAD_TREE|Reloading division|Tree .* joins|already loaded' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(300, $_.Line.Length)) }

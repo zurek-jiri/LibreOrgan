@@ -3,15 +3,15 @@
 # List. Loads the given configuration at start-up, opens the dialogs through
 # the development variables and saves main/divisions/editor/stoplist.png.
 # Settings are backed up and restored.
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe",
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe",
       [string]$Configuration = "F:\Suchy_rejstrik\Kobrle\Organ configuration.json",
-      [string]$Output = "F:\JUCE_PROJEKTY\OrganSamplerC\site\assets",
+      [string]$Output = "F:\JUCE_PROJEKTY\LibreOrgan\site\assets",
       [string]$Division = "1")
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 $waited = 0
-while ((Get-Process OrganSampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+while ((Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_ss_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -21,7 +21,7 @@ $json | Add-Member -NotePropertyName configurationFile -NotePropertyValue $Confi
 $json | Add-Member -NotePropertyName uiScalePercent -NotePropertyValue 100 -Force
 [IO.File]::WriteAllText($file, ($json | ConvertTo-Json -Depth 30), (New-Object Text.UTF8Encoding $false))
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $done = @{}
 $mainShot = $false
 # The main window first (the configuration loads for up to a minute), then the dialogs one by one.
@@ -32,7 +32,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 200)
     $alert = $wins | Where-Object { $_.Title -match 'Audio devices not available' } | Select-Object -First 1
     if ($alert) { 'audio alert: ' + (Click-InWindow $alert.Handle ([int]($alert.W / 2)) ($alert.H - 42)); continue }
     $elapsed = ((Get-Date) - $t0).TotalSeconds
-    $main = $wins | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 800 } | Select-Object -First 1
+    $main = $wins | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 800 } | Select-Object -First 1
     $loading = $wins | Where-Object { $_.Title -match 'Loading|Compiling' } | Select-Object -First 1
     if ($main -and -not $mainShot -and $elapsed -ge 70 -and -not $loading)
     {
@@ -69,7 +69,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 200)
         }
     }
 }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force }
 Get-ChildItem $Output -Filter *.png | Select-Object Name, Length

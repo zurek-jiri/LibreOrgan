@@ -4,9 +4,9 @@
 # result dialog, inspects the merged folder (files, smpl chunk: unity note and
 # loops of one file, "rel" folders) and deletes the folder again. Settings are
 # backed up/restored. Argument: the exe (default: the Release build).
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler* -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan* -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $file = "$appData\settings.json"
 Copy-Item $file "$env:TEMP\backup_mt_settings.json" -Force
 $json = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
@@ -17,9 +17,9 @@ $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
 $root = "F:\haupwerk\003136"
 $existing = @(Get-ChildItem $root -Directory -Recurse -Depth 2 -Filter 'StopMerged*' | ForEach-Object { $_.FullName })
-$exe = if ($args.Count -ge 1) { $args[0] } else { "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe" }
+$exe = if ($args.Count -ge 1) { $args[0] } else { "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe" }
 $env:ORGAN_MERGE_ON_START = "1"
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $env:ORGAN_MERGE_ON_START = $null
 $result = $null
 $t0 = Get-Date
@@ -59,11 +59,11 @@ foreach ($f in $folders)
         }
     }
 }
-$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
 Add-Type -Namespace Win -Name MsgM -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr w, IntPtr l);'
 if ($main) { [void][Win.MsgM]::PostMessage($main.Handle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
-for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit OrganSampler|unsaved|Configuration' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit LibreOrgan Sampler|unsaved|Configuration' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 3
 Copy-Item "$env:TEMP\backup_mt_settings.json" $file -Force
 "settings restored identical: " + ((Get-FileHash $file).Hash -eq (Get-FileHash "$env:TEMP\backup_mt_settings.json").Hash)

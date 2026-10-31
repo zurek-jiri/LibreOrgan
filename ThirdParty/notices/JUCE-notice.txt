@@ -2,7 +2,7 @@ JUCE 9.0.3 - https://juce.com
 Copyright (c) Raw Material Software Limited
 
 The JUCE Framework modules are dual-licensed under the GNU Affero General Public
-License version 3 (AGPLv3) and the commercial JUCE licence. OrganSampler uses
+License version 3 (AGPLv3) and the commercial JUCE licence. LibreOrgan Sampler uses
 JUCE under the AGPLv3; its full text is the next entry of this list, "GNU Affero
 General Public License v3 (text)". The JUCE source code is available at
 https://github.com/juce-framework/JUCE.

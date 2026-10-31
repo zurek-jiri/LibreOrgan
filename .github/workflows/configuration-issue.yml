@@ -1,12 +1,12 @@
 name: Configuration from issue
 
 # An "Organ configuration" issue (the issue form, label "configuration") carries
-# the two files OrganSampler wrote beside a portable configuration: the zip and
+# the two files LibreOrgan Sampler wrote beside a portable configuration: the zip and
 # the README. GitHub lets nobody but collaborators upload files into the
 # repository, so this does it for them: the files are taken from the issue,
-# checked (an organ configuration of OrganSampler, saved portable with the
+# checked (an organ configuration of LibreOrgan Sampler, saved portable with the
 # organ loaded, and the README written for it - .github/scripts/
-# configuration_tools.py), put into configurations/ as the upload pair and
+# configuration_tools.py), put into libreorgans/ as the upload pair and
 # proposed as a pull request that closes the issue. The maintainer merges it;
 # the index job then sorts the pair into the organ's folder (named after the
 # organ given at the save) and updates INDEX.md. A new version of an organ
@@ -46,7 +46,7 @@ jobs:
           status=$?
           cat result.txt
           if [ $status -ne 0 ]; then
-            gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$(printf 'Thank you! The files could not be taken over:\n\n```\n%s\n```\nPlease attach the zip OrganSampler wrote beside the portable configuration - `<name>.zip`, the configuration and its README inside, saved with the organ loaded - by editing this issue; the check runs again on every edit.' "$(cat result.txt)")"
+            gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$(printf 'Thank you! The files could not be taken over:\n\n```\n%s\n```\nPlease attach the zip LibreOrgan Sampler wrote beside the portable configuration - `<name>.zip`, the configuration and its README inside, saved with the organ loaded - by editing this issue; the check runs again on every edit.' "$(cat result.txt)")"
             exit 1
           fi
       - name: Check them as a push would
@@ -77,11 +77,11 @@ jobs:
           git commit -m "Configuration from issue #$ISSUE_NUMBER: $base (by @$ISSUE_AUTHOR)"
           git push -f origin "$branch"
           if [ -n "$replaces" ]; then
-            what="A new version of the organ in \`configurations/$slug/\`: after the merge it replaces the published one ($replaces).${warning:+ **$warning**}"
-            tell="a new version of the published organ - after the merge it replaces \`configurations/$replaces\`${warning:+ (note for the maintainer: $warning)}"
+            what="A new version of the organ in \`libreorgans/$slug/\`: after the merge it replaces the published one ($replaces).${warning:+ **$warning**}"
+            tell="a new version of the published organ - after the merge it replaces \`libreorgans/$replaces\`${warning:+ (note for the maintainer: $warning)}"
           else
-            what="After the merge the organ gets its folder \`configurations/$slug/\` and its line in \`configurations/INDEX.md\` automatically."
-            tell="the organ appears in configurations/INDEX.md as \`$slug\`"
+            what="After the merge the organ gets its folder \`libreorgans/$slug/\` and its line in \`libreorgans/INDEX.md\` automatically."
+            tell="the organ appears in libreorgans/INDEX.md as \`$slug\`"
           fi
           existing="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number')"
           if [ -n "$existing" ]; then
@@ -89,6 +89,6 @@ jobs:
           else
             url="$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$branch" --base main \
               --title "Configuration: $base" \
-              --body "$(printf 'The organ configuration from #%s, sent by @%s: `configurations/%s.zip` and `configurations/%s.README.md`. %s\n\nCloses #%s' "$ISSUE_NUMBER" "$ISSUE_AUTHOR" "$base" "$base" "$what" "$ISSUE_NUMBER")")"
+              --body "$(printf 'The organ configuration from #%s, sent by @%s: `libreorgans/%s.zip` and `libreorgans/%s.README.md`. %s\n\nCloses #%s' "$ISSUE_NUMBER" "$ISSUE_AUTHOR" "$base" "$base" "$what" "$ISSUE_NUMBER")")"
             gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "Thank you! The files passed the check and are proposed as $url - the maintainer merges it, then $tell."
           fi

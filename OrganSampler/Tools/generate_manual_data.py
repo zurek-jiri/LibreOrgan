@@ -2,7 +2,7 @@
 """Embeds USER_MANUAL.md into Source/ManualData.h - the same output as
 Source/GenerateManualData.ps1 (the Windows pre-build step), for macOS and
 Linux where there is no PowerShell. Run from anywhere:
-    python3 OrganSampler/Tools/generate_manual_data.py
+    python3 LibreOrgan/Tools/generate_manual_data.py
 """
 import os, sys
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

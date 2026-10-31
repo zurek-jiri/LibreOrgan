@@ -1,16 +1,37 @@
 # Changelog
 
-All notable changes to OrganSampler are recorded here. The format follows
+All notable changes to LibreOrgan Sampler are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/): MAJOR.MINOR.PATCH, where a new
 feature raises MINOR, a fix raises PATCH, and an incompatible change of saved
 files or of the way the program is used raises MAJOR.
 
 The version lives in one place per artefact and must be changed together:
-`OrganSampler.jucer` (`version`), `JuceLibraryCode/JuceHeader.h`
+`LibreOrgan.jucer` (`version`), `JuceLibraryCode/JuceHeader.h`
 (`ProjectInfo::versionString`, `versionNumber`), `Builds/VisualStudio2026/resources.rc`
-and the `JUCE_APP_VERSION` defines in `OrganSampler_App.vcxproj`. The window
-title shows the version. Released executables are named `OrganSampler_<version>.exe`.
+and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
+title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
+
+## [0.9.0] - 2026-10-31
+
+### Changed
+- The program is **LibreOrgan Sampler** (the files, folders and the repository:
+  LibreOrgan). Everything carries the new name: the executables and release
+  archives (`LibreOrgan-windows.zip`, `LibreOrgan-macos.zip`,
+  `LibreOrgan-macos-10.11-intel.zip`, `LibreOrgan-linux-x86_64.tar.gz`), the
+  settings folder (`LibreOrgan` in the application-data folder), the
+  configurations folder (`Documents\LibreOrgan\LibreOrgans`, its `Publish`
+  subfolder for exports), the recordings folder (`Documents\LibreOrgan\
+  LibreRecordings`), the Linux menu entry and launcher (`libreorgan.desktop`,
+  `libreorgan-start`), the macOS bundle (`org.libreorgan.sampler`), the
+  repository `github.com/zurek-jiri/LibreOrgan` with the published organs in
+  `libreorgans/`, and the website. Nothing is migrated: an earlier settings
+  folder or configurations folder of the old name is simply not read.
+
+### Added
+- A Linux arm64 build for the Raspberry Pi 4/5 with a 64-bit OS
+  (`LibreOrgan-linux-arm64.tar.gz`, Raspberry Pi OS Bookworm or newer) - a test
+  build, not yet tried on real hardware by the project.
 
 ## [0.8.254] - 2026-10-30
 
@@ -26,13 +47,13 @@ title shows the version. Released executables are named `OrganSampler_<version>.
   definition - the organ is built from the sample folders; the definition is
   read only for where the sample folders are and how the stops are arranged in
   the divisions. The microphone perspectives and the relative volumes of
-  stops, divisions and pipes are OrganSampler's own deduction (a definition
+  stops, divisions and pipes are LibreOrgan Sampler's own deduction (a definition
   holds neither), and everything else comes from the folders.
 
 ## [0.8.251] - 2026-10-30
 
 ### Fixed
-- Windows: the released OrganSampler.exe needed the Visual C++ 2015-2022
+- Windows: the released LibreOrgan.exe needed the Visual C++ 2015-2022
   redistributable (MSVCP140.dll, VCRUNTIME140.dll) - on a clean Windows it did
   not start. The C and C++ runtime is now linked into the executable; the
   program depends on nothing outside a plain Windows, macOS or Linux.
@@ -64,7 +85,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
 ### Fixed
 - Linux: the menu entry died when the executable was moved ("Could not find
   the program"). The entry now runs a launcher script that starts the
-  executable noted at the last start, else the newest OrganSampler found in
+  executable noted at the last start, else the newest LibreOrgan Sampler found in
   Downloads, Desktop, Applications, bin or .local/bin, else shows a message;
   every start notes its executable and repairs an outdated entry or script.
 
@@ -330,7 +351,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
   with "Add perspective..." gets its line in "Perspective prefixes" at once.
 - Stop List: a change of the "Ignored folders" patterns with an organ loaded
   takes the matching folders out of their rows at the next Apply and reload.
-- Console: "Recordings folder" (the Record button's files; "AudioRecordings"
+- Console: "Recordings folder" (the Record button's files; "LibreRecordings"
   beside the configurations folder by default).
 - Global sound: "Release played from" can be shown on the main panel like the
   other sliders.
@@ -396,7 +417,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
   the activity log - a click is counted whether or not the load figure moves.
 
 ### Changed
-- Recordings start in the folder AudioRecordings beside the configurations
+- Recordings start in the folder LibreRecordings beside the configurations
   folder (created on demand).
 - Wind model: the oscillation frequency goes down to 2 Hz (was 4).
 - Release sample volume: up to +10 dB (was +6).
@@ -581,7 +602,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
   configurations, the sample folders and the archives are expected and how
   the program learns the places (`Locations.txt`), with the default paths of
   Windows, macOS and Linux.
-- `configurations/INDEX.md` has a *remove* link on every line: it opens the
+- `libreorgans/INDEX.md` has a *remove* link on every line: it opens the
   "Remove my configuration" form with the organ filled in - submit it and the
   robot takes the organ off the list.
 
@@ -963,10 +984,10 @@ title shows the version. Released executables are named `OrganSampler_<version>.
 ## [0.8.190] - 2026-10-25
 ### Changed
 - One configurations folder per computer (Configuration Editor >
-  Configurations folder; Documents/OrganSampler/Configurations by default):
+  LibreOrgans folder; Documents/LibreOrgan/LibreOrgans by default):
   the Hauptwerk and RAR imports write there, Save Configuration and Load
   Configuration start there. The imports no longer make an
-  OrganConfigurations folder beside every sample set.
+  OrganLibreOrgans folder beside every sample set.
 - Sample locations (Configuration Editor): the folders above the sample
   libraries, filled by the program - at a portable save, at a load, with
   every chosen archive, with every folder given for a missing tree - and by
@@ -997,7 +1018,7 @@ title shows the version. Released executables are named `OrganSampler_<version>.
   off the list by any part of its name; the maintainer's "Remove a
   configuration" workflow takes any part of the name too and lists the
   candidates when several match. The robot checks what is sent: the zip
-  must hold a real organ configuration of OrganSampler saved portable with
+  must hold a real organ configuration of LibreOrgan Sampler saved portable with
   the organ loaded, and the README must be the one written for it.
 - The README of a portable configuration saved at other than the least
   storage carries the measured RAM figure with the options it was loaded
@@ -1689,7 +1710,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   form (about 160 of them, the first three seconds of each, resampled, halved
   where the loader's treble rule allows and packed; the ratio of their bytes
   applied to all the sample bytes, the fixed part of the process kept). The
-  README's RAM line names both figures and `configurations/INDEX.md` gets a
+  README's RAM line names both figures and `libreorgans/INDEX.md` gets a
   sortable "RAM min" column with the explanation in its head - a reader is not
   put off by the figure of the full storage when a third of it would do.
 
@@ -2006,7 +2027,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   a melody coupler, itself at 16' and 4', I from II - and the console shows
   only those. The general crescendo takes them too: a stage that draws a
   coupler's drawstop switches it on in that step. A coupler of the
-  definition OrganSampler has no coupler for (one to a division without a
+  definition LibreOrgan Sampler has no coupler for (one to a division without a
   keyboard of ours, a 24' coupler) is named in the import's report.
 
 ### Fixed
@@ -2516,7 +2537,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 
 ### Added
 - Merge another configuration into the loaded organ (right-click Load
-  Configuration): an OrganSampler `.json` or a Hauptwerk organ definition,
+  Configuration): an LibreOrgan Sampler `.json` or a Hauptwerk organ definition,
   division by division - its stops as further Stop List rows under the
   existing ones, its trees and voicing with them, new perspectives with their
   routes; shared sample folders, perspectives already set up, the MIDI of
@@ -2555,7 +2576,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   perspective in its own) are the perspectives of one stop. A pedal without
   stops (a demo) keeps division P.; an organ without a pedal leaves it
   empty. Compacted and plain ODFs alike; a development check of a file
-  without the GUI: `OrganSampler --hauptwerk "<file>"`.
+  without the GUI: `LibreOrgan Sampler --hauptwerk "<file>"`.
 
 ## [0.8.115] - 2026-10-18
 
@@ -2650,9 +2671,9 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 
 ### Changed
 - The releases carry the native archive of each system instead of bare
-  executables: `OrganSampler-windows.zip` (with `OrganSampler.exe` inside),
-  `OrganSampler-macos.zip` and `OrganSampler-macos-10.11-intel.zip` (the app
-  bundle, as before) and `OrganSampler-linux-x86_64.tar.gz`, which keeps the
+  executables: `LibreOrgan-windows.zip` (with `LibreOrgan.exe` inside),
+  `LibreOrgan-macos.zip` and `LibreOrgan-macos-10.11-intel.zip` (the app
+  bundle, as before) and `LibreOrgan-linux-x86_64.tar.gz`, which keeps the
   executable bit - no `chmod +x` after unpacking. README, website and manual
   say so.
 - The engine self-test's division swap check expected the old keyboard to
@@ -2797,7 +2818,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 - The manual (8.8) says what each build needs (Windows 10/11; macOS 11 or
   10.11 on Intel; Linux with glibc 2.38) and where the settings, the
   activity log and the crash reports are on each system - macOS:
-  `~/Library/OrganSampler`. The website and the release say the same.
+  `~/Library/LibreOrgan`. The website and the release say the same.
 
 ## [0.8.99] - 2026-10-16
 
@@ -2826,7 +2847,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 - Manual, "Portable configuration": publishing needs no Git - the zip and
   the README are dragged onto the repository's upload page, GitHub opens the
   pull request; after the merge the organ gets its folder and its line of
-  `configurations/INDEX.md` automatically.
+  `libreorgans/INDEX.md` automatically.
 
 ## [0.8.96] - 2026-10-15
 
@@ -2834,8 +2855,8 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 - Saving a portable configuration also writes `<name>.zip` (the `.json`
   inside) for publishing: a zip is downloaded from GitHub with one click, a
   bare `.json` opens as text. The README written with it links to that zip.
-  The `configurations/` folder takes the zip and the README only; the list
-  of all organs is `configurations/INDEX.md` (divisions, Stop List rows,
+  The `libreorgans/` folder takes the zip and the README only; the list
+  of all organs is `libreorgans/INDEX.md` (divisions, Stop List rows,
   perspectives), written automatically after each change. Nothing of this
   on the website any more.
 
@@ -2853,7 +2874,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 ### Added
 - Saving a portable configuration also writes `<name>.README.md` beside it:
   the README for publishing the configuration in the project's
-  `configurations/` folder, complete but for the organ, the samples and the
+  `libreorgans/` folder, complete but for the organ, the samples and the
   author - the perspectives, the folders the configuration expects, the
   routes, the version and the Stop List table in the order of the grid with
   the buttons' captions (transmissions and extensions included, the rows
@@ -2862,7 +2883,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   and `ORGAN_LOAD_CONFIGURATION=<file>` together with it or with
   `ORGAN_SAVE_PORTABLE` (loads the configuration first); both wait for the
   loading to finish instead of a fixed 25 s.
-- `configurations/`: every configuration is attached to the permanent
+- `libreorgans/`: every configuration is attached to the permanent
   release "configurations" on each push, so the `.json` downloads as a file
   instead of opening as text in the browser.
 
@@ -2882,7 +2903,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   pure Python).
 
 ### Added
-- `configurations/stralsund-jakobi-wegscheider`: the portable configuration
+- `libreorgans/stralsund-jakobi-wegscheider`: the portable configuration
   of the Wegscheider organ of St. Jakobi, Stralsund (Sonus Paradisi
   recordings, packages 003135 and 003136) with its README.
 
@@ -3021,7 +3042,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   "Audio on macOS" (to be continued). The buffer and the sample rate rules
   stay in the common part.
 - CI: an untested build for old Intel Macs from macOS 10.12 on
-  (`OrganSampler-macos-10.12-intel.zip`) beside the current macOS build; it
+  (`LibreOrgan-macos-10.12-intel.zip`) beside the current macOS build; it
   does not block the release when the toolchain refuses it.
 
 ## [0.8.77] - 2026-10-14
@@ -3766,7 +3787,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   layers" as a section of its own; the first-start steps reordered (samples
   before audio, as the perspectives exist only then), the divisions box in
   the main window's corner, resizing the window; "Audio devices not ready
-  when OrganSampler starts"; "How the sample folders must be organised".
+  when LibreOrgan Sampler starts"; "How the sample folders must be organised".
 
 ## [0.8.29] - 2026-10-11
 
@@ -3835,7 +3856,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 
 ### Changed
 - The user manual is the first entry of *About & licences...* (now "About
-  OrganSampler, user manual & licences"), with a chapter box above the text
+  LibreOrgan Sampler, user manual & licences"), with a chapter box above the text
   that jumps to any chapter. The "?" buttons open that dialog.
 
 ## [0.8.25] - 2026-10-11
@@ -4464,7 +4485,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 
 ### Notes
 - The licence texts in *About & licences* name JUCE 9.0.3. The JUCE licence
-  is unchanged: AGPLv3 or the commercial JUCE licence; OrganSampler uses the
+  is unchanged: AGPLv3 or the commercial JUCE licence; LibreOrgan Sampler uses the
   AGPLv3.
 
 ## [0.7.30] - 2026-10-08
@@ -4481,7 +4502,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
 ## [0.7.29] - 2026-10-08
 
 ### Added
-- Free software: OrganSampler is released under the GNU GPL v3. *About &
+- Free software: LibreOrgan Sampler is released under the GNU GPL v3. *About &
   licences...* at the top of the Configuration Editor shows the program's
   licence and every third-party licence in full (JUCE under the AGPLv3, the
   Steinberg ASIO SDK under its GPLv3 option, Signalsmith Stretch and
@@ -4784,7 +4805,7 @@ A review of every change since 0.8.156 for regressions; what it found is fixed h
   and play by interpolation, as before 0.7.12).
 - Icon: the pipes are clearly brighter (a tone curve lifts the dark shades
   most), the mouth openings stay black. The multi-size icon is also saved as
-  `OrganSampler_icon.ico` (and a 1024 px PNG) in the project folder.
+  `LibreOrgan_icon.ico` (and a 1024 px PNG) in the project folder.
 
 ## [0.7.13] - 2026-09-19
 

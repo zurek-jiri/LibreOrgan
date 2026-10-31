@@ -1095,9 +1095,9 @@ private:
     bool copyCacheEnabled = true;               // the generated copies kept on disk (FilledPipesCache in the application data); on by default since 0.8.124
     juce::File copyCacheDirectory() const;      // copyCacheFolder when set and usable, else the default
     // The one folder for the organ configurations of this computer (0.8.190; machine-specific):
-    // every import writes there, Save and Load start there. Empty = Documents/OrganSampler/Configurations.
+    // every import writes there, Save and Load start there. Empty = Documents/LibreOrgan/LibreOrgans.
     juce::String configurationsFolder;
-    juce::String recordingsFolder;              // 0.8.228: this computer's folder for the Record button; empty = AudioRecordings beside the configurations folder
+    juce::String recordingsFolder;              // 0.8.228: this computer's folder for the Record button; empty = LibreRecordings beside the LibreOrgans folder
     juce::File recordingsDirectory() const;     // created on demand
     std::unique_ptr<juce::FileChooser> recordingsFolderChooser;
     juce::File configurationsDirectory() const;   // created on demand
@@ -1247,7 +1247,7 @@ private:
     // 'importing' (0.8.193): the file is the import's target in the folder - exists it, the box asks replace / keep.
     void askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file = {}, bool importing = false);
     void adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip = {});   // the copy becomes the open file; the original stays (a zip: its .json text)
-    juce::File configurationsCopyOf(const juce::File& file) const;   // the file's place in the configurations folder, ".portable" dropped (0.8.201)
+    juce::File configurationsCopyOf(const juce::File& file) const;   // the file's place in the LibreOrgans folder, ".portable" dropped (0.8.201)
     static void copyLoadOptions(const juce::var& from, juce::var& to);   // the five storage choices of the load box
     void chooseConfigurationToLoad();
     // portable: for another computer - no MIDI, no audio devices or channels,
@@ -1281,7 +1281,7 @@ private:
     // The power setting worth a word in the measurement's report: the Linux CPU
     // governor, the Windows power plan; empty when unknown.
     static juce::String powerSettingDescription();
-    // The README of a configuration for the configurations folder on GitHub, in
+    // The README of a configuration for the LibreOrgans folder on GitHub, in
     // the published form: written beside every portable configuration as
     // "<name>.README.md" (the user fills in the organ, the samples and the author).
     juce::String configurationReadme(const juce::var& configuration, const juce::File& file) const;

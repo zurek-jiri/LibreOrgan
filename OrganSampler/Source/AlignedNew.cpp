@@ -34,8 +34,8 @@ void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { std::f
 // consistent hash will do. The linker binds it in preference to the library's.
 #include <cstddef>
 #include <cstdint>
-std::size_t organSamplerHashMemory(const void* ptr, std::size_t size) noexcept __asm__("__ZNSt3__113__hash_memoryEPKvm");
-std::size_t organSamplerHashMemory(const void* ptr, std::size_t size) noexcept
+std::size_t libreOrganHashMemory(const void* ptr, std::size_t size) noexcept __asm__("__ZNSt3__113__hash_memoryEPKvm");
+std::size_t libreOrganHashMemory(const void* ptr, std::size_t size) noexcept
 {
     const unsigned char* p = static_cast<const unsigned char*>(ptr);
     uint64_t h = 1469598103934665603ULL;

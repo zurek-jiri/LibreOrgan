@@ -1,17 +1,17 @@
 name: Organ configuration
-description: Publish your organ configuration - attach the zip OrganSampler wrote (the README is inside), a robot proposes it, the maintainer merges.
+description: Publish your organ configuration - attach the zip LibreOrgan Sampler wrote (the README is inside), a robot proposes it, the maintainer merges.
 title: "[Configuration] "
 labels: ["configuration"]
 body:
   - type: markdown
     attributes:
       value: |
-        Save the organ with *Portable configuration (to share with others)* ticked: OrganSampler writes `<name>.zip` (the configuration
+        Save the organ with *Portable configuration (to share with others)* ticked: LibreOrgan Sampler writes `<name>.zip` (the configuration
         and its README inside) and `<name>.README.md` beside it for reading, asking you once for the organ, the producer of the samples,
         **the link to the page where the sample folders are bought or downloaded** and your name. Then attach the zip below.
-        A robot checks it (a real organ configuration of OrganSampler, saved with the organ loaded, and the README written for it),
+        A robot checks it (a real organ configuration of LibreOrgan Sampler, saved with the organ loaded, and the README written for it),
         puts them into the repository as a pull request and answers here; the maintainer merges it and the organ
-        appears in [configurations/INDEX.md](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md).
+        appears in [libreorgans/INDEX.md](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md).
         If something is missing, the robot says what - edit this issue and it tries again.
         **A new version of an organ you published:** send it the same way - it replaces the old one by itself (the organ is known
         by the name you gave at the save, whatever the file is called). To take one off the list, use the "Remove my configuration" form.
@@ -28,7 +28,7 @@ body:
     id: files
     attributes:
       label: Files
-      description: Drag `<name>.zip` here (the file OrganSampler wrote beside the portable configuration, the README inside it). Nothing else.
+      description: Drag `<name>.zip` here (the file LibreOrgan Sampler wrote beside the portable configuration, the README inside it). Nothing else.
       placeholder: Drop the zip here.
     validations:
       required: true

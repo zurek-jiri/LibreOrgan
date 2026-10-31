@@ -2,13 +2,13 @@
 # Stralsund configuration via ORGAN_MEASURE_POLYPHONY=1, waits for its end,
 # screenshots the report window, prints the measurement lines of the log and
 # restores the user's settings. Usage: measure_test.ps1 [-Exe path]
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe",
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe",
       [string]$Configuration = "F:\haupwerk\003136\Stralsund_Jakobi_Wegscheider.json")
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 $waited = 0
-while ((Get-Process OrganSampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+while ((Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_mt_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -20,7 +20,7 @@ $log = "$appData\CrashLogs\activity.log"
 $before = if (Test-Path $log) { (Get-Content $log).Count } else { 0 }
 $env:ORGAN_MEASURE_POLYPHONY = "1"
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $done = $false; $shotProgress = $false; $shotProgress2 = $false; $progressSeen = Get-Date
 while (((Get-Date) - $t0).TotalSeconds -lt 300 -and -not $done)
 {
@@ -46,7 +46,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 300 -and -not $done)
 }
 "took $([int]((Get-Date) - $t0).TotalSeconds) s, report window: $done"
 Start-Sleep -Seconds 1
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 $after = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
 "settings.json maxPolyphony after the run: " + $after.maxPolyphony

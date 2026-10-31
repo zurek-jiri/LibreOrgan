@@ -1,6 +1,6 @@
 . "C:\Users\doma\AppData\Local\Temp\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "C:\Users\doma\AppData\Local\Temp\backup_mx_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 # The user's Stralsund configuration loads at start-up; the Settings dialog of manual 1 (UW) opens.
@@ -16,17 +16,17 @@ $env:ORGAN_OPEN_KEYBOARDS = "1"
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
 $t0 = Get-Date
-$p = Start-Process -FilePath "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe" -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe" -WorkingDirectory "C:\LibreOrgan" -PassThru
 $main = $null; $dialog = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 120)
 {
     Start-Sleep -Milliseconds 500
     $wins = @(Get-OrganWindows $p.Id)
-    $main = $wins | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
-    $dialog = $wins | Where-Object { $_.Title -match 'Division|Settings|Manual' -and $_.Title -notmatch '^OrganSampler' } | Select-Object -First 1
+    $main = $wins | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
+    $dialog = $wins | Where-Object { $_.Title -match 'Division|Settings|Manual' -and $_.Title -notmatch '^LibreOrgan Sampler' } | Select-Object -First 1
     $alert = $wins | Where-Object { $_.Title -match 'Audio devices not available' } | Select-Object -First 1
     if ($alert) { 'audio alert: ' + (Click-InWindow $alert.Handle ([int]($alert.W / 2)) ($alert.H - 42)) }
-    $dialog = $wins | Where-Object { $_.Title -notmatch '^OrganSampler' -and $_.W -gt 600 } | Select-Object -First 1
+    $dialog = $wins | Where-Object { $_.Title -notmatch '^LibreOrgan Sampler' -and $_.W -gt 600 } | Select-Object -First 1
     if ($main -and $dialog -and ((Get-Date) - $t0).TotalSeconds -gt 40) { Start-Sleep -Seconds 3; break }
 }
 if ($main) { Save-WindowShot $main.Handle "C:\Users\doma\AppData\Local\Temp\mx_main.png" | Out-Null; "main shot $($main.W)x$($main.H)" }
@@ -50,7 +50,7 @@ if ($main -and $dialog -and $args.Count -ge 6)
     else { 'dialog NOT IN FOREGROUND' }
     Start-Sleep -Seconds 2
 }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 '--- log ---'
 Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'Audio levels|rebuilt|crash|velocity|intercepted|Settings|dialog' -CaseSensitive:$false | Select-Object -Last 8 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) }

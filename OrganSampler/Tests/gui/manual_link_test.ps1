@@ -3,11 +3,11 @@
 # coordinates given as parameters), screenshots the About dialog that opens
 # (ml_about_click.png). With -Section it also opens the manual through
 # ORGAN_OPEN_MANUAL (ml_about_env.png). Settings backed up and restored.
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe",
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe",
       [int]$ClickX = -1, [int]$ClickY = -1, [string]$Section = "", [int]$ChapterSteps = 0, [string]$Find = "", [int]$LinkX = -1, [int]$LinkY = -1, [switch]$Back)
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_ml_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -18,7 +18,7 @@ $json | Add-Member -NotePropertyName uiScalePercent -NotePropertyValue 100 -Forc
 $env:ORGAN_OPEN_CONFIG_EDITOR = "1"
 if ($Section -ne "") { $env:ORGAN_OPEN_MANUAL = $Section }
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $editor = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 40)
 {
@@ -30,7 +30,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 40)
     $editor = $wins | Where-Object { $_.Title -match '^Configuration Editor' -and $_.W -gt 300 } | Select-Object -First 1
     if ($editor) { break }
 }
-if (-not $editor) { "NO EDITOR"; Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false }
+if (-not $editor) { "NO EDITOR"; Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false }
 else
 {
     "editor: $($editor.W)x$($editor.H) at $($editor.X),$($editor.Y)"
@@ -81,7 +81,7 @@ else
     }
     Save-WindowShot $editor.Handle "$env:TEMP\ml_editor.png" | Out-Null
     # The empty main window too (the hint with the manual button must show there).
-    $mainWin = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+    $mainWin = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
     if ($mainWin) { Click-InWindow $mainWin.Handle 1000 700 | Out-Null; Start-Sleep -Milliseconds 600; Save-WindowShot $mainWin.Handle "$env:TEMP\ml_main.png" | Out-Null; "main: $($mainWin.W)x$($mainWin.H)" }
     if ($ClickX -ge 0)
     {
@@ -92,7 +92,7 @@ else
         else { "NO ABOUT (click)" }
     }
 }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force; "$name restored identical: " + ((Get-FileHash "$appData\$name").Hash -eq (Get-FileHash $backups[$name]).Hash) }
 $env:ORGAN_OPEN_CONFIG_EDITOR = $null; $env:ORGAN_OPEN_MANUAL = $null

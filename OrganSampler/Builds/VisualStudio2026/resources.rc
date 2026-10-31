@@ -9,18 +9,18 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION  0,8,254,0
-PRODUCTVERSION  0,8,254,0
+FILEVERSION  0,9,0,0
+PRODUCTVERSION  0,9,0,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "CompanyName",  "OrganSampler\0"
-      VALUE "FileDescription",  "OrganSampler\0"
-      VALUE "FileVersion",  "0.8.254\0"
-      VALUE "ProductName",  "OrganSampler\0"
-      VALUE "ProductVersion",  "0.8.254\0"
+      VALUE "CompanyName",  "LibreOrgan\0"
+      VALUE "FileDescription",  "LibreOrgan\0"
+      VALUE "FileVersion",  "0.9.0\0"
+      VALUE "ProductName",  "LibreOrgan\0"
+      VALUE "ProductVersion",  "0.9.0\0"
     END
   END
 

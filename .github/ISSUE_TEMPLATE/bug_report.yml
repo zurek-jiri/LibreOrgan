@@ -14,7 +14,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: OrganSampler version
+      label: LibreOrgan Sampler version
       description: Shown in the window title and in Configuration Editor > About & licences.
       placeholder: "0.8.50"
     validations:

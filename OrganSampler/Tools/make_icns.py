@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds Source/Icons/OrganSampler.icns from the per-size PNG icons.
+"""Builds Source/Icons/LibreOrgan.icns from the per-size PNG icons.
 
 Pure Python (zlib only, no Pillow), so it runs on Windows, Linux and macOS alike.
 

@@ -1,18 +1,18 @@
 name: Configurations check
 
-# The configurations folder carries organ configurations only: per organ one
+# The libreorgans folder carries organ configurations only: per organ one
 # folder with the zip holding the configuration .json (a zip is downloaded from
 # GitHub, a bare .json opens as text) and its README.md - or, the form a
 # contribution arrives in, "<Name>.zip" and "<Name>.README.md" flat in
-# configurations/ (the two files OrganSampler writes beside a portable
+# libreorgans/ (the two files LibreOrgan Sampler writes beside a portable
 # configuration; the "Configuration from issue" workflow puts them there from
 # an issue). The index job sorts such a pair into its own folder after the
 # merge. Anything else fails here (.github/scripts/configurations_check.sh).
 on:
   push:
-    paths: [ 'configurations/**' ]
+    paths: [ 'libreorgans/**' ]
   pull_request:
-    paths: [ 'configurations/**' ]
+    paths: [ 'libreorgans/**' ]
 
 jobs:
   check:
@@ -25,11 +25,11 @@ jobs:
         run: bash .github/scripts/configurations_check.sh
 
   # After a merge into main: an uploaded pair "<Name>.zip" + "<Name>.README.md"
-  # moves into the organ's folder configurations/<organ>/ (README.md + the zip;
+  # moves into the organ's folder libreorgans/<organ>/ (README.md + the zip;
   # the folder is named after the organ given at the save, the zip's name when
   # none - configuration_tools.py slug), any other folder holding the same organ
   # (an older version, whatever its file was called) is removed, then the list
-  # of the published configurations, configurations/INDEX.md (one line per
+  # of the published configurations, libreorgans/INDEX.md (one line per
   # organ: README link, divisions, Stop List rows, routes) with its sorted
   # copies INDEX-<column>-<asc|desc>.md (the triangles in the header), is written
   # from the configuration files; both are committed back when anything changed.
@@ -42,30 +42,30 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Sort uploads into their folders and write configurations/INDEX.md
+      - name: Sort uploads into their folders and write libreorgans/INDEX.md
         shell: bash
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for zip in configurations/*.zip; do
+          for zip in libreorgans/*.zip; do
             [ -e "$zip" ] || continue
             base="$(basename "$zip" .zip)"
-            readme="configurations/$base.README.md"
+            readme="libreorgans/$base.README.md"
             if [ ! -f "$readme" ]; then echo "::warning file=$zip::no $base.README.md beside it - left where it is"; continue; fi
             slug="$(python3 .github/scripts/configuration_tools.py slug "$zip")"
             [ -n "$slug" ] || slug="organ-$(date +%s)"
             # The same organ published before (the folder of its name, or one of
             # another name holding the same organ): its files go, the new ones replace them.
             for old in $(python3 .github/scripts/configuration_tools.py same-organ "$zip"); do
-              [ -d "configurations/$old" ] || continue
-              echo "configurations/$old held this organ already - replaced by $base"
-              git rm -r -q "configurations/$old"
+              [ -d "libreorgans/$old" ] || continue
+              echo "libreorgans/$old held this organ already - replaced by $base"
+              git rm -r -q "libreorgans/$old"
             done
-            mkdir -p "configurations/$slug"
-            git mv -f "$zip" "configurations/$slug/$base.zip"
-            git mv -f "$readme" "configurations/$slug/README.md"
-            echo "sorted $base into configurations/$slug/"
+            mkdir -p "libreorgans/$slug"
+            git mv -f "$zip" "libreorgans/$slug/$base.zip"
+            git mv -f "$readme" "libreorgans/$slug/README.md"
+            echo "sorted $base into libreorgans/$slug/"
           done
           python3 .github/scripts/configurations_index.py || true
           git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml

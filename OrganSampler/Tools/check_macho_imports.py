@@ -3,7 +3,7 @@
 with the dylib each one is bound to - to check an Intel build meant for old macOS
 before anyone starts it there ("dyld: Symbol not found").
 
-Usage: python check_macho_imports.py <OrganSampler.app/Contents/MacOS/OrganSampler> [--all]
+Usage: python check_macho_imports.py <LibreOrgan.app/Contents/MacOS/LibreOrgan> [--all]
 
 Thin x86_64 and arm64 binaries and fat binaries are read (every slice). Without
 --all only the C++ standard library imports (std::__1::..., operator new/delete,

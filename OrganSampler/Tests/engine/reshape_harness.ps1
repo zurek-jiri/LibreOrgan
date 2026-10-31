@@ -6,7 +6,7 @@
 # Prints the level profile (dB re the first 100 ms) of the source, the
 # resampled material and the copy: the copy must follow the source within a
 # few dB. No app involved - safe to run any time.
-$src = Get-Content "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Source\SamplerEngine.cpp" -Raw
+$src = Get-Content "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Source\SamplerEngine.cpp" -Raw
 $start = $src.IndexOf('    void reshapeRelease('); $end = $src.IndexOf('    std::unique_ptr<Sample> makeResampledPitchCopy(')
 if ($start -lt 0 -or $end -lt 0) { 'reshapeRelease not found'; exit 1 }
 $fn = $src.Substring($start, $end - $start)

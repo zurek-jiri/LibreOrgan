@@ -17,7 +17,7 @@
 
 //==============================================================================
 // Writes a crash report (text log plus, on Windows, a minidump) into
-//   <user app data>/OrganSampler/CrashLogs/
+//   <user app data>/LibreOrgan/CrashLogs/
 // whenever the process dies from an unhandled exception, an abort, a
 // std::terminate or an invalid CRT parameter.
 //
@@ -235,13 +235,13 @@ namespace CrashHandler
             auto dir = logDirectory();
             if (dir == juce::File())
                 dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                    .getChildFile("OrganSampler").getChildFile("CrashLogs");
+                    .getChildFile("LibreOrgan").getChildFile("CrashLogs");
             dir.createDirectory();
             const auto stamp = timestamp();
             const auto logFile = dir.getChildFile("crash-" + stamp + ".txt");
 
             juce::String report;
-            report << "OrganSampler crash report\n"
+            report << "LibreOrgan Sampler crash report\n"
                    << "Time: " << juce::Time::getCurrentTime().toString(true, true, true, true) << "\n"
                    << applicationInfo() << "\n"
                    << "Reason: " << reason << "\n";
@@ -427,7 +427,7 @@ namespace CrashHandler
     inline void install(const juce::String& applicationName, const juce::String& version)
     {
         detail::logDirectory() = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-            .getChildFile("OrganSampler").getChildFile("CrashLogs");
+            .getChildFile("LibreOrgan").getChildFile("CrashLogs");
         detail::logDirectory().createDirectory();
        #if JUCE_DEBUG
         detail::applicationInfo() = "Application: " + applicationName + " " + version + " (debug)";

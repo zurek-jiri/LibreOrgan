@@ -1,6 +1,6 @@
-# Third-party software in OrganSampler
+# Third-party software in LibreOrgan Sampler
 
-OrganSampler itself is free software under the GNU General Public License v3
+LibreOrgan Sampler itself is free software under the GNU General Public License v3
 (see `LICENSE`). It contains or links the following software; the same notices
 and the full licence texts are shown in the program under Configuration Editor >
 About & licences.

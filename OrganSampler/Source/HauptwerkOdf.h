@@ -8,12 +8,12 @@
 
 //==============================================================================
 // Hauptwerk organ definition files (ODF, "<name>.Organ_Hauptwerk_xml"): read
-// for what OrganSampler needs and nothing more - the divisions with their
+// for what LibreOrgan Sampler needs and nothing more - the divisions with their
 // keyboards, the stops with their ranks, the ranks' sample files (which give
 // the folder trees, the stop folders and the perspectives) and the per-pipe
 // level adjustments (the voicing). Couplers, switches, displays, tremulants,
 // wind, combinations and everything else of the ODF is ignored: in
-// OrganSampler the folder structure decides the organ.
+// LibreOrgan Sampler the folder structure decides the organ.
 //
 // An ODF is an XML of tables: <ObjectList ObjectType="Stop"> holding one row
 // per record, each a flat list of <Field>value</Field> pairs. A compacted ODF
@@ -28,7 +28,7 @@
 // digits> beside the OrganDefinitions folder - the Hauptwerk standard layout.
 // Encrypted samples (.hbw/.hbx) cannot be played and make the import refuse.
 // Tremmed samples (alternate "tremmed" ranks, the "trem" folders, further
-// pipe layers) are left out: OrganSampler has its own tremulant.
+// pipe layers) are left out: LibreOrgan Sampler has its own tremulant.
 struct HauptwerkOdf
 {
     struct Pipe
@@ -81,7 +81,7 @@ struct HauptwerkOdf
     // the key switches reach through the switch linkages, with or without a
     // condition switch (Caen: the Pedal keyboard plays "Pedal" always and
     // "PedalAnches" when the reeds ventil is drawn - both are its divisions,
-    // for OrganSampler a division IS a keyboard). divisionId is the primary one
+    // for LibreOrgan Sampler a division IS a keyboard). divisionId is the primary one
     // (the ODF's hint when it is among them), divisionIds all of them, the
     // primary first.
     struct Keyboard
@@ -124,7 +124,7 @@ struct HauptwerkOdf
     // The Hauptwerk root (the folder holding OrganDefinitions and
     // OrganInstallationPackages) for an ODF at this path, or an empty file.
     static juce::File hauptwerkRootFor(const juce::File& odf);
-    // The OrganConfigurations folder for a root: outside the Hauptwerk folders (0.8.158).
+    // The OrganLibreOrgans folder for a root: outside the Hauptwerk folders (0.8.158).
     static juce::File configurationFolderFor(const juce::File& hauptwerkRoot);
     static juce::File packageFolder(const juce::File& hauptwerkRoot, int packageId);
     static juce::String spelledAsOnDisk(const juce::File& base, const juce::String& relative);   // the parts as the disk spells them (0.8.149)
@@ -133,7 +133,7 @@ struct HauptwerkOdf
     static juce::String perspectiveOfRankName(const juce::String& name);
 
     //==========================================================================
-    // What OrganSampler makes of it: divisions in keyboard order (the pedal
+    // What LibreOrgan Sampler makes of it: divisions in keyboard order (the pedal
     // first), each with its folder trees, the stops with their stop folders,
     // the perspective patterns, and the voicing per pipe.
     struct PlanStop
@@ -145,7 +145,7 @@ struct HauptwerkOdf
         // An extension or a transmission: the stop plays the ranks of another
         // stop (its owner, by ODF stop id) shifted by 'shift' semitones (an ODF
         // stop whose StopRank rows all borrow one other stop's ranks with the
-        // same transposition). It has no folders of its own; OrganSampler makes
+        // same transposition). It has no folders of its own; LibreOrgan Sampler makes
         // a transmission of the owner into this division with that shift.
         int extensionOfStopId = 0;
         int shift = 0;
@@ -190,7 +190,7 @@ struct HauptwerkOdf
         juce::File configurationFile;                // where the configuration goes: the main package folder
         int stopsWithoutSamples = 0, skippedTremmedRanks = 0, skippedNoiseRanks = 0, extensions = 0;
         std::vector<juce::String> oneShotFolders;    // stop folder names of the one-shot stops (no release samples): for the One-shot Patterns
-        // The couplers of the definition OrganSampler has a coupler for (0.8.138):
+        // The couplers of the definition LibreOrgan Sampler has a coupler for (0.8.138):
         // id = our coupler id ("target-source-type", MainComponent::rebuildCouplerCatalog),
         // label = the definition's name, switchId = its drawstop (the crescendo stages name it).
         struct PlanCoupler { juce::String id, label; int switchId = 0; };

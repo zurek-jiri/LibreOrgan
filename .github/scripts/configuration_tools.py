@@ -4,7 +4,7 @@ is, and how to find one. Used by the workflows (Configuration from issue,
 Configurations check, Remove a configuration) and by configurations_check.sh.
 
   configuration_tools.py validate <zip> <readme>   checks the pair; prints the problems, exit 1 on any
-  configuration_tools.py slug <zip>                 the folder name the organ gets under configurations/
+  configuration_tools.py slug <zip>                 the folder name the organ gets under libreorgans/
   configuration_tools.py same-organ <zip>           existing folders holding the same organ (one per line)
   configuration_tools.py find <text>                folders matching <text> (folder|title|organ|publisher per line)
   configuration_tools.py publisher <folder>         the GitHub login that published the folder ("" when unknown)
@@ -21,7 +21,7 @@ import re
 import sys
 import zipfile
 
-ROOT = 'configurations'
+ROOT = 'libreorgans'
 PROTECTED = {'rural-organ'}   # the demo organ with its samples: never replaced or removed by the robots
 
 
@@ -176,10 +176,10 @@ def count_rows(cfg):
 
 
 def validate_config(cfg):
-    """Is this an organ configuration of OrganSampler, saved portable with the organ loaded?"""
+    """Is this an organ configuration of LibreOrgan Sampler, saved portable with the organ loaded?"""
     problems = []
     if 'portableConfigurationVersion' not in cfg:
-        problems.append('not an OrganSampler configuration (no portableConfigurationVersion)')
+        problems.append('not a LibreOrgan Sampler configuration (no portableConfigurationVersion)')
     manuals = cfg.get('manualKeyboards')
     try:
         divisions = int(cfg.get('manualCount', -1)) + 1
@@ -224,9 +224,9 @@ def validate_readme(readme_path, zip_path, cfg):
     organ_name = organ_of(cfg) if cfg is not None else ''
     expected = organ_name or title_from_base(base)
     if first != '# ' + expected:
-        problems.append('the README is not the one written for %s.zip (its title is "%s", expected "# %s" - save it again with OrganSampler 0.8.189 or later)' % (base, first, expected))
-    if 'Written by OrganSampler' not in text:
-        problems.append('the README was not written by OrganSampler (save the configuration with "Portable configuration" ticked and send the README it writes)')
+        problems.append('the README is not the one written for %s.zip (its title is "%s", expected "# %s" - save it again with LibreOrgan Sampler 0.8.189 or later)' % (base, first, expected))
+    if 'Written by LibreOrgan Sampler' not in text:
+        problems.append('the README was not written by LibreOrgan Sampler (save the configuration with "Portable configuration" ticked and send the README it writes)')
     left = re.findall(r'\(fill in:[^)]*\)', text)
     if left:
         problems.append('the README still has %d "(fill in: ...)" place(s) to complete: %s' % (len(left), '; '.join(left)))
@@ -260,16 +260,16 @@ def validate_readme(readme_path, zip_path, cfg):
             problems.append('the README names another organ than the configuration ("%s")' % organ)
         # The download link must point into the folder the organ gets (the program
         # writes it with the same rule since 0.8.188; an older README points elsewhere).
-        m = re.search(r'raw/main/configurations/([^/\s]+)/([^\s)]+)\)', text)
+        m = re.search(r'raw/main/libreorgans/([^/\s]+)/([^\s)]+)\)', text)
         wanted = slug_for(zip_path, cfg)
         if m and m.group(1) != wanted:
-            problems.append('the README\'s download link points to the folder "%s", the organ\'s folder is "%s" - save the configuration again with OrganSampler 0.8.188 or later'
+            problems.append('the README\'s download link points to the folder "%s", the organ\'s folder is "%s" - save the configuration again with LibreOrgan Sampler 0.8.188 or later'
                             % (m.group(1), wanted))
         # The link must name THIS zip (the attachment's dots for spaces gave a 404 before).
         if m and m.group(2).replace('%20', ' ') != os.path.basename(zip_path):
             problems.append('the README\'s download link names "%s" but the zip is "%s"' % (m.group(2).replace('%20', ' '), os.path.basename(zip_path)))
-    if 'Saved with:** OrganSampler' not in text:
-        problems.append('the README has no "Saved with: OrganSampler" line')
+    if 'Saved with:** LibreOrgan Sampler' not in text:
+        problems.append('the README has no "Saved with: LibreOrgan Sampler" line')
     if '(the organ was not named)' in text or '(the producer was not named)' in text:
         problems.append('the organ or the producer of its samples was not named at the save - fill the Save Configuration box in and save again')
     return problems

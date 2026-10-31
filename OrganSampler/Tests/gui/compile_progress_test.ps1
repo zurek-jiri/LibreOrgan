@@ -2,9 +2,9 @@
 # configuration at start-up, screenshots of the "Loading saved divisions..."
 # dialog are taken every 150 ms from the moment the samples are loaded (the log
 # says "Committing") until the dialog disappears: cp_<n>.png in %TEMP%.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_cp_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -15,9 +15,9 @@ $json | Add-Member -NotePropertyName configurationFile -NotePropertyValue "F:\ha
 Get-ChildItem "$env:TEMP\cp_*.png" -ErrorAction SilentlyContinue | Remove-Item -Force
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
-$exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe"
+$exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe"
 $t0 = Get-Date
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $shots = 0; $committing = $false; $seenDialog = $false; $tCommit = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 150)
 {
@@ -47,9 +47,9 @@ while (((Get-Date) - $t0).TotalSeconds -lt 150)
 }
 # The stop grid a moment later: the copy-build strips on the stop buttons (pitch shift builds in the background).
 Start-Sleep -Seconds 3
-$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
 if ($main) { Save-WindowShot $main.Handle "$env:TEMP\cp_main.png" | Out-Null; 'main shot (build strips)' }
 Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'Compiling|Committing' | ForEach-Object { '  ' + $_.Line.Substring(0, [Math]::Min(150, $_.Line.Length)) }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force; "$name restored identical: " + ((Get-FileHash "$appData\$name").Hash -eq (Get-FileHash $backups[$name]).Hash) }

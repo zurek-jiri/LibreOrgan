@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="OrganSampler: a free pipe organ sampler for Windows, macOS and Linux. Load folders of WAV samples, build your own console and stop list, play with massive polyphony, per-key voicing, perspectives on any sound card and IR reverb.">
+  <meta name="description" content="LibreOrgan Sampler: a free pipe organ sampler for Windows, macOS and Linux. Load folders of WAV samples, build your own console and stop list, play with massive polyphony, per-key voicing, perspectives on any sound card and IR reverb.">
   <meta name="theme-color" content="#1c1d1f">
-  <title>OrganSampler - pipe organ sampler for creative minds</title>
+  <title>LibreOrgan Sampler - pipe organ sampler for creative minds</title>
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="stylesheet" href="style.css">
   <script src="config.js" defer></script>
@@ -14,7 +14,7 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header wrap">
-    <a class="brand" href="#" aria-label="OrganSampler home"><img src="assets/icon.png" width="52" height="52" alt=""><span>OrganSampler</span></a>
+    <a class="brand" href="#" aria-label="LibreOrgan Sampler home"><img src="assets/icon.png" width="52" height="52" alt=""><span>LibreOrgan Sampler</span></a>
     <nav aria-label="Main navigation"><a href="#explore">Inside</a><a href="#download">Download</a><a href="#samples">Samples</a><a href="#configurations">Configurations, Organs</a><a href="#support">Problems</a></nav>
   </header>
   <main id="main">
@@ -22,10 +22,10 @@
       <div class="hero-copy">
         <p class="eyebrow">Pipe organ sampler for creative minds</p>
         <h1>Design your console. Build your stop list. Perform.</h1>
-        <p class="intro">OrganSampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
+        <p class="intro">LibreOrgan Sampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.8.254</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.9.0</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -46,7 +46,7 @@
       <p><strong>Your own organ, from any sources</strong><span>stops of different producers in one console, duplicated as transmissions and extensions, two configurations merged into one</span></p>
       <p><strong>Light on RAM, CPU and disk</strong><span>an 80 GB sample set squeezed into 8 GB of RAM with the saving options on a modest computer; samples read from the packed archives, nothing unpacked on the disk; on a strong computer up to 500 000 pipes of polyphony</span></p>
       <p><strong>Any number of sound cards</strong><span>every perspective and division on its own device and channels</span></p>
-      <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too. A Hauptwerk definition is not loaded: it is read for its folder paths and stop arrangement only; the perspectives and the relative volumes are OrganSampler's own deduction, the organ is built from the folders</span></p>
+      <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too. A Hauptwerk definition is not loaded: it is read for its folder paths and stop arrangement only; the perspectives and the relative volumes are LibreOrgan Sampler's own deduction, the organ is built from the folders</span></p>
     </div></div>
 
     <section id="explore" class="section wrap">
@@ -59,17 +59,17 @@
         <button type="button" aria-pressed="false" data-view="editor">Configuration Editor</button>
       </div>
       <figure class="app-preview" id="video-figure" hidden>
-        <video id="demo-video" controls preload="metadata" poster="assets/main.jpg" playsinline aria-label="OrganSampler at work on the Stralsund organ: the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift), couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List">
-          <source src="assets/organsampler.mp4" type="video/mp4">
+        <video id="demo-video" controls preload="metadata" poster="assets/main.jpg" playsinline aria-label="LibreOrgan Sampler at work on the Stralsund organ: the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift), couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List">
+          <source src="assets/libreorgan.mp4" type="video/mp4">
         </video>
-        <figcaption>The program at work on Stralsund, St. Jakobi (Sonus Paradisi samples), with sound: the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with alias, volume and the per-pipe sliders, arrange mode by a two-second press, two ranks dragged into a stop folder, a transmission dragged with the right mouse button (or Shift) into the pedal and transposed, couplers, a combination, the swell shutters, the tremulant, the general crescendo, temperaments, the Stop List. Every frame and every note come from the program itself.<a href="assets/organsampler.mp4" target="_blank" rel="noopener">Full size &#8599;</a></figcaption>
+        <figcaption>The program at work on Stralsund, St. Jakobi (Sonus Paradisi samples), with sound: the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with alias, volume and the per-pipe sliders, arrange mode by a two-second press, two ranks dragged into a stop folder, a transmission dragged with the right mouse button (or Shift) into the pedal and transposed, couplers, a combination, the swell shutters, the tremulant, the general crescendo, temperaments, the Stop List. Every frame and every note come from the program itself.<a href="assets/libreorgan.mp4" target="_blank" rel="noopener">Full size &#8599;</a></figcaption>
       </figure>
       <figure class="app-preview" id="screenshot-figure">
         <a id="screenshot-link" href="assets/main.jpg" target="_blank" rel="noopener" aria-label="Open the screenshot at full size in a new tab"><img id="screenshot" src="assets/main.jpg" width="2087" height="1056" alt="The main window with the Stralsund, St. Jakobi organ: four divisions with their stop buttons, stop folders, extensions and transmissions, the voicing bars under the stops, couplers and tremulants in the headers, the swell shutters at different positions, a combination engaged on piston 7, the crescendo and the polyphony display above." loading="lazy"></a>
         <figcaption><span id="screenshot-caption" aria-live="polite">The console: one column per division, the stops as buttons, couplers and tremulants in the headers, pistons and the crescendo above. Shown: Stralsund, St. Jakobi, Wegscheider organ (Sonus Paradisi), four divisions - combination 7 drawn, the orange bars under the stops are their voicing, the swell boxes of the divisions at different positions, the Positive's tremulant on; with stop folders (Cornet [III], Vox Humana Cornet [V]), extensions (a 64' pedal from the 32', Montre 32', Septime 1 1/7') and transmissions (Flöte 2', Regal 16') the organ never had, all built in the Stop List from its own ranks.</span><a id="full-size" href="assets/main.jpg" target="_blank" rel="noopener">Full size &#8599;</a></figcaption>
       </figure>
       <div class="feature-grid">
-        <article><span class="feature-number">01</span><h3>Build the organ yourself - from any sources</h3><p>Load a folder tree of samples; the program recognises the stops, their footages and pitches from the files, the microphone perspectives from the folder prefixes, and proposes the divisions. Mix stops of different sample folders and producers into one console, move them between divisions, duplicate them as transmissions and extensions (a 16' from an 8' by transposition, a mutation from a principal), merge stops, merge a second configuration into the organ, arrange the grid. A Hauptwerk organ definition is not loaded - the program has no use for it - but it serves as a map: its folder paths and stop arrangement become an OrganSampler configuration, the microphone perspectives and the relative volumes of stops, divisions and pipes are deduced by OrganSampler itself (a definition knows neither), and the organ is built from the folders like any other. This is what sets OrganSampler apart.</p></article>
+        <article><span class="feature-number">01</span><h3>Build the organ yourself - from any sources</h3><p>Load a folder tree of samples; the program recognises the stops, their footages and pitches from the files, the microphone perspectives from the folder prefixes, and proposes the divisions. Mix stops of different sample folders and producers into one console, move them between divisions, duplicate them as transmissions and extensions (a 16' from an 8' by transposition, a mutation from a principal), merge stops, merge a second configuration into the organ, arrange the grid. A Hauptwerk organ definition is not loaded - the program has no use for it - but it serves as a map: its folder paths and stop arrangement become an LibreOrgan Sampler configuration, the microphone perspectives and the relative volumes of stops, divisions and pipes are deduced by LibreOrgan Sampler itself (a definition knows neither), and the organ is built from the folders like any other. This is what sets LibreOrgan Sampler apart.</p></article>
         <article><span class="feature-number">02</span><h3>Every route on any sound card</h3><p>Every perspective of every division is an audio route with its own device, buffer size and output channels - ASIO and Windows Audio side by side, several interfaces at once, an aggregated device for the rest. One IR reverb per route, mixed in parallel on the render workers. A measurement button finds the polyphony your computer reaches with this very organ.</p></article>
         <article><span class="feature-number">03</span><h3>Voice every pipe</h3><p>Per-key volume and treble, celeste detection, velocity layers, round-robin variants. The program measures every pipe and corrects its pitch and tuning errors itself, retunes the organ to any temperament - historical or your own - and allows pipe coupling and a random tuning error per pipe for a richer chorus, the way a real organ sounds. A wind model with pressure drops and oscillation, tremulants per division, swell boxes, a general crescendo, combination banks, MIDI learn on every control.</p></article>
         <article><span class="feature-number">04</span><h3>Missing pipes, filled</h3><p>A rank with gaps, or a stop that exists only as an 8', is completed by pitch-shifted copies of the neighbouring pipes - several transposition methods, rebuilt offline into a cache, so that nothing is interpolated on the fly and nothing is altered silently.</p></article>
@@ -82,26 +82,27 @@
 
     <section id="download" class="band">
       <div class="wrap two">
-        <div><p class="eyebrow">Download</p><h2>One file. Put it anywhere.</h2><p>OrganSampler is one executable: no installer, nothing written beside it. Each build comes as the archive native to its system - unpack it and start the program. Settings, voicing, combinations and the cache of filled pipes live in your application-data folder. The window title shows the version.</p>
+        <div><p class="eyebrow">Download</p><h2>One file. Put it anywhere.</h2><p>LibreOrgan Sampler is one executable: no installer, nothing written beside it. Each build comes as the archive native to its system - unpack it and start the program. Settings, voicing, combinations and the cache of filled pipes live in your application-data folder. The window title shows the version.</p>
           <ul class="plain">
-            <li><strong>Windows 10 or 11, 64-bit:</strong> <code>OrganSampler-windows.zip</code> (<code>OrganSampler.exe</code> inside) - ASIO, Windows Audio (WASAPI) and the aggregated WASAPI device. The executable is not signed: Windows may ask once ("More info" &rarr; "Run anyway").</li>
-            <li><strong>macOS 11 Big Sur or newer, Apple silicon:</strong> <code>OrganSampler-macos.zip</code>; <strong>Intel Macs, macOS 10.11 El Capitan or newer:</strong> <code>OrganSampler-macos-10.11-intel.zip</code> - CoreAudio. Not notarised: open the app the first time with right-click &rarr; Open. Both untested by the project so far.</li>
-            <li><strong>Linux x86-64, glibc 2.38 or newer</strong> (Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer): <code>OrganSampler-linux-x86_64.tar.gz</code> (<code>tar xzf</code>; the executable bit is kept) - ALSA or JACK (PipeWire).</li>
+            <li><strong>Windows 10 or 11, 64-bit:</strong> <code>LibreOrgan-windows.zip</code> (<code>LibreOrgan.exe</code> inside) - ASIO, Windows Audio (WASAPI) and the aggregated WASAPI device. The executable is not signed: Windows may ask once ("More info" &rarr; "Run anyway").</li>
+            <li><strong>macOS 11 Big Sur or newer, Apple silicon:</strong> <code>LibreOrgan-macos.zip</code>; <strong>Intel Macs, macOS 10.11 El Capitan or newer:</strong> <code>LibreOrgan-macos-10.11-intel.zip</code> - CoreAudio. Not notarised: open the app the first time with right-click &rarr; Open. Both untested by the project so far.</li>
+            <li><strong>Linux x86-64, glibc 2.38 or newer</strong> (Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer): <code>LibreOrgan-linux-x86_64.tar.gz</code> (<code>tar xzf</code>; the executable bit is kept) - ALSA or JACK (PipeWire).</li>
+            <li><strong>Raspberry Pi 4/5, 64-bit OS</strong> (Raspberry Pi OS Bookworm or newer): <code>LibreOrgan-linux-arm64.tar.gz</code> - a test build, not yet tried on real hardware by the project.</li>
           </ul>
           <p class="small">The macOS and Linux builds are compiled and self-tested by the project's continuous integration; they are young and less used than the Windows build - please report what you find.</p>
         </div>
         <div class="card">
           <p class="eyebrow">Free software</p><h3>Get the latest build</h3><p>Every build on the releases page carries the three executables, the changelog and the corresponding source. They are marked <em>pre-release</em>: builds for testers, until the first release the project is satisfied with. Free and open source under the GNU GPL v3 - use it, study it, change it, pass it on.</p>
-          <a class="button primary" href="https://github.com/zurek-jiri/OrganSampler/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
-          <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/OrganSampler/USER_MANUAL.md" data-repo-path="OrganSampler/USER_MANUAL.md">Read the user manual &#8599;</a>
-          <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.8.254</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">GitHub</a>.</p>
+          <a class="button primary" href="https://github.com/zurek-jiri/LibreOrgan/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
+          <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/LibreOrgan/USER_MANUAL.md" data-repo-path="LibreOrgan/USER_MANUAL.md">Read the user manual &#8599;</a>
+          <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan#building" data-repo-suffix="#building">Build from source &#8599;</a>
+          <p class="small">Version <span data-version>0.9.0</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/LibreOrgan" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>
 
     <section id="samples" class="section wrap">
-      <div class="section-heading"><p class="eyebrow">Samples</p><h2>Folders of WAV files - that is all.</h2><p>OrganSampler has no format of its own and needs no organ definition file. What it plays is a tree of folders: a top folder holding one folder per stop, each stop folder holding the WAVs of its pipes, named after their MIDI keys (<code>036-C.wav</code>, <code>037-C#.wav</code> ...; several files for one key play in turn), with the releases in a <code>rel</code> subfolder and the microphone perspectives as prefixes (<code>dir-</code>, <code>dif-</code>, <code>rear-</code>). Loop points and the recorded pitch come from the WAV's <code>smpl</code> chunk; from the pitch the program learns the footage, the tuning and the temperament of every rank. In OrganSampler the words "sample set" keep their original, plain meaning: a bunch of WAV samples organised in folders - not a packaged virtual organ with a definition file.</p></div>
+      <div class="section-heading"><p class="eyebrow">Samples</p><h2>Folders of WAV files - that is all.</h2><p>LibreOrgan Sampler has no format of its own and needs no organ definition file. What it plays is a tree of folders: a top folder holding one folder per stop, each stop folder holding the WAVs of its pipes, named after their MIDI keys (<code>036-C.wav</code>, <code>037-C#.wav</code> ...; several files for one key play in turn), with the releases in a <code>rel</code> subfolder and the microphone perspectives as prefixes (<code>dir-</code>, <code>dif-</code>, <code>rear-</code>). Loop points and the recorded pitch come from the WAV's <code>smpl</code> chunk; from the pitch the program learns the footage, the tuning and the temperament of every rank. In LibreOrgan Sampler the words "sample set" keep their original, plain meaning: a bunch of WAV samples organised in folders - not a packaged virtual organ with a definition file.</p></div>
       <pre><code>Organ Samples                 &lt;- the top folder you load
 ├── Principal 8
 │   ├── 036-C.wav             &lt;- a WAV per pipe, named after its key (several for one key play in turn)
@@ -112,11 +113,11 @@
 └── Mixtura</code></pre>
       <div class="cards">
         <article><h3>Where the samples come from</h3><ul>
-          <li>OrganSampler ships no samples and never will: they are bought or downloaded elsewhere and stay the property of their authors.</li>
-          <li><a href="https://www.sonusparadisi.cz/" rel="noopener">Sonus Paradisi</a> - sample folders in wave format usually work with OrganSampler as they are. The Stralsund, St. Jakobi, Wegscheider organ is the instrument the program grew up with.</li>
+          <li>LibreOrgan Sampler ships no samples and never will: they are bought or downloaded elsewhere and stay the property of their authors.</li>
+          <li><a href="https://www.sonusparadisi.cz/" rel="noopener">Sonus Paradisi</a> - sample folders in wave format usually work with LibreOrgan Sampler as they are. The Stralsund, St. Jakobi, Wegscheider organ is the instrument the program grew up with.</li>
         </ul></article>
         <article><h3>Try it at once: Rural Organ</h3><ul>
-          <li><strong>The demo organ</strong> - a small village organ, three divisions, 24 stops, <strong>dry recordings with IR reverb</strong>: the room comes from the two impulse responses the configuration puts on its routes. The one package that carries samples, with its portable configuration. <a href="https://github.com/zurek-jiri/OrganSampler/releases/download/rural-organ-0.8/RuralOrgan.rar">Download RuralOrgan.rar</a> (about 700 MB), start OrganSampler, <em>Load Configuration</em> and choose the <code>.rar</code> itself: the samples are read from the archive, nothing to unpack (unpacked, it loads faster from a fast disk). Samples by Sonus Paradisi, free of charge to try the program.</li>
+          <li><strong>The demo organ</strong> - a small village organ, three divisions, 24 stops, <strong>dry recordings with IR reverb</strong>: the room comes from the two impulse responses the configuration puts on its routes. The one package that carries samples, with its portable configuration. <a href="https://github.com/zurek-jiri/LibreOrgan/releases/download/rural-organ-0.8/RuralOrgan.rar">Download RuralOrgan.rar</a> (about 700 MB), start LibreOrgan Sampler, <em>Load Configuration</em> and choose the <code>.rar</code> itself: the samples are read from the archive, nothing to unpack (unpacked, it loads faster from a fast disk). Samples by Sonus Paradisi, free of charge to try the program.</li>
           <li>More free material: Sonus Paradisi's <a href="https://www.sonusparadisi.cz/en/free-stuff.html" rel="noopener">Free stuff</a> page.</li>
         </ul></article>
         <article><h3>Your own recordings</h3><ul>
@@ -128,32 +129,32 @@
 
     <section id="configurations" class="band">
       <div class="wrap">
-        <div class="section-heading"><p class="eyebrow">Configurations, Organs</p><h2>Someone kind has done the work for you.</h2><p>A configuration is a complete organ built in OrganSampler - stop list, voicing, audio routes, couplers, combinations, crescendo - saved as one <code>.json</code> file. With a published configuration, a player who owns the same sample folders loads the whole organ in one step. <strong>The samples themselves are never published; a configuration only names the sample folders it needs</strong>, and the repository refuses anything else in its configurations folder. The samples are bought or downloaded elsewhere - from Sonus Paradisi above all.</p></div>
+        <div class="section-heading"><p class="eyebrow">Configurations, Organs</p><h2>Someone kind has done the work for you.</h2><p>A configuration is a complete organ built in LibreOrgan Sampler - stop list, voicing, audio routes, couplers, combinations, crescendo - saved as one <code>.json</code> file. With a published configuration, a player who owns the same sample folders loads the whole organ in one step. <strong>The samples themselves are never published; a configuration only names the sample folders it needs</strong>, and the repository refuses anything else in its LibreOrgans folder. The samples are bought or downloaded elsewhere - from Sonus Paradisi above all.</p></div>
         <div class="two">
           <div class="plain">
             <h3>Using one</h3>
             <ol>
               <li>Find the organ in the list of published configurations (the link below) and open its README: it says which sample folders it needs and where from, and its Download link gives the zipped <code>.json</code>.</li>
-              <li><em>Load Configuration</em> in the top bar and choose the downloaded zip as it is: the <code>.json</code> inside is read and copied into your configurations folder. Where the download lies does not matter.</li>
+              <li><em>Load Configuration</em> in the top bar and choose the downloaded zip as it is: the <code>.json</code> inside is read and copied into your LibreOrgans folder. Where the download lies does not matter.</li>
               <li>The sample folders are found through your sample locations - the folders above your libraries, which the program remembers by itself. On a new computer a division may show "Sample folder not found": click it and choose any folder of the set - the tree, the folder above it or a neighbouring tree. The program finds the tree from there, the other missing ones around it, loads them all and remembers the place for the next configuration.</li>
             </ol>
-            <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md" data-repo-path="configurations/INDEX.md">The list of published configurations &#8599;</a>
+            <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md" data-repo-path="libreorgans/INDEX.md">The list of published configurations &#8599;</a>
           </div>
           <div class="plain">
             <h3>Publishing yours</h3>
             <ol>
               <li>Save it with "Portable configuration (to share with others)" ticked: no MIDI devices, no audio devices, nothing of your computer - the organ only.</li>
-              <li>The program asks once for the organ, the producer of the samples, the link to their page and your name, and writes the export into the Publish folder of your configurations folder: the portable <code>.json</code>, the zip for the upload (the configuration and its README inside) and the README beside it for reading.</li>
+              <li>The program asks once for the organ, the producer of the samples, the link to their page and your name, and writes the export into the Publish folder of your LibreOrgans folder: the portable <code>.json</code>, the zip for the upload (the configuration and its README inside) and the README beside it for reading.</li>
               <li>Press "Publish on GitHub" in the window that follows: the form opens with the title and the organ filled in, the Publish folder beside it. Attach the zip and submit. A robot takes the README out of it and checks them (a real organ configuration, saved with the organ loaded, and the README written for it) and proposes them as a pull request; after the merge the organ gets its folder and its line in the list by itself. A new version sent the same way replaces the old one; the "Remove my configuration" form takes it off the list. Only the zip: no sample, no impulse response, nothing else is accepted, ever.</li>
             </ol>
-            <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml" data-repo-suffix="/issues/new?template=organ_configuration.yml">Send a configuration &#8599;</a>
+            <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml" data-repo-suffix="/issues/new?template=organ_configuration.yml">Send a configuration &#8599;</a>
           </div>
         </div>
       </div>
     </section>
 
     <section id="support" class="section wrap">
-      <div class="section-heading"><p class="eyebrow">Problems and ideas</p><h2>A report with the log is a report that gets fixed.</h2><p>OrganSampler writes an activity log of every start, device, load and crash. A bug report that carries it is usually fixed in the next release; one without it often cannot be.</p></div>
+      <div class="section-heading"><p class="eyebrow">Problems and ideas</p><h2>A report with the log is a report that gets fixed.</h2><p>LibreOrgan Sampler writes an activity log of every start, device, load and crash. A bug report that carries it is usually fixed in the next release; one without it often cannot be.</p></div>
       <div class="two">
         <div>
           <details open><summary>Reporting a bug</summary>
@@ -161,21 +162,21 @@
               <li>In the program: <em>Configuration Editor &rarr; Report a problem...</em> Describe what happened and how to reproduce it; the program bundles its activity log, crash reports, settings, the last self-test and a description of the computer and the audio devices into one zip, takes screenshots of its own windows (recommended - keep the dialog in question open), and lets you add screenshot files of your own.</li>
               <li>It then opens the GitHub bug report in your browser with the fields filled in and the report folder (in the program's application-data folder) beside it: drag the zip into "Logs", the pictures into "Screenshots", and submit. A free GitHub account is needed to submit.</li>
             </ol>
-            <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/issues/new/choose" data-repo-suffix="/issues/new/choose">Open a report &#8599;</a>
+            <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/issues/new/choose" data-repo-suffix="/issues/new/choose">Open a report &#8599;</a>
           </details>
           <details><summary>Feature requests</summary><p>Say what you are trying to do and what the program should do - a concrete example of the dialog and the control helps more than a solution.</p></details>
-          <details><summary>Contributing code</summary><p>C++17 and JUCE 9, built with CMake on all three platforms (and the Projucer project on Windows). The rules are short: no path outside the repository, nothing read from beside the executable, no audio altered silently, a changelog line and a manual paragraph for every visible change.</p><a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/CONTRIBUTING.md" data-repo-path="CONTRIBUTING.md">Contribution guide &#8599;</a></details>
+          <details><summary>Contributing code</summary><p>C++17 and JUCE 9, built with CMake on all three platforms (and the Projucer project on Windows). The rules are short: no path outside the repository, nothing read from beside the executable, no audio altered silently, a changelog line and a manual paragraph for every visible change.</p><a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/CONTRIBUTING.md" data-repo-path="CONTRIBUTING.md">Contribution guide &#8599;</a></details>
         </div>
         <div class="card">
           <p class="eyebrow">The project</p><h3>Free, open, portable</h3>
-          <p>Maintained by zurek-jiri. OrganSampler is free software under the GNU GPL v3: you may use, study, modify and redistribute it, including commercially, under the licence's source-sharing terms. It is provided without warranty.</p>
+          <p>Maintained by zurek-jiri. LibreOrgan Sampler is free software under the GNU GPL v3: you may use, study, modify and redistribute it, including commercially, under the licence's source-sharing terms. It is provided without warranty.</p>
           <p>Built on the JUCE framework (AGPLv3), the Steinberg ASIO SDK (GPLv3 option, Windows only) and Signalsmith Stretch (MIT). The full licence texts are shown in the program under About &amp; licences.</p>
-          <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/LICENSE" data-repo-path="LICENSE">The licence &#8599;</a>
-          <a class="text-link" href="https://github.com/zurek-jiri/OrganSampler/blob/main/THIRD-PARTY-NOTICES.md" data-repo-path="THIRD-PARTY-NOTICES.md">Third-party notices &#8599;</a>
+          <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/LICENSE" data-repo-path="LICENSE">The licence &#8599;</a>
+          <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/THIRD-PARTY-NOTICES.md" data-repo-path="THIRD-PARTY-NOTICES.md">Third-party notices &#8599;</a>
         </div>
       </div>
     </section>
   </main>
-  <footer class="wrap site-footer"><a class="brand" href="#"><img src="assets/icon.png" width="40" height="40" alt=""><span>OrganSampler</span></a><p>&copy; 2026 zurek-jiri and contributors. GNU GPL v3 &middot; No warranty.</p><a class="text-link" href="https://github.com/zurek-jiri/OrganSampler" data-repo-suffix="">Source on GitHub &#8599;</a></footer>
+  <footer class="wrap site-footer"><a class="brand" href="#"><img src="assets/icon.png" width="40" height="40" alt=""><span>LibreOrgan Sampler</span></a><p>&copy; 2026 zurek-jiri and contributors. GNU GPL v3 &middot; No warranty.</p><a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan" data-repo-suffix="">Source on GitHub &#8599;</a></footer>
 </body>
 </html>

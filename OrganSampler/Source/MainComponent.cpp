@@ -460,7 +460,7 @@ public:
     };
 
     explicit SecondWindow(MainComponent& ownerIn)
-        : juce::DocumentWindow("OrganSampler - window 2",
+        : juce::DocumentWindow("LibreOrgan Sampler - window 2",
             juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId),
             juce::DocumentWindow::allButtons),
           owner(ownerIn)
@@ -1087,7 +1087,7 @@ MainComponent::MainComponent()
     resetButton.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
     resetButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     addAndMakeVisible(shutdownButton);
-    shutdownButton.setTooltip("Saves the configuration, quits OrganSampler and shuts the computer down at once - no question "
+    shutdownButton.setTooltip("Saves the configuration, quits LibreOrgan Sampler and shuts the computer down at once - no question "
         "asked (for consoles without a screen).");
     shutdownButton.onClick = [this] { shutdownComputer(); };
     addAndMakeVisible(unpackArchiveButton);
@@ -1522,7 +1522,7 @@ MainComponent::MainComponent()
 
     // Společný adresář pro JSON soubory
     juce::File appDataDir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("OrganSampler");
+        .getChildFile("LibreOrgan");
     if (!appDataDir.exists())
         appDataDir.createDirectory();
 
@@ -2279,7 +2279,7 @@ MainComponent::MainComponent()
         const juce::File folder(juce::String::fromUTF8(env));
         juce::Timer::callAfterDelay(4000, [folder]
         {
-            showAfterReport(juce::URL("https://github.com/zurek-jiri/OrganSampler/issues/new/choose"), folder);
+            showAfterReport(juce::URL("https://github.com/zurek-jiri/LibreOrgan/issues/new/choose"), folder);
             juce::Timer::callAfterDelay(1500, [folder] { arrangeReportWindows(folder); });
             juce::Timer::callAfterDelay(4500, [folder] { arrangeReportWindows(folder); });
             juce::Timer::callAfterDelay(9000, [folder] { arrangeReportWindows(folder); });
@@ -2568,7 +2568,7 @@ void MainComponent::requestQuit(std::function<void()> proceed)
 {
     CrashHandler::note("Quit requested" + juce::String(configurationDirty ? " (the configuration has unsaved changes: asked)" : ""));   // 0.8.195: a save followed by the quit is not a crash
     saveSettings();
-    askToKeepChanges("Quit OrganSampler", "quit", std::move(proceed));
+    askToKeepChanges("Quit LibreOrgan Sampler", "quit", std::move(proceed));
 }
 
 namespace
@@ -4349,7 +4349,7 @@ void MainComponent::showSafeStartNoticeIfDue()
     const auto notice = safeStartNotice;
     safeStartNotice.clear();
     queueNotice(juce::MessageBoxIconType::WarningIcon, "Audio device opened with the default buffer",
-        "The last start of OrganSampler crashed while opening " + notice + ".\n\n"
+        "The last start of LibreOrgan Sampler crashed while opening " + notice + ".\n\n"
         "This time the device was opened with the default buffer size (512 samples) and rate (48 kHz) instead, so the program "
         "starts again. Choose a buffer size the driver can take in the audio tab of the division (Settings in the division "
         "header); the program remembers the one you choose.\n\nThe crash is in the CrashLogs folder of the program's "
@@ -5218,7 +5218,7 @@ int MainComponent::fillAliasesFromFolders()
 juce::File MainComponent::writeProblemReport(const juce::String& what, const juce::String& steps, bool windowShots,
     const juce::Array<juce::File>& extraShots, juce::URL& issueUrl)
 {
-    // The report folder: Reports\OrganSampler-report-<date> in the application-data
+    // The report folder: Reports\LibreOrgan-report-<date> in the application-data
     // folder (0.8.188, the user: nothing is written onto the Desktop; the folder is
     // opened for the drag) with logs.zip (activity log, crash reports, settings,
     // self-test report, system.txt) and the screenshots as PNG files, so each goes
@@ -5226,7 +5226,7 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
     const auto stamp = juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M");
     const auto reports = settingsFile.getParentDirectory().getChildFile("Reports");
     reports.createDirectory();
-    const auto folder = reports.getChildFile("OrganSampler-report-" + stamp);
+    const auto folder = reports.getChildFile("LibreOrgan-report-" + stamp);
     folder.createDirectory();
 
     // The computer, the program and the audio devices as they are now.
@@ -5253,7 +5253,7 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
     const auto cpu = juce::SystemStats::getCpuModel().trim();
     const int physical = juce::SystemStats::getNumPhysicalCpus(), logical = juce::SystemStats::getNumCpus();
     const int ramMb = juce::SystemStats::getMemorySizeInMegabytes();
-    system << "OrganSampler " << version << "\n"
+    system << "LibreOrgan Sampler " << version << "\n"
            << "time: " << juce::Time::getCurrentTime().toString(true, true, true, true) << "\n"
            << "os: " << os << "\n"
            << "cpu: " << cpu << "  (" << physical << " physical / " << logical << " logical)\n"
@@ -5344,7 +5344,7 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
     };
     auto makeUrl = [&](const juce::String& systemText)
     {
-        return juce::URL("https://github.com/zurek-jiri/OrganSampler/issues/new")
+        return juce::URL("https://github.com/zurek-jiri/LibreOrgan/issues/new")
             .withParameter("template", "bug_report.yml")
             .withParameter("title", "[Bug] " + what.upToFirstOccurrenceOf("\n", false, false).substring(0, 70))
             .withParameter("version", version)
@@ -5370,9 +5370,9 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
     {
         const auto link = issueUrl.toString(true);
         juce::String page;
-        page << "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>OrganSampler - report on GitHub</title>\n"
+        page << "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>LibreOrgan Sampler - report on GitHub</title>\n"
              << "<meta http-equiv=\"refresh\" content=\"0;url=" << link.replace("\"", "&quot;") << "\"></head>\n"
-             << "<body style=\"font-family:sans-serif;max-width:40em;margin:3em auto\"><h1>OrganSampler - report on GitHub</h1>\n"
+             << "<body style=\"font-family:sans-serif;max-width:40em;margin:3em auto\"><h1>LibreOrgan Sampler - report on GitHub</h1>\n"
              << "<p>The GitHub form with your report filled in opens now. If it does not, or if GitHub asked you to sign in and "
              << "then showed another page, click here (signed in):</p>\n"
              << "<p><a href=\"" << link.replace("\"", "&quot;") << "\">Open the report form</a></p>\n"
@@ -5564,19 +5564,19 @@ void MainComponent::arrangeReportWindows(const juce::File& folder)
     }
     const juce::String bounds = "{" + juce::String(left.getX()) + ", " + juce::String(left.getY()) + ", " + juce::String(left.getRight()) + ", " + juce::String(left.getBottom()) + "}";
     bool placed = false;
-    if (app.isNotEmpty() && app != "Finder" && app != "OrganSampler")
+    if (app.isNotEmpty() && app != "Finder" && app != "LibreOrgan")
     {
         juce::ChildProcess process;
         if (process.start(juce::StringArray{ "osascript", "-e", "tell application \"" + app + "\" to set bounds of front window to " + bounds }))
         { process.waitForProcessToFinish(3000); placed = process.getExitCode() == 0; }
     }
     // The System Events fallback only for another application's window: with
-    // OrganSampler frontmost it resized OUR front window - the report box - to
+    // LibreOrgan Sampler frontmost it resized OUR front window - the report box - to
     // the browser's half of the screen (#64: its buttons shrank to nothing).
-    if (!placed && app.isNotEmpty() && app != "OrganSampler" && app != "Finder")
+    if (!placed && app.isNotEmpty() && app != "LibreOrgan" && app != "Finder")
         run("tell application \"System Events\" to tell (first application process whose frontmost is true) to set {position, size} of front window to {{"
             + juce::String(left.getX()) + ", " + juce::String(left.getY()) + "}, {" + juce::String(left.getWidth()) + ", " + juce::String(left.getHeight()) + "}}");
-    CrashHandler::note("Report windows (macOS): frontmost \"" + app + "\", browser " + (placed ? "placed by its own scripting" : app.isNotEmpty() && app != "OrganSampler" && app != "Finder" ? "placed through System Events" : "not placed"));
+    CrashHandler::note("Report windows (macOS): frontmost \"" + app + "\", browser " + (placed ? "placed by its own scripting" : app.isNotEmpty() && app != "LibreOrgan" && app != "Finder" ? "placed through System Events" : "not placed"));
    #elif JUCE_LINUX
     {
         // X11 itself (0.8.144); the placement code is JUCE-free (0.8.145: Xlib's Font/Time clash with juce's).
@@ -5632,13 +5632,13 @@ void MainComponent::showPublishWindow(const juce::File& folder, const juce::File
     // The issue form of the configurations (organ_configuration.yml) with its title
     // and Organ field filled in; the folder with the zip and the README beside it.
     const juce::String organ = publicationOrgan.isNotEmpty() ? publicationOrgan : zip.getFileNameWithoutExtension();
-    const juce::URL url = juce::URL("https://github.com/zurek-jiri/OrganSampler/issues/new")
+    const juce::URL url = juce::URL("https://github.com/zurek-jiri/LibreOrgan/issues/new")
         .withParameter("template", "organ_configuration.yml")
         .withParameter("title", "[Configuration] " + organ)
         .withParameter("organ", organ + (publicationProducer.isNotEmpty() ? " - " + publicationProducer : juce::String()));
     showAfterReport(url, folder, "Publish the configuration",
         "Ready to publish: " + zip.getFileName() + " (the configuration and its README inside) in the folder " + folder.getFileName()
-        + " of your configurations folder; " + readme.getFileName() + " beside it is for reading.\nThe folder opens in the file manager, the GitHub form in the browser - drag the zip into \"Files\", "
+        + " of your LibreOrgans folder; " + readme.getFileName() + " beside it is for reading.\nThe folder opens in the file manager, the GitHub form in the browser - drag the zip into \"Files\", "
           "tick the box, then \"Submit new issue\".\nAsked to sign in first? Press \"Publish on GitHub\" again afterwards.",
         "Publish on GitHub", "Open the folder");
     CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
@@ -6011,8 +6011,8 @@ void MainComponent::setCurrentConfigurationName(const juce::String& name)
 
 void MainComponent::updateWindowTitle()
 {
-    // "OrganSampler 0.5.0 - <configuration>": the version is part of the title.
-    const juce::String title = "OrganSampler " + juce::String(ProjectInfo::versionString);
+    // "LibreOrgan Sampler 0.5.0 - <configuration>": the version is part of the title.
+    const juce::String title = "LibreOrgan Sampler " + juce::String(ProjectInfo::versionString);
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
         window->setName(currentConfigurationName.isEmpty() ? title : title + " - " + currentConfigurationName);
 }
@@ -6031,7 +6031,7 @@ void MainComponent::toggleRecording()
     }
     const auto baseName = (currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("Organ"))
         .removeCharacters("\\/:*?\"<>|");
-    // The recordings have a folder of their own (0.8.226: AudioRecordings beside the
+    // The recordings have a folder of their own (0.8.226: LibreRecordings beside the
     // configurations; 0.8.228: or the folder chosen in the Editor), created on demand;
     // the dialog starts there, the file may still be saved anywhere.
     const juce::File recordings = recordingsDirectory();
@@ -10973,7 +10973,7 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
             }
             delete row;
             if (safeThis == nullptr || result != 1) { if (then) then(false); return; }
-            // The configurations folder (0.8.190), with the open file's name when it lies there;
+            // The LibreOrgans folder (0.8.190), with the open file's name when it lies there;
             // a portable save (an export, 0.8.194) starts in its Publish folder with the
             // ".portable" name (0.8.199, the user: the chooser opened in Configurations).
             const auto folder = safeThis->configurationsDirectory();
@@ -11035,7 +11035,7 @@ void MainComponent::launchConfigurationLoadChooser()
         }
     }
     configurationFileChooser = std::make_unique<juce::FileChooser>(
-        "Load organ configuration (OrganSampler .json, a published .zip, a Hauptwerk organ definition, or a RAR archive holding one)", start, "*.json;*.zip;*.Organ_Hauptwerk_xml;*.xml;*.rar");
+        "Load organ configuration (LibreOrgan Sampler .json, a published .zip, a Hauptwerk organ definition, or a RAR archive holding one)", start, "*.json;*.zip;*.Organ_Hauptwerk_xml;*.xml;*.rar");
     configurationFileChooser->launchAsync(juce::FileBrowserComponent::openMode
         | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
         [safeThis](const juce::FileChooser& chooser)
@@ -11066,7 +11066,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     {
         // A published configuration as downloaded from GitHub (0.8.195): the one .json
         // inside is read straight from the zip - nothing to unpack; the load box then
-        // copies it into the configurations folder (its name, beside the zip's, decides
+        // copies it into the LibreOrgans folder (its name, beside the zip's, decides
         // whether the organ is there already).
         juce::ZipFile zip(file);
         const juce::ZipFile::ZipEntry* entry = nullptr;
@@ -11090,10 +11090,10 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
         || !configuration.getProperty("manualKeyboards", juce::var()).isArray())
     {
         queueNotice(juce::MessageBoxIconType::WarningIcon,
-            "Load Configuration", "The selected file is not a valid OrganSampler configuration.");
+            "Load Configuration", "The selected file is not a valid LibreOrgan Sampler configuration.");
         return;
     }
-    // The same file already in the configurations folder (0.8.193): loaded from there,
+    // The same file already in the LibreOrgans folder (0.8.193): loaded from there,
     // nothing copied, nothing asked - never a duplicate.
     juce::File source = jsonFile;
     chosenConfigurationDir = jsonFile.getParentDirectory();   // 0.8.214: looked into whatever file is loaded in the end
@@ -11102,7 +11102,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
         const auto existing = configurationsCopyOf(jsonFile);
         if (existing.existsAsFile() && existing.loadFileAsString() == text)
         {
-            CrashHandler::note("Load Configuration: " + file.getFullPathName() + " is the same file as " + existing.getFullPathName() + " - loaded from the configurations folder");
+            CrashHandler::note("Load Configuration: " + file.getFullPathName() + " is the same file as " + existing.getFullPathName() + " - loaded from the LibreOrgans folder");
             source = existing;
             fromZip = false;
         }
@@ -11111,7 +11111,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
     askLoadOptions(configuration, source.getFileNameWithoutExtension(), [safeThis, source, fromZip, text](juce::var chosen)
     {
         if (safeThis == nullptr) return;
-        // The box's choice for a file outside the configurations folder (0.8.191/0.8.193):
+        // The box's choice for a file outside the LibreOrgans folder (0.8.191/0.8.193):
         // the paths are resolved against the original, then the copy (or the replaced
         // file) becomes the open file; "keepExisting" loads the folder's own file.
         juce::String choice;
@@ -11122,7 +11122,7 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
             auto kept = juce::JSON::parse(existing.loadFileAsString());
             if (!kept.isObject()) return;
             copyLoadOptions(chosen, kept);
-            CrashHandler::note("Load Configuration: the configuration already in the configurations folder loaded instead - " + existing.getFullPathName());
+            CrashHandler::note("Load Configuration: the configuration already in the LibreOrgans folder loaded instead - " + existing.getFullPathName());
             safeThis->resolveAndApplyPortableConfiguration(kept, existing);
             return;
         }
@@ -11144,7 +11144,7 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
 
 juce::File MainComponent::configurationsCopyOf(const juce::File& file) const
 {
-    // The file's place in the configurations folder: without the ".portable" of an
+    // The file's place in the LibreOrgans folder: without the ".portable" of an
     // export (0.8.201, the user: a copied configuration is the one the user edits on
     // this computer, no longer a portable one) - "Arnstadt Surround.portable.json"
     // -> "Arnstadt Surround.json".
@@ -11156,7 +11156,7 @@ juce::File MainComponent::configurationsCopyOf(const juce::File& file) const
 void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip)
 {
     // A configuration loaded from elsewhere (Downloads, beside the samples, inside
-    // an archive) copied into the configurations folder as it was; a file of that
+    // an archive) copied into the LibreOrgans folder as it was; a file of that
     // name there is replaced (the load box asked; the old one survives as .json.bak,
     // 0.8.193: never a duplicate); the copy is the open file from now on (the next
     // Save writes it), the original stays where it was.
@@ -11169,7 +11169,7 @@ void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, 
     else if (auto in = SampleFiles::openInput(original)) written = target.replaceWithText(in->readEntireStreamAsString());   // a json inside an archive
     if (!written)
     {
-        CrashHandler::note("Configuration NOT copied into the configurations folder: " + target.getFullPathName());
+        CrashHandler::note("Configuration NOT copied into the LibreOrgans folder: " + target.getFullPathName());
         return;
     }
     currentConfigurationFile = target;
@@ -11177,7 +11177,7 @@ void MainComponent::adoptCopyInConfigurationsFolder(const juce::File& original, 
     lastSettingsDirectory = target.getParentDirectory();
     saveLastDirectory();
     saveSettings();
-    CrashHandler::note("Configuration copied into the configurations folder: " + target.getFullPathName() + " (from " + original.getFullPathName() + ")");
+    CrashHandler::note("Configuration copied into the LibreOrgans folder: " + target.getFullPathName() + " (from " + original.getFullPathName() + ")");
 }
 
 void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>& archivesChosen, bool merge)
@@ -11292,7 +11292,7 @@ void MainComponent::refreshArchiveSearchFolders(const juce::File& configurationF
         folders.push_back(own.getParentDirectory().getChildFile("OrganRarPackages"));
         folders.push_back(own.getSiblingFile("OrganRarPackages"));
     }
-    addList(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("ArchiveFolders.txt"));
+    addList(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("LibreOrgan").getChildFile("ArchiveFolders.txt"));
     // Locations.txt (0.8.214): the archive lines of the one list of this computer (read here as the file stands,
     // so a line typed by hand serves at the next load too).
     {
@@ -11319,7 +11319,7 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     // An archive the user chose (0.8.177; its folder before - which let every
     // other archive of the folder serve paths, the user never chose those): the
     // set's first part, remembered beside the loaded configuration when there is
-    // one (its OrganConfigurations folder), else in the settings folder; one path
+    // one (its OrganLibreOrgans folder), else in the settings folder; one path
     // per line, each once.
     const auto archive = SampleFiles::firstVolumeOf(archiveChosen);
     if (!archive.existsAsFile()) return;
@@ -11390,21 +11390,21 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         juce::String label;
         if (importing)
         {
-            label = "This organ is already in the configurations folder as " + existing.getFileName();
+            label = "This organ is already in the LibreOrgans folder as " + existing.getFileName();
             items.add("Replace it with this import  [default]  (the old file is kept as " + existing.getFileName() + ".bak)");  choiceIds.add("replace");
             items.add("Keep the existing configuration and load it - import nothing");                                          choiceIds.add("keepExisting");
         }
         else if (exists)
         {
-            label = "A configuration of this name is already in the configurations folder, with other content";
-            items.add("Keep the one in the configurations folder and load it  [default]");                                       choiceIds.add("keepExisting");
+            label = "A configuration of this name is already in the LibreOrgans folder, with other content";
+            items.add("Keep the one in the LibreOrgans folder and load it  [default]");                                       choiceIds.add("keepExisting");
             items.add("Replace it with this file  (the old one is kept as " + existing.getFileName() + ".bak)");                 choiceIds.add("replace");
             items.add("Load this file from its own folder: " + file.getParentDirectory().getFullPathName());                     choiceIds.add("inPlace");
         }
         else
         {
-            label = "This file lies outside the configurations folder";
-            items.add("Copy it into the configurations folder  [default]  (" + configurationsDirectory().getFullPathName() + ")"); choiceIds.add("copy");
+            label = "This file lies outside the LibreOrgans folder";
+            items.add("Copy it into the LibreOrgans folder  [default]  (" + configurationsDirectory().getFullPathName() + ")"); choiceIds.add("copy");
             items.add("Load this file from its own folder: " + file.getParentDirectory().getFullPathName());                     choiceIds.add("inPlace");
         }
         window->addComboBox("fileChoice", items, label);
@@ -11572,7 +11572,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         // The name stays as the user typed it, spaces included (0.8.195, the user): GitHub
         // turns an attachment's spaces into dots, and the publishing robot names the
         // files after the .json inside the zip, so the README's link reaches the zip.
-        // ONE Publish folder, in the configurations folder, wherever the file was asked
+        // ONE Publish folder, in the LibreOrgans folder, wherever the file was asked
         // for (0.8.197; 0.8.194 made a Publish beside the chosen file - a subfolder of
         // the user's own got one he did not find).
         target = configurationsDirectory().getChildFile("Publish").getChildFile(base + ".portable.json");
@@ -11582,7 +11582,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     root->setProperty("containsMidiMappings", includeMidi);
     // The RAM this program uses now, with the organ loaded: the figure a
     // reader of the published configuration needs most (the README and
-    // configurations/INDEX.md show it). Only when the organ is really loaded.
+    // libreorgans/INDEX.md show it). Only when the organ is really loaded.
     if (activeFolderLoader == nullptr && !engine.getStops().isEmpty())
     {
         const juce::int64 ram = processMemoryBytes();
@@ -11990,7 +11990,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
     {
         if (portable && publishFiles)
         {
-            // For publishing in the project's configurations folder: the .json
+            // For publishing in the project's LibreOrgans folder: the .json
             // zipped (a zip is downloaded from GitHub, a .json opens as text) and
             // the README, ready but for the organ, the samples and the author.
             const auto zip = target.getSiblingFile(target.getFileNameWithoutExtension() + ".zip");
@@ -12402,7 +12402,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             crescendo->setProperty("steps", steps);
             rootObject->setProperty("crescendo", juce::var(crescendo.get()));
         }
-        // The couplers of the definition (0.8.138): the ones OrganSampler has a
+        // The couplers of the definition (0.8.138): the ones LibreOrgan Sampler has a
         // coupler for are shown; the catalog's default unison couplers that the
         // definition does not have are hidden, so the console shows Hauptwerk's.
         {
@@ -12448,8 +12448,8 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 [safeThis, odf] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, {}, {}, false); });
             return;
         }
-        // Written into THE configurations folder of this computer (0.8.190; 0.8.158
-        // an OrganConfigurations folder outside the Hauptwerk folders, 0.8.125 beside
+        // Written into THE LibreOrgans folder of this computer (0.8.190; 0.8.158
+        // an OrganLibreOrgans folder outside the Hauptwerk folders, 0.8.125 beside
         // OrganDefinitions, the installation package before) and loaded from there;
         // the Hauptwerk folders stay untouched. A definition read out of an archive:
         // the archive is noted beside the configuration.
@@ -12458,7 +12458,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         if (SampleFiles::inArchive(odfFile))
             safeThis->registerArchive(SampleFiles::archiveOf(odfFile));   // the archive itself into Locations.txt (0.8.177; 0.8.214: never beside the configuration)
         // The configuration file is written in the load box's callback below (0.8.193):
-        // a file of the organ's name already in the configurations folder is replaced
+        // a file of the organ's name already in the LibreOrgans folder is replaced
         // only when the box says so - never overwritten unasked, never duplicated.
         juce::String summary;
         summary << plan.organName << " - " << (int)plan.divisions.size() << " division(s):";
@@ -12474,7 +12474,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             for (const auto& p : plan.perspectivePatterns) names.add(p.upToFirstOccurrenceOf(";", false, false));
             summary << "\nPerspectives: " << names.joinIntoString(", ");
         }
-        if (plan.skippedTremmedRanks > 0) summary << "\nTremmed ranks left out: " << plan.skippedTremmedRanks << " (OrganSampler has its own tremulant).";
+        if (plan.skippedTremmedRanks > 0) summary << "\nTremmed ranks left out: " << plan.skippedTremmedRanks << " (LibreOrgan Sampler has its own tremulant).";
         if (plan.skippedNoiseRanks > 0) summary << "\nNoise ranks left out: " << plan.skippedNoiseRanks << ".";
         if (plan.extensions > 0) summary << "\nExtensions/transmissions (stops playing another stop's ranks, shifted): " << plan.extensions << " - made as transmissions once the stops are loaded.";
         if (crescendoStepsMade > 0) summary << "\nGeneral crescendo: " << (int)plan.crescendo.size() << " stage(s) of the definition as " << crescendoStepsMade << " step(s) of ours (stops and couplers).";
@@ -12493,8 +12493,8 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 if (plan.divisions[i].tremulantRateHz > 0.0f)
                     tremulants.add((i == 0 ? juce::String("P.") : romanNumeral((int)i) + ".") + " " + plan.divisions[i].name + " " + juce::String(juce::jlimit(0.5f, 12.0f, plan.divisions[i].tremulantRateHz), 2) + " Hz");
             summary << "\nTremulants: " << (tremulants.isEmpty()
-                ? juce::String("none found in the definition - every division keeps OrganSampler's own tremulant at its default rate.")
-                : tremulants.joinIntoString(", ") + " - the definition's speed is set as the division's tremulant rate (Divisions dialog); its tremmed ranks are left out, OrganSampler's tremulant plays the plain ranks.");
+                ? juce::String("none found in the definition - every division keeps LibreOrgan Sampler's own tremulant at its default rate.")
+                : tremulants.joinIntoString(", ") + " - the definition's speed is set as the division's tremulant rate (Divisions dialog); its tremmed ranks are left out, LibreOrgan Sampler's tremulant plays the plain ranks.");
         }
         if (plan.stopsWithoutSamples > 0) summary << "\nStops without playable pipes (couplers, tremulants, toys): " << plan.stopsWithoutSamples << ".";
         for (const auto& note : plan.notes) summary << "\n" << note;
@@ -12509,10 +12509,10 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             reports.createDirectory();
             safeThis->hauptwerkImportReport = reports.getChildFile(fileName.trim() + "-" + juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M") + ".txt");
             safeThis->hauptwerkImportReport.replaceWithText("Hauptwerk organ definition read: " + odfFile.getFullPathName() + "\n"
-                + juce::Time::getCurrentTime().toString(true, true, true, true) + ", OrganSampler " + ProjectInfo::versionString + "\n\n"
-                "OrganSampler does not load the organ definition: the organ is built from the sample folders. The definition was read "
+                + juce::Time::getCurrentTime().toString(true, true, true, true) + ", LibreOrgan Sampler " + ProjectInfo::versionString + "\n\n"
+                "LibreOrgan Sampler does not load the organ definition: the organ is built from the sample folders. The definition was read "
                 "for two things only - where the sample folders are and how the stops are arranged in the divisions. The microphone "
-                "perspectives and the relative volumes of the stops, divisions and pipes below are OrganSampler's own deduction (a "
+                "perspectives and the relative volumes of the stops, divisions and pipes below are LibreOrgan Sampler's own deduction (a "
                 "definition holds neither: absolute pipe levels and stop-ranks only); everything else comes from the folders.\n\n" + summary + "\n");
             CrashHandler::note("Hauptwerk import report: " + safeThis->hauptwerkImportReport.getFullPathName());
         }
@@ -12530,7 +12530,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 // no voicing from the definition (the file carries its own).
                 safeThis->hauptwerkImport = nullptr;
                 safeThis->hauptwerkImportReport.appendText("\nNot imported: the configuration " + configurationFile.getFullPathName()
-                    + " already in the configurations folder was kept and loaded instead (the load box's choice).\n");
+                    + " already in the LibreOrgans folder was kept and loaded instead (the load box's choice).\n");
                 CrashHandler::note("Hauptwerk import: the existing configuration kept and loaded instead - " + configurationFile.getFullPathName());
                 auto existing = juce::JSON::parse(configurationFile.loadFileAsString());
                 if (!existing.isObject()) return;
@@ -12543,7 +12543,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             if (!configurationFile.replaceWithText(juce::JSON::toString(chosen, true)))
             {
                 queueNotice(juce::MessageBoxIconType::WarningIcon, "Hauptwerk organ definition",
-                    "The configuration could not be written into the configurations folder:\n" + configurationFile.getFullPathName(), "OK", safeThis.getComponent());
+                    "The configuration could not be written into the LibreOrgans folder:\n" + configurationFile.getFullPathName(), "OK", safeThis.getComponent());
                 return;
             }
             safeThis->runWhenLoaded([safeThis, odf, configurationFile, summary] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, configurationFile, summary); });
@@ -12559,12 +12559,12 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     hauptwerkImport = nullptr;
     // Every loaded stop whose folders the definition knows: the Hauptwerk level
     // of each pipe averaged over the perspectives (Hauptwerk voices per
-    // perspective, OrganSampler per stop); the MEDIAN over the notes is the
+    // perspective, LibreOrgan Sampler per stop); the MEDIAN over the notes is the
     // stop's volume (most pipes are at 0 dB - a few voiced ones must not pull
     // the whole stop), the rest is its per-key voicing.
     // Three levels (0.8.126): Hauptwerk has no volume per perspective, only
     // the pipes, so a perspective recorded quieter is quieter in every pipe of
-    // it. OrganSampler has the volume of a route (division x perspective), of
+    // it. LibreOrgan Sampler has the volume of a route (division x perspective), of
     // a stop and of a pipe: the MEDIAN of all pipe levels of a division's
     // perspective goes to that route's volume (the division dialog's audio
     // tab), the median of what is left to the stop (averaged over its
@@ -12724,8 +12724,8 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
         text << "\nExtensions/transmissions made: " << extensionsMade << (extensionsMissed.isEmpty() ? juce::String(".") : " (not made: " + extensionsMissed.joinIntoString(", ") + ").");
     text
          << "\n\nThe configuration is saved as\n" << configurationFile.getFullPathName()
-         << "\n\nThe organ definition itself was not loaded - OrganSampler has no use for it: it was read for the sample folder paths and the "
-            "arrangement of the stops in the divisions only; the perspectives and the relative volumes above are OrganSampler's own deduction, "
+         << "\n\nThe organ definition itself was not loaded - LibreOrgan Sampler has no use for it: it was read for the sample folder paths and the "
+            "arrangement of the stops in the divisions only; the perspectives and the relative volumes above are LibreOrgan Sampler's own deduction, "
             "and the organ is built from the folders. "
             "Everything else of the definition (combinations, displays, wind, noises) was ignored. "
             "Check the Stop List, the audio routes of the perspectives and the MIDI keyboards, then Save Configuration.\n";
@@ -12863,9 +12863,9 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     // (GitHub does not show it, so it does no harm when it stays).
     const auto given = [](const juce::String& s, const char* missing) { return s.isNotEmpty() ? s : juce::String(missing); };
     const juce::String organ = given(publicationOrgan, "(the organ was not named)"), producer = given(publicationProducer, "(the producer was not named)");
-    text << "<!-- Written by OrganSampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):\n"
-            "     https://github.com/zurek-jiri/OrganSampler/issues/new?template=organ_configuration.yml -->\n\n";
-    text << "A complete OrganSampler configuration of " << organ << ", as recorded by " << producer;
+    text << "<!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):\n"
+            "     https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->\n\n";
+    text << "A complete LibreOrgan Sampler configuration of " << organ << ", as recorded by " << producer;
     if (!perspectives.isEmpty())
         text << " in " << (perspectives.size() == 1 ? juce::String("one perspective") : juce::String(perspectives.size()) + " perspectives")
              << ", " << joinWithAnd(perspectives) << ", each on its own audio route";
@@ -12886,8 +12886,8 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
         if (!juce::CharacterFunctions::isLetterOrDigit(slug[i]) || slug[i] > 'z') slug = slug.replaceSection(i, 1, "-");
     while (slug.contains("--")) slug = slug.replace("--", "-");
     slug = slug.trimCharactersAtStart("-").trimCharactersAtEnd("-");
-    text << "**Download:** [" << zipName << "](https://github.com/zurek-jiri/OrganSampler/raw/main/configurations/" << slug << "/"
-         << zipName.replace(" ", "%20") << ") - *Load Configuration* in OrganSampler opens the zip as it is (0.8.195) and copies the configuration into your configurations folder; or unpack it and put the " << code(file.getFileName()) << " there yourself.\n\n";
+    text << "**Download:** [" << zipName << "](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/" << slug << "/"
+         << zipName.replace(" ", "%20") << ") - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the " << code(file.getFileName()) << " there yourself.\n\n";
     text << "**No samples are published here.** The configuration merely names the folders it expects;\n"
             "the recordings themselves are the property of their producer and are obtained from them.\n\n";
     text << "## The configuration\n\n";
@@ -12898,7 +12898,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     else text << " (no link to the samples' page was given)";
     if (!topFolders.isEmpty()) text << "; the folders " << joinWithAnd(topCodes) << " (as they come, or in their RAR archives)";
     if (!perspectiveNames.isEmpty()) text << "; perspectives " << joinWithAnd(perspectiveNames);
-    text << ". OrganSampler " << version << " or later.\n";
+    text << ". LibreOrgan Sampler " << version << " or later.\n";
     text << "- **Expects:** library root of any name, holding the trees " << joinWithAnd(treeCodes) << ".\n";
     text << "- **Audio layout:** ";
     if (routeLines.empty()) text << "no routes";
@@ -12950,14 +12950,14 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
             for (const auto& line : lines) text << "  - **" << gbText(line.bytes) << " GB** - " << line.what << "\n";
         }
     }
-    text << "- **Saved with:** OrganSampler " << version << ".\n";
+    text << "- **Saved with:** LibreOrgan Sampler " << version << ".\n";
     text << "- **Author:** " << given(publicationAuthor, "(not named)") << ", " << date << ".\n\n";
     text << "## Where to put the file\n\n";
-    // 0.8.190: the configuration goes into the configurations folder, away from the
+    // 0.8.190: the configuration goes into the LibreOrgans folder, away from the
     // samples; the program finds the sample folders through its sample locations
     // (or asks once). The diagram shows the folders expected, not the file's place.
-    text << "Put " << code(file.getFileName()) << " into your configurations folder (Configuration Editor > *Configurations folder*; "
-            "`Documents\\OrganSampler\\Configurations` by default) and load it from there. The sample folders are found in your "
+    text << "Put " << code(file.getFileName()) << " into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; "
+            "`Documents\\LibreOrgan\\LibreOrgans` by default) and load it from there. The sample folders are found in your "
             "sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration "
             "Editor). One not found shows \"Sample folder not found\" under its division: click it and choose any folder of "
             "the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing "
@@ -12991,7 +12991,7 @@ namespace
     // for the candidates below: set whenever the settings are read or a location noted.
     juce::StringArray gSampleLocations;
     // The folder of the file the user chose for this load (0.8.214): a search place of its own. The "same file
-    // already in the configurations folder" rule loaded the COPY and looked beside it alone - a zip in F:\ beside
+    // already in the LibreOrgans folder" rule loaded the COPY and looked beside it alone - a zip in F:\ beside
     // F:\haupwerk found nothing on a clean computer.
     juce::File gChosenConfigurationDir;
 
@@ -13122,7 +13122,7 @@ namespace
         }
         // The sample locations of this computer (0.8.190): the library root by its
         // name under each, and each as the root itself - a configuration kept in the
-        // configurations folder, away from the samples, finds them this way.
+        // LibreOrgans folder, away from the samples, finds them this way.
         for (const auto& location : gSampleLocations)
         {
             const juce::File folder(location);
@@ -15027,7 +15027,7 @@ void MainComponent::shutdownComputer()
                 CrashHandler::note("Shut down PC: configuration saved, shutting the computer down");
                 juce::ChildProcess shutdown;
                #if JUCE_WINDOWS
-                const bool started = shutdown.start("shutdown.exe /s /t 5 /c \"OrganSampler: shutting down\"");
+                const bool started = shutdown.start("shutdown.exe /s /t 5 /c \"LibreOrgan Sampler: shutting down\"");
                #elif JUCE_MAC
                 const bool started = shutdown.start("osascript -e \"tell application \\\"System Events\\\" to shut down\"");
                #else
@@ -15641,7 +15641,7 @@ void MainComponent::offerDefinitionBeside(const std::vector<juce::File>& archive
     // box, as with several archives chosen at once).
     const juce::String title = merge ? "Merge configuration" : "Load Configuration";
     const juce::String none = juce::String(archives.size() == 1 ? "The archive holds" : "The archives hold")
-        + " no OrganSampler configuration (.json) and no Hauptwerk organ definition.";
+        + " no LibreOrgan Sampler configuration (.json) and no Hauptwerk organ definition.";
     std::vector<juce::File> folders;
     for (const auto& archive : archives)
         if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) == folders.end()) folders.push_back(archive.getParentDirectory());
@@ -15835,7 +15835,7 @@ void MainComponent::startGuidedTour()
         "Temperaments: retune the organ to a1 = 440 Hz, or to a historical temperament - Werckmeister, Kirnberger, "
         "meantone and many more.", "Temperaments" });
     steps.push_back({ [this]() -> juce::Component* { return &loadConfigurationButton; },
-        "Load Configuration opens another organ: an OrganSampler configuration (a .json, or the zip from GitHub as it is), "
+        "Load Configuration opens another organ: a LibreOrgan Sampler configuration (a .json, or the zip from GitHub as it is), "
         "a RAR set of sample folders, or a Hauptwerk organ definition. Right-click it to MERGE another configuration into "
         "the organ you have: its divisions join yours, pedal to pedal, manual to manual - two organs, or the next volume of "
         "this one, under your hands at once.", "Merging another configuration into the loaded organ" });
@@ -17099,7 +17099,7 @@ void MainComponent::startVideoScript(const juce::File& script, const juce::File&
 
 juce::File MainComponent::linuxLauncherScript()
 {
-    return juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/bin/organsampler-start");
+    return juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/bin/libreorgan-start");
 }
 
 juce::File MainComponent::linuxExecutableNoteFile() const
@@ -17109,13 +17109,13 @@ juce::File MainComponent::linuxExecutableNoteFile() const
 
 // The launcher the menu entry runs (0.8.249, the user: a moved executable left the menu entry
 // dead - "Could not find the program"): the path noted by the last start, else the newest
-// OrganSampler executable in the usual folders, else a message instead of a silent failure.
+// LibreOrgan Sampler executable in the usual folders, else a message instead of a silent failure.
 static juce::String linuxLauncherText()
 {
     return juce::String(R"SH(#!/bin/sh
-# OrganSampler launcher, written by the program ("Install menu entry and icon"; kept up to date at every start).
-# Starts the executable noted at the last start, else the newest OrganSampler found in the usual folders.
-cfg="${XDG_CONFIG_HOME:-$HOME/.config}/OrganSampler/Executable.txt"
+# LibreOrgan Sampler launcher, written by the program ("Install menu entry and icon"; kept up to date at every start).
+# Starts the executable noted at the last start, else the newest LibreOrgan Sampler found in the usual folders.
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/LibreOrgan/Executable.txt"
 exe=""
 [ -f "$cfg" ] && exe="$(head -n 1 "$cfg")"
 if [ -z "$exe" ] || [ ! -x "$exe" ]; then
@@ -17123,7 +17123,7 @@ if [ -z "$exe" ] || [ ! -x "$exe" ]; then
   dl="$(xdg-user-dir DOWNLOAD 2>/dev/null)"; dt="$(xdg-user-dir DESKTOP 2>/dev/null)"
   for dir in "$dl" "$dt" "$HOME/Downloads" "$HOME/Desktop" "$HOME/Applications" "$HOME/bin" "$HOME/.local/bin" "$HOME"; do
     [ -n "$dir" ] && [ -d "$dir" ] || continue
-    for f in "$dir"/OrganSampler "$dir"/OrganSampler*/OrganSampler; do
+    for f in "$dir"/LibreOrgan "$dir"/LibreOrgan*/LibreOrgan; do
       if [ -f "$f" ] && [ -x "$f" ]; then
         if [ -z "$exe" ] || [ "$f" -nt "$exe" ]; then exe="$f"; fi
       fi
@@ -17131,10 +17131,10 @@ if [ -z "$exe" ] || [ ! -x "$exe" ]; then
   done
 fi
 if [ -z "$exe" ]; then
-  msg="OrganSampler was not found: the file the menu entry was made from is gone, and no OrganSampler executable lies in Downloads, Desktop, Applications, bin or .local/bin. Put it in one of them and start it once from the file manager; the menu entry follows it from then on."
+  msg="LibreOrgan Sampler was not found: the file the menu entry was made from is gone, and no LibreOrgan Sampler executable lies in Downloads, Desktop, Applications, bin or .local/bin. Put it in one of them and start it once from the file manager; the menu entry follows it from then on."
   if command -v kdialog >/dev/null 2>&1; then kdialog --error "$msg"
   elif command -v zenity >/dev/null 2>&1; then zenity --error --text="$msg"
-  elif command -v notify-send >/dev/null 2>&1; then notify-send "OrganSampler" "$msg"
+  elif command -v notify-send >/dev/null 2>&1; then notify-send "LibreOrgan" "$msg"
   else echo "$msg" >&2; fi
   exit 1
 fi
@@ -17151,7 +17151,7 @@ void MainComponent::refreshLinuxLauncher()
     // The entry exists (the user installed it once): it and the script are brought up to date
     // when they lag - an old entry starting the executable by its path, or a script missing or
     // outdated. Nothing is installed for a user who never asked for the entry.
-    const auto entry = juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/share/applications/organsampler.desktop");
+    const auto entry = juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile(".local/share/applications/libreorgan.desktop");
     if (!entry.existsAsFile()) return;
     const auto script = linuxLauncherScript();
     const bool entryRunsScript = entry.loadFileAsString().contains("Exec=" + script.getFullPathName().quoted());
@@ -17187,7 +17187,7 @@ void MainComponent::installLinuxDesktopEntry(bool silent)
     {
         const auto dir = share.getChildFile("icons/hicolor/" + juce::String(entry.size) + "x" + juce::String(entry.size) + "/apps");
         dir.createDirectory();
-        const auto file = dir.getChildFile("organsampler.png");
+        const auto file = dir.getChildFile("libreorgan.png");
         file.deleteFile();
         juce::FileOutputStream out(file);
         if (!out.openedOk()) continue;
@@ -17200,18 +17200,18 @@ void MainComponent::installLinuxDesktopEntry(bool silent)
     {
         const auto pixmaps = share.getChildFile("pixmaps");
         pixmaps.createDirectory();
-        const auto file = pixmaps.getChildFile("organsampler.png");
+        const auto file = pixmaps.getChildFile("libreorgan.png");
         file.deleteFile();
         juce::FileOutputStream out(file);
         if (out.openedOk() && juce::PNGImageFormat().writeImageToStream(juce::ImageCache::getFromMemory(BinaryData::icon48_png, BinaryData::icon48_pngSize), out)) ++icons;
     }
     const auto apps = share.getChildFile("applications");
     apps.createDirectory();
-    const auto entry = apps.getChildFile("organsampler.desktop");
+    const auto entry = apps.getChildFile("libreorgan.desktop");
     juce::String text;
-    text << "[Desktop Entry]\nType=Application\nName=OrganSampler\nComment=Pipe organ sampler for creative minds\n"
-         << "Exec=" << (scriptOk ? script : exe).getFullPathName().quoted() << "\nIcon=organsampler\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
-         << "StartupWMClass=OrganSampler\nStartupNotify=false\n";
+    text << "[Desktop Entry]\nType=Application\nName=LibreOrgan\nComment=Pipe organ sampler for creative minds\n"
+         << "Exec=" << (scriptOk ? script : exe).getFullPathName().quoted() << "\nIcon=libreorgan\nTerminal=false\nCategories=AudioVideo;Audio;Music;\n"
+         << "StartupWMClass=LibreOrgan\nStartupNotify=false\n";
     // Unix line endings: JUCE writes "\r\n" by default, and a .desktop file with
     // carriage returns is invalid (KDE and GNOME ignore it).
     const bool ok = entry.replaceWithText(text, false, false, "\n") && icons > 0;
@@ -17230,7 +17230,7 @@ void MainComponent::installLinuxDesktopEntry(bool silent)
     if (silent) return;
     queueNotice(ok ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon, "Menu entry and icon",
         ok ? "Installed: " + entry.getFullPathName() + " and the icon in " + juce::String(icons) + " sizes under ~/.local/share/icons/hicolor.\n\n"
-             "Where to find it: open the application menu (the launcher button or the Super/Windows key) and type \"Organ\" - OrganSampler "
+             "Where to find it: open the application menu (the launcher button or the Super/Windows key) and type \"Organ\" - LibreOrgan Sampler "
              "is in the Multimedia (Sound & Video) group - Audio Production on Ubuntu Studio - with its icon; right-click it there to pin it to the panel or dock.\n\n"
              "The entry starts " + exe.getFullPathName() + " and follows it: start a moved or new executable once from the file manager and the entry "
              "runs that one from then on (" + script.getFullPathName() + " finds it). Log out and in if the menu does not show it at once."
@@ -17726,7 +17726,7 @@ void MainComponent::learnPrefixesFromTables()
 
 juce::File MainComponent::resolveTreeLikeALoad(const juce::var& configuration, const juce::File& configurationFile, const juce::String& relative, const juce::String& absolute) const
 {
-    // The merge of a configuration kept in the configurations folder (0.8.190: away from the
+    // The merge of a configuration kept in the LibreOrgans folder (0.8.190: away from the
     // samples) finds its trees where a load does: the loaded organ's library root, the sample
     // locations and their neighbourhood, the fixed drives - not beside the file alone.
     juce::File root;
@@ -22872,24 +22872,24 @@ void MainComponent::updateMissingTreeNotices()
 }
 
 // The folder of the Record button's files (0.8.228): the Editor's choice, else
-// AudioRecordings beside the configurations folder; created on demand.
+// LibreRecordings beside the LibreOrgans folder; created on demand.
 juce::File MainComponent::recordingsDirectory() const
 {
     juce::File folder(recordingsFolder.isNotEmpty() ? juce::File(recordingsFolder) : juce::File());
     if (folder == juce::File() || !(folder.isDirectory() || folder.getParentDirectory().isDirectory()))
-        folder = configurationsDirectory().getParentDirectory().getChildFile("AudioRecordings");
+        folder = configurationsDirectory().getParentDirectory().getChildFile("LibreRecordings");
     folder.createDirectory();
     return folder;
 }
 
 juce::File MainComponent::configurationsDirectory() const
 {
-    // The folder chosen in the Editor when it is usable, else Documents/OrganSampler/
+    // The folder chosen in the Editor when it is usable, else Documents/LibreOrgan/
     // Configurations (0.8.190: ONE place for every configuration - the imports wrote
-    // OrganConfigurations folders beside every sample set before, which nobody found).
+    // OrganLibreOrgans folders beside every sample set before, which nobody found).
     juce::File folder(configurationsFolder.isNotEmpty() ? juce::File(configurationsFolder) : juce::File());
     if (folder == juce::File() || !(folder.isDirectory() || folder.getParentDirectory().isDirectory()))
-        folder = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("OrganSampler").getChildFile("Configurations");
+        folder = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("LibreOrgan").getChildFile("LibreOrgans");
     folder.createDirectory();
     return folder;
 }
@@ -22978,7 +22978,7 @@ void MainComponent::readLocationsFile(const juce::var& settings)
 void MainComponent::writeLocationsFile() const
 {
     juce::StringArray lines;
-    lines.add("# OrganSampler - where the samples of this computer live, one path per line (edit freely).");
+    lines.add("# LibreOrgan Sampler - where the samples of this computer live, one path per line (edit freely).");
     lines.add("# A folder: sample folder trees a configuration names are looked for under it (by the library root's name, by their path).");
     lines.add("# A .rar file: an archive you chose; sample folders are read from it as it is. The program adds lines as organs are loaded, saved and archives chosen.");
     for (const auto& location : sampleLocations) lines.add(location);
@@ -22994,7 +22994,7 @@ juce::File MainComponent::copyCacheDirectory() const
         if (chosen.isDirectory() || chosen.getParentDirectory().isDirectory()) return chosen;
     }
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("OrganSampler").getChildFile("FilledPipesCache");
+        .getChildFile("LibreOrgan").getChildFile("FilledPipesCache");
 }
 
 void MainComponent::setUiScalePercent(int percent)
@@ -23679,7 +23679,7 @@ juce::String MainComponent::manualChapterForComponent(juce::Component* under)
 {
     if (under == nullptr) return {};
     auto* top = under->getTopLevelComponent();
-    if (top != nullptr && top->getName().startsWith("About OrganSampler")) return {};   // the manual itself
+    if (top != nullptr && top->getName().startsWith("About LibreOrgan Sampler")) return {};   // the manual itself
     juce::String chapter;
     for (auto* c = under; c != nullptr && chapter.isEmpty(); c = c->getParentComponent())
     {
@@ -23698,7 +23698,7 @@ void MainComponent::openManualForMouse()
 {
     auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
     if (under == nullptr) return;
-    if (auto* top = under->getTopLevelComponent()) if (top->getName().startsWith("About OrganSampler")) return;
+    if (auto* top = under->getTopLevelComponent()) if (top->getName().startsWith("About LibreOrgan Sampler")) return;
     auto chapter = manualChapterForComponent(under);
     if (chapter.isEmpty()) chapter = "The main window";
     CrashHandler::note("F1: the manual at \"" + chapter + "\"");
@@ -23754,7 +23754,7 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
     if (target == "header:loadConfiguration")
     {
         menu.addSeparator();
-        menu.addItem(5, "Merge another configuration into this organ (OrganSampler .json, or a Hauptwerk organ definition)...");
+        menu.addItem(5, "Merge another configuration into this organ (LibreOrgan Sampler .json, or a Hauptwerk organ definition)...");
     }
     const auto chapter = manualChapterForTarget(target);
     menu.addSeparator();
@@ -26543,7 +26543,7 @@ void MainComponent::prepareManual()
     static const Entry entries[]
     {
         { "User manual", kManualTextParts, kManualTextPartCount },
-        { "OrganSampler - GNU GPL v3", kLicenceOrganSamplerParts, kLicenceOrganSamplerPartCount },
+        { "LibreOrgan Sampler - GNU GPL v3", kLicenceLibreOrganParts, kLicenceLibreOrganPartCount },
         { "GNU General Public License v3 (text)", kLicenceGpl3Parts, kLicenceGpl3PartCount },
         { "JUCE 9 - GNU AGPL v3", kLicenceJuceNoticeParts, kLicenceJuceNoticePartCount },
         { "GNU Affero General Public License v3 (text)", kLicenceAgpl3Parts, kLicenceAgpl3PartCount },
@@ -27135,7 +27135,7 @@ void MainComponent::showAboutDialog(const juce::String& manualSection, const juc
         if (aboutContent == nullptr) return;
         juce::DialogWindow::LaunchOptions options;
         options.content.setOwned(aboutContent.release());
-        options.dialogTitle = "About OrganSampler, user manual & licences";
+        options.dialogTitle = "About LibreOrgan Sampler, user manual & licences";
         options.dialogBackgroundColour = juce::Colours::darkgrey;   // like every other dialog of the program
         options.componentToCentreAround = this;
         options.escapeKeyTriggersCloseButton = true;
@@ -27193,14 +27193,14 @@ void MainComponent::showConfigurationEditor()
             // second window, folder loads, console size) refresh it themselves.
             owner.configEditorRefresh = [this] { rows.clear(); content.removeAllChildren(); build(); resized(); };
             // About: the program is free software (GPLv3); the dialog carries every licence text.
-            aboutLabel.setText("OrganSampler " + juce::String(ProjectInfo::versionString)
+            aboutLabel.setText("LibreOrgan Sampler " + juce::String(ProjectInfo::versionString)
                 + " - free software under the GNU GPL v3, built with JUCE (AGPLv3), the Steinberg ASIO SDK (GPLv3) and Signalsmith Stretch (MIT)",
                 juce::dontSendNotification);
             aboutLabel.setFont(juce::FontOptions(14.0f));
             aboutLabel.setJustificationType(juce::Justification::centredLeft);
             addAndMakeVisible(aboutLabel);
             licences.setButtonText("About & licences...");
-            licences.setTooltip("The licences of OrganSampler and of the software it contains, in full.");
+            licences.setTooltip("The licences of LibreOrgan Sampler and of the software it contains, in full.");
             licences.onClick = [this] { this->owner.showAboutDialog(); };
             addAndMakeVisible(licences);
             report.setButtonText("Report a problem...");
@@ -27211,7 +27211,7 @@ void MainComponent::showConfigurationEditor()
            #if JUCE_LINUX
             desktopEntry.setButtonText("Install menu entry and icon");
             desktopEntry.setTooltip("Writes a .desktop entry and the program's icon in every size under ~/.local/share, so "
-                "OrganSampler appears in the application menu, the dock and the file manager with its icon.");
+                "LibreOrgan Sampler appears in the application menu, the dock and the file manager with its icon.");
             desktopEntry.onClick = [this] { this->owner.installLinuxDesktopEntry(); };
             addAndMakeVisible(desktopEntry);
            #endif
@@ -28215,7 +28215,7 @@ void MainComponent::showConfigurationEditor()
                 "and the stage, and shown as \"!N\" in the DSP cell for ten seconds. Its cost is a few microseconds per period. "
                 "Off: nothing is counted. The setting belongs to this computer.");
             // Where the configurations and the samples live (0.8.190).
-            addButtonWithNote("Configurations folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
+            addButtonWithNote("LibreOrgans folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
                 {
                     o.configurationsFolderChooser = std::make_unique<juce::FileChooser>("The folder for your organ configurations", o.configurationsDirectory());
                     juce::Component::SafePointer<MainComponent> safeThis(&o);
@@ -28226,12 +28226,12 @@ void MainComponent::showConfigurationEditor()
                             const auto folder = chooser.getResult();
                             if (!folder.isDirectory()) return;
                             safeThis->configurationsFolder = folder.getFullPathName();
-                            CrashHandler::note("Configurations folder: " + folder.getFullPathName());
+                            CrashHandler::note("LibreOrgans folder: " + folder.getFullPathName());
                             safeThis->saveSettings();
                             safeThis->refreshConfigurationEditor();
                         });
                 }, "The one folder where every organ configuration (.json) of this computer lives: the Hauptwerk and RAR imports write "
-                   "there, Save Configuration and Load Configuration start there. Documents/OrganSampler/Configurations by default. "
+                   "there, Save Configuration and Load Configuration start there. Documents/LibreOrgan/LibreOrgans by default. "
                    "The folder can be moved or chosen anew at any time - the sample folders are found through the sample locations below.",
                 "Where configurations and samples live");
             addButtonWithNote("Recordings folder", "Choose...", o.recordingsDirectory().getFullPathName() + juce::String(o.recordingsFolder.isNotEmpty() ? "" : "  (default)"), [&o]
@@ -28249,7 +28249,7 @@ void MainComponent::showConfigurationEditor()
                             safeThis->saveSettings();
                             safeThis->refreshConfigurationEditor();
                         });
-                }, "Where the Record button's WAV files go (the file dialog starts there): AudioRecordings beside the configurations folder by default.",
+                }, "Where the Record button's WAV files go (the file dialog starts there): LibreRecordings beside the LibreOrgans folder by default.",
                 "Recording");
             addButtonWithNote("Sample and IR locations", "Add folder...", (o.sampleLocations.isEmpty() && o.rememberedArchives.isEmpty() ? juce::String("none yet")
                     : juce::String(o.sampleLocations.size()) + " folder(s), " + juce::String(o.rememberedArchives.size()) + " archive(s)"), [&o]

@@ -1,17 +1,17 @@
 # Small icon sizes (16 and 24 px) made for legibility from the photographic
-# 1024 px icon (OrganSampler_icon_1024.png): the three pipes are cut out, made
+# 1024 px icon (LibreOrgan_icon_1024.png): the three pipes are cut out, made
 # much wider and set further apart, their mouth band (the black cut) is made
 # taller, the contrast and the twist bands are strengthened, then the composite
 # is downscaled. The other sizes (256/128/64/48/32) come unchanged from
-# OrganSampler_icon.ico (the 7-size icon; Projucer regenerates icon.ico with
+# LibreOrgan_icon.ico (the 7-size icon; Projucer regenerates icon.ico with
 # 4 plain downscales at every resave, so this script runs after each resave).
-# Output: Builds\VisualStudio2026\icon.ico and OrganSampler_icon.ico (both 7 sizes).
+# Output: Builds\VisualStudio2026\icon.ico and LibreOrgan_icon.ico (both 7 sizes).
 param([double]$WidthFactor = 2.1, [double]$BandFactor = 2.0, [double]$Contrast = 1.3, [double]$Twist = 2.2)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $root = Split-Path $PSScriptRoot -Parent
-$source = Join-Path $root 'OrganSampler_icon_1024.png'
-$full = Join-Path $root 'OrganSampler_icon.ico'
+$source = Join-Path $root 'LibreOrgan_icon_1024.png'
+$full = Join-Path $root 'LibreOrgan_icon.ico'
 $target = Join-Path $root 'Builds\VisualStudio2026\icon.ico'
 if (-not (Test-Path $source)) { throw "missing $source" }
 if (-not (Test-Path $full)) { throw "missing $full (the 7-size icon)" }

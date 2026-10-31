@@ -19,11 +19,11 @@
 #endif
 
 //==============================================================================
-class OrganSamplerApplication  : public juce::JUCEApplication
+class LibreOrganApplication  : public juce::JUCEApplication
 {
 public:
     //==============================================================================
-    OrganSamplerApplication() {}
+    LibreOrganApplication() {}
 
     const juce::String getApplicationName() override       { return ProjectInfo::projectName; }
     const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
@@ -39,7 +39,7 @@ public:
     //==============================================================================
     void initialise([[maybe_unused]] const juce::String& commandLine) override
     {
-        // Any fatal error writes <AppData>/OrganSampler/CrashLogs/crash-<time>.txt (+ .dmp).
+        // Any fatal error writes <AppData>/LibreOrgan/CrashLogs/crash-<time>.txt (+ .dmp).
         CrashHandler::install(getApplicationName(), getApplicationVersion());
        #if JUCE_LINUX
         {
@@ -52,16 +52,16 @@ public:
         // JUCE's own audio-driver diagnostics (ASIO buffer creation, resets)
         // go to CrashLogs/juce-audio.log so device problems can be traced.
         juceLog = std::make_unique<juce::FileLogger>(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-            .getChildFile("OrganSampler").getChildFile("CrashLogs").getChildFile("juce-audio.log"),
-            "OrganSampler " + getApplicationVersion() + " (build " __DATE__ " " __TIME__ ")", 512 * 1024);
+            .getChildFile("LibreOrgan").getChildFile("CrashLogs").getChildFile("juce-audio.log"),
+            "LibreOrgan Sampler " + getApplicationVersion() + " (build " __DATE__ " " __TIME__ ")", 512 * 1024);
         juce::Logger::setCurrentLogger(juceLog.get());
         if (commandLine.contains("--asiotest"))
         {
-            // Driver probe: OrganSampler.exe --asiotest "Fireface"
+            // Driver probe: LibreOrgan.exe --asiotest "Fireface"
             const auto filter = commandLine.fromFirstOccurrenceOf("--asiotest", false, false).trim().unquoted().trim();
             const auto report = EngineSelfTest::runAsioProbe(filter);
             juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("asiotest.txt").replaceWithText(report);
+                .getChildFile("LibreOrgan").getChildFile("asiotest.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);
             quit();
             return;
@@ -73,7 +73,7 @@ public:
             // it on every platform - Apple silicon included, where the NEON kernel
             // cannot be tried by hand here.
             const auto report = SamplerEngine::runKernelSelfCheck() + "\n" + StopNames::selfCheck();   // the name rule too (0.8.200)
-            juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("kerneltest.txt").replaceWithText(report);
+            juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("LibreOrgan").getChildFile("kerneltest.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);
             std::fflush(stdout);
             setApplicationReturnValue(report.contains("MISMATCH") ? 2 : 0);
@@ -82,7 +82,7 @@ public:
         }
         if (commandLine.contains("--hauptwerk"))
         {
-            // Development aid: OrganSampler.exe --hauptwerk "<file>.Organ_Hauptwerk_xml" parses the
+            // Development aid: LibreOrgan.exe --hauptwerk "<file>.Organ_Hauptwerk_xml" parses the
             // organ definition and prints what the import would make of it (hauptwerk.txt as well).
             const juce::File odfFile(commandLine.fromFirstOccurrenceOf("--hauptwerk", false, false).trim().unquoted().trim());
             juce::String report;
@@ -160,14 +160,14 @@ public:
             for (const auto& c : plan.couplers) report << "  coupler " << c.id << " = \"" << c.label << "\" (switch " << c.switchId << ")\n";
             if (plan.couplersUnmapped > 0) report << "  couplers without one of ours: " << plan.couplersUnmapped << "\n";
             report << "  configuration: " << plan.configurationFile.getFullPathName() << "\n";
-            juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("OrganSampler").getChildFile("hauptwerk.txt").replaceWithText(report);
+            juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("LibreOrgan").getChildFile("hauptwerk.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);
             quit();
             return;
         }
         if (commandLine.contains("--selftest"))
         {
-            // Offline engine stress test: OrganSampler.exe --selftest "<sample folder>"
+            // Offline engine stress test: LibreOrgan.exe --selftest "<sample folder>"
             // Several folders may be given separated by ';' (loaded as divisions 0, 1, ...).
             juce::String path = commandLine.fromFirstOccurrenceOf("--selftest", false, false).trim().unquoted().trim();
             std::vector<juce::File> folders;
@@ -181,7 +181,7 @@ public:
             // The user's lists when saved (and not empty), otherwise the defaults.
             std::vector<juce::String> perspectives, ignored;
             const auto settings = juce::JSON::parse(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("settings.json").loadFileAsString());
+                .getChildFile("LibreOrgan").getChildFile("settings.json").loadFileAsString());
             if (auto* array = settings.getProperty("perspectivePatterns", juce::var()).getArray())
                 for (const auto& item : *array) if (item.toString().trim().isNotEmpty()) perspectives.push_back(item.toString());
             if (auto* array = settings.getProperty("ignoredPatterns", juce::var()).getArray())
@@ -191,7 +191,7 @@ public:
             const auto report = allFound && !folders.empty() ? EngineSelfTest::run(folders, perspectives, ignored)
                 : juce::String("Self test: folder not found: " + path + "\n");
             juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("selftest.txt").replaceWithText(report);
+                .getChildFile("LibreOrgan").getChildFile("selftest.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);
             quit();
             return;
@@ -201,7 +201,7 @@ public:
         // key and saves the estimate, see UIScale.h).
         {
             const auto settings = juce::JSON::parse(juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                .getChildFile("OrganSampler").getChildFile("settings.json").loadFileAsString());
+                .getChildFile("LibreOrgan").getChildFile("settings.json").loadFileAsString());
             int percent = UIScale::percentFromSettings(settings);
             if (percent <= 0) percent = UIScale::estimatePercent();
             UIScale::set(percent);
@@ -242,7 +242,7 @@ public:
 
     void anotherInstanceStarted(const juce::String& commandLine) override
     {
-        // A second OrganSampler was started (and refused, see moreThanOneInstanceAllowed):
+        // A second LibreOrgan Sampler was started (and refused, see moreThanOneInstanceAllowed):
         // bring this one to the front and say so.
         if (commandLine.contains("--selftest") || commandLine.contains("--asiotest")) return;
         if (mainWindow != nullptr)
@@ -250,8 +250,8 @@ public:
             mainWindow->setMinimised(false);
             mainWindow->toFront(true);
         }
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "OrganSampler is already running",
-            "Another OrganSampler was started and closed again: only one instance can run at a time "
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "LibreOrgan Sampler is already running",
+            "Another LibreOrgan Sampler was started and closed again: only one instance can run at a time "
             "(a second one would open the same audio devices). This is the running instance.");
     }
 
@@ -382,4 +382,4 @@ private:
 
 //==============================================================================
 // This macro generates the main() routine that launches the app.
-START_JUCE_APPLICATION (OrganSamplerApplication)
+START_JUCE_APPLICATION (LibreOrganApplication)

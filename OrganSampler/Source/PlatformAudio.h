@@ -332,7 +332,7 @@ inline bool jackServerClock(int& bufferSize, int& sampleRate)
     auto close = (ClientClose)dlsym(lib, "jack_client_close");
     if (open == nullptr || getBuffer == nullptr || getRate == nullptr || close == nullptr) return false;
     int status = 0;
-    void* client = open("OrganSamplerClock", 0x01 /* JackNoStartServer */, &status);
+    void* client = open("LibreOrganClock", 0x01 /* JackNoStartServer */, &status);
     if (client == nullptr) return false;
     bufferSize = (int)getBuffer(client);
     sampleRate = (int)getRate(client);
@@ -511,7 +511,7 @@ private:
         auto close = (ClientClose)dlsym(lib, "jack_client_close");
         if (open == nullptr || getPorts == nullptr || freePorts == nullptr || close == nullptr) return clients;
         int status = 0;
-        void* client = open("OrganSamplerScan", 0x01 /* JackNoStartServer */, &status);
+        void* client = open("LibreOrganScan", 0x01 /* JackNoStartServer */, &status);
         if (client == nullptr) return clients;
         // Playback ports of the server are INPUT ports (we write into them): JackPortIsInput = 1, JackPortIsOutput = 2.
         if (const char** ports = getPorts(client, nullptr, "32 bit float mono audio", playbackPorts ? 1UL : 2UL))

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Checks the configurations folder: per organ one folder with the zipped
+# Checks the libreorgans folder: per organ one folder with the zipped
 # configuration (exactly one .json inside) and its README.md, or - the form an
 # upload arrives in - "<Name>.zip" with "<Name>.README.md" beside it flat in
-# configurations/. Anything else fails: audio files (samples, impulse
+# libreorgans/. Anything else fails: audio files (samples, impulse
 # responses), files named like pipe samples (036-C.wav), other file types,
 # anything above 40 MB. Run from the repository root; exit 1 on any error.
 set -e
 fail=0
 # The content (0.8.188): the zip holds one .json that IS an organ configuration of
-# OrganSampler, saved portable with the organ loaded; an upload pair's README is
+# LibreOrgan Sampler, saved portable with the organ loaded; an upload pair's README is
 # the one the program wrote for that zip (configuration_tools.py validate). An
 # organ's folder is checked for its zip's content only (its README may be older).
 zipcheck() {
@@ -19,26 +19,26 @@ while IFS= read -r -d '' f; do
   lower="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
   size=$(stat -c %s "$f")
   case "$f" in
-    configurations/README.md|configurations/INDEX*.md|configurations/FEATURED.txt) continue ;;
-    configurations/*/*)
+    libreorgans/README.md|libreorgans/INDEX*.md|libreorgans/FEATURED.txt) continue ;;
+    libreorgans/*/*)
       # An organ's folder: README.md and the zip.
       case "$lower" in
         readme.md) ;;
         *.zip) zipcheck "$f" "$(dirname "$f")/README.md" folder || fail=1 ;;
-        *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip OrganSampler writes beside a portable configuration"; fail=1 ;;
+        *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip LibreOrgan Sampler writes beside a portable configuration"; fail=1 ;;
         *) echo "::error file=$f::only the zipped configuration and its README.md belong in an organ's folder ($name) - no samples, no impulse responses (they are part of the sample folders), nothing else"; fail=1 ;;
       esac ;;
-    configurations/*)
+    libreorgans/*)
       # An upload: "<Name>.zip" with "<Name>.README.md" beside it.
       case "$lower" in
         *.readme.md)
           base="${f%.README.md}"
-          [ -f "$base.zip" ] || { echo "::error file=$f::no $(basename "$base").zip beside this README - both files OrganSampler wrote are needed"; fail=1; } ;;
+          [ -f "$base.zip" ] || { echo "::error file=$f::no $(basename "$base").zip beside this README - both files LibreOrgan Sampler wrote are needed"; fail=1; } ;;
         *.zip)
           base="${f%.zip}"
           if [ -f "$base.README.md" ]; then zipcheck "$f" "$base.README.md" pair || fail=1
-          else echo "::error file=$f::no $(basename "$base").README.md beside this zip - both files OrganSampler wrote are needed"; fail=1; fi ;;
-        *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip OrganSampler writes beside a portable configuration"; fail=1 ;;
+          else echo "::error file=$f::no $(basename "$base").README.md beside this zip - both files LibreOrgan Sampler wrote are needed"; fail=1; fi ;;
+        *.json) echo "::error file=$f::a bare .json opens as text on GitHub - send the zip LibreOrgan Sampler writes beside a portable configuration"; fail=1 ;;
         *) echo "::error file=$f::only <Name>.zip and <Name>.README.md belong here ($name)"; fail=1 ;;
       esac ;;
   esac
@@ -50,7 +50,7 @@ while IFS= read -r -d '' f; do
   fi
 done < <(find configurations -type f -print0)
 if [ "$fail" -ne 0 ]; then
-  echo "The configurations folder takes, per organ, the zipped configuration (one .json inside) and its README.md - nothing else. Samples and impulse responses are bought or downloaded elsewhere (Sonus Paradisi)."
+  echo "The libreorgans folder takes, per organ, the zipped configuration (one .json inside) and its README.md - nothing else. Samples and impulse responses are bought or downloaded elsewhere (Sonus Paradisi)."
   exit 1
 fi
-echo "configurations/ is clean"
+echo "libreorgans/ is clean"

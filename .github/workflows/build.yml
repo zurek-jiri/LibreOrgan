@@ -21,23 +21,23 @@ jobs:
           # bit, so no chmod +x after unpacking). Never a bare executable.
           - name: Windows
             os: windows-latest
-            artifact: OrganSampler-windows
-            path: build/OrganSampler_artefacts/Release/OrganSampler.exe
-            package: OrganSampler-windows.zip
+            artifact: LibreOrgan-windows
+            path: build/LibreOrgan_artefacts/Release/LibreOrgan.exe
+            package: LibreOrgan-windows.zip
           - name: macOS
             os: macos-latest
-            artifact: OrganSampler-macos
-            path: build/OrganSampler_artefacts/Release/OrganSampler.app
-            package: OrganSampler-macos.zip
+            artifact: LibreOrgan-macos
+            path: build/LibreOrgan_artefacts/Release/LibreOrgan.app
+            package: LibreOrgan-macos.zip
             cmake: -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
           # A test build for old Intel Macs (macOS 10.11 El Capitan and later - the
           # lowest JUCE allows). Untested by the project itself; it must not block
           # the release when the toolchain balks.
           - name: macOS 10.11 Intel (test build)
             os: macos-latest
-            artifact: OrganSampler-macos-10.11-intel
-            path: build/OrganSampler_artefacts/Release/OrganSampler.app
-            package: OrganSampler-macos-10.11-intel.zip
+            artifact: LibreOrgan-macos-10.11-intel
+            path: build/LibreOrgan_artefacts/Release/LibreOrgan.app
+            package: LibreOrgan-macos-10.11-intel.zip
             # -faligned-allocation: C++17 aligned new/delete come from AlignedNew.cpp (the system
             # ones exist from 10.13). libc++'s availability stays ON: with it disabled
             # (-D_LIBCPP_DISABLE_AVAILABILITY) the headers assumed every libc++ symbol of the
@@ -48,9 +48,18 @@ jobs:
             optional: true
           - name: Linux
             os: ubuntu-latest
-            artifact: OrganSampler-linux
-            path: build/OrganSampler_artefacts/Release/OrganSampler
-            package: OrganSampler-linux-x86_64.tar.gz
+            artifact: LibreOrgan-linux
+            path: build/LibreOrgan_artefacts/Release/LibreOrgan
+            package: LibreOrgan-linux-x86_64.tar.gz
+          # Linux on 64-bit ARM: Raspberry Pi 4/5 with a 64-bit OS (the NEON kernel). Built
+          # on the 22.04 ARM runner (glibc 2.35) so that Raspberry Pi OS Bookworm (2.36) runs
+          # it. Untested on real hardware by the project yet; it must not block the release.
+          - name: Linux arm64 (Raspberry Pi, test build)
+            os: ubuntu-22.04-arm
+            artifact: LibreOrgan-linux-arm64
+            path: build/LibreOrgan_artefacts/Release/LibreOrgan
+            package: LibreOrgan-linux-arm64.tar.gz
+            optional: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,14 +86,14 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          pwsh -File OrganSampler/Tests/gui/make_vel_test.ps1
+          pwsh -File LibreOrgan/Tests/gui/make_vel_test.ps1
           $set = Join-Path ([IO.Path]::GetTempPath()) "vel_test"
           if ($IsWindows) {
-            & "build/OrganSampler_artefacts/Release/OrganSampler.exe" --selftest "$set"
-            $report = Join-Path $env:APPDATA "OrganSampler/selftest.txt"
+            & "build/LibreOrgan_artefacts/Release/LibreOrgan.exe" --selftest "$set"
+            $report = Join-Path $env:APPDATA "LibreOrgan/selftest.txt"
           } else {
-            xvfb-run -a "build/OrganSampler_artefacts/Release/OrganSampler" --selftest "$set"
-            $report = Join-Path $HOME ".config/OrganSampler/selftest.txt"
+            xvfb-run -a "build/LibreOrgan_artefacts/Release/LibreOrgan" --selftest "$set"
+            $report = Join-Path $HOME ".config/LibreOrgan/selftest.txt"
           }
           if (-not (Test-Path $report)) { throw "no self-test report at $report" }
           Get-Content $report | Select-String -Pattern 'WRONG|FAIL|COMPLETED'
@@ -97,9 +106,9 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          if ($IsWindows) { $exe = "build/OrganSampler_artefacts/Release/OrganSampler.exe" }
-          elseif ($IsMacOS) { $exe = "build/OrganSampler_artefacts/Release/OrganSampler.app/Contents/MacOS/OrganSampler" }
-          else { $exe = "build/OrganSampler_artefacts/Release/OrganSampler" }
+          if ($IsWindows) { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan.exe" }
+          elseif ($IsMacOS) { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan.app/Contents/MacOS/LibreOrgan" }
+          else { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan" }
           if ($IsLinux) { xvfb-run -a $exe --kerneltest } else { & $exe --kerneltest }
           if ($LASTEXITCODE -ne 0) { throw "kernel test failed with exit code $LASTEXITCODE" }
 
@@ -144,13 +153,14 @@ jobs:
 
             **One program, no installation: download the archive of your system below, unpack it, start the program.**
 
-            - **Windows 10/11 (64-bit):** `OrganSampler-windows.zip` - `OrganSampler.exe` inside.
-            - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `OrganSampler-macos.zip` - the app inside. Unsigned: right-click > Open the first time.
-            - **macOS, Intel (macOS 10.11 El Capitan or newer):** `OrganSampler-macos-10.11-intel.zip` - the app inside. Unsigned: right-click > Open the first time. Untested by the project.
-            - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `OrganSampler-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
+            - **Windows 10/11 (64-bit):** `LibreOrgan-windows.zip` - `LibreOrgan.exe` inside.
+            - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `LibreOrgan-macos.zip` - the app inside. Unsigned: right-click > Open the first time.
+            - **macOS, Intel (macOS 10.11 El Capitan or newer):** `LibreOrgan-macos-10.11-intel.zip` - the app inside. Unsigned: right-click > Open the first time. Untested by the project.
+            - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `LibreOrgan-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
+            - **Linux arm64 - Raspberry Pi 4/5 with a 64-bit OS (Raspberry Pi OS Bookworm or newer, glibc 2.35+):** `LibreOrgan-linux-arm64.tar.gz` - `tar xzf` it. A test build, not yet tried on real hardware by the project.
             - The two *Source code* entries are added by GitHub to every release: not needed for playing.
 
-            **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/OrganSampler/blob/main/configurations/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/OrganSampler/releases/tag/rural-organ-0.8) brings its own sample folders.
+            **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/LibreOrgan/releases/tag/rural-organ-0.8) brings its own sample folders.
       # Only the newest build stays on the releases page: every older v* release
       # (and its tag) is deleted; the Rural Organ demo release is kept.
       - name: Delete the older program releases

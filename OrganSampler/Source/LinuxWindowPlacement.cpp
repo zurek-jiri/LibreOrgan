@@ -146,7 +146,7 @@ namespace
         js += "var list = (typeof workspace.windowList === 'function') ? workspace.windowList() : workspace.clientList();\n";
         js += "var fm = null, br = null;\n";
         js += "function cls(w) { return ((w.resourceClass || '') + ' ' + (w.resourceName || '')).toString().toLowerCase(); }\n";
-        js += "for (var i = 0; i < list.length; ++i) { var w = list[i]; if (!w || w.specialWindow || cls(w).indexOf('organsampler') >= 0) continue;\n";
+        js += "for (var i = 0; i < list.length; ++i) { var w = list[i]; if (!w || w.specialWindow || cls(w).indexOf('libreorgan') >= 0) continue;\n";
         js += "  if (!fm && (w.caption || '').toString().toLowerCase().indexOf(folder) >= 0) { fm = w; continue; }\n";
         js += "  if (!br) for (var b = 0; b < browsers.length; ++b) if (cls(w).indexOf(browsers[b]) >= 0) { br = w; break; } }\n";
         js += "if (!fm) for (var i = 0; i < list.length; ++i) { var w = list[i]; if (!w || w === br || w.specialWindow) continue;\n";
@@ -160,17 +160,17 @@ namespace
         {
             // The program's own box: KWin put it where its placement policy likes (the top
             // left corner), and an XWayland client cannot move itself - the script can.
-            js += "for (var i = 0; i < list.length; ++i) { var w = list[i]; if (w && cls(w).indexOf('organsampler') >= 0 && (w.caption || '').toString() == 'Report a problem')\n";
+            js += "for (var i = 0; i < list.length; ++i) { var w = list[i]; if (w && cls(w).indexOf('libreorgan') >= 0 && (w.caption || '').toString() == 'Report a problem')\n";
             js += "  { w.frameGeometry = { x: " + num(box.x) + ", y: " + num(box.y) + ", width: " + num(box.width) + ", height: " + num(box.height) + " }; if ('activeWindow' in workspace) workspace.activeWindow = w; } }\n";
         }
-        js += "print('OrganSampler report windows: file manager ' + (fm ? fm.caption : 'none') + ', browser ' + (br ? br.caption : 'none'));\n";
-        const std::string path = std::string(getenv("HOME") ? getenv("HOME") : "/tmp") + "/.config/OrganSampler/kwin-report-windows.js";
+        js += "print('LibreOrgan Sampler report windows: file manager ' + (fm ? fm.caption : 'none') + ', browser ' + (br ? br.caption : 'none'));\n";
+        const std::string path = std::string(getenv("HOME") ? getenv("HOME") : "/tmp") + "/.config/LibreOrgan/kwin-report-windows.js";
         { std::ofstream out(path); if (!out) return false; out << js; }
         // A script of this name still loaded (a run that never reached the unload) makes
         // loadScript answer -1: unload first.
-        runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.unloadScript organsampler-report-windows");
+        runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.unloadScript libreorgan-report-windows");
         const std::string loaded = runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.loadScript "
-            + shellQuote(path) + " organsampler-report-windows");
+            + shellQuote(path) + " libreorgan-report-windows");
         // gdbus prints the int32 reply as "(7,)" (0.8.151: 0.8.150 looked for "int32 7" and
         // took every answer for a refusal); -1 = refused
         int id = -1;
@@ -185,7 +185,7 @@ namespace
         }
         if (id < 0) { note = "KWin scripting refused the script: " + loaded.substr(0, 120); return false; }
         runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting/Script" + std::to_string(id) + " --method org.kde.kwin.Script.run");
-        runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.unloadScript organsampler-report-windows");
+        runCapture("gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.unloadScript libreorgan-report-windows");
         note = "Report windows (KWin scripting, Wayland): script " + std::to_string(id) + " run; left " + num(left.x) + "," + num(left.y) + " " + num(left.width) + "x" + num(left.height)
             + ", right " + num(right.x) + "," + num(right.y) + " " + num(right.width) + "x" + num(right.height) + " (what it found is in KWin's own log: journalctl --user -u plasma-kwin_wayland)";
         return true;
@@ -229,7 +229,7 @@ bool LinuxWindowPlacement::placeSideBySide(const std::string& folderName, Box le
     for (const Window w : windows)
     {
         const std::string name = windowName(display, w), cls = windowClass(display, w);
-        if (cls.find("organsampler") != std::string::npos) continue;
+        if (cls.find("libreorgan") != std::string::npos) continue;
         if (seen.size() < 600) seen += " [" + cls.substr(0, 24) + ": " + name.substr(0, 40) + "]";
         if (fileManager == 0 && containsIgnoreCase(name, folderName)) { fileManager = w; continue; }
         if (browser == 0)
@@ -241,12 +241,12 @@ bool LinuxWindowPlacement::placeSideBySide(const std::string& folderName, Box le
         for (const Window w : windows)
         {
             const std::string cls = windowClass(display, w);
-            if (cls.find("organsampler") != std::string::npos || w == browser) continue;
+            if (cls.find("libreorgan") != std::string::npos || w == browser) continue;
             bool fm = false;
             for (const char* f : fileManagers) if (cls.find(f) != std::string::npos) fm = true;
             if (fm) { fileManager = w; break; }
         }
-    if (browser == 0 && active != 0 && active != fileManager && windowClass(display, active).find("organsampler") == std::string::npos) browser = active;
+    if (browser == 0 && active != 0 && active != fileManager && windowClass(display, active).find("libreorgan") == std::string::npos) browser = active;
     const bool ewmh = wmSupports(display, "_NET_MOVERESIZE_WINDOW");
     if (fileManager != 0) placeWindow(display, fileManager, right, ewmh);
     if (browser != 0) placeWindow(display, browser, left, ewmh);

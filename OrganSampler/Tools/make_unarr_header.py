@@ -4,7 +4,7 @@ placeholders (@unarr_VERSION_MAJOR@ ...) filled in from the submodule's CMakeLis
 (project(unarr VERSION x.y.z)). The checked-in header serves the CMake build and the
 Projucer/Visual Studio build alike (unarr's own CMake is not used: it asks for CMake 3.25
 and builds 7z, ZIP and tar besides). Run from the repository root after a submodule
-update: python OrganSampler/Tools/make_unarr_header.py
+update: python LibreOrgan/Tools/make_unarr_header.py
 """
 import os
 import re

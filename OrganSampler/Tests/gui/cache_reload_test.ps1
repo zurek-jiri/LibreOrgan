@@ -4,9 +4,9 @@
 # took and how many pipes came from the cache. Run twice: the first run fills
 # the cache (or finds it), the second must read everything.
 # Argument: 'clear' empties the cache folder first. Settings backed up/restored.
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_cr_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -20,9 +20,9 @@ if ($args -contains 'clear' -and (Test-Path $cacheDir)) { Get-ChildItem $cacheDi
 $filesBefore = if (Test-Path $cacheDir) { (Get-ChildItem $cacheDir -File | Measure-Object).Count } else { 0 }
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
-$exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe"
+$exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe"
 $t0 = Get-Date
-$p = Start-Process -FilePath $exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $tDone = $null; $lastBuild = $null; $tFirstBuild = $null; $seenBuilds = 0
 $limit = if ($args -contains 'long') { 2400 } else { 900 }
 while (((Get-Date) - $t0).TotalSeconds -lt $limit)
@@ -55,9 +55,9 @@ $filesAfter = if (Test-Path $cacheDir) { (Get-ChildItem $cacheDir -File | Measur
 $mb = if (Test-Path $cacheDir) { [Math]::Round(((Get-ChildItem $cacheDir -File | Measure-Object Length -Sum).Sum) / 1MB, 0) } else { 0 }
 "cache files before $filesBefore, after $filesAfter ($mb MB)"
 Add-Type -Namespace Win -Name Msg2 -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr w, IntPtr l);'
-$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+$main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
 if ($main) { [void][Win.Msg2]::PostMessage($main.Handle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }   # a clean quit (settings saved)
-for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit OrganSampler' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) { Start-Sleep -Milliseconds 500; $q = Get-OrganWindows $p.Id | Where-Object { $_.Title -match 'Quit LibreOrgan Sampler' } | Select-Object -First 1; if ($q) { Click-InWindow $q.Handle ([int]($q.W / 2)) ($q.H - 42) | Out-Null } }
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 3
 foreach ($name in $backups.Keys) { Copy-Item $backups[$name] "$appData\$name" -Force; "$name restored identical: " + ((Get-FileHash "$appData\$name").Hash -eq (Get-FileHash $backups[$name]).Hash) }

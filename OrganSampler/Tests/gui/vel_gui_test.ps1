@@ -1,6 +1,6 @@
 . "C:\Users\doma\AppData\Local\Temp\organ_gui.ps1"
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "C:\Users\doma\AppData\Local\Temp\backup_vg_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 # Manual II loads the synthetic velocity-layer tree the old way (no table): folderPath only.
@@ -20,12 +20,12 @@ Remove-Item Env:ORGAN_OPEN_STOP_BUILD -ErrorAction SilentlyContinue
 $log = "$appData\CrashLogs\activity.log"
 $before = (Get-Content $log).Count
 $t0 = Get-Date
-$p = Start-Process -FilePath "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe" -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe" -WorkingDirectory "C:\LibreOrgan" -PassThru
 $main = $null
 while (((Get-Date) - $t0).TotalSeconds -lt 40)
 {
     Start-Sleep -Milliseconds 500
-    $main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^OrganSampler' -and $_.W -gt 300 } | Select-Object -First 1
+    $main = Get-OrganWindows $p.Id | Where-Object { $_.Title -match '^LibreOrgan Sampler' -and $_.W -gt 300 } | Select-Object -First 1
     if ($main -and ((Get-Date) - $t0).TotalSeconds -gt 14) { break }
 }
 if ($main)
@@ -52,7 +52,7 @@ if ($main)
         {
             Click-InWindow $dialog.Handle ([int]$args[4]) ([int]$args[5]); Start-Sleep -Milliseconds 1000
             Get-OrganWindows $p.Id | ForEach-Object { "window: '$($_.Title)' $($_.W)x$($_.H)" }
-            $menu = Get-OrganWindows $p.Id | Where-Object { $_.Title -notmatch 'OrganSampler|Stop List' -and $_.W -gt 150 } | Select-Object -First 1
+            $menu = Get-OrganWindows $p.Id | Where-Object { $_.Title -notmatch 'LibreOrgan Sampler|Stop List' -and $_.W -gt 150 } | Select-Object -First 1
             if ($menu) { Save-WindowShot $menu.Handle "C:\Users\doma\AppData\Local\Temp\vg_menu.png" | Out-Null; 'menu shot' }
             [W]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [W]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)
         }
@@ -60,7 +60,7 @@ if ($main)
     }
 }
 else { 'no main window' }
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 '--- log ---'
 Get-Content $log | Select-Object -Skip $before | Select-String -Pattern 'rebuilt|Loading|crash|velocity' -CaseSensitive:$false | ForEach-Object { $_.Line.Substring(0, [Math]::Min(160, $_.Line.Length)) }

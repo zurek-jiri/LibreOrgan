@@ -4,13 +4,13 @@
 #   stress_test.ps1 [-Seconds 8] [-Preset physical|allMinusOne|''] [-Limit 100000]
 # -Preset / -Limit are injected into settings.json for the run (the configuration
 # may carry its own values, which win when it is loaded). Settings backed up/restored.
-param([string]$Exe = "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Builds\VisualStudio2026\x64\Release\App\OrganSampler.exe",
+param([string]$Exe = "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Builds\VisualStudio2026\x64\Release\App\LibreOrgan.exe",
       [int]$Seconds = 8, [string]$Preset = "", [int]$Limit = 0, [switch]$NoIr, [switch]$Bash, [int]$Threads = 0, [switch]$NoAux, [switch]$NoAuxDirect, [int]$AfterSeconds = 2)
-. "F:\JUCE_PROJEKTY\OrganSamplerC\OrganSampler\Tests\gui\organ_gui.ps1"
+. "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tests\gui\organ_gui.ps1"
 $waited = 0
-while ((Get-Process OrganSampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }   # a previous run still closing
-if (Get-Process OrganSampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
-$appData = "$env:APPDATA\OrganSampler"
+while ((Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) -and $waited -lt 20) { Start-Sleep -Seconds 1; $waited++ }   # a previous run still closing
+if (Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue) { 'APP RUNNING - abort'; exit 1 }
+$appData = "$env:APPDATA\LibreOrgan"
 $backups = @{}
 foreach ($name in "settings.json", "voicer.json", "memories.json") { $src = "$appData\$name"; if (Test-Path $src) { $bak = "$env:TEMP\backup_st_$name"; Copy-Item $src $bak -Force; $backups[$name] = $bak } }
 $file = "$appData\settings.json"
@@ -28,7 +28,7 @@ if ($Bash) { $env:ORGAN_STRESS_BASH = "1" } else { $env:ORGAN_STRESS_BASH = $nul
 if ($NoAuxDirect) { $env:ORGAN_STRESS_NO_AUX = "2" } elseif ($NoAux) { $env:ORGAN_STRESS_NO_AUX = "1" } else { $env:ORGAN_STRESS_NO_AUX = $null }
 if ($Threads -gt 0) { $env:ORGAN_STRESS_THREADS = "$Threads" } else { $env:ORGAN_STRESS_THREADS = $null }
 $t0 = Get-Date
-$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\OrganSampler" -PassThru
+$p = Start-Process -FilePath $Exe -WorkingDirectory "C:\LibreOrgan" -PassThru
 $done = $false
 while (((Get-Date) - $t0).TotalSeconds -lt 180 -and -not $done)
 {
@@ -39,7 +39,7 @@ while (((Get-Date) - $t0).TotalSeconds -lt 180 -and -not $done)
     if ((Test-Path $log) -and ((Get-Content $log | Select-Object -Skip $before) -match 'STRESS done')) { $done = $true }
 }
 Start-Sleep -Seconds $AfterSeconds   # longer to watch what the app does after the keys are released (device watcher etc.)
-Get-Process OrganSampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+Get-Process LibreOrgan Sampler -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
 Start-Sleep -Seconds 2
 # The auxiliary state of the pedal as the run left it in settings.json (must be none after -NoAux / -NoAuxDirect).
 try { $saved = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8) | ConvertFrom-Json; foreach ($p in $saved.manualKeyboards[0].perspectiveAudio) { if ($p.name -eq 'auxiliary') { $x = [string]$p.audioDeviceStateXml; $dev = if ($x -match 'audioOutputDeviceName="([^"]*)"') { $Matches[1] } else { '(empty xml)' }; "pedal auxiliary saved as: [$dev]" } } } catch { "saved state unreadable: $_" }

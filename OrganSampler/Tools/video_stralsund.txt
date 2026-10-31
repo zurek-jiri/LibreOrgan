@@ -1,4 +1,4 @@
-# The instruction video of OrganSampler on Stralsund, St. Jakobi (ORGAN_VIDEO_SCRIPT, 0.8.206).
+# The instruction video of LibreOrgan Sampler on Stralsund, St. Jakobi (ORGAN_VIDEO_SCRIPT, 0.8.206).
 # Divisions: 0 Pedal, 1 UW, 2 HW, 3 OW. Keys: MIDI numbers. One step per line; "#" comments.
 # The configuration is Tools/make_video_config.py's copy: the Oberwerk's two trees point at a drive that does
 # not exist, so the video can show the missing-folder notice, the folder chooser and the loading window.
@@ -7,8 +7,8 @@
 window 2560 1400
 wait 800
 record start
-caption OrganSampler. One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings. Load Configuration opens it.
-say OrganSampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples - and Load Configuration opens it.
+caption LibreOrgan Sampler. One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings. Load Configuration opens it.
+say LibreOrgan Sampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples - and Load Configuration opens it.
 wait 13500
 load C:\Users\doma\AppData\Local\Temp\video\cfg\Stralsund_video.json
 wait 3600

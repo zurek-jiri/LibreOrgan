@@ -41,7 +41,7 @@ jobs:
       BY_ISSUE: ${{ github.event_name == 'issues' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Find the organ, remove its folder, write configurations/INDEX.md
+      - name: Find the organ, remove its folder, write libreorgans/INDEX.md
         shell: bash
         run: |
           set -e
@@ -81,11 +81,11 @@ jobs:
             publisher="$(printf '%s' "$matches" | cut -d'|' -f4)"
             if [ "$folder" = "rural-organ" ]; then problems="$problems"$'\n'"- the Rural Organ demo stays"; continue; fi
             if [ "$BY_ISSUE" = "true" ] && [ "$who" != "$REPO_OWNER" ] && [ "$who" != "$publisher" ]; then
-              problems="$problems"$'\n'"- configurations/$folder was published by ${publisher:+@$publisher}${publisher:-somebody else (before the publisher was recorded)} - only they or the repository's owner can remove it"
+              problems="$problems"$'\n'"- libreorgans/$folder was published by ${publisher:+@$publisher}${publisher:-somebody else (before the publisher was recorded)} - only they or the repository's owner can remove it"
               continue
             fi
-            git rm -r -q "configurations/$folder"
-            removed="$removed"$'\n'"- configurations/$folder"
+            git rm -r -q "libreorgans/$folder"
+            removed="$removed"$'\n'"- libreorgans/$folder"
           done <<< "$wanted"
           if [ -z "$removed" ]; then
             answer "$(printf 'Nothing removed:%s\n\nThe organs now:\n\n%s' "$problems" "$(ls -1 configurations | grep -v '\.md$' | sed 's/^/- /')")"
@@ -93,6 +93,6 @@ jobs:
           fi
           python3 .github/scripts/configurations_index.py || true
           git add -A configurations .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
-          git commit -m "configurations: removed$(printf '%s' "$removed" | tr '\n' ' ' | sed 's/- configurations\//  /g') (asked by @$who)"
+          git commit -m "libreorgans: removed$(printf '%s' "$removed" | tr '\n' ' ' | sed 's/- libreorgans\//  /g') (asked by @$who)"
           git push
           answer "$(printf 'Removed, INDEX.md regenerated:%s%s' "$removed" "${problems:+$'\n\nNot removed:'$problems}")" close

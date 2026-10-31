@@ -1559,7 +1559,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
         keyRangeFor(rankIds, planStop.lowKey, planStop.highKey);
         // Several ranks in ONE perspective (Caen: a stereo stop recorded as
         // an "(L component)" and an "(R component)" rank, two folders for the
-        // same perspective): OrganSampler's stop has one folder per
+        // same perspective): LibreOrgan Sampler's stop has one folder per
         // perspective, so the stop becomes a stop folder whose children are
         // the rank groups - the ranks matched across the perspectives by
         // their name without the perspective head ("Rec: Quintaton 16 (L
@@ -1822,7 +1822,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
 
     // The perspective patterns: for every perspective the rank names tell, the
     // common prefix of its rank folders' names under the stop folder
-    // ("03-rearMk4-" of "03-rearMk4-UW_Quintadena8"), as OrganSampler's own
+    // ("03-rearMk4-" of "03-rearMk4-UW_Quintadena8"), as LibreOrgan Sampler's own
     // "Name;prefix" lines. Only stops with two or more perspectives count.
     {
         // One perspective may carry several prefixes ("01-dirc-" in three
@@ -1924,7 +1924,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
     for (const auto c : juce::String("\\/:*?\"<>|")) fileName = fileName.replaceCharacter(c, '-');
     result.configurationFile = configurationFolderFor(hauptwerkRoot).getChildFile(fileName.trim() + ".json");
     if (encryptedSamples > 0)
-        result.error = juce::String(encryptedSamples) + " of " + juce::String(sampleCount) + " samples are encrypted (.hbw): Hauptwerk's encrypted sample sets cannot be played by OrganSampler.";
+        result.error = juce::String(encryptedSamples) + " of " + juce::String(sampleCount) + " samples are encrypted (.hbw): Hauptwerk's encrypted sample sets cannot be played by LibreOrgan Sampler.";
     return result;
 }
 
