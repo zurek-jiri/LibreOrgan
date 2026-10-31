@@ -10819,26 +10819,57 @@ void SamplerEngine::computeFilledPipes(Stop* rank, int groupSize, int needLow, i
         return n;                                                              // the remainder: outermost pipes, shift n
     };
     const int g = juce::jlimit(1, count, groupSize);
+    // 0.9.2 (the user's rule): when the group's source is a HOLE (a sparse rank - his Principal with the
+    // pipes 039, 051-053, 068, 075 ...), the old fallback jumped to the nearest real pipe beyond the hole,
+    // always the same one: 064-067 all came from 075 while 068 stood next to them. Now the candidates are
+    // the real pipes within g semitones of the missing pipe, on BOTH sides of it, and the cheapest wins:
+    // the transposition plus a penalty for repeating the source of the pipe filled just before (g) or
+    // the one before that (g / 4) - neighbouring filled pipes take turns between the nearby real pipes
+    // (061-067 of that Principal: 068, 052, 068, 075, 068, 075, 068). Ties go to the pipe nearest the
+    // group's own source. A rank without holes never gets here: the group's source is always real there,
+    // so every ordinary extension (an octave up from a complete rank) is filled exactly as before.
+    struct RunState { int last1 = -1, last2 = -1; void note(int s) { last2 = last1; last1 = s; } };
+    const int window = juce::jlimit(1, 12, groupSize);   // the setting itself, not g clamped to the rank's few pipes
+    auto fallback = [&](int pipe, int ideal, const RunState& run)
+    {
+        int best = -1;
+        double bestCost = 0.0;
+        for (int n : real)
+        {
+            const int shift = std::abs(n - pipe);
+            if (shift == 0 || shift > window) continue;
+            double cost = shift;
+            if (n == run.last1) cost += window;
+            else if (n == run.last2) cost += window * 0.25;
+            cost += std::abs(n - ideal) * 0.01;
+            if (best < 0 || cost < bestCost) { best = n; bestCost = cost; }
+        }
+        return best;
+    };
     // Below the rank: the lowest pipes shifted down, only as far as needed.
     if (needLow < lowest)
     {
         const int n = lowest - needLow;
+        RunState run;
         for (int pipe = lowest - 1; pipe >= needLow; --pipe)
         {
             int source = pipe + shiftFor(lowest - pipe, n, g);
-            if (!has(source)) source = realAtOrAbove(source);   // a gap right at the edge
+            if (!has(source)) { const int picked = fallback(pipe, source, run); source = picked >= 0 ? picked :realAtOrAbove(source); }   // a gap right at the edge
             assign(pipe, source);
+            run.note(source);
         }
     }
     // Above the rank: the highest pipes shifted up, only as far as needed.
     if (needHigh > highest)
     {
         const int n = needHigh - highest;
+        RunState run;
         for (int pipe = highest + 1; pipe <= needHigh; ++pipe)
         {
             int source = pipe - shiftFor(pipe - highest, n, g);
-            if (!has(source)) source = realAtOrBelow(source);
+            if (!has(source)) { const int picked = fallback(pipe, source, run); source = picked >= 0 ? picked :realAtOrBelow(source); }
             assign(pipe, source);
+            run.note(source);
         }
     }
     // Gaps inside the rank: the lower half from the pipes below the gap, the
@@ -10855,17 +10886,20 @@ void SamplerEngine::computeFilledPipes(Stop* rank, int groupSize, int needLow, i
         if ((n % 2) == 1 && below >= above) ++lower;
         const int upper = n - lower;
         const int gl = juce::jmax(1, juce::jmin(g, below)), gu = juce::jmax(1, juce::jmin(g, above));
+        RunState run;   // one run over the whole gap: the upper half knows what the lower half took last
         for (int pipe = a; pipe < a + lower; ++pipe)
         {
             int source = pipe - shiftFor(pipe - a + 1, lower, gl);
-            if (!has(source)) source = realAtOrBelow(source);
+            if (!has(source)) { const int picked = fallback(pipe, source, run); source = picked >= 0 ? picked :realAtOrBelow(source); }
             assign(pipe, source);
+            run.note(source);
         }
         for (int pipe = a + lower; pipe <= b; ++pipe)
         {
             int source = pipe + shiftFor(b - pipe + 1, upper, gu);
-            if (!has(source)) source = realAtOrAbove(source);
+            if (!has(source)) { const int picked = fallback(pipe, source, run); source = picked >= 0 ? picked :realAtOrAbove(source); }
             assign(pipe, source);
+            run.note(source);
         }
     }
 }

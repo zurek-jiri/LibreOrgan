@@ -2058,6 +2058,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `configurationsFolder` at a temp folder, which needs an existing settings.json (none existed in %APPDATA%\LibreOrgan).
   (6) The checkout's folder is still OrganSampler/ on disk: commits go through a worktree on origin/main
   (C:\Temp\lo091, branch release-0.9.1, files copied into LibreOrgan/...), commit 37c6d4f + tag v0.9.1 local, NOT pushed.
+  0.9.2 (31 Oct 2026): FILLED PIPES OF A SPARSE RANK (the user's Principal8: 039, 051-053, 068, 075 ...; "064-067 all
+  from 075 while 068 stands next to them"): the group rule's source (067 + 5 = 072) was a hole and the old fallback
+  took the nearest real pipe BEYOND the hole, never back. `computeFilledPipes` fallback (ONLY when the group's source is
+  not real - a complete rank never enters it, the self-test is line-identical to 0.8.227 but for the new line):
+  candidates = real pipes within `window` = the "Missing pipes" SETTING (1-12; not g clamped to the rank's pipe count -
+  that gave 68 53 68 68 68 75 68) on BOTH sides of the missing pipe; cost = transposition + window for the source of
+  the pipe filled just before + window/4 for the one before that; ties to the pipe nearest the group's source;
+  `RunState` runs over a whole gap (both halves) and over each edge extension. 061-067 -> 68 52 68 75 68 75 68
+  (self-test "Sparse rank ... -> OK", probe3 in EngineSelfTest.h). `near` is a Windows macro (windef.h): never name
+  a local so. Compare the self-test against %TEMP%\selftest_092.txt from now on.
 ## Pending for the next session (delete when done)
 - THE USER'S RULE (30 Oct 2026, "nesmíme vyžadovat žádné externí závislosti, ani Visual C++ redistributable!!! To je
   zásadní!"): the released executables depend on NOTHING that is not part of a plain Windows/macOS/Linux - no VC++

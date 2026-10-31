@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.2] - 2026-10-31
+
+### Changed
+- Filled pipes of a sparse rank (a few real pipes with holes between them):
+  when the group's source is a hole, the missing pipe takes one of the real
+  pipes within the group's width on either side, the cheapest by
+  transposition, and neighbouring filled pipes take turns between them
+  (before, a run of missing pipes was one far pipe shifted step by step
+  while a nearer one stood unused). Complete ranks are filled as before.
+
 ## [0.9.1] - 2026-10-31
 
 ### Fixed

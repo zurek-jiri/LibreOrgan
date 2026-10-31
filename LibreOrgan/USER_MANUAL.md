@@ -1070,8 +1070,9 @@ every transmission's shifted compass). A filled pipe has everything a real
 pipe has (voicing slider, detune, wind, tremulant, releases) and costs
 nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by
 default) makes every missing pipe the octave transposition of a real one, so
-the rank keeps its chromatic variety. A pipe switched off in the voicing row
-is never filled.
+the rank keeps its chromatic variety; in a sparse rank the neighbouring
+filled pipes take turns between the real pipes within reach. A pipe switched
+off in the voicing row is never filled.
 
 Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have
 inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and
@@ -1417,6 +1418,11 @@ cache when on); the sliders that do not apply are greyed out.
 This many adjacent real pipes are taken as a group and transposed by the
 group's width for the missing ones (1 to 12, default 12: every missing pipe
 an octave transposition of a real one). Changing it refills every stop.
+In a sparse rank (a few pipes with holes between them) the group's source is
+often a hole itself; then the missing pipe takes one of the real pipes within
+the group's width on either side, the cheapest by transposition, and
+neighbouring filled pipes take turns between them so that a run of filled
+pipes is not one sample shifted step by step.
 
 ### Retune limit per pipe
 

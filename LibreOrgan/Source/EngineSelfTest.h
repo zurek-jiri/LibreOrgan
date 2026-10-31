@@ -878,6 +878,25 @@ namespace EngineSelfTest
                                << " (expect 89), pipe 97 filled: " << (probe2->isFilled(97) ? "yes" : "no (expect no)")
                                << ((probe2->sourceNoteFor(90) == 83 && probe2->sourceNoteFor(96) == 89 && !probe2->isFilled(97))
                                    ? "  -> OK" : "  *** WRONG ***") << "\n";
+                        // 0.9.2: a SPARSE rank (the user's Principal: 039, 051-053, 068, 075 ...). The group's
+                        // source of 062/064-067 is a hole; the fallback takes turns between the real pipes within
+                        // the group's width on either side (068, 052, 075), never one far pipe for the whole run.
+                        std::unique_ptr<Stop> probe3 = std::make_unique<Stop>("probe3", juce::File());
+                        for (int note : { 39, 51, 52, 53, 68, 75, 80, 86, 92 })
+                            probe3->samplesByNote[(size_t)note].push_back(std::make_unique<Sample>(1, 8, 48000.0, true));
+                        SamplerEngine::computeFilledPipes(probe3.get(), 12, 36, 96);
+                        const int expectSparse[7]{ 68, 52, 68, 75, 68, 75, 68 };
+                        bool sparseOk = probe3->sourceNoteFor(54) == 53;
+                        juce::String got;
+                        for (int k = 0; k < 7; ++k)
+                        {
+                            const int source = probe3->sourceNoteFor(61 + k);
+                            got << (k > 0 ? " " : "") << source;
+                            if (source != expectSparse[k]) sparseOk = false;
+                        }
+                        report << "Sparse rank (pipes 39, 51-53, 68, 75, 80, 86, 92; need 36-96, group 12): pipes 61-67 <- " << got
+                               << " (expect 68 52 68 75 68 75 68), pipe 54 <- " << probe3->sourceNoteFor(54) << " (expect 53)"
+                               << (sparseOk ? "  -> OK" : "  *** WRONG ***") << "\n";
                     }
                     engine.setTransmissionShift(borrowed, transmission, -12);
                     check("Filled pipe (16' extension, lowest key -> pipe an octave below the compass)",

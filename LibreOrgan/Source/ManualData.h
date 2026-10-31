@@ -1084,8 +1084,9 @@ static const char* const kManualText_part5 =
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
-    "the rank keeps its chromatic variety. A pipe switched off in the voicing row\n"
-    "is never filled.\n"
+    "the rank keeps its chromatic variety; in a sparse rank the neighbouring\n"
+    "filled pipes take turns between the real pipes within reach. A pipe switched\n"
+    "off in the voicing row is never filled.\n"
     "\n"
     "Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have\n"
     "inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
-    "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     ;
 static const char* const kManualText_part6 =
+    "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
     "\n"
     "### Sample rate on loading\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
     "Celeste stops beat this many times faster at the top of the compass than at\n"
-    "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
     ;
 static const char* const kManualText_part7 =
+    "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
@@ -1435,6 +1436,11 @@ static const char* const kManualText_part7 =
     "This many adjacent real pipes are taken as a group and transposed by the\n"
     "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
     "an octave transposition of a real one). Changing it refills every stop.\n"
+    "In a sparse rank (a few pipes with holes between them) the group's source is\n"
+    "often a hole itself; then the missing pipe takes one of the real pipes within\n"
+    "the group's width on either side, the cheapest by transposition, and\n"
+    "neighbouring filled pipes take turns between them so that a run of filled\n"
+    "pipes is not one sample shifted step by step.\n"
     "\n"
     "### Retune limit per pipe\n"
     "\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "### One-shot stops (folder contains)\n"
     "\n"
     "Folders whose name matches play once without looping (chiff, percussion,\n"
+    ;
+static const char* const kManualText_part8 =
     "bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A\n"
     "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
     "### Ignored folders (folder contains)\n"
     "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
-    ;
-static const char* const kManualText_part8 =
     "\"output\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "\n"
     "# 10. Technical details\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "The chapters above link here. Nothing in this part is needed to play.\n"
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
-    ;
-static const char* const kManualText_part9 =
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"
     "SATA SSD), a load from the page cache many times faster - never compare the\n"
+    ;
+static const char* const kManualText_part10 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     "minimum time and delay off, two seconds of idle listening; every stop\n"
-    ;
-static const char* const kManualText_part10 =
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"
     "second at first, more keys and a faster rate whenever the voices stop rising\n"
