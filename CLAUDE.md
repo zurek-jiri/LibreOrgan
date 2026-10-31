@@ -2158,6 +2158,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Now "_", "-", ".", spaces and a trailing "ms" are accepted, "release" as the word too; a rel* folder still not
   understood is logged "Release folder X of Y not understood ... skipped". RULE: a folder the loader skips by its
   NAME is logged, never silent. Verify a set's releases by the tree's GB read vs the WAV estimate.
+  0.9.12 (31 Oct 2026, the user's silence at 15:45: "neslyším nic, DSP 0 %" - the Fireface's Windows Audio endpoint
+  opened but called back nothing after a USB re-enumeration at 15:41 ("MIDI devices changed: gone microKEY2 Air,
+  Komplete Audio 6 In"; its MIDI ports gave WinMM error 1 too); the same with 0.9.9 - NOT a regression, the user
+  first took it for one): `checkAudioCallbackHealth` keeps `silentDevices` (label -> seconds without a callback,
+  reopenedMs, noticed): a report "no callbacks" while not muted / no device change pending / no set-for-all / no
+  ASIO panel watch -> after 4 s `reopenAudioDeviceFresh(manager, "No audio callbacks from X for 4 s - recovery")`
+  (once a minute at most; the manager now travels with the callback into `check`), and when the callbacks are still
+  missing 8 s later a Messages note "No audio" + `PolyphonyDisplay::setDeviceSilent` (the DSP cell reads "no audio"
+  in orange) until the device calls back again. NOT verified by a run (no way to hang a device on purpose; the user
+  was playing). The log of such a case: "Audio callback anomaly: <device>: no callbacks, outputs 0  render load 0 %".
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

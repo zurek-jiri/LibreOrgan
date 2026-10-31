@@ -872,7 +872,9 @@ to that device and those channels. Each tab, top to bottom:
   channels greyed. The program tries to open it every 2 seconds, also while
   this dialog is open, and the moment it answers every route set to it plays
   again. A device missing at start is reported once, in a box, after a 6 s
-  wait. ASIO lists every installed driver whether its hardware is on or not;
+  wait. A device that opened but gives no audio is reopened once by itself;
+  when that does not help, the DSP cell reads *no audio* and the Messages
+  name it. ASIO lists every installed driver whether its hardware is on or not;
   only the attempt to open it tells.
 
 **The buffer size decides more than anything else.** 512 samples at 48 kHz

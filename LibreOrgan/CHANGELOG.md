@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.12] - 2026-10-31
+
+### Added
+- A device that opened but gives no audio callbacks (a USB interface after
+  a reset: DSP 0 %, silence) is reopened by itself after 4 seconds; when that
+  does not bring the audio back, the DSP cell reads "no audio" and the
+  Messages name the device. Before, only the log knew.
+
 ## [0.9.11] - 2026-10-31
 
 ### Fixed

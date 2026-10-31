@@ -132,6 +132,12 @@ public:
         glitchUntil = now + 10000.0;
         repaint();
     }
+    // 0.9.12: a device that opened but gives no audio callbacks - the DSP cell reads "no audio" in orange.
+    void setDeviceSilent(const juce::String& label, bool silent)
+    {
+        if (silent) silentDevices.insert(label); else silentDevices.erase(label);
+        repaint();
+    }
     void paint(juce::Graphics& g) override
     {
         // Same look as the combination display: black, lime digits.
@@ -143,8 +149,9 @@ public:
         const int column = columnWidth();
         const juce::String labels[5]{ "NOW", "PEAK", "DSP", "RAM GB", "LIMIT" };
         const bool glitches = glitchCount > 0 && juce::Time::getMillisecondCounterHiRes() <= glitchUntil;
+        const bool silent = !silentDevices.empty();   // 0.9.12
         const juce::String values[4]{ juce::String(current), juce::String(maximum),
-            juce::String(juce::roundToInt(loadPeak * 100.0f)) + " %" + (glitches ? " !" + juce::String(glitchCount) : juce::String()), ramText };
+            silent ? juce::String("no audio") : juce::String(juce::roundToInt(loadPeak * 100.0f)) + " %" + (glitches ? " !" + juce::String(glitchCount) : juce::String()), ramText };
         const float valueFont = juce::jlimit(13.0f, 22.0f, (float)getHeight() * 0.32f);
         for (int i = 0; i < 5; ++i)
         {
@@ -154,7 +161,7 @@ public:
             g.drawText(labels[i], cell.withHeight(20).translated(0, 3), juce::Justification::centred);
             if (i < 4)
             {
-                const bool warn = (i == 2 && (loadPeak > 0.85f || glitches)) || (i == 3 && ramTight);
+                const bool warn = (i == 2 && (loadPeak > 0.85f || glitches || silent)) || (i == 3 && ramTight);
                 g.setColour(warn ? juce::Colours::orange : juce::Colours::lime);
                 g.setFont(juce::FontOptions(valueFont, juce::Font::bold));
                 // Digits must always fit the column: shrink rather than clip.
@@ -171,6 +178,7 @@ private:
     juce::String ramText{ "-" };   // the RAM the program holds, read once a second (0.8.128)
     bool ramTight = false;         // orange: less than a tenth of the installed memory is free
     int ramTick = 0;
+    std::set<juce::String> silentDevices;   // 0.9.12: devices open without callbacks (the DSP cell says "no audio")
     void timerCallback() override
     {
         if (ramTick++ % 25 == 0)
@@ -6566,11 +6574,52 @@ void MainComponent::checkAudioCallbackHealth()
     std::set<juce::String> anomalousNow;
     int deviceJumps = 0;            // output discontinuities on the way to the drivers (0.8.226)
     juce::String deviceJumpDetail;
-    auto check = [&](DivisionAudioCallback* callback)
+    auto check = [&](DivisionAudioCallback* callback, juce::AudioDeviceManager* manager)
     {
         if (callback == nullptr) return;
         const auto report = callback->healthReport();
         if (callback->hadRateMismatch() && callback->isAsio()) asioPeriodMismatch = true;
+        // 0.9.12: a device that opened but calls back nothing (31 Oct 2026: the Fireface's Windows Audio
+        // endpoint after a USB reset - DSP 0 %, silence, a log line once a minute and nothing else; the
+        // ASIO recovery below never applied). After 4 s without a callback the device is reopened once
+        // (at most once a minute); when that does not bring the callbacks back within 8 s, the
+        // Messages name the device and the DSP cell reads "no audio" until it calls back again.
+        {
+            const auto label = callback->label();
+            const bool silentNow = report.contains("no callbacks") && !audioMuted.load() && audioDeviceSelectionUnmuteAt <= 0.0
+                && !applyAllRunning && !asioPanelWatch.active;
+            auto state = silentDevices.find(label);
+            if (silentNow)
+            {
+                if (state == silentDevices.end()) state = silentDevices.insert({ label, {} }).first;
+                ++state->second.seconds;
+                if (state->second.seconds >= 4 && manager != nullptr && (state->second.reopenedMs < 0.0 || nowMs - state->second.reopenedMs > 60000.0))
+                {
+                    state->second.reopenedMs = nowMs;
+                    state->second.seconds = 0;
+                    reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + " for 4 s - recovery");
+                }
+                else if (state->second.reopenedMs >= 0.0 && nowMs - state->second.reopenedMs > 8000.0 && !state->second.noticed)
+                {
+                    state->second.noticed = true;
+                    if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->setDeviceSilent(label, true);
+                    queueNotice(juce::MessageBoxIconType::InfoIcon, "No audio",
+                        "The audio device of " + label + " opened but gives no audio (switched off, asleep, or its driver hung - a USB "
+                        "interface after a reset). The program reopened it once without success. Reopen device or choose the device again in "
+                        "Divisions, switch it off and on, or take another device (ASIO).");
+                    CrashHandler::note("No audio: " + label + " still gives no callbacks 8 s after the automatic reopen - the DSP cell says so");
+                }
+            }
+            else if (state != silentDevices.end() && !report.contains("no callbacks"))
+            {
+                if (state->second.noticed)
+                {
+                    if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->setDeviceSilent(label, false);
+                    CrashHandler::note("No audio: " + label + " calls back again");
+                }
+                silentDevices.erase(state);
+            }
+        }
         if (report.isNotEmpty())
         {
             // A persisting anomaly (a substitute device that never calls back, for
@@ -6599,10 +6648,10 @@ void MainComponent::checkAudioCallbackHealth()
             deviceJumpDetail << (deviceJumpDetail.isEmpty() ? "" : "; ") << callback->label() << ": " << jumps;
         }
     };
-    check(primaryAudioCallback.get());
-    for (auto& callback : extraAudioCallbacks) check(callback.get());
+    check(primaryAudioCallback.get(), &deviceManager);
+    for (size_t i = 0; i < extraAudioCallbacks.size(); ++i) check(extraAudioCallbacks[i].get(), extraAudioManagers[i].get());
     for (auto& entry : perspectiveAudioRoutes)
-        if (entry.second != nullptr) check(entry.second->callback.get());
+        if (entry.second != nullptr) check(entry.second->callback.get(), entry.second->managerInUse);
     {
         // The output discontinuity detector (0.8.226): the program's own clicks,
         // counted in the render (after the pool, at the route's end) and on the

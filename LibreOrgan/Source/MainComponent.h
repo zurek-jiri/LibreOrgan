@@ -1144,6 +1144,11 @@ private:
     juce::StringArray missingAudioDevices;
     juce::StringArray reportedMissingAudioDevices;        // reported once per session, then silence
     std::map<juce::String, double> audioAnomalyLastLogMs;  // callback anomalies: logged when they appear, then once a minute
+    // 0.9.12: a device that opened but calls back NOTHING (the Fireface after a USB reset, 31 Oct 2026: DSP 0 %,
+    // silence, only a log line) - per callback label the consecutive seconds without a callback, the time of
+    // the automatic reopen (once per minute at most) and whether the Messages/DSP cell were told.
+    struct SilentDeviceState { int seconds = 0; double reopenedMs = -1.0; bool noticed = false; };
+    std::map<juce::String, SilentDeviceState> silentDevices;
     double audioLevelsLastLogMs = -1.0e9;                  // "Audio levels" at most every 10 s
     std::map<juce::String, double> missingDeviceNextTryMs; // failed reopen attempts: next silent try
     bool missingAudioDevicesReportPending = false;

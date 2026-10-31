@@ -884,7 +884,9 @@ static const char* const kManualText_part4 =
     "  channels greyed. The program tries to open it every 2 seconds, also while\n"
     "  this dialog is open, and the moment it answers every route set to it plays\n"
     "  again. A device missing at start is reported once, in a box, after a 6 s\n"
-    "  wait. ASIO lists every installed driver whether its hardware is on or not;\n"
+    "  wait. A device that opened but gives no audio is reopened once by itself;\n"
+    "  when that does not help, the DSP cell reads *no audio* and the Messages\n"
+    "  name it. ASIO lists every installed driver whether its hardware is on or not;\n"
     "  only the attempt to open it tells.\n"
     "\n"
     "**The buffer size decides more than anything else.** 512 samples at 48 kHz\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "\n"
     "# 6. Playing\n"
     "\n"
-    "## 6.1 Couplers\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "## 6.1 Couplers\n"
+    "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
     "every coupler it can have - every division at unison, 16' and 4' (the\n"
     "division itself included: \"I/I 16'\" is an octave coupler), the melody and\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "\n"
     "### Compress samples in RAM (lossless)\n"
     "\n"
-    "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
-    "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     ;
 static const char* const kManualText_part6 =
+    "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
+    "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "### Treble per key: shelf start frequency\n"
     "\n"
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
-    "default 1800); a pipe whose fundamental lies higher starts there.\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "default 1800); a pipe whose fundamental lies higher starts there.\n"
+    "\n"
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
     "Celeste stops beat this many times faster at the top of the compass than at\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "\n"
     "## 8.5 Folder name patterns (one per line)\n"
     "\n"
-    "The three lists travel with the organ and belong to this computer as well:\n"
-    "every pattern you add is kept in `Patterns.json` beside the settings and\n"
     ;
 static const char* const kManualText_part8 =
+    "The three lists travel with the organ and belong to this computer as well:\n"
+    "every pattern you add is kept in `Patterns.json` beside the settings and\n"
     "merged into every organ you load; a pattern you remove is removed there too.\n"
     "The \"?\" of the pattern dialogs opens these chapters.\n"
     "\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "and every release is built there. *About & licences...* shows the program's\n"
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
-    "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
-    "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
     ;
 static const char* const kManualText_part9 =
+    "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
+    "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
     "---\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
-    "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
-    "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     ;
 static const char* const kManualText_part10 =
+    "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
+    "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"
     "A published configuration's README states the least RAM the organ takes with\n"
     "every saving option (measured when saved so, else estimated from a sample of\n"
