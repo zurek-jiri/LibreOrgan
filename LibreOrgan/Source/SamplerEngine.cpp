@@ -11998,8 +11998,10 @@ juce::String SamplerEngine::silentChannelComponent(const juce::File& folder)
 {
     // 0.9.21 (the user's rule): one half of a stereo stop by its CONTENT - a stereo WAV whose one channel
     // stays under -70 dBFS through its first 0.5 s while the other sounds is the L half (the right channel
-    // silent) or the R half (the left silent); the first files of the folder must agree. A silent channel
-    // is heard at once, half a second is plenty. Cached per folder: the scan runs often.
+    // silent) or the R half (the left silent); the first three files of the folder must EACH hold the full
+    // half second and agree - one exception (another verdict, a shorter file, a file that cannot be read)
+    // cancels the rule (0.9.22, the user: "jediná výjimka ruší pravidlo left-right"). A silent channel is heard
+    // at once, half a second is plenty. Cached per folder: the scan runs often.
     static std::map<juce::String, juce::String> cache;
     static std::mutex cacheMutex;
     const auto key = folder.getFullPathName().toLowerCase();
@@ -12012,24 +12014,30 @@ juce::String SamplerEngine::silentChannelComponent(const juce::File& folder)
     int checked = 0;
     juce::WavAudioFormat wav;
     const float silent = juce::Decibels::decibelsToGain(-70.0f);
-    for (int i = 0; i < names.size() && checked < 3; ++i)
+    const int wanted = juce::jmin(3, names.size());
+    for (int i = 0; i < wanted; ++i)
     {
+        juce::String one;   // stays empty on any failure: the exception that cancels the rule
         auto stream = SampleFiles::openInput(folder.getChildFile(names[i]));
-        if (stream == nullptr) continue;
-        std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(stream.release(), true));
-        if (reader == nullptr) continue;
-        if (reader->numChannels != 2) { verdict = {}; checked = 0; break; }
-        const int frames = (int)juce::jmin<juce::int64>(reader->lengthInSamples, (juce::int64)(reader->sampleRate * 0.5));
-        if (frames <= 0) continue;
-        juce::AudioBuffer<float> buffer(2, frames);
-        if (!reader->read(&buffer, 0, frames, 0, true, true)) continue;
-        const float left = buffer.getMagnitude(0, 0, frames), right = buffer.getMagnitude(1, 0, frames);
-        const juce::String one = left < silent && right >= silent ? "R" : right < silent && left >= silent ? "L" : juce::String();
+        std::unique_ptr<juce::AudioFormatReader> reader(stream != nullptr ? wav.createReaderFor(stream.release(), true) : nullptr);
+        if (reader != nullptr && reader->numChannels == 2)
+        {
+            const int frames = (int)(reader->sampleRate * 0.5);
+            if (frames > 0 && reader->lengthInSamples >= frames)
+            {
+                juce::AudioBuffer<float> buffer(2, frames);
+                if (reader->read(&buffer, 0, frames, 0, true, true))
+                {
+                    const float left = buffer.getMagnitude(0, 0, frames), right = buffer.getMagnitude(1, 0, frames);
+                    one = left < silent && right >= silent ? "R" : right < silent && left >= silent ? "L" : juce::String();
+                }
+            }
+        }
         if (one.isEmpty() || (checked > 0 && one != verdict)) { verdict = {}; checked = 0; break; }
         verdict = one;
         ++checked;
     }
-    if (checked == 0) verdict = {};
+    if (checked < wanted) verdict = {};
     std::lock_guard<std::mutex> lock(cacheMutex);
     cache[key] = verdict;
     return verdict;

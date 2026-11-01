@@ -18756,9 +18756,15 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
     // moved to the outer tree by dropNestedTrees afterwards.
     const auto used = usedFolderPlaces();
     juce::StringArray alreadyLoaded;
+    std::vector<std::pair<int, juce::String>> offerRows;   // 0.9.22: the rows of OTHER divisions playing the folders left out
     for (const auto& assignment : assignments)
     {
-        if (used.count(assignment.folder.getFullPathName().toLowerCase()) != 0) { alreadyLoaded.add(assignment.folder.getFileName()); continue; }
+        if (const auto usedBy = used.find(assignment.folder.getFullPathName().toLowerCase()); usedBy != used.end())
+        {
+            alreadyLoaded.add(assignment.folder.getFileName());
+            if (usedBy->second.first != manual && std::find(offerRows.begin(), offerRows.end(), usedBy->second) == offerRows.end()) offerRows.push_back(usedBy->second);
+            continue;
+        }
         if (const auto joined = joinRow.find(assignment.folder.getFileName().toLowerCase()); joined != joinRow.end())
         {
             auto& joinedBuild = manualConfigs[(size_t)joined->second.first].stopBuild;
@@ -18810,6 +18816,15 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         CrashHandler::note("Load folder: " + juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFullPathName() + " are loaded already (played by a row of the organ) and were not added again: " + alreadyLoaded.joinIntoString(", "));
         queueNotice(juce::MessageBoxIconType::InfoIcon, "Folders loaded already",
             juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFileName() + " are played by stops of the organ already and were not added again: " + shown.joinIntoString(", "));
+        if (!offerRows.empty())   // 0.9.22: offered as transmissions once the division has been rebuilt
+        {
+            auto offer = std::make_unique<TransmissionOffer>();
+            offer->targetManual = manual;
+            offer->treeName = tree.getFileName();
+            offer->rows = offerRows;
+            pendingTransmissionOffer = std::move(offer);
+            runWhenLoaded([this] { offerTransmissionsForLoadedFolders(); });
+        }
     }
 }
 
@@ -19136,9 +19151,9 @@ void MainComponent::createStopFolderOnGrid(int manual, int column, int row)
     finishInPlaceStopEdit({ manual });
 }
 
-std::set<juce::String> MainComponent::usedFolderPlaces()
+std::map<juce::String, std::pair<int, juce::String>> MainComponent::usedFolderPlaces()
 {
-    std::set<juce::String> places;
+    std::map<juce::String, std::pair<int, juce::String>> places;
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
     {
         const auto& config = manualConfigs[(size_t)m];
@@ -19153,11 +19168,68 @@ std::set<juce::String> MainComponent::usedFolderPlaces()
                     const auto relative = juce::String(path).replaceCharacter('/', juce::File::getSeparatorChar());
                     return (relative.isEmpty() || relative == "." ? tree : tree.getChildFile(relative)).getFullPathName().toLowerCase();
                 };
-                places.insert(placeOfPath(ref.relativePath));
-                for (const auto& more : ref.morePaths) places.insert(placeOfPath(more));
+                places.emplace(placeOfPath(ref.relativePath), std::make_pair(m, entry.name));
+                for (const auto& more : ref.morePaths) places.emplace(placeOfPath(more), std::make_pair(m, entry.name));
             }
     }
     return places;
+}
+
+void MainComponent::offerTransmissionsForLoadedFolders()
+{
+    // 0.9.22: the folders a Load folder / drop left out because rows of OTHER divisions play them - offered as
+    // transmissions of those rows into the division the folders were meant for (one per row; a row with such
+    // a transmission already gets none).
+    if (pendingTransmissionOffer == nullptr) return;
+    auto offer = std::move(pendingTransmissionOffer);
+    const int target = offer->targetManual;
+    if (target < 0 || target > manualCount) return;
+    std::vector<Stop*> sources;
+    juce::StringArray names;
+    for (const auto& [manual, name] : offer->rows)
+    {
+        Stop* found = nullptr;
+        for (auto* stop : engine.getStops())
+            if (stop != nullptr && !stop->container && stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(name)) { found = stop; break; }
+        if (found == nullptr) continue;
+        bool has = false;
+        for (const auto& t : found->transmissions) if (t.manual == target && t.shift == 0) has = true;
+        if (has || std::find(sources.begin(), sources.end(), found) != sources.end()) continue;
+        sources.push_back(found);
+        names.add(found->displayName());
+    }
+    if (sources.empty()) return;
+    static const char* const divisionNames[8]{ "Pedal", "Manual I", "Manual II", "Manual III", "Manual IV", "Manual V", "Manual VI", "Manual VII" };
+    const juce::String targetName = divisionNames[juce::jlimit(0, 7, target)];
+    juce::StringArray shown;
+    for (int i = 0; i < names.size() && i < 12; ++i) shown.add(names[i]);
+    if (names.size() > 12) shown.add("... (" + juce::String(names.size()) + " in all)");
+    CrashHandler::note("Load folder: " + juce::String((int)sources.size()) + " stop(s) of other divisions play folders of " + offer->treeName + " - transmissions into " + targetName + " offered: " + names.joinIntoString(", "));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto make = [safeThis, sources, target, targetName]
+    {
+        if (safeThis == nullptr) return;
+        int made = 0;
+        juce::StringArray done;
+        for (auto* stop : sources)
+        {
+            if (!safeThis->engine.getStops().contains(stop)) continue;   // gone meanwhile
+            if (safeThis->engine.addTransmission(stop, target, 0) < 0) continue;
+            ++made;
+            done.add(stop->displayName());
+        }
+        if (made == 0) return;
+        if (safeThis->voicer != nullptr) { safeThis->voicer->updateStopStates(); safeThis->voicer->rebuildUI(safeThis->stopsContent, safeThis->stopsViewport); }
+        safeThis->configurationDirty = true;
+        safeThis->saveSettings();
+        CrashHandler::note("Load folder: " + juce::String(made) + " transmission(s) into " + targetName + " made from the stops playing the folders already: " + done.joinIntoString(", "));
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Transmissions made", juce::String(made) + " transmission(s) into " + targetName + " made: " + done.joinIntoString(", "));
+    };
+    if (std::getenv("ORGAN_TEST_LOADED_TRANSMISSIONS") != nullptr) { make(); return; }   // dev: the offer taken
+    juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon, "Folders loaded already",
+        juce::String((int)sources.size()) + " folder(s) of " + offer->treeName + " are played by stops of other divisions already: " + shown.joinIntoString(", ")
+        + "\n\nMake transmissions of those stops into " + targetName + " instead?", "Make transmissions", "No", this,
+        juce::ModalCallbackFunction::create([make](int result) { if (result == 1) make(); }));
 }
 
 std::vector<MainComponent::ReadyStop> MainComponent::readyStopsNotIn(int manual, const std::vector<ManualConfig::StopBuild::Entry>& entries)

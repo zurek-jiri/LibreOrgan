@@ -2332,6 +2332,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   %TEMP%\test_loaded0921.ps1 (Samply on division 1, then Samply\TA: "8 folder(s) ... loaded already", 68 stops
   stay, the nested tree dropped). A drop-loaded organ is NOT a configuration: a restart "Started without a
   configuration" empties the library - a two-step test must run in ONE process.
+  0.9.22 (1 Nov 2026, the user's two messages after 0.9.21 + "ta půlsekunda musí být pro všechny 3 testované samply.
+  Jediná výjimka ruší pravidlo left-right"): (1) `silentChannelComponent`: the first min(3, files) numbered WAVs
+  must EACH be stereo, hold the full 0.5 s and give the same verdict - a shorter file, an unreadable one or another
+  verdict cancels (before: unreadable/short files were skipped, a short one read whole). (2) TRANSMISSION OFFER:
+  `usedFolderPlaces()` returns place -> (division, row name); `extendStopBuildWithTree` collects the rows of OTHER
+  divisions playing the folders left out into `pendingTransmissionOffer` (TransmissionOffer{targetManual, treeName,
+  rows}) and `runWhenLoaded(offerTransmissionsForLoadedFolders)`: the stops found in the engine (no container, no
+  transmission into the target with shift 0 yet) -> showOkCancelBox "Folders loaded already" (Make transmissions /
+  No) -> `engine.addTransmission(stop, target, 0)` each, voicer updateStopStates + rebuildUI (the cells placed
+  afresh), configurationDirty, saveSettings, Messages "Transmissions made"; log "Load folder: N stop(s) of other
+  divisions play folders of X - transmissions into Manual N offered" / "... made". A row of the SAME division gets
+  no offer. Hook `ORGAN_TEST_LOADED_TRANSMISSIONS=1` takes the offer. (3) MERGE KEEPS TRANSMISSIONS
+  (MainComponentMerge.cpp voicing block): `fitTransmissions` (divisions > mergedCount dropped; groupMaster mapped
+  through `renamed` / `sharedStopNames`, cleared when no such folder is here), `entryOf(manual, name)`,
+  `handTo(manual, name, list, from)` (the target's voicing entry, made when missing; a transmission with the same
+  (manual, shift) not doubled; "id" removed - the engine assigns new ones; `transmissionsKept` + a done line): a
+  KEPT added stop keeps its own list fitted, a SHARED stop's entry (skipped whole before - its transmissions
+  vanished) hands them to the base row of `sharedStopNames`, and `groupReplaced` ("manual|removed base row" ->
+  the added child's original name, filled in the 0.9.19 group rule from `childOfPlace`) hands the removed row's
+  own transmissions to the heir child (the retained entry's list emptied). Summary "N transmission(s) of the added
+  configuration kept on the stops playing their folders here". Tests: %TEMP%\test_merge0922.ps1 (Samply on II,
+  Rural merged: the shared II stops' transmissions kept), %TEMP%\test_offer0922.ps1 (Samply on I, then Samply\TA
+  on II -> the offer taken, "transmission(s) into Manual II made").
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
@@ -2352,19 +2375,6 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (self-test "Sparse rank ... -> OK", probe3 in EngineSelfTest.h). `near` is a Windows macro (windef.h): never name
   a local so. Compare the self-test against %TEMP%\selftest_092.txt from now on.
 ## Pending for the next session (delete when done)
-- TO-DO (1 Nov 2026, the user, after 0.9.21, two messages - NOT coded, waiting for his word): (1) "při zjištění
-  stejných folderů už loadovaných by to eventuálně mohlo nabídnout možnost přeměnit je na transmise": when Load
-  folder / a drop leaves folders out because a row plays them already (0.9.21 `usedFolderPlaces`), offer to make
-  TRANSMISSIONS of those rows into the target division instead (one box or a Messages item with a button; the
-  engine's `addTransmission` + the grid cell in the target division; a folder played by a row of the SAME division
-  gets no offer). (2) "transmise z mergované konfigurace by se taky měly zachovat, kde je to možné": today the
-  merge keeps the `transmissions[]` of an added stop's voicing entry only for KEPT stops (MainComponentMerge.cpp
-  ~794-806, `keptStopKeys`; divisions beyond mergedCount dropped); the entry of a SHARED stop (same folders as a
-  base row -> not added) is skipped whole, so its transmissions vanish - map them onto the base row
-  (`sharedStopNames`, append to the base entry's list where no equal (manual, shift) transmission exists); the
-  rows the 0.9.19 group rule removes keep their base voicing entry but the stop is never built - move their
-  transmissions onto the child row that plays the same folder; transmission cells ("tr:" keys, ~836/853) are
-  placed afresh - keep the added cell shifted like the stops where the source stop survives.
 - THE USER'S RULE (30 Oct 2026, "nesmíme vyžadovat žádné externí závislosti, ani Visual C++ redistributable!!! To je
   zásadní!"): the released executables depend on NOTHING that is not part of a plain Windows/macOS/Linux - no VC++
   redistributable, no DLL beside the exe, no installer. DONE in 0.8.251: `CMAKE_MSVC_RUNTIME_LIBRARY

@@ -74,8 +74,14 @@ public:
     void takeDroppedFiles(const juce::StringArray& files, int division);   // the drop and the test hook ORGAN_TEST_DROP_FILES
     // 0.9.21: the places on disk (lower-case full paths) of every folder a row of any division plays, the
     // second halves (morePaths) included - a folder loaded again by whatever tree is never a second row.
-    std::set<juce::String> usedFolderPlaces();
-    int divisionAtPoint(juce::Point<int> point) const;                     // the division column under a point of this component, -1 none
+    std::map<juce::String, std::pair<int, juce::String>> usedFolderPlaces();   // place -> (division, row name) (0.9.22: the row is known for the transmission offer)
+    // 0.9.22 (the user: "při zjištění stejných folderů už loadovaných by to mohlo nabídnout možnost přeměnit je
+    // na transmise"): the rows of OTHER divisions whose folders a Load folder / drop left out are offered as
+    // transmissions into the target division once the load has ended (runWhenLoaded).
+    struct TransmissionOffer { int targetManual = -1; juce::String treeName; std::vector<std::pair<int, juce::String>> rows; };
+    std::unique_ptr<TransmissionOffer> pendingTransmissionOffer;
+    void offerTransmissionsForLoadedFolders();
+    int divisionAtPoint(juce::Point<int> point) const;                    // the division column under a point of this component, -1 none
     juce::Rectangle<int> fileDropHighlight;                                // the framed column while a drag is over it
     int fileDropDivision = -1;
    #if JUCE_LINUX

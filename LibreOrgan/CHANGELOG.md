@@ -12,6 +12,29 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.22] - 2026-11-01
+
+### Added
+- Folders a Load folder or a drop left out because stops of OTHER divisions
+  play them already are offered as transmissions of those stops into the
+  division the folders were meant for, once the division has been rebuilt
+  (one question box: Make transmissions / No; a stop with such a transmission
+  already gets none).
+- Merge: the transmissions of the added configuration are kept wherever the
+  merged organ has a stop playing their folders - an added stop keeps its own
+  (a stop-folder master renamed with its row), a stop not added because a
+  loaded row plays the same folder hands them to that row, a row replaced by
+  a stop folder of the added configuration hands its own to the child that
+  took its folder. A transmission the stop has already (same division and
+  shift) is not doubled. Before, the transmissions of a shared stop vanished
+  with its skipped entry.
+
+### Changed
+- The two halves of a stereo stop by a silent channel: each of the first three
+  files must hold the full half second with the same channel silent - one
+  exception (another verdict, a shorter file, a file that cannot be read)
+  cancels the rule.
+
 ## [0.9.21] - 2026-11-01
 
 ### Fixed

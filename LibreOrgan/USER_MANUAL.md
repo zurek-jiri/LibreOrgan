@@ -289,7 +289,8 @@ ordinary load). The added stops become further rows under the rows of their divi
 comes along. When the program finds that an added folder is a further
 perspective of a stop you have, it joins that stop's row as the new
 perspective instead of adding a row. A stop whose folder is already loaded is
-shared, not added; two stops of one name get "(2)". Two organs rarely stand at
+shared, not added - its transmissions pass to the stop you have; two stops of
+one name get "(2)". Two organs rarely stand at
 one pitch, so the merge switches *Equal at 440 Hz* on. The merged organ is
 loaded, not saved: *Save Configuration* keeps it.
 
@@ -696,7 +697,9 @@ can be done here as well, and this is where the organ is built from folders.
   perspective of the loaded stops: folders named like the rows' folders under
   a new prefix, with the same tuning, join their rows as the new perspective
   ([The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join)); the rest become new rows.
-  Folders the organ plays already are left out (the Messages name them).
+  Folders the organ plays already are left out (the Messages name them); when
+  stops of other divisions play them, the program offers transmissions of those
+  stops into the division instead.
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).

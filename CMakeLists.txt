@@ -9,7 +9,7 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(LibreOrgan VERSION 0.9.21 LANGUAGES C CXX)
+project(LibreOrgan VERSION 0.9.22 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
