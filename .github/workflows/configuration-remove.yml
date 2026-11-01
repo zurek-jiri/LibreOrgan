@@ -61,7 +61,8 @@ jobs:
             [ "$picked" = "_No response_" ] && picked=""
             typed="$(field "Or any part of its name")"
             [ "$typed" = "_No response_" ] && typed=""
-            wanted="$(printf '%s\n%s' "$(printf '%s' "$picked" | sed 's/, */\n/g')" "$typed" | sed '/^\s*$/d')"
+            # The remove link of INDEX.md fills the dropdown AND the name field with the same folder (1 Nov 2026): once.
+            wanted="$(printf '%s\n%s' "$(printf '%s' "$picked" | sed 's/, */\n/g')" "$typed" | sed '/^\s*$/d' | awk '!seen[$0]++')"
             who="$ISSUE_AUTHOR"
           else
             wanted="$INPUT_ORGAN"
@@ -79,6 +80,7 @@ jobs:
             if [ "$count" -gt 1 ]; then problems="$problems"$'\n'"- \"$name\" matches $count configurations - give more of the name: $(printf '%s\n' "$matches" | awk -F'|' '{printf "%s (%s); ", $1, $2}')"; continue; fi
             folder="$(printf '%s' "$matches" | cut -d'|' -f1)"
             publisher="$(printf '%s' "$matches" | cut -d'|' -f4)"
+            case "$removed" in *"- libreorgans/$folder"*) continue;; esac   # named twice (the dropdown and the name field): removed once
             if [ "$folder" = "rural-organ" ]; then problems="$problems"$'\n'"- the Rural Organ demo stays"; continue; fi
             if [ "$BY_ISSUE" = "true" ] && [ "$who" != "$REPO_OWNER" ] && [ "$who" != "$publisher" ]; then
               problems="$problems"$'\n'"- libreorgans/$folder was published by ${publisher:+@$publisher}${publisher:-somebody else (before the publisher was recorded)} - only they or the repository's owner can remove it"

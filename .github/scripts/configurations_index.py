@@ -162,9 +162,12 @@ def main():
             '',
         ]
         def remove_link(folder):
-            # The issue form prefilled through the query string: the field id "organ" and the title.
+            # The issue form prefilled through the query string: the title, the dropdown "organ" (GitHub does not
+            # honour a dropdown prefill reliably - community discussion #5288) and, so the organ IS chosen whatever
+            # the dropdown does, the text field "name" with the exact folder (1 Nov 2026, the user: the remove link
+            # must pre-select the organ); the robot takes the exact folder match from that field.
             return ('[remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml'
-                    '&title=%s&organ=%s)' % (quote('[Remove configuration] ' + folder), quote(folder)))
+                    '&title=%s&organ=%s&name=%s)' % (quote('[Remove configuration] ' + folder), quote(folder), quote(folder)))
         def table(entries):
             out = ['| ' + ' | '.join(header + ['Remove']) + ' |', '|---|---:|---:|---:|---|---|']
             for title, folder, divisions, count, perspectives, ram_bytes, ram_min in entries:
@@ -215,8 +218,9 @@ body:
         Tick the organ (or several) in the list and press *Submit new issue*. A robot removes the folder when you are
         the one who published it (or the maintainer), answers here and closes this issue. The list is written by the
         robot from [libreorgans/INDEX.md](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md);
-        the *remove* link of an organ's line there opens this form with the organ ticked. To publish a new version
-        instead, send the new zip with the "Organ configuration" form: it replaces the old one by itself.
+        the *remove* link of an organ's line there opens this form with that organ's folder filled into the name
+        field below (and ticked here when GitHub honours it) - just press *Submit new issue*. To publish a new
+        version instead, send the new zip with the "Organ configuration" form: it replaces the old one by itself.
   - type: dropdown
     id: organ
     attributes:

@@ -2485,6 +2485,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   issue is checked again on any EDIT of its body (the workflow runs on opened/edited) - edit it through the API
   after the fix is on main. The local checkout was 12 behind origin (the user's publishes): `git stash`, `git pull
   --no-rebase`, `git stash pop` left the regenerated INDEX files "UU" without markers - `git add` them.
+  (3) THE REMOVE LINK PRE-SELECTS THE ORGAN (the user, 1 Nov 2026): GitHub does not honour a prefill of a
+  dropdown reliably (community discussion #5288; a logged-in test is the user's - my fetch of issues/new is
+  anonymous and gets the sign-in page), so `remove_link` fills the title, the dropdown "organ" AND the text
+  field "name" ("Or any part of its name", a documented input prefill) with the exact folder; the workflow
+  dedupes the names (`awk '!seen[$0]++'`) and skips a folder removed already in the loop. The form's text says
+  the folder is filled into the name field (and ticked when GitHub honours it).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
