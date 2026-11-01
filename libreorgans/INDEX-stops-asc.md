@@ -28,7 +28,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops ▲[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ) |
-| [Adlington Hall](adlington-hall-organ/README.md) | 3 | 15 | 3.1 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-organ&organ=adlington-hall-organ) |
 | [Adlington Hall (Smith)](adlington-hall-smith/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-smith&organ=adlington-hall-smith) |
 | [Arnstadt Bach](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
@@ -45,4 +44,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
 | [Billerbeck Dom, Fleiter](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ) |
 
-19 configuration(s).
+18 configuration(s).

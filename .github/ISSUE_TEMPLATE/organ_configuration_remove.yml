@@ -18,7 +18,6 @@ body:
       description: The configuration folder(s) to remove, as listed in INDEX.md.
       multiple: true
       options:
-        - "adlington-hall-organ"
         - "adlington-hall-smith"
         - "altenbruch-klapmeyer-organ"
         - "arnstadt-bach-organ"
