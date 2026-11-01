@@ -39,7 +39,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ) |
 | [Burton-Berlin, Hill](burton-berlin-hill/README.md) | 4 | 48 | 4.6 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20burton-berlin-hill&organ=burton-berlin-hill) |
 | [Bückeburg, Janke](b-ckeburg-janke-organ/README.md) | 4 | 47 | 5.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20b-ckeburg-janke-organ&organ=b-ckeburg-janke-organ) |
-| [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model) |
 
-16 configuration(s).
+15 configuration(s).
