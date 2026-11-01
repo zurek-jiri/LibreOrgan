@@ -1184,7 +1184,8 @@ MainComponent::MainComponent()
     guidedTourButton.setTooltip("A tour of the console: what the stops, the stop folders, the transmissions, the couplers and the Stop List are, step by step, with the manual chapter of each.");
     guidedTourButton.onClick = [this] { startGuidedTour(); };
     addAndMakeVisible(hintSheen);
-    hintSheen.follow({ &stopListButton, &loadConfigurationButton });
+    // 0.9.19: no golden sheen and arrows over Stop List / Load Configuration any more (the user: drag and
+    // drop onto the console replaces that hint); the HintSheen stays for the Stop List dialog's Load folder.
     addMouseListener(&hintSheen, true);   // the first click anywhere in the window ends the sheen
     addAndMakeVisible(glowLayer);
     addMouseListener(&glowLayer, true);   // every button press and drag in the window glows (when consoleGlow)
@@ -1404,7 +1405,8 @@ MainComponent::MainComponent()
     stopsViewport.setScrollBarsShown(true, false);
     stopsViewport.setInterceptsMouseClicks(true, true);
     // The empty instrument: a hint and a button to the manual, over the stop workspace.
-    emptyHintLabel.setText("Need help designing your pipe organ?\nOpen the user manual and read \"Getting started\":",
+    emptyHintLabel.setText("Drag and drop your sample folders, RAR archives, folder trees or organ configurations onto a division.\n\n"
+        "Need help designing your pipe organ?\nOpen the user manual and read \"Getting started\":",
         juce::dontSendNotification);
     emptyHintLabel.setJustificationType(juce::Justification::centred);
     emptyHintLabel.setFont(juce::FontOptions(20.0f));
@@ -2950,9 +2952,9 @@ void MainComponent::resized()
     {
         // The empty-instrument hint in the middle of the stop workspace, on its
         // own panel (the window's background) so that no column divider crosses it.
-        emptyHintPanel.setBounds(stopsViewport.getBounds().withSizeKeepingCentre(juce::jmin(760, stopsViewport.getWidth()), 140));
+        emptyHintPanel.setBounds(stopsViewport.getBounds().withSizeKeepingCentre(juce::jmin(900, stopsViewport.getWidth()), 200));   // 0.9.19: the drag-and-drop line above the manual hint
         auto hint = emptyHintPanel.getLocalBounds().reduced(12);
-        emptyHintLabel.setBounds(hint.removeFromTop(64));
+        emptyHintLabel.setBounds(hint.removeFromTop(120));
         hint.removeFromTop(8);
         emptyHintButton.setBounds(hint.withSizeKeepingCentre(260, 34));
         updateEmptyHint();
@@ -11294,7 +11296,7 @@ void MainComponent::paintOverChildren(juce::Graphics& g)
     g.drawRoundedRectangle(frame, 6.0f, 3.0f);
     g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
     g.drawText("Load folder into " + (fileDropDivision == 0 ? juce::String("the Pedal") : "Manual " + romanNumeral(fileDropDivision)),
-        fileDropHighlight.withHeight(28).translated(0, 6), juce::Justification::centred);
+        fileDropHighlight.withSizeKeepingCentre(fileDropHighlight.getWidth(), 28), juce::Justification::centred);   // in the middle of the frame: the top would cover the division header (the user)
 }
 
 void MainComponent::takeDroppedFiles(const juce::StringArray& paths, int division)

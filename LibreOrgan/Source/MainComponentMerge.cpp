@@ -412,10 +412,66 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         }
         // Folders the base already plays: a stop of the added configuration that
         // uses one is shared and not added (its sound is already there).
-        std::map<juce::String, juce::String> baseFolders;   // "tree|path" -> the base row's name
+        // 0.9.19: a folder is the same folder by its PLACE ON DISK, whatever tree reaches it (the user's Caen
+        // Composite: the Recit loaded from the folder "001691\pipe\rec" as a tree, the definition merged later
+        // with the package "001691" as its tree - the same folders under two trees matched nothing, every Recit
+        // stop came in a second time, and the definition's stop folders of two ranks stood beside the halves
+        // loaded as stops: the same pipes three times).
+        auto placeOf = [&](const ManualConfig::StopBuild::FolderRef& ref) -> juce::String
+        {
+            if (ref.tree < 0 || ref.tree >= (int)mergedPool.size()) return juce::String();
+            const auto relative = slashesOf(ref.relativePath);
+            return pathKey(mergedPool[(size_t)ref.tree] + (relative.isEmpty() || relative == "." ? juce::String() : "/" + relative));
+        };
+        std::map<juce::String, juce::String> baseFolders;   // place on disk -> the base row's name
         for (const auto& entry : baseBuild.entries)
             for (const auto& [perspective, ref] : entry.folders)
-                baseFolders.emplace(juce::String(ref.tree) + "|" + pathKey(ref.relativePath), entry.name);
+                if (const auto place = placeOf(ref); place.isNotEmpty()) baseFolders.emplace(place, entry.name);
+        // 0.9.19: an added stop folder whose children's folders are ALL loaded already as stops of the base (the
+        // halves of a stop loaded one by one from the folders; the definition knows them as the ranks of one
+        // stop) REPLACES those rows: the halves go, the stop folder with its children comes in - never the same
+        // pipes twice (the user: "verze L, verze R, verze L-R ve stop folderu ... tohle by nemělo být").
+        std::set<size_t> replacingEntries;   // indexes into addedEntries exempt from the shared rule
+        for (size_t i = 0; i < addedEntries.size(); ++i)
+        {
+            const auto& container = addedEntries[i];
+            if (container.child || !container.folders.empty() || container.isTransmission()) continue;
+            std::set<juce::String> places;
+            std::vector<size_t> children;
+            for (size_t j = i + 1; j < addedEntries.size() && addedEntries[j].child; ++j)
+            {
+                children.push_back(j);
+                for (const auto& [perspective, ref] : addedEntries[j].folders) if (const auto place = placeOf(ref); place.isNotEmpty()) places.insert(place);
+            }
+            if (children.empty() || places.empty()) continue;
+            bool allLoaded = true;
+            for (const auto& place : places) if (baseFolders.count(place) == 0) allLoaded = false;
+            if (!allLoaded) continue;
+            // The base rows that are those halves: rows without children whose folders all lie in the group.
+            juce::StringArray removedNames, childNames;
+            for (size_t b = 0; b < baseBuild.entries.size(); ++b)
+            {
+                const auto& row = baseBuild.entries[b];
+                if (row.folders.empty() || row.isTransmission()) continue;
+                if (!row.child && b + 1 < baseBuild.entries.size() && baseBuild.entries[b + 1].child) continue;   // a stop folder with children stays
+                bool inside = true;
+                for (const auto& [perspective, ref] : row.folders) if (places.count(placeOf(ref)) == 0) inside = false;
+                if (inside) removedNames.add(row.name);
+            }
+            if (removedNames.isEmpty()) continue;
+            for (int r = (int)baseBuild.entries.size(); --r >= 0;)
+                if (removedNames.contains(baseBuild.entries[(size_t)r].name)) baseBuild.entries.erase(baseBuild.entries.begin() + r);
+            for (const auto& name : removedNames)
+            {
+                for (auto it = baseFolders.begin(); it != baseFolders.end();) { if (it->second == name) it = baseFolders.erase(it); else ++it; }
+                baseShown[manual].erase(stopBuildKey(name));
+            }
+            replacingEntries.insert(i);
+            for (const size_t j : children) { replacingEntries.insert(j); childNames.add(addedEntries[j].name); }
+            done.add(divisionName + " " + container.name + " [" + romanNumeral((int)children.size()) + "] composed of " + childNames.joinIntoString(" + ")
+                + " - the rows " + removedNames.joinIntoString(", ") + ", which played the same folders as single stops, were removed");
+            CrashHandler::note("Merge configuration: " + divisionName + " the stop folder " + container.name + " replaces the rows " + removedNames.joinIntoString(", "));
+        }
         // 0.8.220: the added stops as ANOTHER PERSPECTIVE of the base rows (Bergen op Zoom: the
         // "Wet - Distant" definition merged into the Surround one doubled every stop; its folders
         // "06-far__HW_Octava2" are the base rows' "03-ortf_HW_Octava2" with another prefix). The
@@ -431,7 +487,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             {
                 bool shared = false;
                 for (const auto& [perspective, ref] : entry.folders)
-                    if (baseFolders.count(juce::String(ref.tree) + "|" + pathKey(ref.relativePath)) != 0) shared = true;
+                    if (baseFolders.count(placeOf(ref)) != 0) shared = true;
                 if (shared) continue;
                 for (const auto& [perspective, ref] : entry.folders)
                 {
@@ -508,12 +564,14 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     : "the added stops are not a perspective of the loaded ones (" + match.why + ")"));
             }
         }
-        for (auto entry : addedEntries)
+        for (size_t addedIndex = 0; addedIndex < addedEntries.size(); ++addedIndex)
         {
+            auto entry = addedEntries[addedIndex];
             bool shared = false;
-            for (const auto& [perspective, ref] : entry.folders)
-                if (const auto found = baseFolders.find(juce::String(ref.tree) + "|" + pathKey(ref.relativePath)); found != baseFolders.end())
-                { shared = true; sharedStopNames[juce::String(manual) + "|" + stopBuildKey(entry.name)] = found->second; }
+            if (replacingEntries.count(addedIndex) == 0)   // 0.9.19: a stop folder replacing the halves and its children come in whatever the halves used
+                for (const auto& [perspective, ref] : entry.folders)
+                    if (const auto found = baseFolders.find(placeOf(ref)); found != baseFolders.end())
+                    { shared = true; sharedStopNames[juce::String(manual) + "|" + stopBuildKey(entry.name)] = found->second; }
             if (shared) { ++stopsShared; ignored.add(divisionName + " " + entry.name + ": its sample folder is already loaded (shared) - not added"); continue; }
             // Another perspective of a base row: its folders join that row, no new stop.
             if (!perspectiveRow.empty())

@@ -2281,6 +2281,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "Merged ... 55 stop(s) added, 14 shared". POWERSHELL LESSON: never name a function parameter `$args` (the
   automatic variable: the first run of C started the exe without the file and the 3 s "Load" click hit the
   combination row's Load button - a harmless file chooser).
+  0.9.19 (1 Nov 2026, the user's Caen Composite: the Recit loaded from its folder "001691\pipe\rec" as a tree, then
+  the Caen Surround definition merged through the new box choice - "87 stop(s) added", the Recit stops TWICE and the
+  definition's two-rank stop folders beside the halves loaded as stops; afterwards "Nested folder tree dropped:
+  001691\pipe\rec lies inside 001691"): the merge's shared-folder rule keyed folders by "tree index|path", so the
+  same folder reached through the nested tree and through the package tree never matched. Now `placeOf(ref)` =
+  pathKey(mergedPool[tree] + "/" + relative) - the PLACE ON DISK (the 0.8.136 rule of readyStopsNotIn) - keys
+  `baseFolders` and both lookups; and the GROUP RULE before the perspective block: an added stop folder (a container
+  followed by child rows) whose children's folder places are ALL in baseFolders replaces the base rows that play
+  those places as single stops (rows without children whose folders all lie in the group): the rows are erased
+  from baseBuild.entries (before the perspective matching, so no row indices shift), their baseFolders/baseShown
+  entries dropped, the container and its children exempted from the shared rule (`replacingEntries`), `done` gets
+  "<div> <folder> [N] composed of a + b - the rows x, y, which played the same folders as single stops, were
+  removed" (the merge summary = Messages). The children keep the halves' names (the scan and the definition name
+  a rank folder alike), so the voicing and the grid cells of the halves pass to them. Test
+  %TEMP%\test_merge0919.ps1: Samply dropped on division 2 (68 scan stops), Rural Organ.json handed to the running
+  program (0.9.16) with ORGAN_TEST_LOAD_ACTION=merge and the clicks "Don't Save|Load" (the dropped tree makes the
+  organ DIRTY: the unsaved-changes question comes before the load box - the first run clicked "Load" into the
+  combination row's Load button instead) -> "the stop folder CO - nasard [III] replaces the rows CO - nasard, CO -
+  piccolo 2, CO - terz", "13 stop(s) added, 2 shared". ALSO 0.9.19: the empty console's hint starts with "Drag and
+  drop your sample folders, RAR archives, folder trees or organ configurations onto a division." (panel 900 x 200,
+  label 120 px); the drop frame's caption sits in the MIDDLE of the column (at the top it covered the division
+  header - check where a caption lands before painting it); the console's HintSheen `follow` over Stop List / Load
+  Configuration is gone (the class and the Stop List dialog's loadHint stay).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

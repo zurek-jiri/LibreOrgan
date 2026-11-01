@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.19] - 2026-11-01
+
+### Fixed
+- Merge: a sample folder already loaded counted as loaded only when the
+  added organ reached it through the same folder tree; the Recit of a
+  composite Caen, loaded from its own folder and then merged from the
+  definition (whose tree is the whole package), came in a second time, and
+  the definition's stop folders of two ranks stood beside the halves loaded
+  as single stops. A folder is now the same folder by its place on the disk,
+  and an added stop folder whose ranks are all loaded as single stops
+  replaces those rows: the halves go, the stop folder comes in, the Messages
+  say which rows each one replaced.
+
+### Changed
+- The empty console says to drag and drop sample folders, RAR archives,
+  folder trees or configurations onto a division; the golden sheen and
+  arrows over Stop List and Load Configuration are gone. The caption of the
+  drop frame sits in the middle of the column, not over the division header.
+
 ## [0.9.18] - 2026-11-01
 
 ### Added
