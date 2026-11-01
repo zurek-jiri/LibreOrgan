@@ -7,13 +7,39 @@
 window 2560 1400
 wait 800
 record start
-caption LibreOrgan Sampler. One file holds the whole organ: stops, voicing, couplers, crescendo, combinations, audio settings. Load Configuration opens it.
-say LibreOrgan Sampler. One file holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples - and Load Configuration opens it.
-wait 13500
+# The opening (1 Nov 2026, the user's bridge): an organ assembled from the sample folders on the disk - a folder
+# dropped on a division, then a packed set on another - and only then the prepared organ from its one file.
+caption Every organ starts from sample folders on your disk: drag a folder of a set onto a division ...
+say LibreOrgan Sampler. Every organ in it starts from sample folders on your disk. Drag a folder of a sample set onto a division - and its stops appear, ready to play.
+wait 1200
+dropfiles 1|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\000370
+waitload 120000
+wait 1500
+stop 1|pipe - Principale|on
+stop 1|pipe - Ottava|on
+stop 1|pipe - QuintaDecima|on
+wait 600
+chord 1|48,55,64,67|3200
+wait 1800
+caption ... a packed set needs no unpacking: drop the archive, the samples are read straight from it.
+say A packed set needs no unpacking. Drop the archive, and the program reads the samples straight from it. Any creative mind can assemble an organ this way - stop by stop, from whatever lies on the disk.
+wait 1200
+dropfiles 2|E:\sonus\HW2\Adlington\10\AdlingtonHallVol0.CompPkg.Hauptwerk.rar
+waitfor Load the folders|90000
+click Load the folders
+waitload 180000
+wait 1500
+stop 2|002707 - pipes - HW StoppedDiap|on
+wait 600
+chord 2|60,64,67,72|3200
+wait 1800
+caption And if the organ is already prepared: one configuration file holds the whole organ - stops, voicing, couplers, crescendo, combinations, audio settings.
+say And if the organ is already prepared, one configuration file is all you need to load. It holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples.
+wait 19000
 load C:\Users\doma\AppData\Local\Temp\video\cfg\Stralsund_video.json
 wait 3600
-caption The load box: how the samples are held in memory, and where the file shall live. We load it where it is.
-say The load box offers the choices of every load: how the samples are held in memory, and where the file shall live. We load it where it is.
+caption The load box: how the samples are held in memory, and where the file shall live.
+say The load box offers the choices of every load: how the samples are held in memory, and where the file shall live.
 loadbox own folder
 wait 9500
 click Load
@@ -232,7 +258,7 @@ wait 2200
 caption The tremulant comes in while the flute sounds.
 say The tremulant comes in while the flute sounds.
 wait 400
-chord 1|52,55,59,64|21000
+note 1|60|on
 wait 2200
 trem 1|on
 wait 4200
@@ -243,7 +269,9 @@ wait 2500
 dialogslider Tremulant settings|0|7.5|2600
 wait 1400
 dialogslider Tremulant settings|0|3.2|2600
-wait 1400
+wait 2600
+note 1|60|off
+wait 600
 dialogslider Tremulant settings|0|4.4|1200
 wait 400
 closedialog Tremulant settings

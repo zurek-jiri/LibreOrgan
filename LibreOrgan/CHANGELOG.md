@@ -12,6 +12,43 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.32] - 2026-11-01
+
+### Fixed
+- macOS (and Linux): 0.9.29's guard against a modal box lost behind the main
+  window ran on every platform, and on macOS the main window counts as
+  active even while a modal box has the keyboard - so the box was brought to
+  the front every half second, the console repainted each time, a Core 2 Duo
+  Mac froze and thawed, the polyphony measurement's message thread fell
+  silent and its callbacks ran over 100 % at a hundred voices (#160, #161).
+  The guard is Windows-only now and touches a box only when it really lies
+  behind the main window.
+- A folder loaded by Load folder or a drop gives every new stop an alias from
+  its folder name (as the Stop List's "Aliases from folders" does) - the
+  buttons no longer show the path-like row names; a stop folder made of two
+  halves takes the stem's name.
+
+## [0.9.31] - 2026-11-01
+
+### Added
+- Video script: `dropfiles DIVISION|PATH` - the cursor drags a drawn folder
+  or archive icon from the edge of the screen onto the division's column
+  (framed orange as a real drag) and drops it; the instruction video opens
+  with an organ assembled from a sample folder and a packed set before the
+  prepared configuration is loaded. The narration is spoken locally by
+  Kokoro (voice Lewis) with pauses of our own; the mix has no ducking, no
+  compressor and no limiter, the voice 3 dB softer; a recording with any
+  discontinuity is refused; the video lasts to the end of the last sentence.
+
+### Fixed
+- Recording: holes of a millisecond of silence (zeros) inside the sound after
+  an audio device had restarted during the recording (a division reloaded,
+  a route changed) - a route that came back started right at the writer's
+  edge, with none of the writer's 300 ms margin left, and any jitter made
+  the writer flush frames the route had not written yet. A route now starts
+  at the wall-clock position, the margin whole. The glitch heard in the last
+  video was this.
+
 ## [0.9.30] - 2026-11-01
 
 ### Fixed

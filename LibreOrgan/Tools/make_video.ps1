@@ -10,10 +10,13 @@ param(
     [string]$Out = "$env:TEMP\video\out",
     [int]$Seconds = 420,
     [string]$Ffmpeg = "C:\ffmpeg\bin\ffmpeg.exe",
-    [string]$Python = "C:\Users\doma\AppData\Local\Programs\Python\Python39\python.exe",
-    [string]$Voice = "en-GB-SoniaNeural",
-    [string]$VoiceRate = "-4%"
+    [string]$Python = "C:\Users\doma\kokoro-venv\Scripts\python.exe",   # Kokoro's venv (1 Nov 2026); the edge-tts path needs Python39 + "--engine edge"
+    [string]$Voice = "bm_lewis",
+    [string]$VoiceRate = "1.0"
 )
+# Kokoro's phonemiser falls back to eSpeak NG for words outside its dictionary.
+$env:PATH = "C:\Program Files\eSpeak NG;" + $env:PATH
+$env:PHONEMIZER_ESPEAK_LIBRARY = "C:\Program Files\eSpeak NG\libespeak-ng.dll"
 if (Get-Process | Where-Object { $_.ProcessName -like "LibreOrgan*" }) { "LibreOrgan Sampler is running - not started"; exit 1 }
 $settings = "$env:APPDATA\LibreOrgan\settings.json"
 $backup = "$env:TEMP\settings_backup_video.json"
@@ -55,27 +58,59 @@ if (-not (Test-Path "$Out\frames.txt")) { "NO FRAMES"; exit 1 }
 $frames = (Get-ChildItem $Out -Filter "f*.png").Count
 "frames: $frames, audio: $(if (Test-Path "$Out\audio.wav") { (Get-Item "$Out\audio.wav").Length } else { 'NONE' }) bytes"
 Push-Location $Out
-# The narration: the "say" sentences of the script (narration.txt) spoken by a neural voice (edge-tts, online) into
-# narration.wav; the organ is ducked a little under the speech and both are mixed. Without narration.txt the organ alone.
+# The recording must be clean (1 Nov 2026, the user: "zvuk hlavně musí být bez glitchů"): the program's own
+# detector must have stayed silent during the run, and the file is scanned for discontinuities; either finding
+# ends the run - record again.
+if (($new -split "`n" | Where-Object { $_ -match 'Output discontinuities' }).Count -gt 0) { "THE PROGRAM REPORTED OUTPUT DISCONTINUITIES DURING THE RUN - record again"; Pop-Location; exit 1 }
+& $Python -I "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tools\check_recording.py" "$Out\audio.wav"
+if ($LASTEXITCODE -ne 0) { "THE RECORDING HAS DISCONTINUITIES - record again"; Pop-Location; exit 1 }
+# The narration: the "say" sentences of the script (narration.txt) spoken by Kokoro (local) into narration.wav with
+# our pauses. Without narration.txt the organ alone.
 $narrated = $false
+$narrationEnd = 0.0
 if ((Test-Path "$Out\narration.txt") -and (Get-Item "$Out\narration.txt").Length -gt 0) {
-    & $Python -I "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tools\make_narration.py" "$Out\narration.txt" $Out $Ffmpeg $Voice $VoiceRate
+    $narrLog = & $Python -I "F:\JUCE_PROJEKTY\LibreOrgan\LibreOrgan\Tools\make_narration.py" "$Out\narration.txt" $Out $Ffmpeg $Voice $VoiceRate 2>&1 | Where-Object { $_ -notmatch 'Warning|warn|Defaulting|repo_id|symlink' }
+    $narrLog
+    $m = $narrLog | Select-String 'ends at ([0-9.]+) s' | Select-Object -Last 1
+    if ($m) { $narrationEnd = [double]$m.Matches[0].Groups[1].Value }
     $narrated = Test-Path "$Out\narration.wav"
 }
-# The levels: measured (ebur128 integrated loudness) and brought by plain gains to the organ at -18 LUFS and the
-# speech at -21 LUFS (the user: the voice 6 dB under what -15 gave) - no loudnorm (it delays and the end was cut);
-# the speech padded and the mix as long as the longest, the video's end cuts it: the last words are never lost.
+# The levels (the user's rules of 1 Nov 2026): NO ducking, NO compressor, NO limiter - the organ keeps its own
+# dynamics (only the shutters move it), one plain gain brings it to -18 LUFS (ebur128 integrated) and one brings the
+# soft voice to -24 LUFS (3 dB under the previous video); a true peak above -1 dBFS lowers BOTH by the same amount.
+# The video runs to the end of the last sentence + 2 s: the last frame is held that long (no -shortest).
 function Measure-Lufs($file) {
-    $o = & $Ffmpeg -nostats -i $file -af ebur128=framelog=quiet -f null - 2>&1 | Select-String "I:\s+(-?[0-9.]+) LUFS" | Select-Object -Last 1
+    $o = & $Ffmpeg -nostdin -nostats -i $file -af ebur128=framelog=quiet -f null - 2>&1 | Select-String "I:\s+(-?[0-9.]+) LUFS" | Select-Object -Last 1
     if ($o) { [double]$o.Matches[0].Groups[1].Value } else { -23.0 }
+}
+function Measure-Peak($filter) {
+    # the sample peak (dBFS) of the mixed signal with the given gains, measured before the final render
+    $o = & $Ffmpeg -nostdin -nostats -i audio.wav -i narration.wav -filter_complex "$filter,astats=metadata=1:measure_overall=Peak_level:measure_perchannel=none" -f null - 2>&1 | Select-String "Peak level dB:\s+(-?[0-9.]+)" | Select-Object -Last 1
+    if ($o) { [double]$o.Matches[0].Groups[1].Value } else { -3.0 }
+}
+# The frames list: the last frame held so the picture lasts to the narration's end + 2 s.
+$frameLines = Get-Content frames.txt
+$lastFile = ($frameLines | Where-Object { $_ -match '^file ' } | Select-Object -Last 1)
+$videoEnd = 0.0
+foreach ($l in $frameLines) { if ($l -match '^duration ([0-9.]+)') { $videoEnd += [double]$matches[1] } }
+if ($narrationEnd + 2.0 -gt $videoEnd -and $lastFile) {
+    $extra = [math]::Round($narrationEnd + 2.0 - $videoEnd, 2)
+    Add-Content frames.txt "$lastFile`nduration $extra`n$lastFile"
+    "video held $extra s longer: the narration ends at $narrationEnd s, the frames at $videoEnd s"
 }
 if ($narrated) {
     $organLufs = Measure-Lufs "audio.wav"; $voiceLufs = Measure-Lufs "narration.wav"
-    $organGain = [math]::Round(-18.0 - $organLufs, 1); $voiceGain = [math]::Round(-21.0 - $voiceLufs, 1)
-    "levels: organ $organLufs LUFS -> gain $organGain dB; voice $voiceLufs LUFS -> gain $voiceGain dB"
-    & $Ffmpeg -y -loglevel error -f concat -safe 0 -i frames.txt -i audio.wav -i narration.wav -filter_complex "[1:a]volume=${organGain}dB,aformat=channel_layouts=stereo[org];[2:a]volume=${voiceGain}dB,aformat=channel_layouts=stereo,apad,asplit=2[nar1][nar2];[org][nar1]sidechaincompress=threshold=0.02:ratio=3:attack=40:release=700[duck];[duck][nar2]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]" -map 0:v -map "[a]" -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -vf "scale=1920:-2" -r 30 -c:a aac -b:a 320k -ar 48000 -shortest libreorgan.mp4
+    if ($organLufs -lt -45.0) { "THE RECORDING IS (NEARLY) SILENT: $organLufs LUFS - no stops drawn? Record again"; Pop-Location; exit 1 }
+    $organGain = [math]::Round(-18.0 - $organLufs, 1); $voiceGain = [math]::Round(-24.0 - $voiceLufs, 1)
+    # No apad here: apad + duration=longest never ends and the measurement ran for ever (the first opening test).
+    $mixFilter = "[0:a]volume=${organGain}dB,aformat=channel_layouts=stereo[org];[1:a]volume=${voiceGain}dB,aformat=channel_layouts=stereo[nar];[org][nar]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0"
+    $peak = Measure-Peak $mixFilter
+    if ($peak -gt -1.0) { $organGain = [math]::Round($organGain - ($peak + 1.0), 1); $voiceGain = [math]::Round($voiceGain - ($peak + 1.0), 1); "true peak $peak dBFS: both gains lowered by $([math]::Round($peak + 1.0, 1)) dB" }
+    "levels: organ $organLufs LUFS -> gain $organGain dB; voice $voiceLufs LUFS -> gain $voiceGain dB; no ducking, no limiter"
+    $length = [math]::Round([math]::Max($videoEnd, $narrationEnd + 2.0), 2)
+    & $Ffmpeg -nostdin -y -loglevel error -f concat -safe 0 -i frames.txt -i audio.wav -i narration.wav -filter_complex "[1:a]volume=${organGain}dB,aformat=channel_layouts=stereo,apad[org];[2:a]volume=${voiceGain}dB,aformat=channel_layouts=stereo,apad[nar];[org][nar]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[a]" -map 0:v -map "[a]" -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -vf "scale=1920:-2" -r 30 -c:a aac -b:a 320k -ar 48000 -t $length libreorgan.mp4
 } else {
-    & $Ffmpeg -y -loglevel error -f concat -safe 0 -i frames.txt -i audio.wav -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -vf "scale=1920:-2" -r 30 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -c:a aac -b:a 320k -ar 48000 -shortest libreorgan.mp4
+    & $Ffmpeg -nostdin -y -loglevel error -f concat -safe 0 -i frames.txt -i audio.wav -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -vf "scale=1920:-2" -r 30 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -c:a aac -b:a 320k -ar 48000 -shortest libreorgan.mp4
 }
 & $Ffmpeg -y -loglevel error -i libreorgan.mp4 -vf "fps=8,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3" -loop 0 libreorgan.gif
 Pop-Location

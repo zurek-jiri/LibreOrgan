@@ -17036,6 +17036,73 @@ struct MainComponent::VideoScript final : private juce::Timer
                 CrashHandler::note(juce::String("Video: drop ") + (ok ? "done" : "FAILED (no row or cell)"));
             }
         }
+        else if (cmd == "dropfiles")
+        {
+            // dropfiles DIVISION|PATH[;PATH] (0.9.31, the video's new opening): the cursor fetches a drawn
+            // folder/archive icon at the left edge of the screen, drags it onto the division's column (the
+            // column framed orange as a real drag does) and drops it = takeDroppedFiles.
+            const int division = part(0).getIntValue();
+            juce::StringArray paths;
+            paths.addTokens(part(1), ";", "");
+            paths.removeEmptyStrings();
+            juce::Rectangle<int> area;
+            bool found = false;
+            if (owner.voicer != nullptr)
+                for (const auto& [manual, rect] : owner.voicer->divisionGridAreas())
+                    if (manual == division) { area = rect; found = true; break; }
+            if (!found || paths.isEmpty()) { CrashHandler::note("Video: dropfiles - no division column or no path"); return; }
+            const juce::File file(paths[0]);
+            const bool archive = file.hasFileExtension("rar;zip");
+            // The icon: a folder (tab + body) or an archive (a zipper band), the file's name under it.
+            juce::Image icon(juce::Image::ARGB, 260, 150, true);
+            {
+                juce::Graphics g(icon);
+                const auto body = juce::Rectangle<float>(40.0f, 24.0f, 180.0f, 96.0f);
+                g.setColour(juce::Colour(0xffe0b24a));
+                if (!archive) g.fillRoundedRectangle(juce::Rectangle<float>(40.0f, 10.0f, 80.0f, 24.0f), 5.0f);   // the folder's tab
+                g.fillRoundedRectangle(body, 7.0f);
+                g.setColour(juce::Colour(0xffb88a1e));
+                g.drawRoundedRectangle(body, 7.0f, 2.0f);
+                if (archive)
+                {
+                    g.setColour(juce::Colour(0xff6b4e0a));
+                    for (int y = 30; y < 116; y += 12) g.fillRect(120, y, 20, 6);   // the zipper
+                }
+                g.setColour(juce::Colours::white);
+                g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
+                g.drawFittedText(file.getFileName(), icon.getBounds().removeFromBottom(26), juce::Justification::centred, 1);
+            }
+            const auto frameTopLeft = frameOrigin();
+            const auto columnScreen = owner.stopsContent.localAreaToGlobal(area);
+            const auto to = columnScreen.getCentre().toFloat() - frameTopLeft;
+            const auto from = juce::Point<float>(90.0f, to.y);   // the left edge of the frame, the column's height
+            const auto highlight = owner.getLocalArea(&owner.stopsContent, area);
+            cursorTo(from, 700.0, now);
+            pending.push_back({ now + 760.0, [this] { cursor.pressed = true; } });
+            pending.push_back({ now + 1300.0, [this, icon, from, to, highlight]
+            {
+                travel.image = icon;
+                travel.from = from;
+                travel.to = to;
+                travel.start = juce::Time::getMillisecondCounterHiRes();
+                travel.duration = 2400.0;
+                travel.active = true;
+                cursorTo(to, 2400.0, travel.start);
+                owner.fileDropHighlight = highlight;   // the orange frame of a real drag
+                owner.repaint();
+            } });
+            pending.push_back({ now + 4100.0, [this, paths, division]
+            {
+                travel.active = false;
+                cursor.pressed = false;
+                pressedUntil = juce::Time::getMillisecondCounterHiRes() + 200.0;
+                owner.fileDropHighlight = {};
+                owner.repaint();
+                owner.takeDroppedFiles(paths, division);
+                CrashHandler::note("Video: dropfiles " + paths.joinIntoString(";") + " -> division " + juce::String(division));
+            } });
+            nextAt = juce::jmax(nextAt, now + 4600.0);
+        }
         else if (cmd == "relocate")
         {
             // The missing tree whose path ends with the tail, the folder as the chooser would give it.
@@ -18312,7 +18379,8 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
                 const juce::String perspective = assignment.perspective.isEmpty() ? juce::String("default") : assignment.perspective;
                 if (assignment.component.isNotEmpty())   // 0.9.23: a half of a stereo stop -> a stop folder with a child row per half
                 {
-                    placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) });
+                    placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) },
+                                     engine.folderStopAlias(assignment.folder.getSiblingFile(assignment.stopName.fromLastOccurrenceOf(" - ", false, false))), engine.folderStopAlias(assignment.folder));
                     addPerspective(perspective);
                     continue;
                 }
@@ -18325,6 +18393,7 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
                 {
                     ManualConfig::StopBuild::Entry entry;
                     entry.name = uniqueStopBuildName(build.entries, assignment.stopName, nullptr);
+                    entry.alias = engine.folderStopAlias(assignment.folder);   // 0.9.32
                     build.entries.push_back(entry);
                     target = &build.entries.back();
                 }
@@ -18922,7 +18991,9 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         if (!known) build.perspectives.push_back(perspective);
         if (assignment.component.isNotEmpty())   // 0.9.23: a half of a stereo stop -> a stop folder with a child row per half
         {
-            placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) });
+            // 0.9.32: the folder's alias (bare name, no path) on the child, the stem's on the stop folder.
+            placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) },
+                             engine.folderStopAlias(assignment.folder.getSiblingFile(assignment.stopName.fromLastOccurrenceOf(" - ", false, false))), engine.folderStopAlias(assignment.folder));
             continue;
         }
         ManualConfig::StopBuild::Entry* target = nullptr;
@@ -18934,6 +19005,7 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         {
             ManualConfig::StopBuild::Entry entry;
             entry.name = uniqueStopBuildName(build.entries, assignment.stopName, nullptr);
+            entry.alias = engine.folderStopAlias(assignment.folder);   // 0.9.32 (the user: "dlouhé názvy z celé cesty" on the buttons): the bare folder name as the caption
             build.entries.push_back(entry);
             target = &build.entries.back();
         }
@@ -18960,7 +19032,8 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
 }
 
 void MainComponent::placeHalfInTable(ManualConfig::StopBuild& build, const juce::String& stopName, const juce::String& component,
-                                     const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref)
+                                     const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref,
+                                     const juce::String& containerAlias, const juce::String& childAlias)
 {
     auto& entries = build.entries;
     // The container: a non-child row without folders of that name (made here by the other half, or by the user).
@@ -18972,6 +19045,7 @@ void MainComponent::placeHalfInTable(ManualConfig::StopBuild& build, const juce:
         ManualConfig::StopBuild::Entry folder;
         folder.name = uniqueStopBuildName(entries, stopName, nullptr);
         folder.customName = true;   // the stop's name, deliberate - never renamed after its children
+        folder.alias = containerAlias;   // 0.9.32: the button's caption from the folder name, not the path-like name
         entries.push_back(folder);
         container = entries.size() - 1;
     }
@@ -18985,6 +19059,7 @@ void MainComponent::placeHalfInTable(ManualConfig::StopBuild& build, const juce:
     ManualConfig::StopBuild::Entry child;
     child.name = uniqueStopBuildName(entries, childName, nullptr);
     child.child = true;
+    child.alias = childAlias;
     child.folders[perspective] = ref;
     entries.insert(entries.begin() + (long)end, child);
 }
@@ -19966,8 +20041,22 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
     // The commit retires the old stops of the reloaded divisions: the grid's rows
     // (and the drag state of the arrange mode) must not point at them when the
     // next paint comes - rebuilt at once, before the loading dialog's next step.
-    loader->afterCommit = [this]
+    loader->afterCommit = [this, manuals]
     {
+        // 0.9.32: the table's aliases go onto the new stops HERE, the moment they exist - the routes phase that
+        // follows saves the settings, and saveSettings syncs the table FROM the stops (0.8.201): a stop still
+        // without its alias wiped the row's alias (the 30 aliases of a dropped tree were gone before the grid
+        // phase could apply them: "Division 2 rebuilt: 0 table alias(es)").
+        for (int manual : manuals)
+        {
+            if (manual < 0 || manual >= SamplerEngine::maxManuals) continue;
+            const auto& build = manualConfigs[(size_t)manual].stopBuild;
+            if (!build.active) continue;
+            for (auto* stop : engine.getStops())
+                if (stop != nullptr && stop->primaryManual == manual && stop->alias.isEmpty())
+                    for (const auto& entry : build.entries)
+                        if (entry.alias.isNotEmpty() && !entry.isTransmission() && stopBuildKey(entry.name) == stopBuildKey(stop->name)) { stop->alias = entry.alias; break; }
+        }
         takeDetectedSampleOffsets();   // the files' offsets the loader found (0.8.158) into the Stop List rows
         if (voicer == nullptr) return;
         voicer->dropStopReferences();
@@ -20046,12 +20135,17 @@ void MainComponent::finishDivisionsLoadGrid(const std::vector<int>& manuals)
         {
             // Aliases typed in the Stop building table.
             const auto& build = manualConfigs[(size_t)manual].stopBuild;
+            int applied = 0, tableAliases = 0;
             if (build.active)
+            {
+                for (const auto& entry : build.entries) if (entry.alias.isNotEmpty()) ++tableAliases;
                 for (auto* stop : engine.getStops())
                     if (stop->primaryManual == manual)
                         for (const auto& entry : build.entries)
                             if (entry.alias.isNotEmpty() && stopBuildKey(entry.name) == stopBuildKey(stop->name) && stop->alias != entry.alias)
-                            { stop->alias = entry.alias; layoutChanged = true; }
+                            { stop->alias = entry.alias; layoutChanged = true; ++applied; }
+            }
+            CrashHandler::note("Division " + juce::String(manual) + " rebuilt: " + juce::String(tableAliases) + " table alias(es), " + juce::String(applied) + " applied to the stops");
             // The grid follows the table's order when the user asked for it on Apply.
             if (pendingGridArrange.erase(manual) > 0)
             {
@@ -23458,6 +23552,7 @@ void MainComponent::saveSettings()
     // current one, the Stop List table of its division may be behind it - and at a
     // load the table's alias overrides the voicing state's. Synced here as the Stop
     // List dialog syncs its drafts when it opens.
+    juce::StringArray wiped;
     for (size_t manual = 0; manual < manualConfigs.size() && (int)manual <= manualCount; ++manual)
     {
         auto& build = manualConfigs[manual].stopBuild;
@@ -23467,9 +23562,14 @@ void MainComponent::saveSettings()
             if (entry.isTransmission()) continue;
             for (auto* stop : engine.getStops())
                 if (stop != nullptr && stop->primaryManual == (int)manual && stopBuildKey(stop->name) == stopBuildKey(entry.name))
-                { entry.alias = stop->alias; break; }
+                {
+                    if (entry.alias.isNotEmpty() && stop->alias.isEmpty()) wiped.add(juce::String((int)manual) + ":" + entry.name + " (stop " + stop->name + ")");
+                    entry.alias = stop->alias;
+                    break;
+                }
         }
     }
+    if (!wiped.isEmpty()) CrashHandler::note("Save settings: " + juce::String(wiped.size()) + " table alias(es) replaced by an empty stop alias: " + wiped.joinIntoString(", "));
     juce::Array<juce::var> manualsArray;
     for (const auto& config : manualConfigs)
     {
@@ -24523,10 +24623,15 @@ void MainComponent::bringLostModalsToFront()
     // Alt+Tab to another program and back lands on the MAIN window, the box is not in the task switcher - keeps
     // the modal state and the main window takes no input. Whenever the main window is the active one while a
     // modal component exists, the modal windows come to the front and take the focus. Never hidden/shown (0.8.173).
+   #if JUCE_WINDOWS
+    // WINDOWS ONLY (0.9.32, the Mac issues #160/#161 of 0.9.30): on macOS the main window stays "active" (the
+    // NSWindow main window) while a modal box is the key window, so this ran toFront on the box every half second,
+    // the whole console was repainted each time and the Core 2 Duo Mac froze and thawed, the measurement's
+    // message thread fell silent for 3 s and the callbacks went to 130 % at 135 voices. On macOS and Linux the
+    // window system keeps a modal box reachable; the fault was a Windows Z-order one.
     auto& manager = *juce::ModalComponentManager::getInstance();
     if (manager.getNumModalComponents() == 0) return;
     auto* anchor = dynamic_cast<juce::TopLevelWindow*>(UIScale::dialogAnchor.getComponent());
-   #if JUCE_WINDOWS
     // Every modal box becomes an OWNED window of the main window (JUCE creates it without an owner): Windows keeps
     // an owned window above its owner, so Alt+Tab to the main window (the box is a tool window, not in the task
     // switcher) shows the box over it instead of burying it. Set once per box, at the first tick after its birth.
@@ -24544,20 +24649,31 @@ void MainComponent::bringLostModalsToFront()
                                 CrashHandler::note("Modal dialog \"" + top->getName() + "\" made an owned window of the main window (stays above it)");
                             }
                         }
-   #endif
     if (anchor == nullptr || !anchor->isActiveWindow()) return;   // the dialog itself (or another program) is active: nothing lost
+    auto* mainPeer = anchor->getPeer();
+    if (mainPeer == nullptr) return;
+    const HWND main = (HWND)mainPeer->getNativeHandle();
     static double lastNoteMs = 0.0;
     juce::StringArray names;
     for (int i = manager.getNumModalComponents(); --i >= 0;)
         if (auto* modal = manager.getModalComponent(i))
             if (auto* top = modal->getTopLevelComponent())
-            {
-                if (auto* peer = top->getPeer()) if (peer->isMinimised()) peer->setMinimised(false);   // a minimised box too
-                top->toFront(true);
-                names.add(top->getName());
-            }
+                if (auto* peer = top->getPeer())
+                {
+                    // Only a box that is really BEHIND the main window in the Z order (or minimised) is touched -
+                    // never a box already in front: a toFront every half second repaints the console each time.
+                    const HWND box = (HWND)peer->getNativeHandle();
+                    bool above = false;
+                    for (HWND h = ::GetWindow(main, GW_HWNDPREV); h != nullptr; h = ::GetWindow(h, GW_HWNDPREV)) if (h == box) { above = true; break; }
+                    if (above && !peer->isMinimised()) continue;
+                    if (peer->isMinimised()) peer->setMinimised(false);
+                    top->toFront(true);
+                    names.add(top->getName());
+                }
+    if (names.isEmpty()) return;
     const double now = juce::Time::getMillisecondCounterHiRes();
     if (now - lastNoteMs > 5000.0) { lastNoteMs = now; CrashHandler::note("Modal dialog behind the main window brought to the front: " + names.joinIntoString(", ")); }
+   #endif
 }
 
 void MainComponent::timerCallback()

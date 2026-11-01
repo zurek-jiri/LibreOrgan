@@ -425,7 +425,8 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     {
                         ManualConfig::StopBuild scratch;
                         scratch.entries = std::move(addedEntries);
-                        placeHalfInTable(scratch, assignment.stopName, assignment.component, perspective, { treeIndex, assignment.folder == tree ? juce::String(".") : slashesOf(assignment.folder.getRelativePathFrom(tree)) });
+                        placeHalfInTable(scratch, assignment.stopName, assignment.component, perspective, { treeIndex, assignment.folder == tree ? juce::String(".") : slashesOf(assignment.folder.getRelativePathFrom(tree)) },
+                                         engine.folderStopAlias(assignment.folder.getSiblingFile(assignment.stopName.fromLastOccurrenceOf(" - ", false, false))), engine.folderStopAlias(assignment.folder));
                         addedEntries = std::move(scratch.entries);
                         continue;
                     }
@@ -437,6 +438,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     {
                         ManualConfig::StopBuild::Entry entry;
                         entry.name = assignment.stopName;
+                        entry.alias = engine.folderStopAlias(assignment.folder);   // 0.9.32
                         addedEntries.push_back(entry);
                         target = &addedEntries.back();
                     }

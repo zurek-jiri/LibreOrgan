@@ -7129,7 +7129,13 @@ struct SamplerEngine::Impl
                 // enough to be left behind by the writer: continue behind the
                 // flush in progress instead of adding into frames already written.
                 route.recEpoch = rec.epoch;
-                route.recPos = juce::jmax(flushed, rec.flushTarget.load(std::memory_order_acquire));
+                // 0.9.31 (the video's recording had a 1 ms hole of zeros inside a chord, 9 s after a division's routes
+                // had restarted): a route that joins or returns started right at the writer's edge - and the writer
+                // follows the wall clock 300 ms behind it (0.8.208), so the route had NO margin left: the first
+                // callback a little late against the recorder thread's wall sampling, and the writer flushed frames
+                // the route had not written yet (zeros), lost for good. The route now starts at the wall position
+                // itself (the edge + the writer's 300 ms margin): the margin is whole again from the first block.
+                route.recPos = juce::jmax(flushed, rec.flushTarget.load(std::memory_order_acquire)) + (int64_t)(0.3 * rec.sampleRate);
             }
             if (route.recPos + totalSamples - flushed < Recorder::ringSize)
             {

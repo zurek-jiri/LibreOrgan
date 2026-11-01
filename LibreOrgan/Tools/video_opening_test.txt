@@ -1,0 +1,40 @@
+# A test of the video's opening alone (1 Nov 2026): the two drops (a folder, a packed set) with a few stops drawn
+# for the chords, the bridge to the prepared organ, the load box of the Stralsund load - then the recording stops.
+window 2560 1400
+wait 800
+record start
+caption Every organ starts from sample folders on your disk: drag a folder of a set onto a division ...
+say LibreOrgan Sampler. Every organ in it starts from sample folders on your disk. Drag a folder of a sample set onto a division - and its stops appear, ready to play.
+wait 1200
+dropfiles 1|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\000370
+waitload 120000
+wait 1500
+stop 1|pipe - Principale|on
+stop 1|pipe - Ottava|on
+stop 1|pipe - QuintaDecima|on
+wait 600
+chord 1|48,55,64,67|3200
+wait 1800
+caption ... a packed set needs no unpacking: drop the archive, the samples are read straight from it.
+say A packed set needs no unpacking. Drop the archive, and the program reads the samples straight from it. Any creative mind can assemble an organ this way - stop by stop, from whatever lies on the disk.
+wait 1200
+dropfiles 2|E:\sonus\HW2\Adlington\10\AdlingtonHallVol0.CompPkg.Hauptwerk.rar
+waitfor Load the folders|90000
+click Load the folders
+waitload 180000
+wait 1500
+stop 2|002707 - pipes - HW StoppedDiap|on
+wait 600
+chord 2|60,64,67,72|3200
+wait 1800
+caption And if the organ is already prepared: one configuration file holds the whole organ - stops, voicing, couplers, crescendo, combinations, audio settings.
+say And if the organ is already prepared, one configuration file is all you need to load. It holds the whole organ: its stops and their voicing, the couplers, the crescendo, the combinations, the audio settings. This is Stralsund, Saint Jakobi, from Sonus Paradisi samples.
+wait 12500
+load C:\Users\doma\AppData\Local\Temp\video\cfg\Stralsund_video.json
+wait 3600
+caption The load box: how the samples are held in memory, and where the file shall live.
+say The load box offers the choices of every load: how the samples are held in memory, and where the file shall live.
+wait 4000
+caption
+record stop
+end

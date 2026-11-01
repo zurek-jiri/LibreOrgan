@@ -513,7 +513,8 @@ private:
     // goes into a STOP FOLDER of the table - a container row named after the stop and a child row per half
     // ("<stop> L", "<stop> R"), as the definition import makes them - never one row with "+ half" any more.
     static void placeHalfInTable(ManualConfig::StopBuild& build, const juce::String& stopName, const juce::String& component,
-                                 const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref);
+                                 const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref,
+                                 const juce::String& containerAlias = {}, const juce::String& childAlias = {});   // 0.9.32: the aliases from the folder names
     std::set<int> treeJoinedDivisions;   // 0.8.220: the OTHER divisions whose rows the last extendStopBuildWithTree gave a perspective (reloaded too)
     // 0.8.220: folders that are ANOTHER PERSPECTIVE of the division's rows (Bergen op Zoom: the Distant package's
     // "06-far__HW_Octava2" beside the rows' "03-ortf_HW_Octava2" / "04-ab_" / "05-rea_"). The new names share their
