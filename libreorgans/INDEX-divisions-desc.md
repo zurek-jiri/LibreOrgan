@@ -29,6 +29,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 |---|---:|---:|---:|---|---|
 | [Billerbeck Dom, Fleiter](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model) |
+| [Ashton, Albion Church, Lewis](ashton-albion-church-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-albion-church-lewis-organ&organ=ashton-albion-church-lewis-organ) |
 | [Brasov, Black Church, Buchholz](brasov-black-church-buchholz-organ/README.md) | 5 | 63 | 5.5 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brasov-black-church-buchholz-organ&organ=brasov-black-church-buchholz-organ) |
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
 | [Bellevue, Casavant](bellevue-casavant/README.md) | 4 | 74 | 4.8 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bellevue-casavant&organ=bellevue-casavant) |
@@ -40,4 +41,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Arnstadt Bach](arnstadt-bach-organ/README.md) | 3 | 21 | 4.2 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20arnstadt-bach-organ&organ=arnstadt-bach-organ) |
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ) |
 
-14 configuration(s).
+15 configuration(s).
