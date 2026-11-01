@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.26] - 2026-11-01
+
+### Added
+- When the halves of a stereo stop are pulled together under a stop folder
+  in another division, the divisions they left are offered transmissions of
+  the joined stop (one box, Make transmissions / No) - under a stop folder of
+  the same name there.
+
 ## [0.9.25] - 2026-11-01
 
 ### Changed

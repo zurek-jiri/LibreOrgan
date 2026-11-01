@@ -342,7 +342,8 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
   silent in each) becomes a stop folder with the two halves as its ranks. A
   half loaded alone is known by its silent channel and the other half beside
   it on the disk; a half loaded elsewhere moves under the stop folder its
-  other half makes.
+  other half makes, and the division it left is offered a transmission of
+  the joined stop.
 
 ### Releases
 

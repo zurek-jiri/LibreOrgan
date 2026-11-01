@@ -87,6 +87,9 @@ public:
     struct HalfMove { int sourceManual = -1; juce::String rowName; int targetManual = -1; juce::String stem; };
     std::vector<HalfMove> pendingHalfMoves;
     void offerTransmissionsForLoadedFolders();
+    // 0.9.25/0.9.26: transmissions of the stops into the division, the ranks of one stop folder (the same groupMaster
+    // in their division) under a stop folder of that name made there; returns how many were made.
+    int makeGroupedTransmissions(const std::vector<Stop*>& sources, int target, const juce::String& why);
     int divisionAtPoint(juce::Point<int> point) const;                    // the division column under a point of this component, -1 none
     juce::Rectangle<int> fileDropHighlight;                                // the framed column while a drag is over it
     int fileDropDivision = -1;

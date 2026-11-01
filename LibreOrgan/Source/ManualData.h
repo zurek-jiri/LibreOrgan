@@ -348,7 +348,8 @@ static const char* const kManualText_part1 =
     "  silent in each) becomes a stop folder with the two halves as its ranks. A\n"
     "  half loaded alone is known by its silent channel and the other half beside\n"
     "  it on the disk; a half loaded elsewhere moves under the stop folder its\n"
-    "  other half makes.\n"
+    "  other half makes, and the division it left is offered a transmission of\n"
+    "  the joined stop.\n"
     "\n"
     "### Releases\n"
     "\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
-    "button fires even when hidden).\n"
     ;
 static const char* const kManualText_part2 =
+    "button fires even when hidden).\n"
     "\n"
     "- **PANIC** silences every sounding pipe.\n"
     "- **Record** records the stereo mix to a WAV file; click again to stop\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "\n"
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
-    "second half: more chiff or a softer speaking, the held tone untouched.\n"
     ;
 static const char* const kManualText_part3 =
+    "second half: more chiff or a softer speaking, the held tone untouched.\n"
     "\n"
     "### Random pitch error\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "\n"
     "# 5. Divisions and audio\n"
     "\n"
-    "*Settings* in a division header opens the Divisions dialog at that division.\n"
     ;
 static const char* const kManualText_part4 =
+    "*Settings* in a division header opens the Divisions dialog at that division.\n"
     "Its settings are the same as the division's section of the Configuration\n"
     "Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing and the\n"
     "audio tabs.\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "its period; several hundred per cent means the audio thread was kept waiting\n"
     "by something else on the computer. What the measurement sees and what it\n"
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "\n"
     "---\n"
     "\n"
     "# 6. Playing\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "above 12 kHz; a reed whose release is bright above 11 kHz keeps the full\n"
     "rate). Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
-    "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
     ;
 static const char* const kManualText_part6 =
+    "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
     "\n"
     "### Compress samples in RAM (lossless)\n"
     "\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "\n"
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
     "files play. On: such a key is silent.\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
     "### Treble per key: shelf start frequency\n"
     "\n"
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "([Top bar buttons](#21-top-bar-buttons)). A hidden button still fires from its learned MIDI\n"
     "control. The button beside each switch does the same as the one in the top\n"
     "bar.\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "## 8.5 Folder name patterns (one per line)\n"
     "\n"
     "The three lists travel with the organ and belong to this computer as well:\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "## 9.4 Free software, licences, platforms\n"
     "\n"
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
-    "and every release is built there. *About & licences...* shows the program's\n"
     ;
 static const char* const kManualText_part9 =
+    "and every release is built there. *About & licences...* shows the program's\n"
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "|---|---|---|---|---|\n"
     "| 32-bit float | 48 kHz | full rate | off | 83 GB |\n"
     "| 32-bit float | 48 kHz | full rate | on | 29 GB |\n"
-    "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     ;
 static const char* const kManualText_part10 =
+    "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"

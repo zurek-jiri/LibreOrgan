@@ -2417,6 +2417,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the stop folder exists in the target even when both halves are loaded elsewhere and the half moves bring both
   under it (the emptied lone folders of I and III removed). Test %TEMP%\test_halves_apart0925.ps1 (three drops:
   L on I, R on III, rec on II -> I 0, III 0, II 30 rows).
+  0.9.26 (1 Nov 2026, the user: "na původních místech to neudělalo transmise těchto stop folderů ... Žádný dialog
+  ... nevyhodilo"): `makeGroupedTransmissions(sources, target, why)` (member; the former `make` lambda: a stop
+  with a transmission into the target at shift 0 skipped, the ranks of one groupMaster under a container of that
+  name made in the target, log + Messages "Transmissions made"); offerTransmissionsForLoadedFolders keeps
+  `movedFrom` (old division -> the halves moved out, divisions != target) and, when not empty, shows the box
+  "Halves joined" (Make transmissions / No: transmissions of the joined stop into every old division, grouped
+  under a stop folder of the same name there - the emptied lone folder was removed before, so no "(2)"), and
+  only THEN `continueWithOffer` (the 0.9.22 offer, now a lambda over a shared_ptr offer). The hook
+  ORGAN_TEST_LOADED_TRANSMISSIONS=1 takes both boxes. Test %TEMP%\test_halves_apart0926.ps1 (L on I, R on III,
+  rec on II with the hook: I and III each one stop folder "FluteTravers 8" with 2 grouped transmissions,
+  II 30 rows; check_oldplaces0926.py). TWO LESSONS of the first 0.9.26 build: (a) `movedFrom` carried the half
+  that LEFT each division, so I got a transmission of L alone and III of R alone - it carries the stop FOLDER
+  (the master in the target) now and makeOld takes every rank under it at answer time: the whole joined stop
+  goes back to both old places. (b) the 0.9.25 "container even when both halves are elsewhere" rule pulled a
+  WHOLE stop folder (R+L together on II) to III when the package was dropped there (test_grouptrsm0925 got 30
+  rows on III instead of transmissions): `wholeElsewhere(stem)` in extendStopBuildWithTree (pre-pass
+  `halvesInTree` / `usedHalfRows`, `masterOfRow` = the child row's folder in that division's table) - all the
+  tree's halves of the stem used, >= 2, one division, one master -> the ordinary transmission offer (grouped);
+  else the join. The three tests must pass together: test_halves_apart0926 (join + both old places get the
+  whole stop), test_grouptrsm0925 (20 transmissions under 10 folders on III, 10 rows there), test_halfmove0924.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
