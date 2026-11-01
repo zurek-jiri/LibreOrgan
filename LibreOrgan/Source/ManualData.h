@@ -712,7 +712,8 @@ static const char* const kManualText_part3 =
     "  ([The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join)); the rest become new rows.\n"
     "  Folders the organ plays already are left out (the Messages name them); when\n"
     "  stops of other divisions play them, the program offers transmissions of those\n"
-    "  stops into the division instead.\n"
+    "  stops into the division instead (the ranks of one stop folder under a stop\n"
+    "  folder of that name).\n"
     "  When a tree of the organ is missing on this computer, the menu lists it as\n"
     "  **NOT FOUND on this computer: replace \"...\" with a folder on this\n"
     "  computer...** ([Sample folders not found](#sample-folders-not-found)).\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "# 5. Divisions and audio\n"
     "\n"
     "*Settings* in a division header opens the Divisions dialog at that division.\n"
-    "Its settings are the same as the division's section of the Configuration\n"
     ;
 static const char* const kManualText_part4 =
+    "Its settings are the same as the division's section of the Configuration\n"
     "Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing and the\n"
     "audio tabs.\n"
     "\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "by something else on the computer. What the measurement sees and what it\n"
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
     "\n"
-    "---\n"
     ;
 static const char* const kManualText_part5 =
+    "---\n"
     "\n"
     "# 6. Playing\n"
     "\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "rate). Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
     "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
     "### Compress samples in RAM (lossless)\n"
     "\n"
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
     "files play. On: such a key is silent.\n"
     "\n"
-    "### Treble per key: shelf start frequency\n"
     ;
 static const char* const kManualText_part7 =
+    "### Treble per key: shelf start frequency\n"
     "\n"
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "control. The button beside each switch does the same as the one in the top\n"
     "bar.\n"
     "\n"
-    "## 8.5 Folder name patterns (one per line)\n"
     ;
 static const char* const kManualText_part8 =
+    "## 8.5 Folder name patterns (one per line)\n"
     "\n"
     "The three lists travel with the organ and belong to this computer as well:\n"
     "every pattern you add is kept in `Patterns.json` beside the settings and\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "\n"
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
     "and every release is built there. *About & licences...* shows the program's\n"
-    "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
     ;
 static const char* const kManualText_part9 =
+    "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "| 32-bit float | 48 kHz | full rate | off | 83 GB |\n"
     "| 32-bit float | 48 kHz | full rate | on | 29 GB |\n"
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
-    "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     ;
 static const char* const kManualText_part10 =
+    "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"

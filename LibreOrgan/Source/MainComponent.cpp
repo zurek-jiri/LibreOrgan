@@ -18780,7 +18780,12 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         {
             alreadyLoaded.add(assignment.folder.getFileName());
             if (assignment.component.isNotEmpty())   // 0.9.24: a half - its row moves under the stop folder its other half makes here
+            {
+                // 0.9.25 (the user: L on I, R on III, then the whole tree on II): the stop folder is made here even
+                // when BOTH halves are loaded elsewhere, so both move under it and the stop is whole again.
+                placeHalfInTable(build, assignment.stopName, {}, "default", {});
                 pendingHalfMoves.push_back({ usedBy->second.first, usedBy->second.second, manual, assignment.stopName });
+            }
             else if (usedBy->second.first != manual && std::find(offerRows.begin(), offerRows.end(), usedBy->second) == offerRows.end()) offerRows.push_back(usedBy->second);
             continue;
         }
@@ -18860,6 +18865,7 @@ void MainComponent::placeHalfInTable(ManualConfig::StopBuild& build, const juce:
         entries.push_back(folder);
         container = entries.size() - 1;
     }
+    if (component.isEmpty()) return;   // 0.9.25: the container alone - the halves loaded elsewhere move under it after the load (pendingHalfMoves)
     // Its children follow it: the half's row by its name (another perspective of the same half), else a new one after the last child.
     const juce::String childName = stopName + " " + component;
     size_t end = container + 1;
@@ -19226,6 +19232,12 @@ void MainComponent::offerTransmissionsForLoadedFolders()
     // transmissions of those rows into the division the folders were meant for (one per row; a row with such
     // a transmission already gets none).
     if (pendingTransmissionOffer == nullptr) { pendingHalfMoves.clear(); return; }
+    if (activeFolderLoader != nullptr)   // 0.9.25: called right after the division's rebuild (the loader may still be closing): again in a moment
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(500, [safeThis] { if (safeThis != nullptr) safeThis->offerTransmissionsForLoadedFolders(); });
+        return;
+    }
     auto offer = std::move(pendingTransmissionOffer);
     const int target = offer->targetManual;
     if (target < 0 || target > manualCount) { pendingHalfMoves.clear(); return; }
@@ -19300,26 +19312,64 @@ void MainComponent::offerTransmissionsForLoadedFolders()
     auto make = [safeThis, sources, target, targetName]
     {
         if (safeThis == nullptr) return;
-        int made = 0;
+        MainComponent& self = *safeThis;
+        int made = 0, folders = 0;
         juce::StringArray done;
+        // 0.9.25 (the user: the L and R halves came as two separate transmissions): the stops that are the ranks of
+        // ONE stop folder (the same groupMaster in their division - the halves of a stereo stop, the ranks of a
+        // Cornet) get a stop folder of that name in the target division and their transmissions go under it as
+        // its children, like a transmission indented under a folder on the grid.
+        std::map<std::pair<int, juce::String>, juce::String> folderOf;   // (source division, master) -> the container made here
+        auto containerFor = [&](Stop* stop) -> juce::String
+        {
+            if (stop->groupMaster.isEmpty()) return {};
+            const std::pair<int, juce::String> key{ stop->primaryManual, stop->groupMaster };
+            if (const auto found = folderOf.find(key); found != folderOf.end()) return found->second;
+            if (target < 0 || target > self.manualCount) return {};
+            auto& config = self.manualConfigs[(size_t)target];
+            if (!config.stopBuild.active) { config.stopBuild = self.deriveStopBuildFromEngine(target); config.stopBuild.active = true; }
+            ManualConfig::StopBuild::Entry entry;
+            entry.name = uniqueStopBuildName(config.stopBuild.entries, stop->groupMaster, nullptr);
+            entry.customName = true;
+            config.stopBuild.entries.push_back(entry);
+            self.engine.addContainerStop(target, entry.name);   // in place: an empty stop, nothing reloaded
+            ++folders;
+            folderOf[key] = entry.name;
+            return entry.name;
+        };
         for (auto* stop : sources)
         {
-            if (!safeThis->engine.getStops().contains(stop)) continue;   // gone meanwhile
-            if (safeThis->engine.addTransmission(stop, target, 0) < 0) continue;
+            if (!self.engine.getStops().contains(stop)) continue;   // gone meanwhile
+            const int index = self.engine.addTransmission(stop, target, 0);
+            if (index < 0) continue;
             ++made;
-            done.add(stop->displayName());
+            const auto container = containerFor(stop);
+            if (container.isNotEmpty() && index < (int)stop->transmissions.size())
+            {
+                std::vector<Stop::Transmission> list = stop->transmissions;
+                list[(size_t)index].groupMaster = container;
+                self.engine.replaceTransmissions(stop, list);
+                done.add(stop->displayName() + " -> " + container);
+            }
+            else done.add(stop->displayName());
         }
         if (made == 0) return;
-        if (safeThis->voicer != nullptr) { safeThis->voicer->updateStopStates(); safeThis->voicer->rebuildUI(safeThis->stopsContent, safeThis->stopsViewport); }
-        safeThis->configurationDirty = true;
-        safeThis->saveSettings();
-        CrashHandler::note("Load folder: " + juce::String(made) + " transmission(s) into " + targetName + " made from the stops playing the folders already: " + done.joinIntoString(", "));
-        queueNotice(juce::MessageBoxIconType::InfoIcon, "Transmissions made", juce::String(made) + " transmission(s) into " + targetName + " made: " + done.joinIntoString(", "));
+        for (auto* stop : self.engine.getStops())   // the new folders open, so the transmissions under them show
+            if (stop != nullptr && stop->container && stop->primaryManual == target)
+                for (const auto& [key, name] : folderOf) if (stop->name == name) stop->voicingExpanded = true;
+        if (folders > 0) self.finishInPlaceStopEdit({ target });
+        if (self.voicer != nullptr) { self.voicer->updateStopStates(); self.voicer->rebuildUI(self.stopsContent, self.stopsViewport); }
+        self.configurationDirty = true;
+        self.saveSettings();
+        CrashHandler::note("Load folder: " + juce::String(made) + " transmission(s) into " + targetName + " made from the stops playing the folders already"
+            + (folders > 0 ? ", " + juce::String(folders) + " stop folder(s) made for the ranks of one folder" : juce::String()) + ": " + done.joinIntoString(", "));
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Transmissions made", juce::String(made) + " transmission(s) into " + targetName + " made"
+            + (folders > 0 ? " (" + juce::String(folders) + " stop folder(s) for the ranks of one folder)" : juce::String()) + ": " + done.joinIntoString(", "));
     };
     if (std::getenv("ORGAN_TEST_LOADED_TRANSMISSIONS") != nullptr) { make(); return; }   // dev: the offer taken
     juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon, "Folders loaded already",
         juce::String((int)sources.size()) + " folder(s) of " + offer->treeName + " are played by stops of other divisions already: " + shown.joinIntoString(", ")
-        + "\n\nMake transmissions of those stops into " + targetName + " instead?", "Make transmissions", "No", this,
+        + "\n\nMake transmissions of those stops into " + targetName + " instead? The ranks of one stop folder (the halves of a stereo stop) go under a stop folder of that name.", "Make transmissions", "No", this,
         juce::ModalCallbackFunction::create([make](int result) { if (result == 1) make(); }));
 }
 
@@ -19851,6 +19901,11 @@ void MainComponent::finishDivisionsLoadEnd(const std::vector<int>& manuals)
     juce::String list;
     for (int manual : manuals) list << (list.isEmpty() ? "" : ", ") << manual;
     CrashHandler::note("Division(s) " + list + " rebuilt: " + juce::String(divisionStops) + " stops");
+    if (pendingTransmissionOffer != nullptr)   // 0.9.25: the halves moved and the transmissions offered NOW, not after runWhenLoaded's quiet polls (the user: the box came late, as if nothing was left to do)
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(300, [safeThis] { if (safeThis != nullptr) safeThis->offerTransmissionsForLoadedFolders(); });
+    }
     engine.launchCopyBuilds();   // the copies of the filled pipes of the new stops
     saveSettings();
     refreshConfigurationEditor();

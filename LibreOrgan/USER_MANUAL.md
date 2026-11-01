@@ -702,7 +702,8 @@ can be done here as well, and this is where the organ is built from folders.
   ([The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join)); the rest become new rows.
   Folders the organ plays already are left out (the Messages name them); when
   stops of other divisions play them, the program offers transmissions of those
-  stops into the division instead.
+  stops into the division instead (the ranks of one stop folder under a stop
+  folder of that name).
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).

@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.25] - 2026-11-01
+
+### Changed
+- The transmission offer (and the move of a half) comes right after the
+  division has been rebuilt, not ten seconds later.
+- Transmissions made from the offer for stops that are the ranks of one stop
+  folder (the L and R halves of a stereo stop, the ranks of a Cornet) go
+  under a stop folder of that name in the target division, as its children -
+  not as separate stops.
+- A tree dropped on a division while BOTH halves of its stereo stop are
+  loaded in other divisions (one on I, the other on III): the stop folder is
+  made in that division all the same and both halves move under it.
+
 ## [0.9.24] - 2026-11-01
 
 ### Changed

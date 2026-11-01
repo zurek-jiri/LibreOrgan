@@ -2398,6 +2398,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Test %TEMP%\test_halfmove0924.ps1: III 2 stops -> after rec on II: "Stop moved: FluteTravers 8 L from division 3
   to 2", III's folder removed, III 0 rows, II 30 rows, grid of II without holes. The scan's names carry the
   parent chain only when the tree lies above it ("pipe - rec - Cornet" for the package, "Cornet" for rec itself).
+  0.9.25 (1 Nov 2026, the user: "proč ten msgbox ... se objeví tak pozdě" + "transmisi pro L a R je vytvoří jako dva
+  samostatné rejstříky ... do jednoho stop folderu se dvěma transmisemi pod sebou jako děti"): (1) TIMING:
+  `finishDivisionsLoadEnd` calls `offerTransmissionsForLoadedFolders` 300 ms after "Division(s) N rebuilt" when
+  `pendingTransmissionOffer` is set (the handler re-arms itself every 500 ms while `activeFolderLoader` lives; the
+  runWhenLoaded call stays as the fallback and returns at once on a null offer) - runWhenLoaded's 5 s polls + one
+  quiet poll made the box come 10-15 s late. (2) GROUPED: the `make` lambda keys the offered stops by (source
+  division, `Stop::groupMaster`); the ranks of ONE stop folder get a container of that name in the target
+  (`uniqueStopBuildName` on the target table + `engine.addContainerStop`, customName, `folderOf` map, once per
+  key) and each transmission's `groupMaster` is set to it (`replaceTransmissions`), the container
+  `voicingExpanded`, `finishInPlaceStopEdit({target})` when folders were made - exactly what a transmission
+  indented under a grid folder is. Stops without a master stay plain transmissions. Test
+  %TEMP%\test_grouptrsm0925.ps1 (rec on II, then the package 001691 on III with ORGAN_TEST_LOADED_TRANSMISSIONS=1:
+  20 transmissions into III under 10 folders; check_grouptrsm0925.py counts the saved transmissions with manual 3
+  and a groupMaster). (3) HALVES APART (the user: "I had L in I, and R in III, then importing the whole rec to II
+  ... people may accidentally do this"): the used branch of extendStopBuildWithTree calls `placeHalfInTable(build,
+  stem, {}, "default", {})` = the CONTAINER alone (an empty `component` returns after it) for every used half, so
+  the stop folder exists in the target even when both halves are loaded elsewhere and the half moves bring both
+  under it (the emptied lone folders of I and III removed). Test %TEMP%\test_halves_apart0925.ps1 (three drops:
+  L on I, R on III, rec on II -> I 0, III 0, II 30 rows).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
