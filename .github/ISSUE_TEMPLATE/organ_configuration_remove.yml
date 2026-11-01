@@ -22,6 +22,7 @@ body:
       options:
         - "adlington-hall-smith"
         - "altenbruch-klapmeyer-organ"
+        - "arnstadt-wender-bach-organ"
         - "ashton-albion-church-lewis-organ"
         - "b-ckeburg-janke-organ"
         - "bellevue-casavant"
@@ -31,6 +32,7 @@ body:
         - "brasov-black-church-buchholz-organ"
         - "brescia-st-carlo-antegnati-organ"
         - "burton-berlin-hill"
+        - "cen-st-etienne-cavaill-coll"
         - "dom-b-dos-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
