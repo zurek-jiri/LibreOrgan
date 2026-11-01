@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.23] - 2026-11-01
+
+### Fixed
+- The two halves of a stereo stop found by the scan (Load folder, a drop, the
+  merge of a folder tree) become a STOP FOLDER with a child row per half
+  ("Cornet" with "Cornet R" and "Cornet L"), as the definition import makes
+  them - not one row with a hidden second folder. The merge of a folder tree
+  dropped one half before.
+- A start without a configuration carried the last organ's voicing (its grid
+  cells by name, pool and retained stops) in voicer.json: a tree loaded onto
+  the empty console took the stale cells of its namesakes and the rest filled
+  the holes between - gaps on the grid. The voicing now goes with the organ
+  and comes back with the configuration that holds it.
+
 ## [0.9.22] - 2026-11-01
 
 ### Added

@@ -490,6 +490,11 @@ private:
     std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> stopBuildMap(int manual) const;   // nullptr while inactive
     ManualConfig::StopBuild deriveStopBuildFromEngine(int manual) const;   // the table as the loaded stops are
     void extendStopBuildWithTree(int manual, const juce::File& tree, int treeIndex);   // a tree added to a built division (pendingTreeJoin, when set for the tree, says which folders join rows)
+    // 0.9.23 (the user: "nevytvořily se stop foldery z L a R"): a half of a stereo stop the scan found (component L/R)
+    // goes into a STOP FOLDER of the table - a container row named after the stop and a child row per half
+    // ("<stop> L", "<stop> R"), as the definition import makes them - never one row with "+ half" any more.
+    static void placeHalfInTable(ManualConfig::StopBuild& build, const juce::String& stopName, const juce::String& component,
+                                 const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref);
     std::set<int> treeJoinedDivisions;   // 0.8.220: the OTHER divisions whose rows the last extendStopBuildWithTree gave a perspective (reloaded too)
     // 0.8.220: folders that are ANOTHER PERSPECTIVE of the division's rows (Bergen op Zoom: the Distant package's
     // "06-far__HW_Octava2" beside the rows' "03-ortf_HW_Octava2" / "04-ab_" / "05-rea_"). The new names share their

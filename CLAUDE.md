@@ -2355,6 +2355,33 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   configuration kept on the stops playing their folders here". Tests: %TEMP%\test_merge0922.ps1 (Samply on II,
   Rural merged: the shared II stops' transmissions kept), %TEMP%\test_offer0922.ps1 (Samply on I, then Samply\TA
   on II -> the offer taken, "transmission(s) into Manual II made").
+  0.9.23 (1 Nov 2026, the user, furious: "Přidal jsem 001691, nevytvořily se stop foldery z L a R, přidaly se jenom
+  L ... grid zase počítal i s těmi políčky, která zůstala prázdná"): (1) the 0.9.21 decision "the halves stay one
+  row with + half" is REVERSED - `MainComponent::placeHalfInTable(build, stopName, component, perspective, ref)`
+  (static, before applyStopBuild) makes a STOP FOLDER of a scanned half: a container row named the stem
+  (customName true) + child rows "<stem> R" / "<stem> L" (child true, one folder per perspective) inserted after
+  the last child; used by extendStopBuildWithTree (Load folder / drop), deriveStopBuildFromEngine's fallback and
+  the merge's tree scan (which DROPPED a half before: same stopName + perspective). The grouped search of all
+  three never targets a row without folders (a stop folder). morePaths stays for OLD files (18 places). The
+  engine's own automatic path (no table: old folderPath-only files, the self-test) still joins halves as two
+  ranks of one stop. 001691 dropped on III: "Division(s) 3 rebuilt: 30 stops" = 10 folders + 20 children.
+  (2) THE GAPS: a start without a configuration kept the LAST organ's voicing - loadSettings writes settings.json's
+  voicingSettings into voicer.json and the constructor's `voicer->loadState` (line ~1769) reads it BEFORE the
+  clean branch (~1849), so the empty console held 97 retained stops and every grid cell of the last organ BY NAME
+  (the user's 0.9.22 run: "pipe - rec - Cornet (division 3)" cells of the previous drop); a tree loaded then took
+  the stale cells of its namesakes and the unplaced rest filled the free cells between = holes. The clean branch
+  now writes {stopGrid {}, stopPool {}, stops []} into voicer.json, loadState's it (each block clears its map),
+  voicerStateLoaded/embeddedVoicingPresent false, log "Started without a configuration: the voicing of the last
+  organ ... left with it". The grid's layout itself (voicer.cpp ~3024-3073: stored cells of PRESENT items, the
+  unplaced fill free cells row by row) was not changed. (3) MERGE of a stop folder the base HAS as a stop folder
+  (the scan's since 0.9.23): the group rule maps the places to base rows; all child rows of ONE base container ->
+  `sharedContainers` (the added container shared, mapped onto the base container in sharedStopNames - it was
+  added as an empty "(2)" folder before) and its children shared by the old rule. Tests: %TEMP%\test_halves0923.ps1
+  (001691 on III of the empty console with the stale voicing: 30 rows, 10 folders, 0 "+ half", grid "OK: no hole"
+  by check_halves0923.py on the saved settings), test_mergesame0923.ps1 (the saved settings merged back as a
+  configuration: "0 stop(s) added, 30 shared", table and grid unchanged), test_merge0922.ps1 (single rows still
+  replaced by Rural's CO folder, 2 transmissions kept). The folders in a saved stopBuild entry are a LIST
+  [{perspective, tree, path}], not a map (check scripts).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

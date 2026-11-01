@@ -345,7 +345,7 @@ static const char* const kManualText_part1 =
     "  its end and loops as a whole.\n"
     "- A stop recorded as a left and a right half (`quintaton16L` and\n"
     "  `quintaton16R`, or `quintaton16` and `quintaton16L` with one channel\n"
-    "  silent in each) is one stop with two folders.\n"
+    "  silent in each) becomes a stop folder with the two halves as its ranks.\n"
     "\n"
     "### Releases\n"
     "\n"

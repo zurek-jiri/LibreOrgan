@@ -396,10 +396,18 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                 for (const auto& assignment : engine.scanTreeAssignments(tree, false))
                 {
                     const juce::String perspective = assignment.perspective.isEmpty() ? juce::String("default") : assignment.perspective;
+                    if (assignment.component.isNotEmpty())   // 0.9.23: a half of a stereo stop -> a stop folder with a child row per half (a half was dropped here before)
+                    {
+                        ManualConfig::StopBuild scratch;
+                        scratch.entries = std::move(addedEntries);
+                        placeHalfInTable(scratch, assignment.stopName, assignment.component, perspective, { treeIndex, assignment.folder == tree ? juce::String(".") : slashesOf(assignment.folder.getRelativePathFrom(tree)) });
+                        addedEntries = std::move(scratch.entries);
+                        continue;
+                    }
                     ManualConfig::StopBuild::Entry* target = nullptr;
                     if (assignment.grouped)
                         for (auto& existing : addedEntries)
-                            if (stopBuildKey(existing.name) == stopBuildKey(assignment.stopName)) { target = &existing; break; }
+                            if (!existing.folders.empty() && stopBuildKey(existing.name) == stopBuildKey(assignment.stopName)) { target = &existing; break; }
                     if (target == nullptr)
                     {
                         ManualConfig::StopBuild::Entry entry;
@@ -442,6 +450,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         // stop) REPLACES those rows: the halves go, the stop folder with its children comes in - never the same
         // pipes twice (the user: "verze L, verze R, verze L-R ve stop folderu ... tohle by nemělo být").
         std::set<size_t> replacingEntries;   // indexes into addedEntries exempt from the shared rule
+        std::set<size_t> sharedContainers;   // 0.9.23: added stop folders the base has as stop folders of its own (shared, not added)
         for (size_t i = 0; i < addedEntries.size(); ++i)
         {
             const auto& container = addedEntries[i];
@@ -458,6 +467,30 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             bool allLoaded = true;
             for (const auto& place : places) if (baseFolders.count(place) == 0) allLoaded = false;
             if (!allLoaded) continue;
+            // 0.9.23: the base plays those places as a STOP FOLDER of its own already (the scan makes one of the
+            // halves since 0.9.23): the added folder is the same stop - its children are shared by the rule below,
+            // and the container is shared too (it was added as an empty "(2)" folder before), mapped onto the base
+            // container so its voicing and transmissions pass to it.
+            {
+                std::set<size_t> baseContainers;
+                bool allChildren = true;
+                for (const auto& place : places)
+                {
+                    const auto name = baseFolders.find(place)->second;
+                    size_t b = 0;
+                    while (b < baseBuild.entries.size() && baseBuild.entries[b].name != name) ++b;
+                    if (b >= baseBuild.entries.size() || !baseBuild.entries[b].child) { allChildren = false; break; }
+                    size_t master = b;
+                    while (master > 0 && baseBuild.entries[master].child) --master;
+                    baseContainers.insert(master);
+                }
+                if (allChildren && baseContainers.size() == 1)
+                {
+                    sharedContainers.insert(i);
+                    sharedStopNames[juce::String(manual) + "|" + stopBuildKey(container.name)] = baseBuild.entries[*baseContainers.begin()].name;
+                    continue;
+                }
+            }
             // The base rows that are those halves: rows without children whose folders all lie in the group.
             juce::StringArray removedNames, childNames;
             for (size_t b = 0; b < baseBuild.entries.size(); ++b)
@@ -579,8 +612,8 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         for (size_t addedIndex = 0; addedIndex < addedEntries.size(); ++addedIndex)
         {
             auto entry = addedEntries[addedIndex];
-            bool shared = false;
-            if (replacingEntries.count(addedIndex) == 0)   // 0.9.19: a stop folder replacing the halves and its children come in whatever the halves used
+            bool shared = sharedContainers.count(addedIndex) != 0;   // 0.9.23: a stop folder the base has already (its children are shared below)
+            if (!shared && replacingEntries.count(addedIndex) == 0)   // 0.9.19: a stop folder replacing the halves and its children come in whatever the halves used
                 for (const auto& [perspective, ref] : entry.folders)
                     for (const auto& place : placesOfRef(ref))
                         if (const auto found = baseFolders.find(place); found != baseFolders.end())

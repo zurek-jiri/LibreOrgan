@@ -1858,6 +1858,22 @@ MainComponent::MainComponent()
         combinations.clear();
         activePiston = -1;
         updateCombinationControls();
+        // 0.9.23 (the user's 001691 drop on the empty console: the grid had gaps): the VOICING of the last organ
+        // goes with its stops too - loadSettings had written settings.json's voicingSettings into voicer.json and the
+        // voicer read it in the constructor, so an empty console still held 97 retained stops and every grid cell of
+        // the last organ by name; a tree loaded then took the stale cells of its namesakes and the rest filled the
+        // holes between. The voicing comes back with the configuration that holds it.
+        {
+            juce::DynamicObject::Ptr empty = new juce::DynamicObject();
+            empty->setProperty("stopGrid", juce::var(new juce::DynamicObject()));
+            empty->setProperty("stopPool", juce::var(new juce::DynamicObject()));
+            empty->setProperty("stops", juce::Array<juce::var>());
+            voicerStateFile.replaceWithText(juce::JSON::toString(juce::var(empty.get()), true));
+            if (voicer != nullptr) voicer->loadState(voicerStateFile);
+            voicerStateLoaded = false;
+            embeddedVoicingPresent = false;
+            CrashHandler::note("Started without a configuration: the voicing of the last organ (its grid cells, pool and retained stops) left with it");
+        }
         {
             juce::DynamicObject::Ptr empty = new juce::DynamicObject();
             empty->setProperty("stepCount", crescendoStepCount);
@@ -18219,15 +18235,17 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
             for (const auto& assignment : const_cast<SamplerEngine&>(engine).scanTreeAssignments(tree, false))
             {
                 const juce::String perspective = assignment.perspective.isEmpty() ? juce::String("default") : assignment.perspective;
+                if (assignment.component.isNotEmpty())   // 0.9.23: a half of a stereo stop -> a stop folder with a child row per half
+                {
+                    placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) });
+                    addPerspective(perspective);
+                    continue;
+                }
                 ManualConfig::StopBuild::Entry* target = nullptr;
                 if (assignment.grouped)
                     for (auto& entry : build.entries)
-                        if (stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) == 0)
+                        if (!entry.folders.empty() && stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) == 0)   // never a stop folder
                         { target = &entry; break; }
-                if (target == nullptr && assignment.component.isNotEmpty())   // the other half of a stereo stop joins the row's perspective (0.8.160)
-                    for (auto& entry : build.entries)
-                        if (stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) != 0 && entry.folders[perspective].tree == treeIndex)
-                        { entry.folders[perspective].morePaths.addIfNotAlreadyThere(slashes(assignment.folder.getRelativePathFrom(tree))); target = nullptr; goto nextAssignment; }
                 if (target == nullptr)
                 {
                     ManualConfig::StopBuild::Entry entry;
@@ -18237,7 +18255,6 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
                 }
                 target->folders[perspective] = { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) };
                 addPerspective(perspective);
-                nextAssignment:;
             }
         }
     // "default" first, then the order of the perspective patterns (0.8.231).
@@ -18786,19 +18803,16 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         bool known = false;
         for (const auto& existing : build.perspectives) if (existing.equalsIgnoreCase(perspective)) known = true;
         if (!known) build.perspectives.push_back(perspective);
+        if (assignment.component.isNotEmpty())   // 0.9.23: a half of a stereo stop -> a stop folder with a child row per half
+        {
+            placeHalfInTable(build, assignment.stopName, assignment.component, perspective, { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) });
+            continue;
+        }
         ManualConfig::StopBuild::Entry* target = nullptr;
         if (assignment.grouped)
             for (auto& entry : build.entries)
-                if (stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) == 0)
+                if (!entry.folders.empty() && stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) == 0)   // never a stop folder (no folders of its own)
                 { target = &entry; break; }
-        if (target == nullptr && assignment.component.isNotEmpty())   // the other half of a stereo stop joins the row's perspective (0.8.160)
-        {
-            bool joined = false;
-            for (auto& entry : build.entries)
-                if (stopBuildKey(entry.name) == stopBuildKey(assignment.stopName) && entry.folders.count(perspective) != 0 && entry.folders[perspective].tree == treeIndex)
-                { entry.folders[perspective].morePaths.addIfNotAlreadyThere(slashes(assignment.folder.getRelativePathFrom(tree))); joined = true; break; }
-            if (joined) continue;
-        }
         if (target == nullptr)
         {
             ManualConfig::StopBuild::Entry entry;
@@ -18826,6 +18840,35 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
             runWhenLoaded([this] { offerTransmissionsForLoadedFolders(); });
         }
     }
+}
+
+void MainComponent::placeHalfInTable(ManualConfig::StopBuild& build, const juce::String& stopName, const juce::String& component,
+                                     const juce::String& perspective, const ManualConfig::StopBuild::FolderRef& ref)
+{
+    auto& entries = build.entries;
+    // The container: a non-child row without folders of that name (made here by the other half, or by the user).
+    size_t container = entries.size();
+    for (size_t i = 0; i < entries.size(); ++i)
+        if (!entries[i].child && entries[i].folders.empty() && !entries[i].isTransmission() && stopBuildKey(entries[i].name) == stopBuildKey(stopName)) { container = i; break; }
+    if (container == entries.size())
+    {
+        ManualConfig::StopBuild::Entry folder;
+        folder.name = uniqueStopBuildName(entries, stopName, nullptr);
+        folder.customName = true;   // the stop's name, deliberate - never renamed after its children
+        entries.push_back(folder);
+        container = entries.size() - 1;
+    }
+    // Its children follow it: the half's row by its name (another perspective of the same half), else a new one after the last child.
+    const juce::String childName = stopName + " " + component;
+    size_t end = container + 1;
+    while (end < entries.size() && entries[end].child) ++end;
+    for (size_t i = container + 1; i < end; ++i)
+        if (stopBuildKey(entries[i].name) == stopBuildKey(childName) && entries[i].folders.count(perspective) == 0) { entries[i].folders[perspective] = ref; return; }
+    ManualConfig::StopBuild::Entry child;
+    child.name = uniqueStopBuildName(entries, childName, nullptr);
+    child.child = true;
+    child.folders[perspective] = ref;
+    entries.insert(entries.begin() + (long)end, child);
 }
 
 void MainComponent::applyStopBuild(int manual, const ManualConfig::StopBuild& build, bool arrangeGrid)
