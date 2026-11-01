@@ -2304,6 +2304,34 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   label 120 px); the drop frame's caption sits in the MIDDLE of the column (at the top it covered the division
   header - check where a caption lands before painting it); the console's HintSheen `follow` over Stop List / Load
   Configuration is gone (the class and the Stop List dialog's loadHint stay).
+  0.9.20/0.9.21 (1 Nov 2026): the drop frame carries NO caption (the user: it covered the stops; the orange says
+  it). THE REVERSE CAEN CASE (log 08:47: Caen from the definition, then the package 001691 dropped on III -> "not
+  another perspective", the scan made a row of every folder, "Division(s) 3 rebuilt: 68 stops", the nested tree
+  merged only afterwards): Load folder compared TREES by path, never the folders. Now `MainComponent::
+  usedFolderPlaces()` (the lower-case full paths of every folder a row of any division plays, morePaths
+  included) and `extendStopBuildWithTree` leaves such folders out (log "Load folder: N folder(s) of X are loaded
+  already ... not added again: ...", Messages "Folders loaded already"); `planTreeJoin` excludes them from the
+  perspective candidates (else a folder would be gated against its own row - the same files pass the gate). The
+  merge's `placesOfRef` adds the morePaths halves to every place set (baseFolders, the group rule, the shared
+  rule). L/R BY CONTENT (the user's rule: under -70 dBFS, 0.5 s is plenty): `SamplerEngine::silentChannelComponent
+  (folder)` = up to 3 numbered WAVs of the folder read through SampleFiles::openInput + WavAudioFormat, the first
+  0.5 s, `getMagnitude` per channel, one channel < -70 dBFS and the other not -> "L" (right silent) / "R" (left
+  silent), all read files must agree, mono = nothing; cached per folder (static map + mutex: the scan runs at every
+  Stop List opening / Add stop / join). `componentOfFolder(folder, folderKeys)` (anonymous namespace before
+  listSampleFolders) replaces the two identical lambdas of scanTreeAssignments: the 0.8.160 name rule first, else
+  the content: own half + a sibling named with/without a trailing l/L/r/R (or _l/-l ...) whose content holds the
+  OTHER half. The learning loop drops the letter from the stop part only for a LETTERED name; the assignment's
+  stopName loses a trailing l/L/r/R only after a digit/separator/apostrophe or as a capital after a small letter
+  ("quintaton 16l" -> "quintaton 16", "Principal" stays). Caen Recit (Cornet + CornetL, pleinjeu + pleinjeuL ...):
+  20 folders -> 10 stops, R for the unlettered and L for the lettered half, 37 ms for the scan (ORGAN_TEST_COMPONENTS
+  =<tree> logs every assignment). The halves STAY one row with two folders ("+ half", morePaths) as since 0.8.160 -
+  the definition's stop folder of two children is the other representation and the merge maps one onto the other;
+  a scan producing container+children rows was NOT done (18 morePaths places in the code: regression risk). Hooks:
+  `ORGAN_TEST_DROP_FILES` takes several drops separated by "^" (25 s apart; juce::StringArray::fromTokens splits on
+  single characters - "||" split on every "|"). Tests: %TEMP%\test_components0921.ps1 -Only 1 (the Recit scan),
+  %TEMP%\test_loaded0921.ps1 (Samply on division 1, then Samply\TA: "8 folder(s) ... loaded already", 68 stops
+  stay, the nested tree dropped). A drop-loaded organ is NOT a configuration: a restart "Started without a
+  configuration" empties the library - a two-step test must run in ONE process.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

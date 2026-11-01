@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.21] - 2026-11-01
+
+### Fixed
+- Load folder (and a drop) of a tree whose folders some stop plays already -
+  the package of an organ loaded from its definition, a tree inside or around
+  a loaded one - added every such folder again (the Recit of Caen twice). A
+  folder a row of any division plays, by its place on the disk, is left out
+  now and the Messages name the folders left out.
+- The two halves of a stereo stop are recognised by their content as well:
+  a folder whose stereo files have one channel silent (under -70 dBFS in the
+  first half second) is one half, and a sibling named like it with or without
+  a trailing L/R ("quintaton16" beside "quintaton16l") whose files hold the
+  other half is the other - the two load as one stop with both ranks, as the
+  halves named L and R always did. The merge treats such a joined row as the
+  halves it holds.
+
 ## [0.9.20] - 2026-11-01
 
 ### Changed

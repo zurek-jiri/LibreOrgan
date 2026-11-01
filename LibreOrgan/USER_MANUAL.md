@@ -337,7 +337,8 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
   neighbouring pipes ([What a filled pipe is](#71-what-a-filled-pipe-is)), a file without loops plays to
   its end and loops as a whole.
 - A stop recorded as a left and a right half (`quintaton16L` and
-  `quintaton16R`) is one stop with two folders.
+  `quintaton16R`, or `quintaton16` and `quintaton16L` with one channel
+  silent in each) is one stop with two folders.
 
 ### Releases
 
@@ -695,6 +696,7 @@ can be done here as well, and this is where the organ is built from folders.
   perspective of the loaded stops: folders named like the rows' folders under
   a new prefix, with the same tuning, join their rows as the new perspective
   ([The tuning gate of a perspective join](#105-the-tuning-gate-of-a-perspective-join)); the rest become new rows.
+  Folders the organ plays already are left out (the Messages name them).
   When a tree of the organ is missing on this computer, the menu lists it as
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).

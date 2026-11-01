@@ -823,6 +823,10 @@ public:
     // prefixes the tree reveals (as loading does); false only looks.
     std::vector<FolderAssignment> scanTreeAssignments(const juce::File& tree, bool learnPerspectives);
     static bool folderHasNumberedSamples(const juce::File& folder);
+    // 0.9.21: "L" when the folder's stereo files have a silent RIGHT channel (the left half of a stop), "R"
+    // when the left is silent, "" otherwise - the first 0.5 s of up to three files, silent = under -70 dBFS,
+    // the files must agree; cached per folder.
+    static juce::String silentChannelComponent(const juce::File& folder);
     void commitPendingDivisions();
     bool hasPendingDivisions() const;
     void unloadManual(int manualIndex, bool freeLater = true);   // freeLater: the stops freed on a thread of their own; false: the caller frees them (freeRemovedStopsNow)

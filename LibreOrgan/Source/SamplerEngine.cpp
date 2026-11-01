@@ -11994,6 +11994,83 @@ bool SamplerEngine::folderHasNumberedSamples(const juce::File& folder)
     return foundWav;
 }
 
+juce::String SamplerEngine::silentChannelComponent(const juce::File& folder)
+{
+    // 0.9.21 (the user's rule): one half of a stereo stop by its CONTENT - a stereo WAV whose one channel
+    // stays under -70 dBFS through its first 0.5 s while the other sounds is the L half (the right channel
+    // silent) or the R half (the left silent); the first files of the folder must agree. A silent channel
+    // is heard at once, half a second is plenty. Cached per folder: the scan runs often.
+    static std::map<juce::String, juce::String> cache;
+    static std::mutex cacheMutex;
+    const auto key = folder.getFullPathName().toLowerCase();
+    { std::lock_guard<std::mutex> lock(cacheMutex); if (const auto found = cache.find(key); found != cache.end()) return found->second; }
+    juce::StringArray names;
+    for (const auto& name : fileNamesOf(folder))
+        if (name.endsWithIgnoreCase(".wav") && name.length() > 4 && juce::CharacterFunctions::isDigit(name[0])) names.add(name);
+    names.sort(true);
+    juce::String verdict;
+    int checked = 0;
+    juce::WavAudioFormat wav;
+    const float silent = juce::Decibels::decibelsToGain(-70.0f);
+    for (int i = 0; i < names.size() && checked < 3; ++i)
+    {
+        auto stream = SampleFiles::openInput(folder.getChildFile(names[i]));
+        if (stream == nullptr) continue;
+        std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(stream.release(), true));
+        if (reader == nullptr) continue;
+        if (reader->numChannels != 2) { verdict = {}; checked = 0; break; }
+        const int frames = (int)juce::jmin<juce::int64>(reader->lengthInSamples, (juce::int64)(reader->sampleRate * 0.5));
+        if (frames <= 0) continue;
+        juce::AudioBuffer<float> buffer(2, frames);
+        if (!reader->read(&buffer, 0, frames, 0, true, true)) continue;
+        const float left = buffer.getMagnitude(0, 0, frames), right = buffer.getMagnitude(1, 0, frames);
+        const juce::String one = left < silent && right >= silent ? "R" : right < silent && left >= silent ? "L" : juce::String();
+        if (one.isEmpty() || (checked > 0 && one != verdict)) { verdict = {}; checked = 0; break; }
+        verdict = one;
+        ++checked;
+    }
+    if (checked == 0) verdict = {};
+    std::lock_guard<std::mutex> lock(cacheMutex);
+    cache[key] = verdict;
+    return verdict;
+}
+
+namespace
+{
+    // The L/R half mark of a folder: by the NAME (0.8.160: a single L or R after the footage, or a capital
+    // after a small letter, with the other half beside it), else by the CONTENT (0.9.21: one channel silent,
+    // and a sibling named like it - with or without a trailing l/r, "quintaton16" beside "quintaton16l" -
+    // whose content holds the other half). Shared by the perspective learning and the assignments.
+    juce::String componentOfFolder(const juce::File& folder, const std::set<juce::String>& folderKeys)
+    {
+        const auto name = folder.getFileName();
+        auto present = [&](const juce::String& sibling) { return sibling.isNotEmpty() && folderKeys.count(folder.getSiblingFile(sibling).getFullPathName().toLowerCase()) != 0; };
+        const juce::juce_wchar last = name.getLastCharacter();
+        const bool lettered = name.length() >= 3 && (last == 'L' || last == 'l' || last == 'R' || last == 'r');
+        if (lettered)
+        {
+            const juce::juce_wchar before = name[name.length() - 2];
+            if (juce::CharacterFunctions::isDigit(before) || ((last == 'L' || last == 'R') && juce::CharacterFunctions::isLowerCase(before)))
+            {
+                const juce::String other = name.dropLastCharacters(1) + ((last == 'L' || last == 'l') ? "R" : "L");
+                if (present(other) || present(other.toLowerCase())) return juce::String::charToString(juce::CharacterFunctions::toUpperCase(last));
+            }
+        }
+        const auto own = SamplerEngine::silentChannelComponent(folder);
+        if (own.isEmpty()) return {};
+        juce::StringArray partners;
+        if (lettered) { partners.add(name.dropLastCharacters(1)); partners.add(name.dropLastCharacters(1) + ((last == 'L' || last == 'l') ? "R" : "L")); }
+        for (const char* suffix : { "L", "l", "R", "r", "_L", "_l", "_R", "_r", "-L", "-l", "-R", "-r" }) partners.add(name + suffix);
+        for (const auto& partner : partners)
+        {
+            if (!present(partner)) continue;
+            const auto theirs = SamplerEngine::silentChannelComponent(folder.getSiblingFile(partner));
+            if (theirs.isNotEmpty() && theirs != own) return own;
+        }
+        return {};
+    }
+}
+
 std::vector<juce::File> SamplerEngine::listSampleFolders(const juce::File& tree) const
 {
     std::vector<juce::File> result;
@@ -12049,19 +12126,7 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
         // 0.8.159): one stop for the comparison, else a perspective seen only with
         // its left half never matched the one with the right ("AB_glockentonL" and
         // "AB_glockentonR" against "Re_glockenton" kept AB and Re from being learned).
-        auto componentOf = [&folderKeys](const juce::File& folder) -> juce::String
-        {
-            const auto name = folder.getFileName();
-            if (name.length() < 3) return {};
-            const juce::juce_wchar last = name.getLastCharacter(), before = name[name.length() - 2];
-            if (!(last == 'L' || last == 'l' || last == 'R' || last == 'r')) return {};
-            // After the footage ("quintaton16L"), or a capital after a small letter ("glockentonL").
-            if (!juce::CharacterFunctions::isDigit(before) && !((last == 'L' || last == 'R') && juce::CharacterFunctions::isLowerCase(before))) return {};
-            const juce::String other = name.dropLastCharacters(1) + ((last == 'L' || last == 'l') ? "R" : "L");
-            if (folderKeys.count(folder.getSiblingFile(other).getFullPathName().toLowerCase()) == 0
-                && folderKeys.count(folder.getSiblingFile(other.toLowerCase()).getFullPathName().toLowerCase()) == 0) return {};
-            return juce::String::charToString(juce::CharacterFunctions::toUpperCase(last));
-        };
+        auto componentOf = [&folderKeys](const juce::File& folder) { return componentOfFolder(folder, folderKeys); };   // 0.9.21: one test for both loops
         int consideredStops = 0;   // 0.8.223: the stop folders held against the candidates (a head ALL of them carry)
         for (const juce::File& stopFolder : allFolders)
         {
@@ -12070,7 +12135,9 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
             if (patternMatches(name)) continue;   // already a known perspective
             ++consideredStops;
             auto isSeparator = [](juce::juce_wchar c) { return c == '-' || c == '_' || c == ' '; };
-            const bool component = componentOf(stopFolder).isNotEmpty();
+            const juce::juce_wchar lastOfName = name.getLastCharacter();
+            const bool lettered = lastOfName == 'L' || lastOfName == 'l' || lastOfName == 'R' || lastOfName == 'r';
+            const bool component = componentOf(stopFolder).isNotEmpty() && lettered;   // 0.9.21: an unlettered half ("quintaton16") keeps its name whole
             for (int i = 1; i < name.length() && i <= 24; ++i)
             {
                 if (!isSeparator(name[i - 1]) || isSeparator(name[i])) continue;   // cut right after a separator run
@@ -12181,19 +12248,8 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
     {
         return stripPerspectivePrefix(perspectives, name, matchedPerspective);
     };
-    // The L/R half mark of a folder (see the learning above): the same test.
-    auto componentOf = [&folderKeys](const juce::File& folder) -> juce::String
-    {
-        const auto name = folder.getFileName();
-        if (name.length() < 3) return {};
-        const juce::juce_wchar last = name.getLastCharacter(), before = name[name.length() - 2];
-        if (!(last == 'L' || last == 'l' || last == 'R' || last == 'r')) return {};
-        if (!juce::CharacterFunctions::isDigit(before) && !((last == 'L' || last == 'R') && juce::CharacterFunctions::isLowerCase(before))) return {};
-        const juce::String other = name.dropLastCharacters(1) + ((last == 'L' || last == 'l') ? "R" : "L");
-        if (folderKeys.count(folder.getSiblingFile(other).getFullPathName().toLowerCase()) == 0
-            && folderKeys.count(folder.getSiblingFile(other.toLowerCase()).getFullPathName().toLowerCase()) == 0) return {};
-        return juce::String::charToString(juce::CharacterFunctions::toUpperCase(last));
-    };
+    // The L/R half mark of a folder (see the learning above): the same test (0.9.21: by the name or the content).
+    auto componentOf = [&folderKeys](const juce::File& folder) { return componentOfFolder(folder, folderKeys); };
 
     std::vector<FolderAssignment> assignments;
     for (const juce::File& stopFolder : allFolders)
@@ -12266,7 +12322,17 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
         // folders become ranks of it. Only a single L or R right after the footage
         // with the other half beside it; "Mixtur4x" or "Zimbel3" say the rank count.
         const juce::String component = componentOf(stopFolder);
-        if (component.isNotEmpty() && stopName.endsWithIgnoreCase(component)) stopName = stopName.dropLastCharacters(1).trimEnd();
+        if (component.isNotEmpty() && stopName.length() >= 2)
+        {
+            // The half's letter leaves the stop's name (both halves must agree on it): a trailing l/L/r/R
+            // after a digit, a separator or - as a capital - after a small letter ("quintaton 16l", "PrincipalR");
+            // an unlettered half ("quintaton16") keeps its name whole (0.9.21).
+            const juce::juce_wchar lastOfName = stopName.getLastCharacter(), beforeLast = stopName[stopName.length() - 2];
+            const bool letter = lastOfName == 'L' || lastOfName == 'l' || lastOfName == 'R' || lastOfName == 'r';
+            const bool cut = letter && (juce::CharacterFunctions::isDigit(beforeLast) || beforeLast == ' ' || beforeLast == '_' || beforeLast == '-' || beforeLast == '\''
+                || ((lastOfName == 'L' || lastOfName == 'R') && juce::CharacterFunctions::isLowerCase(beforeLast)));
+            if (cut) stopName = stopName.dropLastCharacters(1).trimCharactersAtEnd(" _-");
+        }
         // Perspective folders of one stop name form one stop; a folder without a
         // perspective prefix is a stop of its own ("default" perspective).
         FolderAssignment assignment{ stopFolder, stopName, perspective, patterned || component.isNotEmpty() };

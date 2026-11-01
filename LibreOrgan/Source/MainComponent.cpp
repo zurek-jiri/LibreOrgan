@@ -2227,17 +2227,42 @@ MainComponent::MainComponent()
     // console 3 s after the start (ORGAN_TEST_CLICK_AT seconds when set), division -1 = outside the columns.
     if (const char* env = std::getenv("ORGAN_TEST_DROP_FILES"))
     {
-        const auto spec = juce::String::fromUTF8(env);
-        const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
-        const auto paths = juce::StringArray::fromTokens(spec.fromFirstOccurrenceOf("|", false, false), ";", "");
+        // Several drops in one run (0.9.21): "<division>|<paths>^<division>|<paths>", 25 s apart (fromTokens
+        // splits on single CHARACTERS: "||" would split on every "|").
+        const auto drops = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", "");
         const char* at = std::getenv("ORGAN_TEST_DROP_AT") != nullptr ? std::getenv("ORGAN_TEST_DROP_AT") : std::getenv("ORGAN_TEST_CLICK_AT");   // seconds; its own moment when the clicks have theirs
         const int atMs = at != nullptr ? juce::jmax(1, juce::String(at).getIntValue()) * 1000 : 3000;
         juce::Component::SafePointer<MainComponent> safeThis(this);
-        juce::Timer::callAfterDelay(atMs, [safeThis, paths, division]
+        for (int d = 0; d < drops.size(); ++d)
+        {
+            const auto spec = drops[d].trim();
+            if (spec.isEmpty()) continue;
+            const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
+            const auto paths = juce::StringArray::fromTokens(spec.fromFirstOccurrenceOf("|", false, false), ";", "");
+            juce::Timer::callAfterDelay(atMs + 25000 * d, [safeThis, paths, division]
+            {
+                if (safeThis == nullptr) return;
+                CrashHandler::note("ORGAN_TEST_DROP_FILES: " + paths.joinIntoString("; ") + " -> division " + juce::String(division));
+                safeThis->takeDroppedFiles(paths, division);
+            });
+        }
+    }
+    // ORGAN_TEST_COMPONENTS=<tree> (tests, 0.9.21): the scan's assignments of the tree logged 2 s after the
+    // start - name, perspective, component (L/R by name or by a silent channel), grouped - nothing loaded.
+    if (const char* env = std::getenv("ORGAN_TEST_COMPONENTS"))
+    {
+        const juce::File tree(juce::String::fromUTF8(env));
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(2000, [safeThis, tree]
         {
             if (safeThis == nullptr) return;
-            CrashHandler::note("ORGAN_TEST_DROP_FILES: " + paths.joinIntoString("; ") + " -> division " + juce::String(division));
-            safeThis->takeDroppedFiles(paths, division);
+            const auto started = juce::Time::getMillisecondCounterHiRes();
+            const auto assignments = safeThis->engine.scanTreeAssignments(tree, false);
+            CrashHandler::note("ORGAN_TEST_COMPONENTS: " + tree.getFullPathName() + " - " + juce::String((int)assignments.size()) + " assignment(s) in "
+                + juce::String(juce::Time::getMillisecondCounterHiRes() - started, 0) + " ms");
+            for (const auto& a : assignments)
+                CrashHandler::note("ORGAN_TEST_COMPONENTS: " + a.folder.getFileName() + " -> stop \"" + a.stopName + "\" perspective " + a.perspective
+                    + (a.component.isNotEmpty() ? " component " + a.component : juce::String()) + (a.grouped ? " grouped" : "") + (a.container ? " container" : ""));
         });
     }
     // ORGAN_TEST_READY_STOPS="<division>|<stop name>" (tests, 0.9.18): once the organ is loaded the
@@ -18575,8 +18600,10 @@ std::unique_ptr<MainComponent::TreeJoinPlan> MainComponent::planTreeJoin(const j
     // from the tree itself - the organ still has no Far folders, so they are to be joined).
     std::vector<juce::String> unplaced;
     std::map<juce::String, juce::File> folderOfName;
+    const auto used = usedFolderPlaces();   // 0.9.21: a folder a row plays already is no candidate (it would be paired with its own row)
     for (const auto& a : assignments)
-        if (a.perspective.isEmpty() || a.perspective == "default" || perspectivesOfRows.count(a.perspective.toLowerCase()) == 0)
+        if (used.count(a.folder.getFullPathName().toLowerCase()) == 0
+            && (a.perspective.isEmpty() || a.perspective == "default" || perspectivesOfRows.count(a.perspective.toLowerCase()) == 0))
         { unplaced.push_back(a.folder.getFileName()); folderOfName[a.folder.getFileName().toLowerCase()] = a.folder; }
     plan->candidates = (int)unplaced.size();
     if (unplaced.empty()) { plan->why = "every folder carries a perspective prefix the organ has already"; return plan; }
@@ -18723,8 +18750,15 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         else CrashHandler::note("Load folder: " + tree.getFullPathName() + " is not another perspective of the loaded organ ("
             + (plan.named > 0 ? juce::String(plan.named) + " folder name(s) matched after the prefix " + plan.head + ", the tuning gate refused " + juce::String(plan.refused) : plan.why) + ")");
     }
+    // 0.9.21 (the user's Caen: the package 001691 dropped after the organ had its Recit from the folder
+    // 001691\pipe\rec - every Recit stop came a second time): a folder some row of ANY division plays
+    // already, by its place on the disk, is left out and the Messages name it; a nested tree's rows are
+    // moved to the outer tree by dropNestedTrees afterwards.
+    const auto used = usedFolderPlaces();
+    juce::StringArray alreadyLoaded;
     for (const auto& assignment : assignments)
     {
+        if (used.count(assignment.folder.getFullPathName().toLowerCase()) != 0) { alreadyLoaded.add(assignment.folder.getFileName()); continue; }
         if (const auto joined = joinRow.find(assignment.folder.getFileName().toLowerCase()); joined != joinRow.end())
         {
             auto& joinedBuild = manualConfigs[(size_t)joined->second.first].stopBuild;
@@ -18767,6 +18801,15 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
             target = &build.entries.back();
         }
         target->folders[perspective] = { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) };
+    }
+    if (!alreadyLoaded.isEmpty())
+    {
+        juce::StringArray shown;
+        for (int i = 0; i < alreadyLoaded.size() && i < 12; ++i) shown.add(alreadyLoaded[i]);
+        if (alreadyLoaded.size() > 12) shown.add("... (" + juce::String(alreadyLoaded.size()) + " in all)");
+        CrashHandler::note("Load folder: " + juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFullPathName() + " are loaded already (played by a row of the organ) and were not added again: " + alreadyLoaded.joinIntoString(", "));
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Folders loaded already",
+            juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFileName() + " are played by stops of the organ already and were not added again: " + shown.joinIntoString(", "));
     }
 }
 
@@ -19091,6 +19134,30 @@ void MainComponent::createStopFolderOnGrid(int manual, int column, int row)
         + " (cell " + juce::String(column) + "," + juce::String(row) + ")");
     engine.addContainerStop(manual, entry.name);   // in place: an empty stop, nothing reloaded
     finishInPlaceStopEdit({ manual });
+}
+
+std::set<juce::String> MainComponent::usedFolderPlaces()
+{
+    std::set<juce::String> places;
+    for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+    {
+        const auto& config = manualConfigs[(size_t)m];
+        const auto entries = config.stopBuild.active ? config.stopBuild.entries : deriveStopBuildFromEngine(m).entries;
+        for (const auto& entry : entries)
+            for (const auto& [perspective, ref] : entry.folders)
+            {
+                if (ref.tree < 0 || ref.tree >= (int)sampleTrees.size()) continue;
+                const juce::File tree(sampleTrees[(size_t)ref.tree]);
+                auto placeOfPath = [&tree](const juce::String& path)
+                {
+                    const auto relative = juce::String(path).replaceCharacter('/', juce::File::getSeparatorChar());
+                    return (relative.isEmpty() || relative == "." ? tree : tree.getChildFile(relative)).getFullPathName().toLowerCase();
+                };
+                places.insert(placeOfPath(ref.relativePath));
+                for (const auto& more : ref.morePaths) places.insert(placeOfPath(more));
+            }
+    }
+    return places;
 }
 
 std::vector<MainComponent::ReadyStop> MainComponent::readyStopsNotIn(int manual, const std::vector<ManualConfig::StopBuild::Entry>& entries)

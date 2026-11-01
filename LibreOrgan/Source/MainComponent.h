@@ -72,6 +72,9 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
     void paintOverChildren(juce::Graphics& g) override;
     void takeDroppedFiles(const juce::StringArray& files, int division);   // the drop and the test hook ORGAN_TEST_DROP_FILES
+    // 0.9.21: the places on disk (lower-case full paths) of every folder a row of any division plays, the
+    // second halves (morePaths) included - a folder loaded again by whatever tree is never a second row.
+    std::set<juce::String> usedFolderPlaces();
     int divisionAtPoint(juce::Point<int> point) const;                     // the division column under a point of this component, -1 none
     juce::Rectangle<int> fileDropHighlight;                                // the framed column while a drag is over it
     int fileDropDivision = -1;
