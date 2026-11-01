@@ -32,7 +32,6 @@ body:
         - "burton-berlin-hill"
         - "casavant-organ-model"
         - "dom-b-dos-organ-model"
-        - "hill-english-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false

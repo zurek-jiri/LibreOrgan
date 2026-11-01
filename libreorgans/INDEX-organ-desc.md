@@ -27,7 +27,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)▼ | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
-| [Hill English Organ Model](hill-english-organ-model/README.md) | 4 | 48 | 4.7 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20hill-english-organ-model&organ=hill-english-organ-model) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model) |
 | [Casavant Organ Model](casavant-organ-model/README.md) | 4 | 74 | 4.9 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20casavant-organ-model&organ=casavant-organ-model) |
 | [Bückeburg, Janke](b-ckeburg-janke-organ/README.md) | 4 | 47 | 5.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20b-ckeburg-janke-organ&organ=b-ckeburg-janke-organ) |
@@ -43,4 +42,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
 | [Adlington Hall (Smith)](adlington-hall-smith/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-smith&organ=adlington-hall-smith) |
 
-17 configuration(s).
+16 configuration(s).
