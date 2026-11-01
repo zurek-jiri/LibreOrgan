@@ -31,6 +31,7 @@ struct LoadStep
 };
 
 class MainComponent : public juce::AudioAppComponent,
+    public juce::FileDragAndDropTarget,   // 0.9.18: folders, archives and configurations dropped on the console
     private juce::MidiInputCallback,
     private juce::MidiKeyboardStateListener,
     private juce::Timer
@@ -60,6 +61,20 @@ public:
     // a Hauptwerk definition). A file given to a running instance goes through openFileFromDesktop.
     static juce::File startupFile;
     void openFileFromDesktop(const juce::File& file);
+    // 0.9.18: drag and drop from the file manager onto the console - the same paths as the buttons: folders and
+    // RAR archives dropped over a division are loaded into it as Load folder... would (a configuration, a
+    // published zip or a Hauptwerk definition among them goes through Load Configuration instead, several of
+    // them through a choice); the division column under the mouse is framed while dragging.
+    bool isInterestedInFileDrag(const juce::StringArray& files) override;
+    void fileDragEnter(const juce::StringArray& files, int x, int y) override;
+    void fileDragMove(const juce::StringArray& files, int x, int y) override;
+    void fileDragExit(const juce::StringArray& files) override;
+    void filesDropped(const juce::StringArray& files, int x, int y) override;
+    void paintOverChildren(juce::Graphics& g) override;
+    void takeDroppedFiles(const juce::StringArray& files, int division);   // the drop and the test hook ORGAN_TEST_DROP_FILES
+    int divisionAtPoint(juce::Point<int> point) const;                     // the division column under a point of this component, -1 none
+    juce::Rectangle<int> fileDropHighlight;                                // the framed column while a drag is over it
+    int fileDropDivision = -1;
    #if JUCE_LINUX
     void showMainWindow(juce::ResizableWindow& window);   // right after setVisible(true): the first paint at once (0.8.170)
    #endif

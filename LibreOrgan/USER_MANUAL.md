@@ -244,7 +244,9 @@ and *Load Configuration* are in the top bar; Load also takes a published
 `.zip`, RAR archives, or a Hauptwerk definition (not loaded as such: read for
 the folder paths and the stop arrangement only, the organ is built from the
 folders). Any of these files dropped on the program's icon (or opened with
-the program) is loaded the same way, by a running program too. A configuration with unsaved changes asks at quit or at the next
+the program), or onto the console itself, is loaded the same way. With an
+organ loaded, the load box also asks whether the file replaces it or is
+merged into it. A configuration with unsaved changes asks at quit or at the next
 load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks
 how they are to be held in RAM (storage, packing, rate -
 [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with
@@ -281,7 +283,8 @@ line of `libreorgans/INDEX.md`. A new version replaces the old one.
 ### Merging another configuration into the loaded organ
 
 Right-click *Load Configuration* > *Merge another configuration into this
-organ*. The added stops become further rows under the rows of their division
+organ* (or choose *Merge it into the loaded organ* in the load box of an
+ordinary load). The added stops become further rows under the rows of their division
 (drag them where they belong), their folder trees join yours, their voicing
 comes along. When the program finds that an added folder is a further
 perspective of a stop you have, it joins that stop's row as the new
@@ -696,7 +699,9 @@ can be done here as well, and this is where the organ is built from folders.
   **NOT FOUND on this computer: replace "..." with a folder on this
   computer...** ([Sample folders not found](#sample-folders-not-found)).
   A folder holding the sample files themselves is loaded as a tree of that
-  one stop.
+  one stop. Folders or archives dragged from the file manager onto a
+  division's column on the console are loaded there the same way (a folder
+  without sample folders is refused with a message).
 - **Unload folder...** removes one tree from the whole organ; the rows that
   had folders of that tree only go with it, a row with a folder of another
   tree stays. A tree not on this computer is marked NOT FOUND here, so a

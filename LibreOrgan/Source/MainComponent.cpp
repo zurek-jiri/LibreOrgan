@@ -2221,6 +2221,54 @@ MainComponent::MainComponent()
             });
         }
     }
+    // ORGAN_TEST_DROP_FILES="<division>|<path>;<path>..." (tests, 0.9.18): the paths dropped on the
+    // console 3 s after the start (ORGAN_TEST_CLICK_AT seconds when set), division -1 = outside the columns.
+    if (const char* env = std::getenv("ORGAN_TEST_DROP_FILES"))
+    {
+        const auto spec = juce::String::fromUTF8(env);
+        const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
+        const auto paths = juce::StringArray::fromTokens(spec.fromFirstOccurrenceOf("|", false, false), ";", "");
+        const char* at = std::getenv("ORGAN_TEST_DROP_AT") != nullptr ? std::getenv("ORGAN_TEST_DROP_AT") : std::getenv("ORGAN_TEST_CLICK_AT");   // seconds; its own moment when the clicks have theirs
+        const int atMs = at != nullptr ? juce::jmax(1, juce::String(at).getIntValue()) * 1000 : 3000;
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(atMs, [safeThis, paths, division]
+        {
+            if (safeThis == nullptr) return;
+            CrashHandler::note("ORGAN_TEST_DROP_FILES: " + paths.joinIntoString("; ") + " -> division " + juce::String(division));
+            safeThis->takeDroppedFiles(paths, division);
+        });
+    }
+    // ORGAN_TEST_READY_STOPS="<division>|<stop name>" (tests, 0.9.18): once the organ is loaded the
+    // ready-made stops of the division are logged, the named one is added (the grid's "New stop
+    // here" path) and the list is logged again 10 s later - the added stop must be gone from it.
+    if (const char* env = std::getenv("ORGAN_TEST_READY_STOPS"))
+    {
+        const auto spec = juce::String::fromUTF8(env);
+        const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
+        const auto name = spec.fromFirstOccurrenceOf("|", false, false);
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        auto listed = [safeThis, division](const juce::String& when)
+        {
+            if (safeThis == nullptr || division < 0 || division > safeThis->manualCount) return juce::StringArray();
+            const auto& config = safeThis->manualConfigs[(size_t)division];
+            const auto entries = config.stopBuild.active ? config.stopBuild.entries : safeThis->deriveStopBuildFromEngine(division).entries;
+            juce::StringArray names;
+            for (const auto& ready : safeThis->readyStopsNotIn(division, entries)) names.add(ready.name);
+            CrashHandler::note("ORGAN_TEST_READY_STOPS " + when + ": " + juce::String(names.size()) + " ready-made stop(s) offered for division " + juce::String(division) + ": " + names.joinIntoString(", "));
+            return names;
+        };
+        runWhenLoaded([safeThis, listed, division, name]
+        {
+            if (safeThis == nullptr) return;
+            listed("before");
+            if (division < 0 || division > safeThis->manualCount) return;
+            const auto& config = safeThis->manualConfigs[(size_t)division];
+            const auto entries = config.stopBuild.active ? config.stopBuild.entries : safeThis->deriveStopBuildFromEngine(division).entries;
+            for (const auto& ready : safeThis->readyStopsNotIn(division, entries))
+                if (ready.name == name) { CrashHandler::note("ORGAN_TEST_READY_STOPS: adding " + name); safeThis->addReadyStopToDivision(division, ready); break; }
+            juce::Timer::callAfterDelay(10000, [listed] { listed("after"); });
+        });
+    }
     // ORGAN_TEST_CLICK="<button text>|<button text>..." (tests, 0.8.173): the named buttons
     // of the console clicked 3 s after start, one every 2 s - a dialog opened without a
     // mouse (the Wayland desktop has no xdotool; the 0.8.172 regression of the launchAsync
@@ -11176,6 +11224,150 @@ void MainComponent::openFileFromDesktop(const juce::File& file)
     askToKeepChanges("Load Configuration", "load", [guard, file] { if (guard != nullptr) guard->loadConfigurationFile(file); });
 }
 
+// 0.9.18: drag and drop from the file manager onto the console. Nothing new behind it - the drop is one more
+// way into the existing paths: folders and RAR archives go where "Load folder..." sends them
+// (loadChosenIntoDivision: the archives registered and indexed, a definition inside offered, the trees joined
+// to the division's table and loaded), a configuration / zip / definition goes through loadConfigurationFile
+// (the load box included). The division is the column under the mouse; outside the columns the division is asked.
+int MainComponent::divisionAtPoint(juce::Point<int> point) const
+{
+    if (voicer == nullptr || !stopsViewport.getBounds().contains(point)) return -1;
+    const auto local = stopsContent.getLocalPoint(this, point);
+    for (const auto& [manual, area] : voicer->divisionGridAreas())
+        if (local.x >= area.getX() && local.x < area.getRight() && manual >= 0 && manual <= manualCount) return manual;
+    return -1;
+}
+
+bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)
+{
+    // Never while something loads or a box waits for an answer (the drop would land behind it).
+    if (activeFolderLoader != nullptr || juce::ModalComponentManager::getInstance()->getNumModalComponents() > 0) return false;
+    for (const auto& path : files)
+    {
+        const juce::File file(path);
+        if (file.isDirectory() || ArchiveExtractor::looksLikeArchive(file) || HauptwerkOdf::looksLikeOdf(file) || file.hasFileExtension("json;zip")) return true;
+    }
+    return false;
+}
+
+void MainComponent::fileDragEnter(const juce::StringArray& files, int x, int y) { fileDragMove(files, x, y); }
+
+void MainComponent::fileDragMove(const juce::StringArray&, int x, int y)
+{
+    const int division = divisionAtPoint({ x, y });
+    juce::Rectangle<int> frame;
+    if (division >= 0 && voicer != nullptr)
+        for (const auto& [manual, area] : voicer->divisionGridAreas())
+            if (manual == division)
+            {
+                const auto column = getLocalArea(&stopsContent, area);
+                frame = juce::Rectangle<int>(column.getX(), stopsViewport.getY(), column.getWidth(), stopsViewport.getHeight()).getIntersection(stopsViewport.getBounds());
+            }
+    if (frame == fileDropHighlight && division == fileDropDivision) return;
+    fileDropHighlight = frame;
+    fileDropDivision = division;
+    repaint();
+}
+
+void MainComponent::fileDragExit(const juce::StringArray&)
+{
+    if (fileDropHighlight.isEmpty() && fileDropDivision < 0) return;
+    fileDropHighlight = {};
+    fileDropDivision = -1;
+    repaint();
+}
+
+void MainComponent::filesDropped(const juce::StringArray& files, int x, int y)
+{
+    const int division = divisionAtPoint({ x, y });
+    fileDragExit(files);
+    takeDroppedFiles(files, division);
+}
+
+void MainComponent::paintOverChildren(juce::Graphics& g)
+{
+    if (fileDropHighlight.isEmpty()) return;
+    const auto frame = fileDropHighlight.toFloat().reduced(2.0f);
+    g.setColour(juce::Colours::orange.withAlpha(0.12f));
+    g.fillRoundedRectangle(frame, 6.0f);
+    g.setColour(juce::Colours::orange.withAlpha(0.9f));
+    g.drawRoundedRectangle(frame, 6.0f, 3.0f);
+    g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
+    g.drawText("Load folder into " + (fileDropDivision == 0 ? juce::String("the Pedal") : "Manual " + romanNumeral(fileDropDivision)),
+        fileDropHighlight.withHeight(28).translated(0, 6), juce::Justification::centred);
+}
+
+void MainComponent::takeDroppedFiles(const juce::StringArray& paths, int division)
+{
+    if (activeFolderLoader != nullptr)
+    {
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Dropped folders", "Please wait until the folders have finished loading, then drop them again.");
+        return;
+    }
+    std::vector<juce::File> folders, archives, configurations;
+    juce::StringArray refused, ignored;
+    // A configuration or an organ definition lying directly in a dropped folder (or in its
+    // OrganDefinitions subfolder): the folder is an organ, not a tree of sample folders.
+    auto configurationsIn = [](const juce::File& folder, std::vector<juce::File>& into)
+    {
+        for (const auto& file : folder.findChildFiles(juce::File::findFiles, false, "*.json"))
+            if (file.loadFileAsString().contains("\"manualKeyboards\"")) into.push_back(file);
+        for (const auto& place : { folder, folder.getChildFile("OrganDefinitions") })
+            if (place.isDirectory())
+                for (const auto& file : place.findChildFiles(juce::File::findFiles, false, "*"))
+                    if (HauptwerkOdf::looksLikeOdf(file)) into.push_back(file);
+    };
+    for (const auto& path : paths)
+    {
+        const juce::File file(path);
+        if (file.isDirectory())
+        {
+            const size_t before = configurations.size();
+            configurationsIn(file, configurations);
+            if (configurations.size() > before) continue;
+            bool usable = false;
+            for (const auto& assignment : engine.scanTreeAssignments(file, false)) if (!assignment.container) { usable = true; break; }
+            if (usable) folders.push_back(file); else refused.add(file.getFullPathName());
+        }
+        else if (ArchiveExtractor::looksLikeArchive(file)) archives.push_back(file);
+        else if (HauptwerkOdf::looksLikeOdf(file) || file.hasFileExtension("json;zip")) configurations.push_back(file);
+        else ignored.add(file.getFileName());
+    }
+    CrashHandler::note("Dropped on the console: " + juce::String((int)folders.size()) + " folder tree(s), " + juce::String((int)archives.size()) + " archive(s), "
+        + juce::String((int)configurations.size()) + " configuration(s)/definition(s), " + juce::String(refused.size()) + " folder(s) refused, "
+        + juce::String(ignored.size()) + " other file(s) ignored -> division " + juce::String(division));
+    if (!refused.isEmpty())
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Folder refused",
+            "No sample folders were found in:\n" + refused.joinIntoString("\n") + "\n\nDrop the top folder of the samples (one folder per stop below it, WAV files named by their key) or a stop folder itself.");
+    if (!ignored.isEmpty())
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Files ignored", "Not a folder, an archive or a configuration: " + ignored.joinIntoString(", "));
+    juce::Component::SafePointer<MainComponent> guard(this);
+    if (!configurations.empty())
+    {
+        // The organ: the archives dropped with it serve its paths (chosen by the drop, 0.8.177), the folders
+        // dropped with it are places to look under; then Load Configuration as the button does it.
+        for (const auto& archive : archives) registerArchive(archive);
+        for (const auto& folder : folders) noteSampleLocation(folder.getParentDirectory());
+        auto load = [guard](const juce::File& file)
+        {
+            if (guard == nullptr) return;
+            guard->askToKeepChanges("Load Configuration", "load", [guard, file] { if (guard != nullptr) guard->loadConfigurationFile(file); });
+        };
+        if (configurations.size() == 1) { load(configurations.front()); return; }
+        juce::StringArray names;
+        for (const auto& file : configurations) names.add(file.getFileName());
+        chooseFromList("Load Configuration", "Several configurations or organ definitions were dropped. Load which one?", names, "Load",
+            [load, configurations](int index) { if (index >= 0 && index < (int)configurations.size()) load(configurations[(size_t)index]); });
+        return;
+    }
+    if (folders.empty() && archives.empty()) return;
+    auto proceed = [guard, folders, archives](int manual) { if (guard != nullptr) guard->loadChosenIntoDivision(folders, archives, false, juce::File(), manual); };
+    if (division >= 0 && division <= manualCount) { proceed(division); return; }
+    juce::StringArray names;
+    for (int manual = 0; manual <= manualCount; ++manual) names.add(manual == 0 ? juce::String("Pedal") : "Manual " + romanNumeral(manual));
+    chooseFromList("Load folder", "Which division do the stops of the dropped folder(s) go to? (Drop them on a division's column next time.)", names, "Load", proceed);
+}
+
 void MainComponent::chooseConfigurationToLoad()
 {
     // The instrument in use first: its unsaved changes are offered for saving.
@@ -11282,6 +11474,13 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
         // file) becomes the open file; "keepExisting" loads the folder's own file.
         juce::String choice;
         if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("fileChoice")) { choice = r->getProperty("fileChoice").toString(); r->removeProperty("fileChoice"); }
+        // 0.9.18: the box's "Merge it into the loaded organ" = the right click's merge, with this file.
+        if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("mergeIntoLoaded"))
+        {
+            const bool merge = (bool)r->getProperty("mergeIntoLoaded");
+            r->removeProperty("mergeIntoLoaded");
+            if (merge) { safeThis->mergeConfiguration(chosen, source, source.getFileNameWithoutExtension(), {}); return; }
+        }
         if (choice == "keepExisting")
         {
             const auto existing = safeThis->configurationsCopyOf(source);
@@ -11576,17 +11775,29 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         window->addComboBox("fileChoice", items, label);
         window->getComboBoxComponent("fileChoice")->setSelectedItemIndex(0, juce::dontSendNotification);
     }
+    // 0.9.18 (the user): with an organ loaded the box also asks whether this file replaces it or is merged
+    // into it - the merge of the right click on Load Configuration as a choice of the normal dialog.
+    const bool organLoaded = !engine.getStops().isEmpty();
+    if (organLoaded)
+    {
+        window->addComboBox("action", { "Load it as a new organ  [default]  (the loaded organ is closed)",
+            "Merge it into the loaded organ  (its stops and folders are added to the organ loaded now)" }, "An organ is loaded now");
+        const char* testAction = std::getenv("ORGAN_TEST_LOAD_ACTION");   // tests: "merge" preselects the merge
+        window->getComboBoxComponent("action")->setSelectedItemIndex(testAction != nullptr && juce::String(testAction) == "merge" ? 1 : 0, juce::dontSendNotification);
+    }
     window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::Component::SafePointer<juce::AlertWindow> box(window);
-    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds](int result) mutable
+    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds, organLoaded](int result) mutable
     {
         if (safeThis == nullptr || box == nullptr) return;
         if (result != 1) { CrashHandler::note("Load Configuration \"" + what + "\": cancelled at the sample storage choices"); return; }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
+        if (organLoaded && box->getComboBoxComponent("action")->getSelectedItemIndex() == 1)
+            if (auto* r = configuration.getDynamicObject()) { r->setProperty("mergeIntoLoaded", true); CrashHandler::note("Load Configuration \"" + what + "\": to be merged into the loaded organ (the box's choice)"); }
         if (!choiceIds.isEmpty())
             if (auto* r = configuration.getDynamicObject())
             {
@@ -12790,11 +13001,25 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         safeThis->hauptwerkImport = odf;
         safeThis->suppressPortableNotice = true;   // made here and now: no "from another computer" notice, the import's own report follows
         const juce::File configurationFile = plan.configurationFile;
-        safeThis->askLoadOptions(configuration, configurationFile.getFileNameWithoutExtension(), [safeThis, odf, configurationFile, summary](juce::var chosen)
+        safeThis->askLoadOptions(configuration, configurationFile.getFileNameWithoutExtension(), [safeThis, odf, odfFile, configurationFile, summary](juce::var chosen)
         {
             if (safeThis == nullptr) return;
             juce::String choice;
             if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("fileChoice")) { choice = r->getProperty("fileChoice").toString(); r->removeProperty("fileChoice"); }
+            // 0.9.18: the box's "Merge it into the loaded organ" = the right click's merge of this definition
+            // (read again on the merge path; nothing is written into the LibreOrgans folder for it).
+            if (auto* r = chosen.getDynamicObject(); r != nullptr && r->hasProperty("mergeIntoLoaded"))
+            {
+                const bool merge = (bool)r->getProperty("mergeIntoLoaded");
+                r->removeProperty("mergeIntoLoaded");
+                if (merge)
+                {
+                    safeThis->hauptwerkImport = nullptr;
+                    CrashHandler::note("Hauptwerk import: merged into the loaded organ instead (the load box's choice)");
+                    safeThis->importHauptwerkOdf(odfFile, true);
+                    return;
+                }
+            }
             if (choice == "keepExisting")
             {
                 // The configuration already in the folder is loaded instead; nothing imported,

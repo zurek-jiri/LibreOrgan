@@ -2252,6 +2252,35 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   exception applies only while `engine.lastLoadWasMemoryLimited()`; every other row with folders uses them from the
   moment it exists (the Stop List's Add stop... and the grid's free cell both go through readyStopsNotIn). Not driven
   by a run (no hook for the Add stop... menu); the rule is one condition at the top of the used-places loop.
+  0.9.18 (1 Nov 2026, the user: drag & drop of folders/rars/configurations onto the console, "napoj to na existující
+  struktury ... jen vstup odjinud"): `MainComponent` is a `juce::FileDragAndDropTarget` (no DragAndDropContainer
+  existed; the GlowLayer/HintSheen/frozenGrid children take no mouse, so the target is reached through them).
+  `isInterestedInFileDrag` refuses while `activeFolderLoader` runs or any modal component is up; `divisionAtPoint`
+  = the column of `voicer->divisionGridAreas()` (stopsContent coords) under the point inside stopsViewport;
+  `fileDragMove` frames the column (`fileDropHighlight`, painted in the new `paintOverChildren`: orange frame +
+  "Load folder into Manual N"); `takeDroppedFiles(paths, division)` (shared with the hook) sorts the drop: a
+  folder holding a configuration (.json with "manualKeyboards") or a definition (directly or in its
+  OrganDefinitions) counts as an organ, a folder whose `scanTreeAssignments` yields no non-container stop is
+  REFUSED (queueNotice InfoIcon "Folder refused" = Messages, logged), rars = archives, .json/.zip/ODF =
+  configurations, the rest ignored (Messages "Files ignored"). Organs present: the dropped archives
+  `registerArchive`d and the dropped folders' parents `noteSampleLocation`ed (they serve the organ's paths), one
+  -> `askToKeepChanges` + `loadConfigurationFile` (the load box as with the button), several -> `chooseFromList`.
+  Else folders + archives -> `loadChosenIntoDivision(folders, archives, false, {}, division)` (= Load folder...:
+  archives indexed, a definition inside offered/chosen by loadIndexedIntoDivision, the trees gated and joined);
+  division -1 (outside the columns) -> chooseFromList of the divisions. THE LOAD BOX COMBO "action" (askLoadOptions,
+  shown when `engine.getStops()` is not empty): "Load it as a new organ" / "Merge it into the loaded organ" ->
+  var property "mergeIntoLoaded" -> loadConfigurationFile's lambda calls `mergeConfiguration(chosen, source, ...)`,
+  the ODF lambda calls `importHauptwerkOdf(odfFile, true)` (the right-click paths are untouched: they never reach
+  the box). Hooks: `ORGAN_TEST_DROP_FILES="<division>|<path>;<path>"` (at ORGAN_TEST_DROP_AT or ORGAN_TEST_CLICK_AT
+  seconds, else 3 s; -1 = outside), `ORGAN_TEST_LOAD_ACTION=merge` (preselects the merge in the box),
+  `ORGAN_TEST_READY_STOPS="<division>|<stop>"` (logs the ready-made list, adds the stop by the grid path, logs
+  again 10 s later - not yet exercised: no organ at hand with free folders). Test %TEMP%\test_drop0918.ps1 [-Only
+  A|B|C]: A Samply dropped on division 1 of an empty console -> "Division(s) 1 rebuilt: 68 stops" (a division
+  reload logs "rebuilt", NOT "Compiling the Stop List: done" - that line is the full load's); B an empty folder ->
+  "Folder refused"; C Rural from the command line, TestingOrgan.json dropped at 36 s with the merge preselected ->
+  "Merged ... 55 stop(s) added, 14 shared". POWERSHELL LESSON: never name a function parameter `$args` (the
+  automatic variable: the first run of C started the exe without the file and the 3 s "Load" click hit the
+  combination row's Load button - a harmless file chooser).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

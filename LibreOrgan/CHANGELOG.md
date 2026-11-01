@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.18] - 2026-11-01
+
+### Added
+- Drag and drop onto the console: folders and RAR archives dragged from the
+  file manager onto a division's column are loaded there exactly as *Load
+  folder...* loads them (the column is framed while dragging; dropped
+  outside the columns, the division is asked); a configuration, a published
+  zip or a Hauptwerk definition among them goes through Load Configuration
+  with its load box, several of them through a choice. A folder without
+  sample folders is refused with a message.
+- The load box offers, when an organ is loaded, *Load it as a new organ* or
+  *Merge it into the loaded organ* - the merge of the right click on Load
+  Configuration as a choice of the ordinary dialog (the right click stays).
+
 ## [0.9.17] - 2026-10-31
 
 ### Fixed
