@@ -2352,6 +2352,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (self-test "Sparse rank ... -> OK", probe3 in EngineSelfTest.h). `near` is a Windows macro (windef.h): never name
   a local so. Compare the self-test against %TEMP%\selftest_092.txt from now on.
 ## Pending for the next session (delete when done)
+- TO-DO (1 Nov 2026, the user, after 0.9.21, two messages - NOT coded, waiting for his word): (1) "při zjištění
+  stejných folderů už loadovaných by to eventuálně mohlo nabídnout možnost přeměnit je na transmise": when Load
+  folder / a drop leaves folders out because a row plays them already (0.9.21 `usedFolderPlaces`), offer to make
+  TRANSMISSIONS of those rows into the target division instead (one box or a Messages item with a button; the
+  engine's `addTransmission` + the grid cell in the target division; a folder played by a row of the SAME division
+  gets no offer). (2) "transmise z mergované konfigurace by se taky měly zachovat, kde je to možné": today the
+  merge keeps the `transmissions[]` of an added stop's voicing entry only for KEPT stops (MainComponentMerge.cpp
+  ~794-806, `keptStopKeys`; divisions beyond mergedCount dropped); the entry of a SHARED stop (same folders as a
+  base row -> not added) is skipped whole, so its transmissions vanish - map them onto the base row
+  (`sharedStopNames`, append to the base entry's list where no equal (manual, shift) transmission exists); the
+  rows the 0.9.19 group rule removes keep their base voicing entry but the stop is never built - move their
+  transmissions onto the child row that plays the same folder; transmission cells ("tr:" keys, ~836/853) are
+  placed afresh - keep the added cell shifted like the stops where the source stop survives.
 - THE USER'S RULE (30 Oct 2026, "nesmíme vyžadovat žádné externí závislosti, ani Visual C++ redistributable!!! To je
   zásadní!"): the released executables depend on NOTHING that is not part of a plain Windows/macOS/Linux - no VC++
   redistributable, no DLL beside the exe, no installer. DONE in 0.8.251: `CMAKE_MSVC_RUNTIME_LIBRARY
