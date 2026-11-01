@@ -19,6 +19,7 @@ body:
       multiple: true
       options:
         - "adlington-hall-organ"
+        - "adlington-hall-smith"
         - "altenbruch-klapmeyer-organ"
         - "arnstadt-bach-organ"
         - "ashton-lewis-organ"
