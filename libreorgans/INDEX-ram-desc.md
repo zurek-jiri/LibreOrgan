@@ -28,7 +28,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)▼ | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
 | [Billerbeck Dom, Fleiter](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ) |
-| [Ashton Lewis](ashton-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-lewis-organ&organ=ashton-lewis-organ) |
 | [Bergen op Zoom, Ibach](bergen-op-zoom-ibach-organ/README.md) | 4 | 54 | 8.7 GB | Diffuse, Direct, Rear, Distant | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bergen-op-zoom-ibach-organ&organ=bergen-op-zoom-ibach-organ) |
 | [Beziers Cathedral, Puget](beziers-cathedral-puget/README.md) | 4 | 56 | 7.6 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20beziers-cathedral-puget&organ=beziers-cathedral-puget) |
 | [Bückeburg, Janke](b-ckeburg-janke-organ/README.md) | 4 | 47 | 5.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20b-ckeburg-janke-organ&organ=b-ckeburg-janke-organ) |
@@ -41,4 +40,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ) |
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ) |
 
-15 configuration(s).
+14 configuration(s).
