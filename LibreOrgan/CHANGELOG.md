@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.29] - 2026-11-01
+
+### Fixed
+- A modal box (Save Configuration, the load box, a question) left open while
+  another program was used fell behind the main window on the way back
+  (Alt+Tab lands on the main window, the box is not in the task switcher): the
+  box kept the modal state and the main window took no input. Whenever the
+  main window becomes the active one while a modal box exists, the box comes
+  to the front with the focus - at once and every half second.
+
 ## [0.9.28] - 2026-11-01
 
 ### Fixed

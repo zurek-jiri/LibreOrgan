@@ -72,6 +72,11 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
     void paintOverChildren(juce::Graphics& g) override;
     void takeDroppedFiles(const juce::StringArray& files, int division);   // the drop and the test hook ORGAN_TEST_DROP_FILES
+    // 0.9.29 (the user: Save Configuration open, Alt+Tab to the browser and back - the box stayed BEHIND the main
+    // window, invisible, holding the modal state: "nelze dělat nic"): whenever the main window is the active one
+    // while a modal component exists, every modal window comes to the front with the focus. Called when the main
+    // window's active state changes (Main.cpp) and every half second from the timer.
+    static void bringLostModalsToFront();
     // 0.9.21: the places on disk (lower-case full paths) of every folder a row of any division plays, the
     // second halves (morePaths) included - a folder loaded again by whatever tree is never a second row.
     std::map<juce::String, std::pair<int, juce::String>> usedFolderPlaces();   // place -> (division, row name) (0.9.22: the row is known for the transmission offer)
@@ -80,6 +85,7 @@ public:
     // transmissions into the target division once the load has ended (runWhenLoaded).
     struct TransmissionOffer { int targetManual = -1; juce::String treeName; std::vector<std::pair<int, juce::String>> rows; };
     std::unique_ptr<TransmissionOffer> pendingTransmissionOffer;
+    int lostModalDivider = 0;   // 0.9.29: bringLostModalsToFront every 20 ticks of the 25 ms timer
     // 0.9.24 (the user: "raděj B, aby byly skutečně u sebe"): a folder left out that is one HALF (L/R) of a stop whose
     // other half makes a stop folder in the target division - the row playing it is MOVED under that stop folder
     // after the load (indentStopUnder: its voicing, transmissions and cells go along); a stop folder it leaves

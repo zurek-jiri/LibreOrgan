@@ -285,6 +285,13 @@ public:
     class MainWindow    : public juce::DocumentWindow
     {
     public:
+        // 0.9.29: the main window became the active one while a modal box exists (Alt+Tab from another program
+        // lands on it, the box behind it invisible and holding the modal state): the box comes to the front.
+        void activeWindowStatusChanged() override
+        {
+            DocumentWindow::activeWindowStatusChanged();
+            if (isActiveWindow()) MainComponent::bringLostModalsToFront();
+        }
         MainWindow (juce::String name)
             : DocumentWindow (name,
                               juce::Desktop::getInstance().getDefaultLookAndFeel()

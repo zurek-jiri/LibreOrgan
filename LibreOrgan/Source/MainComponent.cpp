@@ -2281,6 +2281,51 @@ MainComponent::MainComponent()
                     + (a.component.isNotEmpty() ? " component " + a.component : juce::String()) + (a.grouped ? " grouped" : "") + (a.container ? " container" : ""));
         });
     }
+    // ORGAN_TEST_MODAL_BEHIND=<seconds> (tests, 0.9.29): the MAIN window is brought to the front and focused
+    // after the delay (a box opened by ORGAN_TEST_CLICK falls behind it, as Alt+Tab from another program does);
+    // bringLostModalsToFront must bring the box back ("Modal dialog behind the main window brought to the front").
+    if (const char* env = std::getenv("ORGAN_TEST_MODAL_BEHIND"))
+    {
+        const int seconds = juce::jmax(1, juce::String::fromUTF8(env).getIntValue());
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(seconds * 1000, [safeThis]
+        {
+            if (safeThis == nullptr) return;
+            if (auto* top = safeThis->getTopLevelComponent())
+            {
+               #if JUCE_WINDOWS
+                if (auto* peer = top->getPeer()) { ::SetForegroundWindow((HWND)peer->getNativeHandle()); ::SetActiveWindow((HWND)peer->getNativeHandle()); }   // as Alt+Tab does
+               #else
+                top->toFront(true);
+               #endif
+                CrashHandler::note("ORGAN_TEST_MODAL_BEHIND: the main window brought to the front over the modal box");
+                juce::Timer::callAfterDelay(600, [safeThis]
+                {
+                    if (safeThis == nullptr) return;
+                    auto* anchor = dynamic_cast<juce::TopLevelWindow*>(UIScale::dialogAnchor.getComponent());
+                    juce::String fg;
+                   #if JUCE_WINDOWS
+                    if (auto* top = safeThis->getTopLevelComponent()) if (auto* peer = top->getPeer())
+                    {
+                        const HWND main = (HWND)peer->getNativeHandle();
+                        fg = ::GetForegroundWindow() == main ? "the main window" : "another window";
+                        auto& manager = *juce::ModalComponentManager::getInstance();
+                        for (int i = 0; i < manager.getNumModalComponents(); ++i)
+                            if (auto* modal = manager.getModalComponent(i)) if (auto* mt = modal->getTopLevelComponent()) if (auto* mp = mt->getPeer())
+                            {
+                                const HWND box = (HWND)mp->getNativeHandle();
+                                bool above = false;   // the box above the main window in the Z order?
+                                for (HWND h = ::GetWindow(main, GW_HWNDPREV); h != nullptr; h = ::GetWindow(h, GW_HWNDPREV)) if (h == box) { above = true; break; }
+                                fg << "; box \"" << mt->getName() << "\" owned by the main window: " << (::GetWindow(box, GW_OWNER) == main ? "yes" : "no") << ", above it: " << (above ? "yes" : "no") << ", visible: " << (::IsWindowVisible(box) ? "yes" : "no");
+                            }
+                    }
+                   #endif
+                    CrashHandler::note("ORGAN_TEST_MODAL_BEHIND: modal components " + juce::String(juce::ModalComponentManager::getInstance()->getNumModalComponents())
+                        + ", anchor " + (anchor == nullptr ? "null" : anchor->isActiveWindow() ? "active" : "not active") + ", foreground " + fg);
+                });
+            }
+        });
+    }
     // ORGAN_TEST_FLIP="<division>|<seconds>" (tests, 0.9.27): the division's grid turned upside down (the
     // right-click menu item) after the delay; the cells are read from the saved voicing afterwards.
     if (const char* env = std::getenv("ORGAN_TEST_FLIP"))
@@ -24469,10 +24514,54 @@ void MainComponent::updateExpressionInertia()
     }
 }
 
+void MainComponent::bringLostModalsToFront()
+{
+    // 0.9.29: a modal box (Save Configuration, a question, the load box ...) that fell behind the main window -
+    // Alt+Tab to another program and back lands on the MAIN window, the box is not in the task switcher - keeps
+    // the modal state and the main window takes no input. Whenever the main window is the active one while a
+    // modal component exists, the modal windows come to the front and take the focus. Never hidden/shown (0.8.173).
+    auto& manager = *juce::ModalComponentManager::getInstance();
+    if (manager.getNumModalComponents() == 0) return;
+    auto* anchor = dynamic_cast<juce::TopLevelWindow*>(UIScale::dialogAnchor.getComponent());
+   #if JUCE_WINDOWS
+    // Every modal box becomes an OWNED window of the main window (JUCE creates it without an owner): Windows keeps
+    // an owned window above its owner, so Alt+Tab to the main window (the box is a tool window, not in the task
+    // switcher) shows the box over it instead of burying it. Set once per box, at the first tick after its birth.
+    if (anchor != nullptr)
+        if (auto* mainPeer = anchor->getPeer())
+            for (int i = 0; i < manager.getNumModalComponents(); ++i)
+                if (auto* modal = manager.getModalComponent(i))
+                    if (auto* top = modal->getTopLevelComponent())
+                        if (auto* peer = top->getPeer())
+                        {
+                            const HWND box = (HWND)peer->getNativeHandle(), main = (HWND)mainPeer->getNativeHandle();
+                            if (box != nullptr && main != nullptr && box != main && ::GetWindow(box, GW_OWNER) != main)
+                            {
+                                ::SetWindowLongPtr(box, GWLP_HWNDPARENT, (LONG_PTR)main);
+                                CrashHandler::note("Modal dialog \"" + top->getName() + "\" made an owned window of the main window (stays above it)");
+                            }
+                        }
+   #endif
+    if (anchor == nullptr || !anchor->isActiveWindow()) return;   // the dialog itself (or another program) is active: nothing lost
+    static double lastNoteMs = 0.0;
+    juce::StringArray names;
+    for (int i = manager.getNumModalComponents(); --i >= 0;)
+        if (auto* modal = manager.getModalComponent(i))
+            if (auto* top = modal->getTopLevelComponent())
+            {
+                if (auto* peer = top->getPeer()) if (peer->isMinimised()) peer->setMinimised(false);   // a minimised box too
+                top->toFront(true);
+                names.add(top->getName());
+            }
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (now - lastNoteMs > 5000.0) { lastNoteMs = now; CrashHandler::note("Modal dialog behind the main window brought to the front: " + names.joinIntoString(", ")); }
+}
+
 void MainComponent::timerCallback()
 {
     updateExpressionInertia();
     updateHeldBankNavigation();
+    if (++lostModalDivider >= 20) { lostModalDivider = 0; bringLostModalsToFront(); }   // 0.9.29: every half second
     // Reverbs built since the last automatic choice (a device opened later, a
     // route's IR changed): every 5 s the choice looks again.
     if (irProcessing == "automatic" && activeFolderLoader == nullptr && ++irEvaluateDivider >= 200)

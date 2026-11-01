@@ -2489,8 +2489,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   dropdown reliably (community discussion #5288; a logged-in test is the user's - my fetch of issues/new is
   anonymous and gets the sign-in page), so `remove_link` fills the title, the dropdown "organ" AND the text
   field "name" ("Or any part of its name", a documented input prefill) with the exact folder; the workflow
-  dedupes the names (`awk '!seen[$0]++'`) and skips a folder removed already in the loop. The form's text says
-  the folder is filled into the name field (and ticked when GitHub honours it).
+  dedupes the names (`awk '!seen[$0]++'`) and skips a folder removed already in the loop. CONFIRMED by the user
+  (1 Nov 2026): GitHub does NOT pre-tick the dropdown, the name field is filled - the form's text says so; the
+  dropdown stays for removing several at once. Never promise a dropdown prefill again.
+  0.9.29 (the user, furious: "Save Configuration ... Alt+Tab ... dialog tam není, hlavní okno je nedosažitelné"):
+  `MainComponent::bringLostModalsToFront()` (static, public): with modal components present and the MAIN window
+  (UIScale::dialogAnchor as TopLevelWindow) the active one, every modal's top-level `toFront(true)` (never
+  hide/show - 0.8.173), logged at most every 5 s; called from `MainWindow::activeWindowStatusChanged` (Main.cpp)
+  and every 20 ticks (0.5 s) of the 25 ms timer (`lostModalDivider`). Hook `ORGAN_TEST_MODAL_BEHIND=<seconds>`
+  (the main window toFront over a box opened by ORGAN_TEST_CLICK); test %TEMP%\test_modal0929.ps1.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
