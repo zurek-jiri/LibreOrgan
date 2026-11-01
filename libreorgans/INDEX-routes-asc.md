@@ -40,5 +40,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Bellevue, Casavant](bellevue-casavant/README.md) | 4 | 74 | 4.8 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bellevue-casavant&organ=bellevue-casavant&name=bellevue-casavant) |
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ&name=brescia-st-carlo-antegnati-organ) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
+| [Cen, St. Etienne, Cavaillé-Coll](cen-st-etienne-cavaill-coll/README.md) | 4 | 55 | 5.7 GB | Rear, Front | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cen-st-etienne-cavaill-coll&organ=cen-st-etienne-cavaill-coll&name=cen-st-etienne-cavaill-coll) |
 
-15 configuration(s).
+16 configuration(s).
