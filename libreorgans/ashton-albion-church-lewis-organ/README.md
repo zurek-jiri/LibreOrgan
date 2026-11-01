@@ -1,33 +1,33 @@
-# Ashton Lewis Organ
+# Ashton, Albion Church, Lewis Organ
 
-<!-- Written by LibreOrgan Sampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):
+<!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Ashton Lewis Organ, as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Distant and Rear, each on its own audio route: 5 divisions and 47 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Ashton, Albion Church, Lewis Organ, as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Distant and Rear, each on its own audio route: 5 divisions and 47 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Ashton, Albion Church,Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/ashton-lewis-organ/Ashton,%20Albion%20Church,Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Ashton, Albion Church,Surround.portable.json` there yourself.
+**Download:** [Ashton, Albion Church, Lewis.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/ashton-albion-church-lewis-organ/Ashton,%20Albion%20Church,%20Lewis.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Ashton, Albion Church, Lewis.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
 
 ## The configuration
 
-- **Organ:** Ashton Lewis Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html](https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html); the folders `002735` and `002736` (as they come, or in their RAR archives); perspectives Diffuse, Direct, Distant and Rear. LibreOrgan Sampler 0.8.203 or later.
+- **Organ:** Ashton, Albion Church, Lewis Organ.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html](https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html); the folders `002735` and `002736` (as they come, or in their RAR archives); perspectives Diffuse, Direct, Distant and Rear. LibreOrgan Sampler 0.9.28 or later.
 - **Expects:** library root of any name, holding the trees `002735/pipes/CH`, `002735/pipes/GT`, `002735/pipes/PE`, `002735/pipes/SO`, `002735/pipes/SW`, `002736/pipes/CH`, `002736/pipes/PE`, `002736/pipes/SO` and `002736/pipes/SW`.
 - **Audio layout:** every division has the routes diffuse, direct, distant and rear; auxiliary (unused).
 - **RAM:**
   - **9.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
   - **13 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
   - **94 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.8.203.
-- **Author:** Jiri Zurek, 26 October 2026.
+- **Saved with:** LibreOrgan Sampler 0.9.28.
+- **Author:** Jiri Zurek, 1 November 2026.
 
 ## Where to put the file
 
-Put `Ashton, Albion Church,Surround.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002735` and `002736` must stand side by side in one folder:
+Put `Ashton, Albion Church, Lewis.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002735` and `002736` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -62,4 +62,4 @@ Put `Ashton, Albion Church,Surround.portable.json` into your LibreOrgans folder 
 |  |  | 2. I open diapason 8' | 3. Gaigen diapason 8' |  |
 |  |  |  | 3. Lieblich bourdon 16' |  |
 
-<!-- published by @zurek-jiri (issue #103, 2026-10-26) -->
+<!-- published by @zurek-jiri (issue #153, 2026-11-01) -->

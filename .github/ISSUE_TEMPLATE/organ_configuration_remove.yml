@@ -19,19 +19,19 @@ body:
       description: The configuration folder(s) to remove, as listed in INDEX.md.
       multiple: true
       options:
-        - "adlington-hall-organ"
+        - "adlington-hall-smith"
         - "altenbruch-klapmeyer-organ"
         - "arnstadt-bach-organ"
-        - "ashton-lewis-organ"
+        - "ashton-albion-church-lewis-organ"
         - "b-ckeburg-janke-organ"
+        - "bellevue-casavant"
         - "bergen-op-zoom-ibach-organ"
-        - "beziers-cathedral-puget-organ"
+        - "beziers-cathedral-puget"
         - "billerbeck-dom-fleiter-organ"
         - "brasov-black-church-buchholz-organ"
         - "brescia-st-carlo-antegnati-organ"
-        - "casavant-organ-model"
+        - "burton-berlin-hill"
         - "dom-b-dos-organ-model"
-        - "hill-english-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false
