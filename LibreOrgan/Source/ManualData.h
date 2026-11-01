@@ -295,8 +295,9 @@ static const char* const kManualText_part1 =
     "comes along. When the program finds that an added folder is a further\n"
     "perspective of a stop you have, it joins that stop's row as the new\n"
     "perspective instead of adding a row. A stop whose folder is already loaded is\n"
-    "shared, not added - its transmissions pass to the stop you have; two stops of\n"
-    "one name get \"(2)\". Two organs rarely stand at\n"
+    "shared, not added - its transmissions pass to the stop you have; a stop whose\n"
+    "folders you play in another division wins over those rows, which become\n"
+    "transmissions of it; two stops of one name get \"(2)\". Two organs rarely stand at\n"
     "one pitch, so the merge switches *Equal at 440 Hz* on. The merged organ is\n"
     "loaded, not saved: *Save Configuration* keeps it.\n"
     "\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "## 2.1 Top bar buttons\n"
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
-    "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
     ;
 static const char* const kManualText_part2 =
+    "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
     "button fires even when hidden).\n"
     "\n"
     "- **PANIC** silences every sounding pipe.\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "\n"
     "### Attack Gain and Attack Time\n"
     "\n"
-    "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     ;
 static const char* const kManualText_part3 =
+    "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
     "second half: more chiff or a softer speaking, the held tone untouched.\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
     "the window shows while it loads: [The loading window](#the-loading-window).\n"
     "\n"
-    "---\n"
     ;
 static const char* const kManualText_part4 =
+    "---\n"
     "\n"
     "# 5. Divisions and audio\n"
     "\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
     "  cost render time; the report names what was in force.\n"
     "\n"
-    "The *DSP* value is the whole callback of the busiest device as a share of\n"
     ;
 static const char* const kManualText_part5 =
+    "The *DSP* value is the whole callback of the busiest device as a share of\n"
     "its period; several hundred per cent means the audio thread was kept waiting\n"
     "by something else on the computer. What the measurement sees and what it\n"
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "\n"
     "*32-bit float* keeps the samples as read; *16-bit integer* halves the RAM\n"
     "with a little hiss; *16-bit integer, releases at half the rate* stores the\n"
-    "releases - a large part of a set - at half the rate (they lose what lies\n"
     ;
 static const char* const kManualText_part6 =
+    "releases - a large part of a set - at half the rate (they lose what lies\n"
     "above 12 kHz; a reed whose release is bright above 11 kHz keeps the full\n"
     "rate). Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
     "default 180).\n"
     "\n"
-    "### Velocity layers: an unticked _128 never plays\n"
     ;
 static const char* const kManualText_part7 =
+    "### Velocity layers: an unticked _128 never plays\n"
     "\n"
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
     "files play. On: such a key is silent.\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "One switch per top-bar button: PANIC, Record, Stop List, Couplers,\n"
     "Temperaments, Hide/Show all voicing, Perspective Patterns, Ignored Patterns,\n"
     "One-shot Patterns, Stop-Merging, Load Voicing, Save Voicing, Load\n"
-    "Configuration, Save Configuration, Shut down PC, Unpack archive, GLOBAL RESET\n"
     ;
 static const char* const kManualText_part8 =
+    "Configuration, Save Configuration, Shut down PC, Unpack archive, GLOBAL RESET\n"
     "([Top bar buttons](#21-top-bar-buttons)). A hidden button still fires from its learned MIDI\n"
     "control. The button beside each switch does the same as the one in the top\n"
     "bar.\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "elsewhere after the sign-in, *Open the GitHub form* in the program's message\n"
     "opens the form again, and `Report on GitHub.html` in the folder does the same\n"
     "days later.\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"
     "the filled pipes:\n"
     "\n"
-    "| Storage | Rate on loading | Releases | Packing in RAM | RAM |\n"
     ;
 static const char* const kManualText_part10 =
+    "| Storage | Rate on loading | Releases | Packing in RAM | RAM |\n"
     "|---|---|---|---|---|\n"
     "| 32-bit float | 48 kHz | full rate | off | 83 GB |\n"
     "| 32-bit float | 48 kHz | full rate | on | 29 GB |\n"

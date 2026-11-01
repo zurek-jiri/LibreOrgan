@@ -335,6 +335,31 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     std::map<juce::String, juce::String> groupReplaced;   // 0.9.22: "<manual>|<base row removed by the stop-folder rule>" -> the added child row (original name) that took its folder
     int transmissionsKept = 0;   // 0.9.22: transmissions of the added configuration handed to the stops playing their folders here
     juce::StringArray addedPerspectiveNames;
+    // 0.9.28 (the user: rec loaded from its folder on II, then the Caen Surround definition merged - its Recit on
+    // III loaded the same folders again; "jeden folder musí být pouze jednou nahraný ... zvítězit to loadování,
+    // které je komplexnější - z ODF"): the folders the base plays in ANY division, by their place on the disk.
+    // An added stop playing a folder the base plays in ANOTHER division wins: the base rows go and transmissions
+    // of the new stop into that division take their place (made once the merged organ is loaded, the ranks of
+    // a stop folder under a stop folder of its name); their transmissions pass to the new stop.
+    std::map<juce::String, std::pair<int, juce::String>> organFolders;   // place -> (division, base row name)
+    for (int m = 0; m < juce::jmin(SamplerEngine::maxManuals, baseArray->size()); ++m)
+    {
+        auto* item = baseArray->getReference(m).getDynamicObject();
+        if (item == nullptr) continue;
+        ManualConfig::StopBuild table = stopBuildFromVar(item->getProperty("stopBuild"));
+        if (!table.active) table = deriveStopBuildFromEngine(m);
+        for (const auto& entry : table.entries)
+            for (const auto& [perspective, ref] : entry.folders)
+            {
+                if (ref.tree < 0 || ref.tree >= (int)mergedPool.size()) continue;
+                auto place = [&](const juce::String& relativePath) { const auto relative = slashesOf(relativePath); return pathKey(mergedPool[(size_t)ref.tree] + (relative.isEmpty() || relative == "." ? juce::String() : "/" + relative)); };
+                organFolders.emplace(place(ref.relativePath), std::make_pair(m, entry.name));
+                for (const auto& more : ref.morePaths) organFolders.emplace(place(more), std::make_pair(m, entry.name));
+            }
+    }
+    std::map<int, juce::StringArray> crossReplaced;   // division -> the base rows replaced by transmissions of added stops
+    std::vector<std::tuple<int, juce::String, int, juce::String>> crossHandover;   // (division, base row) -> (added division, added original name)
+    pendingMergeTransmissions.clear();
     for (int manual = 0; manual < juce::jmin(SamplerEngine::maxManuals, addedArray->size(), baseArray->size()); ++manual)
     {
         auto addedItem = addedArray->getReference(manual);
@@ -657,6 +682,21 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                     }
                 }
             }
+            // 0.9.28: the same folders loaded in ANOTHER division of the base - the added stop wins, the base rows
+            // there go and are replaced by transmissions of it after the load (pendingMergeTransmissions).
+            if (!entry.folders.empty())
+            {
+                std::set<std::pair<int, juce::String>> elsewhere;
+                for (const auto& [perspective, ref] : entry.folders)
+                    for (const auto& place : placesOfRef(ref))
+                        if (const auto found = organFolders.find(place); found != organFolders.end() && found->second.first != manual) elsewhere.insert(found->second);
+                for (const auto& [division, rowName] : elsewhere)
+                {
+                    crossReplaced[division].addIfNotAlreadyThere(rowName);
+                    crossHandover.push_back({ division, rowName, manual, entry.name });
+                    pendingMergeTransmissions.push_back({ manual, entry.name, division });   // renamed below when the name is taken
+                }
+            }
             const juce::String originalName = entry.name, originalAlias = entry.alias;
             // 0.8.223: name AND alias re-suffixed from the originals at every step, and a ceiling -
             // 0.8.220 left an alias ending with ")" as it was, so a second stop of a shared alias
@@ -676,7 +716,11 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                 if (nameTaken) { entry.name = originalName + " (" + juce::String(suffix) + ")"; entry.customName = true; }
                 if (aliasTaken && originalAlias.isNotEmpty()) entry.alias = originalAlias + " (" + juce::String(suffix) + ")";
             }
-            if (entry.name != originalName) { ++stopsRenamed; renamed[juce::String(manual) + "|" + originalName] = entry.name; done.add(divisionName + " " + originalName + " added as \"" + entry.name + "\" (the name was taken)"); }
+            if (entry.name != originalName)
+            {
+                ++stopsRenamed; renamed[juce::String(manual) + "|" + originalName] = entry.name; done.add(divisionName + " " + originalName + " added as \"" + entry.name + "\" (the name was taken)");
+                for (auto& p : pendingMergeTransmissions) if (p.manual == manual && p.name == originalName) p.name = entry.name;   // 0.9.28
+            }
             keptStopKeys.insert(juce::String(manual) + "|" + stopBuildKey(originalName));
             for (const auto& [perspective, ref] : entry.folders)
             {
@@ -816,6 +860,37 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     }
 
     //--------------------------------------------------------------------------
+    // 0.9.28: the rows of other divisions the added stops replace (the same folders) go now - with a stop
+    // folder of theirs left without children and folders; their transmissions pass to the new stops below.
+    for (const auto& [division, names] : crossReplaced)
+    {
+        auto* item = baseArray->getReference(division).getDynamicObject();
+        if (item == nullptr) continue;
+        ManualConfig::StopBuild table = stopBuildFromVar(item->getProperty("stopBuild"));
+        if (!table.active) { table = deriveStopBuildFromEngine(division); table.active = true; }
+        juce::StringArray masters;
+        for (size_t i = 0; i < table.entries.size(); ++i)
+            if (table.entries[i].child && names.contains(table.entries[i].name))
+                for (size_t m = i; m-- > 0;) if (!table.entries[m].child) { masters.addIfNotAlreadyThere(table.entries[m].name); break; }
+        for (int r = (int)table.entries.size(); --r >= 0;)
+            if (names.contains(table.entries[(size_t)r].name)) table.entries.erase(table.entries.begin() + r);
+        juce::StringArray emptied;
+        for (int r = (int)table.entries.size(); --r >= 0;)
+        {
+            const auto& row = table.entries[(size_t)r];
+            if (row.child || !row.folders.empty() || row.isTransmission() || !masters.contains(row.name)) continue;
+            if ((size_t)r + 1 < table.entries.size() && table.entries[(size_t)r + 1].child) continue;   // still has children
+            emptied.add(row.name);
+            table.entries.erase(table.entries.begin() + r);
+        }
+        item->setProperty("stopBuild", stopBuildToVar(table));
+        static const juce::String divisionNames[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+        done.add(divisionNames[juce::jlimit(0, 7, division)] + ": the rows " + names.joinIntoString(", ") + " played the same folders as stops the added configuration brings in another division - removed, "
+            "transmissions of those stops take their place once the organ is loaded" + (emptied.isEmpty() ? juce::String() : " (the stop folder(s) " + emptied.joinIntoString(", ") + " left empty removed too)"));
+        CrashHandler::note("Merge configuration: " + divisionNames[juce::jlimit(0, 7, division)] + " the rows " + names.joinIntoString(", ") + " replaced by transmissions of the added stops playing the same folders");
+    }
+
+    //--------------------------------------------------------------------------
     // The voicing of the added stops (renamed where they were), their grid cells
     // under the base's rows, their pool entries.
     {
@@ -926,6 +1001,18 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             handTo(manual, heirRenamed != renamed.end() ? heirRenamed->second : heir, list, removedName);
             removed->setProperty("transmissions", juce::Array<juce::var>());   // moved, not doubled on the retained entry
         }
+        // 0.9.28: the rows of other divisions the added stops replaced hand their transmissions to the new stops.
+        for (const auto& [division, oldName, newManual, addedOriginal] : crossHandover)
+        {
+            auto* removed = entryOf(division, oldName);
+            if (removed == nullptr) continue;
+            juce::Array<juce::var> list;
+            if (auto* transmissions = removed->getProperty("transmissions").getArray()) for (const auto& t : *transmissions) list.add(t);
+            if (list.isEmpty()) continue;
+            const auto newNamed = renamed.find(juce::String(newManual) + "|" + addedOriginal);
+            handTo(newManual, newNamed != renamed.end() ? newNamed->second : addedOriginal, list, oldName);
+            removed->setProperty("transmissions", juce::Array<juce::var>());
+        }
         voicing->setProperty("stops", stops);
         // Grid: the added cells shifted below the base's last row of their division.
         juce::DynamicObject::Ptr grid = baseVoicing.getProperty("stopGrid", juce::var()).getDynamicObject() != nullptr
@@ -1014,6 +1101,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         + (stopsJoined > 0 ? ", " + juce::String(stopsJoined) + " stop(s) gained the perspective " + joinedPerspectiveNames.joinIntoString(", ") + " (the added folders joined the loaded stops: another perspective of the same organ)" : juce::String())
         + (perspectivesKept > 0 ? ", " + juce::String(perspectivesKept) + " perspective(s) kept as set up" : juce::String())
         + (transmissionsKept > 0 ? ", " + juce::String(transmissionsKept) + " transmission(s) of the added configuration kept on the stops playing their folders here" : juce::String())
+        + (crossReplaced.empty() ? juce::String() : ", " + juce::String((int)pendingMergeTransmissions.size()) + " row(s) of other divisions playing the same folders replaced by transmissions of the added stops (made once the organ is loaded)")
         + ", divisions now " + juce::String(mergedCount + 1) + ".";
     CrashHandler::note("Merge configuration: " + summary + " | " + done.joinIntoString(" | ") + " | ignored: " + ignored.joinIntoString(" | "));
     if (stopsAdded == 0 && stopsJoined == 0 && newTrees.empty())

@@ -289,8 +289,9 @@ ordinary load). The added stops become further rows under the rows of their divi
 comes along. When the program finds that an added folder is a further
 perspective of a stop you have, it joins that stop's row as the new
 perspective instead of adding a row. A stop whose folder is already loaded is
-shared, not added - its transmissions pass to the stop you have; two stops of
-one name get "(2)". Two organs rarely stand at
+shared, not added - its transmissions pass to the stop you have; a stop whose
+folders you play in another division wins over those rows, which become
+transmissions of it; two stops of one name get "(2)". Two organs rarely stand at
 one pitch, so the merge switches *Equal at 440 Hz* on. The merged organ is
 loaded, not saved: *Save Configuration* keeps it.
 

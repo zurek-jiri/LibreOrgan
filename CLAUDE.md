@@ -2454,7 +2454,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   -> division, row); when the added (ODF, the richer source) stop plays folders the base plays in ANOTHER
   division, the ODF wins: the base rows are removed from their division and replaced by transmissions of the
   new stop into it (grouped under a folder of the same name, makeGroupedTransmissions after the load), their
-  voicing/transmissions handed to the new stop (0.9.22 handTo). Waiting for his word.
+  voicing/transmissions handed to the new stop (0.9.22 handTo). DONE in 0.9.28 ("ano, udělej!").
+  0.9.28 (1 Nov 2026): (1) MERGE ACROSS DIVISIONS (MainComponentMerge.cpp): `organFolders` (place -> (division,
+  base row), every base division's table, before the division loop; mergedPool = the base pool, so base refs
+  resolve); in the main added-entries loop, an entry not shared in its own division whose places the base
+  plays in ANOTHER division -> `crossReplaced[division]` += the base row, `crossHandover` (division, base row,
+  added division, added original name), `pendingMergeTransmissions` {manual, name, into} (renamed with the "(2)"
+  rule); after the loop every such division's stopBuild var is re-read, the rows erased (a stop folder left
+  without children and folders too), written back, a done line; the voicing block hands the removed rows'
+  transmissions to the new entry (handTo); the summary counts the rows. `MainComponent::pendingMergeTransmissions`
+  (member, cleared at the merge's start) is served by `offerTransmissionsForLoadedFolders` FIRST (no box: the
+  replacement was the merge's decision) through `makeGroupedTransmissions`, triggered 300 ms after "Compiling
+  the Stop List: done" (the full load's end) when the list is not empty. (2) HILL NAMES: `stopsOfFolder` in the
+  import's row naming - a stop folder (`stop.folders.front()`) shared by several stops of the division (a FLAT
+  set: "Pedal" holds every rank folder) is passed over, the rank folder's name (prefix cut) is the row's name.
+  (3) ONE BOX "Transmissions": the offer rows and the joined halves' old places in one text, `makeAll` on yes;
+  the hook ORGAN_TEST_LOADED_TRANSMISSIONS takes it. Tests: %TEMP%\test_mergecross0928.ps1 (rec on II, the Caen
+  Surround ODF merged through the box: "II. the rows ... replaced", after the load "transmission(s) into Manual
+  II made for the rows the merged stops replaced", II = transmissions only), test_hillnames0928.ps1 (the Hill
+  Demo ODF imported by the hook: rows "Ped_tromba8" ..., never "Pedal (N)").
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

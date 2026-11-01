@@ -86,6 +86,10 @@ public:
     // empty is removed. No stop folder made for it (both halves loaded elsewhere) -> the transmission offer.
     struct HalfMove { int sourceManual = -1; juce::String rowName; int targetManual = -1; juce::String stem; };
     std::vector<HalfMove> pendingHalfMoves;
+    // 0.9.28: a merge replaced rows of other divisions (the same folders, loaded there before) by the added
+    // stops - transmissions of those stops into the divisions are made once the merged organ is loaded.
+    struct MergeTransmission { int manual = -1; juce::String name; int into = -1; };
+    std::vector<MergeTransmission> pendingMergeTransmissions;
     void offerTransmissionsForLoadedFolders();
     // 0.9.25/0.9.26: transmissions of the stops into the division, the ranks of one stop folder (the same groupMaster
     // in their division) under a stop folder of that name made there; returns how many were made.

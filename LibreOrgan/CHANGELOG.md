@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.28] - 2026-11-01
+
+### Fixed
+- Merge: a stop of the added configuration (a definition) whose folders the
+  organ plays in ANOTHER division already - the Recit loaded from its folder
+  on II, then the Caen Surround definition with its Recit on III - loaded the
+  same folders a second time. Now the added stop wins: the rows playing those
+  folders are removed from their division and transmissions of the new stop
+  (the ranks of a stop folder under a stop folder of its name) take their
+  place once the organ is loaded; their transmissions pass to the new stop.
+  A folder is loaded once, never twice.
+- The definition import named every stop of a flat set after the division
+  folder ("Pedal", "Pedal (2)" ... "Swell (NN)" in Hill, Burton-Berlin): a
+  stop folder shared by several stops is passed over and the rank folder's
+  name is taken.
+- The transmissions a load could make - the rows left out that are no halves,
+  and the old places of the joined halves - are asked for in ONE box, not two.
+
 ## [0.9.27] - 2026-11-01
 
 ### Added
