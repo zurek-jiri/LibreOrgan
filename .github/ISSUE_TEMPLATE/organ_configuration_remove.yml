@@ -22,6 +22,7 @@ body:
         - "altenbruch-klapmeyer-organ"
         - "arnstadt-bach-organ"
         - "ashton-lewis-organ"
+        - "b-ckeburg-janke-organ"
         - "bergen-op-zoom-ibach-organ"
         - "beziers-cathedral-puget-organ"
         - "billerbeck-dom-fleiter-organ"
@@ -29,6 +30,7 @@ body:
         - "brescia-st-carlo-antegnati-organ"
         - "casavant-organ-model"
         - "dom-b-dos-organ-model"
+        - "hill-english-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false
