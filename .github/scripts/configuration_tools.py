@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import zipfile
 
 ROOT = 'libreorgans'
@@ -260,14 +261,17 @@ def validate_readme(readme_path, zip_path, cfg):
             problems.append('the README names another organ than the configuration ("%s")' % organ)
         # The download link must point into the folder the organ gets (the program
         # writes it with the same rule since 0.8.188; an older README points elsewhere).
-        m = re.search(r'raw/main/libreorgans/([^/\s]+)/([^\s)]+)\)', text)
+        # The file name runs up to ".zip" - a parenthesis inside it ("Adlington Hall (Smith).portable.zip") is
+        # no end of the link (the first ")" cut the name to "Adlington Hall (Smith" and the pair was refused).
+        m = re.search(r'raw/main/libreorgans/([^/\s]+)/(.+?\.zip)\)', text)
         wanted = slug_for(zip_path, cfg)
         if m and m.group(1) != wanted:
             problems.append('the README\'s download link points to the folder "%s", the organ\'s folder is "%s" - save the configuration again with LibreOrgan Sampler 0.8.188 or later'
                             % (m.group(1), wanted))
         # The link must name THIS zip (the attachment's dots for spaces gave a 404 before).
-        if m and m.group(2).replace('%20', ' ') != os.path.basename(zip_path):
-            problems.append('the README\'s download link names "%s" but the zip is "%s"' % (m.group(2).replace('%20', ' '), os.path.basename(zip_path)))
+        linked = urllib.parse.unquote(m.group(2)) if m else ''
+        if m and linked != os.path.basename(zip_path):
+            problems.append('the README\'s download link names "%s" but the zip is "%s"' % (linked, os.path.basename(zip_path)))
     if 'Saved with:** LibreOrgan Sampler' not in text:
         problems.append('the README has no "Saved with: LibreOrgan Sampler" line')
     if '(the organ was not named)' in text or '(the producer was not named)' in text:

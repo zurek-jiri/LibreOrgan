@@ -11,6 +11,7 @@ extension that is not nested in one.
 """
 import json
 import os
+import re
 import sys
 import zipfile
 from urllib.parse import quote
@@ -95,6 +96,10 @@ def main():
                 for line in f:
                     if line.startswith('# '):
                         title = line[2:].strip()
+                        # The user's rule (1 Nov 2026): a trailing word "organ"/"Organ" is dropped from the Organ cell
+                        # ("Adlington Hall Organ" -> "Adlington Hall"): nearly every row had it and it clogged the
+                        # table; "Organ" INSIDE a name ("Hill English Organ Model") stays.
+                        title = re.sub(r'\s+[Oo]rgan$', '', title)
                         break
         rows.append((title, folder, divisions, count, ', '.join(perspectives), ram_bytes, ram_min))
 

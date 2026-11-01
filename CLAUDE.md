@@ -2473,6 +2473,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Surround ODF merged through the box: "II. the rows ... replaced", after the load "transmission(s) into Manual
   II made for the rows the merged stops replaced", II = transmissions only), test_hillnames0928.ps1 (the Hill
   Demo ODF imported by the hook: rows "Ped_tromba8" ..., never "Pedal (N)").
+  GITHUB RULES (1 Nov 2026, the user): (1) THE ORGAN CELL OF INDEX.md: a trailing word "organ"/"Organ" is dropped
+  ("Adlington Hall Organ" -> "Adlington Hall"; `configurations_index.py` re.sub(r'\s+[Oo]rgan$') on the README's
+  title) - "skoro každý řádek to má, zahlcuje to tabulku"; "Organ" INSIDE a name stays ("Hill English Organ
+  Model"). (2) PARENTHESES IN A NAME: issue #138 "Adlington Hall (Smith)" was refused - the validator's link
+  regex `([^\s)]+)\)` cut the file name at the first ")" ("Adlington Hall (Smith"); now `(.+?\.zip)\)` +
+  urllib.parse.unquote. The attachment's name loses the parentheses and spaces ("Adlington.Hall.Smith.portable.zip")
+  but the robot names the pair after the .json inside, so the pair validates ("adlington-hall-smith"). To test
+  a refused upload locally: download the attachment (API token from `git credential fill`), split the README out
+  of the zip, RENAME the zip after the json inside, `configuration_tools.py validate <zip> <readme>`. A refused
+  issue is checked again on any EDIT of its body (the workflow runs on opened/edited) - edit it through the API
+  after the fix is on main. The local checkout was 12 behind origin (the user's publishes): `git stash`, `git pull
+  --no-rebase`, `git stash pop` left the regenerated INDEX files "UU" without markers - `git add` them.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing
