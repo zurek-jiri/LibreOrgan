@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.30] - 2026-11-01
+
+### Fixed
+- An undulating rank tuned by the same number of cents over the whole compass
+  (Caen's Unda Maris: +16 cents against the organ on every pipe) was not
+  recognised as a celeste - the test wanted the detune to shrink towards the
+  treble - and "Equal at 440 Hz" pulled its undulation straight. Now a
+  one-signed audible offset counts as a celeste when it shrinks towards the
+  treble OR when the stop's name says so (Unda Maris, Celeste/Céleste, Voix
+  céleste, Vox angelica, Schwebung, Piffaro, Bifara, Suavial); a rank tuned
+  at another pitch without such a name is left as it is. The tuning log shows
+  the test's figures (offset, share of one sign, treble trend) and why a rank
+  was not taken for a celeste.
+
 ## [0.9.29] - 2026-11-01
 
 ### Fixed

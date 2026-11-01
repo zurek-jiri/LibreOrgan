@@ -13785,8 +13785,29 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
             const double varNote = count > 0.0 ? sumNote2 / count - (sumNote / count) * (sumNote / count) : 0.0;
             const double varAbs = count > 0.0 ? sumAbs2 / count - meanAbs * meanAbs : 0.0;
             const double correlation = varNote > 0.0 && varAbs > 0.0 ? cov / std::sqrt(varNote * varAbs) : 0.0;
-            if (count >= 8.0 && meanAbs >= 5.0 && sameSign >= 0.85 && correlation < -0.3)
+            rank->celesteMeanAbsCents = (float)meanAbs;
+            rank->celesteSameSign = (float)sameSign;
+            rank->celesteCorrelation = (float)correlation;
+            rank->celesteNote.clear();
+            // 0.9.30 (the user's Caen Unda Maris: +16 cents against the organ on every pipe, the same in the treble
+            // - no shrinking trend, so the old rule took it for a rank merely tuned elsewhere and "Equal at 440 Hz"
+            // pulled its undulation straight): a one-signed audible offset is a celeste when it shrinks towards the
+            // treble (the usual tuning) OR when the name says so (Unda Maris, Céleste, Vox angelica, Schwebung ...)
+            // - a rank tuned at another pitch for no such reason is left as it is, and the log says why.
+            const bool oneSigned = count >= 8.0 && meanAbs >= 5.0 && sameSign >= 0.85;
+            auto celesteName = [](const juce::String& text)
             {
+                const auto t = text.toLowerCase().removeCharacters(" _-.'");
+                for (const char* word : { "undamaris", "celest", "c\xc3\xa9leste", "voixcel", "voxcel", "voxangelic", "schwebung", "piffaro", "fiffaro", "bifara", "suavial", "unda" })
+                    if (t.contains(juce::CharPointer_UTF8(word))) return true;
+                return false;
+            };
+            const bool namedCeleste = celesteName(rank->name) || celesteName(rank->alias) || celesteName(rank->folder.getFileName());
+            if (oneSigned && !(correlation < -0.3) && !namedCeleste)
+                rank->celesteNote = "one-signed offset without a treble trend and no celeste word in the name - not taken for a celeste";
+            if (oneSigned && (correlation < -0.3 || namedCeleste))
+            {
+                if (!(correlation < -0.3)) rank->celesteNote = "taken for a celeste by its name (no treble trend)";
                 double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
                 int n = 0;
                 for (size_t i = 0; i < rd.notes.size(); ++i)

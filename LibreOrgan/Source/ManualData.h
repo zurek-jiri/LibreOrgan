@@ -622,7 +622,10 @@ static const char* const kManualText_part3 =
     "\n"
     "For celestes: the stop beats this many times per second against an in-tune\n"
     "rank at a1 (negative = flat). A rank recorded sharp or flat throughout is\n"
-    "recognised as a celeste and starts with its recorded undulation. The line\n"
+    "recognised as a celeste when the detune shrinks towards the treble or the\n"
+    "stop's name says celeste (Unda Maris, Voix c\xC3\xA9""leste, Vox angelica, Schwebung\n"
+    "...), and starts with its recorded undulation; the tuning log says why a\n"
+    "rank was not taken for one. The line\n"
     "reads \"needs 440 Hz\" until the organ is retuned to a1 = 440 Hz\n"
     "([Temperaments](#63-temperaments)).\n"
     "\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "built; folders left out of the table are freed. Moving rows between\n"
     "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
     "cannot be removed or renamed without a warning. Closing the window with\n"
+    ;
+static const char* const kManualText_part4 =
     "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
     "the window shows while it loads: [The loading window](#the-loading-window).\n"
     "\n"
-    ;
-static const char* const kManualText_part4 =
     "---\n"
     "\n"
     "# 5. Divisions and audio\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "  device) share the whole pool of render threads. Every open device has a\n"
     "  driver thread of its own, so an organ spread over several devices can\n"
     "  measure more than on one - at the price of different latencies.\n"
+    ;
+static const char* const kManualText_part5 =
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
     "  cost render time; the report names what was in force.\n"
     "\n"
-    ;
-static const char* const kManualText_part5 =
     "The *DSP* value is the whole callback of the busiest device as a share of\n"
     "its period; several hundred per cent means the audio thread was kept waiting\n"
     "by something else on the computer. What the measurement sees and what it\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "routes lanes.\n"
     "\n"
     "### Sample storage in RAM\n"
+    ;
+static const char* const kManualText_part6 =
     "\n"
     "*32-bit float* keeps the samples as read; *16-bit integer* halves the RAM\n"
     "with a little hiss; *16-bit integer, releases at half the rate* stores the\n"
-    ;
-static const char* const kManualText_part6 =
     "releases - a large part of a set - at half the rate (they lose what lies\n"
     "above 12 kHz; a reed whose release is bright above 11 kHz keeps the full\n"
     "rate). Effect at the next load; the load box asks it before every load and\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "\n"
     "### Key velocity: treble cut opens over\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
     "default 180).\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Velocity layers: an unticked _128 never plays\n"
     "\n"
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "\n"
     "### Top bar\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "One switch per top-bar button: PANIC, Record, Stop List, Couplers,\n"
     "Temperaments, Hide/Show all voicing, Perspective Patterns, Ignored Patterns,\n"
     "One-shot Patterns, Stop-Merging, Load Voicing, Save Voicing, Load\n"
-    ;
-static const char* const kManualText_part8 =
     "Configuration, Save Configuration, Shut down PC, Unpack archive, GLOBAL RESET\n"
     "([Top bar buttons](#21-top-bar-buttons)). A hidden button still fires from its learned MIDI\n"
     "control. The button beside each switch does the same as the one in the top\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
     "A free GitHub account is needed; the report is public. If GitHub lands\n"
+    ;
+static const char* const kManualText_part9 =
     "elsewhere after the sign-in, *Open the GitHub form* in the program's message\n"
     "opens the form again, and `Report on GitHub.html` in the folder does the same\n"
     "days later.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"
     "the filled pipes:\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "| Storage | Rate on loading | Releases | Packing in RAM | RAM |\n"
     "|---|---|---|---|---|\n"
     "| 32-bit float | 48 kHz | full rate | off | 83 GB |\n"

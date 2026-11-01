@@ -612,7 +612,10 @@ error of pipes* must be on.
 
 For celestes: the stop beats this many times per second against an in-tune
 rank at a1 (negative = flat). A rank recorded sharp or flat throughout is
-recognised as a celeste and starts with its recorded undulation. The line
+recognised as a celeste when the detune shrinks towards the treble or the
+stop's name says celeste (Unda Maris, Voix céleste, Vox angelica, Schwebung
+...), and starts with its recorded undulation; the tuning log says why a
+rank was not taken for one. The line
 reads "needs 440 Hz" until the organ is retuned to a1 = 440 Hz
 ([Temperaments](#63-temperaments)).
 

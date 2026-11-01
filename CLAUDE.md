@@ -2497,7 +2497,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (UIScale::dialogAnchor as TopLevelWindow) the active one, every modal's top-level `toFront(true)` (never
   hide/show - 0.8.173), logged at most every 5 s; called from `MainWindow::activeWindowStatusChanged` (Main.cpp)
   and every 20 ticks (0.5 s) of the 25 ms timer (`lostModalDivider`). Hook `ORGAN_TEST_MODAL_BEHIND=<seconds>`
-  (the main window toFront over a box opened by ORGAN_TEST_CLICK); test %TEMP%\test_modal0929.ps1.
+  (the main window toFront over a box opened by ORGAN_TEST_CLICK); test %TEMP%\test_modal0929.ps1. FOUND BY
+  THE TEST: JUCE itself re-raises a modal box when the main window gets activated (inputAttemptWhenModal ->
+  bringModalComponentsToFront), so the user's lock-up was the Z ORDER: JUCE boxes are tool windows WITHOUT an
+  owner, not in Alt+Tab; now every modal box becomes an OWNED window of the main window on Windows
+  (`SetWindowLongPtr(GWLP_HWNDPARENT)` in bringLostModalsToFront, once per box) - Windows keeps it above its
+  owner. The hook's diagnostics line: "box owned by the main window: yes, above it: yes, visible: yes".
+  0.9.30 (the user's Caen Unda Maris "nerozpozná jako undulating ... asi má rovnoměrný undulating", measured by
+  %TEMP%\smpl_cents.py <folder>...: Salicional −13..−14 c vs 440 on every range, UndaMaris +2.5..+4 c = +16 c
+  against the organ FLAT over the compass, Voix céleste +1.5..+3 c recognised only by the noise of its data):
+  the celeste test (computeTuning440 ~13788) wanted `correlation < -0.3` (the detune shrinking towards the
+  treble); now `oneSigned` (count >= 8, meanAbs >= 5 c, sameSign >= 0.85) AND (trend OR `celesteName` on
+  rank->name / alias / folder name: undamaris, celest, céleste (UTF-8 bytes), voixcel, voxcel, voxangelic,
+  schwebung, piffaro, fiffaro, bifara, suavial, unda) - a one-signed rank without trend and without such a name
+  stays as it is. Stop fields `celesteMeanAbsCents/celesteSameSign/celesteCorrelation/celesteNote` printed in
+  the "Tuning ..." log line "(celeste test: offset N c, same sign P %, treble trend r = X; <note>)". The
+  consequence of a refusal: "Equal at 440 Hz" pulls the undulation straight (the detrend keeps it for a
+  recognised celeste). Test %TEMP%\test_celeste0930.ps1 (001693\pipe\pos on I: UndaMaris8 "taken for a celeste
+  by its name").
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

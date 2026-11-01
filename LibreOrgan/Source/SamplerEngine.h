@@ -591,6 +591,11 @@ struct Stop
     // --- Tuning to a1 = 440 Hz equal temperament (per rank, from the smpl pitches) ---
     bool tuneTo440 = false;                        // logical stop: apply the corrections below
     bool tuningInfoAvailable = false;              // this rank had usable smpl pitch data
+    // 0.9.30: the celeste test's figures, for the tuning log (the user: "aby se příště nemuselo hádat"):
+    // the mean offset from the organ's diapason (cents), the share of pipes with the majority sign, the
+    // correlation of |offset| with the key (negative = shrinking towards the treble), and why it was refused.
+    float celesteMeanAbsCents = 0.0f, celesteSameSign = 0.0f, celesteCorrelation = 0.0f;
+    juce::String celesteNote;
     float measuredDiapasonHz = 0.0f;               // a1 of this rank as recorded (0 = unknown)
     std::array<float, 128> tuning440Cents{};       // per note: cents that bring it to 440 Hz ET
     // Recorded temperament of the rank: mean deviation per pitch class (C..B) from

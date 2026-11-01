@@ -9119,6 +9119,9 @@ void MainComponent::autoDetectBaseTemperament()
                      << " (deviations taken per key, so mutations show no rotation)";
             if (std::abs(rank->detectedCelesteBeats) >= 1.0e-3f)
                 line << ", celeste " << juce::String(rank->detectedCelesteBeats, 2) << " beats/s at a1";
+            if (rank->celesteMeanAbsCents > 0.0f)   // 0.9.30: the test's figures, so a refusal can be read off the log
+                line << " (celeste test: offset " << juce::String(rank->celesteMeanAbsCents, 1) << " c, same sign " << juce::String(juce::roundToInt(rank->celesteSameSign * 100.0f))
+                     << " %, treble trend r = " << juce::String(rank->celesteCorrelation, 2) << (rank->celesteNote.isNotEmpty() ? "; " + rank->celesteNote : juce::String()) << ")";
             if (!rank->measuredTemperamentValid) { CrashHandler::note(line + ", temperament: too few pitch classes"); return; }
             static const char* pitchNames[12]{ "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
             line << "; cents vs equal (mean removed):";
