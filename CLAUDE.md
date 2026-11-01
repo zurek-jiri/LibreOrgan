@@ -2437,6 +2437,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   tree's halves of the stem used, >= 2, one division, one master -> the ordinary transmission offer (grouped);
   else the join. The three tests must pass together: test_halves_apart0926 (join + both old places get the
   whole stop), test_grouptrsm0925 (20 transmissions under 10 folders on III, 10 rows there), test_halfmove0924.
+  0.9.27 (1 Nov 2026, the user's three wishes + a question): (1) FOLD: `toggleAllVoicingButton.onClick()` (= "Hide
+  all voicing") at the end of the halves block and in makeGroupedTransmissions (the containers are no longer
+  expanded) - "nechceme vidět rozbalené stop foldery". (2) `Voicer::flipDivisionUpsideDown(manual)` (voicer.cpp
+  before freeCellClicked): the cells of the division's gridItems mirrored at the last row (row' = maxRow - row,
+  columns kept), rebuildUI + stateChanged; the workspace right-click menu item 3 "Grid upside down (the rows of
+  this division reversed)"; hook `ORGAN_TEST_FLIP="<division>|<seconds>"` (+ saveSettings). (3) Stop List
+  button `upsideDownButton` "Stop Grid Upside Down" (after Show Trsm. on the folder row, 190 px, oneRowWidth
+  updated): the drafts' BLOCKS (a non-child row + its children) reversed per division, orderChanged, Apply ->
+  the "Order of the stops" Yes/No box lays the grid out in the table's order. Manual 3.2 + 4.2. Test
+  %TEMP%\test_flip0927.ps1 [-Only A|B] (A: rec on II + the hook -> Cornet's cell row 4, Voixceleste 8 row 0; B:
+  ORGAN_TEST_CLICK "Stop List|Stop Grid Upside Down|Apply and reload|Yes" -> the table of II begins with
+  Voixceleste 8). (4) THE QUESTION (answered, NOT coded): rec loaded from the folder on II, then the Caen
+  Surround ODF merged - the ODF's Recit stop folders on III load the SAME folders again because the merge's
+  shared rule is per division (baseFolders of the same division index). Proposed: organ-wide baseFolders (place
+  -> division, row); when the added (ODF, the richer source) stop plays folders the base plays in ANOTHER
+  division, the ODF wins: the base rows are removed from their division and replaced by transmissions of the
+  new stop into it (grouped under a folder of the same name, makeGroupedTransmissions after the load), their
+  voicing/transmissions handed to the new stop (0.9.22 handTo). Waiting for his word.
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

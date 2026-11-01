@@ -2281,6 +2281,21 @@ MainComponent::MainComponent()
                     + (a.component.isNotEmpty() ? " component " + a.component : juce::String()) + (a.grouped ? " grouped" : "") + (a.container ? " container" : ""));
         });
     }
+    // ORGAN_TEST_FLIP="<division>|<seconds>" (tests, 0.9.27): the division's grid turned upside down (the
+    // right-click menu item) after the delay; the cells are read from the saved voicing afterwards.
+    if (const char* env = std::getenv("ORGAN_TEST_FLIP"))
+    {
+        const auto spec = juce::String::fromUTF8(env);
+        const int division = spec.upToFirstOccurrenceOf("|", false, false).getIntValue();
+        const int seconds = juce::jmax(1, spec.fromFirstOccurrenceOf("|", false, false).getIntValue());
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(seconds * 1000, [safeThis, division]
+        {
+            if (safeThis == nullptr || safeThis->voicer == nullptr) return;
+            safeThis->voicer->flipDivisionUpsideDown(division);
+            safeThis->saveSettings();
+        });
+    }
     // ORGAN_TEST_READY_STOPS="<division>|<stop name>" (tests, 0.9.18): once the organ is loaded the
     // ready-made stops of the division are logged, the named one is added (the grid's "New stop
     // here" path) and the list is logged again 10 s later - the added stop must be gone from it.
@@ -19309,10 +19324,8 @@ int MainComponent::makeGroupedTransmissions(const std::vector<Stop*>& sources, i
         else done.add(stop->displayName());
     }
     if (made == 0) return 0;
-    for (auto* stop : engine.getStops())   // the new folders open, so the transmissions under them show
-        if (stop != nullptr && stop->container && stop->primaryManual == target)
-            for (const auto& [key, name] : folderOf) if (stop->name == name) stop->voicingExpanded = true;
     if (folders > 0) finishInPlaceStopEdit({ target });
+    if (toggleAllVoicingButton.onClick) toggleAllVoicingButton.onClick();   // 0.9.27 (the user): every voicing folded when the work is done - no open stop folders
     if (voicer != nullptr) { voicer->updateStopStates(); voicer->rebuildUI(stopsContent, stopsViewport); }
     configurationDirty = true;
     saveSettings();
@@ -19388,6 +19401,7 @@ void MainComponent::offerTransmissionsForLoadedFolders()
         }
         if (!moved.isEmpty())
         {
+            if (toggleAllVoicingButton.onClick) toggleAllVoicingButton.onClick();   // 0.9.27 (the user): the folders the moves opened are folded again
             CrashHandler::note("Load folder: " + juce::String(moved.size()) + " half(ves) of stereo stops moved under the stop folder of the other half: " + moved.joinIntoString(", "));
             queueNotice(juce::MessageBoxIconType::InfoIcon, "Halves joined", juce::String(moved.size()) + " half(ves) of stereo stops loaded before moved under the stop folder of the other half: " + moved.joinIntoString(", "));
         }
@@ -20345,6 +20359,35 @@ void MainComponent::showStopBuildingDialog(int)
             setup(removeEmptyButton, "Remove empty stops", "Removes every row without folders that has no stops or transmissions "
                 "indented under it (empty stop folders, stops whose folder tree was unloaded). Rows are never dropped otherwise.",
                 [this] { removeEmptyStops(); });
+            // 0.9.27 (the user): the rows of every division in the opposite order - the last stop first; a stop
+            // folder keeps its children under it. Applied with "Apply and reload", which asks whether the grid follows.
+            setup(upsideDownButton, "Stop Grid Upside Down", "Reverses the order of the rows within every division (the last stop first; "
+                "a stop folder keeps its children). Applied with \"Apply and reload\", which asks whether the grid follows the new order.", [this]
+            {
+                commitEditors();
+                int flipped = 0;
+                for (int m = 0; m <= owner.manualCount && m < kDivisions; ++m)
+                {
+                    auto& entries = drafts[(size_t)m].entries;
+                    std::vector<std::vector<Build::Entry>> blocks;
+                    for (size_t i = 0; i < entries.size(); ++i)
+                    {
+                        if (entries[i].child && !blocks.empty()) { blocks.back().push_back(entries[i]); continue; }
+                        blocks.push_back({ entries[i] });
+                    }
+                    if (blocks.size() < 2) continue;
+                    std::reverse(blocks.begin(), blocks.end());
+                    entries.clear();
+                    for (auto& block : blocks) for (auto& entry : block) entries.push_back(std::move(entry));
+                    orderChanged.insert(m);
+                    ++flipped;
+                }
+                recentlyAdded = { -1, -1 };
+                rebuildGrid();
+                updateApplyState();
+                info.setText(flipped > 0 ? "The rows of " + juce::String(flipped) + " division(s) are in the opposite order now - applied with \"Apply and reload\" (it asks whether the grid follows)."
+                    : juce::String("Nothing to reverse: no division has two rows."), juce::dontSendNotification);
+            });
             setup(aliasesButton, "Aliases from folders", "Every stop without an alias gets the bare name of its sample folder as its "
                 "alias: no parent folders (\"TA - fletna\" becomes \"Fletna\"), no perspective prefix, the footage with its foot mark. "
                 "Aliases you typed stay. Applied with \"Apply and reload\".", [this]
@@ -20412,6 +20455,7 @@ void MainComponent::showStopBuildingDialog(int)
                 chapter(loadFolderButton, "Folder trees and the pool"); chapter(unloadFolderButton, "Folder trees and the pool");
                 chapter(addStopButton, "The table"); chapter(removeEmptyButton, "The table"); chapter(aliasesButton, "The table");
                 chapter(swapButton, "The table"); chapter(resetButton, "The table"); chapter(showTrsmButton, "The table"); chapter(grid, "The table");
+                chapter(upsideDownButton, "The table");
                 chapter(addPerspectiveButton, "Perspectives"); chapter(applyButton, "Apply and reload");
             }
             rebuildGrid();
@@ -20423,7 +20467,7 @@ void MainComponent::showStopBuildingDialog(int)
             intro.setBounds(area.removeFromTop(80));
             // 0.9.6: the buttons need about 1 525 px in one row; in a narrower window the folder buttons
             // and Show Trsm. go on a second row (Show Trsm. was the last in line and the first to vanish).
-            const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 150 + 170 + 90;
+            const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 190 + 150 + 170 + 90;
             const bool twoRows = area.getWidth() < oneRowWidth;
             auto buttons = area.removeFromBottom(twoRows ? 72 : 36);
             auto second = twoRows ? buttons.removeFromBottom(36) : juce::Rectangle<int>();
@@ -20441,6 +20485,7 @@ void MainComponent::showStopBuildingDialog(int)
             swapButton.setBounds(folderRow.removeFromLeft(140).reduced(2));
             folderRow.removeFromLeft(12);
             showTrsmButton.setBounds(folderRow.removeFromLeft(120).reduced(2));
+            upsideDownButton.setBounds(folderRow.removeFromLeft(190).reduced(2));
             info.setBounds(area.removeFromBottom(24));
             view.setBounds(area);
             layoutGrid();
@@ -20746,7 +20791,7 @@ void MainComponent::showStopBuildingDialog(int)
         juce::ImageComponent columnGhost;   // the dragged perspective column, half transparent (0.8.234)
         int columnGhostGrab = 0, columnGhostTop = 0;
         juce::TextButton addStopButton, addPerspectiveButton, removeEmptyButton, aliasesButton, loadFolderButton, unloadFolderButton, swapButton,
-            resetButton, applyButton, closeButton;
+            resetButton, applyButton, closeButton, upsideDownButton;
         HintSheen loadHint;   // the golden sheen and arrow on "Load folder..." while the table is empty (0.8.175)
         juce::ToggleButton showTrsmButton;
         bool showTransmissions = false;   // transmission rows shown (they are always in the drafts)

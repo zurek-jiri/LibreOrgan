@@ -2730,6 +2730,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                     const bool active = voicer.isArrangeModeActive();
                     juce::PopupMenu menu;
                     menu.addItem(1, active ? "Leave arrange mode" : "Enter arrange mode (drag stops between cells and divisions)");
+                    menu.addItem(3, "Grid upside down (the rows of this division reversed)");   // 0.9.27
                     menu.addSeparator();
                     menu.addItem(2, "Manual: Arranging the grid");
                     Voicer* v = &voicer;
@@ -2738,6 +2739,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                         {
                             if (result == 1) { if (active) v->exitArrangeMode(); else v->enterArrangeMode(manual); }
                             else if (result == 2 && v->manualRequest) v->manualRequest("Arranging the grid");
+                            else if (result == 3) v->flipDivisionUpsideDown(manual);
                         });
                     return;
                 }
@@ -3526,6 +3528,26 @@ void Voicer::updateIndentIndicator(int manual, const juce::String& key, juce::Po
     if (!dwell.armed && pulledDown >= 8) dwell.armed = true;
     else if (dwell.armed && pulledDown <= 4) dwell.armed = false;
     showMarker(candidate, dwell.armed);
+}
+
+void Voicer::flipDivisionUpsideDown(int manual)
+{
+    // 0.9.27: every item of the division's grid (the stops, the transmissions, the stop folders with a sound)
+    // takes the row mirrored at the last row; the columns stay. Cells of items not on the grid are left alone.
+    auto& cells = stopCells[manual];
+    std::vector<std::pair<juce::String, std::pair<int, int>>> present;
+    int maxRow = -1;
+    for (const auto& item : gridItems())
+    {
+        if (item.manual != manual || item.stop == nullptr) continue;
+        const juce::String key = item.transmission >= 0 ? transmissionKey(item.stop, item.transmission) : item.stop->name;
+        if (const auto found = cells.find(key); found != cells.end()) { present.push_back({ key, found->second }); maxRow = juce::jmax(maxRow, found->second.second); }
+    }
+    if (present.size() < 2) return;
+    for (const auto& [key, cell] : present) cells[key] = { cell.first, maxRow - cell.second };
+    CrashHandler::note("Grid of division " + juce::String(manual) + " turned upside down: " + juce::String((int)present.size()) + " item(s) over " + juce::String(maxRow + 1) + " row(s)");
+    if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
+    if (stateChanged) stateChanged();
 }
 
 void Voicer::freeCellClicked(int manual, int column, int row, juce::Point<int> screenPosition)

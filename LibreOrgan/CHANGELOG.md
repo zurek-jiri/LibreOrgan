@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.27] - 2026-11-01
+
+### Added
+- *Grid upside down* in the right-click menu of the workspace: the rows of
+  that division reversed (the stops of the last row come first, the columns
+  stay).
+- Stop List: *Stop Grid Upside Down* reverses the rows of every division in
+  the table (a stop folder keeps its children); *Apply and reload* asks
+  whether the grid follows.
+
+### Changed
+- When the halves of a stereo stop have been joined and their transmissions
+  made, every voicing row is folded: no stop folder is left open.
+
 ## [0.9.26] - 2026-11-01
 
 ### Added

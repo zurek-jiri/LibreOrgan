@@ -515,7 +515,8 @@ division (a 16' or 4' extension of an 8' stop), "(Trsm.)" in another one.
 Press a stop button for two seconds, release - or right-click the empty
 workspace and choose *Enter arrange mode*: every stop and transmission can
 be dragged to another cell or into another division. A click on empty
-workspace ends the mode.
+workspace ends the mode. The same menu's *Grid upside down* reverses the
+rows of that division (the last row first, the columns stay).
 
 - Dragging a stop into another division moves it there with its voicing and
   transmissions. A name is unique within a division: a stop whose name the
@@ -745,7 +746,9 @@ can be done here as well, and this is where the organ is built from folders.
 - **Add stop...** adds an empty stop folder or one of the ready-made stops no
   division uses yet. The x at a row's start removes the stop (its folders
   become free). **Remove empty stops** removes every row without folders and
-  children.
+  children. **Stop Grid Upside Down** reverses the rows of every division
+  (a stop folder keeps its children); *Apply and reload* asks whether the
+  grid follows.
 - **Aliases from folders** gives every stop without an alias the bare name of
   its sample folder (no parents, no perspective prefix, a capital, the
   footage with its foot mark).

@@ -374,6 +374,9 @@ public:
     // Forgets the grid cells of a division's own stops (transmissions keep theirs):
     // the next layout places them in load order (the Stop building table's order).
     void forgetGridCells(int manual);
+    // 0.9.27 (the user: "grid upside down"): the division's rows reversed - the items of the last row come
+    // first, the columns stay; the state is saved through stateChanged.
+    void flipDivisionUpsideDown(int manual);
     // Stop folders (Stop List): the stops indented under this master (same division).
     std::vector<Stop*> groupChildren(const Stop* master) const;
     // ... and the transmissions indented under it (received in the master's division).
