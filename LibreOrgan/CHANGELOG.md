@@ -12,6 +12,12 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.20] - 2026-11-01
+
+### Changed
+- The orange frame over a division while files are dragged carries no
+  caption any more (it covered the stops).
+
 ## [0.9.19] - 2026-11-01
 
 ### Fixed

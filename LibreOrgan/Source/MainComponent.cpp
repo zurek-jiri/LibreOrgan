@@ -11293,10 +11293,7 @@ void MainComponent::paintOverChildren(juce::Graphics& g)
     g.setColour(juce::Colours::orange.withAlpha(0.12f));
     g.fillRoundedRectangle(frame, 6.0f);
     g.setColour(juce::Colours::orange.withAlpha(0.9f));
-    g.drawRoundedRectangle(frame, 6.0f, 3.0f);
-    g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
-    g.drawText("Load folder into " + (fileDropDivision == 0 ? juce::String("the Pedal") : "Manual " + romanNumeral(fileDropDivision)),
-        fileDropHighlight.withSizeKeepingCentre(fileDropHighlight.getWidth(), 28), juce::Justification::centred);   // in the middle of the frame: the top would cover the division header (the user)
+    g.drawRoundedRectangle(frame, 6.0f, 3.0f);   // the frame alone (0.9.20, the user: a caption covered the stops or the header - the orange says it)
 }
 
 void MainComponent::takeDroppedFiles(const juce::StringArray& paths, int division)
