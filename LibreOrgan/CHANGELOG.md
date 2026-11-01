@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.24] - 2026-11-01
+
+### Changed
+- A half of a stereo stop loaded alone (the folder `FluteTravers8L` as the
+  tree) is known as a half: one channel silent and the other half beside it
+  on the disk - it becomes a stop folder with that one child.
+- A tree whose folder is a half of a stop already loaded elsewhere: the row
+  playing that half MOVES under the stop folder its other half makes in the
+  division the tree was dropped on (its voicing, transmissions and cells go
+  along; a stop folder it leaves empty is removed). Before, the half was left
+  out and only a transmission offered.
+
 ## [0.9.23] - 2026-11-01
 
 ### Fixed

@@ -18779,7 +18779,9 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         if (const auto usedBy = used.find(assignment.folder.getFullPathName().toLowerCase()); usedBy != used.end())
         {
             alreadyLoaded.add(assignment.folder.getFileName());
-            if (usedBy->second.first != manual && std::find(offerRows.begin(), offerRows.end(), usedBy->second) == offerRows.end()) offerRows.push_back(usedBy->second);
+            if (assignment.component.isNotEmpty())   // 0.9.24: a half - its row moves under the stop folder its other half makes here
+                pendingHalfMoves.push_back({ usedBy->second.first, usedBy->second.second, manual, assignment.stopName });
+            else if (usedBy->second.first != manual && std::find(offerRows.begin(), offerRows.end(), usedBy->second) == offerRows.end()) offerRows.push_back(usedBy->second);
             continue;
         }
         if (const auto joined = joinRow.find(assignment.folder.getFileName().toLowerCase()); joined != joinRow.end())
@@ -18830,7 +18832,7 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
         CrashHandler::note("Load folder: " + juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFullPathName() + " are loaded already (played by a row of the organ) and were not added again: " + alreadyLoaded.joinIntoString(", "));
         queueNotice(juce::MessageBoxIconType::InfoIcon, "Folders loaded already",
             juce::String(alreadyLoaded.size()) + " folder(s) of " + tree.getFileName() + " are played by stops of the organ already and were not added again: " + shown.joinIntoString(", "));
-        if (!offerRows.empty())   // 0.9.22: offered as transmissions once the division has been rebuilt
+        if (!offerRows.empty() || !pendingHalfMoves.empty())   // 0.9.22: offered as transmissions once the division has been rebuilt (0.9.24: the halves moved)
         {
             auto offer = std::make_unique<TransmissionOffer>();
             offer->targetManual = manual;
@@ -19223,10 +19225,56 @@ void MainComponent::offerTransmissionsForLoadedFolders()
     // 0.9.22: the folders a Load folder / drop left out because rows of OTHER divisions play them - offered as
     // transmissions of those rows into the division the folders were meant for (one per row; a row with such
     // a transmission already gets none).
-    if (pendingTransmissionOffer == nullptr) return;
+    if (pendingTransmissionOffer == nullptr) { pendingHalfMoves.clear(); return; }
     auto offer = std::move(pendingTransmissionOffer);
     const int target = offer->targetManual;
-    if (target < 0 || target > manualCount) return;
+    if (target < 0 || target > manualCount) { pendingHalfMoves.clear(); return; }
+    // 0.9.24: the halves first - the row playing a half moves under the stop folder its other half made here
+    // (indentStopUnder, in place: voicing, transmissions and cells go along); a stop folder left empty by it is
+    // removed; a half whose stop folder was not made here (both halves loaded elsewhere) joins the offer below.
+    {
+        const auto moves = std::move(pendingHalfMoves);
+        pendingHalfMoves.clear();
+        juce::StringArray moved;
+        for (const auto& move : moves)
+        {
+            if (activeFolderLoader != nullptr) break;
+            Stop* half = nullptr;
+            Stop* master = nullptr;
+            for (auto* stop : engine.getStops())
+            {
+                if (stop == nullptr) continue;
+                if (!stop->container && stop->primaryManual == move.sourceManual && stopBuildKey(stop->name) == stopBuildKey(move.rowName)) half = stop;
+                if (stop->container && stop->primaryManual == move.targetManual && stopBuildKey(stop->name) == stopBuildKey(move.stem)) master = stop;
+            }
+            if (half == nullptr) continue;
+            const bool underMasterAlready = master != nullptr && half->primaryManual == master->primaryManual && half->groupMaster == master->name;   // the name alone is not enough: "FluteTravers 8" on III and on II
+            if (master == nullptr || underMasterAlready)
+            {
+                if (master == nullptr && move.sourceManual != target && std::find(offer->rows.begin(), offer->rows.end(), std::make_pair(move.sourceManual, move.rowName)) == offer->rows.end())
+                    offer->rows.push_back({ move.sourceManual, move.rowName });
+                continue;
+            }
+            Stop* oldMaster = nullptr;
+            if (half->groupMaster.isNotEmpty())
+                for (auto* stop : engine.getStops())
+                    if (stop != nullptr && stop->container && stop->primaryManual == half->primaryManual && stop->name == half->groupMaster) { oldMaster = stop; break; }
+            const juce::String halfName = half->displayName();
+            indentStopUnder(half, master);
+            if (half->primaryManual != master->primaryManual || half->groupMaster != master->name) continue;   // refused (logged there)
+            moved.add(halfName + " -> " + master->displayName());
+            if (oldMaster != nullptr && voicer != nullptr && voicer->groupChildren(oldMaster).empty() && voicer->groupChildTransmissions(oldMaster).empty() && oldMaster->transmissions.empty())
+            {
+                CrashHandler::note("Load folder: the stop folder \"" + oldMaster->name + "\" of division " + juce::String(oldMaster->primaryManual) + " is empty after the move of its half - removed");
+                removeStopFromGrid(oldMaster);
+            }
+        }
+        if (!moved.isEmpty())
+        {
+            CrashHandler::note("Load folder: " + juce::String(moved.size()) + " half(ves) of stereo stops moved under the stop folder of the other half: " + moved.joinIntoString(", "));
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Halves joined", juce::String(moved.size()) + " half(ves) of stereo stops loaded before moved under the stop folder of the other half: " + moved.joinIntoString(", "));
+        }
+    }
     std::vector<Stop*> sources;
     juce::StringArray names;
     for (const auto& [manual, name] : offer->rows)

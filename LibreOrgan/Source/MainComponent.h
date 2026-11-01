@@ -80,6 +80,12 @@ public:
     // transmissions into the target division once the load has ended (runWhenLoaded).
     struct TransmissionOffer { int targetManual = -1; juce::String treeName; std::vector<std::pair<int, juce::String>> rows; };
     std::unique_ptr<TransmissionOffer> pendingTransmissionOffer;
+    // 0.9.24 (the user: "raděj B, aby byly skutečně u sebe"): a folder left out that is one HALF (L/R) of a stop whose
+    // other half makes a stop folder in the target division - the row playing it is MOVED under that stop folder
+    // after the load (indentStopUnder: its voicing, transmissions and cells go along); a stop folder it leaves
+    // empty is removed. No stop folder made for it (both halves loaded elsewhere) -> the transmission offer.
+    struct HalfMove { int sourceManual = -1; juce::String rowName; int targetManual = -1; juce::String stem; };
+    std::vector<HalfMove> pendingHalfMoves;
     void offerTransmissionsForLoadedFolders();
     int divisionAtPoint(juce::Point<int> point) const;                    // the division column under a point of this component, -1 none
     juce::Rectangle<int> fileDropHighlight;                                // the framed column while a drag is over it

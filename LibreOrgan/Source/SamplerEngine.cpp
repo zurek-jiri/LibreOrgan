@@ -12052,7 +12052,15 @@ namespace
     juce::String componentOfFolder(const juce::File& folder, const std::set<juce::String>& folderKeys)
     {
         const auto name = folder.getFileName();
-        auto present = [&](const juce::String& sibling) { return sibling.isNotEmpty() && folderKeys.count(folder.getSiblingFile(sibling).getFullPathName().toLowerCase()) != 0; };
+        // The other half: in the tree, or BESIDE the folder on the disk (0.9.24, the user: a half loaded alone -
+        // "FluteTravers8L" dropped as the tree - knows it is a half: one channel silent and the other half next to it).
+        auto present = [&](const juce::String& sibling)
+        {
+            if (sibling.isEmpty()) return false;
+            const auto other = folder.getSiblingFile(sibling);
+            if (folderKeys.count(other.getFullPathName().toLowerCase()) != 0) return true;
+            return SampleFiles::isDirectory(other) && SamplerEngine::folderHasNumberedSamples(other);
+        };
         const juce::juce_wchar last = name.getLastCharacter();
         const bool lettered = name.length() >= 3 && (last == 'L' || last == 'l' || last == 'R' || last == 'r');
         if (lettered)

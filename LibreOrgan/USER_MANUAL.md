@@ -339,7 +339,10 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
   its end and loops as a whole.
 - A stop recorded as a left and a right half (`quintaton16L` and
   `quintaton16R`, or `quintaton16` and `quintaton16L` with one channel
-  silent in each) becomes a stop folder with the two halves as its ranks.
+  silent in each) becomes a stop folder with the two halves as its ranks. A
+  half loaded alone is known by its silent channel and the other half beside
+  it on the disk; a half loaded elsewhere moves under the stop folder its
+  other half makes.
 
 ### Releases
 

@@ -2382,6 +2382,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   configuration: "0 stop(s) added, 30 shared", table and grid unchanged), test_merge0922.ps1 (single rows still
   replaced by Rural's CO folder, 2 transmissions kept). The folders in a saved stopBuild entry are a LIST
   [{perspective, tree, path}], not a map (check scripts).
+  0.9.24 (1 Nov 2026, the user: FluteTravers8L alone on III, then rec on II - "nezařadil ji pod FluteTravers stop
+  folder"; chose B: "raděj B, aby byly skutečně u sebe" + the disk sibling): (1) `componentOfFolder`'s `present`
+  also accepts the partner folder BESIDE the folder on the disk (isDirectory + folderHasNumberedSamples) - a lone
+  half dropped as the tree becomes a stop folder with one child ("FluteTravers 8" + "FluteTravers 8 L"). (2)
+  `HalfMove` {sourceManual, rowName, targetManual, stem} - `pendingHalfMoves` filled in extendStopBuildWithTree
+  for a left-out folder with a component (instead of the transmission offer; the same division too); the
+  runWhenLoaded handler (`offerTransmissionsForLoadedFolders`, before the offer) finds the half's stop and the
+  target container by `stopBuildKey(name) == stopBuildKey(stem)` and calls `indentStopUnder(half, master)` (in
+  place: voicing, transmissions, cells go along, `Stop moved:` log), then removes the old master when
+  groupChildren/groupChildTransmissions/transmissions are empty (`removeStopFromGrid`), Messages "Halves joined";
+  no container made in the target (both halves elsewhere) -> the row joins the transmission offer. LESSON: the
+  "already under the master" test must compare the DIVISION too - the lone-drop folder on III and the scan's on
+  II are both named "FluteTravers 8", the name-only test took the half for placed and did nothing (first run).
+  Test %TEMP%\test_halfmove0924.ps1: III 2 stops -> after rec on II: "Stop moved: FluteTravers 8 L from division 3
+  to 2", III's folder removed, III 0 rows, II 30 rows, grid of II without holes. The scan's names carry the
+  parent chain only when the tree lies above it ("pipe - rec - Cornet" for the package, "Cornet" for rec itself).
   v0.9.9 PUSH (31 Oct 2026): the "Configurations check" index job on main FAILED - `git add -A configurations` in
   configurations.yml (and configuration-issue/remove/feature.yml, `ls -1 configurations`, `find configurations` in
   configurations_check.sh) were leftovers of the 0.9.0 rename (the check job passed only because `find` on a missing

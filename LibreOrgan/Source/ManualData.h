@@ -345,7 +345,10 @@ static const char* const kManualText_part1 =
     "  its end and loops as a whole.\n"
     "- A stop recorded as a left and a right half (`quintaton16L` and\n"
     "  `quintaton16R`, or `quintaton16` and `quintaton16L` with one channel\n"
-    "  silent in each) becomes a stop folder with the two halves as its ranks.\n"
+    "  silent in each) becomes a stop folder with the two halves as its ranks. A\n"
+    "  half loaded alone is known by its silent channel and the other half beside\n"
+    "  it on the disk; a half loaded elsewhere moves under the stop folder its\n"
+    "  other half makes.\n"
     "\n"
     "### Releases\n"
     "\n"
@@ -401,11 +404,11 @@ static const char* const kManualText_part1 =
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
     "button fires even when hidden).\n"
+    ;
+static const char* const kManualText_part2 =
     "\n"
     "- **PANIC** silences every sounding pipe.\n"
     "- **Record** records the stereo mix to a WAV file; click again to stop\n"
-    ;
-static const char* const kManualText_part2 =
     "  ([Recording](#65-recording)).\n"
     "- **Stop List** - the table of the whole organ ([The Stop List](#4-the-stop-list)).\n"
     "- **Guided tour** (on a teaching organ such as the Rural Organ demo) walks\n"
@@ -603,11 +606,11 @@ static const char* const kManualText_part2 =
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
     "second half: more chiff or a softer speaking, the held tone untouched.\n"
+    ;
+static const char* const kManualText_part3 =
     "\n"
     "### Random pitch error\n"
     "\n"
-    ;
-static const char* const kManualText_part3 =
     "0-40 cents (default 4): every pipe gets its own small random detune at every\n"
     "note, as real pipes never speak twice alike. The division's *Random tuning\n"
     "error of pipes* must be on.\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "\n"
     "*Settings* in a division header opens the Divisions dialog at that division.\n"
     "Its settings are the same as the division's section of the Configuration\n"
+    ;
+static const char* const kManualText_part4 =
     "Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing and the\n"
     "audio tabs.\n"
     "\n"
-    ;
-static const char* const kManualText_part4 =
     "## 5.1 Keyboard, MIDI and compass\n"
     "\n"
     "- *MIDI keyboard device* and *MIDI channel* (\"Shared with ...\" appears when\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
     "\n"
     "---\n"
+    ;
+static const char* const kManualText_part5 =
     "\n"
     "# 6. Playing\n"
     "\n"
-    ;
-static const char* const kManualText_part5 =
     "## 6.1 Couplers\n"
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "saves it with the organ. What each choice costs, measured:\n"
     "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Compress samples in RAM (lossless)\n"
     "\n"
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
-    ;
-static const char* const kManualText_part6 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "files play. On: such a key is silent.\n"
     "\n"
     "### Treble per key: shelf start frequency\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "bar.\n"
     "\n"
     "## 8.5 Folder name patterns (one per line)\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "The three lists travel with the organ and belong to this computer as well:\n"
     "every pattern you add is kept in `Patterns.json` beside the settings and\n"
-    ;
-static const char* const kManualText_part8 =
     "merged into every organ you load; a pattern you remove is removed there too.\n"
     "The \"?\" of the pattern dialogs opens these chapters.\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
     "and every release is built there. *About & licences...* shows the program's\n"
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
+    ;
+static const char* const kManualText_part9 =
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
-    ;
-static const char* const kManualText_part9 =
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
     "---\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "| 32-bit float | 48 kHz | full rate | on | 29 GB |\n"
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
+    ;
+static const char* const kManualText_part10 =
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "A published configuration's README states the least RAM the organ takes with\n"
     "every saving option (measured when saved so, else estimated from a sample of\n"
