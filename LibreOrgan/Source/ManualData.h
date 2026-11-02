@@ -401,8 +401,8 @@ static const char* const kManualText_part1 =
     "\n"
     "From top to bottom: the top bar of buttons, the combination row, the global\n"
     "sound sliders with the polyphony display, and the workspace - one column per\n"
-    "division with its header and its stop grid. A message strip appears in the\n"
-    "lower left corner when the program has something to say ([Messages](#91-messages)).\n"
+    "division with its header and its stop grid. A button *Messages: N new* appears in\n"
+    "the top bar when the program has something to say ([Messages](#91-messages)).\n"
     "\n"
     ;
 static const char* const kManualText_part2 =
@@ -1796,7 +1796,8 @@ static const char* const kManualText_part8 =
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
     "you with a box: the texts are collected quietly under **Messages** in the\n"
-    "*About & licences...* window (the entry above the manual). Questions,\n"
+    "*About & licences...* window (the entry above the manual), and a button\n"
+    "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
     "warnings and the polyphony report still come as boxes.\n"
     "\n"
     "## 9.2 The activity log\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
     "last self-test, `system.txt` with the computer and every audio route - no\n"
-    "samples, no voicing) and screenshots of every open window, then opens the\n"
     ;
 static const char* const kManualText_part9 =
+    "samples, no voicing) and screenshots of every open window, then opens the\n"
     "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
     "A free GitHub account is needed; the report is public. If GitHub lands\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
-    "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     ;
 static const char* const kManualText_part10 =
+    "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"

@@ -395,8 +395,8 @@ folder tree as the archive has it).
 
 From top to bottom: the top bar of buttons, the combination row, the global
 sound sliders with the polyphony display, and the workspace - one column per
-division with its header and its stop grid. A message strip appears in the
-lower left corner when the program has something to say ([Messages](#91-messages)).
+division with its header and its stop grid. A button *Messages: N new* appears in
+the top bar when the program has something to say ([Messages](#91-messages)).
 
 ## 2.1 Top bar buttons
 
@@ -1776,7 +1776,8 @@ sag.
 What the program has to tell after an action - a tree found, folders
 replaced, what a merge did, what the load left out - no longer interrupts
 you with a box: the texts are collected quietly under **Messages** in the
-*About & licences...* window (the entry above the manual). Questions,
+*About & licences...* window (the entry above the manual), and a button
+*Messages: N new* in the top bar opens that entry while some are unread. Questions,
 warnings and the polyphony report still come as boxes.
 
 ## 9.2 The activity log

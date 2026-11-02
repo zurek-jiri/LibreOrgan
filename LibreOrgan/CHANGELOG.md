@@ -12,6 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.39] - 2026-11-02
+
+### Fixed
+- Tooltips no longer ask the window system for the mouse position eight times
+  a second (JUCE's own tooltip poll reads the live pointer position: an X11
+  round trip on Linux, a window-server call on macOS - on the two-core laptops
+  the window thread waited for it, #172, #173). The tip is now looked for
+  once a second from what the mouse events already told the program, appears
+  once the mouse has rested on a control for a second or two, a little
+  farther from the pointer, stays seven seconds at most and comes back only
+  after the mouse has left the control.
+- The Divisions dialog's "Measure polyphony" button stayed grey when the
+  dialog was opened while a load was still being finished (#171-#173): it
+  follows the program's state now.
+- The four MIDI keyboards of the Divisions dialog repainted whole twenty
+  times a second for their velocity badges; they repaint only when the newest
+  key or its velocity changed.
+- The activity log says how long the loader's release waited after
+  "Compiling the Stop List: done" (16-55 s on the two-core laptops, 0 s on a
+  Ryzen) - the figure the next report is read by.
+
+### Changed
+- Messages: a button "Messages: N new" in the top bar while messages are
+  unread (a click opens the Messages tab); no strip, nothing periodic.
+
 ## [0.9.38] - 2026-11-02
 
 ### Fixed

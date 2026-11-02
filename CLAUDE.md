@@ -2746,6 +2746,47 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   not polled. RULE: nothing on the message thread may ask the window system or a device driver periodically
   (key states, focus, device scans) - a listener or a cached answer instead; on a two-core box with real-time
   threads every such call can wait seconds.
+  0.9.39 (2 Nov 2026 evening; #172 Linux / #173 Mac on 0.9.38 "gui je furt zamrzlé, measure šedé"; the user:
+  "zničils mi LibreOrgan ... udělej tooltipy a F1 levně ... stačí dotaz 1x za sekundu ... tooltip se objevuje
+  příliš rychle a příliš blízko ... messages jako zvoneček v title baru ... minimální změny"): WHAT THE LOGS SAY:
+  (1) the Linux 0.9.38 stack samples sit in libc memmove (SSSE3) called directly from JUCE's InternalMessageQueue
+  lambda = `queue.removeAndReturn(0)` - the message queue is LONG (every pop moves the whole array: a flooded queue
+  drains quadratically); the Mac samples are useless (backtrace() walks frame pointers, the frame after _sigtramp
+  is garbage; only the first frame of a sample is reliable). (2) `MouseInputSource::getScreenPosition()` is NOT a
+  cache: juce_MouseInputSourceImpl.h getRawScreenPosition -> `MouseInputSource::getCurrentRawMousePosition()` =
+  XQueryPointer / [NSEvent mouseLocation] - and JUCE's own `TooltipWindow::timerCallback` (every 123 ms) calls it
+  whenever the mouse is over any component = the "X11 reply wait" of the 0.9.37 stacks; `Process::isForegroundProcess`
+  and `ModifierKeys::getCurrentModifiers` ARE cached statics (the 0.9.38 note's "two X11 round trips" of the F1 poll was
+  one: XQueryKeymap). (3) `MainComponent::activeFolderLoader` stayed alive 46-55 s after "Compiling the Stop List: done"
+  on the Mac (16-99 s on the Linux laptop) in every session since the 1 Nov builds - the old Mac logs (builds 22-27 Oct)
+  show 8-10 s; "Configuration from another computer" and "RAM held after the load" wait for the loader's release, and so
+  does `canMeasurePolyphony` = the grey Measure button. The release is one callAsync message posted at `finished`
+  right after "done" - why it runs 47 s later while timer beats come through every 2-5 s is NOT explained (FIFO queue;
+  no nested message loop in our code; my Ryzen pinned to 2 logical cores releases in 0 s): 0.9.39 logs "Loader:
+  finished N ms after done" and "Loader: released N ms after its finish" so the next Mac/Linux log says which of
+  the two waits. (4) The Divisions dialog on a two-core box: four LearnKeyboards repainted WHOLE at 20 Hz (the
+  velocity badge's Refresh timer), eight AudioTabPanels at 5 Hz (refreshChannels/refreshReverbLabel/selectorHeight +
+  an existsAsFile stat each), KeyboardsDialog 10 Hz refreshControls, `voicer->updateStopStates()` every 200 ms from
+  the main timer while the dialog is visible. DONE: HelpTooltipWindow overrides the private virtual `timerCallback`
+  of juce::TooltipWindow (allowed: overriding needs no access) - every 8th tick (~1 s) it reads
+  `getComponentUnderMouse()` (cached by JUCE) and the position of the LAST MOUSE EVENT (our `mouseMove/mouseDrag`
+  overrides: the base is a global mouse listener), no system call; a tip after one poll of rest, placed +10/+16 px
+  from the pointer, down after 7 polls, suppressed until the mouse leaves the control, `mouseDown/mouseWheelMove`
+  dismiss; `getDesktopScaleFactor` override returns the resting component's scale (the base took its own poll's
+  component - with the override it would have fallen to the global 1.0 = unscaled tips at 75 %). The Hider struct is
+  gone. F1 unchanged (Windows GetAsyncKeyState poll, listeners elsewhere). `messagesButton` ("Messages: N new",
+  orange text, key "messages" in headerButtons after guidedTour, `isHeaderButtonShown` = unreadMessages > 0, never a
+  setting, skipped in the Editor's toggles, chapter "Messages"): `updateMessagesButton()` from noteMessage and the
+  About window's read callback - resized() only when the button comes or goes; the strip stays uncreated.
+  AudioTabPanel::timerCallback sets `measureButton.setEnabled(canMeasurePolyphony())` (resized() alone did before).
+  LearnKeyboard's Refresh repaints only when `velocityOf` gives another note/velocity (`badgeNote/badgeVelocity`).
+  NOT changed (noted): the control thread's `if (more) std::this_thread::yield()` under SCHED_FIFO (first commit,
+  8b96d24 - not a regression; the 0.8.127 rule says never yield there), AudioTabPanel 5 Hz, updateStopStates 5 Hz,
+  the IR automatic choice flapping Light/Full every 5-6 s on the Mac (17:08:30-17:08:53 of #173: "Full chosen" then
+  "too much, Light chosen", each a convolution rebuild) - no hysteresis between the estimate and the measurement.
+  Debian trixie libc6 2.41-12+deb13u4 is stripped: a `+0x...` offset resolves only by reading the bytes
+  (%TEMP%\glibc_sym_tool.py, glibc_dump.py; the SSSE3 memmove loop at 0x17e748). RULE (the user, twice): read the code
+  again before changing it; minimal changes; an old log is the baseline ("chodilo jak víno" = the Oct 22-27 Mac logs).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -305,44 +305,72 @@ struct HelpKeyWatcher final : public juce::Timer, public juce::KeyListener
 // line of a tooltip that exists: 0.8.233 also made the line up for every control without a
 // tooltip (every component of the main window resolves to some chapter), so it popped up
 // everywhere at once and pushed the real tooltips away (0.8.235, the user).
+// 0.9.39 (#172/#173, the two-core Mac and Linux laptops; the user: "tooltipy a F1 levně ... stačí dotaz 1x za
+// sekundu ... nesmí to brát zdroje"): JUCE's own TooltipWindow polls every 123 ms, and every poll reads the LIVE
+// mouse position from the window system (MouseInputSource::getScreenPosition -> getCurrentRawMousePosition:
+// XQueryPointer on Linux, [NSEvent mouseLocation] on macOS - a round trip that waits for a window system starved
+// by the real-time audio threads on two cores). The base timer's callback is overridden here: every eighth tick
+// (about once a second) the control under the mouse (JUCE keeps it from the mouse events) and the position of
+// the last mouse event (kept here from the global mouse listener the base registers) are read - no system call.
+// A tip comes once the mouse has rested on a control for a whole poll (1-2 s), a little farther from the pointer,
+// stays 7 s at most (0.8.236) and does not return until the mouse has left the control.
 class HelpTooltipWindow final : public juce::TooltipWindow
 {
 public:
-    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) { hider.startTimer(250); }
+    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) {}
     juce::String getTipFor(juce::Component& c) override
     {
-        if (hider.suppressed != nullptr && hider.suppressed == &c) return {};   // shown long enough: not again until the mouse left the control
         auto tip = juce::TooltipWindow::getTipFor(c);
         if (tip.isEmpty() || tip.contains("press F1")) return tip;
         return tip + "\nFor details press F1.";
     }
-private:
-    // JUCE keeps a tooltip up for as long as the mouse rests on the control (0.8.236, the user:
-    // "je tam furt a otravuje to"): a tip is taken down after 7 seconds and comes back only
-    // when the mouse has left the control and returns to it.
-    struct Hider final : public juce::Timer
+    // The base sized the tip by the component its own poll had found; ours is the one the mouse rests on.
+    float getDesktopScaleFactor() const override
     {
-        explicit Hider(HelpTooltipWindow& w) : window(w) {}
-        void timerCallback() override
+        return restingOver != nullptr ? juce::Component::getApproximateScaleFactorForComponent(restingOver.getComponent())
+                                      : juce::TooltipWindow::getDesktopScaleFactor();
+    }
+private:
+    void timerCallback() override
+    {
+        if (++tick < 8) return;   // the base timer runs every 123 ms: one look a second is plenty (the user)
+        tick = 0;
+        const auto source = juce::Desktop::getInstance().getMainMouseSource();
+        auto* under = source.isTouch() ? nullptr : source.getComponentUnderMouse();   // cached by JUCE, no system call
+        if (suppressed != nullptr && under != suppressed.getComponent()) suppressed = nullptr;   // the mouse left the control: a tip may come again
+        if (under == nullptr || under != restingOver.getComponent() || lastSeen.getDistanceFrom(restingAt) > 12.0f)
         {
-            auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
-            if (suppressed != nullptr && under != suppressed) suppressed = nullptr;
-            if (!window.isVisible()) { shownSince = 0; shownOver = nullptr; return; }
-            const auto now = juce::Time::getMillisecondCounter();
-            if (shownSince == 0 || under != shownOver) { shownSince = now; shownOver = under; return; }
-            if (now - shownSince > 7000)
-            {
-                suppressed = under;
-                window.hideTip();
-                shownSince = 0;
-                shownOver = nullptr;
-            }
+            // Another control, or the mouse moved: the rest starts afresh (a shown tip goes down).
+            restingOver = under;
+            restingAt = lastSeen;
+            restingPolls = 0;
+            if (isVisible()) hideTip();
+            return;
         }
-        HelpTooltipWindow& window;
-        juce::Component::SafePointer<juce::Component> suppressed, shownOver;
-        juce::uint32 shownSince = 0;
-    };
-    Hider hider{ *this };
+        ++restingPolls;
+        if (isVisible())
+        {
+            if (restingPolls >= 7) { hideTip(); suppressed = under; }   // 0.8.236: about 7 s, then again only after the mouse left the control
+            return;
+        }
+        if (buttonDown || under == suppressed.getComponent()) return;
+        const auto tip = getTipFor(*under);
+        if (tip.isEmpty()) { suppressed = under; return; }   // nothing to say about this control: not asked again until the mouse leaves it
+        displayTip(lastSeen.roundToInt() + juce::Point<int>(10, 16), tip);   // a little farther from the control than JUCE's own place (the user)
+        restingPolls = 0;   // from here the polls count the time shown
+    }
+    // The global mouse listener of the base: the position of the last event is all the poll needs.
+    void mouseMove(const juce::MouseEvent& e) override { lastSeen = e.getScreenPosition().toFloat(); }
+    void mouseDrag(const juce::MouseEvent& e) override { lastSeen = e.getScreenPosition().toFloat(); }
+    void mouseEnter(const juce::MouseEvent& e) override { if (e.eventComponent == this) hideTip(); }   // the base's rule: the mouse on the tip itself takes it down
+    void mouseDown(const juce::MouseEvent&) override { buttonDown = true; dismiss(); }
+    void mouseUp(const juce::MouseEvent&) override { buttonDown = false; }
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override { dismiss(); }
+    void dismiss() { if (isVisible()) hideTip(); suppressed = restingOver; }
+    juce::Component::SafePointer<juce::Component> restingOver, suppressed;
+    juce::Point<float> lastSeen, restingAt;
+    int tick = 0, restingPolls = 0;
+    bool buttonDown = false;
 };
 
 // A modeless dialog of the program (0.8.239, the user: "Kde nemá modalita význam, tam ji zruš"):
@@ -1222,6 +1250,12 @@ MainComponent::MainComponent()
     addChildComponent(guidedTourButton);   // visible on a teaching organ only (0.8.206)
     guidedTourButton.setTooltip("A tour of the console: what the stops, the stop folders, the transmissions, the couplers and the Stop List are, step by step, with the manual chapter of each.");
     guidedTourButton.onClick = [this] { startGuidedTour(); };
+    // 0.9.39 (the user: no strip at the bottom, "zvoneček" in the top bar instead): a button that is there
+    // while a message is unread, a click opens the Messages tab; nothing periodic behind it.
+    addChildComponent(messagesButton);
+    messagesButton.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+    messagesButton.setTooltip("Messages of the program not read yet (a tree found, what a merge did, what a load left out ...): opens the Messages tab of the manual window.");
+    messagesButton.onClick = [this] { showAboutDialog("Messages"); };
     addAndMakeVisible(hintSheen);
     // 0.9.19: no golden sheen and arrows over Stop List / Load Configuration any more (the user: drag and
     // drop onto the console replaces that hint); the HintSheen stays for the Stop List dialog's Load folder.
@@ -7063,8 +7097,18 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             setAvailableRange(0, 127);
             setLowestVisibleKey(24);
             setKeyWidth(9.0f);
-            // The velocity numbers on the sounding keys follow the playing: a steady repaint.
-            if (velocityOf) refresh.start(*this);
+            // The velocity numbers on the sounding keys follow the playing: a steady poll, a repaint
+            // only when the newest key or its velocity changed (0.9.39: four keyboards repainted whole
+            // twenty times a second took the window thread of the two-core laptops, #172/#173).
+            if (velocityOf) refresh.start(*this, [this]
+            {
+                int velocity = 0;
+                const int note = velocityOf(velocity);
+                const bool changed = note != badgeNote || velocity != badgeVelocity;
+                badgeNote = note;
+                badgeVelocity = velocity;
+                return changed;
+            });
         }
 
         void mouseDown(const juce::MouseEvent& event) override
@@ -7104,12 +7148,14 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     private:
         struct Refresh final : public juce::Timer
         {
-            void start(juce::Component& c) { target = &c; startTimerHz(20); }
-            void timerCallback() override { if (target != nullptr) target->repaint(); }
+            void start(juce::Component& c, std::function<bool()> changedFn) { target = &c; changed = std::move(changedFn); startTimerHz(20); }
+            void timerCallback() override { if (target != nullptr && (!changed || changed())) target->repaint(); }
             juce::Component* target = nullptr;
+            std::function<bool()> changed;   // 0.9.39: true when the badge's content changed since the last poll
         } refresh;
         std::function<void()> onLearn;
         std::function<int(int&)> velocityOf;
+        int badgeNote = -1, badgeVelocity = 0;   // what the badge showed at the last poll (0.9.39)
     };
 
     class LearnSlider : public juce::Slider
@@ -7771,6 +7817,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     panelButton.setEnabled(device != nullptr && device->hasControlPanel());
 #endif
                     reopenButton.setEnabled(device != nullptr);
+                    measureButton.setEnabled(this->owner.canMeasurePolyphony());   // 0.9.39: follows the loader - the dialog laid out while a load still ran stayed grey for good (#171-#173)
                 }
                 refreshChannels();
                 refreshReverbLabel();
@@ -15202,9 +15249,23 @@ void MainComponent::beginStartupFolderLoading()
     auto loader = std::make_unique<StartupFolderLoader>(engine, std::move(jobs),
         currentSampleRate, [this](bool)
         {
+            // 0.9.39: two figures for the log - how long after "done" the loader's finish ran, and how long its
+            // release message waited in the queue (on the two-core Mac and Linux laptops the Divisions dialog's
+            // Measure button and the "Configuration from another computer" line came 16-55 s after "done").
+            const double finishedMs = juce::Time::getMillisecondCounterHiRes();
+            const double doneAt = compileDoneMs;
+            compileDoneMs = 0.0;
+            if (doneAt > 0.0 && finishedMs - doneAt > 500.0)
+                CrashHandler::note("Loader: finished " + juce::String(juce::roundToInt(finishedMs - doneAt)) + " ms after \"Compiling the Stop List: done\"");
             engine.noteOffAll();
             audioMuted.store(false);
-            juce::MessageManager::callAsync([this] { activeFolderLoader.reset(); thawGrid(); });
+            juce::MessageManager::callAsync([this, finishedMs]
+            {
+                const double waited = juce::Time::getMillisecondCounterHiRes() - finishedMs;
+                if (waited > 500.0) CrashHandler::note("Loader: released " + juce::String(juce::roundToInt(waited)) + " ms after its finish (the message queue's delay)");
+                activeFolderLoader.reset();
+                thawGrid();
+            });
         }, this);
     // "Compiling the Stop List" in the loading dialog, step by step with its percentage.
     loader->phases =
@@ -15284,6 +15345,7 @@ void MainComponent::beginStartupFolderLoading()
                 resized();
                 showGeneratingMessage(false);
                 CrashHandler::note("Compiling the Stop List: done");
+                compileDoneMs = juce::Time::getMillisecondCounterHiRes();   // 0.9.39: the loader's release is timed against this (#172/#173: 16-55 s on the two-core laptops)
                 if (!pendingMergeTransmissions.empty())   // 0.9.28: the transmissions a merge owes the divisions whose rows it replaced
                 {
                     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -15655,6 +15717,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
         { &stopListButton, 120, "stopList", "Stop List", true },
         { &guidedTourButton, 115, "guidedTour", "Guided tour", true },   // shown on a teaching organ only (0.8.206; isHeaderButtonShown)
+        { &messagesButton, 130, "messages", "Messages", true },   // shown while messages are unread (0.9.39; isHeaderButtonShown)
         { &couplersButton, 125, "couplers", "Couplers", true }, { &temperamentsButton, 145, "temperaments", "Temperaments", true },
         { &toggleAllVoicingButton, 145, "voicing", "Hide/Show all voicing", true },
         { &perspectivePatternsButton, 190, "perspectivePatterns", "Perspective Patterns", true },
@@ -15675,6 +15738,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
 bool MainComponent::isHeaderButtonShown(const juce::String& key) const
 {
     if (key == "guidedTour") return guidedTourAvailable;   // a teaching organ only (0.8.206), never a setting
+    if (key == "messages") return unreadMessages > 0;      // while messages are unread (0.9.39), never a setting
     const auto found = headerButtonShown.find(key);
     if (found != headerButtonShown.end()) return found->second;
     // Unpack archive is hidden by default since 0.8.157: Load folder... of the Stop List reads RAR archives itself (and unpacks on request).
@@ -24270,12 +24334,22 @@ void MainComponent::noteMessage(const juce::String& title, const juce::String& t
     messageLog.push_back({ juce::Time::getCurrentTime(), title, text });
     if (messageLog.size() > 500) messageLog.erase(messageLog.begin());
     ++unreadMessages;
+    updateMessagesButton();
 }
 
 void MainComponent::showMessageStrip()
 {
     if (auto* strip = dynamic_cast<MessageStrip*>(messageStrip.get()))
         strip->show(messageLog.empty() ? juce::String() : messageLog.back().title);
+}
+
+void MainComponent::updateMessagesButton()
+{
+    // 0.9.39: the top bar's Messages button carries the unread count; the bar is laid out
+    // again only when the button comes or goes (the caption alone repaints the button).
+    const bool shown = unreadMessages > 0;
+    if (shown) messagesButton.setButtonText("Messages: " + juce::String(unreadMessages) + " new");
+    if (shown != messagesButton.isVisible()) resized();
 }
 
 bool MainComponent::noticeBlocked() const
@@ -25201,6 +25275,7 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
         // The top-bar button's own chapter (the user: never the generic "Top bar buttons" where a chapter exists).
         const auto key = target.fromFirstOccurrenceOf(":", false, false);
         if (key == "record") return "Recording";
+        if (key == "messages") return "Messages";   // 0.9.39: the top bar's Messages button
         if (key == "stopList") return "The Stop List";
         if (key == "couplers") return "Couplers";
         if (key == "temperaments") return "Temperaments";
@@ -28778,7 +28853,7 @@ void MainComponent::prepareManual()
         safeThis->saveSettings();
     },
     [safeThis] { return safeThis != nullptr ? safeThis->messageLog : std::vector<MainComponent::LoggedMessage>(); },
-    [safeThis] { if (safeThis != nullptr) { safeThis->unreadMessages = 0; safeThis->showMessageStrip(); } });
+    [safeThis] { if (safeThis != nullptr) { safeThis->unreadMessages = 0; safeThis->showMessageStrip(); safeThis->updateMessagesButton(); } });
     juce::Component::SafePointer<AboutComponent> safeContent(content);
     aboutOpenChapter = [safeContent](const juce::String& section, const juce::String& fallback) { if (safeContent != nullptr) safeContent->openChapter(section, fallback); };
     aboutRescroll = [safeContent] { if (safeContent != nullptr) safeContent->rescroll(); };
@@ -29985,7 +30060,7 @@ void MainComponent::showConfigurationEditor()
                 for (const auto& item : o.headerButtons())
                 {
                     const juce::String key(item.key);
-                    if (key == "configurationEditor" || key == "guidedTour") continue;   // the way back here stays; the tour's button follows the organ (0.8.206)
+                    if (key == "configurationEditor" || key == "guidedTour" || key == "messages") continue;   // the way back here stays; the tour's button follows the organ (0.8.206), the Messages button the unread count (0.9.39)
                     juce::Component::SafePointer<juce::Button> target(item.button);
                     addToggleButton(juce::String("Top bar: ") + item.label, o.isHeaderButtonShown(key), [&o, key](bool state)
                     {

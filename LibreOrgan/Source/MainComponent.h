@@ -140,6 +140,9 @@ private:
     LeftOnlyTextButton configurationEditorButton{ "Configuration Editor" };
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
     LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
+    LeftOnlyTextButton messagesButton{ "Messages" };   // 0.9.39: shown while messages are unread (the top bar's bell; no timer of its own)
+    void updateMessagesButton();   // caption from the count; the top bar laid out again only when the button comes or goes
+    double compileDoneMs = 0.0;    // 0.9.39: when "Compiling the Stop List: done" was logged (the loader's release is timed against it)
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
     bool consoleGlow = false;   // 0.8.213: off by default (the user)
