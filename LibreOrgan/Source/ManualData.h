@@ -146,7 +146,9 @@ static const char* const kManualText_part0 =
     "reboot. Give it a permanent mount (\"Mount at system startup\" in the desktop's\n"
     "Disks & Devices settings, or `/etc/fstab`) and point the locations there. If a\n"
     "remembered location does lie under `/run/media` and is missing at a load, the\n"
-    "program mounts the disk by its label itself and says so in the activity log.\n"
+    "program mounts the disk by its label itself; when folders are still missing, it\n"
+    "mounts every data disk that is not mounted and looks again (the loading window\n"
+    "says so).\n"
     "\n"
     "**Your configurations** live in one folder: `Documents\\LibreOrgan\\\n"
     "LibreOrgans` (chosen anew in the Configuration Editor, *LibreOrgans\n"
@@ -200,10 +202,10 @@ static const char* const kManualText_part0 =
     "pipe levels and \"stop-ranks\") - and the rest - the pipes, their pitch, footage\n"
     "and tuning - comes from the folders themselves. The result is an\n"
     "LibreOrgan Sampler configuration in your LibreOrgans folder, which you shape and\n"
-    "save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:\n"
-    "[Hauptwerk import rules](#104-hauptwerk-import-rules).\n"
     ;
 static const char* const kManualText_part1 =
+    "save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:\n"
+    "[Hauptwerk import rules](#104-hauptwerk-import-rules).\n"
     "\n"
     "### A set without a definition\n"
     "\n"
@@ -402,10 +404,10 @@ static const char* const kManualText_part1 =
     "lower left corner when the program has something to say ([Messages](#91-messages)).\n"
     "\n"
     "## 2.1 Top bar buttons\n"
-    "\n"
-    "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     ;
 static const char* const kManualText_part2 =
+    "\n"
+    "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
     "button fires even when hidden).\n"
     "\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "\n"
     "-24 to +12 dB, the level of the whole stop.\n"
     "\n"
-    "### Attack Gain and Attack Time\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "### Attack Gain and Attack Time\n"
+    "\n"
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
     "second half: more chiff or a softer speaking, the held tone untouched.\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
     "their samples and copies; only new folders are read, only missing copies\n"
     "built; folders left out of the table are freed. Moving rows between\n"
-    "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
-    "cannot be removed or renamed without a warning. Closing the window with\n"
     ;
 static const char* const kManualText_part4 =
+    "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
+    "cannot be removed or renamed without a warning. Closing the window with\n"
     "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
     "the window shows while it loads: [The loading window](#the-loading-window).\n"
     "\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
     "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
     "  device) share the whole pool of render threads. Every open device has a\n"
-    "  driver thread of its own, so an organ spread over several devices can\n"
-    "  measure more than on one - at the price of different latencies.\n"
     ;
 static const char* const kManualText_part5 =
+    "  driver thread of its own, so an organ spread over several devices can\n"
+    "  measure more than on one - at the price of different latencies.\n"
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
     "  cost render time; the report names what was in force.\n"
     "\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
     "routes lanes.\n"
-    "\n"
-    "### Sample storage in RAM\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
+    "### Sample storage in RAM\n"
     "\n"
     "*32-bit float* keeps the samples as read; *16-bit integer* halves the RAM\n"
     "with a little hiss; *16-bit integer, releases at half the rate* stores the\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
     "at velocity 1 (default 9 dB), less for firmer strokes.\n"
     "\n"
-    "### Key velocity: treble cut opens over\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "### Key velocity: treble cut opens over\n"
+    "\n"
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
     "default 180).\n"
     "\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "\n"
     "The size of the main window, saved by itself. Information.\n"
     "\n"
-    "### Top bar\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "### Top bar\n"
+    "\n"
     "One switch per top-bar button: PANIC, Record, Stop List, Couplers,\n"
     "Temperaments, Hide/Show all voicing, Perspective Patterns, Ignored Patterns,\n"
     "One-shot Patterns, Stop-Merging, Load Voicing, Save Voicing, Load\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "last self-test, `system.txt` with the computer and every audio route - no\n"
     "samples, no voicing) and screenshots of every open window, then opens the\n"
     "GitHub form in your browser with its fields filled in and the folder beside\n"
-    "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
-    "A free GitHub account is needed; the report is public. If GitHub lands\n"
     ;
 static const char* const kManualText_part9 =
+    "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
+    "A free GitHub account is needed; the report is public. If GitHub lands\n"
     "elsewhere after the sign-in, *Open the GitHub form* in the program's message\n"
     "opens the form again, and `Report on GitHub.html` in the folder does the same\n"
     "days later.\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
-    "## 10.7 RAM: the storage options measured\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "## 10.7 RAM: the storage options measured\n"
+    "\n"
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"
     "the filled pipes:\n"
     "\n"

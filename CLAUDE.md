@@ -2534,6 +2534,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `RunState` runs over a whole gap (both halves) and over each edge extension. 061-067 -> 68 52 68 75 68 75 68
   (self-test "Sparse rank ... -> OK", probe3 in EngineSelfTest.h). `near` is a Windows macro (windef.h): never name
   a local so. Compare the self-test against %TEMP%\selftest_092.txt from now on.
+  0.9.33 (2 Nov 2026, Linux; the user: "zas program na linuxu nenajde /run ... adresáře Hauptwerku" + "program po
+  zmáčknutí velmi dlouho hledá, a na obrazovce nic není ... nesmí vypadat jako zamrzlý"): (1) 0.8.224 mounted a disk only
+  for a path the program KNEW (Locations.txt, absolute folderPath, sampleLibraryRootRelative) - a clean start with a
+  Windows-made zip knows none, the Hauptwerk disk stayed unmounted and `fixedDriveRoots` sees mounted disks only. It was
+  a design gap from the start (the user's 29 Oct request was general), never a later regression. Now
+  `mountUnmountedDataDisks(status)` (Linux, once per session): when trees are missing after the search, `lsblk -P -p -o
+  NAME,LABEL,FSTYPE,MOUNTPOINT,PARTTYPENAME,TYPE` (older lsblk without PARTTYPENAME retried), every unmounted part/disk
+  of a data fs (ntfs exfat vfat ext2-4 xfs btrfs f2fs hfsplus) whose part type is not recovery/EFI/reserved/swap ->
+  `udisksctl mount -b` (the desktop's password box may come), the mount point from "Mounted X at Y"; log "Disk <dev>
+  "<label>" (<fs>): mounted at ..." / "Disks left unmounted (not for data): ...". LESSON: lsblk -P fields must be
+  matched at the line start or after a space - "TYPE=" is inside "FSTYPE=" and "PARTTYPENAME=" (the first build mounted
+  nothing). (2) THE SEARCH RUNS BEHIND THE LOADING WINDOW: `resolveAndApplyPortableConfiguration(cfg, file, root,
+  afterwards)` = a ThreadWithProgressWindow "Loading saved divisions..." (no cancel) whose run() mounts the remembered
+  disks (`mountLinuxDiskFor(path, status)`), looks every tree up as the apply does (divisions' relative/absolute/extra
+  trees + the pool, `firstMatchingTree` with the fingerprint), mounts the data disks when some are missing and looks
+  again; log "Searching for the sample folders: N of M tree(s) found in T s[, disks mounted: ...]"; then the old body
+  `resolveAndApplyPortableConfigurationNow` on the message thread. Three short lines always ("Searching for the sample
+  folders ..." / "Tree n of m: <tail 22>" or "The system may ask for a password." / "Found so far: N of M folder
+  trees") - a padding line of 40 NBSP made the AlertWindow wrap every line (pictured). The apply's repeated lookups are
+  answered by a LOAD-SCOPED MEMO (`setLookupMemo(true)` at the start, emptied after mounting, off after the apply;
+  `lookupIsDirectory` / `lookupChildDirectories` in resolveCaseInsensitive, firstExistingDirectory, firstMatchingTree):
+  without it the message thread re-listed the FUSE ntfs-3g folders (/mnt/pracovni, /mnt/windows) for 3 s. The drive and
+  location child caches are mutex-locked and returned by value. `searchingSampleFolders` makes runWhenLoaded wait (the
+  Hauptwerk import's voicing is queued BEFORE the resolve) and refuses a second load while it searches; the load box's
+  copy into the LibreOrgans folder runs as `afterwards` (it ran before the apply otherwise and the apply's
+  currentConfigurationFile undid it). (3) `folderOfPrint` resolves a fingerprint's stop folder ignoring the case.
+  ORGAN_TEST_CLICK with a name that matches no button still takes the ORGAN_TEST_DIALOG_SNAPSHOT pictures (the loading
+  window has no button). Tests: ~/tools/test_cleanmount0933.sh / test_searchwin0933.sh / test_searchmiss0933.sh (no
+  settings folder, sda2/sdb2/sdc1 unmounted, Caen json from the zip in /tmp/caenchk; the windows pictured every 2 s):
+  16 of 16 found after mounting, the apply in the same second, no "unresponsive". THE LINUX CLONE was still
+  ~/OrganSamplerC-linux at 0.8.249 - moved to ~/LibreOrgan-linux, remote set to zurek-jiri/LibreOrgan, fast-forwarded.
+  The old session 10c94e83 (Windows project folder F--JUCE-PROJEKTY-OrganSamplerC-OrganSampler) is symlinked into
+  ~/.claude/projects/-mnt-pracovni-JUCE-PROJEKTY-LibreOrgan-LibreOrgan so it can be resumed from Linux.
 ## Pending for the next session (delete when done)
 - TO-DO (1 Nov 2026, the user, Adlington rar dropped on a division: "neudělá automaticky Aliasy, takže na táhlech
   jsou strašlivě dlouhé názvy z celé cesty"): a Load folder / drop (the scan path, no definition) should give every

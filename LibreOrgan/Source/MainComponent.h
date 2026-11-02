@@ -1390,7 +1390,10 @@ private:
     bool noticeBlocked() const;    // an alert box (ours, the loader's, a question) is up, or a loader runs
     void showNextNotice();
     void resolveAndApplyPortableConfiguration(juce::var configuration,
-        const juce::File& configurationFile, const juce::File& selectedLibraryRoot = {});
+        const juce::File& configurationFile, const juce::File& selectedLibraryRoot = {}, std::function<void()> afterwards = {});
+    void resolveAndApplyPortableConfigurationNow(juce::var configuration,
+        const juce::File& configurationFile, const juce::File& selectedLibraryRoot);
+    bool searchingSampleFolders = false;   // 0.9.33: the search window of a load is up (runWhenLoaded waits for it)
     void applyPortableConfiguration(juce::var configuration,
         const juce::File& configurationFile, const juce::File& libraryRoot);
     void pressPiston(int piston);

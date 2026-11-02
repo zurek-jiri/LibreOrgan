@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstring>
 #include <thread>
+#include <mutex>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "AggregatedWASAPIAudio.h"
 #include "PlatformAudio.h"
@@ -2397,9 +2398,12 @@ MainComponent::MainComponent()
                 juce::Button* button = nullptr;
                 for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && button == nullptr;)
                     button = find(juce::Desktop::getInstance().getComponent(w));
-                if (button == nullptr) { CrashHandler::note("ORGAN_TEST_CLICK: no button \"" + name + "\""); return; }
-                CrashHandler::note("ORGAN_TEST_CLICK: " + name);
-                button->triggerClick();
+                if (button == nullptr) CrashHandler::note("ORGAN_TEST_CLICK: no button \"" + name + "\"");   // 0.9.33: the snapshot below is still taken (a window with no button: the loading window)
+                else
+                {
+                    CrashHandler::note("ORGAN_TEST_CLICK: " + name);
+                    button->triggerClick();
+                }
                 // ORGAN_TEST_DIALOG_SNAPSHOT=<folder>: 1.2 s later every window but the main
                 // one is pictured (<n>-<title>.png, the window's own paint - no screen capture).
                 if (const char* folder = std::getenv("ORGAN_TEST_DIALOG_SNAPSHOT"))
@@ -11596,8 +11600,12 @@ void MainComponent::loadConfigurationFile(const juce::File& file)
         }
         // A zip has no .json on the disk to load in place: it is copied (0.8.195).
         if (fromZip && choice != "replace") choice = "copy";
-        safeThis->resolveAndApplyPortableConfiguration(chosen, source);
-        if (choice == "copy" || choice == "replace") safeThis->adoptCopyInConfigurationsFolder(source, fromZip ? text : juce::String());
+        // The copy is adopted once the organ is applied (0.9.33: the apply waits for the search window).
+        const bool adopt = choice == "copy" || choice == "replace";
+        safeThis->resolveAndApplyPortableConfiguration(chosen, source, {}, [safeThis, source, adopt, fromZip, text]
+        {
+            if (safeThis != nullptr && adopt) safeThis->adoptCopyInConfigurationsFolder(source, fromZip ? text : juce::String());
+        });
     }, source);
 }
 
@@ -12046,9 +12054,16 @@ namespace
         print.sizeHash = print.sizes ? sizes.hashCode64() : 0;
         return print;
     }
+    juce::File resolveCaseInsensitive(const juce::File& wanted);   // defined with the tree lookup below
     juce::File folderOfPrint(const juce::File& tree, const juce::String& relative)
     {
-        return relative == "." || relative.isEmpty() ? tree : tree.getChildFile(relative.replaceCharacter('/', juce::File::getSeparatorChar()));
+        if (relative == "." || relative.isEmpty()) return tree;
+        const auto folder = tree.getChildFile(relative.replaceCharacter('/', juce::File::getSeparatorChar()));
+        // 0.9.33: a stop folder spelt otherwise on a case-sensitive disk (a file saved on Windows,
+        // the samples on Linux) is the same folder - the tree is never refused for the case alone.
+        if (SampleFiles::isDirectory(folder)) return folder;
+        const auto found = resolveCaseInsensitive(folder);
+        return found != juce::File() ? found : folder;
     }
     juce::String treeFingerprintOf(const juce::File& tree, juce::StringArray rowFolders)
     {
@@ -13351,7 +13366,7 @@ void MainComponent::runWhenLoaded(std::function<void()> action)
     *poll = [safeThis, poll, shared](int quiet)
     {
         if (safeThis == nullptr) return;
-        const bool loading = safeThis->activeFolderLoader != nullptr || safeThis->engine.getStops().isEmpty();
+        const bool loading = safeThis->activeFolderLoader != nullptr || safeThis->searchingSampleFolders || safeThis->engine.getStops().isEmpty();
         if (!loading && quiet >= 1) { juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; }); (*shared)(); return; }   // cleared after this call, not while it runs
         juce::Timer::callAfterDelay(5000, [poll, next = loading ? 0 : quiet + 1] { if (*poll) (*poll)(next); });
     };
@@ -13629,9 +13644,12 @@ namespace
 
     // The first-level folders of a drive (0.8.215; 64 at most, the system's own left out),
     // listed once per load: the probe of the Hauptwerk layout asks for them per tree.
-    const std::vector<juce::File>& driveChildren(const juce::File& root)
+    // 0.9.33: the search runs on the loading window's thread - the caches are locked and copied out.
+    std::mutex gFolderCacheLock;
+    std::vector<juce::File> driveChildren(const juce::File& root)
     {
-        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;   // message thread only
+        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;
+        const std::lock_guard<std::mutex> lock(gFolderCacheLock);
         const double now = juce::Time::getMillisecondCounterHiRes();
         auto& slot = cache[root.getFullPathName()];
         if (slot.first <= 0.0 || now - slot.first > 30000.0)
@@ -13655,9 +13673,10 @@ namespace
 
     // The direct subfolders of a sample location (32 at most), listed once per
     // load (0.8.202): the candidates of every tree ask for them.
-    const std::vector<juce::File>& locationChildren(const juce::File& folder)
+    std::vector<juce::File> locationChildren(const juce::File& folder)
     {
-        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;   // message thread only
+        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;
+        const std::lock_guard<std::mutex> lock(gFolderCacheLock);
         const double now = juce::Time::getMillisecondCounterHiRes();
         auto& slot = cache[folder.getFullPathName()];
         if (slot.first <= 0.0 || now - slot.first > 30000.0)
@@ -13784,12 +13803,54 @@ namespace
     // configuration made on Windows says "002293/ped", the disk on Linux has
     // "002293/Ped" - NTFS does not care, ext4 and Linux's NTFS driver do): from
     // the deepest folder that exists, each missing part matched ignoring case.
+    // 0.9.33: the answers of the folder tests of ONE load are kept from the search on the loading window's
+    // thread to the apply on the message thread, which asks the same questions again - the folders of a FUSE
+    // disk (ntfs-3g) took seconds to list a second time, with the window dead. On only while a load searches
+    // and applies (`setLookupMemo`); emptied after the search mounted disks (their answers changed).
+    std::atomic<bool> gLookupMemoOn{ false };
+    std::mutex gLookupMemoLock;
+    std::map<juce::String, bool> gIsDirectoryMemo;
+    std::map<juce::String, std::vector<juce::File>> gChildDirectoriesMemo;
+    void setLookupMemo(bool on)
+    {
+        const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+        gIsDirectoryMemo.clear();
+        gChildDirectoriesMemo.clear();
+        gLookupMemoOn.store(on);
+    }
+    bool lookupIsDirectory(const juce::File& folder)
+    {
+        if (!gLookupMemoOn.load()) return SampleFiles::isDirectory(folder);
+        const auto key = folder.getFullPathName();
+        {
+            const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+            if (const auto it = gIsDirectoryMemo.find(key); it != gIsDirectoryMemo.end()) return it->second;
+        }
+        const bool result = SampleFiles::isDirectory(folder);
+        const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+        if (gLookupMemoOn.load()) gIsDirectoryMemo[key] = result;
+        return result;
+    }
+    std::vector<juce::File> lookupChildDirectories(const juce::File& folder)
+    {
+        if (!gLookupMemoOn.load()) return SampleFiles::childDirectories(folder);
+        const auto key = folder.getFullPathName();
+        {
+            const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+            if (const auto it = gChildDirectoriesMemo.find(key); it != gChildDirectoriesMemo.end()) return it->second;
+        }
+        const auto result = SampleFiles::childDirectories(folder);
+        const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+        if (gLookupMemoOn.load()) gChildDirectoriesMemo[key] = result;
+        return result;
+    }
+
     juce::File resolveCaseInsensitive(const juce::File& wanted)
     {
-        if (SampleFiles::isDirectory(wanted)) return wanted;   // on the disk or in a RAR archive (0.8.157)
+        if (lookupIsDirectory(wanted)) return wanted;   // on the disk or in a RAR archive (0.8.157)
         juce::StringArray missing;
         juce::File dir = wanted;
-        for (int depth = 0; !SampleFiles::isDirectory(dir); ++depth)
+        for (int depth = 0; !lookupIsDirectory(dir); ++depth)
         {
             const auto parent = dir.getParentDirectory();
             if (depth > 32 || parent == dir || parent.getFullPathName().isEmpty()) return {};
@@ -13799,7 +13860,7 @@ namespace
         for (const auto& part : missing)
         {
             juce::File next;
-            for (const auto& child : SampleFiles::childDirectories(dir))
+            for (const auto& child : lookupChildDirectories(dir))
                 if (child.getFileName().equalsIgnoreCase(part)) { next = child; break; }
             if (next == juce::File()) return {};
             dir = next;
@@ -13810,7 +13871,7 @@ namespace
     juce::File firstExistingDirectory(const juce::Array<juce::File>& candidates)
     {
         for (const auto& candidate : candidates)
-            if (SampleFiles::isDirectory(candidate)) return candidate;
+            if (lookupIsDirectory(candidate)) return candidate;
         for (const auto& candidate : candidates)
             if (const auto found = resolveCaseInsensitive(candidate); found != juce::File())
             {
@@ -13827,7 +13888,7 @@ namespace
         for (int pass = 0; pass < 2; ++pass)
             for (const auto& candidate : candidates)
             {
-                const juce::File found = pass == 0 ? (SampleFiles::isDirectory(candidate) ? candidate : juce::File()) : resolveCaseInsensitive(candidate);
+                const juce::File found = pass == 0 ? (lookupIsDirectory(candidate) ? candidate : juce::File()) : resolveCaseInsensitive(candidate);
                 if (found == juce::File()) continue;
                 juce::String why;
                 if (treeMatchesFingerprint(found, fingerprint, &why)) return found;
@@ -13861,7 +13922,7 @@ namespace
         return out;
     }
 
-    bool mountLinuxDiskFor(const juce::String& path)
+    bool mountLinuxDiskFor(const juce::String& path, const std::function<void(const juce::String&)>& status = {})
     {
         juce::StringArray parts;
         parts.addTokens(path, "/", "");
@@ -13885,6 +13946,7 @@ namespace
             CrashHandler::note("Disk \"" + label + "\" for " + path + ": no device of that label in /dev/disk/by-label - not mounted");
             return false;
         }
+        if (status) status("Mounting the disk \"" + label + "\" ...");
         juce::ChildProcess process;
         juce::StringArray command { "udisksctl", "mount", "-b", device.getFullPathName() };
         if (!process.start(command))
@@ -13899,27 +13961,215 @@ namespace
             + (output.isNotEmpty() ? " - " + output.replaceCharacters("\r\n", "  ") : juce::String()));
         return mounted;
     }
+
+    // 0.9.33 (the user, 2 Nov 2026: a clean first start - no Locations.txt, a zip made on Windows with the
+    // library root's name and relative paths only - found nothing on the Hauptwerk disk: it was not mounted,
+    // and 0.8.224 mounted a disk only for a path the program already knew): when trees are still missing
+    // after the search, every DATA partition that is not mounted is mounted through udisks, once per
+    // session - a partition of a data file system (NTFS, exFAT, FAT, ext, XFS, Btrfs, F2FS, HFS+), never
+    // a recovery, EFI, reserved or swap partition; the drive probe then finds the trees on them.
+    // Returns the mount points made.
+    juce::StringArray mountUnmountedDataDisks(const std::function<void(const juce::String&)>& status)
+    {
+        juce::StringArray mounted;
+        static std::atomic<bool> done{ false };
+        if (done.exchange(true)) return mounted;
+        auto run = [](const juce::StringArray& command, int timeoutMs, juce::String& output)
+        {
+            juce::ChildProcess process;
+            if (!process.start(command)) return false;
+            process.waitForProcessToFinish(timeoutMs);
+            output = process.readAllProcessOutput();
+            return true;
+        };
+        juce::String listing;
+        if (!run({ "lsblk", "-P", "-p", "-o", "NAME,LABEL,FSTYPE,MOUNTPOINT,PARTTYPENAME,TYPE" }, 10000, listing) || !listing.contains("NAME="))
+            if (!run({ "lsblk", "-P", "-p", "-o", "NAME,LABEL,FSTYPE,MOUNTPOINT,TYPE" }, 10000, listing) || !listing.contains("NAME="))   // an older lsblk without PARTTYPENAME
+            {
+                CrashHandler::note("Disks: lsblk could not list the partitions - nothing mounted");
+                return mounted;
+            }
+        auto field = [](const juce::String& line, const juce::String& key)
+        {
+            // KEY="value" at the start or after a space: "TYPE" must not match inside "FSTYPE" or "PARTTYPENAME".
+            int start = 0;
+            if (!line.startsWith(key + "=\""))
+            {
+                start = line.indexOf(" " + key + "=\"");
+                if (start < 0) return juce::String();
+                ++start;
+            }
+            const auto from = start + key.length() + 2;
+            return line.substring(from, line.indexOfChar(from, '"'));
+        };
+        static const char* const dataTypes[] = { "ntfs", "ntfs3", "exfat", "vfat", "ext4", "ext3", "ext2", "xfs", "btrfs", "f2fs", "hfsplus" };
+        juce::StringArray skipped;
+        for (const auto& line : juce::StringArray::fromLines(listing))
+        {
+            const auto device = field(line, "NAME"), fsType = field(line, "FSTYPE").toLowerCase(), type = field(line, "TYPE");
+            if (device.isEmpty() || field(line, "MOUNTPOINT").isNotEmpty() || (type != "part" && type != "disk")) continue;
+            bool data = false;
+            for (const auto* t : dataTypes) if (fsType == t) data = true;
+            if (!data) continue;
+            const auto partType = field(line, "PARTTYPENAME").toLowerCase();
+            if (partType.contains("recovery") || partType.contains("efi") || partType.contains("reserved") || partType.contains("swap"))
+            {
+                skipped.add(device + " (" + field(line, "PARTTYPENAME") + ")");
+                continue;
+            }
+            const auto label = unescapeUdevName(field(line, "LABEL"));
+            if (status) status("Mounting the disk \"" + (label.isNotEmpty() ? label : device) + "\" ...");
+            juce::String output;
+            const bool started = run({ "udisksctl", "mount", "-b", device }, 60000, output);
+            output = output.trim().replaceCharacters("\r\n", "  ");
+            // "Mounted /dev/sdb2 at /run/media/<user>/Data" - the mount point is the text after " at ".
+            const auto point = output.startsWith("Mounted ") ? output.fromLastOccurrenceOf(" at ", false, false).trimCharactersAtEnd(".") : juce::String();
+            if (started && point.isNotEmpty() && juce::File(point).isDirectory()) mounted.add(point);
+            CrashHandler::note("Disk " + device + (label.isNotEmpty() ? " \"" + label + "\"" : juce::String()) + " (" + fsType + "): "
+                + (started ? (point.isNotEmpty() ? "mounted at " + point : "NOT mounted - " + output) : juce::String("udisksctl could not be started - not mounted")));
+        }
+        if (!skipped.isEmpty()) CrashHandler::note("Disks left unmounted (not for data): " + skipped.joinIntoString(", "));
+        return mounted;
+    }
 }
 #endif
 
 void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration,
+    const juce::File& configurationFile, const juce::File& selectedLibraryRoot, std::function<void()> afterwards)
+{
+    // 0.9.33 (the user, 2 Nov 2026: "program po zmáčknutí velmi dlouho hledá, a na obrazovce nic není ... nesmí
+    // vypadat jako zamrzlý"): the search for the sample folders - the candidates of every tree over the locations,
+    // the drives and their folders, the fingerprints, mounting the disks - ran on the message thread before the
+    // loading window came up: seconds of a dead window after the load box. Now the loading window comes at once
+    // and the search runs on its thread, saying what it does ("Searching for the sample folders", "Mounting the
+    // disk ..."); the organ is applied when it ends - the same lookups again on the message thread, answered by
+    // the system's directory cache in no time.
+    if (searchingSampleFolders) { CrashHandler::note("Load Configuration: " + configurationFile.getFullPathName() + " ignored - the sample folders of another load are being searched"); return; }
+    searchingSampleFolders = true;
+    setLookupMemo(true);   // the search's answers serve the apply
+    gChosenConfigurationDir = chosenConfigurationDir;   // read by the search thread; set again by the apply below
+    struct SearchJob final : public juce::ThreadWithProgressWindow
+    {
+        SearchJob(juce::var c, juce::File f, juce::File r, juce::Component* over)
+            : juce::ThreadWithProgressWindow("Loading saved divisions...", false, false, 10000, {}, over),
+              configuration(std::move(c)), file(std::move(f)), root(std::move(r))
+        {
+            show("Searching for the sample folders ...", "Looking at the disks ...");
+        }
+        // Always three SHORT lines (the 0.8.181 rule: the AlertWindow balances the line lengths of the whole
+        // text, a long line or a padding line made the others wrap and the window flicker); the third line
+        // counts the trees found.
+        juce::String third = "Found so far: 0 folder trees";
+        void show(const juce::String& first, const juce::String& second)
+        {
+            setStatusMessage(first + "\n" + (second.isNotEmpty() ? second : juce::String(" ")) + "\n" + third);
+        }
+        struct Tree { juce::String relative, absolute; bool relativeForm = true; };
+        void run() override
+        {
+            const double startMs = juce::Time::getMillisecondCounterHiRes();
+#if JUCE_LINUX
+            auto status = [this](const juce::String& text) { show(text.length() > 36 ? text.substring(0, 33) + "..." : text, "The system may ask for a password."); };
+            // 0.8.224: a sample location (or a tree path of the file) on a disk that is not mounted - mounted first.
+            {
+                juce::StringArray places(gSampleLocations);
+                if (auto* array = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+                    for (const auto& item : *array)
+                    {
+                        const auto absolute = item.getProperty("folderPath", "").toString();
+                        if (absolute.isNotEmpty()) places.add(absolute);
+                    }
+                const auto rootRelative = configuration.getProperty("sampleLibraryRootRelative", "").toString();
+                if (rootRelative.isNotEmpty()) places.add(file.getParentDirectory().getChildFile(rootRelative).getFullPathName());
+                for (const auto& place : places) mountLinuxDiskFor(place, status);
+            }
+#endif
+            // Every tree of the file, as the apply looks them up.
+            std::vector<Tree> trees;
+            if (auto* array = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+                for (const auto& item : *array)
+                {
+                    const auto absolute = item.getProperty("folderPath", "").toString();
+                    const auto relative = item.getProperty("folderRelativePath", "").toString();
+                    if (relative.isNotEmpty()) trees.push_back({ relative, absolute, true });
+                    else if (absolute.isNotEmpty()) trees.push_back({ {}, absolute, false });
+                    if (auto* extras = item.getProperty("extraFolderRelativePaths", juce::var()).getArray())
+                        for (const auto& extra : *extras) if (extra.toString().isNotEmpty()) trees.push_back({ extra.toString(), {}, true });
+                    if (auto* extras = item.getProperty("extraFolderPaths", juce::var()).getArray())
+                        for (const auto& extra : *extras) if (extra.toString().isNotEmpty()) trees.push_back({ {}, extra.toString(), false });
+                }
+            if (auto* pool = configuration.getProperty("sampleTrees", juce::var()).getArray())
+                for (const auto& entry : *pool)
+                {
+                    const auto text = slashes(entry.toString());
+                    if (text.isEmpty() || juce::File::isAbsolutePath(text) || (text.length() > 1 && text[1] == ':')) continue;
+                    bool known = false;
+                    for (const auto& t : trees) if (slashes(t.relative) == text) known = true;
+                    if (!known) trees.push_back({ text, {}, true });
+                }
+            int foundCount = 0;
+            auto findAll = [this, &trees, &foundCount](const std::vector<size_t>& which)
+            {
+                std::vector<size_t> missing;
+                for (size_t n = 0; n < which.size(); ++n)
+                {
+                    const auto& tree = trees[which[n]];
+                    const auto name = tree.relativeForm ? slashes(tree.relative) : tree.absolute;
+                    third = "Found so far: " + juce::String(foundCount) + " of " + juce::String((int)trees.size()) + " folder trees";
+                    show("Searching for the sample folders ...", "Tree " + juce::String((int)n + 1) + " of " + juce::String((int)which.size()) + ": "
+                        + (name.length() > 22 ? "..." + name.getLastCharacters(19) : name));
+                    const auto candidates = portableFolderCandidates(configuration, file, root, tree.relative, tree.absolute);
+                    const auto found = tree.relativeForm ? firstMatchingTree(candidates, fingerprintOfTree(configuration, slashes(tree.relative)), nullptr)
+                                                         : firstExistingDirectory(candidates);
+                    if (found == juce::File()) missing.push_back(which[n]);
+                    else ++foundCount;
+                }
+                third = "Found so far: " + juce::String(foundCount) + " of " + juce::String((int)trees.size()) + " folder trees";
+                return missing;
+            };
+            std::vector<size_t> all;
+            for (size_t i = 0; i < trees.size(); ++i) all.push_back(i);
+            auto missing = findAll(all);
+            juce::String mountedText;
+#if JUCE_LINUX
+            if (!missing.empty())
+            {
+                const auto points = mountUnmountedDataDisks(status);
+                if (!points.isEmpty())
+                {
+                    setLookupMemo(true);   // the folders before the mount were answered "not there"
+                    mountedText = ", disks mounted: " + points.joinIntoString(", ");
+                    missing = findAll(missing);
+                }
+            }
+#endif
+            CrashHandler::note("Searching for the sample folders: " + juce::String((int)(trees.size() - missing.size())) + " of " + juce::String((int)trees.size())
+                + " tree(s) found in " + juce::String((juce::Time::getMillisecondCounterHiRes() - startMs) / 1000.0, 1) + " s" + mountedText);
+            show("Searching for the sample folders: done", "Loading the organ ...");
+        }
+        juce::var configuration;
+        juce::File file, root;
+    };
+    auto job = std::make_shared<SearchJob>(configuration, configurationFile, selectedLibraryRoot, this);
+    job->launchThread();   // the window shows now; the load box is gone already
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto poll = std::make_shared<std::function<void()>>();
+    *poll = [job, poll, safeThis, configuration, configurationFile, selectedLibraryRoot, afterwards]
+    {
+        if (job->isThreadRunning()) { juce::Timer::callAfterDelay(50, [poll] { (*poll)(); }); return; }
+        juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; });   // cleared after this call returns, never while it runs
+        if (safeThis == nullptr) return;
+        safeThis->searchingSampleFolders = false;
+        safeThis->resolveAndApplyPortableConfigurationNow(configuration, configurationFile, selectedLibraryRoot);
+        setLookupMemo(false);   // a later lookup (a relocation, the notices) sees the disk as it is then
+        if (afterwards) afterwards();
+    };
+    juce::Timer::callAfterDelay(50, [poll] { if (*poll) (*poll)(); });
+}
+
+void MainComponent::resolveAndApplyPortableConfigurationNow(juce::var configuration,
     const juce::File& configurationFile, const juce::File& selectedLibraryRoot)
 {
-#if JUCE_LINUX
-    // 0.8.224: a sample location (or a tree path of the file) on a disk that is not mounted - mounted first.
-    {
-        juce::StringArray places(gSampleLocations);
-        if (auto* array = configuration.getProperty("manualKeyboards", juce::var()).getArray())
-            for (const auto& item : *array)
-            {
-                const auto absolute = item.getProperty("folderPath", "").toString();
-                if (absolute.isNotEmpty()) places.add(absolute);
-            }
-        const auto rootRelative = configuration.getProperty("sampleLibraryRootRelative", "").toString();
-        if (rootRelative.isNotEmpty()) places.add(configurationFile.getParentDirectory().getChildFile(rootRelative).getFullPathName());
-        for (const auto& place : places) mountLinuxDiskFor(place);
-    }
-#endif
     gChosenConfigurationDir = chosenConfigurationDir;   // 0.8.214: the chosen file's folder serves this load's lookups
     struct ClearChosen { juce::File& member; ~ClearChosen() { gChosenConfigurationDir = juce::File(); member = juce::File(); } } clearChosen{ chosenConfigurationDir };   // juce::File() spelt out: "= {}" is ambiguous for GCC
     auto manuals = configuration.getProperty("manualKeyboards", juce::var());

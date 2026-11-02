@@ -12,6 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.33] - 2026-11-02
+
+### Fixed
+- Linux: a clean first start (no remembered sample location) with the sample
+  disk not mounted found nothing - 0.8.224 mounted a disk only for a path the
+  program already knew. Now, when folder trees are still missing after the
+  search, every data disk that is not mounted (never a recovery, EFI, reserved
+  or swap partition) is mounted through udisks once per session and the search
+  runs again; the log names each disk.
+- Loading a configuration searched for its sample folders on the window's own
+  thread before the loading window came up: seconds of a dead window after the
+  load box (more with disks on a slow file system). The loading window now
+  comes at once and the search runs behind it, saying what it does
+  ("Searching for the sample folders", the tree, "Mounting the disk ...", the
+  trees found so far); the organ is applied from its answers without asking
+  the disks again.
+- A folder tree is no longer refused when a stop folder of its fingerprint is
+  spelt with other capitals on a case-sensitive disk (a file saved on Windows,
+  the samples on Linux).
+
 ## [0.9.32] - 2026-11-01
 
 ### Fixed
