@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.35] - 2026-11-02
+
+### Fixed
+- A folder tree whose stops carry two perspective prefixes with the same word
+  ("03-Diffuse2S-" and "04-DiffuseSen-" on every stop of Adlington Vol0) put
+  both prefixes on the one line "Diffuse", so every stop came out twice. A
+  line now takes at most one prefix of a tree; the next one becomes a
+  perspective of its own ("DiffuseSen").
+- GLOBAL RESET with "Unload everything" no longer clears this computer's
+  pattern lists unless "Also reset the pattern lists" is ticked.
+
+### Changed
+- The default ignored patterns gain "Traktur" (action-noise folders) and
+  "mustr" (a producer's sample folders); a computer's Patterns.json takes a
+  new default once, a default removed by the user stays removed.
+
 ## [0.9.34] - 2026-11-02
 
 ### Fixed

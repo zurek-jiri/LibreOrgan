@@ -371,7 +371,7 @@ renamed in the Stop List gets its line at once.
 Folders matching *One-shot stops (folder contains)* ("Chiff", "Chimes",
 "Tubular", "Celesta", "Harp", "Glockenspiel") play once from start to end
 whenever the key is released - chiffs, percussion, bells. Folders matching
-*Ignored folders (folder contains)* ("trem", "\*_tr", "output") are not loaded;
+*Ignored folders (folder contains)* ("trem", "\*_tr", "output", "Traktur", "mustr") are not loaded;
 tremmed recordings named after their sibling with "tr"/"trem" appended are
 skipped as well. A pattern without a star matches anywhere in the name, "\*x"
 the end of it, "x\*" its start.
@@ -1625,7 +1625,7 @@ pattern without a star matches anywhere, "\*x" the end, "x\*" the start.
 ### Ignored folders (folder contains)
 
 Folders whose name matches are not loaded. Defaults: "trem", "\*_tr",
-"output". Changed with an organ loaded, the next *Apply and reload* takes the
+"output", "Traktur", "mustr". Changed with an organ loaded, the next *Apply and reload* takes the
 matching folders out of their rows.
 
 ### Perspective prefixes

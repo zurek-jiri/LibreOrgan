@@ -12224,6 +12224,22 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
             for (const auto& other : qualifying) if (other != prefix && prefix.startsWith(other)) longerForm = true;
             if (!longerForm) found.push_back(byPrefix[prefix].spelling);
         }
+        // 0.9.35 (the user's Adlington Vol0 after a reset of the pattern lists: "02-direct-",
+        // "03-Diffuse2S-" and "04-DiffuseSen-" side by side on every stop - both Diffuse heads
+        // hold "dif", both were appended to the ONE line "Diffuse", so every stop had two
+        // folders under one perspective and came out twice, "(2)"): a line takes at most ONE
+        // prefix of this tree - a line whose prefixes already match folders of this tree, or
+        // that another prefix found here has just joined, is taken, and the next prefix gets
+        // a label of its own ("DiffuseSen"). Two heads on the same stops are two perspectives.
+        std::set<int> linesTaken;
+        for (const juce::File& stopFolder : allFolders)
+        {
+            juce::String matched;
+            stripPerspectivePrefix(perspectives, stopFolder.getFileName(), &matched);
+            if (matched.isEmpty()) continue;
+            for (int i = 0; i < (int)perspectives.size(); ++i)
+                if (juce::StringArray::fromTokens(perspectives[(size_t)i], ";", "")[0].trim().equalsIgnoreCase(matched)) linesTaken.insert(i);
+        }
         bool changed = false;
         for (const auto& prefix : found)
         {
@@ -12240,6 +12256,13 @@ std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(
                     ++matches;
                 }
             }
+            if (matches == 1 && linesTaken.count(matchedLine) > 0)
+            {
+                CrashHandler::note("Perspective prefix " + prefix + ": the line \"" + perspectives[(size_t)matchedLine]
+                    + "\" already covers folders of this tree - a perspective of its own");
+                matches = 0;
+            }
+            if (matches == 1) linesTaken.insert(matchedLine);
             if (matches == 1)
             {
                 auto tokens = juce::StringArray::fromTokens(perspectives[(size_t)matchedLine], ";", "");

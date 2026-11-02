@@ -20425,6 +20425,7 @@ void MainComponent::finishDivisionsLoadEnd(const std::vector<int>& manuals)
     }
     engine.launchCopyBuilds();   // the copies of the filled pipes of the new stops
     saveSettings();
+    rememberPatterns(false);   // 0.9.35: the prefixes the scan of a Load folder / drop learned reach Patterns.json now, not at the next load
     refreshConfigurationEditor();
     const bool haveStops = !engine.getStops().isEmpty();
     saveStopSettingsButton.setEnabled(haveStops);
@@ -23573,6 +23574,9 @@ void MainComponent::rememberPatterns(bool exact)
     obj->setProperty("oneShotPatterns", lists("oneShotPatterns", engine.getOneShotPatterns(), false));
     obj->setProperty("ignoredPatterns", lists("ignoredPatterns", engine.getIgnoredPatterns(), false));
     obj->setProperty("perspectivePatterns", lists("perspectivePatterns", engine.getPerspectivePatterns(), true));
+    // 0.9.35: the default ignored patterns this file has seen - a default added in a later
+    // version joins the list ONCE (mergeApplicationPatterns); one the user removed stays removed.
+    obj->setProperty("ignoredDefaultsSeen", patternsVar(SamplerEngine::defaultIgnoredPatterns()));
     file.replaceWithText(juce::JSON::toString(juce::var(obj.get()), true));
 }
 
@@ -23586,6 +23590,27 @@ void MainComponent::mergeApplicationPatterns()
         engine.setOneShotPatterns(mergedPatterns(engine.getOneShotPatterns(), patternsOf(stored, "oneShotPatterns"), false, &addedOneShot));
         engine.setIgnoredPatterns(mergedPatterns(engine.getIgnoredPatterns(), patternsOf(stored, "ignoredPatterns"), false, &addedIgnored));
         engine.setPerspectivePatterns(mergedPatterns(engine.getPerspectivePatterns(), patternsOf(stored, "perspectivePatterns"), true, &addedPerspective));
+    }
+    // 0.9.35: a default ignored pattern this computer's file has not seen yet ("Traktur",
+    // "mustr" - the user's Adlington loaded its action noises and a producer's sample
+    // folders as stops) is added once; the file then records it as seen, so a default the
+    // user removes in the Ignored Patterns dialog stays removed.
+    {
+        const auto seen = stored.isObject() ? patternsOf(stored, "ignoredDefaultsSeen") : std::vector<juce::String>{};
+        auto ignored = engine.getIgnoredPatterns();
+        juce::StringArray added;
+        for (const auto& d : SamplerEngine::defaultIgnoredPatterns())
+        {
+            const bool wasSeen = std::any_of(seen.begin(), seen.end(), [&d](const juce::String& s) { return s.equalsIgnoreCase(d); });
+            const bool present = std::any_of(ignored.begin(), ignored.end(), [&d](const juce::String& s) { return s.equalsIgnoreCase(d); });
+            if (!wasSeen && !present && stored.isObject()) { ignored.push_back(d); added.add(d); }
+        }
+        if (!added.isEmpty())
+        {
+            engine.setIgnoredPatterns(ignored);
+            addedIgnored += added.size();
+            CrashHandler::note("Ignored patterns: the new default(s) " + added.joinIntoString(", ") + " added to this computer's list");
+        }
     }
     rememberPatterns(false);   // the organ's own patterns join the file as well
     CrashHandler::note("Patterns in force: " + juce::String((int)engine.getOneShotPatterns().size()) + " one-shot, "
@@ -25997,7 +26022,7 @@ void MainComponent::performGlobalReset()
         "Reset all controls, voicing, combinations, stops and couplers to their default values.",
         juce::MessageBoxIconType::QuestionIcon, this);
     auto* unloadAll = new juce::ToggleButton(
-        "Unload everything: all stops and sample folders too - a clean, empty instrument (nothing below is kept)");
+        "Unload everything: all stops and sample folders too - a clean, empty instrument (the pattern lists only when ticked below)");
     auto* resetAudio = new juce::ToggleButton(
         "Also reset all audio output devices and channels to the system defaults");
     auto* resetMidi = new juce::ToggleButton("Also clear all learned MIDI assignments");
@@ -26027,11 +26052,13 @@ void MainComponent::performGlobalReset()
     resetPatterns->setSize(640, 28);
     resetCouplers->setSize(640, 28);
     resetGrid->setSize(640, 28);
-    // "Unload everything" keeps nothing: the other options grey out (they all apply).
-    unloadAll->onClick = [unloadAll, resetAudio, resetMidi, resetTransmissions, resetPatterns, resetCouplers, resetGrid]
+    // "Unload everything" keeps nothing of the organ: the other options grey out (they all
+    // apply) - except the pattern lists (0.9.35, the user: his "Traktura" went with a reset
+    // he meant for the organ; this computer's Patterns.json is cleared only when ticked).
+    unloadAll->onClick = [unloadAll, resetAudio, resetMidi, resetTransmissions, resetCouplers, resetGrid]
     {
         const bool keepNothing = unloadAll->getToggleState();
-        for (auto* other : { resetAudio, resetMidi, resetTransmissions, resetPatterns, resetCouplers, resetGrid })
+        for (auto* other : { resetAudio, resetMidi, resetTransmissions, resetCouplers, resetGrid })
             other->setEnabled(!keepNothing);
     };
     alert->addCustomComponent(unloadAll);
@@ -26094,8 +26121,8 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     o.clearMidiLearn = clearMidiLearn; o.resetAudioOutputs = resetAudioOutputs; o.removeTransmissions = removeTransmissions;
     o.clearFolderPatterns = clearFolderPatterns; o.resetCouplers = resetCouplers; o.resetStopGrid = resetStopGrid;
     o.unloadEverything = unloadEverything;
-    if (unloadEverything)   // a clean instrument: every option applies
-        o.clearMidiLearn = o.resetAudioOutputs = o.removeTransmissions = o.clearFolderPatterns = o.resetCouplers = o.resetStopGrid = true;
+    if (unloadEverything)   // a clean instrument: every option applies - but the pattern lists only when ticked (0.9.35)
+        o.clearMidiLearn = o.resetAudioOutputs = o.removeTransmissions = o.resetCouplers = o.resetStopGrid = true;
     globalResetStartedMs = juce::Time::getMillisecondCounterHiRes();
     globalResetPhaseMs = 0.0;
     globalResetTimes.clear();

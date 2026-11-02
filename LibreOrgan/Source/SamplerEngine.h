@@ -1504,7 +1504,8 @@ public:
     // One-shot stops: percussion and bells play once, however long the key is held ("Celesta" is the keyboard instrument, "Celeste" a rank of strings - not matched).
     static std::vector<juce::String> defaultOneShotPatterns() { return { "Chiff", "Chimes", "Tubular", "Celesta", "Harp", "Glockenspiel" }; }
     // Folders a tree scan never loads: "trem" anywhere, names ending in "_tr", and "output" (the summed/harmonic renderings some sets keep under a rank, "outputsum"/"outputharm").
-    static std::vector<juce::String> defaultIgnoredPatterns() { return { "trem", "*_tr", "output" }; }
+    // 0.9.35 (the user): "Traktur" (the action-noise folders "Traktura - manual HW - on") and "mustr" (a producer's sample folders) too.
+    static std::vector<juce::String> defaultIgnoredPatterns() { return { "trem", "*_tr", "output", "Traktur", "mustr" }; }
     // Folder-name patterns: no star = anywhere in the name, "*x" = the name ends
     // in x, "x*" = it starts with x; case-insensitive, underscores count.
     static bool folderNameMatchesPattern(const juce::String& folderName, const juce::String& pattern);

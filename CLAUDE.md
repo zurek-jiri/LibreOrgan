@@ -2611,6 +2611,28 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   must keep the file WITHOUT a BOM when HEAD has none (CMakeLists.txt, site/config.js, site/index.html, the rural
   README got one and lost it again): check `git diff` for a changed FIRST line after a bump. .NET file methods use
   the PROCESS cwd (LibreOrgan/), not the PowerShell location - absolute paths always.
+  0.9.35 (2 Nov 2026, the user, furious, right after 0.9.34: "proč to teď nepozná v adlingtonu, že to jsou
+  perspektivy??? ... Perspektivy to má automaticky rozpoznávat a doplňovat do Perspective patterns. Ještě včera to
+  fungovalo. A Ignored patterns taky si má pamatovat ... Do ignored patterns defaultně přidej slova Traktur a mustr"):
+  NOT a code regression - his GLOBAL RESET with "Unload everything" (0.9.34, 12:31) applied EVERY option, the pattern
+  lists included, and `rememberPatterns(true)` wrote the bare defaults into Patterns.json: his "Traktura" was gone and
+  the learned Adlington lines too. The drop of AdlingtonHallVol0 then LEARNED afresh and showed the scan's weak spot:
+  "02-direct-", "03-Diffuse2S-", "04-DiffuseSen-" on every stop - the learning block (SamplerEngine.cpp ~12228, the
+  3-letter stem rule "dif") appended BOTH Diffuse heads to the one line "Diffuse" -> every stop had two folders under
+  one perspective -> "HW Bl.Flute" + "HW Bl.Flute (2)", 21 stops instead of 7, and the Traktura / mustrAaron folders
+  loaded as stops. Fixes: (1) `linesTaken` in the learning block - a line whose prefixes already match folders of
+  THIS tree, or that another prefix found in this scan has just joined, takes no second prefix: the next head gets a
+  label of its own ("DiffuseSen;04-DiffuseSen-"), log "Perspective prefix X: the line ... already covers folders of
+  this tree - a perspective of its own". Two heads on the same stops are two perspectives, whatever their word; the
+  0.8.118 "Label;prefix;prefix2" line stays for the IMPORT (one organ spelling a perspective two ways on DIFFERENT
+  stops). (2) "Unload everything" no longer forces "Also reset the pattern lists" (the toggle stays enabled; the
+  text says "the pattern lists only when ticked below"). (3) `defaultIgnoredPatterns` = trem, *_tr, output, Traktur,
+  mustr; `mergeApplicationPatterns` adds a default the file has not seen (Patterns.json "ignoredDefaultsSeen",
+  written by rememberPatterns = all current defaults) ONCE, so a default the user removes stays removed; log
+  "Ignored patterns: the new default(s) ... added". Test %TEMP%\test_adlington0935.ps1 (Patterns.json = the bare
+  defaults, the rar dropped on III, "Load the folders" clicked: the Tuning lines per stop and perspective, Patterns.json
+  after). RULE: before calling a learned-pattern result a regression, read Patterns.json and the "Patterns in force"
+  line - a reset or another organ's file may have emptied the lists the day before.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
