@@ -2668,6 +2668,27 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   guard runs on the message thread every 0.5 s and touches nothing while the box is in front). Told the user: run
   the same measurement with the 0.9.32 exe today (he started it at 12:57 without measuring) and with "Performance
   cores only" + the High performance plan; the report already says so. No issue comments posted (his rule).
+  VIDEO MADE (2 Nov 2026, with 0.9.36, the user: "udělej celé to video, konečně"): 634 s, 0 discontinuities
+  (check_recording.py), "Recording stopped: 634.4 s in the file over 634.4 s of time", 39 narration lines (4 moved,
+  the MIDI line by 5.7 s), organ -33.4 LUFS -> +14.1 dB, voice +0.8 dB, true peak over -1 dBFS -> both lowered 1.3 dB.
+  site/assets/libreorgan.mp4 replaced (40.8 MB) and pushed; libreorgan-github.mp4 (1280 px, crf 33, 48 kbps AAC,
+  9.4 MB - under GitHub's 10 MB) in F:\temp\video\ for the user's upload (a README player needs the user-attachments
+  URL: he drags it into an issue comment and gives the URL; the README line is then replaced). LESSONS: (1) the
+  "Sample folders found" box is gone since 0.8.214 - the script's `waitfor OK` / `click OK` after the relocation
+  waited 60 s for nothing: `waitload 120000` + `wait 5000` now. (2) The drive X: of make_video_config.py no longer
+  keeps the Oberwerk missing: the lookup finds the trees by the tails of the absolute path under the locations'
+  children (0.8.190-0.9.5) - the config now carries a FINGERPRINT naming a stop folder the real tree lacks
+  ("video_missing_folder|1|0|-" keyed by the X: path), which `firstMatchingTree` refuses; the click's relocation
+  checks no fingerprint. (3) The whole script takes ~16 min of recording (the Stralsund load alone 2-3 min from the
+  page cache): make_video -Seconds 1300 (560 killed the run at 40 %: "NO FRAMES"). (4) The arrange-mode press is on
+  "UW Gedackt 8" of I. (the user: the Octave of II. was half hidden under the open Cornet voicing). (5) The cursor,
+  glows and captions are drawn LAST over the composed frame (captureFrame), so they lie above every dialog in the
+  video; on the live screen each window has its own overlay (windowOverlays) - the user saw the cursor under a
+  dialog there, the frames are right (checked: the load box, the loader, the Couplers dialog). (6) The say-lengths
+  tool (%TEMP%\say_lengths.py, Kokoro at speed 1.0 with the 0.5/0.4/0.3 pauses) lists the lines whose narration is
+  longer than the waits until the next; waits lengthened at 31 places; actions it does not count (learn windows,
+  slides, pointkey, holdarrange, glowcoupler, the relocation's load) cover the rest, and make_narration moves what
+  still overlaps.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
