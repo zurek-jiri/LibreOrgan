@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.40] - 2026-11-02
+
+### Changed
+- macOS: the message thread's stack in the activity log (a stall of 2 s or
+  more) is taken the way `sample` takes it - the thread suspended, its
+  registers read, the frame chain walked - instead of backtrace() in a signal
+  handler, which stopped at the first system function (#175: every sample
+  of 0.9.37-0.9.39 was empty beyond that). The log of a frozen Mac now says
+  where the thread really is.
+
 ## [0.9.39] - 2026-11-02
 
 ### Fixed

@@ -17,6 +17,9 @@
  #include <execinfo.h>   // 0.9.37: the message thread's stack on macOS and Linux (backtrace through a signal)
  #include <pthread.h>
  #include <cstdlib>
+ #if JUCE_MAC
+  #include <mach/mach.h>   // 0.9.40: the message thread sampled by thread_suspend + a frame-pointer walk (backtrace() through a signal frame stopped at the first system leaf)
+ #endif
 #endif
 
 //==============================================================================
@@ -356,6 +359,9 @@ namespace CrashHandler
             // where): the watchdog asks the message thread for its stack with a signal - the handler
             // writes backtrace() into a static buffer, the watchdog prints it with backtrace_symbols.
             posixMessageThread() = pthread_self();
+           #if JUCE_MAC
+            machMessageThread() = mach_thread_self();   // 0.9.40: the port the watchdog suspends and reads the registers of
+           #endif
             struct sigaction action{};
             action.sa_handler = [](int) { stackDepth().store(backtrace(stackBuffer(), 64), std::memory_order_release); };
             sigemptyset(&action.sa_mask);
@@ -368,12 +374,64 @@ namespace CrashHandler
         }
        #if ! JUCE_WINDOWS
         static pthread_t& posixMessageThread() { static pthread_t t{}; return t; }
+       #if JUCE_MAC
+        static mach_port_t& machMessageThread() { static mach_port_t t = 0; return t; }   // 0.9.40
+       #endif
         static void** stackBuffer() { static void* buffer[64]; return buffer; }
         static std::atomic<int>& stackDepth() { static std::atomic<int> depth{ -1 }; return depth; }
         // The message thread's stack as text (called from the watchdog thread): the signal, up to
         // 200 ms for the handler, then the symbols (names where the executable exports them).
         static juce::String messageThreadStack()
         {
+           #if JUCE_MAC
+            // 0.9.40 (#175: every sample of 0.9.37-0.9.39 ended at the first system function, the rest
+            // garbage - backtrace() in a signal handler walks frame pointers and the signal frame breaks
+            // the chain at a leaf without one): the message thread is SUSPENDED, its registers read, the
+            // frame-pointer chain walked with safe reads (no malloc while it is suspended - it may hold the
+            // heap lock), the thread resumed, and only then the addresses symbolised. What `sample` does.
+            const mach_port_t thread = machMessageThread();
+            if (thread == 0) return "(no thread port)";
+            if (thread_suspend(thread) != KERN_SUCCESS) return "(the thread could not be suspended)";
+            void* frames[64];
+            int depth = 0;
+            uintptr_t fp = 0;
+           #if JUCE_ARM
+            arm_thread_state64_t state{};
+            mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
+            if (thread_get_state(thread, ARM_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
+            {
+                frames[depth++] = (void*)arm_thread_state64_get_pc(state);
+                fp = (uintptr_t)arm_thread_state64_get_fp(state);
+            }
+           #else
+            x86_thread_state64_t state{};
+            mach_msg_type_number_t count = x86_THREAD_STATE64_COUNT;
+            if (thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
+            {
+                frames[depth++] = (void*)state.__rip;
+                fp = (uintptr_t)state.__rbp;
+            }
+           #endif
+            for (int i = 0; i < 60 && fp != 0 && depth < 64; ++i)
+            {
+                uintptr_t pair[2]{};   // [fp] = the caller's fp, [fp + 8] = the return address
+                vm_size_t got = 0;
+                if (vm_read_overwrite(mach_task_self(), (vm_address_t)fp, sizeof(pair), (vm_address_t)pair, &got) != KERN_SUCCESS || got != sizeof(pair)) break;
+                if (pair[1] == 0) break;
+                frames[depth++] = (void*)pair[1];
+                if (pair[0] <= fp) break;   // the chain must climb the stack
+                fp = pair[0];
+            }
+            thread_resume(thread);
+            if (depth <= 0) return "(the registers could not be read)";
+            juce::String text;
+            if (char** symbols = backtrace_symbols(frames, depth))
+            {
+                for (int i = 0; i < depth; ++i) text << "  #" << i << "  " << symbols[i] << "\n";
+                free(symbols);
+            }
+            return text;
+           #else
             stackDepth().store(-1, std::memory_order_release);
             if (pthread_kill(posixMessageThread(), SIGUSR2) != 0) return "(the signal was not delivered)";
             for (int waited = 0; stackDepth().load(std::memory_order_acquire) < 0 && waited < 200; waited += 5) juce::Thread::sleep(5);
@@ -386,6 +444,7 @@ namespace CrashHandler
                 free(symbols);
             }
             return text;
+           #endif
         }
        #endif
         ~StallWatchdog() override
