@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.38] - 2026-11-02
+
+### Fixed
+- Two-core Mac and Linux laptops froze and thawed since 0.8.232 (#169, #170,
+  #171): the F1 help polled the window system for the key state sixteen
+  times a second (an IPC on macOS, two X11 round trips on Linux), and with
+  the real-time audio threads busy the server answered late - the window
+  thread waited for it. macOS and Linux now take F1 from a key listener on
+  every window; Windows keeps its plain poll.
+- On macOS a browser that was in full screen when the problem report opened
+  it kept that mode when placed beside the Finder window (black around it,
+  the Finder hidden): its full screen is left first.
+
+### Removed
+- The "Messages (N new)" strip at the bottom left. A message goes into the
+  Messages entry of the manual window only (the user's rule).
+
 ## [0.9.37] - 2026-11-02
 
 ### Fixed

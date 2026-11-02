@@ -1775,11 +1775,9 @@ sag.
 
 What the program has to tell after an action - a tree found, folders
 replaced, what a merge did, what the load left out - no longer interrupts
-you with a box: a strip in the lower left corner of the main window shows
-"Messages (N new)" with the last title for ten seconds, and the texts are
-collected under **Messages** in the *About & licences...* window (the entry
-above the manual; a click on the strip opens it). Questions, warnings and the
-polyphony report still come as boxes.
+you with a box: the texts are collected quietly under **Messages** in the
+*About & licences...* window (the entry above the manual). Questions,
+warnings and the polyphony report still come as boxes.
 
 ## 9.2 The activity log
 

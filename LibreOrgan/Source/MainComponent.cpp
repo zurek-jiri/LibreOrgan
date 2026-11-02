@@ -255,8 +255,16 @@ private:
 // place of the message boxes that came long after an action was over.
 // F1 polled every 60 ms (0.8.232): a key listener would need the focus, and the help must work in every window
 // of the program over whatever control the mouse rests on.
-struct HelpKeyWatcher final : public juce::Timer
+struct HelpKeyWatcher final : public juce::Timer, public juce::KeyListener
 {
+    // 0.9.38 (#169-#171, the two-core Mac and Linux laptops "zamrzá a odmrzá" since 0.8.232): the 60 ms
+    // poll asked the WINDOW SYSTEM for the key state and the foreground process - on macOS an IPC to the
+    // window server, on Linux two X11 round trips - sixteen times a second; with the real-time audio
+    // threads busy on two cores the server answered late and the window thread waited for it, the
+    // 0.9.37 stacks show the thread inside those calls. Windows keeps the poll (GetAsyncKeyState is a
+    // plain read); macOS and Linux get a key listener on every top-level window of ours instead,
+    // attached twice a second to the windows that have none yet (no system call, no polling of keys).
+   #if JUCE_WINDOWS
     explicit HelpKeyWatcher(MainComponent& o) : owner(o) { startTimer(60); }
     void timerCallback() override
     {
@@ -264,8 +272,33 @@ struct HelpKeyWatcher final : public juce::Timer
         if (down && !wasDown) owner.openManualForMouse();
         wasDown = down;
     }
+   #else
+    explicit HelpKeyWatcher(MainComponent& o) : owner(o) { startTimer(500); }
+    void timerCallback() override
+    {
+        for (int i = (int)listened.size(); --i >= 0;) if (listened[(size_t)i] == nullptr) listened.erase(listened.begin() + i);
+        auto& desktop = juce::Desktop::getInstance();
+        for (int w = 0; w < desktop.getNumComponents(); ++w)
+        {
+            auto* window = desktop.getComponent(w);
+            if (window == nullptr) continue;
+            bool known = false;
+            for (const auto& p : listened) if (p == window) { known = true; break; }
+            if (known) continue;
+            window->addKeyListener(this);
+            listened.emplace_back(window);
+        }
+    }
+   #endif
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        if (key.getKeyCode() != juce::KeyPress::F1Key) return false;
+        owner.openManualForMouse();
+        return true;
+    }
     MainComponent& owner;
     bool wasDown = false;
+    std::vector<juce::Component::SafePointer<juce::Component>> listened;
 };
 
 // Every tooltip ends with "For details press F1." as its last line (0.8.233). ONLY as the last
@@ -1320,8 +1353,9 @@ MainComponent::MainComponent()
     pitchLabel.setJustificationType(juce::Justification::centred);
     polyphonyDisplay = std::make_unique<PolyphonyDisplay>(engine);
     addAndMakeVisible(*polyphonyDisplay);
-    messageStrip = std::make_unique<MessageStrip>(*this);
-    addChildComponent(*messageStrip);
+    // 0.9.38: NO strip any more (the user, after the Mac freezes: "Jdi do prdele s tím oranžovým
+    // obdélníčkem vlevo dole ... zprávy se budou tiše zapisovat do položky v about a hotovo") - a
+    // message goes into the Messages entry of the manual window only. The class stays unused.
 
     attackMinimumSlider.setTooltip("The shortest time a pipe sounds once started: even a brief touch lets the chiff be heard. Right-click: MIDI learn.");
     addAndMakeVisible(attackMinimumSlider);
@@ -5795,6 +5829,12 @@ void MainComponent::arrangeReportWindows(const juce::File& folder)
     bool placed = false;
     if (app.isNotEmpty() && app != "Finder" && app != "LibreOrgan")
     {
+        // 0.9.38 (the user, twice: a browser that was in macOS full screen keeps that mode when its
+        // bounds are set - "kolem něho je černo, průzkumník není vidět"): its full screen is left first
+        // through System Events (the accessibility permission, like the fallback below), with the
+        // second the animation takes.
+        run("tell application \"System Events\" to tell (first application process whose frontmost is true) to if value of attribute \"AXFullScreen\" of window 1 is true then set value of attribute \"AXFullScreen\" of window 1 to false");
+        juce::Thread::sleep(1200);
         juce::ChildProcess process;
         if (process.start(juce::StringArray{ "osascript", "-e", "tell application \"" + app + "\" to set bounds of front window to " + bounds }))
         { process.waitForProcessToFinish(3000); placed = process.getExitCode() == 0; }

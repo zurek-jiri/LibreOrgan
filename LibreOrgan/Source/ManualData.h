@@ -1795,11 +1795,9 @@ static const char* const kManualText_part8 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
-    "you with a box: a strip in the lower left corner of the main window shows\n"
-    "\"Messages (N new)\" with the last title for ten seconds, and the texts are\n"
-    "collected under **Messages** in the *About & licences...* window (the entry\n"
-    "above the manual; a click on the strip opens it). Questions, warnings and the\n"
-    "polyphony report still come as boxes.\n"
+    "you with a box: the texts are collected quietly under **Messages** in the\n"
+    "*About & licences...* window (the entry above the manual). Questions,\n"
+    "warnings and the polyphony report still come as boxes.\n"
     "\n"
     "## 9.2 The activity log\n"
     "\n"
@@ -1818,10 +1816,10 @@ static const char* const kManualText_part8 =
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
-    ;
-static const char* const kManualText_part9 =
     "last self-test, `system.txt` with the computer and every audio route - no\n"
     "samples, no voicing) and screenshots of every open window, then opens the\n"
+    ;
+static const char* const kManualText_part9 =
     "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
     "A free GitHub account is needed; the report is public. If GitHub lands\n"
@@ -2020,10 +2018,10 @@ static const char* const kManualText_part9 =
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
-    ;
-static const char* const kManualText_part10 =
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"

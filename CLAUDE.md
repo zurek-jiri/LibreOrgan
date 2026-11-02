@@ -2724,6 +2724,28 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   user: "na gitHub necháme to původní, ono má taky svoje kouzlo"): the user-attachments URL of 26 Oct stays; the
   WebM made for it (F:\temp\libreorgan-github.webm, 9.2 MB, Opus 96 kbps) is not uploaded. A README video under
   10 MB with clean sound is WebM + Opus only (AAC would be under 100 kbps at ten minutes).
+  0.9.38 (2 Nov 2026 evening; the 0.9.37 stack samples of #169/#170 (Mac) and #171 (Linux) READ): the message
+  thread of the two-core laptops sits in the WINDOW SYSTEM's calls - Linux: libc read() right under the
+  InternalMessageQueue lambda (an X11 reply wait), start-up in `snd_device_name_hint` (ALSA's enumeration, 2.5 s on
+  that box, from `defaultDeviceNameOfType` in loadSettings); Mac: `objc_msgSend`/`CFRunLoopRunSpecific`/
+  `AutoreleasePoolPage::pop`/empty stacks = Cocoa and window-server calls - and in `benchmarkKernel` (2 s, the
+  measurement's end), `Voicer::rebuildUI` (2.4 s, the grid of 78 rows built: compute) and `Voicer::loadState` at
+  start. THE CULPRIT that matched the timeline (fine at 0.8.216 on 27 Oct, broken at 0.9.30): the HelpKeyWatcher of
+  0.8.232 (30 Oct) polled `Process::isForegroundProcess()` + `KeyPress::isKeyCurrentlyDown(F1)` every 60 ms = two
+  X11 round trips / a window-server IPC sixteen times a second; with the real-time audio threads busy on two cores
+  the server answers late and the window thread waits for it (on Linux the starved X server froze the whole
+  desktop at 51 % callback - #168). Now the poll is Windows-only (GetAsyncKeyState is a read); macOS and Linux get
+  a juce::KeyListener on every top-level window (attached every 500 ms to windows without it, no system call).
+  The 0.9.37 "no lowered priority on <= 2 cores" stays (harmless). THE STRIP IS GONE (the user: "Jdi do prdele s
+  tím oranžovým obdélníčkem ... zprávy se budou tiše zapisovat do položky v about"): `messageStrip` is never
+  created; noteMessage keeps writing the Messages entry; the class and showMessageStrip stay (guarded). macOS
+  report windows: the frontmost browser's full screen is left through System Events ("AXFullScreen" of window 1
+  set false, 1.2 s for the animation) before its bounds are set (the user, twice: the placed browser kept the full
+  screen, black around it). Still open on 2-core machines: the ALSA enumeration at start (2.5 s, loadSettings) and
+  the compute of rebuildUI/loadState/benchmarkKernel - seconds on a Core 2 Duo, shown in the loader/measurement,
+  not polled. RULE: nothing on the message thread may ask the window system or a device driver periodically
+  (key states, focus, device scans) - a listener or a cached answer instead; on a two-core box with real-time
+  threads every such call can wait seconds.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
