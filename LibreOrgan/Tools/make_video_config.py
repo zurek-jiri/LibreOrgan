@@ -8,9 +8,15 @@ src, out = sys.argv[1], sys.argv[2]
 cfg = json.load(open(src, encoding='utf-8'))
 gone = r'X:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages'
 trees = cfg['sampleTrees']
+# 0.9.36: the lookup of 0.8.190-0.9.5 finds a tree by the tails of its absolute path under the remembered
+# locations and their children, so a drive X: alone no longer keeps the Oberwerk missing - a FINGERPRINT
+# naming a stop folder the real tree does not hold refuses every candidate (0.9.5: "folder(s) of that name
+# with OTHER samples refused"); the relocation of the video's click does not check it.
+prints = cfg.setdefault('treeFingerprints', {})
 for i, t in enumerate(trees):
     if t.replace('\\', '/').endswith('/OW'):
         trees[i] = gone + '\\' + t.replace('/', '\\')
+        prints[trees[i]] = 'video_missing_folder|1|0|-'
 for m in cfg['manualKeyboards']:
     rel = m.get('folderRelativePath', '')
     if rel.replace('\\', '/').endswith('/OW'):
