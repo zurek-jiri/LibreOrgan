@@ -2719,6 +2719,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   treeFingerprints["003136/pipe/OW"] = "video_missing_folder|1|0|-" (an ABSOLUTE tree never passes the
   fingerprint test - line ~14129 `tree.relativeForm ? firstMatchingTree(...) : ...` - and the old X: paths were
   found by their tails anyway: the 2 Nov video found the Oberwerk, "Video: alert - no notice in division 3").
+  THE VIDEO OF 2 Nov 2026 (second take, 0.9.37): 571 s, 0 discontinuities, the Oberwerk missing and found, the
+  samples from F:\video (3 GB/s) - site/assets/libreorgan.mp4 (37.7 MB). THE README KEEPS THE OLD VIDEO (the
+  user: "na gitHub necháme to původní, ono má taky svoje kouzlo"): the user-attachments URL of 26 Oct stays; the
+  WebM made for it (F:\temp\libreorgan-github.webm, 9.2 MB, Opus 96 kbps) is not uploaded. A README video under
+  10 MB with clean sound is WebM + Opus only (AAC would be under 100 kbps at ten minutes).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
