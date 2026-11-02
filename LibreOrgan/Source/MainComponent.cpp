@@ -12170,7 +12170,9 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             // and INDEX.md's "RAM min" column: a reader must not be put off by the
             // figure of the full storage when a third of it would do).
             juce::MouseCursor::showWaitCursor();
+            const double estimateStarted = juce::Time::getMillisecondCounterHiRes();
             const auto least = engine.estimateMinimumRam();
+            const double estimateMs = juce::Time::getMillisecondCounterHiRes() - estimateStarted;   // 0.9.34: logged - the save box must not look frozen
             juce::MouseCursor::hideWaitCursor();
             if (least.bytesMinimum > 0 && least.samplesTested > 0)
             {
@@ -12190,7 +12192,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 CrashHandler::note("RAM with every saving option (" + juce::String(SamplerEngine::minimumRamStorageText) + "): about " + gb(minimum)
                     + " (now " + gb(ram) + ": samples " + gb(least.bytesNow) + " x " + juce::String(least.ratio, 3) + " + the rest " + gb(rest) + " scaled to " + gb(restScaled) + "; "
                     + juce::String(least.samplesTested) + " of " + juce::String(least.samplesTotal) + " samples tested, releases halved "
-                    + juce::String(least.releasesHalved) + ", kept at the full rate " + juce::String(least.releasesKeptFull) + ", already at half " + juce::String(least.releasesAlreadyHalved) + ")");
+                    + juce::String(least.releasesHalved) + ", kept at the full rate " + juce::String(least.releasesKeptFull) + ", already at half " + juce::String(least.releasesAlreadyHalved) + "; estimated in " + juce::String(juce::roundToInt(estimateMs)) + " ms)");
             }
         }
     }
@@ -26065,29 +26067,86 @@ void MainComponent::performGlobalReset()
         }), true);
 }
 
+void MainComponent::globalResetStatus(const juce::String& text)
+{
+    // The phase just finished goes into the log with its time; the box shows the next.
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (globalResetPhaseMs > 0.0)
+        globalResetTimes += juce::String(juce::roundToInt(now - globalResetPhaseMs)) + " ms";
+    globalResetPhaseMs = now;
+    if (text.isEmpty()) return;
+    globalResetTimes += (globalResetTimes.isEmpty() ? "" : ", ") + text.trimCharactersAtEnd(" .").toLowerCase() + " ";
+    CrashHandler::note("Global reset: " + text);
+    if (globalResetWindow != nullptr) globalResetWindow->setMessage(text);   // a different text each time (0.8.183: the same text is a no-op)
+}
+
 void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutputs,
     bool removeTransmissions, bool clearFolderPatterns, bool resetCouplers, bool resetStopGrid,
     bool unloadEverything)
 {
-    if (unloadEverything)
+    // 0.9.34 (the user: "Unload everything + Reset is frozen - no dialog may ever look
+    // frozen"): it was a crash, not a freeze - the voicing rows still pointed at the
+    // stops just handed to the freeing thread and resetAll read them. Now the reset
+    // runs in phases posted to the message loop, a box names the phase that runs
+    // (the loop repaints it between the phases), the rows are rebuilt right after the
+    // unload, and the log ends with the time of every phase.
+    GlobalResetOptions o;
+    o.clearMidiLearn = clearMidiLearn; o.resetAudioOutputs = resetAudioOutputs; o.removeTransmissions = removeTransmissions;
+    o.clearFolderPatterns = clearFolderPatterns; o.resetCouplers = resetCouplers; o.resetStopGrid = resetStopGrid;
+    o.unloadEverything = unloadEverything;
+    if (unloadEverything)   // a clean instrument: every option applies
+        o.clearMidiLearn = o.resetAudioOutputs = o.removeTransmissions = o.clearFolderPatterns = o.resetCouplers = o.resetStopGrid = true;
+    globalResetStartedMs = juce::Time::getMillisecondCounterHiRes();
+    globalResetPhaseMs = 0.0;
+    globalResetTimes.clear();
+    CrashHandler::note("Global reset: started (unload everything " + juce::String(o.unloadEverything ? "yes" : "no")
+        + ", audio " + juce::String(o.resetAudioOutputs ? "yes" : "no") + ", MIDI " + juce::String(o.clearMidiLearn ? "yes" : "no")
+        + ", transmissions " + juce::String(o.removeTransmissions ? "yes" : "no") + ", patterns " + juce::String(o.clearFolderPatterns ? "yes" : "no")
+        + ", couplers " + juce::String(o.resetCouplers ? "yes" : "no") + ", grid " + juce::String(o.resetStopGrid ? "yes" : "no") + ")");
+    resetButton.setEnabled(false);
+    auto* box = new juce::AlertWindow("Global Reset", "Starting the reset ...", juce::MessageBoxIconType::InfoIcon, this);
+    box->enterModalState(true, nullptr, true);   // no button: it closes itself at the end
+    globalResetWindow = box;
+    globalResetStatus(o.unloadEverything ? "Unloading the organ ..." : "Resetting the controls and divisions ...");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, o]
     {
-        // A clean instrument: every option applies, and the stops and sample
-        // folders go too (the tree pool, the tables, the loaded ranks).
-        clearMidiLearn = resetAudioOutputs = removeTransmissions = clearFolderPatterns = resetCouplers = resetStopGrid = true;
-        if (stopBuildWindow != nullptr) stopBuildWindow.reset();
-        audioMuted.store(true);
-        panic();
-        for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+        if (safeThis == nullptr) return;
+        auto& self = *safeThis;
+        if (o.unloadEverything)
         {
-            removePerspectiveAudioRoutesForManual(manual);
-            engine.unloadManual(manual);
+            // A clean instrument: the stops and sample folders go too (the tree pool,
+            // the tables, the loaded ranks). The stops are freed on a thread of their
+            // own (0.8.184); the voicing rows are rebuilt at once so none of them points
+            // at a stop that is gone.
+            if (self.stopBuildWindow != nullptr) self.stopBuildWindow.reset();
+            self.audioMuted.store(true);
+            self.panic();
+            for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+            {
+                self.removePerspectiveAudioRoutesForManual(manual);
+                self.engine.unloadManual(manual);
+            }
+            self.clearSampleLibraryInMemory();
+            self.currentConfigurationFile = juce::File();
+            self.configurationFingerprint.clear();
+            self.configurationDirty = false;
+            if (self.voicer != nullptr)
+            {
+                self.voicer->setActiveManualCount(self.manualCount + 1);
+                self.voicer->rebuildUI(self.stopsContent, self.stopsViewport);
+            }
+            CrashHandler::note("Global reset: everything unloaded, the instrument is empty (the samples are freed in the background)");
+            self.globalResetStatus("Resetting the controls and divisions ...");
         }
-        clearSampleLibraryInMemory();
-        currentConfigurationFile = juce::File();
-        configurationFingerprint.clear();
-        configurationDirty = false;
-        CrashHandler::note("Global reset: everything unloaded, the instrument is empty");
-    }
+        juce::MessageManager::callAsync([safeThis, o] { if (safeThis != nullptr) safeThis->globalResetControls(o); });
+    });
+}
+
+void MainComponent::globalResetControls(const GlobalResetOptions& o)
+{
+    const bool clearMidiLearn = o.clearMidiLearn, resetAudioOutputs = o.resetAudioOutputs, removeTransmissions = o.removeTransmissions,
+               clearFolderPatterns = o.clearFolderPatterns, resetCouplers = o.resetCouplers, resetStopGrid = o.resetStopGrid;
     panic();
     if (keyboardsWindow != nullptr) keyboardsWindow.reset();
     keyboardsWindowManual = -2;
@@ -26271,7 +26330,18 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     ignoreCurrentAudioStateUntilUserSelection = resetAudioOutputs;
     setCurrentConfigurationName({});
 
-    if (resetAudioOutputs) resetAudioOutputsToDefault();
+    globalResetStatus(resetAudioOutputs ? "Resetting the audio devices ..." : "Rebuilding the grid and saving ...");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis, o] { if (safeThis != nullptr) safeThis->globalResetFinish(o); });
+}
+
+void MainComponent::globalResetFinish(const GlobalResetOptions& o)
+{
+    if (o.resetAudioOutputs)
+    {
+        resetAudioOutputsToDefault();   // closes and reopens the devices: the slow part of a reset
+        globalResetStatus("Rebuilding the grid and saving ...");
+    }
     if (voicer != nullptr)
     {
         voicer->setActiveManualCount(manualCount + 1);
@@ -26281,7 +26351,7 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
 
     saveMemories();
     saveSettings();
-    if (unloadEverything)
+    if (o.unloadEverything)
     {
         const bool haveStops = !engine.getStops().isEmpty();
         saveStopSettingsButton.setEnabled(haveStops);
@@ -26293,6 +26363,14 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
     }
     resized();
     repaint();
+    globalResetStatus({});   // the last phase's time
+    if (globalResetWindow != nullptr) globalResetWindow->exitModalState(0);   // deleted by the modal manager
+    globalResetWindow = nullptr;
+    resetButton.setEnabled(true);
+    const juce::String summary = "done in " + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - globalResetStartedMs)) + " ms (" + globalResetTimes + ")";
+    CrashHandler::note("Global reset: " + summary);
+    noteMessage("Global reset", (o.unloadEverything ? "Everything unloaded and reset, " : "Reset ") + summary + ".");
+    showMessageStrip();
 }
 
 void MainComponent::resetAudioOutputsToDefault()

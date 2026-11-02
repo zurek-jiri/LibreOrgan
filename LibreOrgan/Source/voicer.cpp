@@ -4758,8 +4758,11 @@ void Voicer::resetAll(bool resetGrid)
             stop->attackFadeoutMs = 75.0f;
         }
     }
+    // A row of a stop the engine no longer holds is left alone (0.9.34: after "Unload
+    // everything" of the global reset the rows still pointed at the stops just handed
+    // to the freeing thread - updateFromStop read freed memory and the program fell).
     for (auto* row : stopRows)
-        row->updateFromStop();
+        if (engine.getStops().contains(row->getStop())) row->updateFromStop();
 }
 
 void Voicer::updateStopStates()

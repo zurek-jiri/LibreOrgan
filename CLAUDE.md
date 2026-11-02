@@ -2576,6 +2576,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   LibreOrgan.exe from his Desktop), the v0.9.33 release checked (Intel mac "late symbols: 0", the Windows exe depends
   on system DLLs only). A report line of a Linux session must go into LibreOrgan/CLAUDE_REPORTS.md, never the repo root
   (a stray fragment was found there and moved).
+  0.9.34 (2 Nov 2026, the user: "když v global reset zmáčknu Unload everything a Reset, tak je to zamrzlé. To nesmí.
+  Žádný dialog se nesmí tvářit zamrzlý! ... Vždy to musí nějak reagovat, například hlásit postup resetu"): NOT a
+  freeze - a CRASH (crash-20261102-120335.txt: a C++ exception, 0xe06d7363, right after "Global reset: everything
+  unloaded"): `executeGlobalReset` unloaded every division (`unloadManual` hands the stops to the freeing thread) and
+  then `voicer->resetAll` ran `updateFromStop` on the OLD rows, which still pointed at those stops - freed memory read
+  (a garbage `ranks` vector -> bad_alloc). Not reproduced here with the drainer slower than the rows (a race); certain
+  from the code. Fix: the voicing rows are rebuilt right after the unload, and `Voicer::resetAll` skips a row whose
+  stop the engine no longer holds (`engine.getStops().contains`). THE REST OF HIS RULE: the reset runs in PHASES
+  posted with callAsync - `executeGlobalReset` (the box "Global Reset" with InfoIcon and no button, `enterModalState
+  (true, nullptr, true)`, `globalResetWindow` SafePointer, `resetButton` disabled) -> the unload lambda ->
+  `globalResetControls(options)` (the old middle: controls, divisions, MIDI, stops, combinations, couplers, patterns)
+  -> `globalResetFinish(options)` (`resetAudioOutputsToDefault`, the grid, saveMemories/saveSettings, the unload tail,
+  the box closed with exitModalState(0)); `globalResetStatus(text)` = log "Global reset: <text>" + setMessage (a
+  different text every time - 0.8.183) + the phase times into `globalResetTimes`; the end logs "Global reset: done
+  in N ms (unloading the organ a ms, resetting the controls and divisions b ms, resetting the audio devices c ms,
+  rebuilding the grid and saving d ms)" and a Messages note. Measured (Caen Surround, 87 stops, 8 routes on the
+  Fireface): 1.9 s in all, of which the audio devices 1.37 s, the unload 0.31 s, the samples freed in the background
+  2.3 s later. `GlobalResetOptions` (MainComponent.h). THE AUDIT of buttons that do long work on the message thread
+  (the user: "Zkontroj všechny dialogy"): with a progress window already - Load Configuration (the loader + the 0.9.33
+  search window), Stop List Apply and reload / Unload folder / Unload all (the loader), Load folder (the archive index,
+  the tuning gate, the loader), Unpack archive, the merge (its memory count on a thread; the perspective gate reads
+  16 files per pair on the message thread - seconds for a packed rar package, noted, not changed), the measurement.
+  Measured without one: the portable save's RAM estimate "estimated in N ms" (new in the log line; Caen 183 ms - no
+  window needed; the wait cursor stays). Left as they are (short): Couplers/Temperaments/patterns dialogs (a grid
+  rebuild), Load IR (juce::dsp::Convolution loads on its own thread), Report a problem (logs.zip), Empty the cache
+  (file deletions), the Divisions dialog's device change (JUCE opens a device synchronously, ~0.5-1.5 s - nothing
+  shows it; a known gap), the voicing row's Transposition (one stop decoded anew synchronously, ~1 s on a big stop).
+  Tests: %TEMP%\test_reset0934.ps1 [-Cfg -ClickAt -Clicks] (ORGAN_LOAD_CONFIGURATION + ORGAN_TEST_CLICK "GLOBAL
+  RESET|Unload everything: ...|Reset", the process must survive 20 s after "Global reset: started", no crash file;
+  ORGAN_TEST_DIALOG_SNAPSHOT pictured the box "Rebuilding the grid and saving ..."), %TEMP%\test_save0934.ps1
+  (ORGAN_SAVE_PORTABLE of Caen -> the estimate's ms). LESSON: `juce::String(double, 0)` prints the decimals anyway -
+  `juce::String(juce::roundToInt(x))` for a whole number. The version bump by PowerShell `[IO.File]::WriteAllText`
+  must keep the file WITHOUT a BOM when HEAD has none (CMakeLists.txt, site/config.js, site/index.html, the rural
+  README got one and lost it again): check `git diff` for a changed FIRST line after a bump. .NET file methods use
+  the PROCESS cwd (LibreOrgan/), not the PowerShell location - absolute paths always.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

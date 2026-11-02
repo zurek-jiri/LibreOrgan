@@ -307,7 +307,8 @@ static const char* const kManualText_part1 =
     "\n"
     "*GLOBAL RESET* (top bar) offers what to reset: *Unload everything* empties the\n"
     "instrument; the other boxes (audio, MIDI, transmissions, patterns, couplers,\n"
-    "the grid) reset only what is ticked.\n"
+    "the grid) reset only what is ticked. A box names the step of the reset that\n"
+    "runs; the Messages tab keeps its summary.\n"
     "\n"
     "## 1.7 How the sample folders must be organised\n"
     "\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "division with its header and its stop grid. A message strip appears in the\n"
     "lower left corner when the program has something to say ([Messages](#91-messages)).\n"
     "\n"
-    "## 2.1 Top bar buttons\n"
     ;
 static const char* const kManualText_part2 =
+    "## 2.1 Top bar buttons\n"
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "### Stop volume\n"
     "\n"
     "-24 to +12 dB, the level of the whole stop.\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
     "### Attack Gain and Attack Time\n"
     "\n"
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
     "their samples and copies; only new folders are read, only missing copies\n"
-    "built; folders left out of the table are freed. Moving rows between\n"
     ;
 static const char* const kManualText_part4 =
+    "built; folders left out of the table are freed. Moving rows between\n"
     "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
     "cannot be removed or renamed without a warning. Closing the window with\n"
     "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
     "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
-    "  device) share the whole pool of render threads. Every open device has a\n"
     ;
 static const char* const kManualText_part5 =
+    "  device) share the whole pool of render threads. Every open device has a\n"
     "  driver thread of its own, so an organ spread over several devices can\n"
     "  measure more than on one - at the price of different latencies.\n"
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
-    "routes lanes.\n"
     ;
 static const char* const kManualText_part6 =
+    "routes lanes.\n"
     "\n"
     "### Sample storage in RAM\n"
     "\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "\n"
     "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
     "at velocity 1 (default 9 dB), less for firmer strokes.\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
     "### Key velocity: treble cut opens over\n"
     "\n"
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "### Top bar\n"
     "\n"
     "One switch per top-bar button: PANIC, Record, Stop List, Couplers,\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
     "last self-test, `system.txt` with the computer and every audio route - no\n"
     "samples, no voicing) and screenshots of every open window, then opens the\n"
-    "GitHub form in your browser with its fields filled in and the folder beside\n"
     ;
 static const char* const kManualText_part9 =
+    "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
     "A free GitHub account is needed; the report is public. If GitHub lands\n"
     "elsewhere after the sign-in, *Open the GitHub form* in the program's message\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"

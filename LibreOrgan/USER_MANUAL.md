@@ -301,7 +301,8 @@ loaded, not saved: *Save Configuration* keeps it.
 
 *GLOBAL RESET* (top bar) offers what to reset: *Unload everything* empties the
 instrument; the other boxes (audio, MIDI, transmissions, patterns, couplers,
-the grid) reset only what is ticked.
+the grid) reset only what is ticked. A box names the step of the reset that
+runs; the Messages tab keeps its summary.
 
 ## 1.7 How the sample folders must be organised
 

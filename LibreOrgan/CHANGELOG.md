@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.34] - 2026-11-02
+
+### Fixed
+- GLOBAL RESET with "Unload everything" crashed (seen as a frozen program): the
+  voicing rows still pointed at the stops just handed to the freeing thread and
+  the reset read them. The rows are rebuilt right after the unload, and a row
+  of a stop the engine no longer holds is left alone.
+- The reset no longer runs in one go on the window's thread: it runs in steps
+  (unloading, the controls and divisions, the audio devices, the grid and the
+  save), a box names the step that runs, the log ends with the time of each
+  and the Messages tab keeps the summary.
+- The portable save logs how long the RAM estimate of the loaded samples took.
+
 ## [0.9.33] - 2026-11-02
 
 ### Fixed

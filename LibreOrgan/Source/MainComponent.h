@@ -1443,6 +1443,20 @@ private:
     void executeGlobalReset(bool clearMidiLearn, bool resetAudioOutputs,
         bool removeTransmissions, bool clearFolderPatterns, bool resetCouplers, bool resetStopGrid,
         bool unloadEverything = false);
+    // 0.9.34: the reset runs in phases posted to the message loop, each announced in
+    // its own box ("Global Reset": unloading / controls / audio devices / grid) so the
+    // window repaints between them - a reset must never look frozen.
+    struct GlobalResetOptions
+    {
+        bool clearMidiLearn = false, resetAudioOutputs = false, removeTransmissions = false,
+             clearFolderPatterns = false, resetCouplers = false, resetStopGrid = false, unloadEverything = false;
+    };
+    void globalResetStatus(const juce::String& text);
+    void globalResetControls(const GlobalResetOptions& options);
+    void globalResetFinish(const GlobalResetOptions& options);
+    juce::Component::SafePointer<juce::AlertWindow> globalResetWindow;   // the progress box of the running reset
+    double globalResetStartedMs = 0.0, globalResetPhaseMs = 0.0;
+    juce::String globalResetTimes;                                       // "unload 120 ms, controls 30 ms ..." for the log
     // Forgets the sample library in memory: the tree pool, every division's table
     // and tree list (nothing is loaded at start-up unless a configuration is).
     void clearSampleLibraryInMemory();
