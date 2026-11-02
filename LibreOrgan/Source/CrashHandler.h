@@ -459,7 +459,7 @@ namespace CrashHandler
                     ++shown;
                     char name[64]{};
                     if (pthread_t p = pthread_from_mach_thread_np(threads[i])) pthread_getname_np(p, name, sizeof(name));
-                    text << "  -- thread " << (int)i << (name[0] != 0 ? juce::String(" \"") + name + "\"" : juce::String()) << ":\n";
+                    text << "  -- thread " << (int)i << (name[0] != 0 ? juce::String(" \"") + juce::String(name) + "\"" : juce::String()) << ":\n";
                     if (char** symbols = backtrace_symbols(other, otherDepth))
                     {
                         for (int k = 0; k < otherDepth; ++k) text << "     " << symbols[k] << "\n";

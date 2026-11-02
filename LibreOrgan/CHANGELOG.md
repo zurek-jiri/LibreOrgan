@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.43] - 2026-11-02
+
+### Fixed
+- The grid is built without the per-key voicing controls of the rows whose
+  voicing is closed. Every row used to construct two sliders, three labels and
+  a tick box for every key of its compass whether the voicing was open or not:
+  some 25 000 components and over 30 000 queued messages (a label's text is
+  set through a message) for every rebuild of a 70-row organ, and the grid is
+  rebuilt several times during a load. On a two-core computer each rebuild
+  took seconds and the message queue then drained for the best part of a
+  minute - the frozen window after a load on the Core 2 Duo Mac and the
+  AntiX laptop (#175, #176, #180: the message thread drowning in its queue).
+  Found on Windows with a histogram of the message posts per call site. An
+  open voicing builds its key rows as before (every opening rebuilds the grid).
+- macOS build error of 0.9.42 (an ambiguous string concatenation in the
+  thread sampler).
+
 ## [0.9.42] - 2026-11-02
 
 ### Changed

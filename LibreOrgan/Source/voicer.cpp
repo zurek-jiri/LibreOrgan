@@ -677,8 +677,14 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     volumeReset.onClick = [this] { resetKeyRow(false); };
     toneReset.onClick = [this] { resetKeyRow(true); };
 
-    // Per-key sliders and labels
-    for (int note = noteMin; note <= noteMax; ++note)
+    // Per-key sliders and labels - for an OPEN voicing of a stop with pipes only (0.9.43). A compact row
+    // shows its button alone, and every opening of a voicing rebuilds the grid (relayout), so nothing is
+    // missed; built for every row, the two sliders, three labels and the box per key were some 25 000
+    // components and 34 000 queued messages (a Label::setText posts one) per rebuild of a 70-row organ -
+    // seconds on a two-core computer, and a message queue that drained for the best part of a minute.
+    // Every reader of the arrays takes a missing entry (OwnedArray gives nullptr beyond its size).
+    const bool keyControlsWanted = isExpanded() && !stop->container;
+    for (int note = keyControlsWanted ? noteMin : noteMax + 1; note <= noteMax; ++note)
     {
         // Vertical slider: the volume of this key (-9..9 dB)
         auto* slider = new LearnableSlider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
