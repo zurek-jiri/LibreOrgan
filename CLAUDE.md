@@ -2787,6 +2787,61 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Debian trixie libc6 2.41-12+deb13u4 is stripped: a `+0x...` offset resolves only by reading the bytes
   (%TEMP%\glibc_sym_tool.py, glibc_dump.py; the SSSE3 memmove loop at 0x17e748). RULE (the user, twice): read the code
   again before changing it; minimal changes; an old log is the baseline ("chodilo jak víno" = the Oct 22-27 Mac logs).
+  0.9.40 (2 Nov 2026 night; #175 Mac / #176 Linux on 0.9.39: "frozen on macos", Linux "not very responsive, the
+  measurement does not start"; the user: "Zkurvils kód ... Najdi regres ... srovnej s verzí dva týdny starou ... čti
+  fóra"): THE FACTS NOW: "Loader: released 47813 ms after its finish" (Mac) / 15104 ms (Linux), no "finished N ms
+  after done" line - the loader's release callAsync waited 48 s in a FIFO queue (juce_MessageQueue_mac.h: add /
+  removeAndReturn(0), 4 messages per run-loop pass then wakeUp) while the watchdog's 250 ms timer beats arrived every
+  2-6 s. Timer beats are CallTimersMessages in the SAME queue, so the beats that ran before the reset were posted
+  before it: the TimerThread posts one every 300 ms while a callback is outstanding (juce_Timer.cpp: post, wait(300),
+  post again, wait(1)) - a queue of such messages drains at 4 per pass; whatever makes a run-loop PASS take 2-5 s
+  (Mac: the display/paint pass and NSEvents between our 4 messages; Linux: the 100 ms drain budget then poll +
+  the LinuxRepaintManager timer) is the thing to find, and it goes on at idle after the release and through the
+  measurement (3 s silences every second -> the stall action releases the keys -> "cannot be trusted"). The Mac
+  stack samples of 0.9.37-0.9.39 are EMPTY beyond the first system frame (backtrace() in a signal handler walks
+  frame pointers; a leaf without one - a syscall stub, a lock wait - breaks the chain): 0.9.40 samples the message
+  thread with thread_suspend + thread_get_state + a frame-pointer walk through vm_read_overwrite, resumed BEFORE
+  backtrace_symbols (malloc while the thread holds the heap lock = deadlock) - CrashHandler.h, JUCE_MAC, x86_64
+  and arm64 (arm_thread_state64_get_pc/fp). The Linux samples resolved against the CI binary (the agent's
+  lo_sym_tool.py; the executable keeps a .symtab): a grid paint from LinuxRepaintManager inside callTimers, the
+  compile phase 2 (runStep -> lambda#3 -> resized -> rebuildUI -> StopRow ctor), the queue pop memmove. The diff
+  0.8.216..0.9.30 (159 commits) for periodic/async/paint/lock additions: nothing heavy (paintOverChildren draws the
+  drop frame only; setMistuneCorrectCents takes controlLock once; no new timers but the F1 watcher/strip, both gone).
+  The old Mac logs: the loader released 8-10 s after "done" with the Oct 22-27 builds (0 s on 27 Oct), 46-55 s with
+  the 1-2 Nov builds. BISECT BUILDS for the user: branches bisect-0.8.216 (a4eb17d), bisect-0.8.253 (2f43138),
+  bisect-0.9.15 (f4c41a2) pushed and build.yml dispatched on them (no release: the ref is a branch; the artifacts are
+  on the run pages, a login needed) - the user installs the mac/linux artifact and reports; the local tags v0.8.*
+  still exist (the release job deletes origin's). Issues #165-#174 closed through the API (the user's order), no
+  comments. Forum reading (forum.juce.com "The Event Queue", "Laggy GUIs on OSX El Capitan", "Graphics stutter on
+  Mac OS", "periodic GUI update freeze with mouse events on macOS"): timers and repaints saturating the macOS message
+  thread, throttle/move off timers - nothing about removeAndReturn. JUCE docs/forum on dsp::Convolution: the IR is
+  loaded (resampled) on a background thread of the ConvolutionMessageQueue, and prepare() loads the pending IR
+  immediately (synchronously, on the caller) - the first Linux sample of #176 shows exactly that at start-up
+  (Convolution::prepare -> ConvolutionEngineQueue lambda -> ResamplingAudioSource, from applyPerspectiveReverb in
+  loadSettings; also at every regroupReverbs/rebuildRouteReverb): a 7 s stereo IR resampled per convolution on a
+  Core 2 Duo = seconds on the message thread per regroup - not the 48 s, but real. PowerShell: Invoke-WebRequest
+  without -UseBasicParsing prompts ("NonInteractive mode") on POST/HTML answers - always -UseBasicParsing; a
+  rerun-failed-jobs POST is 403 for this token (scopes repo, workflow), workflow_dispatch is allowed. The user ran
+  0.9.39 while 0.9.40 was ready: NOT built locally (the rule), left to CI; deploy the CI exe when he closes it.
+  BISECT ON THE MAC (2 Nov 2026 night, the user's own runs of the bisect-* artifacts; the Intel mac artifact is
+  "…-macos-10.11-intel", the "macos" one is Apple silicon - he needs the Intel one; GitHub cancelled the Intel job
+  of several runs at first, a re-dispatch built it): 0.8.216 GOOD (#177: 3184 voices, the loader released 8 s after
+  "done"), 0.8.226 GOOD for the freeze (#179, 8 s), 0.8.245 GOOD (#178, 9 s), 0.8.253 BAD ("zamrzlá"), 0.9.15 BAD
+  ("zamrzlá totálně"). So THE FREEZE REGRESSION IS IN 0.8.246-0.8.253 (30 Oct 16:13-21:19): 0.8.246/247 colours,
+  0.8.248 `UIScale::startDisplay` (once), 0.8.249 Linux launcher (JUCE_LINUX only), 0.8.250 (watchMissingAudioDevices
+  runs with the Divisions dialog open; `showKeyboardsDialog` calls it at once; a device that answers reopens every
+  route in one pass; AudioTabPanel `savedDeviceName()` + the "device not available" branch; "Nested folder trees"
+  InfoIcon = no box; updateCombinationLights `registrationOnSet` per filled piston every 200 ms), 0.8.251 MSVC
+  static CRT only, 0.8.252/253 texts. The full source diff bbe77db..2f43138 read line by line shows nothing that
+  runs for seconds at idle - the cause is not found by reading; the 0.9.40 Mac stack samples (thread_suspend walk)
+  are the next evidence; a bisect between 0.8.246-0.8.250 (dispatch bisect-0.8.249 = 4b0f91c, bisect-0.8.248 =
+  531b512) is the alternative. The "polyphony regression" of 0.8.226/0.8.245 (#178/#179: 1100-1500 vs 3184) is NOT
+  the engine: the measurement ran with IR processing FULL - the automatic rule (unchanged since 0.8.130) chooses
+  Full again whenever the ESTIMATE from Light is < 12 % per thread (11.6 % here) and Light when the MEASURED Full is
+  > 18 % (16.8-19.1 % on that Mac = a coin flip each session; #177 landed on Light); Full at 17 % of each render
+  thread = a third of the polyphony. 0.9.41: `irFullMeasuredPerThread` (ms/s per thread, set when needLight fires,
+  reset when summary.routes changes) blocks "Full chosen again" while >= 120 - the log line says "(measured N %
+  before)". Also seen: the callback share at 270 voices 14-20 % (0.8.216, Light) vs 53-60 % (Full).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

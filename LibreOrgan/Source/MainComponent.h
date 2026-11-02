@@ -766,6 +766,7 @@ private:
     bool irLightNoticeShown = false;
     int irEvaluatedRoutes = -1;             // the reverbs the automatic choice last looked at (timer: a new build re-evaluates)
     double irEvaluatedCost = -1.0;
+    double irFullMeasuredPerThread = 0.0;   // 0.9.41: Full's measured cost per render thread (ms/s) when Light was chosen; Full is not tried again by the estimate while the routes stay
     int irEvaluateDivider = 0;
     void applyIrProcessing(bool fromLoad);
     juce::String irProcessingStatus() const;

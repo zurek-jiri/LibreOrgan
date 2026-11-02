@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.41] - 2026-11-02
+
+### Fixed
+- The automatic IR processing choice no longer flaps between Full and Light
+  every five seconds on a computer where Full costs about the limit (the
+  two-core Mac: 17-19 % of each render thread measured, 11.6 % estimated
+  from Light): a Full that was measured above the limit stays Light while
+  the routes stay. A polyphony measurement that happened to run with Full
+  gave a third of the figure (#177-#179) - not a regression of the engine.
+
 ## [0.9.40] - 2026-11-02
 
 ### Changed

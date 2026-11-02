@@ -20577,6 +20577,7 @@ void MainComponent::applyIrProcessing(bool fromLoad)
         return;
     }
     const auto summary = engine.getReverbSummary();
+    if (summary.routes != irEvaluatedRoutes) irFullMeasuredPerThread = 0.0;   // other routes: Full may be tried again (0.9.41)
     irEvaluatedRoutes = summary.routes;
     irEvaluatedCost = summary.totalCostMsPerSecond;
     if (summary.routes == 0) return;
@@ -20596,6 +20597,7 @@ void MainComponent::applyIrProcessing(bool fromLoad)
         const bool needLight = perThread > 180.0 || summary.worstCostMsPerSecond > 350.0;
         CrashHandler::note("IR processing: Full - " + describe() + (needLight ? " - too much for this computer, Light chosen" : " - kept"));
         if (!needLight) return;
+        irFullMeasuredPerThread = perThread;   // 0.9.41: what Full really cost here - the estimate from Light said 11.6 % where this measured 17-19 % (the Core 2 Duo Mac, #177-#179)
         irLightAuto = true;
         engine.setReverbProcessingLight(true);
         saveSettings();
@@ -20607,9 +20609,14 @@ void MainComponent::applyIrProcessing(bool fromLoad)
     }
     // Light: back to Full only when Full would clearly fit (the Light cost times its savings).
     const double fullPerThread = summary.estimatedFullMsPerSecond / juce::jmax(1, threads);
-    const bool fullFits = fullPerThread < 120.0 && summary.estimatedFullMsPerSecond / juce::jmax(1, summary.routes) < 250.0;
+    // 0.9.41: a Full that was MEASURED above the limit on this computer stays Light whatever the estimate says
+    // (the estimate undershot by half on the two-core Mac: 11.6 % estimated, 17-19 % measured, the choice flapped
+    // Full/Light every 5 s and a measurement run with Full gave a third of the polyphony, #177-#179).
+    const bool measuredTooMuch = irFullMeasuredPerThread >= 120.0;
+    const bool fullFits = fullPerThread < 120.0 && summary.estimatedFullMsPerSecond / juce::jmax(1, summary.routes) < 250.0 && !measuredTooMuch;
     CrashHandler::note("IR processing: Light - " + describe() + "; Full would cost about " + juce::String(fullPerThread / 10.0, 1)
-        + " % per thread" + (fullFits && irLightAuto ? " - Full chosen again" : " - Light kept"));
+        + " % per thread" + (measuredTooMuch ? " (measured " + juce::String(irFullMeasuredPerThread / 10.0, 1) + " % before)" : juce::String())
+        + (fullFits && irLightAuto ? " - Full chosen again" : " - Light kept"));
     if (fullFits && irLightAuto)
     {
         irLightAuto = false;
