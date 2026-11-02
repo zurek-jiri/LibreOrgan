@@ -1435,7 +1435,59 @@ void StopRow::resized()
     voicingToggle.setBounds(margin + 1, topRowHeight - 19, 18, 18);   // bottom-left corner of every button
     removeButton.setBounds(margin + 1, 1, 18, 18);                     // top-left corner, arrange mode only
     removeButton.setVisible(arrange.active && arrange.active(this));
-    int x = margin + buttonWidth + sliderSpacing;
+    // A stop folder with pipes of its own: its voicing steps right of the tree
+    // lines that join its children to it.
+    const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
+        || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
+    int keyAreaTop = 0;
+    if (isExpanded() && !stop->container && !volumeRowShown() && !toneRowShown())
+    {
+        // 0.9.36: both per-key rows folded - the compact layout (voicer.h compactControlsLayout:
+        // the same walk gave the owner the row's height), the controls wrapped onto more lines.
+        const bool folderRow = !isTransmission() && rankCountToggle.isVisible();
+        const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(diapasonLabel.getFont(), diapasonLabel.getText()));
+        const bool showLayers = !velocityButtons.isEmpty();
+        velocityLabel.setVisible(showLayers);
+        for (auto* button : velocityButtons) button->setVisible(showLayers);
+        const int bottom = compactControlsLayout(stop, transmissionIndex, getWidth(), folderRow, inset,
+            [this, textWidth](Control c, int i, int x, int y, int w)
+            {
+                switch (c)
+                {
+                    case Control::transposition: transpositionLabel.setBounds(x, y, 100, 23); shiftBox.setBounds(x + 104, y, 250, 23); break;
+                    case Control::oneShot: oneShotToggle.setBounds(x, y, 92, 23); break;
+                    case Control::source: sourceLabel.setBounds(x, y, 520, 23); break;
+                    case Control::ranksLabel: ranksLabel.setBounds(x, y, 92, 23); break;
+                    case Control::rankBox: if (i < rankButtons.size()) rankButtons[i]->setBounds(x, y, 80, 23); break;
+                    case Control::diapason:
+                        diapasonLabel.setBounds(x, y, w, 23);
+                        diapasonLabel.setTooltip(w < textWidth + 12 ? diapasonLabel.getText() : juce::String());   // the whole text when cut
+                        break;
+                    case Control::alias: aliasLabel.setBounds(x, y, 46, 23); aliasBox.setBounds(x + 48, y, 190, 23); break;
+                    case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
+                    case Control::slider:
+                    {
+                        // The order of the full layout: global, [formant], gain, attack, random pitch, undulation, [formant].
+                        juce::Slider* sliders[6]; juce::Label* labels[6];
+                        int n = 0;
+                        auto add = [&](juce::Slider& s, juce::Label& l) { sliders[n] = &s; labels[n] = &l; ++n; };
+                        add(globalSlider, globalLabel);
+                        if (isTransmission()) add(formantSlider, formantLabel);
+                        add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
+                        if (!isTransmission()) add(formantSlider, formantLabel);
+                        if (i < n) { labels[i]->setBounds(x, y, w, 16); sliders[i]->setBounds(x, y + 17, w, 26); }
+                        break;
+                    }
+                    case Control::velocityLabel: velocityLabel.setBounds(x, y, 100, 26); break;
+                    case Control::velocityBox: if (i < velocityButtons.size()) velocityButtons[i]->setBounds(x, y, 62, 26); break;
+                }
+            });
+        keyAreaTop = bottom + 4;
+    }
+    int x = 0;
+    if (keyAreaTop == 0)
+    {
+    x = margin + buttonWidth + sliderSpacing;
     // The Transposition box right after the button (a transmission's shift, or the
     // stop's own - 0.8.158); a transmission row shows its source stop after it.
     if (isTransmission() || !stop->container)
@@ -1496,11 +1548,6 @@ void StopRow::resized()
         }
     }
 
-    // A stop folder with pipes of its own: its voicing steps right of the tree
-    // lines that join its children to it.
-    const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
-        || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
-
     // Line 2 (expanded rows only): the voicing sliders, each with its caption
     // above, the slider below it and the value box right of the slider (the
     // same arrangement as the sliders of the Division settings dialog).
@@ -1538,6 +1585,8 @@ void StopRow::resized()
             x += 66;
         }
     }
+    keyAreaTop = expandedControlsHeight + velocityLine + 4;
+    }
 
     // Bottom area: the two per-key rows, each under its folding header
     // ("Volume per key": MIDI number, note name, slider; "Treble per key": note
@@ -1558,7 +1607,7 @@ void StopRow::resized()
         for (auto* slider : toneSliders) slider->setVisible(showToneRow);
         for (auto* label : toneNameLabels) label->setVisible(showToneRow);
     }
-    int y = expandedControlsHeight + velocityLine + 4;
+    int y = keyAreaTop;
     volumeHeader.setBounds(margin + inset, y, 170, keyHeaderHeight);
     volumeReset.setBounds(margin + inset + 172, y + 2, 92, keyHeaderHeight - 4);
     y += keyHeaderHeight;
@@ -2802,6 +2851,21 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     const int narrowWidth = 335;
     const int availableExpanded = viewWidth - margin * 2
         - narrowWidth * juce::jmax(0, columnsHere - 1);
+    // 0.9.36: a division whose open voicings all have their per-key rows folded takes HALF the
+    // width (the compact layout of StopRow wraps the controls); the other columns share the rest.
+    std::array<bool, SamplerEngine::maxManuals> manualKeyRowsOpen{};
+    for (auto* stop : engine.getStops())
+    {
+        if (stop->voicingExpanded && stop->primaryManual >= 0 && stop->primaryManual < SamplerEngine::maxManuals && !StopRow::keyRowsFolded(stop, -1))
+            manualKeyRowsOpen[(size_t)stop->primaryManual] = true;
+        for (int i = 0; i < (int)stop->transmissions.size(); ++i)
+            if (stop->transmissions[(size_t)i].voicingExpanded && stop->transmissions[(size_t)i].manual >= 0 && stop->transmissions[(size_t)i].manual < SamplerEngine::maxManuals
+                && !StopRow::keyRowsFolded(stop, i))
+                manualKeyRowsOpen[(size_t)stop->transmissions[(size_t)i].manual] = true;
+    }
+    const int usableWidth = viewWidth - margin * (columnsHere + 1);   // a margin before every column and after the last
+    const int compactWidth = juce::jlimit(juce::jmin(700, usableWidth), juce::jmax(700, usableWidth - narrowWidth * (columnsHere - 1)), usableWidth / 2);
+    const int otherWidthBesideCompact = columnsHere > 1 ? juce::jmax(narrowWidth, (usableWidth - compactWidth) / (columnsHere - 1)) : narrowWidth;
     int widestRankCount = 1;
     for (auto* stop : engine.getStops())
         if (stop->voicingExpanded)
@@ -2862,8 +2926,11 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     std::array<int, SamplerEngine::maxManuals> usedWidths{};   // the widths actually laid out (dividers sit between them)
     for (const int manual : manuals)
     {
+        bool anyKeyRowsOpenHere = false;
+        for (const int m : manuals) anyKeyRowsOpenHere = anyKeyRowsOpenHere || manualKeyRowsOpen[(size_t)m];
         const int columnWidth = !anyExpanded ? configuredWidths[(size_t)manual]
-            : (manualHasExpanded[(size_t)manual] ? wideWidth : narrowWidth);
+            : anyKeyRowsOpenHere ? (manualHasExpanded[(size_t)manual] ? wideWidth : narrowWidth)
+            : (manualHasExpanded[(size_t)manual] ? compactWidth : otherWidthBesideCompact);
         usedWidths[(size_t)manual] = columnWidth;
         columnBounds[(size_t)manual] = juce::Rectangle<int>(x, 0, columnWidth, 1 << 20);   // the wheel test only needs the x range
         columnHasVoicing[(size_t)manual] = manualHasExpanded[(size_t)manual];
@@ -3121,7 +3188,8 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                     if (lineHasCells) { cursor += cellHeight; lineHasCells = false; }
                     // The band's height follows this row's own folds (a stop folder
                     // without pipes is one line).
-                    const int expandedHeight = StopRow::expandedHeightFor(item->stop, item->transmission ? item->index : -1, columnWidth);
+                    const bool itemFolder = !item->transmission && (!groupChildren(item->stop).empty() || !groupChildTransmissions(item->stop).empty());
+                    const int expandedHeight = StopRow::expandedHeightFor(item->stop, item->transmission ? item->index : -1, columnWidth, itemFolder);
                     const int masterTop = cursor;   // the band's top: the tree lines of a stop folder start under its button
                     auto stopRow = makeStopRow(item->stop, item->key, item->transmission ? item->index : -1);
                     stopRow->setBounds(x, cursor, columnWidth, expandedHeight);
@@ -3155,7 +3223,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                         for (const auto& [source, index] : childTransmissions)
                         {
                             const bool open = source->transmissions[(size_t)index].voicingExpanded;
-                            const int childHeight = open ? StopRow::expandedHeightFor(source, index) : stopRowTopHeight;
+                            const int childHeight = open ? StopRow::expandedHeightFor(source, index, juce::jmax(220, columnWidth - indent)) : stopRowTopHeight;
                             auto childRow = makeStopRow(source, transmissionKey(source, index), index);
                             childRow->setBounds(x + indent, cursor, juce::jmax(220, columnWidth - indent), childHeight);
                             container.addAndMakeVisible(childRow.get());

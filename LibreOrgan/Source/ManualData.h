@@ -559,7 +559,9 @@ static const char* const kManualText_part2 =
     "\n"
     "Open it with the corner button. The first line: transposition, perspectives,\n"
     "velocity layers, pitch information, alias and switches; the second line the\n"
-    "sliders; under them two folding rows of per-key sliders.\n"
+    "sliders; under them two folding rows of per-key sliders. With both per-key\n"
+    "rows folded the voicing takes half the width and its controls wrap onto more\n"
+    "lines; unfold a per-key row and it widens.\n"
     "\n"
     "### Transposition\n"
     "\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Stop volume\n"
-    "\n"
-    "-24 to +12 dB, the level of the whole stop.\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
+    "-24 to +12 dB, the level of the whole stop.\n"
     "\n"
     "### Attack Gain and Attack Time\n"
     "\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "## 4.5 Apply and reload\n"
     "\n"
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
-    "table and loads the changed divisions. Stops whose folders are loaded keep\n"
-    "their samples and copies; only new folders are read, only missing copies\n"
     ;
 static const char* const kManualText_part4 =
+    "table and loads the changed divisions. Stops whose folders are loaded keep\n"
+    "their samples and copies; only new folders are read, only missing copies\n"
     "built; folders left out of the table are freed. Moving rows between\n"
     "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
     "cannot be removed or renamed without a warning. Closing the window with\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "- **The auxiliary route** halves the polyphony while it has a device.\n"
     "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
-    "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
-    "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
     ;
 static const char* const kManualText_part5 =
+    "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
+    "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
     "  device) share the whole pool of render threads. Every open device has a\n"
     "  driver thread of its own, so an organ spread over several devices can\n"
     "  measure more than on one - at the price of different latencies.\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     "route is a stream with its own thread, so ten routes render on ten threads\n"
-    "already: the default 1 is right for that. Raise it when one or two routes\n"
-    "carry the whole organ. A route never gets more than cores / aggregated\n"
     ;
 static const char* const kManualText_part6 =
+    "already: the default 1 is right for that. Raise it when one or two routes\n"
+    "carry the whole organ. A route never gets more than cores / aggregated\n"
     "routes lanes.\n"
     "\n"
     "### Sample storage in RAM\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
-    "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
-    "at velocity 1 (default 9 dB), less for firmer strokes.\n"
     ;
 static const char* const kManualText_part7 =
+    "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
+    "at velocity 1 (default 9 dB), less for firmer strokes.\n"
     "\n"
     "### Key velocity: treble cut opens over\n"
     "\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
     "### Window size\n"
-    "\n"
-    "The size of the main window, saved by itself. Information.\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
+    "The size of the main window, saved by itself. Information.\n"
     "\n"
     "### Top bar\n"
     "\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
-    "last self-test, `system.txt` with the computer and every audio route - no\n"
-    "samples, no voicing) and screenshots of every open window, then opens the\n"
     ;
 static const char* const kManualText_part9 =
+    "last self-test, `system.txt` with the computer and every audio route - no\n"
+    "samples, no voicing) and screenshots of every open window, then opens the\n"
     "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
     "A free GitHub account is needed; the report is public. If GitHub lands\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
-    "portable save are the process (Windows: the larger of working set and\n"
-    "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     ;
 static const char* const kManualText_part10 =
+    "portable save are the process (Windows: the larger of working set and\n"
+    "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"

@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.36] - 2026-11-02
+
+### Changed
+- An open voicing with both per-key rows folded takes half the width of the
+  workspace instead of the whole: its controls (transposition, One-shot, the
+  perspective boxes, alias, rank count, the pitch line, the sliders and the
+  velocity layers) wrap onto more lines. Unfold "Volume per key" or "Treble
+  per key" and the row widens as before.
+
+### Fixed
+- The "Messages" strip at the bottom repainted itself twice a second for ten
+  seconds after every message; now only when its text changes (#165, the
+  Core 2 Duo Mac).
+- The log notes a stall of the window's thread between 1 and 8 s when it
+  ends ("a short stall"); before, only stalls over 8 s were written.
+
 ## [0.9.35] - 2026-11-02
 
 ### Fixed

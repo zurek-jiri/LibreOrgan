@@ -50,22 +50,22 @@ wait 800
 caption The program did not find the Oberwerk's sample folders where the configuration expects them - the division says so. Click the notice and point it to the folder ...
 say The program did not find the Oberwerk's sample folders where the configuration expects them on this computer - the division says so. One click on the notice, and we point it to the folder where the samples are.
 alert 3|11500
-wait 11500
+wait 16000
 relocate 003136\pipe\OW|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003136
 say Any folder of the set will do: the program finds the sample trees around it, loads the missing stops, and remembers the place - next time it finds them by itself.
 caption ... the program finds the sample trees around the chosen folder, loads the division and remembers the place.
 waitfor OK|60000
-wait 1200
+wait 5000
 click OK
 wait 600
 caption MIDI: a right click on the keyboard symbol learns the keyboard - press a key, and the symbol blinks red with every note received.
 say MIDI. A right click on the keyboard symbol learns your keyboard: press any key on it - and from now on the symbol blinks red with every note it receives.
 learnkeyboard 2|48,55,64,67
-wait 800
+wait 8000
 caption A right click on a stop learns a MIDI control for it - a piston or a switch on your console; the stop follows it.
 say And a right click on a stop learns a MIDI control for it: a piston or a switch on your console - the stop follows it from then on.
 learnstop 2|HW Rohrflote 8
-wait 800
+wait 6000
 caption A stop is drawn with a click. Play.
 say A stop is drawn with a click. Let us play.
 stop 2|HW Rohrflote 8|on
@@ -84,11 +84,11 @@ stop 2|HW Octave 4|off
 caption The corner button opens the voicing: alias, transposition, volume, attack, every pipe.
 say The small corner button opens the voicing of a stop: its alias, transposition, volume, attack - and every single pipe.
 expand 2|HW Rohrflote 8
-wait 9200
+wait 12000
 caption The alias is the caption of the button - type any name.
 say The alias is the caption of the button. Name it as you like.
 alias 2|HW Rohrflote 8|Rohrflöte
-wait 2400
+wait 6500
 caption The stop volume, dragged while the chord sounds ...
 say The stop volume, dragged while the chord sounds.
 chord 2|53,57,60,65|7200
@@ -106,19 +106,19 @@ stop 1|UW Principal 8|on
 expand 1|UW Principal 8
 wait 1500
 keyvolume 1|UW Principal 8
-wait 1600
+wait 4000
 note 1|57|on
 wait 1000
 slide 1|UW Principal 8|key|57|-9|2200
 wait 500
 slide 1|UW Principal 8|key|57|0|1800
-wait 800
+wait 2000
 note 1|57|off
 wait 600
 caption The green thumbs at the top: pipes the stop never had, filled by the program from their neighbours - automatic extensions.
 say And the green thumbs at the top of the row: pipes this stop never had, filled by the program from their neighbours - automatic extensions, every one of them with a slider of its own.
 pointkey 1|UW Principal 8|94|6500
-wait 4600
+wait 8500
 caption With the right mouse button a whole curve is painted over the sliders in one sweep - here the treble of every pipe.
 say And with the right mouse button, a whole curve is painted across the sliders in one sweep - here the treble of every pipe, a wave over the whole stop.
 tonerow 1|UW Principal 8
@@ -133,21 +133,21 @@ wait 600
 caption A stop folder: ranks under one button - the pedal Cornet [III]. One note ...
 say A stop folder gathers several ranks under one button - here the pedal Cornet, three ranks. One note.
 expand 0|Cornet
-wait 2500
+wait 5000
 stop 0|Cornet|on
 wait 400
 note 0|48|on
 wait 2200
 note 0|48|off
-wait 800
+wait 2500
 caption Arrange mode: press any stop for two seconds and release - every button gets its red x and can be dragged.
 say To move stops, press any stop for two seconds and release: the console enters arrange mode - every button gets its red x, and the stops can be dragged.
-holdarrange 2|HW Octave 4
-wait 7500
+holdarrange 1|UW Gedackt 8
+wait 11500
 caption ... now two more ranks dragged into the open folder from other manuals: the Octave 4' ...
 say Now two more ranks join the Cornet, dragged into the open folder from other manuals: the Octave four of the Hauptwerk ...
 drag 2|HW Octave 4|into|0|Cornet|copy
-wait 4000
+wait 5000
 caption ... and the Gedackt 8'.
 say ... and the Gedackt eight of the Positive.
 drag 1|UW Gedackt 8|into|0|Cornet|copy
@@ -156,22 +156,22 @@ caption The new ranks come in switched off: draw them ...
 say The new ranks come in silent. We draw them ...
 stop 0|HW Octave 4|on
 stop 0|UW Gedackt 8|on
-wait 800
+wait 2000
 glow 0|Cornet|2600
-wait 1600
+wait 3500
 caption ... and the Cornet, enriched.
 say ... and here is the Cornet, enriched: five ranks now.
 note 0|48|on
 wait 2600
 note 0|48|off
-wait 600
+wait 2500
 collapse 0|Cornet
 stop 0|Cornet|off
-wait 800
+wait 1500
 caption Still in arrange mode: a stop dragged with the right mouse button (or with Shift) into another division ...
 say Still in arrange mode: a stop dragged with the right mouse button - or with Shift held - into another division ...
 drag 2|HW Tromp 16|0|-1|0|copy
-wait 4000
+wait 7500
 caption ... becomes a transmission: the Trompete 16' of the Hauptwerk now plays from the pedal.
 say ... becomes a transmission. The Trompete sixteen of the Hauptwerk now speaks from the pedal.
 arrange off
@@ -184,11 +184,11 @@ wait 2000
 caption Its voicing has a Transposition: an octave up, and the caption's footage follows - the same key, now at 8'.
 say Its voicing has a transposition. An octave up - and the caption follows: the same key, now at eight foot.
 expand 0|HW Tromp 16
-wait 3000
+wait 4000
 shift 0|HW Tromp 16|12
 wait 1800
 glow 0|HW Tromp 16|2600
-wait 1400
+wait 3000
 note 0|41|on
 wait 2000
 note 0|41|off
@@ -199,18 +199,18 @@ wait 400
 caption Couplers: the Couplers dialog lists every coupler this organ can have - tick what the console shall show.
 say Couplers live in their own dialog: every coupler this organ can have. Tick what the console shall show.
 click Couplers...
-wait 2600
+wait 4500
 click III/II 16'
-wait 1400
+wait 2400
 click III/II 4'
-wait 1400
+wait 2400
 click Close
 wait 600
 caption ... and here they are, under the header of the Hauptwerk keyboard.
 say ... and here they are, under the header of the Hauptwerk keyboard.
 glowcoupler 3-2-16|1600
 glowcoupler 3-2-4|1600
-wait 400
+wait 3000
 caption The new couplers sit under the header of their keyboard. The Oberwerk principal on the Hauptwerk keys: unison, then the 4' adds the upper octave, the 16' the lower.
 say The new couplers sit under the header of their keyboard. The Oberwerk principal, played from the Hauptwerk keys through the unison coupler ... now the four-foot coupler adds the upper octave ... and the sixteen-foot the lower one.
 stop 3|OW Principal 8|on
@@ -252,9 +252,9 @@ stop 1|UW Principal 8|off
 caption A right click on the swell bar: the shutters' settings - attenuation when closed, the inertia of the shutters.
 say A right click on the swell bar opens the shutters' settings: how far they attenuate when closed, and how slowly they follow the pedal.
 settings swell 1
-wait 3200
+wait 6000
 closedialog Swell settings
-wait 2200
+wait 4000
 caption The tremulant comes in while the flute sounds.
 say The tremulant comes in while the flute sounds.
 wait 400
@@ -281,9 +281,9 @@ stop 1|UW Gedackt 8|off
 caption The general crescendo: 40 steps of this organ, stops and couplers added one by one while the keys are held.
 say Program your own crescendo: a right click on its display opens the crescendo settings - Set and a step store the current stops and couplers in that step.
 settings crescendo
-wait 3400
+wait 7000
 closedialog Crescendo
-wait 3200
+wait 6500
 caption The general crescendo: 40 steps of this organ, stops and couplers added one by one while the keys are held.
 say The general crescendo: forty steps of this organ, stops and couplers added one by one while the keys are held - and taken away again.
 click Cresc.
@@ -319,11 +319,11 @@ stop 2|HW Octava 8|off
 caption The Stop List: load more sample folders, assign them to divisions, make transmissions - Show Trsm. lists them under their stops.
 say The Stop List - here the organ is built: more sample folders loaded, stops assigned to divisions, transmissions made. Show transmissions lists them under their stops - our Cornet, with the two ranks we gave it.
 stoplist open
-wait 4200
+wait 7000
 click Show Trsm.
-wait 5800
+wait 9000
 click Close
-wait 1800
+wait 3000
 caption Save Configuration keeps everything. Portable: share the organ on GitHub.
 say Save Configuration keeps everything. A portable configuration shares the organ with the world - on GitHub.
 wait 10000

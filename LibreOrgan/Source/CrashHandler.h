@@ -382,7 +382,7 @@ namespace CrashHandler
         void run() override
         {
             bool stalled = false, actionDone = false;
-            double lastReportMs = 0.0, longest = 0.0;
+            double lastReportMs = 0.0, longest = 0.0, previousSilent = 0.0, lastShortNoteMs = 0.0;
             while (!threadShouldExit())
             {
                 wait(500);
@@ -401,10 +401,19 @@ namespace CrashHandler
                     if (silent < 3000.0) actionDone = false;
                     if (stalled)
                         note("Message thread responsive again (it answered nothing for about " + juce::String(juce::roundToInt(longest / 1000.0)) + " s)");
+                    // 0.9.36 (#165: "everything freezes" on the Core 2 Duo Mac with nothing in the log): a stall
+                    // of 1-8 s is noted when it ends - the duration alone (no stack), at most one line in 10 s.
+                    else if (previousSilent >= 1000.0 && silent < previousSilent && now - lastShortNoteMs > 10000.0)
+                    {
+                        lastShortNoteMs = now;
+                        note("Message thread was silent for " + juce::String(previousSilent / 1000.0, 1) + " s (a short stall; nothing above 8 s)");
+                    }
+                    previousSilent = silent;
                     stalled = false;
                     longest = 0.0;
                     continue;
                 }
+                previousSilent = silent;
                 longest = juce::jmax(longest, silent);
                 if (!stalled || now - lastReportMs > 60000.0)
                 {

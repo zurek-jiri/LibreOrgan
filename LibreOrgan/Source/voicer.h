@@ -138,8 +138,77 @@ public:
         const int needed = velocityRowWidth(stop);
         return needed > 0 && slidersRowWidth() + needed > rowWidth;
     }
+    // 0.9.36 COMPACT LAYOUT (the user: "ten voicing by nemusel být tak široký, když jsou per key
+    // zavřené ... Může být poloviční ... přeskládat do víc řádků"): an open voicing with BOTH per-key
+    // rows folded takes half the width, its controls wrapped onto more lines - the transposition,
+    // One-shot, the rank boxes, the alias and the rank count flow right of the button (a new line
+    // every 27 px), the pitch text gets a line of its own, the sliders and the velocity layers flow
+    // below. ONE walk decides the lines for the owner's height (expandedHeightFor) and for the
+    // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
+    // return value is the bottom of the control lines (the key headers follow it).
+    enum class Control { transposition, oneShot, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox };
+    static constexpr int compactLineStep = 27, compactSliderLineStep = 47, compactVelocityLineHeight = 30;
+    static bool keyRowsFolded(const Stop* stop, int transmissionIndex) noexcept
+    {
+        if (stop == nullptr) return true;
+        if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
+            return !stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded && !stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
+        return !stop->volumeKeysExpanded && !stop->toneKeysExpanded;
+    }
+    template <typename Put>
+    static int compactControlsLayout(const Stop* stop, int transmissionIndex, int rowWidth, bool folder, int inset, Put&& put)
+    {
+        const bool trsm = transmissionIndex >= 0;
+        const int x0 = 5 + 200 + 8;   // margin + buttonWidth + sliderSpacing: right of the button
+        const int right = juce::jmax(x0 + 100, rowWidth - 5);
+        int x = x0, y = 13;
+        auto fits = [&](int width) { return x == x0 || x + width <= right; };
+        auto newline = [&] { x = x0; y += compactLineStep; };
+        auto item = [&](Control c, int index, int width) { if (!fits(width)) newline(); put(c, index, x, y, width); x += width; };
+        item(Control::transposition, 0, 362);   // label 100 + 4 + box 250 + 8
+        if (!trsm) item(Control::oneShot, 0, 96);
+        if (trsm) item(Control::source, 0, 528);
+        else
+        {
+            const int boxes = 1 + (int)stop->ranks.size();
+            if (!fits(92 + 82)) newline();
+            put(Control::ranksLabel, 0, x, y, 92); x += 92;
+            for (int i = 0; i < boxes; ++i) item(Control::rankBox, i, 82);
+            x += 8;
+        }
+        item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
+        if (!trsm && folder) item(Control::rankCount, 0, 146);
+        if (!trsm) { newline(); put(Control::diapason, 0, x0, y, right - x0); }
+        y += compactLineStep;
+        // The sliders: caption above, slider below (47 px a line), wrapped when the line is full.
+        int sy = juce::jmax(y + 4, 54);
+        const int sx0 = 5 + inset;
+        x = sx0;
+        const int widths[] = { 134, trsm ? 170 : 194, trsm ? 194 : 194, trsm ? 194 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
+        for (int i = 0; i < 6; ++i)
+        {
+            if (x != sx0 && x + widths[i] > right) { x = sx0; sy += compactSliderLineStep; }
+            put(Control::slider, i, x, sy, widths[i]);
+            x += widths[i] + 27;
+        }
+        int bottom = sy + compactSliderLineStep;
+        if (!trsm)
+        {
+            const int layers = (int)stop->velocityLayerValues().size();
+            if (layers > 0)
+            {
+                const int needed = 104 + 66 * (layers + 1);
+                int vy = sy + 17;   // beside the sliders' bars
+                if (x + needed > right) { x = sx0; vy = sy + compactSliderLineStep; bottom = vy + compactVelocityLineHeight; }
+                put(Control::velocityLabel, 0, x, vy, 100); x += 104;
+                for (int i = 0; i <= layers; ++i) { put(Control::velocityBox, i, x, vy, 62); x += 66; }
+            }
+        }
+        return bottom;
+    }
     // rowWidth: the width the row will get; a narrow column adds the wrapped velocity line.
-    static int expandedHeightFor(const Stop* stop, int transmissionIndex, int rowWidth = 1 << 30) noexcept
+    // folder: a stop folder (its Rank count switch takes a place on the compact lines).
+    static int expandedHeightFor(const Stop* stop, int transmissionIndex, int rowWidth = 1 << 30, bool folder = false) noexcept
     {
         if (stop == nullptr) return containerExpandedHeight;
         if (transmissionIndex < 0 && stop->container) return containerExpandedHeight;
@@ -148,6 +217,12 @@ public:
         {
             volume = stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded;
             tone = stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
+        }
+        if (!volume && !tone)
+        {
+            const int inset = folder ? 26 : 0;
+            const int bottom = compactControlsLayout(stop, transmissionIndex, rowWidth, folder, inset, [](Control, int, int, int, int) {});
+            return bottom + 4 + keyAreaHeight(false, false) + 4;
         }
         const int velocityLine = transmissionIndex < 0 && velocityRowWraps(stop, rowWidth) ? velocityLineHeight : 0;
         return expandedControlsHeight + velocityLine + 4 + keyAreaHeight(volume, tone) + 4;

@@ -2633,6 +2633,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   defaults, the rar dropped on III, "Load the folders" clicked: the Tuning lines per stop and perspective, Patterns.json
   after). RULE: before calling a learned-pattern result a regression, read Patterns.json and the "Patterns in force"
   line - a reset or another organ's file may have emptied the lists the day before.
+  0.9.36 (2 Nov 2026 afternoon; three things of the user in one build): (1) COMPACT VOICING (the user, during the
+  video run: "ten voicing by nemusel být tak široký, když jsou per key zavřené ... Může být poloviční ... můžeš to
+  klidně přeskládat do víc řádků, ať je to kompaktnější. ALE NĚJAK ROZUMNĚ"): `StopRow::compactControlsLayout(stop,
+  transmissionIndex, rowWidth, folder, inset, put)` (voicer.h, a template taking `put(Control, index, x, y, width)`)
+  is ONE walk for the height (expandedHeightFor, a no-op put) and the bounds (resized): right of the button the
+  transposition (362), One-shot (96), "Ranks" + the perspective boxes (92 + 82 each), the alias (244) and the Rank
+  count (146) flow with a new line every 27 px when the row is full, the pitch text gets a line of its own (full
+  width, tooltip when cut), the sliders flow below (47 px a line; global, [formant], gain, attack, random,
+  undulation, [formant] - the full layout's order) and the velocity layers after them (a 30 px line when they wrap).
+  `StopRow::keyRowsFolded(stop, index)`; `expandedHeightFor(stop, index, rowWidth, folder)` (the Rank count switch
+  takes a place: the Voicer passes groupChildren/groupChildTransmissions non-empty) uses the compact walk when both
+  per-key rows are folded, the old 104 px controls height otherwise (unchanged). Voicer::rebuildUI: `manualKeyRowsOpen`
+  - a screen whose open voicings all have folded key rows gives the expanded column `compactWidth` =
+  availableExpanded / 2 (at least 700 px, at most availableExpanded) and the other columns `otherWidthBesideCompact`
+  (the rest shared, at least narrowWidth 335); with any key row open the old wide/narrow split. Containers (stop
+  folders without pipes) keep their 58 px line. RULE: a new control on line 1 of StopRow goes into BOTH the old
+  resized layout + `line1Width` (0.8.201) AND the compact walk. Test %TEMP%\test_row0936.ps1 [-Division -Stop -Tag]
+  (ORGAN_TEST_EXPAND + ORGAN_TEST_SNAPSHOT: grid.png.row.png = the compact row, grid.png the columns).
+  (2) #165 (Mac 0.9.35, "na macu nesmí být modal window zachytávač. Všecko zamrzne, i když se pouze objeví message
+  new, bez dialogu"): the guard IS `#if JUCE_WINDOWS` whole since 0.9.32 (checked); his 0.9.35 log has NO watchdog
+  line at all (the watchdog wrote stalls > 8 s only), so the cause is not proven. Done: the MessageStrip's 500 ms
+  timer repaints only when the text changes (the count or the collapse) - it repainted a 560 x 24 band over the grid
+  twice a second for 10 s after every message; and CrashHandler's watchdog notes a stall of 1-8 s when it ends
+  ("Message thread was silent for N.N s (a short stall ...)", one line in 10 s) so the next Mac log shows what a
+  "freeze" is. His second remark (the browser placed by the report stays in macOS full screen, the right half
+  black) is NOT done. (3) #166 (Ultra 7 155H, Caen, 8 routes on the Realtek speaker, WASAPI 480: 44 200 on 1 Nov
+  with build 16:30 UTC, 20 700 on 2 Nov with 0.9.35): the same storage (16-bit, 48 kHz, halved, NOT packed - the
+  13:17 run was after a reload with packing off; the 13:04/13:06 runs at 23 500 were the packed load), the same
+  per-voice cost (2326 vs 2398 ns per block), but the break came at 34 % render-core load (52 % the day before) on a
+  LANE WAIT peak: "the longest route callback 2552 us - its own rendering 298, waiting for the lanes 2479", "the
+  latest a lane joined 871 us", Windows power plan Balanced - the hybrid CPU's E-cores / a preempted worker, the
+  known #44 peak, not a code change (nothing in the render path changed in 0.9.33-0.9.35; the Windows-only modal
+  guard runs on the message thread every 0.5 s and touches nothing while the box is in front). Told the user: run
+  the same measurement with the 0.9.32 exe today (he started it at 12:57 without measuring) and with "Performance
+  cores only" + the High performance plan; the report already says so. No issue comments posted (his rule).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

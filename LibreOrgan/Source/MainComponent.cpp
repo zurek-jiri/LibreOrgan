@@ -361,12 +361,17 @@ private:
     void timerCallback() override
     {
         if (owner.unreadMessages == 0) { setVisible(false); stopTimer(); return; }
-        repaint();
-        if (juce::Time::getMillisecondCounterHiRes() >= expandedUntil) stopTimer();
+        // 0.9.36 (#165, the Core 2 Duo Mac "freezes when the message appears"): the strip repaints
+        // only when its text changes - the count or the collapse - never twice a second for nothing.
+        const bool expanded = juce::Time::getMillisecondCounterHiRes() < expandedUntil && last.isNotEmpty();
+        if (expanded != paintedExpanded || owner.unreadMessages != paintedCount) repaint();
+        if (!expanded) stopTimer();
     }
     MainComponent& owner;
     juce::String last;
     double expandedUntil = 0.0;
+    bool paintedExpanded = false;
+    int paintedCount = -1;
 };
 
 // General crescendo display: the console display look (black rounded panel,
