@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.42] - 2026-11-02
+
+### Changed
+- The stall samples of the activity log (macOS and Linux) show every thread
+  of the program, not only the message thread: #180 proved the message
+  thread drowning in its own queue (every message taken from a queue of tens
+  of thousands moves the whole array), and the thread that posts them is the
+  one to catch.
+
 ## [0.9.41] - 2026-11-02
 
 ### Fixed

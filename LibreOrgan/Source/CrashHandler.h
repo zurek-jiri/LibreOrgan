@@ -17,8 +17,12 @@
  #include <execinfo.h>   // 0.9.37: the message thread's stack on macOS and Linux (backtrace through a signal)
  #include <pthread.h>
  #include <cstdlib>
+ #include <unistd.h>
  #if JUCE_MAC
   #include <mach/mach.h>   // 0.9.40: the message thread sampled by thread_suspend + a frame-pointer walk (backtrace() through a signal frame stopped at the first system leaf)
+ #endif
+ #if JUCE_LINUX
+  #include <sys/syscall.h>   // 0.9.42: tgkill - every thread of the process sampled through the signal
  #endif
 #endif
 
@@ -391,44 +395,80 @@ namespace CrashHandler
             // heap lock), the thread resumed, and only then the addresses symbolised. What `sample` does.
             const mach_port_t thread = machMessageThread();
             if (thread == 0) return "(no thread port)";
-            if (thread_suspend(thread) != KERN_SUCCESS) return "(the thread could not be suspended)";
+            // One thread sampled: suspended, registers, the frame chain, resumed. No allocation inside.
+            auto sample = [](mach_port_t t, void** frames, int maxDepth) -> int
+            {
+                if (thread_suspend(t) != KERN_SUCCESS) return 0;
+                int depth = 0;
+                uintptr_t fp = 0;
+               #if JUCE_ARM
+                arm_thread_state64_t state{};
+                mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
+                if (thread_get_state(t, ARM_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
+                {
+                    frames[depth++] = (void*)arm_thread_state64_get_pc(state);
+                    fp = (uintptr_t)arm_thread_state64_get_fp(state);
+                }
+               #else
+                x86_thread_state64_t state{};
+                mach_msg_type_number_t count = x86_THREAD_STATE64_COUNT;
+                if (thread_get_state(t, x86_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
+                {
+                    frames[depth++] = (void*)state.__rip;
+                    fp = (uintptr_t)state.__rbp;
+                }
+               #endif
+                for (int i = 0; i < maxDepth && fp != 0 && depth < maxDepth; ++i)
+                {
+                    uintptr_t pair[2]{};   // [fp] = the caller's fp, [fp + 8] = the return address
+                    vm_size_t got = 0;
+                    if (vm_read_overwrite(mach_task_self(), (vm_address_t)fp, sizeof(pair), (vm_address_t)pair, &got) != KERN_SUCCESS || got != sizeof(pair)) break;
+                    if (pair[1] == 0) break;
+                    frames[depth++] = (void*)pair[1];
+                    if (pair[0] <= fp) break;   // the chain must climb the stack
+                    fp = pair[0];
+                }
+                thread_resume(t);
+                return depth;
+            };
             void* frames[64];
-            int depth = 0;
-            uintptr_t fp = 0;
-           #if JUCE_ARM
-            arm_thread_state64_t state{};
-            mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
-            if (thread_get_state(thread, ARM_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
-            {
-                frames[depth++] = (void*)arm_thread_state64_get_pc(state);
-                fp = (uintptr_t)arm_thread_state64_get_fp(state);
-            }
-           #else
-            x86_thread_state64_t state{};
-            mach_msg_type_number_t count = x86_THREAD_STATE64_COUNT;
-            if (thread_get_state(thread, x86_THREAD_STATE64, (thread_state_t)&state, &count) == KERN_SUCCESS)
-            {
-                frames[depth++] = (void*)state.__rip;
-                fp = (uintptr_t)state.__rbp;
-            }
-           #endif
-            for (int i = 0; i < 60 && fp != 0 && depth < 64; ++i)
-            {
-                uintptr_t pair[2]{};   // [fp] = the caller's fp, [fp + 8] = the return address
-                vm_size_t got = 0;
-                if (vm_read_overwrite(mach_task_self(), (vm_address_t)fp, sizeof(pair), (vm_address_t)pair, &got) != KERN_SUCCESS || got != sizeof(pair)) break;
-                if (pair[1] == 0) break;
-                frames[depth++] = (void*)pair[1];
-                if (pair[0] <= fp) break;   // the chain must climb the stack
-                fp = pair[0];
-            }
-            thread_resume(thread);
+            const int depth = sample(thread, frames, 64);
             if (depth <= 0) return "(the registers could not be read)";
             juce::String text;
             if (char** symbols = backtrace_symbols(frames, depth))
             {
                 for (int i = 0; i < depth; ++i) text << "  #" << i << "  " << symbols[i] << "\n";
                 free(symbols);
+            }
+            // 0.9.42 (#180: the message thread sits in the queue's removeAndReturn - a flood of messages;
+            // who posts them?): every other thread of the process sampled the same way, 20 frames each,
+            // named where it has a name. The real-time threads mostly show their waits; a thread caught
+            // in MessageQueue::post / callAsync is the producer.
+            thread_act_array_t threads = nullptr;
+            mach_msg_type_number_t threadCount = 0;
+            if (task_threads(mach_task_self(), &threads, &threadCount) == KERN_SUCCESS)
+            {
+                const mach_port_t self = mach_thread_self();
+                int shown = 0;
+                for (mach_msg_type_number_t i = 0; i < threadCount && shown < 24; ++i)
+                {
+                    if (threads[i] == thread || threads[i] == self) continue;
+                    void* other[20];
+                    const int otherDepth = sample(threads[i], other, 20);
+                    if (otherDepth <= 0) continue;
+                    ++shown;
+                    char name[64]{};
+                    if (pthread_t p = pthread_from_mach_thread_np(threads[i])) pthread_getname_np(p, name, sizeof(name));
+                    text << "  -- thread " << (int)i << (name[0] != 0 ? juce::String(" \"") + name + "\"" : juce::String()) << ":\n";
+                    if (char** symbols = backtrace_symbols(other, otherDepth))
+                    {
+                        for (int k = 0; k < otherDepth; ++k) text << "     " << symbols[k] << "\n";
+                        free(symbols);
+                    }
+                }
+                for (mach_msg_type_number_t i = 0; i < threadCount; ++i) mach_port_deallocate(mach_task_self(), threads[i]);
+                vm_deallocate(mach_task_self(), (vm_address_t)threads, threadCount * sizeof(thread_act_t));
+                mach_port_deallocate(mach_task_self(), self);
             }
             return text;
            #else
@@ -443,6 +483,32 @@ namespace CrashHandler
                 for (int i = 0; i < depth; ++i) text << "  #" << i << "  " << symbols[i] << "\n";
                 free(symbols);
             }
+           #if JUCE_LINUX
+            // 0.9.42 (#176/#180: the message queue flooded - who posts?): every other thread of the process
+            // sampled through the same signal (tgkill by its id from /proc/self/task), 20 frames each, with
+            // its name from /proc/self/task/<id>/comm.
+            const juce::File tasks("/proc/self/task");
+            const pid_t self = (pid_t)syscall(SYS_gettid);
+            int shown = 0;
+            for (const auto& task : tasks.findChildFiles(juce::File::findDirectories, false))
+            {
+                const pid_t tid = (pid_t)task.getFileName().getIntValue();
+                if (tid <= 0 || tid == self || shown >= 24) continue;
+                stackDepth().store(-1, std::memory_order_release);
+                if (syscall(SYS_tgkill, getpid(), tid, SIGUSR2) != 0) continue;
+                for (int waited = 0; stackDepth().load(std::memory_order_acquire) < 0 && waited < 100; waited += 5) juce::Thread::sleep(5);
+                const int otherDepth = juce::jmin(20, stackDepth().load(std::memory_order_acquire));
+                if (otherDepth <= 0) continue;
+                ++shown;
+                const auto name = task.getChildFile("comm").loadFileAsString().trim();
+                text << "  -- thread " << (int)tid << (name.isNotEmpty() ? " \"" + name + "\"" : juce::String()) << ":\n";
+                if (char** symbols = backtrace_symbols(stackBuffer(), otherDepth))
+                {
+                    for (int k = 0; k < otherDepth; ++k) text << "     " << symbols[k] << "\n";
+                    free(symbols);
+                }
+            }
+           #endif
             return text;
            #endif
         }
