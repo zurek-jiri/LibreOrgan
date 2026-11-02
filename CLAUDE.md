@@ -2567,13 +2567,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ~/OrganSamplerC-linux at 0.8.249 - moved to ~/LibreOrgan-linux, remote set to zurek-jiri/LibreOrgan, fast-forwarded.
   The old session 10c94e83 (Windows project folder F--JUCE-PROJEKTY-OrganSamplerC-OrganSampler) is symlinked into
   ~/.claude/projects/-mnt-pracovni-JUCE-PROJEKTY-LibreOrgan-LibreOrgan so it can be resumed from Linux.
+  SESSIONS ARE PER MACHINE (2 Nov 2026, the user on Windows: "I do not see the linux session here"): a Claude Code
+  session's transcript lives in the home folder of the machine it ran on (~/.claude/projects on the Linux ext4 disk,
+  C:\Users\doma\.claude\projects on Windows) - the Linux session is not visible from the Windows session and vice
+  versa; what carries over is CLAUDE.md, CLAUDE_REPORTS.md (the NTFS checkout) and git. After the Linux 0.9.33 session
+  the Windows checkout was `git reset --mixed origin/main` (the files equal origin, HEAD was behind), the Projucer
+  resave for 0.9.33 done on Windows, the CI exe deployed as C:\LibreOrgan\LibreOrgan_0.9.33.exe (the user runs the CI
+  LibreOrgan.exe from his Desktop), the v0.9.33 release checked (Intel mac "late symbols: 0", the Windows exe depends
+  on system DLLs only). A report line of a Linux session must go into LibreOrgan/CLAUDE_REPORTS.md, never the repo root
+  (a stray fragment was found there and moved).
 ## Pending for the next session (delete when done)
-- TO-DO (1 Nov 2026, the user, Adlington rar dropped on a division: "neudělá automaticky Aliasy, takže na táhlech
-  jsou strašlivě dlouhé názvy z celé cesty"): a Load folder / drop (the scan path, no definition) should give every
-  new row an ALIAS from its folder name automatically - what the Stop List's "Aliases from folders" button does
-  (`engine.folderStopAlias(folder)`: the bare folder name, no parents, no perspective prefix, the footage with its
-  foot mark) - the row NAME keeps the path-like automatic name. Aliases typed by the user stay; a definition's
-  aliases stay. "Asi to nevadí, lze to použít i tak" - a to-do, not urgent.
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
   division I, then AdlingtonHallVol0.CompPkg.Hauptwerk.rar onto division II with "Load the folders" (as if without
