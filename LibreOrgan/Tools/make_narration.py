@@ -54,6 +54,33 @@ def resample(data, rate):
     return np.interp(x, np.arange(len(data)), data).astype(np.float32)
 
 
+# 2 Nov 2026 (the user: "Džedakt" for Gedackt, "Džakobaj" for Jakobi, "swell bo" for the British "bar"):
+# the words Kokoro reads wrong get their phonemes through its own "[word](/phonemes/)" syntax (misaki's
+# alphabet: the stress mark before the vowel; A = eɪ, W = aʊ, Q = əʊ in the British voices).
+PRONOUNCE = {
+    'Gedackt': 'ɡədˈɑːkt', 'Jakobi': 'jˈɑːkəbi', 'Hauptwerk': 'hˈWptvɛɹk', 'Oberwerk': 'ˈQbəvɛɹk',
+    'Rohrflöte': 'ɹˈɔːɹflɜːtə', 'Rohrflote': 'ɹˈɔːɹflɜːtə', 'Trompete': 'tɹɒmpˈAtə', 'Stralsund': 'ʃtɹˈɑːlzʊnd',
+    'bar': 'bˈɑːɹ', 'Positive': 'pˈɒzɪtɪv',
+}
+
+
+def pronounced(text):
+    for word, ipa in PRONOUNCE.items():
+        text = re.sub(r'\b' + re.escape(word) + r'\b', '[%s](/%s/)' % (word, ipa), text)
+    return text
+
+
+def faded(x, rate):
+    """8 ms in and out: the pieces are joined without a click (the user: "hlas se zadrhne a ozve se pazvuk")."""
+    n = min(len(x) // 2, int(0.008 * rate))
+    if n <= 0: return x
+    ramp = np.linspace(0.0, 1.0, n, dtype=np.float32)
+    x = x.copy()
+    x[:n] *= ramp
+    x[-n:] *= ramp[::-1]
+    return x
+
+
 if engine == 'kokoro':
     from kokoro import KPipeline
     pipeline = KPipeline(lang_code='b' if voice.startswith('b') else 'a')
@@ -61,8 +88,9 @@ if engine == 'kokoro':
     def speak(text):
         parts = [np.zeros(0, dtype=np.float32)]
         for phrase, pause in pieces(text):
-            for _, _, wav in pipeline(phrase, voice=voice, speed=float(speed)):
-                parts.append(resample(np.asarray(wav, dtype=np.float32), 24000))
+            for _, _, wav in pipeline(pronounced(phrase), voice=voice, speed=float(speed)):
+                parts.append(resample(faded(np.asarray(wav, dtype=np.float32), 24000), 24000))
+                parts.append(np.zeros(int(0.03 * RATE), dtype=np.float32))   # a breath between Kokoro's own chunks of one phrase
             parts.append(np.zeros(int(pause * RATE), dtype=np.float32))
         mono = np.concatenate(parts)
         return np.stack([mono, mono], axis=1)

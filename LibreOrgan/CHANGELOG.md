@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.37] - 2026-11-02
+
+### Fixed
+- Two-core Mac and Linux laptops (#167, #168): the threads that build the
+  copies of filled pipes no longer run at a lowered priority on one or two
+  cores - starved behind the real-time audio threads, a lowered thread that
+  held a lock the window needed kept the window silent for seconds.
+- The watchdog on macOS and Linux writes the window thread's stack into the
+  log when the thread has been silent for two seconds (Windows did so already),
+  so a freeze can be read in the log.
+
 ## [0.9.36] - 2026-11-02
 
 ### Changed

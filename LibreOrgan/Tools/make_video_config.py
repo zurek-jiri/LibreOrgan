@@ -6,25 +6,16 @@ import json, sys
 
 src, out = sys.argv[1], sys.argv[2]
 cfg = json.load(open(src, encoding='utf-8'))
-gone = r'X:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages'
 trees = cfg['sampleTrees']
-# 0.9.36: the lookup of 0.8.190-0.9.5 finds a tree by the tails of its absolute path under the remembered
-# locations and their children, so a drive X: alone no longer keeps the Oberwerk missing - a FINGERPRINT
-# naming a stop folder the real tree does not hold refuses every candidate (0.9.5: "folder(s) of that name
-# with OTHER samples refused"); the relocation of the video's click does not check it.
+# 0.9.37: the Oberwerk trees stay RELATIVE (an absolute tree never passes the fingerprint test, and the
+# lookup of 0.8.190-0.9.5 found the X: trees of the old version by the tails of their path anyway); a
+# FINGERPRINT naming a stop folder the real tree does not hold refuses every candidate (0.9.5: "folder(s)
+# of that name with OTHER samples refused") - the division says "not found", the relocation of the video's
+# click (which checks no fingerprint) brings the trees in.
 prints = cfg.setdefault('treeFingerprints', {})
-for i, t in enumerate(trees):
+for t in trees:
     if t.replace('\\', '/').endswith('/OW'):
-        trees[i] = gone + '\\' + t.replace('/', '\\')
-        prints[trees[i]] = 'video_missing_folder|1|0|-'
-for m in cfg['manualKeyboards']:
-    rel = m.get('folderRelativePath', '')
-    if rel.replace('\\', '/').endswith('/OW'):
-        m['folderPath'] = gone + '\\' + rel.replace('/', '\\')
-        m['folderRelativePath'] = ''
-        extras = [gone + '\\' + e.replace('/', '\\') for e in m.get('extraFolderRelativePaths', []) if e.replace('\\', '/').endswith('/OW')]
-        m['extraFolderPaths'] = extras + [e for e in m.get('extraFolderPaths', [])]
-        m['extraFolderRelativePaths'] = [e for e in m.get('extraFolderRelativePaths', []) if not e.replace('\\', '/').endswith('/OW')]
+        prints[t.replace('\\', '/')] = 'video_missing_folder|1|0|-'
 # The release crossfade of the published file (70 + 70 ms) is too short for the video (the user, 26 Oct 2026): 120 ms.
 cfg['releaseFadeOutMs'] = 120.0
 cfg['releaseFadeInMs'] = 120.0

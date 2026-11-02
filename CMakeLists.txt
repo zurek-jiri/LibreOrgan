@@ -9,7 +9,7 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(LibreOrgan VERSION 0.9.36 LANGUAGES C CXX)
+project(LibreOrgan VERSION 0.9.37 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -150,6 +150,9 @@ if(UNIX AND NOT APPLE)
     # LinuxWindowPlacement.cpp calls Xlib directly (0.8.145: undefined XOpenDisplay at link time).
     find_package(X11 REQUIRED)
     target_link_libraries(LibreOrgan PRIVATE ${CMAKE_DL_LIBS} ${X11_LIBRARIES})
+    # 0.9.37: the watchdog prints the message thread's stack with backtrace_symbols - the names of our
+    # own functions appear only when the executable exports them.
+    target_link_options(LibreOrgan PRIVATE -rdynamic)
 endif()
 
 target_compile_definitions(LibreOrgan PRIVATE

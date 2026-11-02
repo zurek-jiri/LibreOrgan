@@ -342,6 +342,11 @@ namespace
     // box's OK did not react, and the loading dialog's Cancel must.
     void lowerCurrentThreadPriority() noexcept
     {
+        // 0.9.37 (#167, #168: two-core Mac and Linux laptops with the window thread silent for 3-6 s
+        // during the copy builds while the real-time audio threads run): a build thread at a LOWER
+        // priority that holds a lock the window thread needs (the control lock, the heap) starves
+        // behind the real-time threads - on one or two cores it keeps its normal priority.
+        if (juce::SystemStats::getNumPhysicalCpus() <= 2) return;
        #if JUCE_WINDOWS
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
        #elif JUCE_LINUX

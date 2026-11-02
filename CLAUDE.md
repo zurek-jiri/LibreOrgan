@@ -2689,6 +2689,36 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   longer than the waits until the next; waits lengthened at 31 places; actions it does not count (learn windows,
   slides, pointkey, holdarrange, glowcoupler, the relocation's load) cover the rest, and make_narration moves what
   still overlaps.
+  0.9.37 (2 Nov 2026 afternoon; #167 Mac 0.9.36 "zamrzí když se tvoří messages rámeček, measure padá", #168 Linux
+  AntiX "měření zamrzne a komputer vytuhne"): the 0.9.36 watchdog lines show the Core 2 Duo Mac silent 3-6 s every
+  ~12 s AFTER the load (13:53:31-13:54:19, the strip came at 13:54:25 - the strip is NOT it) and 3-4 s at the
+  measurement start; the Linux T6670 silent 6 s and 3.9 s during its copy builds and 3 s at second 18 of the
+  measurement (2160 voices, callback 51 %), then the whole computer froze (no more lines, a restart at 14:16).
+  On both the copy builds ran on a thread at LOWERED priority (nice 10 / -8) beside SCHED_FIFO / time-constraint
+  render and control threads on TWO cores: a lowered thread holding a lock the window thread needs (the control
+  lock in buildAntiAliasCopies, the heap) starves - the 0.8.185 heap-lock family. Done blind (no stack from those
+  machines): `lowerCurrentThreadPriority()` returns at once on <= 2 physical cores; and the POSIX watchdog SAMPLES
+  the message thread's stack at 2 s of silence (CrashHandler.h: `pthread_kill(messageThread, SIGUSR2)`, the handler
+  fills a static buffer with backtrace(), `backtrace_symbols` into the log "Message thread silent for N s; its
+  stack now:"; CMake links Linux with `-rdynamic` so our functions have names) - the next Mac/Linux log tells.
+  The user's "it is not only during the copy builds, it is after too": the Mac log has no stall after 13:54:19
+  except the measurement's; whatever it is, the stack will say. His other Mac remark (the browser placed by the
+  report keeps macOS full screen) is still open. THE README VIDEO: GitHub accepts .mp4, .mov AND .webm (the docs,
+  10 MB on a free plan) - the small video goes as WebM with Opus (the user: "zmenšené video má totálně debilní
+  zvuk ... zvuk bude nejčistší": AAC at 48 kbps was the fault; 10 MB / 634 s = 126 kbps in all, so Opus 112 kbps +
+  VP9 for the picture at 1280 px). NARRATION (make_narration.py): `PRONOUNCE` = Kokoro's "[word](/phonemes/)"
+  syntax for Gedackt (ɡədˈɑːkt - it said "Džedakt"), Jakobi (jˈɑːkəbi - "Džakobaj"), bar (bˈɑːɹ - the British
+  "bah" = "swell bo"), Hauptwerk, Oberwerk, Rohrflöte, Trompete, Stralsund, Positive; 8 ms fades at every piece
+  Kokoro returns + 30 ms between its own chunks of one phrase (the user: "hlas se zadrhne a ozve se pazvuk" =
+  clicks at the joins). THE VIDEO'S SAMPLES: the user copied the packages to F:\video (000370, 003135, 003136 with
+  their pipe trees, the Adlington Vol0 rar; NVMe) - `Tools/preload_files.py <folders/files>` reads them into the
+  OS cache right before the run (8 readers, 8 MB reads), `make_video.ps1 -SampleLocation F:\video` writes that one
+  line into Locations.txt for the run (backed up/restored) so the bare `<location>/<relative>` forms find the
+  trees there and not on D:; the script's dropfiles/relocate lines point at F:\video. THE OBERWERK IS KEPT MISSING
+  BY A FINGERPRINT ON A RELATIVE TREE: make_video_config.py leaves the OW trees relative and writes
+  treeFingerprints["003136/pipe/OW"] = "video_missing_folder|1|0|-" (an ABSOLUTE tree never passes the
+  fingerprint test - line ~14129 `tree.relativeForm ? firstMatchingTree(...) : ...` - and the old X: paths were
+  found by their tails anyway: the 2 Nov video found the Oberwerk, "Video: alert - no notice in division 3").
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

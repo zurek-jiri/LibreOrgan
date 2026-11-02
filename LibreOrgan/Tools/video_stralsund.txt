@@ -12,7 +12,7 @@ record start
 caption Every organ starts from sample folders on your disk: drag a folder of a set onto a division ...
 say LibreOrgan Sampler. Every organ in it starts from sample folders on your disk. Drag a folder of a sample set onto a division - and its stops appear, ready to play.
 wait 1200
-dropfiles 1|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\000370
+dropfiles 1|F:\video\000370
 waitload 120000
 wait 1500
 stop 1|pipe - Principale|on
@@ -24,7 +24,7 @@ wait 1800
 caption ... a packed set needs no unpacking: drop the archive, the samples are read straight from it.
 say A packed set needs no unpacking. Drop the archive, and the program reads the samples straight from it. Any creative mind can assemble an organ this way - stop by stop, from whatever lies on the disk.
 wait 1200
-dropfiles 2|E:\sonus\HW2\Adlington\10\AdlingtonHallVol0.CompPkg.Hauptwerk.rar
+dropfiles 2|F:\video\AdlingtonHallVol0.CompPkg.Hauptwerk.rar
 waitfor Load the folders|90000
 click Load the folders
 waitload 180000
@@ -51,7 +51,7 @@ caption The program did not find the Oberwerk's sample folders where the configu
 say The program did not find the Oberwerk's sample folders where the configuration expects them on this computer - the division says so. One click on the notice, and we point it to the folder where the samples are.
 alert 3|11500
 wait 16000
-relocate 003136\pipe\OW|D:\Hauptwerk\HauptwerkSampleSetsAndComponents\OrganInstallationPackages\003136
+relocate 003136\pipe\OW|F:\video\003136
 say Any folder of the set will do: the program finds the sample trees around it, loads the missing stops, and remembers the place - next time it finds them by itself.
 caption ... the program finds the sample trees around the chosen folder, loads the division and remembers the place.
 waitload 120000

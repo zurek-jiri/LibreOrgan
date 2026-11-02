@@ -12,7 +12,8 @@ param(
     [string]$Ffmpeg = "C:\ffmpeg\bin\ffmpeg.exe",
     [string]$Python = "C:\Users\doma\kokoro-venv\Scripts\python.exe",   # Kokoro's venv (1 Nov 2026); the edge-tts path needs Python39 + "--engine edge"
     [string]$Voice = "bm_lewis",
-    [string]$VoiceRate = "1.0"
+    [string]$VoiceRate = "1.0",
+    [string]$SampleLocation = ""   # 2 Nov 2026: the ONE sample location of the run (F:\video, the user's fast copy); Locations.txt is backed up and restored
 )
 # Kokoro's phonemiser falls back to eSpeak NG for words outside its dictionary.
 $env:PATH = "C:\Program Files\eSpeak NG;" + $env:PATH
@@ -41,6 +42,13 @@ $env:ORGAN_VIDEO_OUT = $Out
 # A run of ours killed while a device opened leaves the crash handler's marker: the next start would show the
 # "Safe start ... default buffer" box in the video. The marker is cleared before the run.
 Remove-Item "$env:APPDATA\LibreOrgan\CrashLogs\opening-device.txt" -Force -ErrorAction SilentlyContinue
+$locations = "$env:APPDATA\LibreOrgan\Locations.txt"
+$locationsBackup = "$env:TEMP\locations_backup_video.txt"
+$hadLocations = Test-Path $locations
+if ($SampleLocation -ne "") {
+    if ($hadLocations) { Copy-Item $locations $locationsBackup -Force }
+    [IO.File]::WriteAllText($locations, $SampleLocation + "`n", (New-Object System.Text.UTF8Encoding $false))
+}
 $p = Start-Process -FilePath $Exe -PassThru
 $deadline = (Get-Date).AddSeconds($Seconds)
 while ((Get-Date) -lt $deadline -and -not $p.HasExited) {
@@ -50,6 +58,9 @@ while ((Get-Date) -lt $deadline -and -not $p.HasExited) {
 if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -Confirm:$false; Start-Sleep 2 }
 Remove-Item Env:ORGAN_LOAD_CONFIGURATION, Env:ORGAN_DUMP_STOPLIST, Env:ORGAN_VIDEO_SCRIPT, Env:ORGAN_VIDEO_OUT -ErrorAction SilentlyContinue
 Copy-Item $backup $settings -Force
+if ($SampleLocation -ne "") {
+    if ($hadLocations) { Copy-Item $locationsBackup $locations -Force } else { Remove-Item $locations -Force -ErrorAction SilentlyContinue }
+}
 $fs = [IO.File]::OpenRead($log); $fs.Seek($mark, 'Begin') | Out-Null
 $sr = New-Object IO.StreamReader($fs); $new = $sr.ReadToEnd(); $sr.Close(); $fs.Close()
 $pattern = 'ORGAN_VIDEO_SCRIPT|Video: |Video step: (record|drop|click|stoplist|temperament)|Load Configuration "|not on this computer|crash'

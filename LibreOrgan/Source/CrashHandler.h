@@ -13,6 +13,10 @@
  #endif
  #include <windows.h>
  #include <dbghelp.h>
+#else
+ #include <execinfo.h>   // 0.9.37: the message thread's stack on macOS and Linux (backtrace through a signal)
+ #include <pthread.h>
+ #include <cstdlib>
 #endif
 
 //==============================================================================
@@ -347,11 +351,43 @@ namespace CrashHandler
         {
            #if JUCE_WINDOWS
             messageThreadId = GetCurrentThreadId();
+           #else
+            // 0.9.37 (#167 Mac, #168 Linux: the window thread silent for 3-6 s, nothing in the log says
+            // where): the watchdog asks the message thread for its stack with a signal - the handler
+            // writes backtrace() into a static buffer, the watchdog prints it with backtrace_symbols.
+            posixMessageThread() = pthread_self();
+            struct sigaction action{};
+            action.sa_handler = [](int) { stackDepth().store(backtrace(stackBuffer(), 64), std::memory_order_release); };
+            sigemptyset(&action.sa_mask);
+            action.sa_flags = SA_RESTART;
+            sigaction(SIGUSR2, &action, nullptr);
            #endif
             lastBeatMs.store(juce::Time::getMillisecondCounterHiRes());
             startTimer(250);
             startThread();
         }
+       #if ! JUCE_WINDOWS
+        static pthread_t& posixMessageThread() { static pthread_t t{}; return t; }
+        static void** stackBuffer() { static void* buffer[64]; return buffer; }
+        static std::atomic<int>& stackDepth() { static std::atomic<int> depth{ -1 }; return depth; }
+        // The message thread's stack as text (called from the watchdog thread): the signal, up to
+        // 200 ms for the handler, then the symbols (names where the executable exports them).
+        static juce::String messageThreadStack()
+        {
+            stackDepth().store(-1, std::memory_order_release);
+            if (pthread_kill(posixMessageThread(), SIGUSR2) != 0) return "(the signal was not delivered)";
+            for (int waited = 0; stackDepth().load(std::memory_order_acquire) < 0 && waited < 200; waited += 5) juce::Thread::sleep(5);
+            const int depth = stackDepth().load(std::memory_order_acquire);
+            if (depth <= 0) return "(no answer within 200 ms)";
+            juce::String text;
+            if (char** symbols = backtrace_symbols(stackBuffer(), depth))
+            {
+                for (int i = 0; i < depth; ++i) text << "  #" << i << "  " << symbols[i] << "\n";
+                free(symbols);
+            }
+            return text;
+        }
+       #endif
         ~StallWatchdog() override
         {
             stopTimer();
@@ -381,7 +417,7 @@ namespace CrashHandler
     private:
         void run() override
         {
-            bool stalled = false, actionDone = false;
+            bool stalled = false, actionDone = false, sampled = false;
             double lastReportMs = 0.0, longest = 0.0, previousSilent = 0.0, lastShortNoteMs = 0.0;
             while (!threadShouldExit())
             {
@@ -396,6 +432,15 @@ namespace CrashHandler
                     { const juce::ScopedLock sl(stallActionLock()); action = stallAction(); }
                     if (action) { note("Message thread silent for 3 s: the stall action runs (keys released)"); action(silent); }
                 }
+               #if ! JUCE_WINDOWS
+                // 0.9.37: a stall of 2 s is sampled while it lasts - once per stall.
+                if (silent >= 2000.0 && !sampled)
+                {
+                    sampled = true;
+                    note("Message thread silent for " + juce::String(silent / 1000.0, 1) + " s; its stack now:\n" + messageThreadStack());
+                }
+                if (silent < 1000.0) sampled = false;
+               #endif
                 if (silent < 8000.0)
                 {
                     if (silent < 3000.0) actionDone = false;
