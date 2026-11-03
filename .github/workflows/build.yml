@@ -2,7 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ main, master ]
+    # Tags only (3 Nov 2026): a push to main built the same commit a second time
+    # beside the tag's run and held the few macOS runners - the release comes
+    # from the tag alone; "Run workflow" below builds any branch on demand.
     tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
