@@ -1484,6 +1484,7 @@ private:
     // comes late; the maximum polyphony is then set with headroom. Needs a set.
     struct PolyphonyMeasurement;
     std::shared_ptr<PolyphonyMeasurement> polyphonyMeasurement;
+    juce::Component::SafePointer<juce::Button> editorMeasureButton;   // the Configuration Editor's Measure... (0.9.48: enabled from the main timer)
     // No hidden routes, nothing stale: a division's own ("default") route that
     // no stop plays through, and every route of a division beyond the division
     // count, keeps no device (none) and no settings; a route that no longer

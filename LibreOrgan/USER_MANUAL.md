@@ -1275,7 +1275,9 @@ narrowed down by keys, rate and stops. *Maximum polyphony* is set to the
 most that stayed clean, the registration restored, the level returns within
 seconds. The report says where the time went (the render cores, the pool,
 the kernel, the cost per voice) and what to change; it never forecasts other
-buffer sizes. One to two minutes; *Cancel* restores everything. Save the
+buffer sizes. One to two minutes; *Cancel* restores everything. Pressed while
+the filled pipes are still being built, the window waits for them and the run
+starts by itself. Save the
 configuration afterwards; measure again after a change of routes, IRs,
 buffer or samples. Details: [The polyphony measurement](#108-the-polyphony-measurement).
 

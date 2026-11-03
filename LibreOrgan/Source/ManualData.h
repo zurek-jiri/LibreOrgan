@@ -1291,7 +1291,9 @@ static const char* const kManualText_part6 =
     "most that stayed clean, the registration restored, the level returns within\n"
     "seconds. The report says where the time went (the render cores, the pool,\n"
     "the kernel, the cost per voice) and what to change; it never forecasts other\n"
-    "buffer sizes. One to two minutes; *Cancel* restores everything. Save the\n"
+    "buffer sizes. One to two minutes; *Cancel* restores everything. Pressed while\n"
+    "the filled pipes are still being built, the window waits for them and the run\n"
+    "starts by itself. Save the\n"
     "configuration afterwards; measure again after a change of routes, IRs,\n"
     "buffer or samples. Details: [The polyphony measurement](#108-the-polyphony-measurement).\n"
     "\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     "strike. [Velocity layers](#35-velocity-layers).\n"
-    "\n"
-    "### Key velocity: treble cut on the attack at the lowest velocity\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
+    "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
     "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
     "at velocity 1 (default 9 dB), less for firmer strokes.\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "\n"
     "### Target temperament\n"
     "\n"
-    "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
+    "\n"
     "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
-    "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
-    "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
     ;
 static const char* const kManualText_part9 =
+    "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
+    "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
     "last self-test, `system.txt` with the computer and every audio route - no\n"
     "samples, no voicing) and screenshots of every open window, then opens the\n"
     "GitHub form in your browser with its fields filled in and the folder beside\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "trees are estimated against the free memory and a warning is logged; the\n"
     "load is never refused.\n"
     "\n"
-    "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
-    "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     ;
 static const char* const kManualText_part10 =
+    "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
+    "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"

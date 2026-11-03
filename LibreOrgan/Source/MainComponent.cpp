@@ -25266,6 +25266,11 @@ void MainComponent::timerCallback()
     updateExpressionInertia();
     updateHeldBankNavigation();
     if (++lostModalDivider >= 20) { lostModalDivider = 0; bringLostModalsToFront(); }   // 0.9.29: every half second
+    if (editorMeasureButton != nullptr)   // 0.9.48: the Editor's Measure... follows the loader like the Divisions dialog's (setEnabled with the same value is a no-op)
+    {
+        const bool can = canMeasurePolyphony();
+        if (editorMeasureButton->isEnabled() != can) { editorMeasureButton->setEnabled(can); editorMeasureButton->setAlpha(can ? 1.0f : 0.45f); }
+    }
     // Reverbs built since the last automatic choice (a device opened later, a
     // route's IR changed): every 5 s the choice looks again.
     if (irProcessing == "automatic" && activeFolderLoader == nullptr && ++irEvaluateDivider >= 200)
@@ -26986,15 +26991,10 @@ int MainComponent::takeLateCallbacksOfAllRoutes()
 void MainComponent::startPolyphonyMeasurement()
 {
     if (!canMeasurePolyphony()) return;
-    // Not while the filled pipes are still being built (0.8.139, #32: a run
-    // right after the load broke at 328 voices with the cores busy building).
-    if (engine.pendingBackgroundWorkers() > 0)
-    {
-        queueNotice(juce::MessageBoxIconType::InfoIcon, "Measure the maximum polyphony",
-            "The filled pipes are still being built in the background (the orange tracks under the stop buttons). "
-            "Measure once they are gone - a run beside the building would measure the building.");
-        return;
-    }
+    // The filled pipes still being built (0.8.139, #32: a run right after the load broke at 328 voices with the
+    // cores busy building) are WAITED for inside the measurement window ("Waiting for the filled pipes ...",
+    // the `begin` step below) - 0.9.48 (the user: a silent notice instead did nothing; "to dělalo v dávných
+    // verzích, a bylo to nejčistší řešení"). The run starts by itself once they are done.
     auto state = std::make_shared<PolyphonyMeasurement>();
     polyphonyMeasurement = state;
     state->registration = captureCurrentState();
@@ -27709,7 +27709,9 @@ void MainComponent::startPolyphonyMeasurement()
         if (safeThis->engine.pendingBackgroundWorkers() > 0 && waited < 1200)   // at most 10 minutes
         {
             if (state->label != nullptr)
-                state->label->setText("Waiting for the filled pipes (their copies) to finish building...", juce::dontSendNotification);
+                state->label->setText("Waiting for the filled pipes to finish building (" + juce::String(safeThis->engine.pendingBackgroundWorkers())
+                    + " stop(s) still building, " + juce::String(waited / 2) + " s) - the run starts by itself", juce::dontSendNotification);
+            if (waited == 0) CrashHandler::note("Polyphony measurement: waiting for the filled pipes (" + juce::String(safeThis->engine.pendingBackgroundWorkers()) + " stop(s) still building)");
             juce::Timer::callAfterDelay(500, [begin, waited] { (*begin)(waited + 1); });
             return;
         }
@@ -29380,13 +29382,15 @@ void MainComponent::showConfigurationEditor()
             addRow(text, std::move(control), 30, tooltip, helpSection);
         }
 
-        void addButton(const juce::String& text, const juce::String& caption, std::function<void()> onClick,
+        juce::TextButton* addButton(const juce::String& text, const juce::String& caption, std::function<void()> onClick,
             const juce::String& tooltip = {}, const juce::String& helpSection = {}, bool enabled = true)
         {
             auto button = std::make_unique<juce::TextButton>(caption);
             button->onClick = std::move(onClick);
+            auto* raw = button.get();
             dumpOption("button \"" + caption + "\"", text, tooltip);
             addRow(text, std::move(button), 30, tooltip, helpSection, enabled);
+            return raw;
         }
 
         void addSlider(const juce::String& text, double minimum, double maximum, double step,
@@ -29714,7 +29718,9 @@ void MainComponent::showConfigurationEditor()
                 "headroom for what the computer does besides (the window, the sound server, a browser, a stroke of many stops). Raise it to "
                 "squeeze out more; at 100 % a level counts as broken only when the driver actually called late - DANGEROUS for playing: the "
                 "limit it sets breaks up on the first callback that runs a little longer. Fit for seeing how far the computer goes.");
-            addButton("Measure the maximum polyphony", "Measure...", [&o] { o.startPolyphonyMeasurement(); },
+            // 0.9.48: the button follows canMeasurePolyphony() from the main timer (an Editor opened or refreshed
+            // while a load ran kept its grey Measure... for good - the state was read once, here).
+            o.editorMeasureButton = addButton("Measure the maximum polyphony", "Measure...", [&o] { o.startPolyphonyMeasurement(); },
                 "Finds the limit for THIS organ on THIS computer: with the loaded samples, every stop engaged and the "
                 "keys struck repeatedly on every division (heard very quietly, at -52 dB), the limit is raised step by step "
                 "until the busiest audio thread exceeds the measurement limit above (85 % unless set otherwise) or the driver calls late, then narrowed down; the "
@@ -29723,7 +29729,7 @@ void MainComponent::showConfigurationEditor()
                 "of every division renders its own voices), the auxiliary routes, the IR reverbs, the drivers and buffer "
                 "sizes - so the set must be loaded and its audio outputs configured first, and the result belongs to this "
                 "configuration: save it afterwards. Takes one to two minutes; the registration is restored afterwards.",
-                "Measure the maximum polyphony", o.canMeasurePolyphony());
+                "Measure the maximum polyphony", true);
 
             //---------------------------------------------------------------- Global sound
             addSection("Global sound");

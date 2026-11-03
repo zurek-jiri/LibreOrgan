@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.48] - 2026-11-03
+
+### Changed
+- Measure... while the filled pipes are still being built opens the measuring
+  window at once and waits in it ("Waiting for the filled pipes to finish
+  building (N stops still building) - the run starts by itself"), as the early
+  versions did; a silent notice refused the run before.
+
+### Fixed
+- The Configuration Editor's Measure... button follows the loading like the
+  Divisions dialog's: an Editor open while an organ loaded kept the button grey
+  for good (its state was read once when the Editor was built).
+
 ## [0.9.47] - 2026-11-03
 
 ### Changed
