@@ -34,7 +34,6 @@ body:
         - "burton-berlin-hill"
         - "cembalo-mietke-model"
         - "cembalo-ruckers-model"
-        - "cen-st-etienne-cavaill-coll"
         - "dom-b-dos-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:

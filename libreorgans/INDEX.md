@@ -41,7 +41,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Bückeburg, Janke](b-ckeburg-janke-organ/README.md) | 4 | 47 | 5.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20b-ckeburg-janke-organ&organ=b-ckeburg-janke-organ&name=b-ckeburg-janke-organ) |
 | [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
-| [Cen, St. Etienne, Cavaillé-Coll](cen-st-etienne-cavaill-coll/README.md) | 4 | 55 | 5.6 GB | Rear, Front | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cen-st-etienne-cavaill-coll&organ=cen-st-etienne-cavaill-coll&name=cen-st-etienne-cavaill-coll) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
 
-18 configuration(s).
+17 configuration(s).

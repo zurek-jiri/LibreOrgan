@@ -27,7 +27,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)▼ | Remove |
 |---|---:|---:|---:|---|---|
-| [Cen, St. Etienne, Cavaillé-Coll](cen-st-etienne-cavaill-coll/README.md) | 4 | 55 | 5.6 GB | Rear, Front | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cen-st-etienne-cavaill-coll&organ=cen-st-etienne-cavaill-coll&name=cen-st-etienne-cavaill-coll) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ&name=brescia-st-carlo-antegnati-organ) |
 | [Bellevue, Casavant](bellevue-casavant/README.md) | 4 | 74 | 4.8 GB | Front, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20bellevue-casavant&organ=bellevue-casavant&name=bellevue-casavant) |
@@ -44,4 +43,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
 
-18 configuration(s).
+17 configuration(s).
