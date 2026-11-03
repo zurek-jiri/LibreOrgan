@@ -304,6 +304,31 @@ juce::String HauptwerkOdf::spelledAsOnDisk(const juce::File& base, const juce::S
     return spelt.joinIntoString("/");
 }
 
+// The perspective WORD of a text, capitalised ("Front C (distant)" -> "Distant"),
+// empty when the text holds none. The label is the word ITSELF - never a class
+// of synonyms: "Front C (distant)" and "Rear" are two perspectives of one set
+// (Ashton-under-Lyne: direct, diffuse, distant, rear), and a table that read
+// "distant" as Rear put two ranks into one perspective, which the import then
+// made a stop folder of (0.8.131).
+static juce::String perspectiveWordLabel(const juce::String& text)
+{
+    const auto lower = text.toLowerCase();
+    static const char* const words[]{ "direct", "dry", "diffuse", "ambient", "ambience", "surround", "wet", "room", "hall", "rear", "back",
+        "distant", "far", "hinten", "lointain", "front", "vorne", "close", "near", "nah", "proche", "middle", "mid", "center", "centre", "mitte",
+        "gallery", "nave", "semi-dry", "semidry" };
+    for (const auto* word : words)
+    {
+        const int at = lower.indexOf(word);
+        if (at < 0) continue;
+        // A whole word only ("mid" must not hit "middle"'s neighbours or "humid").
+        const bool startOk = at == 0 || !juce::CharacterFunctions::isLetter(lower[at - 1]);
+        const int after = at + (int)strlen(word);
+        const bool endOk = after >= lower.length() || !juce::CharacterFunctions::isLetter(lower[after]);
+        if (startOk && endOk) return juce::String(word).substring(0, 1).toUpperCase() + juce::String(word).substring(1);
+    }
+    return {};
+}
+
 juce::String HauptwerkOdf::perspectiveOfRankName(const juce::String& name)
 {
     // "Front A (direct): HW. Octave 2" - the part before the colon names the
@@ -312,29 +337,7 @@ juce::String HauptwerkOdf::perspectiveOfRankName(const juce::String& name)
     juce::String candidate;
     if (head.contains("(") && head.contains(")"))
         candidate = head.fromFirstOccurrenceOf("(", false, false).upToFirstOccurrenceOf(")", false, false);
-    // The label is the perspective word ITSELF, capitalised - never a class of
-    // synonyms: "Front C (distant)" and "Rear" are two perspectives of one set
-    // (Ashton-under-Lyne: direct, diffuse, distant, rear), and a table that
-    // read "distant" as Rear put two ranks into one perspective, which the
-    // import then made a stop folder of (0.8.131).
-    auto labelOf = [](const juce::String& text) -> juce::String
-    {
-        const auto lower = text.toLowerCase();
-        static const char* const words[]{ "direct", "dry", "diffuse", "ambient", "ambience", "surround", "wet", "room", "hall", "rear", "back",
-            "distant", "far", "hinten", "lointain", "front", "vorne", "close", "near", "nah", "proche", "middle", "mid", "center", "centre", "mitte",
-            "gallery", "nave", "semi-dry", "semidry" };
-        for (const auto* word : words)
-        {
-            const int at = lower.indexOf(word);
-            if (at < 0) continue;
-            // A whole word only ("mid" must not hit "middle"'s neighbours or "humid").
-            const bool startOk = at == 0 || !juce::CharacterFunctions::isLetter(lower[at - 1]);
-            const int after = at + (int)strlen(word);
-            const bool endOk = after >= lower.length() || !juce::CharacterFunctions::isLetter(lower[after]);
-            if (startOk && endOk) return juce::String(word).substring(0, 1).toUpperCase() + juce::String(word).substring(1);
-        }
-        return {};
-    };
+    const auto labelOf = &perspectiveWordLabel;
     auto label = labelOf(candidate);
     if (label.isEmpty() && candidate.trim().isNotEmpty() && candidate.trim().length() <= 16)
         label = candidate.trim().substring(0, 1).toUpperCase() + candidate.trim().substring(1);   // any short word in the parenthesis names the perspective
@@ -885,6 +888,37 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
         {
             rank.folderRelative = onDisk;
             rank.folder = packageFolder(root, packageId).getChildFile(onDisk);
+        }
+    }
+    // A perspective is shared by the MAJORITY of the organ's stops (the user's
+    // rule, 0.9.49): a label that is no perspective word - the "any short word in
+    // the parenthesis" rule above took Den Haag's "(sw)", "(Tr. ML)", "(disc)",
+    // qualifiers standing AFTER the stop name, for perspectives of three, six and
+    // one stop - is no perspective when fewer than half the stops with ranks carry
+    // it; its ranks stay in the plain perspective. A perspective WORD stands
+    // whatever its share (a Rear recorded for one division only).
+    {
+        std::map<juce::String, std::set<int>> stopsOfLabel;
+        int stopsWithRanks = 0;
+        for (const auto& [stopId, stop] : odf.stops)
+        {
+            bool any = false;
+            for (const int rankId : stop.rankIds)
+            {
+                const auto rankIt = odf.ranks.find(rankId);
+                if (rankIt == odf.ranks.end() || rankIt->second.tremmed || rankIt->second.noise) continue;
+                any = true;
+                if (rankIt->second.perspective.isNotEmpty()) stopsOfLabel[rankIt->second.perspective].insert(stopId);
+            }
+            if (any) ++stopsWithRanks;
+        }
+        for (const auto& [label, stopIds] : stopsOfLabel)
+        {
+            if (perspectiveWordLabel(label).isNotEmpty() || (int)stopIds.size() * 2 >= stopsWithRanks) continue;
+            int cleared = 0;
+            for (auto& [rankId, rank] : odf.ranks) if (rank.perspective == label) { rank.perspective = {}; ++cleared; }
+            CrashHandler::note("Hauptwerk ODF: \"" + label + "\" is no perspective - " + juce::String((int)stopIds.size()) + " of " + juce::String(stopsWithRanks)
+                + " stop(s) carry it and a perspective is shared by the majority; " + juce::String(cleared) + " rank(s) stay in the plain perspective");
         }
     }
     // Ranks of one stop that landed in ONE perspective label although their

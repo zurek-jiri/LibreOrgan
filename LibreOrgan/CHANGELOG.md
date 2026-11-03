@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.49] - 2026-11-03
+
+### Fixed
+- Hauptwerk definition: a perspective must be shared by the majority of the
+  organ's stops. A word in a parenthesis after a stop's name ("(sw)",
+  "(Tr. ML)", "(disc)" - Den Haag) made a perspective of a few stops; such a
+  label is dropped and its ranks stay in the plain perspective (the log says
+  so). A real perspective word (Direct, Rear ...) stands whatever its share.
+
 ## [0.9.48] - 2026-11-03
 
 ### Changed

@@ -2721,7 +2721,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   found by their tails anyway: the 2 Nov video found the Oberwerk, "Video: alert - no notice in division 3").
   THE VIDEO OF 2 Nov 2026 (second take, 0.9.37): 571 s, 0 discontinuities, the Oberwerk missing and found, the
   samples from F:\video (3 GB/s) - site/assets/libreorgan.mp4 (37.7 MB). THE README KEEPS THE OLD VIDEO (the
-  user: "na gitHub necháme to původní, ono má taky svoje kouzlo"): the user-attachments URL of 26 Oct stays; the
+  user: "na gitHub necháme to původní, ono má taky svoje kouzlo"): the user-attachments URL of 26 Oct stayed until
+  3 Nov 2026, when the README got the re-mixed take (the user corrected narration.wav by hand, %TEMP%\merge_video0948.ps1
+  re-merged without a new run: web mp4 commit 6da909e, the GitHub WebM 9.77 MB = Opus 112 kb/s + VP9 960 px / 8 fps capped
+  at 22 kb/s, uploaded by the user, README commit 8de791d) - and the user REJECTED it within the hour ("absolutně
+  rozmazané a malinké"): a 10-minute video under GitHub's 10 MB is either bad sound or an unwatchable picture, never
+  both right. THE RULE NOW: NO embedded video in the README - one bold link "▶ Watch the instruction video (10 minutes,
+  full size, with sound)" to https://zurek-jiri.github.io/LibreOrgan/assets/libreorgan.mp4 (GitHub's sanitizer strips
+  target="_blank", so a new window cannot be forced; the mp4 opens in the browser's player, right-click for a new
+  tab). Never make a GitHub-sized video again; the
   WebM made for it (F:\temp\libreorgan-github.webm, 9.2 MB, Opus 96 kbps) is not uploaded. A README video under
   10 MB with clean sound is WebM + Opus only (AAC would be under 100 kbps at ten minutes).
   0.9.38 (2 Nov 2026 evening; the 0.9.37 stack samples of #169/#170 (Mac) and #171 (Linux) READ): the message
@@ -2941,6 +2949,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   here ARE aggregated. #184 (Caen on the Mac, 1400 voices): 30.5 us per voice and block (kernel 22 630 ns + unpacking
   7 367) - Caen loaded packed at 32 kHz on an SSE2 Core 2 Duo; TestingOrgan (48 kHz, not packed) gives 4140 there:
   the load options, not a regression (an unpacked 16-bit Caen would not fit the 8 GB). #185 = the #181 spread.
+  0.9.48 (3 Nov 2026, the user: "zapnutí měření polyfonie během stavění filled pipes neudělá nic. Jen to tiše dá
+  message box ... mělo by vyhodit rovnou měřící dialog, ale říct... waiting for filled-pipes to be ready"): the
+  `pendingBackgroundWorkers() > 0` refusal (0.8.139, #32) at the top of `startPolyphonyMeasurement` is GONE; the
+  `begin` step of the run (which polled the workers already, up to 10 min) shows "Waiting for the filled pipes to
+  finish building (N stop(s) still building, T s) - the run starts by itself" in the measuring window and logs
+  "Polyphony measurement: waiting for the filled pipes (N stop(s) still building)" once. FOUND BY THE TEST: the
+  Configuration Editor's Measure... was built with `enabled = o.canMeasurePolyphony()` read ONCE in `addButton` - an
+  Editor open while an organ loaded (or refreshed at the load's end by refreshConfigurationEditor, which runs BEFORE
+  the loader's release callAsync) kept a grey button for good, and JUCE's `Button::handleCommandMessage` drops
+  `triggerClick` on a disabled button (ORGAN_TEST_CLICK "Measure..." x 120 on Caen did nothing). Now `addButton`
+  returns the button, `editorMeasureButton` (SafePointer) follows `canMeasurePolyphony()` from the main timer
+  (setEnabled + alpha only on a change). THE TEST WINDOW on this Ryzen: the copies of Rural/TestingOrgan AND Caen are
+  built within 2-3 s of "done", the loader is released ~0.5 s after it - a click 2 s after the Editor click never lands
+  inside; %TEMP%\test_measurewait0948.ps1 -Clicks ("Configuration Editor|" + "Measure...|" x N) -ClickAt 3 opens the
+  Editor during the load and clicks Measure... every 2 s, with a copy of TestingOrgan.json carrying "transposeMethod":
+  3 (the phase vocoder: slower copies; the copy written beside the trees, deleted after). The 0.8.183 rule holds: a
+  GUI change is RUN - the refusal's removal alone "passed" three runs that never reached the wait. MSBuild in the
+  background hung 30 min on two orphaned cl.exe (the old C1041/PDB lesson): kill cl/MSBuild/mspdbsrv and build in the
+  foreground with `/nodeReuse:false`; the user's "co to dělá dvě hodiny" was this hang - check `Get-Process cl` when a
+  build runs past 5 min. An empty stray `LibreOrgan/CMakeLists.txt` (0 bytes, 2 Nov, the bump's cwd lesson) was deleted.
+  CI TRIGGER (3 Nov 2026, commit 21f5c09, the user: "udělej tuto změnu"): build.yml runs on TAGS, pull requests and
+  workflow_dispatch only - a push to main built the same commit a second time beside the tag's run and held the few
+  macOS runners (the v0.9.48 run sat "queued" 10 min until the main run was cancelled through the API: POST
+  /actions/runs/<id>/cancel is allowed for the token). A push to main alone builds nothing now; the bisect branches
+  are built by dispatch as before.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
