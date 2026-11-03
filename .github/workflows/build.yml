@@ -46,8 +46,11 @@ jobs:
             # "dyld: Symbol not found" at start.
             cmake: -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_CXX_FLAGS="-faligned-allocation -Wno-unguarded-availability -Wno-unguarded-availability-new" -DCMAKE_OBJCXX_FLAGS="-faligned-allocation -Wno-unguarded-availability -Wno-unguarded-availability-new"
             optional: true
+          # PINNED (3 Nov 2026): ubuntu-latest became ubuntu-26.04 (GCC 15, glibc 2.43) overnight and the
+          # 0.9.44 binary asked for GLIBC_2.43 - the loader refused it on Debian 13 (glibc 2.41) without a
+          # word. ubuntu-24.04 links against glibc 2.39 / GLIBCXX of GCC 13, which every current distribution has.
           - name: Linux
-            os: ubuntu-latest
+            os: ubuntu-24.04
             artifact: LibreOrgan-linux
             path: build/LibreOrgan_artefacts/Release/LibreOrgan
             package: LibreOrgan-linux-x86_64.tar.gz

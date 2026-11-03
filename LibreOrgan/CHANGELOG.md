@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.45] - 2026-11-03
+
+### Fixed
+- Linux: the 0.9.44 build did not start at all on Debian 13 and the like (no
+  window, no log). GitHub's `ubuntu-latest` runner had moved to Ubuntu 26.04
+  overnight and the binary asked for glibc 2.43; the Linux build is pinned to
+  Ubuntu 24.04 (glibc 2.39) again.
+- A Hauptwerk organ definition read from an archive: after the "Reading ..."
+  window closed, the sample folders of every tree were scanned on the window
+  thread - seconds from an archive with nothing on the screen. The scan runs
+  behind the same window now, naming the tree it reads.
+
 ## [0.9.44] - 2026-11-03
 
 ### Fixed

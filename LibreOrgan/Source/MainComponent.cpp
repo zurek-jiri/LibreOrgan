@@ -12731,8 +12731,8 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
 {
     struct ParseJob final : public juce::ThreadWithProgressWindow
     {
-        ParseJob(const juce::File& f, juce::Component* over)
-            : juce::ThreadWithProgressWindow("Reading " + f.getFileName(), true, true, 10000, "Cancel", over), file(f) {}
+        ParseJob(const juce::File& f, SamplerEngine& e, juce::Component* over)
+            : juce::ThreadWithProgressWindow("Reading " + f.getFileName(), true, true, 10000, "Cancel", over), file(f), engine(e) {}
         void run() override
         {
             setStatusMessage("Reading the Hauptwerk organ definition...");
@@ -12745,15 +12745,32 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             setStatusMessage("Working out the organ: divisions, stops and their folders, perspectives, couplers, the crescendo, the jamb...");
             root = HauptwerkOdf::hauptwerkRootFor(file);
             plan = odf->plan(root);
+            if (plan.error.isNotEmpty() || threadShouldExit()) { planned = plan.error.isNotEmpty(); return; }
+            // 0.9.45 (the user: "dialog by měl říkat, co se právě děje, v každém okamžiku"): the scan of every tree
+            // of the plan (the folders' listings and, for the L/R halves, three WAVs of each folder) ran on the
+            // message thread after this window had closed - seconds from an archive, nothing on the screen.
+            const double scanStartMs = juce::Time::getMillisecondCounterHiRes();
+            int n = 0;
+            for (const auto& tree : plan.allTrees)
+            {
+                if (threadShouldExit()) return;
+                setStatusMessage("Reading the sample folders: " + tree.getFileName() + " (" + juce::String(++n) + " of " + juce::String((int)plan.allTrees.size()) + ")");
+                for (const auto& assignment : engine.scanTreeAssignments(tree, false))
+                    automaticNameOfFolder[assignment.folder.getFullPathName().toLowerCase()] = assignment.stopName + (assignment.component.isNotEmpty() ? " " + assignment.component : juce::String());   // "quintaton 16 L" (0.8.160)
+            }
+            CrashHandler::note("Hauptwerk import: the sample folders of " + juce::String((int)plan.allTrees.size()) + " tree(s) read in "
+                + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - scanStartMs)) + " ms");
             planned = true;
         }
         juce::File file, root;
+        SamplerEngine& engine;
         std::shared_ptr<HauptwerkOdf> odf;
         HauptwerkOdf::Plan plan;
+        std::map<juce::String, juce::String> automaticNameOfFolder;   // folder path (lower case) -> the scanned stop name
         bool planned = false;
     };
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    auto job = std::make_shared<ParseJob>(odfFile, this);
+    auto job = std::make_shared<ParseJob>(odfFile, engine, this);
     job->launchThread();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [safeThis, job, poll, odfFile, mergeIntoLoaded]
@@ -12789,10 +12806,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         // the division; the Hauptwerk stop name becomes the alias, the caption
         // of the button ("III. Krumhoren 8"). Every saved state is keyed by the
         // folder name, as for any organ built from folders.
-        std::map<juce::String, juce::String> automaticNameOfFolder;   // folder path (lower case) -> the scanned stop name
-        for (const auto& tree : plan.allTrees)
-            for (const auto& assignment : safeThis->engine.scanTreeAssignments(tree, false))
-                automaticNameOfFolder[assignment.folder.getFullPathName().toLowerCase()] = assignment.stopName + (assignment.component.isNotEmpty() ? " " + assignment.component : juce::String());   // "quintaton 16 L" (0.8.160)
+        const auto automaticNameOfFolder = job->automaticNameOfFolder;   // scanned on the job's thread (0.9.45), behind its window
         std::map<int, std::pair<int, juce::String>> rowOfStop;   // ODF stop id -> division, row name
         // ODF stop id of an owner -> its extensions (ODF stop id, our division), in the
         // order they are made (= the order of the owner's transmissions): the crescendo

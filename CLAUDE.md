@@ -2899,6 +2899,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   every package is installed on D:\Hauptwerk and the lookup finds it there first (test_neighbour0944.ps1 with the
   Bedos ODF rar showed "12 of 12 found ... taken over by D:\..."). #181 (4140 / 3990 / 3458 / 4140 on the Mac, no
   freeze): single callbacks at 100-121 % of the period break a level - the OS on two cores, not the engine.
+  0.9.45 (3 Nov 2026, the user: "na linuxu se build vůbec nespustil. Žádná hláška, nic. ani v settings nevznikne
+  žádný log" + the windowless seconds after "Reading <odf>"): (1) GITHUB MOVED `ubuntu-latest` from ubuntu-24.04
+  (GCC 13.3, glibc 2.39) to ubuntu-26.04 (GCC 15.2, glibc 2.43) between the v0.9.43 run (2 Nov 20:53 UTC) and the
+  v0.9.44 run (3 Nov) - the x86_64 tar.gz grew 10.2 -> 12.0 MB and the ELF asks for GLIBC_2.43 (checked with
+  %TEMP%\lin0944\chk.py: the max "GLIBC_x.y" string of the binary); Debian 13 has 2.41, so ld.so refuses it with
+  a line on stderr the desktop never shows and the program never reaches main (no activity.log). build.yml pins
+  the Linux job to `ubuntu-24.04` (the arm64 job was ubuntu-22.04-arm already). RULE: a Linux binary that does not
+  start and leaves no log = check the glibc requirement of the release binary against the runner image first;
+  never `ubuntu-latest` for a job whose binary is shipped. The release job keeps ubuntu-latest (nothing compiled).
+  (2) `importHauptwerkOdf`: `engine.scanTreeAssignments(tree, false)` for every tree of the plan ran on the message
+  thread AFTER the ParseJob's window had closed (the folders' listings + 3 WAVs per folder for the L/R rule of
+  0.9.21 - from a rar on a slow disk, seconds without a window); now the ParseJob (which has `SamplerEngine& engine`)
+  scans them in run() with the status "Reading the sample folders: <tree> (n of m)" and keeps the map
+  `automaticNameOfFolder`; log "Hauptwerk import: the sample folders of N tree(s) read in T ms". The poll takes
+  `job->automaticNameOfFolder` (const). Verified with %TEMP%\test_carlo0913.ps1 (St. Carlo from its ODF: "1 tree(s)
+  read in 81 ms", 13 rows). The Bedos ODF rar is no quick test: libarchive chews 3 min on its PPMd ODF before the
+  unarr fallback ("read with unarr from now on") - test_neighbour0944.ps1 needs -Seconds 420 at least.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
