@@ -96,7 +96,7 @@ step. Every load box offers these choices; the choice travels with the organ.
 
 The program at work on the Stralsund organ, with sound - the organ loaded, a missing sample folder found with one click, MIDI learn, stops drawn and played, the voicing row with the per-pipe sliders, arrange mode by a two-second press, a stop folder enriched by dragging, a transmission dragged into the pedal (right mouse button or Shift) and transposed, couplers, a combination, the swell shutters, the tremulant, the crescendo, temperaments, the Stop List. Every frame and every note come from the program itself ([full size on the website](https://zurek-jiri.github.io/LibreOrgan/)):
 
-https://github.com/user-attachments/assets/89c3ddb2-6882-4348-a5fa-84747c2d26df
+**[▶ Watch the instruction video (10 minutes, full size, with sound)](https://zurek-jiri.github.io/LibreOrgan/assets/libreorgan.mp4)**
 
 ## Links
 
