@@ -2923,6 +2923,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `defaultSharedTypeName()` (MainComponent.h: CoreAudio / ALSA / Windows Audio) now. The two "none"-state fallbacks
   (5027/5094, `type.isNotEmpty() ? type : "Windows Audio"` for an empty device name) are left: the name is empty =
   none, the type is never used. RULE: never write "Windows Audio" as a default type - `defaultSharedTypeName()`.
+  0.9.47 (3 Nov 2026, the user: "při aggregated wasapi se na set these channels for all divisions čeká extrémně
+  dlouho, uživatel neví, co se děje. Musí tam být dialog ... tak jako existuje tento dialog při set for all u audio
+  device"): `applyPerspectiveChannelsEverywhere` ran `applyAggregateSelection` (the aggregate reopened for its new
+  endpoints, ~1 s each) for every division inline on the message thread. Now, when any target route's device is an
+  `AggregatedWASAPIAudioDevice` (dynamic_cast; a stub class on other platforms), the divisions go through the
+  device-apply queue: `applyAllChannelsMode` + `applyAllChannelsSource/Perspective/Done/Refused` (MainComponent.h),
+  `openApplyAllWindow(title)` (the former inline window block of applyAudioSetupEverywhere, shared), the queue
+  stepped by the main timer (`applyAllRunning` -> continueApplyAll every 4 ticks) with the label "Setting the output
+  channels 17+18 for I. / Front (n of m) - the device opens anew", per division `applyChannelsToDivision` (the old
+  loop body: the 0.9.9 refusal + the mask + applyAggregateSelection), at the end `finishChannelsEverywhere` (the
+  old log line, the refusal notice, saveSettings). Without an aggregate the inline path stays. The AudioTabPanel's
+  refresh does not untick "Set these channels for all" while `applyAllChannelsMode` (the divisions agree only at
+  the end). Verified: Rural with ORGAN_TEST_CLICK "zzz x7|Settings|Set these channels for all divisions (this
+  perspective)" (the header button is "Settings", the Divisions dialog opens on the default tab): "set for 2
+  division(s) one at a time (an aggregated device among them)" then the old final line - the user's default routes
+  here ARE aggregated. #184 (Caen on the Mac, 1400 voices): 30.5 us per voice and block (kernel 22 630 ns + unpacking
+  7 367) - Caen loaded packed at 32 kHz on an SSE2 Core 2 Duo; TestingOrgan (48 kHz, not packed) gives 4140 there:
+  the load options, not a regression (an unpacked 16-bit Caen would not fit the 8 GB). #185 = the #181 spread.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

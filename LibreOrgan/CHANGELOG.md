@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.47] - 2026-11-03
+
+### Changed
+- "Set these channels for all divisions" (the audio tab) with an aggregated
+  device shows the same progress window as the device's "set for all": the
+  divisions are set one at a time and the window names the one being set - an
+  aggregated device opens anew for its new endpoints, up to a second per
+  division, and nothing said so before.
+
 ## [0.9.46] - 2026-11-03
 
 ### Fixed

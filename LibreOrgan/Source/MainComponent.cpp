@@ -6143,39 +6143,78 @@ void MainComponent::applyPerspectiveChannelsEverywhere(int sourceManual, const j
     const auto sourceKey = perspectiveRouteKey(sourceManual, perspective);
     const std::vector<int> channels = isDefault ? manualConfigs[(size_t)sourceManual].outputChannels
         : manualConfigs[(size_t)sourceManual].perspectiveAudio[sourceKey].outputChannels;
-    juce::StringArray list;
-    for (const auto c : channels) list.add(juce::String(c + 1));
-    juce::StringArray done, refused;
-    static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    std::vector<int> targets;
+    bool anyAggregate = false;
     for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
     {
         if (manual == sourceManual) continue;
         bool has = false;
         for (const auto& p : engine.getPerspectivesForManual(manual)) if (p.equalsIgnoreCase(perspective)) has = true;
         if (!has) continue;
-        // 0.9.9 (the user): a division whose open device has no such channels (17+18 for a two-channel
-        // card) KEEPS its channels - never the first pair instead - and the Messages say so. A device
-        // not open now takes the channels as stored (0.8.250: judged when it opens).
-        juce::AudioIODevice* device = nullptr;
-        if (auto* manager = managerForRoute(manual, perspective)) device = manager->getCurrentAudioDevice();
-        if (device != nullptr)
-        {
-            const int count = device->getOutputChannelNames().size();
-            bool beyond = false;
-            for (const auto c : channels) if (c >= count) beyond = true;
-            if (beyond)
-            {
-                refused.add(names[juce::jlimit(0, 7, manual)] + " (" + device->getName() + ": " + juce::String(count) + " channel" + (count == 1 ? "" : "s") + ")");
-                continue;
-            }
-        }
-        const auto key = perspectiveRouteKey(manual, perspective);
-        auto& target = isDefault ? manualConfigs[(size_t)manual].outputChannels : manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
-        target = channels;
-        engine.setPerspectiveOutputChannels(manual, perspective, channels);
-        if (device != nullptr) applyAggregateSelection(manual, perspective, device);
-        done.add("division " + juce::String(manual));
+        targets.push_back(manual);
+        if (auto* manager = managerForRoute(manual, perspective))
+            if (dynamic_cast<AggregatedWASAPIAudioDevice*>(manager->getCurrentAudioDevice()) != nullptr) anyAggregate = true;
     }
+    // 0.9.47 (the user: "při aggregated wasapi se na set these channels for all divisions čeká extrémně dlouho,
+    // uživatel neví, co se děje"): an aggregated device is opened anew for its new endpoints, up to a second per
+    // route - those go one at a time from the GUI timer behind the progress window of the device's "set for all"
+    // (continueApplyAll), which names the division being set. Other devices change their mask at once, as before.
+    if (anyAggregate && !applyAllRunning && !targets.empty())
+    {
+        applyAllChannelsMode = true;
+        applyAllChannelsSource = sourceManual;
+        applyAllChannelsPerspective = perspective;
+        applyAllChannels = channels;
+        applyAllChannelsDone.clear();
+        applyAllChannelsRefused.clear();
+        applyAllQueue.clear();
+        for (const int manual : targets) applyAllQueue.push_back({ manual, perspective });
+        applyAllTotal = (int)applyAllQueue.size();
+        applyAllTickDivider = 0;
+        applyAllRunning = true;
+        CrashHandler::note("Output channels of manual " + juce::String(sourceManual) + " perspective " + perspective + ": set for "
+            + juce::String(applyAllTotal) + " division(s) one at a time (an aggregated device among them)");
+        openApplyAllWindow("Set these channels for all divisions");
+        return;
+    }
+    juce::StringArray done, refused;
+    for (const int manual : targets) applyChannelsToDivision(manual, perspective, channels, done, refused);
+    finishChannelsEverywhere(sourceManual, perspective, channels, done, refused);
+}
+
+bool MainComponent::applyChannelsToDivision(int manual, const juce::String& perspective, const std::vector<int>& channels, juce::StringArray& done, juce::StringArray& refused)
+{
+    static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    const bool isDefault = perspective.equalsIgnoreCase("default");
+    // 0.9.9 (the user): a division whose open device has no such channels (17+18 for a two-channel
+    // card) KEEPS its channels - never the first pair instead - and the Messages say so. A device
+    // not open now takes the channels as stored (0.8.250: judged when it opens).
+    juce::AudioIODevice* device = nullptr;
+    if (auto* manager = managerForRoute(manual, perspective)) device = manager->getCurrentAudioDevice();
+    if (device != nullptr)
+    {
+        const int count = device->getOutputChannelNames().size();
+        bool beyond = false;
+        for (const auto c : channels) if (c >= count) beyond = true;
+        if (beyond)
+        {
+            refused.add(names[juce::jlimit(0, 7, manual)] + " (" + device->getName() + ": " + juce::String(count) + " channel" + (count == 1 ? "" : "s") + ")");
+            return false;
+        }
+    }
+    const auto key = perspectiveRouteKey(manual, perspective);
+    auto& target = isDefault ? manualConfigs[(size_t)manual].outputChannels : manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
+    target = channels;
+    engine.setPerspectiveOutputChannels(manual, perspective, channels);
+    if (device != nullptr) applyAggregateSelection(manual, perspective, device);
+    done.add("division " + juce::String(manual));
+    return true;
+}
+
+void MainComponent::finishChannelsEverywhere(int sourceManual, const juce::String& perspective, const std::vector<int>& channels, const juce::StringArray& done, const juce::StringArray& refused)
+{
+    juce::StringArray list;
+    for (const auto c : channels) list.add(juce::String(c + 1));
     CrashHandler::note("Output channels " + list.joinIntoString("+") + " of manual " + juce::String(sourceManual) + " perspective " + perspective
         + " set for the same perspective of " + (done.isEmpty() ? juce::String("no other division") : done.joinIntoString(", "))
         + (refused.isEmpty() ? juce::String() : " - NOT for " + refused.joinIntoString(", ") + ": the device has no such channels, their channels stay"));
@@ -6263,6 +6302,11 @@ void MainComponent::applyAudioSetupEverywhere(int sourceManual, const juce::Stri
     // Opening a device (especially Aggregated WASAPI) takes up to a second per
     // route. The routes are processed one at a time from the GUI timer behind a
     // modal progress dialog that gets a chance to repaint between steps.
+    openApplyAllWindow(applyAllAuxScope ? "Set for all auxiliary routes" : "Set for all perspectives and divisions");
+}
+
+void MainComponent::openApplyAllWindow(const juce::String& title)
+{
     auto* content = new juce::Component();
     auto* label = new juce::Label();
     label->setJustificationType(juce::Justification::centred);
@@ -6272,7 +6316,7 @@ void MainComponent::applyAudioSetupEverywhere(int sourceManual, const juce::Stri
     content->addAndMakeVisible(label);
     content->setSize(640, 90);
     juce::DialogWindow::LaunchOptions options;
-    options.dialogTitle = applyAllAuxScope ? "Set for all auxiliary routes" : "Set for all perspectives and divisions";
+    options.dialogTitle = title;
     options.dialogBackgroundColour = juce::Colours::darkgrey;
     options.content.setOwned(new ScrollableContent(content));
     options.componentToCentreAround = this;
@@ -6286,6 +6330,35 @@ void MainComponent::applyAudioSetupEverywhere(int sourceManual, const juce::Stri
 void MainComponent::continueApplyAll()
 {
     static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    if (applyAllChannelsMode)
+    {
+        // 0.9.47: the output channels of one route copied to the same perspective of the other divisions, one
+        // division per call (an aggregated device opens anew for them); the window names each.
+        if (!applyAllQueue.empty())
+        {
+            const auto step = applyAllQueue.front();
+            const int done = applyAllTotal - (int)applyAllQueue.size();
+            juce::StringArray list;
+            for (const auto c : applyAllChannels) list.add(juce::String(c + 1));
+            if (applyAllLabel != nullptr)
+            {
+                applyAllLabel->setText("Setting the output channels " + list.joinIntoString("+") + "\nfor " + names[juce::jlimit(0, SamplerEngine::maxManuals - 1, step.manual)]
+                    + " / " + step.perspective + "   (" + juce::String(done + 1) + " of " + juce::String(applyAllTotal) + ") - the device opens anew", juce::dontSendNotification);
+                if (applyAllWindow != nullptr)
+                    if (auto* peer = applyAllWindow->getPeer()) peer->performAnyPendingRepaintsNow();
+            }
+            applyAllQueue.erase(applyAllQueue.begin());
+            applyChannelsToDivision(step.manual, step.perspective, applyAllChannels, applyAllChannelsDone, applyAllChannelsRefused);
+            if (!applyAllQueue.empty()) return;
+        }
+        if (applyAllWindow != nullptr) applyAllWindow->exitModalState(0);   // deletes itself
+        applyAllWindow = nullptr;
+        applyAllLabel = nullptr;
+        applyAllRunning = false;
+        applyAllChannelsMode = false;
+        finishChannelsEverywhere(applyAllChannelsSource, applyAllChannelsPerspective, applyAllChannels, applyAllChannelsDone, applyAllChannelsRefused);
+        return;
+    }
     if (!applyAllQueue.empty())
     {
         const auto step = applyAllQueue.front();
@@ -7524,7 +7597,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     irApplyAll.setToggleState(linked.load(), juce::dontSendNotification);
                     // The channels box the same way (0.9.8): ticked only while the divisions' routes of this perspective agree.
                     const auto lower = perspective.toLowerCase();
-                    if (owner.channelsLinked.count(lower) != 0 && !owner.allDivisionsShareChannels(perspective)) owner.channelsLinked.erase(lower);
+                    if (!owner.applyAllChannelsMode && owner.channelsLinked.count(lower) != 0 && !owner.allDivisionsShareChannels(perspective)) owner.channelsLinked.erase(lower);   // 0.9.47: not while the queue still sets them
                     channelsAll.setToggleState(owner.channelsLinked.count(lower) != 0, juce::dontSendNotification);
                 }
             }

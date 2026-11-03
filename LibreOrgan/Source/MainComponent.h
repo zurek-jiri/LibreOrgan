@@ -819,6 +819,12 @@ private:
     std::vector<int> applyAllChannels;
     int applyAllTotal = 0, applyAllReopenManual = -1, applyAllCheckDivider = 0, applyAllTickDivider = 0;
     bool applyAllRunning = false;
+    // 0.9.47: "Set these channels for all divisions" goes through the same queue and progress window when a
+    // target route plays through an aggregated device (its reopening takes up to a second per route).
+    bool applyAllChannelsMode = false;
+    int applyAllChannelsSource = -1;
+    juce::String applyAllChannelsPerspective;
+    juce::StringArray applyAllChannelsDone, applyAllChannelsRefused;
     juce::Component::SafePointer<juce::DialogWindow> applyAllWindow;
     juce::Component::SafePointer<juce::Label> applyAllLabel;
 
@@ -856,6 +862,9 @@ private:
     // channel separation for every route of its scope (ordinary or auxiliary).
     void applyEffectsToAllPerspectives(int sourceManual, const juce::String& sourcePerspective);
     void applyPerspectiveChannelsEverywhere(int sourceManual, const juce::String& perspective);   // 0.8.228
+    bool applyChannelsToDivision(int manual, const juce::String& perspective, const std::vector<int>& channels, juce::StringArray& done, juce::StringArray& refused);   // 0.9.47: one division of the above
+    void finishChannelsEverywhere(int sourceManual, const juce::String& perspective, const std::vector<int>& channels, const juce::StringArray& done, const juce::StringArray& refused);
+    void openApplyAllWindow(const juce::String& title);   // the progress window of the "set for all" queue (applyAllWindow / applyAllLabel)
     bool allRoutesShareEffects(bool auxiliary);
     // asioDeviceName: for ASIO, the driver to join (empty = the first open ASIO
     // host, or the default ASIO device when none is open yet).
