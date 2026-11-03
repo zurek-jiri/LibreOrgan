@@ -2916,6 +2916,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `job->automaticNameOfFolder` (const). Verified with %TEMP%\test_carlo0913.ps1 (St. Carlo from its ODF: "1 tree(s)
   read in 81 ms", 13 rows). The Bedos ODF rar is no quick test: libarchive chews 3 min on its PPMd ODF before the
   unarr fallback ("read with unarr from now on") - test_neighbour0944.ps1 needs -Seconds 420 at least.
+  0.9.46 (3 Nov 2026, the user's Mac: "po global reset s unload everything ... hledá default audio device a nenajde
+  ji, vyhodí msgbox device not available!!!! Device je stále tam"): `resetAudioOutputsToDefault` attached every
+  division with the LITERAL type "Windows Audio" (the #182 log: "Audio device missing: Windows Audio "default";
+  waiting up to 6 s" on the Mac, then the box); so did `requestedAsioStateForRoute` (two places). All three take
+  `defaultSharedTypeName()` (MainComponent.h: CoreAudio / ALSA / Windows Audio) now. The two "none"-state fallbacks
+  (5027/5094, `type.isNotEmpty() ? type : "Windows Audio"` for an empty device name) are left: the name is empty =
+  none, the type is never used. RULE: never write "Windows Audio" as a default type - `defaultSharedTypeName()`.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

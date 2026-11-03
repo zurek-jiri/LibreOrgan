@@ -3956,7 +3956,7 @@ std::unique_ptr<juce::XmlElement> MainComponent::requestedAsioStateForRoute(int 
     const bool isAuxiliary = perspective.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName());
     auto* divisionHost = manualAsioHost[(size_t)manual];
     bool requestsAsio = !isAuxiliary && stateXml.isEmpty() && divisionHost != nullptr;
-    juce::String typeName = divisionHost != nullptr ? divisionHost->getCurrentAudioDeviceType() : juce::String("Windows Audio");
+    juce::String typeName = divisionHost != nullptr ? divisionHost->getCurrentAudioDeviceType() : defaultSharedTypeName();   // 0.9.46: the platform's type, not "Windows Audio" on a Mac
     std::unique_ptr<juce::XmlElement> xml = juce::parseXML(stateXml);
     if (xml != nullptr)
     {
@@ -3966,10 +3966,10 @@ std::unique_ptr<juce::XmlElement> MainComponent::requestedAsioStateForRoute(int 
     }
     else if (!isAuxiliary && divisionHost == nullptr)
     {
-        // No saved device and no division host: the system's default Windows
-        // Audio output, shared (the same stream as every other such route).
+        // No saved device and no division host: the system's default output of the
+        // platform's own type, shared (the same stream as every other such route).
         requestsAsio = true;
-        typeName = "Windows Audio";
+        typeName = defaultSharedTypeName();
     }
     if (requestsAsio && driverName.isEmpty() && divisionHost != nullptr && divisionHost->getCurrentAudioDevice() != nullptr
         && divisionHost->getCurrentAudioDeviceType().equalsIgnoreCase(typeName))
@@ -26687,7 +26687,10 @@ void MainComponent::resetAudioOutputsToDefault()
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         manualConfigs[(size_t)manual].audioDeviceStateXml.clear();
-        attachDivisionRoute(manual, manual <= manualCount ? "Windows Audio" : "none", {}, nullptr);
+        // 0.9.46 (the user's Mac: "po global reset ... hledá default audio device a nenajde ji ... Device je stále
+        // tam"): the type was the literal "Windows Audio" - on macOS/Linux no such type exists, the route waited
+        // 6 s for a device that cannot come and the "not available" box followed. The platform's own type now.
+        attachDivisionRoute(manual, manual <= manualCount ? defaultSharedTypeName() : juce::String("none"), {}, nullptr);
     }
 
     keyboardsWindowAudioTab = "default";

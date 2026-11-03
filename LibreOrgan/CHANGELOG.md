@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.46] - 2026-11-03
+
+### Fixed
+- macOS and Linux: Global Reset put every division on the device type "Windows
+  Audio", which does not exist there - the program waited for a device that
+  could not come and showed "Audio devices not available" although the sound
+  card was there all along. The reset uses the platform's own type (CoreAudio,
+  ALSA) now, as a fresh start does.
+
 ## [0.9.45] - 2026-11-03
 
 ### Fixed
