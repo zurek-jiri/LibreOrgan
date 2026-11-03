@@ -27,6 +27,8 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM ▲[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
+| [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
+| [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
 | [Brescia, St. Carlo, Antegnati](brescia-st-carlo-antegnati-organ/README.md) | 2 | 12 | 1.3 GB | Pedale, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20brescia-st-carlo-antegnati-organ&organ=brescia-st-carlo-antegnati-organ&name=brescia-st-carlo-antegnati-organ) |
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ&name=altenbruch-klapmeyer-organ) |
 | [Adlington Hall (Smith)](adlington-hall-smith/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-smith&organ=adlington-hall-smith&name=adlington-hall-smith) |
@@ -42,4 +44,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Ashton, Albion Church, Lewis](ashton-albion-church-lewis-organ/README.md) | 5 | 47 | 9.4 GB | Diffuse, Direct, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20ashton-albion-church-lewis-organ&organ=ashton-albion-church-lewis-organ&name=ashton-albion-church-lewis-organ) |
 | [Billerbeck Dom, Fleiter](billerbeck-dom-fleiter-organ/README.md) | 6 | 84 | 15 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20billerbeck-dom-fleiter-organ&organ=billerbeck-dom-fleiter-organ&name=billerbeck-dom-fleiter-organ) |
 
-16 configuration(s).
+18 configuration(s).
