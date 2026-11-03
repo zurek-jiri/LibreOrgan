@@ -1,28 +1,28 @@
-# Cen, St. Etienne, Cavaillé-Coll
+# Caen, St. Etienne, Cavaillé-Coll
 
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Cen, St. Etienne, Cavaillé-Coll, as recorded by Sonus Paradisi in 2 perspectives, Rear and Front, each on its own audio route: 4 divisions and 55 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Caen, St. Etienne, Cavaillé-Coll, as recorded by Sonus Paradisi in 2 perspectives, Rear and Front, each on its own audio route: 4 divisions and 55 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Caen, St. Etienne, Cavaille-Coll.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/cen-st-etienne-cavaill-coll/Caen,%20St.%20Etienne,%20Cavaille-Coll.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Caen, St. Etienne, Cavaille-Coll.portable.json` there yourself.
+**Download:** [Caen, St. Etienne, Cavaille-Coll.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/caen-st-etienne-cavaill-coll/Caen,%20St.%20Etienne,%20Cavaille-Coll.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Caen, St. Etienne, Cavaille-Coll.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
 
 ## The configuration
 
-- **Organ:** Cen, St. Etienne, Cavaillé-Coll.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne.html](https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne.html); the folders `001318`, `001319`, `001320`, `001691`, `001692`, `001693`, `001694` and `001695` (as they come, or in their RAR archives); perspectives Rear and Front. LibreOrgan Sampler 0.9.33 or later.
+- **Organ:** Caen, St. Etienne, Cavaillé-Coll.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne.html](https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne.html); the folders `001318`, `001319`, `001320`, `001691`, `001692`, `001693`, `001694` and `001695` (as they come, or in their RAR archives); perspectives Rear and Front. LibreOrgan Sampler 0.9.48 or later.
 - **Expects:** library root of any name, holding the trees `001318/pipe/go`, `001318/pipe/rec`, `001319/pipe/go`, `001320/pipe/ped`, `001320/pipe/pos`, `001320/pipe/rec`, `001691/pipe/rec`, `001692/pipe/go`, `001692/pipe/ped`, `001693/pipe/ped`, `001693/pipe/pos`, `001693/pipe/rec`, `001694/pipe/rec`, `001695/pipe/go`, `001695/pipe/ped` and `001695/pipe/rec`.
 - **Audio layout:** every division has the routes rear and front; auxiliary (unused).
 - **RAM:**
-  - **5.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
-  - **56 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.33.
-- **Author:** Jiri Zurek, 2 November 2026.
+  - **5.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
+  - **57 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.48.
+- **Author:** Jiri Zurek, 3 November 2026.
 
 ## Where to put the file
 
@@ -77,4 +77,4 @@ Put `Caen, St. Etienne, Cavaille-Coll.portable.json` into your LibreOrgans folde
 |  | GO: Clairon 4' |  | Rec: Clairon 4' |
 |  |  |  | Rec: Clarinette 8' |
 
-<!-- published by @zurek-jiri (issue #163, 2026-11-02) -->
+<!-- published by @zurek-jiri (issue #193, 2026-11-03) -->
