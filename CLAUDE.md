@@ -2842,6 +2842,63 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   thread = a third of the polyphony. 0.9.41: `irFullMeasuredPerThread` (ms/s per thread, set when needLight fires,
   reset when summary.routes changes) blocks "Full chosen again" while >= 120 - the log line says "(measured N %
   before)". Also seen: the callback share at 270 voices 14-20 % (0.8.216, Light) vs 53-60 % (Full).
+  0.9.43 (2 Nov 2026 night) THE FLOOD FOUND ON WINDOWS (the user granted `Edit/Write(C:\JUCE9\**)` through
+  /permissions: "proč si neřekneš o přístupová práva k juce mimo repozitář" - C:\JUCE9 is the Projucer build's JUCE,
+  not the CI submodule, so it can carry a TEMPORARY diagnostic; revert it before any deploy): a histogram in
+  `MessageBase::post()` (juce_MessageManager.cpp: CaptureStackBackTrace 14 frames per post, a map per second, the
+  top sites symbolised with SymFromAddr into %TEMP%\post_trace.txt; the FIRST version printed the stack of whichever
+  thread posted first in a new second = a random sample that blamed the TimerThread - never read a single stack as
+  the producer) says: ONE `Voicer::rebuildUI` posts ~34 000 messages - `StopRow::StopRow` built, for EVERY row, two
+  LearnableSliders + three Labels + a ToggleButton PER KEY of the compass (TestingOrgan: 78 rows x ~55 keys = 4240
+  keys = 25 000 components), and every `Label::setText` / `Button::setToggleState` posts a Value change message
+  (the Label listens to its own Value - `dontSendNotification` does not stop it); the grid is rebuilt 3-4 times
+  around "Compiling the Stop List: done" (the loader's resized, a callAsync, the Messages button's resized) =
+  115 000 posts in one second. On the Core 2 Duo each rebuild takes seconds (#180's 2.4 s in rebuildUI) and the
+  queue drains O(n) per pop (removeAndReturn(0) memmove, 4 per run-loop pass on the Mac) = the minute-long freeze
+  and the loader "released 47 s after its finish". The loop existed in 0.8.216 too (the freeze was 8-10 s there);
+  what made 0.8.246-0.8.253 worse was NOT found in the diff (nothing adds a rebuild or posts) - the fix attacks the
+  mechanism: `keyControlsWanted = isExpanded() && !stop->container` gates the per-key loop (every reader of the
+  arrays takes nullptr: OwnedArray::operator[] beyond the size; every expansion/fold goes through relayout =
+  rebuildUI), a rebuild now posts ~5 800 (the 8 hidden `transmissionBoxes` ComboBoxes + shiftBox per row are the
+  rest; left alone). The remaining per-row cost: ~75 posts and ~30 components. RULES: (1) a StopRow is built per
+  rebuild for EVERY grid item - nothing per key may be constructed for a closed voicing; (2) `MainComponent::
+  resized()` rebuilds the WHOLE grid - call it for a layout change only, never as "refresh"; (3) to find who floods
+  the queue, count per CALL SITE per second, never sample one stack. CI 0.9.42 failed on both macOS jobs:
+  `juce::String(" \"") + name + "\""` with `char name[64]` is ambiguous for clang (String + char[64]) - wrap the
+  array in juce::String(name) (MSVC took it). The bisect-0.8.248/0.8.249 artifacts (runs 41515264886 /
+  41515277513) stay for the user; with 0.9.43 out they matter less.
+  0.9.44 (3 Nov 2026, the user: "udělej obě opravy. Hlavně to nesmí načítat dvakrát, po přerušení uživatelem to musí
+  upustit od každého dalšího načítání"): (1) #183 (the Mac: the Caen plusODF rar dropped on a division, the other
+  Caen_Surround_* rars beside it): the 0.8.218 neighbour search DID work but ran AFTER the whole load (runWhenLoaded),
+  so the organ loaded twice (25 MB/s from the rar on that Mac = 20 min each) and the second load started by itself
+  after the user's Cancel of the first ("Loading cancelled by the user before ..." twice in the log) - he reported
+  "only one rar". Now the SearchJob of resolveAndApplyPortableConfiguration (the 0.9.33 "Searching for the sample
+  folders" thread) does it BEFORE the load: with trees still missing after the lookup (and the Linux mount), the
+  same sieve as offerNeighbourArchives (folders = nearest existing ancestors of the missing trees' absolute paths +
+  the configuration's folder; `like` = the chosen archives in them; `archivesNamedLike` with the file name + the
+  publication organ as words), the candidates indexed on a worker std::thread with the window's status, an archive
+  holds a tree when `entriesOf(startsWith <path below the archive's folder>/)` for the absolute tree, else
+  `<rootName>/<relative>` or `<relative>`; the taken ones `SampleFiles::addChosenArchives` on the thread,
+  `setLookupMemo(true)` (the memo answered "not there"), `findAll(missing)` again; after the thread, on the message
+  thread, `registerArchive` each (Locations.txt) + queueNotice InfoIcon "Archives beside the organ" (= Messages) with
+  "archive:  trees" lines; log "Missing folders: N tree(s) before the load; archives beside the organ with a shared
+  name: ..." and "... K archive(s) beside the organ hold them and are read with it: ...". The post-load
+  `runWhenLoaded(offerNeighbourArchives(false))` is GONE - nothing loads by itself after a load (the notice's menu item
+  1001 = the explicit request stays). RULE: no automatic load may follow a load; a Cancel ends everything. (2) The
+  `addFolder` walk-up (both places) is bounded: juce::File::getParentDirectory() of a drive root returns the root
+  itself (X:\ of a drive that is not here looped for ever). (3) #182 (Mac crash at Global Reset, "Unhandled exception"
+  in ~AudioDeviceSelectorComponent): `resetAudioOutputsToDefault` did `asioHosts.clear()` (the CoreAudio/ASIO shared
+  hosts, AudioDeviceManagers) BEFORE `attachDivisionRoute` replaced `audioSettings` / `extraAudioSettings[i]` built on
+  those hosts (5299/5333) - the old selector's destructor called removeChangeListener on a deleted manager. Now the
+  selectors are reset before the hosts close. Tests: %TEMP%\test_neighbour0944b.ps1 (fixture %TEMP%\nb0944: the
+  Rural json with every F:\Suchy_rejstrik\Kobrle replaced by X:\nowhere\KobrleX and rootName KobrleX, beside it
+  Rural_Organ_samples.rar = KobrleX/Samply/TA+CO stored; Locations.txt stripped of Suchy_rejstrik: "3 of 3 tree(s)
+  found", one load, 11 rows), test_reset0934.ps1 -Clicks "GLOBAL RESET|Unload everything: all stops and sample folders
+  too - a clean, empty instrument (the pattern lists only when ticked below)|Reset" (the toggle's text changed in
+  0.9.35 - the old script's click missed and reset nothing). A real set on this box cannot test the neighbour path:
+  every package is installed on D:\Hauptwerk and the lookup finds it there first (test_neighbour0944.ps1 with the
+  Bedos ODF rar showed "12 of 12 found ... taken over by D:\..."). #181 (4140 / 3990 / 3458 / 4140 on the Mac, no
+  freeze): single callbacks at 100-121 % of the period break a level - the OS on two cores, not the engine.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -175,7 +175,8 @@ Configuration*, choose all of them at once (Ctrl or Shift in the file dialog):
 the program reads what they hold, offers the Hauptwerk organ definition (or a
 configuration) found inside and loads the whole organ from the archives. The
 archives are remembered. A set sold as several separate archives can be loaded
-from one of them: the others with a name like it are read too.
+from one of them: the others with a name like it are read too, before the organ
+loads, and the Messages name them.
 
 ### A configuration published on GitHub
 

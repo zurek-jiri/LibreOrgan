@@ -179,7 +179,8 @@ static const char* const kManualText_part0 =
     "the program reads what they hold, offers the Hauptwerk organ definition (or a\n"
     "configuration) found inside and loads the whole organ from the archives. The\n"
     "archives are remembered. A set sold as several separate archives can be loaded\n"
-    "from one of them: the others with a name like it are read too.\n"
+    "from one of them: the others with a name like it are read too, before the organ\n"
+    "loads, and the Messages name them.\n"
     "\n"
     "### A configuration published on GitHub\n"
     "\n"
@@ -201,9 +202,9 @@ static const char* const kManualText_part0 =
     "hold (Hauptwerk knows no perspectives and no relative volumes, only absolute\n"
     "pipe levels and \"stop-ranks\") - and the rest - the pipes, their pitch, footage\n"
     "and tuning - comes from the folders themselves. The result is an\n"
-    "LibreOrgan Sampler configuration in your LibreOrgans folder, which you shape and\n"
     ;
 static const char* const kManualText_part1 =
+    "LibreOrgan Sampler configuration in your LibreOrgans folder, which you shape and\n"
     "save like any other. Encrypted sets (`.hbw`) cannot be read. The rules:\n"
     "[Hauptwerk import rules](#104-hauptwerk-import-rules).\n"
     "\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "sound sliders with the polyphony display, and the workspace - one column per\n"
     "division with its header and its stop grid. A button *Messages: N new* appears in\n"
     "the top bar when the program has something to say ([Messages](#91-messages)).\n"
-    "\n"
     ;
 static const char* const kManualText_part2 =
+    "\n"
     "## 2.1 Top bar buttons\n"
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "\n"
     "A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).\n"
     "\n"
-    "### Stop volume\n"
     ;
 static const char* const kManualText_part3 =
+    "### Stop volume\n"
     "\n"
     "-24 to +12 dB, the level of the whole stop.\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "\n"
     "## 4.5 Apply and reload\n"
     "\n"
-    "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     ;
 static const char* const kManualText_part4 =
+    "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
     "their samples and copies; only new folders are read, only missing copies\n"
     "built; folders left out of the table are freed. Moving rows between\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "  does not need a small buffer.\n"
     "- **The auxiliary route** halves the polyphony while it has a device.\n"
     "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
-    "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     ;
 static const char* const kManualText_part5 =
+    "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
     "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
     "  device) share the whole pool of render threads. Every open device has a\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "### Render threads for Aggregated WASAPI\n"
     "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
-    "route is a stream with its own thread, so ten routes render on ten threads\n"
     ;
 static const char* const kManualText_part6 =
+    "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
     "routes lanes.\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
-    "\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
     "The chiff of a gently struck key is blunted by this much high-frequency loss\n"
     "at velocity 1 (default 9 dB), less for firmer strokes.\n"
     "\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
-    "### Window size\n"
     ;
 static const char* const kManualText_part8 =
+    "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
     "\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
-    "last self-test, `system.txt` with the computer and every audio route - no\n"
     ;
 static const char* const kManualText_part9 =
+    "last self-test, `system.txt` with the computer and every audio route - no\n"
     "samples, no voicing) and screenshots of every open window, then opens the\n"
     "GitHub form in your browser with its fields filled in and the folder beside\n"
     "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
-    "portable save are the process (Windows: the larger of working set and\n"
     ;
 static const char* const kManualText_part10 =
+    "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
     "## 10.7 RAM: the storage options measured\n"

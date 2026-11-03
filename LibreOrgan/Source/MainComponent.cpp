@@ -14237,12 +14237,96 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
                 }
             }
 #endif
+            // 0.9.44 (#183, the user: "nesmí načítat dvakrát"): the archives beside the organ with a name like it
+            // are looked at HERE, before the load, for the trees still missing - 0.8.218 did it after the whole load
+            // (runWhenLoaded) and loaded the organ a second time (two 20-minute loads on the Mac, the second one a
+            // fright after a Cancel). The same sieve as offerNeighbourArchives: the folders above the missing trees
+            // and the configuration's, the chosen archives in them give the name, only the few like it are indexed.
+            if (!missing.empty())
+            {
+                const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+                std::vector<juce::File> folders;
+                auto addFolder = [&folders](juce::File folder)
+                {
+                    for (int up = 0; up < 64 && folder != juce::File() && !folder.isDirectory(); ++up)
+                    {
+                        const auto parent = folder.getParentDirectory();   // a root is its own parent: a drive that is not here would loop for ever
+                        if (parent == folder) { folder = juce::File(); break; }
+                        folder = parent;
+                    }
+                    if (folder.isDirectory() && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
+                };
+                for (size_t index : missing)
+                    if (trees[index].absolute.isNotEmpty()) addFolder(juce::File(trees[index].absolute).getParentDirectory());
+                addFolder(file.getParentDirectory());
+                const auto allChosen = SampleFiles::chosenArchives();
+                std::vector<juce::File> like;
+                for (const auto& archive : allChosen)
+                    if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) like.push_back(archive);
+                const auto organ = configuration.getProperty("publication", juce::var()).getProperty("organ", "").toString();
+                const auto candidates = MainComponent::archivesNamedLike(folders, like, file.getFileNameWithoutExtension() + " " + organ, allChosen);
+                juce::StringArray candidateNames;
+                for (const auto& c : candidates) candidateNames.add(c.getFileName());
+                CrashHandler::note("Missing folders: " + juce::String((int)missing.size()) + " tree(s) before the load; archives beside the organ with a shared name: "
+                    + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", ")));
+                if (!candidates.empty())
+                {
+                    std::atomic<bool> done{ false };
+                    std::thread worker([&candidates, &done] { SampleFiles::indexArchives(candidates); done.store(true); });
+                    while (!done.load())
+                    {
+                        const auto progress = SampleFiles::indexingProgress();
+                        show("Reading the archives beside the organ ...", progress.length() > 36 ? progress.substring(0, 33) + "..." : progress);
+                        juce::Thread::sleep(200);
+                    }
+                    worker.join();
+                    // Which of them hold a missing tree: the tree's path inside the archive is its place below the
+                    // archive's folder (an absolute tree), else the library root's name + the relative path.
+                    for (const auto& archive : candidates)
+                    {
+                        const auto folder = archive.getParentDirectory();
+                        juce::StringArray tails;
+                        for (size_t index : missing)
+                        {
+                            const auto& tree = trees[index];
+                            juce::StringArray inside;
+                            if (tree.absolute.isNotEmpty() && juce::File(tree.absolute).isAChildOf(folder))
+                                inside.add(juce::File(tree.absolute).getRelativePathFrom(folder).replaceCharacter('\\', '/'));
+                            if (tree.relative.isNotEmpty())
+                            {
+                                if (rootName.isNotEmpty()) inside.add(rootName + "/" + slashes(tree.relative));
+                                inside.add(slashes(tree.relative));
+                            }
+                            bool held = false;
+                            for (const auto& rel : inside)
+                            {
+                                if (rel.isEmpty() || rel.startsWith("..")) continue;
+                                if (!SampleFiles::entriesOf(archive, [rel](const juce::String& path) { return path.startsWithIgnoreCase(rel + "/"); }).empty()) { held = true; break; }
+                            }
+                            if (held) tails.addIfNotAlreadyThere(tree.relative.isNotEmpty() ? slashes(tree.relative) : juce::File(tree.absolute).getFileName());   // one tree may be listed per division
+                        }
+                        if (tails.isEmpty()) continue;
+                        takenArchives.push_back(archive);
+                        takenText += "\n" + archive.getFileName() + ":  " + tails.joinIntoString(", ");
+                    }
+                    if (!takenArchives.empty())
+                    {
+                        SampleFiles::addChosenArchives(takenArchives);   // they serve the paths from now on (registered on the message thread after this)
+                        setLookupMemo(true);   // the folders before were answered "not there"
+                        missing = findAll(missing);
+                    }
+                    CrashHandler::note("Missing folders: " + juce::String((int)takenArchives.size()) + " archive(s) beside the organ hold them and are read with it"
+                        + (takenArchives.empty() ? juce::String() : ":" + takenText.replaceCharacters("\n", " ")));
+                }
+            }
             CrashHandler::note("Searching for the sample folders: " + juce::String((int)(trees.size() - missing.size())) + " of " + juce::String((int)trees.size())
                 + " tree(s) found in " + juce::String((juce::Time::getMillisecondCounterHiRes() - startMs) / 1000.0, 1) + " s" + mountedText);
             show("Searching for the sample folders: done", "Loading the organ ...");
         }
         juce::var configuration;
         juce::File file, root;
+        std::vector<juce::File> takenArchives;   // 0.9.44: the archives beside the organ taken for its missing trees
+        juce::String takenText;
     };
     auto job = std::make_shared<SearchJob>(configuration, configurationFile, selectedLibraryRoot, this);
     job->launchThread();   // the window shows now; the load box is gone already
@@ -14254,6 +14338,14 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
         juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; });   // cleared after this call returns, never while it runs
         if (safeThis == nullptr) return;
         safeThis->searchingSampleFolders = false;
+        // 0.9.44: the archives the search took for the missing trees are remembered (Locations.txt) and named
+        // exactly, archive by archive, in the Messages - the organ then loads ONCE, with them.
+        if (!job->takenArchives.empty())
+        {
+            for (const auto& archive : job->takenArchives) safeThis->registerArchive(archive);
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Archives beside the organ",
+                "Sample folders of this organ that were not on this computer were found in archives beside it, which were read with it:\n" + job->takenText);
+        }
         safeThis->resolveAndApplyPortableConfigurationNow(configuration, configurationFile, selectedLibraryRoot);
         setLookupMemo(false);   // a later lookup (a relocation, the notices) sees the disk as it is then
         if (afterwards) afterwards();
@@ -14310,12 +14402,10 @@ void MainComponent::resolveAndApplyPortableConfigurationNow(juce::var configurat
         CrashHandler::note("Load Configuration: " + juce::String(missing.size()) + " sample folder tree(s) not on this computer, loaded without them: "
             + missing.joinIntoString(" | ") + (rootName.isNotEmpty() ? "  (library root \"" + rootName + "\")" : juce::String()));
     applyPortableConfiguration(configuration, configurationFile, selectedLibraryRoot);
-    // 0.8.218: once the organ is up, the archives beside it with a name like it are offered for the missing trees.
-    if (!missing.isEmpty())
-    {
-        juce::Component::SafePointer<MainComponent> safeThis(this);
-        runWhenLoaded([safeThis] { if (safeThis != nullptr) safeThis->offerNeighbourArchives(false); });
-    }
+    // 0.8.218 looked at the archives beside the organ HERE, after the whole load, and loaded the organ again with
+    // them (two loads; a second load starting by itself after the user's Cancel). Since 0.9.44 the search phase
+    // above takes them BEFORE the load; what is still missing stays missing until the user asks (the notice's
+    // menu item "Look for the missing folders in the archives beside this organ..."). No load starts on its own.
 }
 
 void MainComponent::freezeGrid()
@@ -16756,7 +16846,12 @@ void MainComponent::offerNeighbourArchives(bool explicitRequest)
     std::vector<juce::File> folders;
     auto addFolder = [&folders](juce::File folder)
     {
-        while (folder != juce::File() && !folder.isDirectory()) folder = folder.getParentDirectory();
+        for (int up = 0; up < 64 && folder != juce::File() && !folder.isDirectory(); ++up)
+        {
+            const auto parent = folder.getParentDirectory();   // 0.9.44: a root is its own parent - a drive that is not here looped for ever
+            if (parent == folder) { folder = juce::File(); break; }
+            folder = parent;
+        }
         if (folder.isDirectory() && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
     };
     for (int index : missingIndex) addFolder(juce::File(sampleTrees[(size_t)index]).getParentDirectory());
@@ -26565,6 +26660,11 @@ void MainComponent::resetAudioOutputsToDefault()
         asioPanelWatch.manager = nullptr;
     }
     pendingWindowsAudioResume.clear();
+    // 0.9.44 (#182, a crash at the Mac's Global Reset): a division's selector built on a shared host
+    // (manualAsioHost: the CoreAudio / ASIO host) unregisters from that host's AudioDeviceManager in its
+    // destructor - it must go BEFORE the hosts are deleted; attachDivisionRoute below builds every selector anew.
+    audioSettings.reset();
+    for (auto& selector : extraAudioSettings) selector.reset();
     for (auto& host : asioHosts) host->closeAudioDevice();
     asioHosts.clear();
 

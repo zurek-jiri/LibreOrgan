@@ -12,6 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.44] - 2026-11-03
+
+### Fixed
+- The archives beside an organ that hold its missing sample folders (a set sold
+  as several separate archives, the one dropped or chosen holding the
+  definition) are now found and read BEFORE the organ loads, in the "Searching
+  for the sample folders" phase: the organ loads once, with all of them, and the
+  Messages name every archive taken and the folders found in it. Up to 0.9.43
+  the search ran after the whole load and loaded the organ a second time - on a
+  slow computer two long loads, and the second one started by itself after the
+  user had cancelled the first (#183). Nothing loads by itself after a Cancel
+  any more; the missing folders stay missing until asked for (the notice's menu
+  item "Look for the missing folders in the archives beside this organ...").
+- Global Reset crashed on macOS (#182): the audio reset closed and deleted the
+  shared audio hosts before the divisions' device selectors built on them were
+  replaced - a selector's destructor touched a dead device manager. The
+  selectors go first now.
+- A sample folder on a drive that is not there (X:\...) made the search for the
+  archives beside the organ loop for ever (a drive root is its own parent).
+
 ## [0.9.43] - 2026-11-02
 
 ### Fixed
