@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.51] - 2026-11-04
+
+### Fixed
+- A perspective prefix matched the start of a folder name without a separator
+  ("su_" took the "su" of "subbass16"): a prefix written with a separator must
+  stand in the folder name as written; one written without must be followed by
+  a separator - any character that is no letter or digit - or by the name's end.
+
 ## [0.9.50] - 2026-11-04
 
 ### Changed

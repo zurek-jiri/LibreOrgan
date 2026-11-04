@@ -3017,6 +3017,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "subbass 16 [default]" reads "bbass 16 [Dry]" on this machine because Patterns.json holds a learned "Dry;00-dr_;su_"
   line and the prefix match takes "su_" for "su" of "subbass" (a pre-existing matter of the machine's patterns, not of
   this build; told the user, not coded). Issues #175-#185 closed on 4 Nov 2026 (all solved or explained).
+  0.9.51 (4 Nov 2026, the user: "Perspektiva bez oddělení se nesmí brát" + "pokud je prefix zaznamenán s
+  oddělovačem v patternech, musí být nalezen ve foldername včetně onoho oddělovače; bez oddělovače může být
+  oddělovač jakýkoli"): `stripPerspectivePrefix` (SamplerEngine.cpp ~492) compared pattern and name with EVERY
+  separator removed (first commit) - "su_" took the "su" of "subbass16". Now a pattern holding any non-alphanumeric
+  character must stand in the name AS WRITTEN (startsWithIgnoreCase); a pattern of letters/digits only must be
+  followed by a non-alphanumeric character or the end. A pattern line in force applies per folder, no majority
+  (the 0.9.49 majority is the import's LEARNING rule; a Rear of one division must stay) - the user asked why.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

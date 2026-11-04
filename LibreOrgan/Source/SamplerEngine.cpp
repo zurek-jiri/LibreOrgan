@@ -500,14 +500,26 @@ namespace
             const juce::String perspectiveName = alternatives[0];
             for (const auto& pattern : alternatives)
             {
-                const auto comparablePattern = comparableFolderName(pattern);
-                if (comparablePattern.isEmpty() || !comparableFolderName(name).startsWith(comparablePattern)) continue;
-                int significant = 0, consumed = 0;
-                while (consumed < name.length() && significant < comparablePattern.length())
+                // The user's rules (4 Nov 2026): a prefix written WITH a separator ("su_", "02-dirMk2H-")
+                // must stand in the name as written (case aside); one written without ("dir") must be
+                // followed by a separator - any character that is no letter or digit - or by the end
+                // of the name. "su_" never takes the "su" of "subbass16", "Re_" never "Regal 8".
+                const auto trimmedPattern = pattern.trim();
+                if (trimmedPattern.isEmpty()) continue;
+                bool literal = false;
+                for (int i = 0; i < trimmedPattern.length(); ++i)
+                    if (!juce::CharacterFunctions::isLetterOrDigit(trimmedPattern[i])) { literal = true; break; }
+                int consumed = 0;
+                if (literal)
                 {
-                    const auto c = name[consumed];
-                    if (c != '-' && c != '_' && !juce::CharacterFunctions::isWhitespace(c)) ++significant;
-                    ++consumed;
+                    if (!name.startsWithIgnoreCase(trimmedPattern)) continue;
+                    consumed = trimmedPattern.length();
+                }
+                else
+                {
+                    if (!name.startsWithIgnoreCase(trimmedPattern)) continue;
+                    consumed = trimmedPattern.length();
+                    if (consumed < name.length() && juce::CharacterFunctions::isLetterOrDigit(name[consumed])) continue;
                 }
                 while (consumed < name.length()
                     && (name[consumed] == '-' || name[consumed] == '_' || juce::CharacterFunctions::isWhitespace(name[consumed])))
