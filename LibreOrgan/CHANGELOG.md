@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.55] - 2026-11-04
+
+### Changed
+- Random tuning error: the detune the recording already has for a pipe counts
+  first - the drawn value is a ceiling for the pipe's total detune, only the
+  excess is added (nothing with "Equal at 440 Hz" off on a pipe already that far
+  from its rank).
+- Pipe coupling: a pipe starting while its octave (or double octave) of the same
+  rank sounds is pulled towards the pure octave with it, the recorded detune of
+  both counted - so the coupling works with the original tuning too, not only at
+  440 Hz; without such a partner the pipe's random detune shrinks as before.
+
 ## [0.9.54] - 2026-11-04
 
 ### Changed

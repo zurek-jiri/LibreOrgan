@@ -3056,6 +3056,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   6, `nextInt(10) != 0`) glide their random detune over 0.5-2.5 s (cosine) to 0-20 % of it (was 0-33 %, `/ 5.0f`),
   the rest keep it; only with "Allow Pipe Coupling" AND the random tuning allowed (it moves the random detune alone,
   never the 440/temperament cents). Manual 5.x says no figures - unchanged.
+  0.9.55 (4 Nov 2026, the user's Greccio 000349 LR_PRINC: "oktáva D62-D74 většinu času zní rozladěně" with the
+  original tuning, fine at 440): MEASURED (%TEMP%\carlo_pitch.py, smpl = audio f0): D62 -58.6 c, D74 -60.7 c vs the
+  file numbers (a1 ~425 Hz, the pipes scatter -55..-68 c) = the recorded octave is 2.1 c narrow (a 0.7 Hz beat)
+  before any random; the coupling moved the RANDOM detune alone, never the recorded one, and only the pipe that
+  starts while a partner holds. Now (SamplerEngine.cpp, `effectiveRandomCents` in the anonymous namespace before
+  displayFolderName; startRank ~6207): (1) THE RANDOM DETUNE COUNTS THE RECORDED ONE (the user's rule): E = the
+  pipe's deviation from its rank (`rankDeviationCents + mistuneCents` of the sample note; 0 with tuneTo440), the
+  drawn R is a CEILING: |R| <= |E| -> nothing added, else |R| - |E| in E's direction (R's sign when E = 0); the
+  slider-change path (setStopRandomPitchError) uses the same. (2) COUPLING TO A PARTNER: the pipe pipe+-12/+-24 of
+  the SAME RANK already `speaking` is the reference: devA = -rawTuningCents[partnerSample] + tuningCentsFor +
+  effectiveRandom(partner), ownBase = -rawTuningCents[sampleNote] + tuningCentsFor(sampleNote); the pure-octave
+  target random = devA - ownBase, clamped to +-25 c around the own effective random, the pull 80-100 % of the way
+  (`coupledTarget`); no partner -> the 0-20 % shrink of the own random (`couplingShrink`); `couplingRoll` (9 of 10)
+  gates both; `couplingUsed = roll && (couplingSituation || partnerFound)`. Fifths and other stops are NOT partners
+  (a temperament's fifth is its own; the class correction of mode 2 cancels for octaves only) - the shrink rule
+  stays for them. Simultaneous keys: the MIDI commands run in sequence, the first pipe is speaking when the second
+  starts, so the second aligns to the first (the first keeps its detune as the reference). Verified by the
+  self-test only (line-identical); the acoustic effect is the user's to judge.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

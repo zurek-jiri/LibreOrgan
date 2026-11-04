@@ -442,6 +442,22 @@ namespace
         return text.removeCharacters("-_ \t\r\n").toLowerCase();
     }
 
+    // 0.9.55 (the user): the random detune of a pipe counts the detune the recording already has for
+    // it - with "Equal at 440 Hz" off the pipe's deviation from its own rank (plus the mistune correction
+    // that may cancel it), with it on 0 (the per-pipe correction puts the pipe on ET). The drawn random
+    // value is a CEILING for the pipe's total detune: nothing is added while the recorded one reaches it,
+    // else the excess, in the recorded direction (the drawn sign where the recording has none).
+    float effectiveRandomCents(const Stop* stop, const Stop* rank, int sampleNote, int pipe)
+    {
+        if (stop == nullptr || rank == nullptr || pipe < 0 || pipe >= 128 || sampleNote < 0 || sampleNote >= 128) return 0.0f;
+        const float r = stop->randomPitchByNote[(size_t)pipe];
+        const float e = stop->tuneTo440 ? 0.0f : rank->rankDeviationCents[(size_t)sampleNote] + rank->mistuneCents[(size_t)sampleNote];
+        if (std::abs(r) <= std::abs(e)) return 0.0f;
+        const float add = std::abs(r) - std::abs(e);
+        if (e == 0.0f) return r;
+        return e > 0.0f ? add : -add;
+    }
+
     juce::String displayFolderName(juce::String text)
     {
         text = text.replaceCharacter('_', ' ');
@@ -6111,7 +6127,7 @@ struct SamplerEngine::Impl
             if (shiftCount == 0) continue;
             const int expressionManual = juce::jlimit(0, maxManuals - 1, stop->primaryManual);
             const double couplingMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
-            const bool useCouplingForThisPipe = couplingSituation && tuningRandom.nextInt(10) != 0;   // 9 of 10 pipes (the user, 4 Nov 2026; was 5 of 6)
+            const bool couplingRoll = tuningRandom.nextInt(10) != 0;   // 9 of 10 pipes couple (the user, 4 Nov 2026; was 5 of 6)
             const float rankDrift = trem[(size_t)expressionManual].rankDriftDegrees.load(std::memory_order_relaxed);
 
             // One key may sound several pipes of the stop (its own button and a
@@ -6122,7 +6138,7 @@ struct SamplerEngine::Impl
                 const int pipe = midiNote + shift;
                 if (pipe < 0 || pipe >= 128) continue;
                 if (!routeAllowsKey(stop, manualIndex, shift, midiNote, pipe)) continue;   // switched off in the voicing of every route with this shift
-                const float coupledPitchCents = stop->randomPitchByNote[(size_t)pipe] * tuningRandom.nextFloat() / 5.0f;   // the pull ends at 0-20 % of the random detune (the user, 4 Nov 2026; was 0-33 %)
+                const float couplingShrink = tuningRandom.nextFloat() / 5.0f;   // without a partner the pull ends at 0-20 % of the random detune (the user, 4 Nov 2026; was 0-33 %)
                 // The pipe may already sound through another route: then only its
                 // volume is revisited (the loudest route wins).
                 bool alreadySpeaking = stop->speaking.test((size_t)pipe);
@@ -6204,11 +6220,36 @@ struct SamplerEngine::Impl
                     v.loopEnabled = !stop->isOneShot;
                     v.velocityGain = 1.0f;   // never softer for a gentle key: that is a piano, not an organ
                     v.velocity = (uint8_t)juce::jlimit(1, 127, velocity);
-                    v.randomPitchCents.store(stop->randomPitchByNote[(size_t)pipe], std::memory_order_relaxed);
+                    // 0.9.55 (the user): the random detune counts the detune the RECORDING already has for the
+                    // pipe (its deviation from the rank's own tuning; 0 with "Equal at 440 Hz", the correction
+                    // removes it) - only the excess over it is added, in the recorded direction.
+                    const float randomEff = effectiveRandomCents(stop, rank, sampleNote, pipe);
+                    v.randomPitchCents.store(randomEff, std::memory_order_relaxed);
                     v.tuningCents.store(rank->tuningCentsFor(sampleNote, stop->tuneTo440), std::memory_order_relaxed);
                     v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
-                    v.couplingUsed = useCouplingForThisPipe;
-                    v.coupledPitchCents = coupledPitchCents;
+                    // COUPLING TO A PARTNER (0.9.55): an octave or double octave of this rank already sounding is
+                    // the reference - the new pipe is pulled towards the PURE octave with it, the recorded detune
+                    // of both counted (so it works with the original tuning too: Greccio's D62/D74 are 2.1 c apart
+                    // in the files; at 440 both sit on ET and only the random parts meet), 80-100 % of the way;
+                    // without a partner the pipe's own random detune shrinks to 0-20 % as before.
+                    float coupledTarget = randomEff * couplingShrink;
+                    bool partnerFound = false;
+                    for (const int d : { -12, 12, -24, 24 })
+                    {
+                        const int partner = pipe + d;
+                        if (partner < 0 || partner >= 128 || !rank->speaking.test((size_t)partner)) continue;
+                        const int partnerSample = rank->sourceNoteFor(partner);
+                        if (partnerSample < 0) continue;
+                        const float partnerDeviation = -rank->rawTuningCents[(size_t)partnerSample] + rank->tuningCentsFor(partnerSample, stop->tuneTo440)
+                            + effectiveRandomCents(stop, rank, partnerSample, partner);
+                        const float ownBase = -rank->rawTuningCents[(size_t)sampleNote] + rank->tuningCentsFor(sampleNote, stop->tuneTo440);
+                        const float pure = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, partnerDeviation - ownBase);   // never over a quarter tone after a faulty file
+                        coupledTarget = randomEff + (pure - randomEff) * (0.8f + 0.2f * tuningRandom.nextFloat());
+                        partnerFound = true;
+                        break;
+                    }
+                    v.couplingUsed = couplingRoll && (couplingSituation || partnerFound);
+                    v.coupledPitchCents = coupledTarget;
                     v.couplingTotalSamples = (uint32_t)juce::jmax(1.0, couplingMs * 0.001 * rate);
                     v.fadeInTotal = 0;
                     v.fadeInRemaining = 0;
@@ -8239,7 +8280,7 @@ void SamplerEngine::setStopRandomPitchError(Stop* stop, float cents, bool regene
     {
         Voice& v = impl->voices[idx];
         if (v.stop == stop && !v.detachedRelease)
-            v.randomPitchCents.store(stop->randomPitchByNote[(size_t)v.note], std::memory_order_relaxed);
+            v.randomPitchCents.store(effectiveRandomCents(stop, v.rank, v.sampleNote, v.note), std::memory_order_relaxed);
     }
 }
 
