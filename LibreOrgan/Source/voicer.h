@@ -48,6 +48,7 @@ public:
     void updateFromStop();           // sync UI with stop's current per-key gains and global db
     void refreshEnabledColour();     // the button's colour from the stop's (or transmission's) on/off state
     void setNoteActive(int note, bool active);   // highlight slider when note is held
+    int soundingManual() const;                  // the division this row's pipes sound in (a transmission: its target)
     Stop* getStop() const noexcept { return stop; }
 
     // "Arrange mode" (Android-like): a 3 s press on a stop button starts it,
@@ -475,7 +476,8 @@ public:
     void forgetStop(Stop* stop);
     void refreshUndulationLabels();         // after the global celeste beat ratio changed
     void updateStopStates(); // sync UI after external changes (e.g., memory recall)
-    void setNoteActive(int note, bool active);   // forward to all rows
+    void setNoteActive(int note, bool active);   // forward to all rows (every division: the panic's clearing)
+    void setNoteActive(int manual, int note, bool active);   // the rows sounding in that division only (the routed note after the couplers, 0.9.53)
     void pulseManualActivity(int manual);        // thread-safe (called from the MIDI thread)
     void setActiveManualCount(int count) { activeManualCount = juce::jlimit(2, SamplerEngine::maxManuals, count); }
     double getManualActivityUntil(int manual) const noexcept

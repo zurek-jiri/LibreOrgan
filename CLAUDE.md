@@ -3034,6 +3034,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   dialog of ANOTHER division (12:45:20 "intercepted for manual 0" after the IR of manual 1). "Set effects for all"
   DOES copy volume + channel separation (applyEffectsToAllPerspectives 4372-4378; the tabs refresh from the config) -
   a slider moved after the tick unticks and copies nothing (the 0.9.8 rule); told the user, not changed.
+  0.9.53 (4 Nov 2026, the user: "když je zapnutá superspojka, ukazuje to původní klávesu ... mělo by ukazovat oba
+  hrané tóny zeleným kmenem"): `Voicer::setNoteActive(note, active)` was called from the MIDI/keyboard input with the
+  PHYSICAL key and forwarded to EVERY row of every division (no manual) - the coupled notes never lit, the pressed key
+  lit everywhere. Now `applyRoutedNoteDelta` (the one place every routed (division, note) reaches engine.noteOn/Off,
+  couplers resolved) calls `voicer->setNoteActive(manual, note, on)` on the 0<->1 transitions; the overload lights the
+  rows whose `StopRow::soundingManual()` (a transmission row: its target division) equals the division; the six input
+  call sites (MIDI, virtual keyboard on/off, the video hook's note/chord) are gone, the panic's all-rows clearing stays.
+  Dev: `ORGAN_LOG_NOTE_LIGHTS=1` logs "Key N of division M lit/dark on K row(s)". Test %TEMP%\test_lights0953.ps1
+  (Rural copied beside its trees with couplers "1-1-4" + "2-1-8" enabled in BOTH "couplers" and
+  "registrationCouplers" - the registration saved with the file overrides the list at the load -, ORGAN_TEST_NOTE
+  "1|60|25|6": I. 60 + 72, II. 60, pedal nothing, all dark after the release). A rebuilt row (expand, alias ...) starts
+  dark until the next note - as before. The test instance receives the user's MIDI while it runs (his keys showed in
+  the log) - a run of mine plays on his console.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

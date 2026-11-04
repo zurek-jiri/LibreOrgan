@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.53] - 2026-11-04
+
+### Fixed
+- The green thumbs of the per-key voicing lit the key pressed, in every division:
+  with an octave coupler the pipe that really played stayed dark. They follow the
+  notes routed to each division after the couplers now - unison and octave
+  coupler together light both keys, "Unison Off" only the coupled one, a
+  transmission's row the keys of its own division.
+
 ## [0.9.52] - 2026-11-04
 
 ### Fixed

@@ -1752,6 +1752,14 @@ void StopRow::keySliderChanged(int note, float value)
     if (stateChanged) stateChanged();
 }
 
+int StopRow::soundingManual() const
+{
+    if (stop == nullptr) return -1;
+    if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
+        return stop->transmissions[(size_t)transmissionIndex].manual;
+    return stop->primaryManual;
+}
+
 void StopRow::setNoteActive(int note, bool active)
 {
     // Only process if this stop actually sounds this key (its own pipe or a filled one)
@@ -4842,6 +4850,20 @@ void Voicer::setNoteActive(int note, bool active)
     juce::MessageManager::callAsync([this, note, active] {
         for (auto* row : stopRows)
             row->setNoteActive(note, active);
+        });
+}
+
+void Voicer::setNoteActive(int manual, int note, bool active)
+{
+    // 0.9.53 (the user): the green thumb shows the tone that really sounds - the note routed to the
+    // division after the couplers (unison AND octave couplers light both keys, Unison Off only the
+    // coupled one), on the rows sounding in that division alone (a transmission's row: its target).
+    juce::MessageManager::callAsync([this, manual, note, active] {
+        int rows = 0;
+        for (auto* row : stopRows)
+            if (row->soundingManual() == manual) { row->setNoteActive(note, active); ++rows; }
+        static const bool logLights = std::getenv("ORGAN_LOG_NOTE_LIGHTS") != nullptr;   // dev: which keys light where
+        if (logLights) CrashHandler::note("Key " + juce::String(note) + " of division " + juce::String(manual) + (active ? " lit" : " dark") + " on " + juce::String(rows) + " row(s)");
         });
 }
 

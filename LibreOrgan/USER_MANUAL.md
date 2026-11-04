@@ -645,7 +645,8 @@ above *Treble per key: shelf start frequency*). Under every note name a tick
 box switches the pipe on or off: an unticked pipe is silent and is never
 filled from a neighbour - a cornet keeps its compass. *Reset to 0 dB* beside
 each header; dragging with the right mouse button paints one value across a
-row. The sliders light while the key sounds; a **green thumb** marks a filled
+row. The sliders light while the key sounds (the keys the couplers play too, in
+the division where they sound); a **green thumb** marks a filled
 pipe (hover it for its source), an **orange note name** a sample without
 loop points, a **grey slider** no pipe at all.
 

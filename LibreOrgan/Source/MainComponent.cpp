@@ -3365,11 +3365,7 @@ void MainComponent::handleIncomingMidiMessage(juce::MidiInput* source,
         if (routedNote >= 0)
             routeKeyboardNote(manual, routedNote, routedVelocity,
                 message.isNoteOn() && routedVelocity > 0);
-        if (voicer)
-        {
-            if (routedNote >= 0) voicer->setNoteActive(routedNote, message.isNoteOn());
-            voicer->pulseManualActivity(manual);
-        }
+        if (voicer) voicer->pulseManualActivity(manual);   // the green thumbs follow the routed notes (applyRoutedNoteDelta)
     }
     return;
 #if 0
@@ -3409,11 +3405,7 @@ void MainComponent::handleNoteOn(juce::MidiKeyboardState* source, int /*midiChan
             const int routedVelocity = manualConfigs[(size_t)manual].disableVelocity ? 127 : (int)(velocity * 127.0f);
             const int routedNote = mapKeyboardNote(manual, midiNoteNumber);
             if (routedNote >= 0) routeKeyboardNote(manual, routedNote, routedVelocity, true);
-            if (voicer)
-            {
-                if (routedNote >= 0) voicer->setNoteActive(routedNote, true);
-                voicer->pulseManualActivity(manual);
-            }
+            if (voicer) voicer->pulseManualActivity(manual);
             return;
         }
 #if 0
@@ -3439,11 +3431,7 @@ void MainComponent::handleNoteOff(juce::MidiKeyboardState* source, int /*midiCha
         {
             const int routedNote = mapKeyboardNote(manual, midiNoteNumber);
             if (routedNote >= 0) routeKeyboardNote(manual, routedNote, 0, false);
-            if (voicer)
-            {
-                if (routedNote >= 0) voicer->setNoteActive(routedNote, false);
-                voicer->pulseManualActivity(manual);
-            }
+            if (voicer) voicer->pulseManualActivity(manual);
             return;
         }
 #if 0
@@ -3472,10 +3460,18 @@ void MainComponent::applyRoutedNoteDelta(int manual, int note, int velocity, int
     auto& count = routedNoteRefCounts[(size_t)manual][(size_t)note];
     const int before = count;
     count = juce::jmax(0, count + delta);
+    // The green thumbs of the voicing follow THIS note (the one routed to the division after the
+    // couplers), not the physical key (0.9.53: a super coupler lit the key pressed, not the pipe playing).
     if (before == 0 && count > 0)
+    {
         engine.noteOn(note, juce::jlimit(1, 127, velocity), manual);
+        if (voicer) voicer->setNoteActive(manual, note, true);
+    }
     else if (before > 0 && count == 0)
+    {
         engine.noteOff(note, manual);
+        if (voicer) voicer->setNoteActive(manual, note, false);
+    }
 }
 
 void MainComponent::recomputeCouplersForSource(int sourceManual, int changedNote,
@@ -17486,8 +17482,7 @@ struct MainComponent::VideoScript final : private juce::Timer
         {
             const int manual = part(0).getIntValue();
             const bool on = part(2).equalsIgnoreCase("on");
-            owner.routeKeyboardNote(manual, part(1).getIntValue(), 100, on);
-            if (owner.voicer) owner.voicer->setNoteActive(part(1).getIntValue(), on);   // the key's slider lights green, as a MIDI note does it
+            owner.routeKeyboardNote(manual, part(1).getIntValue(), 100, on);   // the key's slider lights green through the routed note, as a MIDI note does it
             if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = on ? 1.0e12 : 0.0;   // the keyboard symbol blinks while the script plays
         }
         else if (cmd == "chord")
@@ -17495,12 +17490,12 @@ struct MainComponent::VideoScript final : private juce::Timer
             const int manual = part(0).getIntValue();
             const auto keys = juce::StringArray::fromTokens(part(1), ",", "");
             const double holdMs = juce::jmax(100, part(2).getIntValue());
-            for (const auto& k : keys) { owner.routeKeyboardNote(manual, k.getIntValue(), 100, true); if (owner.voicer) owner.voicer->setNoteActive(k.getIntValue(), true); }
+            for (const auto& k : keys) owner.routeKeyboardNote(manual, k.getIntValue(), 100, true);
             if (manual >= 0 && manual < SamplerEngine::maxManuals) blinkUntil[(size_t)manual] = now + holdMs;
             MainComponent* o = &owner;
             pending.push_back({ now + holdMs, [o, manual, keys]
             {
-                for (const auto& k : keys) { o->routeKeyboardNote(manual, k.getIntValue(), 0, false); if (o->voicer) o->voicer->setNoteActive(k.getIntValue(), false); }
+                for (const auto& k : keys) o->routeKeyboardNote(manual, k.getIntValue(), 0, false);
             } });
         }
         else if (cmd == "glowcoupler")

@@ -655,7 +655,8 @@ static const char* const kManualText_part3 =
     "box switches the pipe on or off: an unticked pipe is silent and is never\n"
     "filled from a neighbour - a cornet keeps its compass. *Reset to 0 dB* beside\n"
     "each header; dragging with the right mouse button paints one value across a\n"
-    "row. The sliders light while the key sounds; a **green thumb** marks a filled\n"
+    "row. The sliders light while the key sounds (the keys the couplers play too, in\n"
+    "the division where they sound); a **green thumb** marks a filled\n"
     "pipe (hover it for its source), an **orange note name** a sample without\n"
     "loop points, a **grey slider** no pipe at all.\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "and your own additions are kept on this computer (`Patterns.json`) through\n"
     "every load.\n"
     "\n"
-    "## 4.5 Apply and reload\n"
     ;
 static const char* const kManualText_part4 =
+    "## 4.5 Apply and reload\n"
     "\n"
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "\n"
     "- **The buffer size**: 512 samples allows twice the work of 256; an organ\n"
     "  does not need a small buffer.\n"
-    "- **The auxiliary route** halves the polyphony while it has a device.\n"
     ;
 static const char* const kManualText_part5 =
+    "- **The auxiliary route** halves the polyphony while it has a device.\n"
     "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "notes ([Retune buses and the full kernel](#109-retune-buses-and-the-full-kernel)).\n"
     "\n"
     "### Render threads for Aggregated WASAPI\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "### Key velocity: fade-in at the lowest velocity\n"
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
-    "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     ;
 static const char* const kManualText_part7 =
+    "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "thirds of the ranks agree; set it by hand when they disagree or the set has\n"
     "no pitch data. [Temperaments](#63-temperaments).\n"
     "\n"
-    "### Target temperament\n"
     ;
 static const char* const kManualText_part8 =
+    "### Target temperament\n"
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "\n"
     "## 9.3 Report a problem\n"
     "\n"
-    "*Report a problem...* at the top of the Configuration Editor asks what\n"
     ;
 static const char* const kManualText_part9 =
+    "*Report a problem...* at the top of the Configuration Editor asks what\n"
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "already (a reload) is adopted whatever the memory says. The copy build of\n"
     "the filled pipes stops the same way. Before the load the WAV bytes of the\n"
     "trees are estimated against the free memory and a warning is logged; the\n"
-    "load is never refused.\n"
     ;
 static const char* const kManualText_part10 =
+    "load is never refused.\n"
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
