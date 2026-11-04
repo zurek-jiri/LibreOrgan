@@ -40,7 +40,6 @@ body:
         - "dom-b-dos-organ-model"
         - "este-st-maria-delle-grazie-mascioni-organ"
         - "stralsund-st-jakobi-kr-wegscheider"
-        - "the-forcalquier-organ-model"
     validations:
       required: false
   - type: input
