@@ -1444,8 +1444,9 @@ so. Travels with the organ.
 With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled
 towards its rank's tuning: its detune shrinks within a second or two to a
 random share between 0 and this of what it was (default 20 %); a pipe starting
-while its octave of the same rank sounds is pulled to the pure octave with it.
-Travels with the organ.
+while a unison, octave, fifth, fourth or third of it sounds is pulled towards
+the pure interval with those pipes instead (the thirds only a little), and they
+move a little towards it. Celeste stops stay out of it. Travels with the organ.
 
 ### Filled pipes: resampling quality
 

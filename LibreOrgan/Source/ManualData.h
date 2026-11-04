@@ -1462,8 +1462,9 @@ static const char* const kManualText_part7 =
     "With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled\n"
     "towards its rank's tuning: its detune shrinks within a second or two to a\n"
     "random share between 0 and this of what it was (default 20 %); a pipe starting\n"
-    "while its octave of the same rank sounds is pulled to the pure octave with it.\n"
-    "Travels with the organ.\n"
+    "while a unison, octave, fifth, fourth or third of it sounds is pulled towards\n"
+    "the pure interval with those pipes instead (the thirds only a little), and they\n"
+    "move a little towards it. Celeste stops stay out of it. Travels with the organ.\n"
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "editor, the program reads it at the next load).\n"
     "\n"
     "### Sample and IR locations: forget the folders\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
     "### Samples' base temperament\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
-    "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     ;
 static const char* const kManualText_part9 =
+    "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
     "`settings.json` is the state of the program, `settings-<date>.json` the\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
-    "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
     ;
 static const char* const kManualText_part10 =
+    "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"
     "the macOS kernel reporting memory pressure. The stops loaded so far make the\n"

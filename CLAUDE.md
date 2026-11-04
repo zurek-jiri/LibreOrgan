@@ -3083,6 +3083,21 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   travels with the organ; engine atomic + `setCouplingLeftPercent`; Editor slider in Advanced global audio right after
   "Replace pipes off by more than", no GLOBAL RESET entry - its neighbours have none either; manual ### of the same
   name). The user's "hraje naladěně" was his first impression, withdrawn - do not revert the ceiling.
+  0.9.57 ENSEMBLE PULL (4 Nov 2026, the user: "pokud zní víc píšťal příbuzných (oktávy, kvinty), rozladěné píšťaly
+  se k sobě přitahují ... i stejný tón v různých rejstřících, někdy ... tercii taky trochu ... nesmí to rozbít
+  celeste"): in startRank (SamplerEngine.cpp, after the random/tuning stores) the PARTNERS = the voices sounding from
+  the same keyboard (`keyHeads[makeSourceKey(key, manualIndex)]` lists for keys midiNote +- 24, at most 24 partners,
+  no voice scan) whose SOUNDING pitch (pipe + sampleOffset + the rank's/stop's footageSemitones) stands to the new
+  one at 0 / 12,24 / 7,19 / 5,17 / 4,16 / 3,15 semitones = strength 1.0 / 0.8 / 0.5 / 0.35 / 0.2 / 0.1 (x random
+  0.3-1.0 = "sometimes"), pure offsets of the upper pipe vs ET 0 / 0 / +1.955 / -1.955 / -13.686 / +15.641 c; the new
+  voice's random target = the weighted mean of the pure-interval deviations - ownBase, 80-100 % of the way, +-25 c;
+  each partner gets `couplingRetarget` (atomic float, NaN = none) + `couplingRetargetTotal` = its current end value
+  moved 25 % x weight (x 0.5 for the LOWER pipe) towards the pure interval with the new one; the render thread picks
+  the retarget up at the block start (randomPitchCents := the value the glide is at, coupledPitchCents := retarget,
+  elapsed 0 - the voice's glide state stays render-owned). A celeste (rank/stop `detectedCelesteBeats` or
+  `undulationBeats` != 0) neither pulls nor is pulled; the same pipe in another perspective/route is no partner;
+  release copies get NaN. The 0.9.55 same-rank octave rule is subsumed. No partner -> the 0.9.56 shrink to the
+  rank's tuning. Verified by the self-test only (identical) - the acoustic judgement is the user's.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

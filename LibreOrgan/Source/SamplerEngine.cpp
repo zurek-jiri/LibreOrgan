@@ -1245,6 +1245,11 @@ namespace
         std::atomic<uint8_t> state{ VoiceFree };
         std::atomic<uint8_t> command{ 0 };
         std::atomic<float> randomPitchCents{ 0.0f };
+        // 0.9.57 ensemble pull: a sounding pipe pulled a little towards a pipe that starts - the control thread
+        // posts a new target for the random part (NaN = none), the render thread restarts the glide from the
+        // value it is at (its own state stays its own).
+        std::atomic<float> couplingRetarget{ std::numeric_limits<float>::quiet_NaN() };
+        std::atomic<uint32_t> couplingRetargetTotal{ 1 };
         std::atomic<float> releaseFadeMsRequested{ 70.0f };
         std::atomic<float> frozenExprRequested{ 1.0f };
         std::atomic<float> curRandomPitch{ 0.0f }, curWindPitch{ 0.0f }, curTremPitch{ 0.0f }, curWindGain{ 1.0f };
@@ -3374,6 +3379,24 @@ namespace
 
         // --- end-of-block targets (interpolated linearly across the block)
         float randomCents = 0.0f;
+        if (!std::isnan(v.couplingRetarget.load(std::memory_order_relaxed)))   // 0.9.57: a pipe that started pulls this one a little
+        {
+            const float retarget = v.couplingRetarget.exchange(std::numeric_limits<float>::quiet_NaN(), std::memory_order_acq_rel);
+            if (!std::isnan(retarget))
+            {
+                float current = v.randomPitchCents.load(std::memory_order_relaxed);
+                if (v.couplingUsed && v.couplingTotalSamples > 0)
+                {
+                    const float progress = juce::jlimit(0.0f, 1.0f, (float)v.couplingElapsed / (float)v.couplingTotalSamples);
+                    current += (v.coupledPitchCents - current) * (1.0f - fastSinTurns(progress * 0.25f + 0.25f));
+                }
+                v.randomPitchCents.store(current, std::memory_order_relaxed);   // the glide restarts from where it is
+                v.coupledPitchCents = retarget;
+                v.couplingElapsed = 0;
+                v.couplingTotalSamples = juce::jmax(1u, v.couplingRetargetTotal.load(std::memory_order_relaxed));
+                v.couplingUsed = true;
+            }
+        }
         if (c.randomAllowed)
         {
             randomCents = v.randomPitchCents.load(std::memory_order_relaxed);
@@ -4742,6 +4765,7 @@ struct SamplerEngine::Impl
         w.attackToneDb = v.attackToneDb; w.attackToneStepPerFrame = v.attackToneStepPerFrame / (float)juce::jmax(0.01, scale);
         w.tempMode.store(v.tempMode.load(std::memory_order_relaxed), std::memory_order_relaxed);
         w.randomPitchCents.store(v.randomPitchCents.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        w.couplingRetarget.store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);   // 0.9.57: a release copy takes no pull
         w.releaseFadeMsRequested.store(v.releaseFadeMsRequested.load(std::memory_order_relaxed), std::memory_order_relaxed);
         w.frozenExprRequested.store(v.frozenExprRequested.load(std::memory_order_relaxed), std::memory_order_relaxed);
         w.ctlReleasing = v.ctlReleasing;
@@ -6238,22 +6262,75 @@ struct SamplerEngine::Impl
                     // to a random share of itself; the glide moves the random part alone, so its target is D x share - E.
                     const float recorded = stop->tuneTo440 ? 0.0f : rank->rankDeviationCents[(size_t)sampleNote] + rank->mistuneCents[(size_t)sampleNote];
                     float coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, (recorded + randomEff) * couplingShrink - recorded);
+                    // ENSEMBLE PULL (0.9.57, the user's rules): the pipes sounding from this keyboard whose pitch
+                    // stands to the new one in a small ratio - unison 1:1, octave 2:1, fifth 3:2, fourth 4:3,
+                    // major third 5:4, minor third 6:5 - pull it towards the PURE interval with them, each with the
+                    // strength of the harmonic they share (x a random 0.3-1.0: "sometimes"), and are pulled a little
+                    // towards it in turn (25 % of the pair's strength, the lower pipe half of that - the big pipe is
+                    // the steadier). A celeste (its own undulation) neither pulls nor is pulled. Thirds pull only a
+                    // few cents (a pure third is 14 c from equal temperament - the temperament's business).
                     bool partnerFound = false;
-                    for (const int d : { -12, 12, -24, 24 })
+                    const bool newIsCeleste = rank->detectedCelesteBeats != 0.0f || rank->undulationBeats != 0.0f || stop->undulationBeats != 0.0f;
+                    if (!newIsCeleste && manualIndex >= 0)
                     {
-                        const int partner = pipe + d;
-                        if (partner < 0 || partner >= 128 || !rank->speaking.test((size_t)partner)) continue;
-                        const int partnerSample = rank->sourceNoteFor(partner);
-                        if (partnerSample < 0) continue;
-                        const float partnerDeviation = -rank->rawTuningCents[(size_t)partnerSample] + rank->tuningCentsFor(partnerSample, stop->tuneTo440)
-                            + effectiveRandomCents(stop, rank, partnerSample, partner);
                         const float ownBase = -rank->rawTuningCents[(size_t)sampleNote] + rank->tuningCentsFor(sampleNote, stop->tuneTo440);
-                        const float pure = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, partnerDeviation - ownBase);   // never over a quarter tone after a faulty file
-                        coupledTarget = randomEff + (pure - randomEff) * (0.8f + 0.2f * tuningRandom.nextFloat());
-                        partnerFound = true;
-                        break;
+                        const int ownSounding = pipe + stop->sampleOffset + (rank->footageKnown ? rank->footageSemitones : stop->footageSemitones);
+                        struct Partner { uint32_t index; float weight, pureOffset, deviation; bool lower; };
+                        std::array<Partner, 24> partners{};
+                        int partnerCount = 0;
+                        float sum = 0.0f, weightSum = 0.0f;
+                        for (int keyOffset = -24; keyOffset <= 24 && partnerCount < 24; ++keyOffset)
+                        {
+                            const int key = midiNote + keyOffset;
+                            if (key < 0 || key >= 128) continue;
+                            for (int32_t i = keyHeads[(size_t)makeSourceKey(key, manualIndex)]; i >= 0 && partnerCount < 24; i = voices[(size_t)i].keyNext)
+                            {
+                                const Voice& p = voices[(size_t)i];
+                                if (p.detachedRelease || p.ctlReleasing || p.stop == nullptr || p.rank == nullptr) continue;
+                                if (p.stop == stop && p.note == pipe) continue;   // the same pipe in another perspective or route
+                                if (p.rank->detectedCelesteBeats != 0.0f || p.rank->undulationBeats != 0.0f || p.stop->undulationBeats != 0.0f) continue;
+                                const int partnerSounding = p.note + p.stop->sampleOffset + (p.rank->footageKnown ? p.rank->footageSemitones : p.stop->footageSemitones);
+                                const int d = std::abs(partnerSounding - ownSounding);
+                                float strength = 0.0f, pureOffset = 0.0f;   // pureOffset: the upper pipe's deviation from equal temperament in a pure interval
+                                if (d == 0) strength = 1.0f;
+                                else if (d == 12 || d == 24) strength = 0.8f;
+                                else if (d == 7 || d == 19) { strength = 0.5f; pureOffset = 1.955f; }
+                                else if (d == 5 || d == 17) { strength = 0.35f; pureOffset = -1.955f; }
+                                else if (d == 4 || d == 16) { strength = 0.2f; pureOffset = -13.686f; }
+                                else if (d == 3 || d == 15) { strength = 0.1f; pureOffset = 15.641f; }
+                                else continue;
+                                const float weight = strength * (0.3f + 0.7f * tuningRandom.nextFloat());
+                                const float deviation = -p.rank->rawTuningCents[(size_t)p.sampleNote] + p.tuningCents.load(std::memory_order_relaxed)
+                                    + (p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed));
+                                const bool partnerLower = partnerSounding < ownSounding;
+                                sum += weight * (deviation + (partnerLower ? pureOffset : -pureOffset));
+                                weightSum += weight;
+                                partners[(size_t)partnerCount++] = { (uint32_t)i, weight, pureOffset, deviation, partnerLower };
+                            }
+                        }
+                        if (weightSum > 0.0f)
+                        {
+                            const float target = sum / weightSum - ownBase;   // the random part that makes the pure intervals
+                            coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, randomEff + (target - randomEff) * (0.8f + 0.2f * tuningRandom.nextFloat()));
+                            partnerFound = true;
+                            if (couplingRoll)
+                            {
+                                const float newDeviation = ownBase + coupledTarget;
+                                for (int k = 0; k < partnerCount; ++k)
+                                {
+                                    const auto& q = partners[(size_t)k];
+                                    Voice& p = voices[(size_t)q.index];
+                                    const float wanted = newDeviation + (q.lower ? -q.pureOffset : q.pureOffset);
+                                    const float move = (wanted - q.deviation) * 0.25f * q.weight * (q.lower ? 0.5f : 1.0f);
+                                    const float current = p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed);
+                                    p.couplingRetargetTotal.store((uint32_t)juce::jmax(1.0, (500.0 + tuningRandom.nextDouble() * 2000.0) * 0.001 * rate), std::memory_order_relaxed);
+                                    p.couplingRetarget.store(juce::jlimit(current - 25.0f, current + 25.0f, current + move), std::memory_order_release);
+                                }
+                            }
+                        }
                     }
-                    v.couplingUsed = couplingRoll && (couplingSituation || partnerFound);
+                    v.couplingRetarget.store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);
+                    v.couplingUsed = couplingRoll && !newIsCeleste && (couplingSituation || partnerFound);
                     v.coupledPitchCents = coupledTarget;
                     v.couplingTotalSamples = (uint32_t)juce::jmax(1.0, couplingMs * 0.001 * rate);
                     v.fadeInTotal = 0;

@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.57] - 2026-11-04
+
+### Changed
+- Pipe coupling pulls between all the pipes sounding from a keyboard that stand
+  in a small ratio to the pipe that starts - unison, octave, fifth, fourth, major
+  and minor third - towards the pure interval, with the strength of the harmonic
+  they share (unison the most, thirds only a few cents) and a random share each
+  time; the sounding pipes are pulled a little towards the new one in turn, the
+  lower pipe least. A celeste stop neither pulls nor is pulled.
+
 ## [0.9.56] - 2026-11-04
 
 ### Added
