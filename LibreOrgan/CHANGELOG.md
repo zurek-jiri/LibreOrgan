@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.54] - 2026-11-04
+
+### Changed
+- Random tuning error: the detune of a pipe is drawn uniformly over the whole
+  range set (it leaned towards the large values before).
+- Pipe coupling: 9 pipes of 10 pull together (was 5 of 6) and the pull ends at
+  0-20 % of the pipe's random detune (was 0-33 %).
+
 ## [0.9.53] - 2026-11-04
 
 ### Fixed

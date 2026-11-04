@@ -3047,6 +3047,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "1|60|25|6": I. 60 + 72, II. 60, pedal nothing, all dark after the release). A rebuilt row (expand, alias ...) starts
   dark until the next note - as before. The test instance receives the user's MIDI while it runs (his keys showed in
   the log) - a run of mine plays on his console.
+  0.9.54 (4 Nov 2026, the user's answer to "jaké je pravidlo pro náhodná rozladění a pipe coupling"): RANDOM TUNING
+  (`regenerateRandomTuning`, SamplerEngine.cpp ~8219; per stop `randomPitchErrorCents` default 4, 0-40; drawn once per
+  pipe at the load / slider change, a fixed detune per pipe, random sign) is UNIFORM over 0..amount now (was
+  amount x rnd^0.8, leaning to the large values); applied at every voice start when the division's "Allow Random
+  Tuning Error" is on. PIPE COUPLING (startNote ~6103-6125, renderVoice ~3361): a coupling situation = >= 2 stops
+  engaged on the division OR another held key of the same keyboard at a fifth/octave; in it 9 pipes of 10 (was 5 of
+  6, `nextInt(10) != 0`) glide their random detune over 0.5-2.5 s (cosine) to 0-20 % of it (was 0-33 %, `/ 5.0f`),
+  the rest keep it; only with "Allow Pipe Coupling" AND the random tuning allowed (it moves the random detune alone,
+  never the 440/temperament cents). Manual 5.x says no figures - unchanged.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

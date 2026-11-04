@@ -6111,7 +6111,7 @@ struct SamplerEngine::Impl
             if (shiftCount == 0) continue;
             const int expressionManual = juce::jlimit(0, maxManuals - 1, stop->primaryManual);
             const double couplingMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
-            const bool useCouplingForThisPipe = couplingSituation && tuningRandom.nextInt(6) != 0;
+            const bool useCouplingForThisPipe = couplingSituation && tuningRandom.nextInt(10) != 0;   // 9 of 10 pipes (the user, 4 Nov 2026; was 5 of 6)
             const float rankDrift = trem[(size_t)expressionManual].rankDriftDegrees.load(std::memory_order_relaxed);
 
             // One key may sound several pipes of the stop (its own button and a
@@ -6122,7 +6122,7 @@ struct SamplerEngine::Impl
                 const int pipe = midiNote + shift;
                 if (pipe < 0 || pipe >= 128) continue;
                 if (!routeAllowsKey(stop, manualIndex, shift, midiNote, pipe)) continue;   // switched off in the voicing of every route with this shift
-                const float coupledPitchCents = stop->randomPitchByNote[(size_t)pipe] * tuningRandom.nextFloat() / 3.0f;
+                const float coupledPitchCents = stop->randomPitchByNote[(size_t)pipe] * tuningRandom.nextFloat() / 5.0f;   // the pull ends at 0-20 % of the random detune (the user, 4 Nov 2026; was 0-33 %)
                 // The pipe may already sound through another route: then only its
                 // volume is revisited (the loudest route wins).
                 bool alreadySpeaking = stop->speaking.test((size_t)pipe);
@@ -8223,7 +8223,7 @@ namespace
         for (int note = 0; note < 128; ++note)
         {
             if (!stop->hasNoteInAnyRank(note) || amount <= 0.0f) { stop->randomPitchByNote[(size_t)note] = 0.0f; continue; }
-            const float magnitude = amount * std::pow(random.nextFloat(), 0.8f);
+            const float magnitude = amount * random.nextFloat();   // uniform over the whole range (the user, 4 Nov 2026: no bias towards the large values)
             stop->randomPitchByNote[(size_t)note] = random.nextBool() ? magnitude : -magnitude;
         }
     }
