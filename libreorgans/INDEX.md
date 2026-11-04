@@ -47,5 +47,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
 | [Este, St. Maria delle Grazie, Mascioni](este-st-maria-delle-grazie-mascioni-organ/README.md) | 3 | 28 | 7.1 GB | Direct, Diffuse, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20este-st-maria-delle-grazie-mascioni-organ&organ=este-st-maria-delle-grazie-mascioni-organ&name=este-st-maria-delle-grazie-mascioni-organ) |
 | [Forcalquier Organ Model](forcalquier-organ-model/README.md) | 4 | 36 | 2.4 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20forcalquier-organ-model&organ=forcalquier-organ-model&name=forcalquier-organ-model) |
+| [Frankfurt (Oder), Sauer op. 2025](frankfurt-oder-sauer-op-2025/README.md) | 4 | 52 | 11 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20frankfurt-oder-sauer-op-2025&organ=frankfurt-oder-sauer-op-2025&name=frankfurt-oder-sauer-op-2025) |
 
-22 configuration(s).
+23 configuration(s).
