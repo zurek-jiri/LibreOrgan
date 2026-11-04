@@ -3074,6 +3074,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   stays for them. Simultaneous keys: the MIDI commands run in sequence, the first pipe is speaking when the second
   starts, so the second aligns to the first (the first keeps its detune as the reference). Verified by the
   self-test only (line-identical); the acoustic effect is the user's to judge.
+  0.9.56 (4 Nov 2026, the user first "teď to není dobře ... hraje to furt naladěně", then "asi by to tak mělo být
+  správně, že náhodná odchylka je strop" - the CEILING RULE STAYS): the no-partner coupling now shrinks the pipe's
+  WHOLE detune D = recorded deviation from the rank (`rankDeviationCents + mistuneCents` of the sample note; 0 with
+  tuneTo440) + the random part, to a RANDOM share 0..`couplingLeftPercent` of itself (the glide moves the random part
+  alone: target = D x share - E, clamped +-25 c around the random part); the octave-partner rule of 0.9.55 unchanged.
+  Setting "Pipe coupling: detune left after the pull" (0-100 %, default 20; configuration key "couplingLeftPercent",
+  travels with the organ; engine atomic + `setCouplingLeftPercent`; Editor slider in Advanced global audio right after
+  "Replace pipes off by more than", no GLOBAL RESET entry - its neighbours have none either; manual ### of the same
+  name). The user's "hraje naladěně" was his first impression, withdrawn - do not revert the ceiling.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

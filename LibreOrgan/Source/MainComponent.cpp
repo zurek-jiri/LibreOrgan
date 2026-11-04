@@ -23227,6 +23227,8 @@ void MainComponent::loadSettings()
     engine.setRetuneLimitCents(retuneLimitCents);
     mistuneCorrectCents = juce::jlimit(0.0f, 1200.0f, (float)(double)parsed.getProperty("mistuneCorrectCents", 50.0));   // 0.9.10
     engine.setMistuneCorrectCents(mistuneCorrectCents);
+    couplingLeftPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("couplingLeftPercent", 20.0));   // 0.9.56
+    engine.setCouplingLeftPercent(couplingLeftPercent);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -23959,6 +23961,7 @@ void MainComponent::saveSettings()
     obj->setProperty("fillGroupSize", fillGroupSize);
     obj->setProperty("retuneLimitCents", retuneLimitCents);
     obj->setProperty("mistuneCorrectCents", mistuneCorrectCents);   // 0.9.10
+    obj->setProperty("couplingLeftPercent", couplingLeftPercent);   // 0.9.56
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -29910,6 +29913,19 @@ void MainComponent::showConfigurationEditor()
                 "played from its neighbours like a missing pipe (the key's tooltip in the voicing says so) - a pipe a third off is a wrong "
                 "file, not a tuning. Below it the pipe is retuned (the setting above, or \"Equal at 440 Hz\"). 200 cents (a whole tone) by "
                 "default; the setting travels with the organ.");
+            // 0.9.56 (the user): how much of a pipe's detune the coupling leaves - a random share between 0 and this.
+            addSlider("Pipe coupling: detune left after the pull", 0.0, 100.0, 1.0, " %", o.couplingLeftPercent, 20.0,
+                [&o](double value)
+                {
+                    o.couplingLeftPercent = juce::jlimit(0.0f, 100.0f, (float)value);
+                    o.engine.setCouplingLeftPercent(o.couplingLeftPercent);
+                    o.saveSettings();
+                },
+                "Pipe coupling (Divisions dialog): a pipe starting while others sound is pulled towards the tuning of its rank - its "
+                "whole detune, the recorded one and the random one, shrinks within half a second to two and a half seconds to a random "
+                "share between 0 and this of what it was; a pipe starting while its octave of the same rank sounds is pulled towards the "
+                "pure octave with it instead. 0 % = pulled all the way, 100 % = no pull (the octave partner still counts). 20 % by "
+                "default; the setting travels with the organ. New notes take the change.");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);

@@ -1439,6 +1439,14 @@ as a faulty sample (default 200 cents). Beyond it the pipe is switched off
 and filled from its neighbours; its thumb turns green and the tooltip says
 so. Travels with the organ.
 
+### Pipe coupling: detune left after the pull
+
+With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled
+towards its rank's tuning: its detune shrinks within a second or two to a
+random share between 0 and this of what it was (default 20 %); a pipe starting
+while its octave of the same rank sounds is pulled to the pure octave with it.
+Travels with the organ.
+
 ### Filled pipes: resampling quality
 
 How a neighbour's sample is played at another pitch while no copy exists:

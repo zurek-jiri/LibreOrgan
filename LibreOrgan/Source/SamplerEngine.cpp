@@ -6138,7 +6138,9 @@ struct SamplerEngine::Impl
                 const int pipe = midiNote + shift;
                 if (pipe < 0 || pipe >= 128) continue;
                 if (!routeAllowsKey(stop, manualIndex, shift, midiNote, pipe)) continue;   // switched off in the voicing of every route with this shift
-                const float couplingShrink = tuningRandom.nextFloat() / 5.0f;   // without a partner the pull ends at 0-20 % of the random detune (the user, 4 Nov 2026; was 0-33 %)
+                // Without a partner the pull leaves a RANDOM share, 0 to the setting (default 20 %), of the pipe's
+                // whole detune (0.9.56: the recorded one too, not the random part alone - the user).
+                const float couplingShrink = tuningRandom.nextFloat() * owner.couplingLeftPercent.load(std::memory_order_relaxed) / 100.0f;
                 // The pipe may already sound through another route: then only its
                 // volume is revisited (the loudest route wins).
                 bool alreadySpeaking = stop->speaking.test((size_t)pipe);
@@ -6232,7 +6234,10 @@ struct SamplerEngine::Impl
                     // of both counted (so it works with the original tuning too: Greccio's D62/D74 are 2.1 c apart
                     // in the files; at 440 both sit on ET and only the random parts meet), 80-100 % of the way;
                     // without a partner the pipe's own random detune shrinks to 0-20 % as before.
-                    float coupledTarget = randomEff * couplingShrink;
+                    // The whole detune D = the recorded deviation from the rank (0 at 440) + the random part shrinks
+                    // to a random share of itself; the glide moves the random part alone, so its target is D x share - E.
+                    const float recorded = stop->tuneTo440 ? 0.0f : rank->rankDeviationCents[(size_t)sampleNote] + rank->mistuneCents[(size_t)sampleNote];
+                    float coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, (recorded + randomEff) * couplingShrink - recorded);
                     bool partnerFound = false;
                     for (const int d : { -12, 12, -24, 24 })
                     {

@@ -1457,6 +1457,14 @@ static const char* const kManualText_part7 =
     "and filled from its neighbours; its thumb turns green and the tooltip says\n"
     "so. Travels with the organ.\n"
     "\n"
+    "### Pipe coupling: detune left after the pull\n"
+    "\n"
+    "With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled\n"
+    "towards its rank's tuning: its detune shrinks within a second or two to a\n"
+    "random share between 0 and this of what it was (default 20 %); a pipe starting\n"
+    "while its octave of the same rank sounds is pulled to the pure octave with it.\n"
+    "Travels with the organ.\n"
+    "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "### Sample and IR locations: forget the folders\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
     "### Samples' base temperament\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "thirds of the ranks agree; set it by hand when they disagree or the set has\n"
     "no pitch data. [Temperaments](#63-temperaments).\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Target temperament\n"
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
+    ;
+static const char* const kManualText_part9 =
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
     "`settings.json` is the state of the program, `settings-<date>.json` the\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "\n"
     "## 9.3 Report a problem\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
     "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
@@ -2012,6 +2020,8 @@ static const char* const kManualText_part9 =
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
     "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
+    ;
+static const char* const kManualText_part10 =
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"
     "the macOS kernel reporting memory pressure. The stops loaded so far make the\n"
@@ -2020,8 +2030,6 @@ static const char* const kManualText_part9 =
     "already (a reload) is adopted whatever the memory says. The copy build of\n"
     "the filled pipes stops the same way. Before the load the WAV bytes of the\n"
     "trees are estimated against the free memory and a warning is logged; the\n"
-    ;
-static const char* const kManualText_part10 =
     "load is never refused.\n"
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"

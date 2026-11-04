@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.56] - 2026-11-04
+
+### Added
+- Configuration Editor, Advanced global audio: "Pipe coupling: detune left after
+  the pull" (0-100 %, default 20; travels with the organ) - the share of a
+  pipe's detune the coupling leaves, a random share between 0 and the setting.
+
+### Changed
+- Pipe coupling without an octave partner pulls the pipe's whole detune - the
+  recorded deviation from its rank too, not the random part alone - so the
+  pipes pull together with the original tuning as well.
+
 ## [0.9.55] - 2026-11-04
 
 ### Changed
