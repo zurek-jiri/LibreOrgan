@@ -35,6 +35,7 @@ body:
         - "caen-st-etienne-cavaill-coll"
         - "cembalo-mietke-model"
         - "cembalo-ruckers-model"
+        - "doesburg-martinikerk-walcker"
         - "dom-b-dos-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
