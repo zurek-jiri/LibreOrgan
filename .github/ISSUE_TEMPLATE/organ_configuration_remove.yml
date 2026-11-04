@@ -41,6 +41,7 @@ body:
         - "este-st-maria-delle-grazie-mascioni-organ"
         - "forcalquier-organ-model"
         - "frankfurt-oder-sauer-op-2025"
+        - "greccio-s-francesco-spada-organ"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false
