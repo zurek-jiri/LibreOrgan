@@ -39,6 +39,7 @@ body:
         - "doksy-kruh-renaissance-organ"
         - "dom-b-dos-organ-model"
         - "este-st-maria-delle-grazie-mascioni-organ"
+        - "forcalquier-organ-model"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false

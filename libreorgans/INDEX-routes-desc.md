@@ -46,5 +46,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ&name=altenbruch-klapmeyer-organ) |
 | [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
+| [Forcalquier Organ Model](forcalquier-organ-model/README.md) | 4 | 36 | 2.4 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20forcalquier-organ-model&organ=forcalquier-organ-model&name=forcalquier-organ-model) |
 
-21 configuration(s).
+22 configuration(s).
