@@ -3024,6 +3024,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   character must stand in the name AS WRITTEN (startsWithIgnoreCase); a pattern of letters/digits only must be
   followed by a non-alphanumeric character or the end. A pattern line in force applies per folder, no majority
   (the 0.9.49 majority is the import's LEARNING rule; a Rear of one division must stay) - the user asked why.
+  0.9.52 (4 Nov 2026, the user: "Když chci vybrat IR pro auxiliary, tak dialog prostě zmizí"): the log of 12:45 says
+  'Modal dialog "" made an owned window of the main window' right before each IR choice = the 0.9.29 owner trick
+  (bringLostModalsToFront) applied to the NATIVE FILE CHOOSER's placeholder (JUCE's Win32 chooser is a plain modal
+  Component with a peer and an empty name); when the native dialog closed, Windows activated the placeholder's new
+  owner = the main window, which rose over the MODELESS Divisions dialog the chooser came from - hidden, not
+  closed (no "keyboardsWindow.reset" path fires on an IR choice; the log has no crash). Fix: the owner is set for
+  juce::TopLevelWindow tops only (our AlertWindows/DialogWindows). The user's "none after reopening" = he opened the
+  dialog of ANOTHER division (12:45:20 "intercepted for manual 0" after the IR of manual 1). "Set effects for all"
+  DOES copy volume + channel separation (applyEffectsToAllPerspectives 4372-4378; the tabs refresh from the config) -
+  a slider moved after the tick unticks and copies nothing (the 0.9.8 rule); told the user, not changed.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

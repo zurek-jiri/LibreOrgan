@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.52] - 2026-11-04
+
+### Fixed
+- Windows: after choosing an IR (or any file) from the Divisions dialog, the
+  dialog fell behind the main window - the file chooser's hidden placeholder
+  window had been made an owned window of the main window, and its closing
+  activated the main window over the dialog. Only the program's own boxes are
+  owned now.
+
 ## [0.9.51] - 2026-11-04
 
 ### Fixed

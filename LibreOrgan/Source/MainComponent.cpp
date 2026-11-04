@@ -25225,8 +25225,12 @@ void MainComponent::bringLostModalsToFront()
             for (int i = 0; i < manager.getNumModalComponents(); ++i)
                 if (auto* modal = manager.getModalComponent(i))
                     if (auto* top = modal->getTopLevelComponent())
-                        if (auto* peer = top->getPeer())
+                        if (auto* peer = dynamic_cast<juce::TopLevelWindow*>(top) != nullptr ? top->getPeer() : nullptr)
                         {
+                            // Our boxes only (AlertWindow, DialogWindow): the placeholder window of a native file
+                            // chooser (a plain Component, an empty name) must keep no owner - owned by the main
+                            // window, its closing activated the main window, which rose over the modeless
+                            // Divisions dialog the chooser came from ("the dialog vanished", 4 Nov 2026).
                             const HWND box = (HWND)peer->getNativeHandle(), main = (HWND)mainPeer->getNativeHandle();
                             if (box != nullptr && main != nullptr && box != main && ::GetWindow(box, GW_OWNER) != main)
                             {
