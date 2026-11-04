@@ -3098,6 +3098,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `undulationBeats` != 0) neither pulls nor is pulled; the same pipe in another perspective/route is no partner;
   release copies get NaN. The 0.9.55 same-rank octave rule is subsumed. No partner -> the 0.9.56 shrink to the
   rank's tuning. Verified by the self-test only (identical) - the acoustic judgement is the user's.
+  0.9.58 (4 Nov 2026, the user's Hildesheim E major with ~20 stops: "jednotlivé píšťaly Gis velmi rozladěné ...
+  Gis samotné se k sobě pěkně doladily"): THE 0.9.57 FAULT - the interval strength was a WEIGHT in the mean of the
+  partners' pure-interval targets, not the SIZE of the pull: a G# whose partners are E and B (thirds, pure -13.7 /
+  -15.6 c) got the mean -14 c and went 80-100 % of the way, each G# by another random share = the chaos; alone it had
+  only unison/octave partners and locked. Now (startRank): `baseDeviation` = ownBase + the no-partner target (the
+  pipe at its rank's tuning + the 0..slider % remainder); each partner displaces it by `strength x (pureDeviation -
+  baseDeviation)`, averaged over the "sometimes" `factor`s (0.3-1.0): `coupledTarget += sum / factorSum` - a unison
+  pulls all the way (locking), an octave 80 %, a fifth ~1 c, a third 2-3 c, never more, however many partners; the
+  partners' own move = 0.25 x strength x factor (x 0.5 lower) towards the pure interval with the new pipe. RULE: the
+  interval strength scales the DISPLACEMENT from the rank's tuning, never the choice of target.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

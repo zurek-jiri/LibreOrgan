@@ -6275,10 +6275,16 @@ struct SamplerEngine::Impl
                     {
                         const float ownBase = -rank->rawTuningCents[(size_t)sampleNote] + rank->tuningCentsFor(sampleNote, stop->tuneTo440);
                         const int ownSounding = pipe + stop->sampleOffset + (rank->footageKnown ? rank->footageSemitones : stop->footageSemitones);
-                        struct Partner { uint32_t index; float weight, pureOffset, deviation; bool lower; };
+                        // 0.9.58 (the user's E major on Hildesheim: every G sharp went 14 c flat - the strength was a
+                        // WEIGHT among the partners, not the size of the pull, so thirds alone pulled the full pure third):
+                        // the BASE is the pipe's theoretical pitch in its rank's tuning (the no-partner target), and every
+                        // partner displaces it from there by strength x (pure interval - base), averaged over the "sometimes"
+                        // factors - a unison pulls all the way, an octave 80 %, a fifth 1 c, a third 2-3 c, never more.
+                        struct Partner { uint32_t index; float strength, factor, pureOffset, deviation; bool lower; };
                         std::array<Partner, 24> partners{};
                         int partnerCount = 0;
-                        float sum = 0.0f, weightSum = 0.0f;
+                        const float baseDeviation = ownBase + coupledTarget;   // the pipe at its rank's tuning + the random remainder
+                        float sum = 0.0f, factorSum = 0.0f;
                         for (int keyOffset = -24; keyOffset <= 24 && partnerCount < 24; ++keyOffset)
                         {
                             const int key = midiNote + keyOffset;
@@ -6299,19 +6305,20 @@ struct SamplerEngine::Impl
                                 else if (d == 4 || d == 16) { strength = 0.2f; pureOffset = -13.686f; }
                                 else if (d == 3 || d == 15) { strength = 0.1f; pureOffset = 15.641f; }
                                 else continue;
-                                const float weight = strength * (0.3f + 0.7f * tuningRandom.nextFloat());
+                                const float factor = 0.3f + 0.7f * tuningRandom.nextFloat();   // "sometimes": how much of the pull this pair gets
                                 const float deviation = -p.rank->rawTuningCents[(size_t)p.sampleNote] + p.tuningCents.load(std::memory_order_relaxed)
                                     + (p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed));
                                 const bool partnerLower = partnerSounding < ownSounding;
-                                sum += weight * (deviation + (partnerLower ? pureOffset : -pureOffset));
-                                weightSum += weight;
-                                partners[(size_t)partnerCount++] = { (uint32_t)i, weight, pureOffset, deviation, partnerLower };
+                                const float pureDeviation = deviation + (partnerLower ? pureOffset : -pureOffset);   // where the new pipe would be pure with this partner
+                                sum += factor * strength * (pureDeviation - baseDeviation);
+                                factorSum += factor;
+                                partners[(size_t)partnerCount++] = { (uint32_t)i, strength, factor, pureOffset, deviation, partnerLower };
                             }
                         }
-                        if (weightSum > 0.0f)
+                        if (factorSum > 0.0f)
                         {
-                            const float target = sum / weightSum - ownBase;   // the random part that makes the pure intervals
-                            coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, randomEff + (target - randomEff) * (0.8f + 0.2f * tuningRandom.nextFloat()));
+                            // The random part that puts the pipe at its base displaced by the partners' pull.
+                            coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, coupledTarget + sum / factorSum);
                             partnerFound = true;
                             if (couplingRoll)
                             {
@@ -6321,7 +6328,7 @@ struct SamplerEngine::Impl
                                     const auto& q = partners[(size_t)k];
                                     Voice& p = voices[(size_t)q.index];
                                     const float wanted = newDeviation + (q.lower ? -q.pureOffset : q.pureOffset);
-                                    const float move = (wanted - q.deviation) * 0.25f * q.weight * (q.lower ? 0.5f : 1.0f);
+                                    const float move = (wanted - q.deviation) * 0.25f * q.strength * q.factor * (q.lower ? 0.5f : 1.0f);
                                     const float current = p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed);
                                     p.couplingRetargetTotal.store((uint32_t)juce::jmax(1.0, (500.0 + tuningRandom.nextDouble() * 2000.0) * 0.001 * rate), std::memory_order_relaxed);
                                     p.couplingRetarget.store(juce::jlimit(current - 25.0f, current + 25.0f, current + move), std::memory_order_release);

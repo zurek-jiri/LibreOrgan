@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.58] - 2026-11-04
+
+### Fixed
+- Pipe coupling in a dense chord detuned the thirds by a full pure third (every
+  G sharp of an E major chord 14 cents flat): the interval's strength was only a
+  weight among the partners, not the size of the pull. Now every pipe is pulled
+  to its rank's own tuning first and the sounding partners displace it from there
+  by the interval's strength - a unison all the way, an octave most of it, a
+  fifth about a cent, a third two or three cents, never more.
+
 ## [0.9.57] - 2026-11-04
 
 ### Changed
