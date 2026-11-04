@@ -43,6 +43,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
 | [Doesburg, Martinikerk, Walcker](doesburg-martinikerk-walcker/README.md) | 5 | 76 | 7.6 GB | Dry, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20doesburg-martinikerk-walcker&organ=doesburg-martinikerk-walcker&name=doesburg-martinikerk-walcker) |
+| [Doksy-Kruh Renaissance](doksy-kruh-renaissance-organ/README.md) | 2 | 11 | 1.0 GB | default, auxiliary | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20doksy-kruh-renaissance-organ&organ=doksy-kruh-renaissance-organ&name=doksy-kruh-renaissance-organ) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
 
-19 configuration(s).
+20 configuration(s).
