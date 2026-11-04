@@ -6151,7 +6151,7 @@ struct SamplerEngine::Impl
             if (shiftCount == 0) continue;
             const int expressionManual = juce::jlimit(0, maxManuals - 1, stop->primaryManual);
             const double couplingMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
-            const bool couplingRoll = tuningRandom.nextInt(10) != 0;   // 9 of 10 pipes couple (the user, 4 Nov 2026; was 5 of 6)
+            const bool couplingRoll = tuningRandom.nextFloat() * 100.0f >= owner.couplingSkipPercent.load(std::memory_order_relaxed);   // 0.9.59: the share left untouched is a setting (default 10 % = 9 of 10 couple; 0 = all)
             const float rankDrift = trem[(size_t)expressionManual].rankDriftDegrees.load(std::memory_order_relaxed);
 
             // One key may sound several pipes of the stop (its own button and a

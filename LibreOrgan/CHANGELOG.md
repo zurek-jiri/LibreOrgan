@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.59] - 2026-11-04
+
+### Added
+- Configuration Editor, Advanced global audio: "Pipe coupling: pipes left
+  untouched" (0-50 %, default 10; travels with the organ) - the share of
+  starting pipes the coupling passes over; 0 % pulls every pipe.
+
 ## [0.9.58] - 2026-11-04
 
 ### Fixed

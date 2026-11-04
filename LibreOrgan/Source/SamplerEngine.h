@@ -917,6 +917,7 @@ public:
     // without "Equal at 440 Hz" (0 = never); up to the retune limit, beyond which the pipe is replaced.
     void setMistuneCorrectCents(float cents);
     void setCouplingLeftPercent(float percent) { couplingLeftPercent.store(juce::jlimit(0.0f, 100.0f, percent), std::memory_order_relaxed); }   // 0.9.56
+    void setCouplingSkipPercent(float percent) { couplingSkipPercent.store(juce::jlimit(0.0f, 100.0f, percent), std::memory_order_relaxed); }   // 0.9.59
     float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
     void setStopNoteTone(Stop* stop, int note, float db);
     void setTransmissionKeyTone(Stop* stop, int index, int key, float db);
@@ -1581,6 +1582,7 @@ private:
     std::atomic<float> retuneLimitCents{ 200.0f };    // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165)
     std::atomic<float> mistuneCorrectCents{ 50.0f };  // a pipe off its rank by more than this is pulled to its key without the 440 mode (0.9.10; 0 = never)
     std::atomic<float> couplingLeftPercent{ 20.0f };  // 0.9.56: the share of a pipe's detune the coupling leaves (a random share 0..this)
+    std::atomic<float> couplingSkipPercent{ 10.0f };  // 0.9.59: the share of pipes the coupling leaves untouched (0 = every pipe couples)
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1
     std::atomic<int> fillGroupSize{ 12 };
     std::atomic<int> transposeQuality{ 2 };

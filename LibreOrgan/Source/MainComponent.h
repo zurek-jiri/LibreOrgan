@@ -1134,6 +1134,7 @@ private:
     float retuneLimitCents = 200.0f;   // a pipe further off its key than this is faulty: off, filled from the neighbours (0.8.165); travels with the organ
     float mistuneCorrectCents = 50.0f;   // a pipe off its rank by more than this is pulled to its key without the 440 mode (0.9.10; 0 = never); travels with the organ
     float couplingLeftPercent = 20.0f;   // 0.9.56: the share of a pipe's detune the coupling leaves (a random share 0..this); travels with the organ
+    float couplingSkipPercent = 10.0f;   // 0.9.59: the share of pipes the coupling leaves untouched (0 = every pipe couples); travels with the organ
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.
     juce::String publicationOrgan, publicationProducer, publicationProduct, publicationLink, publicationAuthor;

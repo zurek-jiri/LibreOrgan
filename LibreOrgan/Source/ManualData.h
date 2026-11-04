@@ -1466,6 +1466,11 @@ static const char* const kManualText_part7 =
     "the pure interval with those pipes instead (the thirds only a little), and they\n"
     "move a little towards it. Celeste stops stay out of it. Travels with the organ.\n"
     "\n"
+    "### Pipe coupling: pipes left untouched\n"
+    "\n"
+    "The share of starting pipes the coupling passes over - they keep the detune they\n"
+    "started with (default 10 %); 0 % pulls every pipe. Travels with the organ.\n"
+    "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
@@ -1611,13 +1616,13 @@ static const char* const kManualText_part7 =
     "adds one.\n"
     "\n"
     "### Sample and IR locations: the file\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
     "\n"
     "### Sample and IR locations: forget the folders\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
@@ -1813,13 +1818,13 @@ static const char* const kManualText_part8 =
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
     "warnings and the polyphony report still come as boxes.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "## 9.2 The activity log\n"
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
-    ;
-static const char* const kManualText_part9 =
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
@@ -2015,13 +2020,13 @@ static const char* const kManualText_part9 =
     "far, near, close, dry, wet, front, ab, ortf ...); a lone head such as \"HW_\"\n"
     "or \"Ped_\" is a division mark and never becomes a perspective.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
-    ;
-static const char* const kManualText_part10 =
     "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"

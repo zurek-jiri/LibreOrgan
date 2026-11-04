@@ -1448,6 +1448,11 @@ while a unison, octave, fifth, fourth or third of it sounds is pulled towards
 the pure interval with those pipes instead (the thirds only a little), and they
 move a little towards it. Celeste stops stay out of it. Travels with the organ.
 
+### Pipe coupling: pipes left untouched
+
+The share of starting pipes the coupling passes over - they keep the detune they
+started with (default 10 %); 0 % pulls every pipe. Travels with the organ.
+
 ### Filled pipes: resampling quality
 
 How a neighbour's sample is played at another pitch while no copy exists:

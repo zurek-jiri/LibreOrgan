@@ -3108,6 +3108,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   pulls all the way (locking), an octave 80 %, a fifth ~1 c, a third 2-3 c, never more, however many partners; the
   partners' own move = 0.25 x strength x factor (x 0.5 lower) towards the pure interval with the new pipe. RULE: the
   interval strength scales the DISPLACEMENT from the rank's tuning, never the choice of target.
+  0.9.59 (4 Nov 2026, the user: "9 z 10 znamená, že při 30 rejstřících se vždycky najde nějaký, který se nedoladí ...
+  chci možnost, že se doladí všecko"): the roll is a setting - "Pipe coupling: pipes left untouched" (0-50 %, default
+  10 = the old 9 of 10; configuration key "couplingSkipPercent", engine atomic `couplingSkipPercent` +
+  `setCouplingSkipPercent`, `couplingRoll = nextFloat() * 100 >= skip`; Editor slider right after "detune left after
+  the pull"; manual ### of the same name). 0 % = every starting pipe couples.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
