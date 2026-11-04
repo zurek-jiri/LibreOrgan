@@ -2974,6 +2974,49 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   macOS runners (the v0.9.48 run sat "queued" 10 min until the main run was cancelled through the API: POST
   /actions/runs/<id>/cancel is allowed for the token). A push to main alone builds nothing now; the bisect branches
   are built by dispatch as before.
+  0.9.49 (3 Nov 2026, the user's Den Haag, Lutherse Kerk Diffuse ODF: perspectives "Sw", "Tr. ML", "Disc" - "regres!
+  ... perspektiva se smí odhadovat pouze z části názvu PŘED jménem rejstříku"; he chose rule 3 alone: "perspektiva
+  musí být společná většině rank z celých varhan"): THE CAUSE (not a late regression - 0.8.132, 19 Oct, HauptwerkOdf.cpp
+  `perspectiveOfRankName` 339-340): "any short word in the parenthesis (<= 16 chars) names the perspective" - Den
+  Haag's rank names carry qualifiers AFTER the stop name, "P Violoncel 8 (sw)" (enclosed), "3 Prestant 8 (Tr. ML)",
+  "Coppeling B.C. (disc)", and without a colon the head is the whole name, so the trailing parenthesis became a label;
+  0.8.220's flat-rank prefix detection then found the common head of those few folders ("03-dif2S-P_" = the Diffuse
+  prefix + the division mark) -> pattern lines "Sw;03-dif2S-P_", "Tr. ML;03-dif2S-B_". FIX: `perspectiveWordLabel`
+  (the lambda of 0.8.132 made a static function) + a block in `parse` before the 0.8.132 safety net: per label the set
+  of stops carrying a rank with it (rankIds, tremmed/noise skipped) over the stops with ranks; a label that is NO
+  perspective word and sits on fewer than half the stops is cleared on its ranks (plain perspective), log "Hauptwerk
+  ODF: "X" is no perspective - a of b stop(s) carry it ...". A perspective WORD stands whatever its share (a Rear of
+  one division). NOT run-verified (the user's program was running: no local build, no --hauptwerk run; HauptwerkOdf.cpp
+  compiled alone with `msbuild LibreOrgan_App.vcxproj /t:ClCompile /p:SelectedFiles="..\..\Source\HauptwerkOdf.cpp"
+  /m:1` - the way to check one file without a 16-thread build); verify with `LibreOrgan.exe --hauptwerk "<Den Haag
+  Diffuse ODF>"`: no "Sw"/"Tr. ML"/"Disc" perspective, the pattern lines Direct/Diffuse/Rear/Distant only - VERIFIED
+  with the CI exe once his program closed: "Disc" 1 of 58, "Sw" 3 of 58, "Tr. ML" 8 of 58 stops -> "is no
+  perspective", their ranks "[]" (plain); C:\LibreOrgan\LibreOrgan_0.9.49.exe deployed (CI exe, late symbols 0, no
+  VC DLLs). His own
+  file and Patterns.json still carry the learned "Sw;..."/"Tr. ML;..." lines (merged at every load) - re-import and
+  remove them in the Perspective Patterns dialog. The push was rejected (origin 12 ahead: his Cembalo/Caen publishes;
+  he re-published Caen himself - issue #193 - and removed the "cen" folder) -> `git pull --no-rebase` (a merge),
+  tag v0.9.49 on the merge commit 3c165a8. THE "NESTED FOLDER TREES" MESSAGE OF THE SAME IMPORT (the user: "ODF z
+  Hauptwerk nemá žádné nested trees"): `foldersFor` (HauptwerkOdf.cpp ~1327-1332) takes, for a ONE-rank stop, the
+  rank folder's PARENT as the stop folder only when the rank folder's name ENDS with the parent's name
+  ("dolce8/03-dif2S-S_Dolce8" yes; "Gamba/03-dif2S-S_ViolGamb8", "oct4/03-dif2S-P_Octaaf4", "holpyp/...Holpyp8" no)
+  - so those stops' folder = the rank folder, their "tree" = the parent (pipes/sw/Gamba) while the others' tree is
+  pipes/sw, and dropNestedTrees merges them at load with the Messages note. Den Haag's producer abbreviates the stop
+  folders (oct4, trom4, Gamba) differently from the rank folders. Proposed, not done: a one-rank stop's folder = the
+  parent whenever the parent holds nothing but this stop's rank folders (a trem sibling allowed), the name rule
+  second.
+  0.9.50 (4 Nov 2026, the user: Doesburg "P. Mixtur" into the pedal without the 2'): `transmissionCaption` returned
+  an alias BARE (Stop List rows, the dump) while the grid button (`Voicer::transmissionLabel`) added the footage - now
+  the alias rule lives in transmissionCaption alone (alias with a footage = as typed; without = alias + the sounding
+  footage + shift) and transmissionLabel calls it; `displayedFootageSemitones` (the transmission's base) =
+  `lowestFootageSemitones + sampleOffset` of the measured rank (what the stop's own button shows: a mixture's smpl
+  says 8', its button 2' - the transmission said 8'); `Stop::displayName` keeps a footage typed in the ALIAS as typed
+  on a transposed stop too (THE USER'S RULE: an alias footage overrides the computed one, the way out when the
+  program has no good answer). Compact voicing order: Transposition, Alias, One-shot, the perspective boxes as ONE
+  group on one line (wraps whole), Rank count, the rest. Self-test line-identical to 0.9.7's but for timing - and
+  "subbass 16 [default]" reads "bbass 16 [Dry]" on this machine because Patterns.json holds a learned "Dry;00-dr_;su_"
+  line and the prefix match takes "su_" for "su" of "subbass" (a pre-existing matter of the machine's patterns, not of
+  this build; told the user, not coded). Issues #175-#185 closed on 4 Nov 2026 (all solved or explained).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

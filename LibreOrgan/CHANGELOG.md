@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.50] - 2026-11-04
+
+### Changed
+- Compact voicing row (per-key rows folded): the controls come in the order
+  Transposition, Alias, One-shot, then the perspective boxes as one group on one
+  line (the group wraps whole), then the rest.
+
+### Fixed
+- A transmission of a stop whose caption carries the measured footage (a mixture
+  reading 2') showed another footage, or none at all in the Stop List rows when it
+  had an alias from a Hauptwerk definition ("P. Mixtur"): the transmission's footage
+  now counts from the footage the stop's own button shows, and the Stop List rows
+  and the dump use the same caption as the button.
+- A footage typed into an alias is kept as typed, on stops and transmissions alike -
+  the way to override what the program measured.
+
 ## [0.9.49] - 2026-11-03
 
 ### Fixed

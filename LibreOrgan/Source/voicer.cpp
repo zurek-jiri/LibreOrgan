@@ -4072,17 +4072,8 @@ juce::String Voicer::transmissionLabel(const Stop* stop, int index)
 {
     if (stop == nullptr) return {};
     if (index < 0 || index >= (int)stop->transmissions.size()) return stop->displayName() + " (Trsm.)";
-    const auto& t = stop->transmissions[(size_t)index];
-    const auto suffix = SamplerEngine::transmissionSuffix(stop, t);   // " (Ext.)" in the stop's own division, " (Trsm.)" elsewhere
-    if (t.alias.isNotEmpty())
-    {
-        // An alias without a footage gets the transmission's footage, like every
-        // other caption; the mark follows the alias as it follows the automatic name.
-        int written = 0;
-        if (SamplerEngine::footageFromName(t.alias, written)) return footageDisplayName(t.alias) + suffix;   // the foot mark on a bare number ("Plockfloett 4" -> "4'")
-        return t.alias + " " + SamplerEngine::footageLabel(SamplerEngine::displayedFootageSemitones(stop) + t.shift) + suffix;
-    }
-    return SamplerEngine::transmissionCaption(stop, t);
+    // One caption for the button, the Stop List rows and the dump (the alias rule lives there).
+    return SamplerEngine::transmissionCaption(stop, stop->transmissions[(size_t)index]);
 }
 
 void Voicer::removeTransmission(Stop* stop, int index)

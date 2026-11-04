@@ -11377,6 +11377,10 @@ juce::String Stop::displayName() const
         // the measured one when the samples carry a pitch, else the name's plus the
         // transposition. Untransposed stops keep the name's footage as ever.
         if (sampleOffset == 0) return base;
+        // A footage typed in the ALIAS wins over the computed one (the user's rule, 4 Nov 2026:
+        // the way out when the program has no good answer); a folder name's footage is replaced.
+        int aliased = 0;
+        if (alias.isNotEmpty() && SamplerEngine::footageFromName(alias, aliased)) return base;
         const Stop* measured = footageKnown ? this : nullptr;
         if (measured == nullptr)
             for (const auto& rank : ranks)
@@ -11397,6 +11401,15 @@ int SamplerEngine::displayedFootageSemitones(const Stop* stop)
     // The same base as the Transposition box of a transmission (the measured
     // smpl footage when known, else the name): a "Quinte 3" whose pipes measure
     // 2 2/3' shifted +5 reads 2', not 2 2/7' (3' + 5 is no harmonic footage).
+    // The measured footage is the one the stop's own caption shows - the lowest
+    // SOUNDING harmonic (a mixture's smpl names the key's fundamental, its button
+    // reads 2'; a transmission of it read 8' before, 4 Nov 2026).
+    if (stop == nullptr) return 0;
+    const Stop* measured = stop->footageKnown ? stop : nullptr;
+    if (measured == nullptr)
+        for (const auto& rank : stop->ranks)
+            if (rank->footageKnown) { measured = rank.get(); break; }
+    if (measured != nullptr) return measured->lowestFootageSemitones + stop->sampleOffset;
     return stopFootageSemitones(stop);
 }
 
@@ -11439,8 +11452,17 @@ juce::String SamplerEngine::transmissionCaption(const Stop* stop, const Stop::Tr
 {
     // The transmission's own alias when it has one (a Hauptwerk import gives the
     // definition's stop name, "P. tuba 4"), else the owner's name with its footage
-    // shifted (0.8.142: the alias was never shown on the button).
-    return (t.alias.isNotEmpty() ? t.alias : transposedStopName(stop, t.shift)) + transmissionSuffix(stop, t);
+    // shifted (0.8.142: the alias was never shown on the button). An alias with a
+    // footage keeps it as typed (the user's rule); one without gets the
+    // transmission's sounding footage like every other caption (the grid button
+    // did so, the Stop List rows showed the bare alias - "P. Mixtur" without the 2').
+    if (t.alias.isNotEmpty())
+    {
+        int written = 0;
+        if (footageFromName(t.alias, written)) return footageDisplayName(t.alias) + transmissionSuffix(stop, t);
+        return t.alias + " " + footageLabel(displayedFootageSemitones(stop) + t.shift) + transmissionSuffix(stop, t);
+    }
+    return transposedStopName(stop, t.shift) + transmissionSuffix(stop, t);
 }
 
 //------------------------------------------------------------------------------

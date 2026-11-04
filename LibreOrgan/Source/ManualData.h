@@ -582,7 +582,8 @@ static const char* const kManualText_part2 =
     "\n"
     "The caption of the button. *Automatic* shows the folder name; type any text\n"
     "to show that instead (an alias without a footage gets the stop's footage\n"
-    "appended). The alias is only a caption: saved states, combinations and MIDI\n"
+    "appended; a footage typed into the alias is kept as typed, on a transmission\n"
+    "too). The alias is only a caption: saved states, combinations and MIDI\n"
     "bindings use the stop's real name.\n"
     "\n"
     "### One-shot\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "### Velocity layer boxes\n"
     "\n"
     "A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
     "### Stop volume\n"
     "\n"
     "-24 to +12 dB, the level of the whole stop.\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "every load.\n"
     "\n"
     "## 4.5 Apply and reload\n"
-    "\n"
     ;
 static const char* const kManualText_part4 =
+    "\n"
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
     "their samples and copies; only new folders are read, only missing copies\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "- **The buffer size**: 512 samples allows twice the work of 256; an organ\n"
     "  does not need a small buffer.\n"
     "- **The auxiliary route** halves the polyphony while it has a device.\n"
-    "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     ;
 static const char* const kManualText_part5 =
+    "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
     "- **The driver layout**: all routes on one ASIO driver (or one Windows Audio\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "\n"
     "### Render threads for Aggregated WASAPI\n"
     "\n"
-    "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     ;
 static const char* const kManualText_part6 =
+    "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
-    "strike. [Velocity layers](#35-velocity-layers).\n"
     ;
 static const char* const kManualText_part7 =
+    "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "no pitch data. [Temperaments](#63-temperaments).\n"
     "\n"
     "### Target temperament\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
     "### Window size\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "## 9.3 Report a problem\n"
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
-    "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     ;
 static const char* const kManualText_part9 =
+    "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
     "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
     "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
     "last self-test, `system.txt` with the computer and every audio route - no\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "the filled pipes stops the same way. Before the load the WAV bytes of the\n"
     "trees are estimated against the free memory and a warning is logged; the\n"
     "load is never refused.\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"

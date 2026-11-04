@@ -165,18 +165,20 @@ public:
         auto fits = [&](int width) { return x == x0 || x + width <= right; };
         auto newline = [&] { x = x0; y += compactLineStep; };
         auto item = [&](Control c, int index, int width) { if (!fits(width)) newline(); put(c, index, x, y, width); x += width; };
+        // The user's order (4 Nov 2026): Transposition, Alias, One-shot, then the perspective
+        // boxes as ONE group on one line (the group wraps whole, never in the middle), the rest.
         item(Control::transposition, 0, 362);   // label 100 + 4 + box 250 + 8
+        item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
         if (!trsm) item(Control::oneShot, 0, 96);
         if (trsm) item(Control::source, 0, 528);
         else
         {
             const int boxes = 1 + (int)stop->ranks.size();
-            if (!fits(92 + 82)) newline();
+            if (!fits(92 + 82 * boxes)) newline();
             put(Control::ranksLabel, 0, x, y, 92); x += 92;
             for (int i = 0; i < boxes; ++i) item(Control::rankBox, i, 82);
             x += 8;
         }
-        item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
         if (!trsm && folder) item(Control::rankCount, 0, 146);
         if (!trsm) { newline(); put(Control::diapason, 0, x0, y, right - x0); }
         y += compactLineStep;

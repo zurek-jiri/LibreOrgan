@@ -574,7 +574,8 @@ that cell lets the program find it again.
 
 The caption of the button. *Automatic* shows the folder name; type any text
 to show that instead (an alias without a footage gets the stop's footage
-appended). The alias is only a caption: saved states, combinations and MIDI
+appended; a footage typed into the alias is kept as typed, on a transmission
+too). The alias is only a caption: saved states, combinations and MIDI
 bindings use the stop's real name.
 
 ### One-shot
