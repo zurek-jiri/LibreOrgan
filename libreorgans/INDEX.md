@@ -46,5 +46,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Doksy-Kruh Renaissance](doksy-kruh-renaissance-organ/README.md) | 2 | 11 | 1.0 GB | default, auxiliary | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20doksy-kruh-renaissance-organ&organ=doksy-kruh-renaissance-organ&name=doksy-kruh-renaissance-organ) |
 | [Dom Bédos Organ Model](dom-b-dos-organ-model/README.md) | 6 | 56 | 4.2 GB | Rear, default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20dom-b-dos-organ-model&organ=dom-b-dos-organ-model&name=dom-b-dos-organ-model) |
 | [Este, St. Maria delle Grazie, Mascioni](este-st-maria-delle-grazie-mascioni-organ/README.md) | 3 | 28 | 7.1 GB | Direct, Diffuse, Distant, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20este-st-maria-delle-grazie-mascioni-organ&organ=este-st-maria-delle-grazie-mascioni-organ&name=este-st-maria-delle-grazie-mascioni-organ) |
+| [The Forcalquier Organ Model](the-forcalquier-organ-model/README.md) | 4 | 36 | 2.4 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20the-forcalquier-organ-model&organ=the-forcalquier-organ-model&name=the-forcalquier-organ-model) |
 
-21 configuration(s).
+22 configuration(s).
