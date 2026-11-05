@@ -27,6 +27,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)▼ | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
+| [Hradec Kralove, St. Maria, Streussel](hradec-kralove-st-maria-streussel-organ/README.md) | 3 | 34 | 1.5 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20hradec-kralove-st-maria-streussel-organ&organ=hradec-kralove-st-maria-streussel-organ&name=hradec-kralove-st-maria-streussel-organ) |
 | [Hildesheim, St. Andreas, Beckerath](hildesheim-st-andreas-beckerath-organ/README.md) | 5 | 65 | 11 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20hildesheim-st-andreas-beckerath-organ&organ=hildesheim-st-andreas-beckerath-organ&name=hildesheim-st-andreas-beckerath-organ) |
 | [Greccio, S. Francesco, Spada](greccio-s-francesco-spada-organ/README.md) | 2 | 15 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20greccio-s-francesco-spada-organ&organ=greccio-s-francesco-spada-organ&name=greccio-s-francesco-spada-organ) |
 | [Frankfurt (Oder), Sauer op. 2025](frankfurt-oder-sauer-op-2025/README.md) | 4 | 52 | 11 GB | Diffuse, Direct, Dry, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20frankfurt-oder-sauer-op-2025&organ=frankfurt-oder-sauer-op-2025&name=frankfurt-oder-sauer-op-2025) |
@@ -51,4 +52,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 35 | 1.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ&name=altenbruch-klapmeyer-organ) |
 | [Adlington Hall (Smith)](adlington-hall-smith/README.md) | 3 | 15 | 2.9 GB | Diffuse, Direct, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-smith&organ=adlington-hall-smith&name=adlington-hall-smith) |
 
-25 configuration(s).
+26 configuration(s).

@@ -50,5 +50,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
 | [Forcalquier Organ Model](forcalquier-organ-model/README.md) | 4 | 36 | 2.4 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20forcalquier-organ-model&organ=forcalquier-organ-model&name=forcalquier-organ-model) |
 | [Greccio, S. Francesco, Spada](greccio-s-francesco-spada-organ/README.md) | 2 | 15 | 0.9 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20greccio-s-francesco-spada-organ&organ=greccio-s-francesco-spada-organ&name=greccio-s-francesco-spada-organ) |
+| [Hradec Kralove, St. Maria, Streussel](hradec-kralove-st-maria-streussel-organ/README.md) | 3 | 34 | 1.5 GB | default | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20hradec-kralove-st-maria-streussel-organ&organ=hradec-kralove-st-maria-streussel-organ&name=hradec-kralove-st-maria-streussel-organ) |
 
-25 configuration(s).
+26 configuration(s).
