@@ -2452,6 +2452,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         {
             SwipeSwitch::remove(&tremulant);
             for (auto* button : couplerButtons) SwipeSwitch::remove(button);
+            removeExitWatch();
         }
         void setStopsAction(std::function<void()> action) { load.onClick = std::move(action); }
         // A sample folder tree of this division is not on this computer: an
@@ -2528,10 +2529,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             }
             else if (event.mods.isLeftButtonDown() && event.eventComponent == this && couplerArrange)
             {
-                couplerArrange = false;   // click on the background ends arranging
-                if (arrangeStateChanged) arrangeStateChanged(manual, false);
-                resized();
-                repaint();
+                endArranging();   // click on the background ends arranging
             }
             else if (event.mods.isLeftButtonDown() && event.eventComponent != this)
             {
@@ -2688,7 +2686,19 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 dashPhase += 1.2f;
                 if (dashPhase > 1000.0f) dashPhase -= 990.0f;
                 repaint();
+                // 0.9.61 (the user): a click ANYWHERE else in the window ends the arranging, not only on
+                // the header's background - a recursive mouse listener on the top-level window, installed
+                // here (at construction the header has no window yet) and removed when the mode ends.
+                if (exitWatch == nullptr && isShowing())
+                    if (auto* top = getTopLevelComponent())
+                        if (top != this)
+                        {
+                            exitWatch = std::make_unique<ExitWatch>(*this);
+                            watchTarget = top;
+                            top->addMouseListener(exitWatch.get(), true);
+                        }
             }
+            else removeExitWatch();
             repaint(0, 5, 40, 28);
             swell.repaint();
             const bool tremEnabled = tremulantGetter && tremulantGetter(manual);
@@ -2727,6 +2737,37 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         juce::Point<int> pressScreenPosition, dragStartTopLeft;
         float dashPhase = 0.0f;
         juce::Rectangle<int> spareSlot;   // free place after the last coupler while arranging
+        // 0.9.61: the watch for a click outside this header while arranging.
+        struct ExitWatch final : public juce::MouseListener
+        {
+            explicit ExitWatch(SectionHeader& h) : header(&h) {}
+            void mouseDown(const juce::MouseEvent& event) override
+            {
+                if (header == nullptr || !header->couplerArrange) return;
+                auto* c = event.eventComponent;
+                if (c == header.getComponent() || header->isParentOf(c)) return;   // inside the header: the drag itself
+                header->endArranging();
+            }
+            juce::Component::SafePointer<SectionHeader> header;
+        };
+        std::unique_ptr<ExitWatch> exitWatch;
+        juce::Component::SafePointer<juce::Component> watchTarget;
+        void removeExitWatch()
+        {
+            if (exitWatch == nullptr) return;
+            if (watchTarget != nullptr) watchTarget->removeMouseListener(exitWatch.get());
+            exitWatch.reset();
+            watchTarget = nullptr;
+        }
+        void endArranging()
+        {
+            if (!couplerArrange) return;
+            couplerArrange = false;
+            draggedCoupler = nullptr;
+            if (arrangeStateChanged) arrangeStateChanged(manual, false);
+            resized();
+            repaint();
+        }
 
         void dropCoupler(LeftOnlyTextButton* dragged, juce::Point<int> screenPosition)
         {

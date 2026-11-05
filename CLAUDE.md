@@ -3121,6 +3121,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "Pipes left untouched" ranges 0-100 % now. The two-division non-locking stays by design: partners are the
   voices of the SAME keyboard (`keyHeads[makeSourceKey(key, manualIndex)]`) and each pipe settles on its own rank's
   diapason (II. 435.8 vs III. 435.6 Hz = ~1 c apart with the original tuning; 440 removes it).
+  0.9.61 (5 Nov 2026, the user: "Arrange mode spojek nelze ukončit klepnutím MIMO grid spojek!"): the coupler
+  arranging of a division header (the 3 s press) ended only on THAT header's background click. Now
+  `SectionHeader::ExitWatch` (voicer.cpp, a juce::MouseListener with a SafePointer to the header) is added
+  RECURSIVELY to `getTopLevelComponent()` by the header's 25 Hz timer once the mode is on and the header is shown
+  (at construction it has no window), and removed by the timer when the mode ends, by `removeExitWatch()` in the
+  destructor (every reorder rebuilds the headers); a mouseDown whose component is not the header or its child
+  calls `endArranging()` (the one place that leaves the mode: flag, arrangeStateChanged, resized, repaint).
+  Clicks in OTHER windows (dialogs) do not end it. No hook drives the 3 s press - smoke run only.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

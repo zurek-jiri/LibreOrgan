@@ -12,6 +12,12 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.61] - 2026-11-05
+
+### Fixed
+- Arranging the coupler buttons of a division header ends with a click anywhere
+  else in the window, not only on that header's background.
+
 ## [0.9.60] - 2026-11-05
 
 ### Added
