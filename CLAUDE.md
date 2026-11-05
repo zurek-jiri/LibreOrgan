@@ -3179,6 +3179,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   30 s; the stops' aliases after the reload read from voicer.json before the restore - saveSettings writes no
   configuration file). The activity log ROTATES at every start (activity-previous.log): a test's log slice must filter
   both files by time, not by the old file's length.
+  0.9.65 (5 Nov 2026, the user's Chemnitz: "proč to cpe tuhle pattern do default místo diffuse"; Chapelet "I. Nasardo"
+  twice): THE CAUSE: Chemnitz's definition spells "Difuse: 1. Principal 8" (one f) - no perspective word -> rank label
+  "" -> default; and the import never consulted the Perspective Patterns (the scan does, the import writes them only).
+  Now in `HauptwerkOdf::parse`, after the 0.9.49 majority block: (1) a HEAD before the colon without a word, on >= 50 %
+  of the stops, is a perspective when the definition has another recognised one (`nearPerspectiveWord`: one typo from
+  a word of `kPerspectiveWords` -> the word, else the head as spelt; log "the head "Difuse" ... taken for the
+  perspective "Diffuse""); (2) ranks still without a label take `labelFromPatterns(patternsInForce, folder name)`
+  (the 0.9.51 prefix rules) - `parse(file, progress, patternsInForce)`, the ParseJob passes
+  `engine.getPerspectivePatterns()`, `--hauptwerk` passes none. (3) PATTERNS MERGED BY PREFIX: `mergedPerspectiveLines
+  (base, added, addedCount, conflicts)` (MainComponent.cpp beside mergedPatterns): a prefix joins its label's line, a
+  prefix owned by another label in `base` is skipped = a conflict; `mergeApplicationPatterns` takes the ORGAN's lines as
+  base (its definition is the truth for its folders; conflicts -> log "Perspective patterns: N prefix(es) ... the
+  organ's own line applies, Patterns.json is left as it is" + Messages), `rememberPatterns(false)` takes PATTERNS.JSON
+  as base (the user's lines keep their prefixes; the old by-label merge REPLACED his "Diffuse;04-AB_;04_abblizko_" with
+  the next organ's Diffuse line). (4) The import's `aliasOf` cuts a leading division numeral (P./Ped./I.-VI.) that names
+  ANOTHER division than the row's ("A: I. Nasardo 1 3/5" on II -> "Nasardo"). REGRESSION CHECK the user asked for:
+  %TEMP%\hw_compare.ps1 = `--hauptwerk` of the 25 published organs (A-Ch in the Czech alphabet: everything but Rural and
+  Stralsund) with C:\LibreOrgan\LibreOrgan_0.9.64.exe and the new build, diffed - 24 identical, Chemnitz alone changed
+  (50 ranks [Diffuse], "perspective pattern: Diffuse;04_abblizko_"); the Chapelet import gives "I. Nasardo 1 1/3'" on I
+  and "Nasardo 1 3/5'" on II; the conflict path tested with a crafted Patterns.json ("Direct;04_abblizko_"): the organ
+  loaded Diffuse, the note logged, the user's file restored by hand (the test script's backup would have kept the
+  crafted one - back up the user's Patterns.json BEFORE such a run). THE USER'S RULE: a regression check runs over the
+  published organs up to Ch only ("dál nechoď, tam nevíme, co se ještě stane"), economically.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

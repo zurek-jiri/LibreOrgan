@@ -12814,7 +12814,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         void run() override
         {
             setStatusMessage("Reading the Hauptwerk organ definition...");
-            odf = std::make_shared<HauptwerkOdf>(HauptwerkOdf::parse(file, [this](double share) { setProgress(share); return !threadShouldExit(); }));
+            odf = std::make_shared<HauptwerkOdf>(HauptwerkOdf::parse(file, [this](double share) { setProgress(share); return !threadShouldExit(); }, patternsInForce));
             if (odf == nullptr || threadShouldExit()) return;
             // The plan on this thread as well (0.8.144): it reads the sample folders of
             // every rank from the disk, seconds on a big library, and the window said
@@ -12848,10 +12848,12 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         std::map<juce::String, juce::String> automaticNameOfFolder;   // folder path (lower case) -> the scanned stop name
         bool planned = false;
         float referenceReleaseCrossfadeMs = 110.0f;   // the release fade-out in force (0.9.62): the definition's crossfade lengths are judged against it
+        std::vector<juce::String> patternsInForce;    // the Perspective Patterns in force (0.9.65): a rank without a perspective in its name takes the matching line's label
     };
     juce::Component::SafePointer<MainComponent> safeThis(this);
     auto job = std::make_shared<ParseJob>(odfFile, engine, this);
     job->referenceReleaseCrossfadeMs = juce::jmax(1.0f, (float)releaseFadeOutSlider.getValue());   // 0.9.62
+    job->patternsInForce = engine.getPerspectivePatterns();   // 0.9.65
     job->launchThread();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [safeThis, job, poll, odfFile, mergeIntoLoaded]
@@ -13022,10 +13024,18 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     }
                     if (stops < 2) divisionHead.clear();
                 }
-                auto aliasOf = [&divisionHead](const juce::String& stopName)
+                auto aliasOf = [&divisionHead, i](const juce::String& stopName)
                 {
                     auto name = stopName.trim();
                     if (divisionHead.isNotEmpty() && name.substring(0, divisionHead.length()).equalsIgnoreCase(divisionHead)) name = name.substring(divisionHead.length()).trim();
+                    // 0.9.65 (Chapelet: "A: I. Nasardo 1 3/5" stands on the SECOND manual): a leading division
+                    // numeral that names ANOTHER division than the row's is cut from the alias.
+                    {
+                        const auto token = name.upToFirstOccurrenceOf(" ", false, false);
+                        static const std::pair<const char*, int> marks[]{ { "P.", 0 }, { "Ped.", 0 }, { "I.", 1 }, { "II.", 2 }, { "III.", 3 }, { "IV.", 4 }, { "V.", 5 }, { "VI.", 6 } };
+                        for (const auto& [mark, division] : marks)
+                            if (token == mark && division != i && name.length() > token.length()) { name = name.substring(token.length()).trim(); break; }
+                    }
                     return SamplerEngine::nameWithoutFootage(name);
                 };
                 for (const auto& stop : division.stops)
@@ -23942,6 +23952,63 @@ namespace
         if (addedCount != nullptr) *addedCount = count;
         return result;
     }
+    // 0.9.65: perspective lines merged by PREFIX, never by label - every prefix of `added` joins its
+    // label's line in `base` (the line made when the label is new); a prefix `base` holds under ANOTHER
+    // label is a conflict (the same prefix means Direct in one set and Diffuse in another definition):
+    // the base keeps it, the prefix is left out and named in `conflicts`. The old by-label merge
+    // replaced a whole line - the user's hand-written "Diffuse;04-AB_;04_abblizko_" in Patterns.json
+    // was overwritten by the next organ's own Diffuse line.
+    std::vector<juce::String> mergedPerspectiveLines(const std::vector<juce::String>& base, const std::vector<juce::String>& added,
+        int* addedCount = nullptr, juce::StringArray* conflicts = nullptr)
+    {
+        struct Line { juce::String label; juce::StringArray prefixes; };
+        std::vector<Line> lines;
+        std::map<juce::String, juce::String> ownerOfPrefix;   // lower-case prefix -> label
+        auto lineOf = [&lines](const juce::String& label) -> Line*
+        {
+            for (auto& l : lines) if (l.label.equalsIgnoreCase(label)) return &l;
+            return nullptr;
+        };
+        auto split = [](const juce::String& text, juce::String& label, juce::StringArray& prefixes)
+        {
+            juce::StringArray parts;
+            parts.addTokens(text, ";", "");
+            label = parts.size() > 0 ? parts[0].trim() : juce::String();
+            for (int i = 1; i < parts.size(); ++i) if (parts[i].trim().isNotEmpty()) prefixes.add(parts[i].trim());
+            return label.isNotEmpty();
+        };
+        int count = 0;
+        auto take = [&](const std::vector<juce::String>& list, bool counting)
+        {
+            for (const auto& text : list)
+            {
+                juce::String label; juce::StringArray prefixes;
+                if (!split(text, label, prefixes)) continue;
+                Line* line = lineOf(label);
+                if (line == nullptr) { lines.push_back({ label, {} }); line = &lines.back(); if (counting) ++count; }
+                for (const auto& p : prefixes)
+                {
+                    const auto key = p.toLowerCase();
+                    const auto owner = ownerOfPrefix.find(key);
+                    if (owner != ownerOfPrefix.end())
+                    {
+                        if (!owner->second.equalsIgnoreCase(label) && conflicts != nullptr && counting)
+                            conflicts->addIfNotAlreadyThere(p + ": " + owner->second + " here, " + label + " there");
+                        continue;
+                    }
+                    ownerOfPrefix[key] = line->label;
+                    line->prefixes.add(p);
+                    if (counting) ++count;
+                }
+            }
+        };
+        take(base, false);
+        take(added, true);
+        std::vector<juce::String> result;
+        for (const auto& l : lines) result.push_back(l.prefixes.isEmpty() ? l.label : l.label + ";" + l.prefixes.joinIntoString(";"));
+        if (addedCount != nullptr) *addedCount = count;
+        return result;
+    }
     std::vector<juce::String> patternsOf(const juce::var& object, const char* key)
     {
         std::vector<juce::String> list;
@@ -23974,7 +24041,10 @@ void MainComponent::rememberPatterns(bool exact)
     juce::DynamicObject::Ptr obj = new juce::DynamicObject();
     obj->setProperty("oneShotPatterns", lists("oneShotPatterns", engine.getOneShotPatterns(), false));
     obj->setProperty("ignoredPatterns", lists("ignoredPatterns", engine.getIgnoredPatterns(), false));
-    obj->setProperty("perspectivePatterns", lists("perspectivePatterns", engine.getPerspectivePatterns(), true));
+    // 0.9.65: by prefix, Patterns.json's own lines FIRST - what the user wrote keeps its prefixes, the
+    // organ's new prefixes join their labels, a prefix of another label there stays where it is.
+    obj->setProperty("perspectivePatterns", patternsVar(exact ? engine.getPerspectivePatterns()
+        : mergedPerspectiveLines(patternsOf(stored, "perspectivePatterns"), engine.getPerspectivePatterns())));
     // 0.9.35: the default ignored patterns this file has seen - a default added in a later
     // version joins the list ONCE (mergeApplicationPatterns); one the user removed stays removed.
     obj->setProperty("ignoredDefaultsSeen", patternsVar(SamplerEngine::defaultIgnoredPatterns()));
@@ -23990,7 +24060,16 @@ void MainComponent::mergeApplicationPatterns()
     {
         engine.setOneShotPatterns(mergedPatterns(engine.getOneShotPatterns(), patternsOf(stored, "oneShotPatterns"), false, &addedOneShot));
         engine.setIgnoredPatterns(mergedPatterns(engine.getIgnoredPatterns(), patternsOf(stored, "ignoredPatterns"), false, &addedIgnored));
-        engine.setPerspectivePatterns(mergedPatterns(engine.getPerspectivePatterns(), patternsOf(stored, "perspectivePatterns"), true, &addedPerspective));
+        // 0.9.65: by prefix, the ORGAN's lines first (its own definition is the truth for its folders);
+        // a prefix Patterns.json holds under another label is left out for this organ and named.
+        juce::StringArray conflicts;
+        engine.setPerspectivePatterns(mergedPerspectiveLines(engine.getPerspectivePatterns(), patternsOf(stored, "perspectivePatterns"), &addedPerspective, &conflicts));
+        if (!conflicts.isEmpty())
+        {
+            CrashHandler::note("Perspective patterns: " + juce::String(conflicts.size()) + " prefix(es) of this computer's Patterns.json stand under another label in this organ - the organ's own line applies, Patterns.json is left as it is: " + conflicts.joinIntoString("; "));
+            queueNotice(juce::AlertWindow::InfoIcon, "Perspective patterns",
+                "A prefix means one perspective in this organ and another in this computer's Patterns.json - the organ's own line applies here, Patterns.json is left as it is:\n" + conflicts.joinIntoString("\n"));
+        }
     }
     // 0.9.35: a default ignored pattern this computer's file has not seen yet ("Traktur",
     // "mustr" - the user's Adlington loaded its action noises and a producer's sample

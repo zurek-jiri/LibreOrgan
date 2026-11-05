@@ -1692,8 +1692,12 @@ static const char* const kManualText_part8 =
     "folder names. The order of the lines is the order of the perspectives\n"
     "everywhere (the Stop List columns, the voicing boxes, the audio tabs):\n"
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
-    "in a set are added by themselves; a perspective renamed in the Stop List\n"
-    "(double-click the column header) renames the line.\n"
+    "in a set are added by themselves (prefix by prefix, your own lines are never\n"
+    "replaced; a prefix that means another perspective in this computer's list is\n"
+    "noted in Messages and the organ's own line applies); a perspective renamed in\n"
+    "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
+    "definition's ranks without a perspective in their names take these prefixes\n"
+    "at the import too.\n"
     "\n"
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
     "\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "### Wind: sag settling lag\n"
     "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
+    ;
+static const char* const kManualText_part9 =
     "ms, default 255).\n"
     "\n"
     "### Wind: also affects divisions\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "The other divisions fed from this wind: they receive half of this division's\n"
     "sag.\n"
     "\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
     "decided is written to `ImportReports` in the settings folder.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "## 10.5 The tuning gate of a perspective join\n"
     "\n"
     "Two folders are the same pipes in two perspectives only when their files\n"
-    ;
-static const char* const kManualText_part10 =
     "carry the same tuning: the smpl chunks (unity note and fraction) of the\n"
     "same-named files - eight per folder, spread from the lowest pipe up - must be\n"
     "equal within 0.02 cent on at least two thirds of them and on three files at\n"

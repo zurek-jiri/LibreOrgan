@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.65] - 2026-11-05
+
+### Changed
+- Hauptwerk import: a head before the colon that is no perspective word but
+  stands on most of the stops (Chemnitz "Difuse") is a perspective (spelt
+  right when one typo from a word); a rank whose name gives none takes the
+  label of the Perspective Patterns line whose prefix its folder carries.
+- Perspective patterns are merged by prefix: a prefix learned from an organ
+  joins its label's line in Patterns.json, nothing is replaced; a prefix that
+  means another perspective there is left out for the organ and noted in
+  Messages. The by-label merge overwrote a hand-written line.
+- Hauptwerk import: a leading division numeral of another division is cut
+  from the alias (Chapelet "A: I. Nasardo 1 3/5" on the second manual).
+
 ## [0.9.64] - 2026-11-05
 
 ### Fixed

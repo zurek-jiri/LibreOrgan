@@ -122,7 +122,9 @@ struct HauptwerkOdf
     // The file looks like a Hauptwerk ODF: by its name, or by "<Hauptwerk" near the start.
     static bool looksLikeOdf(const juce::File& file);
     // Parses the file (seconds for a large one; progress 0..1, return false to cancel).
-    static HauptwerkOdf parse(const juce::File& file, const std::function<bool(double)>& progress = nullptr);
+    // patternsInForce (0.9.65): the Perspective Patterns lines in force - a rank whose name gives no
+    // perspective takes the label whose prefix its folder carries.
+    static HauptwerkOdf parse(const juce::File& file, const std::function<bool(double)>& progress = nullptr, const std::vector<juce::String>& patternsInForce = {});
 
     // The Hauptwerk root (the folder holding OrganDefinitions and
     // OrganInstallationPackages) for an ODF at this path, or an empty file.

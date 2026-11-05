@@ -310,12 +310,14 @@ juce::String HauptwerkOdf::spelledAsOnDisk(const juce::File& base, const juce::S
 // (Ashton-under-Lyne: direct, diffuse, distant, rear), and a table that read
 // "distant" as Rear put two ranks into one perspective, which the import then
 // made a stop folder of (0.8.131).
+static const char* const kPerspectiveWords[]{ "direct", "dry", "diffuse", "ambient", "ambience", "surround", "wet", "room", "hall", "rear", "back",
+    "distant", "far", "hinten", "lointain", "front", "vorne", "close", "near", "nah", "proche", "middle", "mid", "center", "centre", "mitte",
+    "gallery", "nave", "semi-dry", "semidry" };
+
 static juce::String perspectiveWordLabel(const juce::String& text)
 {
     const auto lower = text.toLowerCase();
-    static const char* const words[]{ "direct", "dry", "diffuse", "ambient", "ambience", "surround", "wet", "room", "hall", "rear", "back",
-        "distant", "far", "hinten", "lointain", "front", "vorne", "close", "near", "nah", "proche", "middle", "mid", "center", "centre", "mitte",
-        "gallery", "nave", "semi-dry", "semidry" };
+    const auto& words = kPerspectiveWords;
     for (const auto* word : words)
     {
         const int at = lower.indexOf(word);
@@ -325,6 +327,54 @@ static juce::String perspectiveWordLabel(const juce::String& text)
         const int after = at + (int)strlen(word);
         const bool endOk = after >= lower.length() || !juce::CharacterFunctions::isLetter(lower[after]);
         if (startOk && endOk) return juce::String(word).substring(0, 1).toUpperCase() + juce::String(word).substring(1);
+    }
+    return {};
+}
+
+// 0.9.65: a word one typo away from a perspective word ("Difuse" - Chemnitz's definition) is that word.
+static juce::String nearPerspectiveWord(const juce::String& text)
+{
+    const auto a = text.trim().toLowerCase();
+    if (a.length() < 4) return {};
+    for (const auto* w : kPerspectiveWords)
+    {
+        const juce::String b(w);
+        if (std::abs(a.length() - b.length()) > 1) continue;
+        // Levenshtein distance <= 1 on short strings.
+        int i = 0, j = 0, edits = 0;
+        while (i < a.length() && j < b.length())
+        {
+            if (a[i] == b[j]) { ++i; ++j; continue; }
+            if (++edits > 1) break;
+            if (a.length() > b.length()) ++i; else if (b.length() > a.length()) ++j; else { ++i; ++j; }
+        }
+        edits += (a.length() - i) + (b.length() - j);
+        if (edits <= 1) return b.substring(0, 1).toUpperCase() + b.substring(1);
+    }
+    return {};
+}
+
+// 0.9.65: the label of the pattern line whose prefix the folder name carries (the rules of
+// stripPerspectivePrefix, 0.9.51: a prefix with a separator must stand as written, one of
+// letters and digits must be followed by a separator or the end); empty when none.
+static juce::String labelFromPatterns(const std::vector<juce::String>& lines, const juce::String& folderName)
+{
+    auto alnum = [](juce::juce_wchar c) { return juce::CharacterFunctions::isLetterOrDigit(c); };
+    for (const auto& line : lines)
+    {
+        juce::StringArray parts;
+        parts.addTokens(line, ";", "");
+        const auto label = parts.size() > 0 ? parts[0].trim() : juce::String();
+        if (label.isEmpty() || label.equalsIgnoreCase("default")) continue;
+        for (int i = 1; i < parts.size(); ++i)
+        {
+            const auto prefix = parts[i].trim();
+            if (prefix.isEmpty() || !folderName.startsWithIgnoreCase(prefix)) continue;
+            bool plain = true;
+            for (const auto c : prefix) if (!alnum(c)) { plain = false; break; }
+            if (plain && folderName.length() > prefix.length() && alnum(folderName[prefix.length()])) continue;
+            return label;
+        }
     }
     return {};
 }
@@ -351,7 +401,7 @@ juce::String HauptwerkOdf::perspectiveOfRankName(const juce::String& name)
     return label;
 }
 
-HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<bool(double)>& progress)
+HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<bool(double)>& progress, const std::vector<juce::String>& patternsInForce)
 {
     HauptwerkOdf odf;
     juce::MemoryBlock data;
@@ -951,6 +1001,51 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             for (auto& [rankId, rank] : odf.ranks) if (rank.perspective == label) { rank.perspective = {}; ++cleared; }
             CrashHandler::note("Hauptwerk ODF: \"" + label + "\" is no perspective - " + juce::String((int)stopIds.size()) + " of " + juce::String(stopsWithRanks)
                 + " stop(s) carry it and a perspective is shared by the majority; " + juce::String(cleared) + " rank(s) stay in the plain perspective");
+        }
+        // 0.9.65 (Chemnitz: "Difuse: 1. Principal 8" - one f, no perspective word): a HEAD before the
+        // colon without a word, carried by the majority of the stops, is a perspective too - when the
+        // definition has at least one recognised perspective besides (an organ whose every rank is
+        // "Main: ..." stays as it was). The label: the word it is one typo away from, else the head.
+        bool anyRecognised = false;
+        for (const auto& [label, stopIds] : stopsOfLabel) if (perspectiveWordLabel(label).isNotEmpty()) anyRecognised = true;
+        if (anyRecognised)
+        {
+            std::map<juce::String, std::set<int>> stopsOfHead;
+            for (const auto& [stopId, stop] : odf.stops)
+                for (const int rankId : stop.rankIds)
+                {
+                    const auto rankIt = odf.ranks.find(rankId);
+                    if (rankIt == odf.ranks.end() || rankIt->second.tremmed || rankIt->second.noise || rankIt->second.perspective.isNotEmpty()) continue;
+                    const auto& name = rankIt->second.name;
+                    if (!name.contains(":")) continue;
+                    const auto head = name.upToFirstOccurrenceOf(":", false, false).trim();
+                    if (head.isNotEmpty() && head.length() <= 16) stopsOfHead[head].insert(stopId);
+                }
+            for (const auto& [head, stopIds] : stopsOfHead)
+            {
+                if ((int)stopIds.size() * 2 < stopsWithRanks) continue;
+                auto label = nearPerspectiveWord(head);
+                if (label.isEmpty()) label = head.substring(0, 1).toUpperCase() + head.substring(1);
+                int set = 0;
+                for (auto& [rankId, rank] : odf.ranks)
+                    if (rank.perspective.isEmpty() && rank.name.contains(":") && rank.name.upToFirstOccurrenceOf(":", false, false).trim() == head) { rank.perspective = label; ++set; }
+                CrashHandler::note("Hauptwerk ODF: the head \"" + head + "\" (no perspective word) stands on " + juce::String((int)stopIds.size()) + " of "
+                    + juce::String(stopsWithRanks) + " stop(s): taken for the perspective \"" + label + "\" on " + juce::String(set) + " rank(s)");
+            }
+        }
+        // 0.9.65: a rank still without a perspective takes the label of the pattern line in force
+        // whose prefix its folder carries (the user's own Perspective Patterns apply at the import too).
+        if (!patternsInForce.empty())
+        {
+            std::map<juce::String, int> byLabel;
+            for (auto& [rankId, rank] : odf.ranks)
+            {
+                if (rank.perspective.isNotEmpty() || rank.tremmed || rank.noise || rank.folder == juce::File()) continue;
+                const auto label = labelFromPatterns(patternsInForce, rank.folder.getFileName());
+                if (label.isNotEmpty()) { rank.perspective = label; ++byLabel[label]; }
+            }
+            for (const auto& [label, n] : byLabel)
+                CrashHandler::note("Hauptwerk ODF: " + juce::String(n) + " rank(s) without a perspective in their names took \"" + label + "\" from the Perspective Patterns in force (their folder's prefix)");
         }
     }
     // Ranks of one stop that landed in ONE perspective label although their

@@ -1672,8 +1672,12 @@ Stop List column and the audio route are called; the prefixes are cut off the
 folder names. The order of the lines is the order of the perspectives
 everywhere (the Stop List columns, the voicing boxes, the audio tabs):
 reorder them here, or drag a column header in the Stop List. Prefixes found
-in a set are added by themselves; a perspective renamed in the Stop List
-(double-click the column header) renames the line.
+in a set are added by themselves (prefix by prefix, your own lines are never
+replaced; a prefix that means another perspective in this computer's list is
+noted in Messages and the organ's own line applies); a perspective renamed in
+the Stop List (double-click the column header) renames the line. A Hauptwerk
+definition's ranks without a perspective in their names take these prefixes
+at the import too.
 
 ## 8.6 Division sections (Pedal, Manual I ... Manual VII)
 
