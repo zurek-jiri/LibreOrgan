@@ -42,6 +42,7 @@ body:
         - "forcalquier-organ-model"
         - "frankfurt-oder-sauer-op-2025"
         - "greccio-s-francesco-spada-organ"
+        - "hildesheim-st-andreas-beckerath-organ"
         - "stralsund-st-jakobi-kr-wegscheider"
     validations:
       required: false
