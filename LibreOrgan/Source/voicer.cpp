@@ -273,7 +273,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         chapter(voicingToggle, "The voicing row");
         chapter(shiftBox, "Transposition"); chapter(transpositionLabel, "Transposition");
         chapter(aliasBox, "Alias"); chapter(aliasLabel, "Alias");
-        chapter(oneShotToggle, "One-shot"); chapter(rankCountToggle, "Rank count");
+        chapter(oneShotToggle, "One-shot"); chapter(rankCountToggle, "Rank count"); chapter(releaseFadeBox, "Release crossfade");
         chapter(globalSlider, trsm ? "Transmissions and extensions" : "Stop volume"); chapter(globalLabel, trsm ? "Transmissions and extensions" : "Stop volume");
         chapter(gainSlider, "Attack Gain and Attack Time"); chapter(gainLabel, "Attack Gain and Attack Time");
         chapter(attackSlider, "Attack Gain and Attack Time"); chapter(attackLabel, "Attack Gain and Attack Time");
@@ -519,6 +519,24 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         "Set by the One-shot Patterns from the folder's name; this switch overrides them for this stop.");
     oneShotToggle.onClick = [this] { if (oneShotRequest) oneShotRequest(this->stop, oneShotToggle.getToggleState()); };
     addAndMakeVisible(oneShotToggle);
+    // Release crossfade (0.9.62, the user: Hildesheim's Glocken need ~1000 ms): the stop's multiplier of
+    // the global sustain-release fade-out and fade-in; item id = factor x 10, the stop's own odd value added.
+    {
+        static const float factors[] = { 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 5.0f, 8.0f, 10.0f };
+        const int current = juce::roundToInt(this->stop->releaseCrossfade * 10.0f);
+        bool listed = false;
+        for (const float f : factors) { const int id = juce::roundToInt(f * 10.0f); releaseFadeBox.addItem("Release xfade x" + juce::String(f, f == std::floor(f) ? 0 : 1), id); listed = listed || id == current; }
+        if (!listed && current > 0) releaseFadeBox.addItem("Release xfade x" + juce::String(this->stop->releaseCrossfade, 1), current);
+        releaseFadeBox.setSelectedId(current, juce::dontSendNotification);
+        releaseFadeBox.setTooltip("Sustain-release crossfade of this stop as a multiple of the global release fade-out and fade-in (Configuration Editor, Global sound). "
+            "Bells, chimes and other ringing stops want x5 to x10; a Hauptwerk definition's crossfade lengths set it at the import. New releases take the change.");
+        releaseFadeBox.onChange = [this]
+        {
+            const int id = releaseFadeBox.getSelectedId();
+            if (id > 0 && releaseCrossfadeRequest) releaseCrossfadeRequest(this->stop, (float)id / 10.0f);
+        };
+        addAndMakeVisible(releaseFadeBox);
+    }
 
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
@@ -925,6 +943,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())));
     // Its caption "[N]" is set in setChildrenGetter: the getters are null here (0.8.183).
     oneShotToggle.setVisible(stopControls);
+    releaseFadeBox.setVisible(stopControls);
     globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);
     attackSlider.setVisible(stopControls); attackLabel.setVisible(stopControls);
@@ -1462,6 +1481,7 @@ void StopRow::resized()
                 {
                     case Control::transposition: transpositionLabel.setBounds(x, y, 100, 23); shiftBox.setBounds(x + 104, y, 250, 23); break;
                     case Control::oneShot: oneShotToggle.setBounds(x, y, 92, 23); break;
+                    case Control::releaseFade: releaseFadeBox.setBounds(x, y, 142, 23); break;
                     case Control::source: sourceLabel.setBounds(x, y, 520, 23); break;
                     case Control::ranksLabel: ranksLabel.setBounds(x, y, 92, 23); break;
                     case Control::rankBox: if (i < rankButtons.size()) rankButtons[i]->setBounds(x, y, 80, 23); break;
@@ -1508,6 +1528,8 @@ void StopRow::resized()
         {
             oneShotToggle.setBounds(x, 13, 92, 23);
             x += 96;
+            releaseFadeBox.setBounds(x, 13, 142, 23);   // 0.9.62 (line1Width in rebuildUI follows)
+            x += 150;
         }
     }
     if (isTransmission())
@@ -2932,7 +2954,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     // after it off): button, transposition label + box, One-shot, "Ranks" + the
     // rank boxes, the pitch text at its minimum (it shrinks to what is left, the
     // tooltip keeps the whole), "Alias" + its box, the Rank count switch.
-    const int line1Width = margin + 200 + 8 + 104 + 258 + 96 + 92 + widestRankCount * 82 + 8 + 120 + 10 + 48 + 196 + 146 + margin;
+    const int line1Width = margin + 200 + 8 + 104 + 258 + 96 + 150 + 92 + widestRankCount * 82 + 8 + 120 + 10 + 48 + 196 + 146 + margin;   // + 150: the Release crossfade box (0.9.62)
     const int line2Width = margin + 150 + 8 + 210 + 8 + 210 + 8 + 210 + 8 + 230 + 8 + 250 + margin;
     const int topControlsWidth = juce::jmax(line1Width, line2Width);
     int widestCompass = noteMax - noteMin + 1;
@@ -3034,6 +3056,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             row->setArrangeHooks(hooksFor(manual, key));
             row->transpositionRequest = [this](Stop* target, int semitones) { if (transpositionRequest) transpositionRequest(target, semitones); };
             row->oneShotRequest = [this](Stop* target, bool on) { if (oneShotRequest) oneShotRequest(target, on); };
+            row->releaseCrossfadeRequest = [this](Stop* target, float factor) { if (releaseCrossfadeRequest) releaseCrossfadeRequest(target, factor); };
             row->setTransmissionRemover([this](Stop* target, int index) { removeTransmission(target, index); });
             row->setChildrenGetter([this](const Stop* master) { return groupChildren(master); },
                 [this](const Stop* master) { return groupChildTransmissions(master); });

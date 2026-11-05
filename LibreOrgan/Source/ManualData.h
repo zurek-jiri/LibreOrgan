@@ -593,11 +593,21 @@ static const char* const kManualText_part2 =
     "up. The switch starts as the *One-shot stops* patterns say and overrides\n"
     "them for this stop once touched.\n"
     "\n"
+    "### Release crossfade\n"
+    "\n"
+    "The sustain-release crossfade of this stop as a multiple of the global\n"
+    "[Sustain fade-out on key release](#sustain-fade-out-on-key-release) and\n"
+    "[Release sample fade-in](#release-sample-fade-in) (x0.5 to x10, default x1). Bells,\n"
+    "chimes and other ringing stops want x5 to x10; a Hauptwerk definition's own\n"
+    "crossfade lengths set it at the import where they exceed the organ's usual.\n"
+    "\n"
     "### Rank count\n"
     "\n"
     "On stop folders: whether the button carries the Roman numeral of the ranks\n"
     "that sound with it.\n"
     "\n"
+    ;
+static const char* const kManualText_part3 =
     "### Perspective boxes\n"
     "\n"
     "One on/off box per microphone perspective of the stop (their volumes are the\n"
@@ -606,8 +616,6 @@ static const char* const kManualText_part2 =
     "### Velocity layer boxes\n"
     "\n"
     "A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).\n"
-    ;
-static const char* const kManualText_part3 =
     "\n"
     "### Stop volume\n"
     "\n"
@@ -800,6 +808,8 @@ static const char* const kManualText_part3 =
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
     "*Ignored Patterns...* and *One-shot Patterns...* (top bar, or the\n"
+    ;
+static const char* const kManualText_part4 =
     "Configuration Editor's [Folder name patterns](#85-folder-name-patterns-one-per-line)) are lists of folder-name\n"
     "parts. A folder matching an ignored pattern is not loaded; when the list is\n"
     "changed with an organ loaded, the next *Apply and reload* takes the folders\n"
@@ -808,8 +818,6 @@ static const char* const kManualText_part3 =
     "and your own additions are kept on this computer (`Patterns.json`) through\n"
     "every load.\n"
     "\n"
-    ;
-static const char* const kManualText_part4 =
     "## 4.5 Apply and reload\n"
     "\n"
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
@@ -1002,6 +1010,8 @@ static const char* const kManualText_part4 =
     "## 5.7 Getting the most polyphony\n"
     "\n"
     "Every sounding pipe is one **voice** per audio route of its division: three\n"
+    ;
+static const char* const kManualText_part5 =
     "perspectives render every pipe three times, the auxiliary route once more.\n"
     "So the polyphony a computer reaches depends on the organ - the routes, the\n"
     "IRs on them, the drivers and buffer sizes, the samples - which is why\n"
@@ -1010,8 +1020,6 @@ static const char* const kManualText_part4 =
     "\n"
     "- **The buffer size**: 512 samples allows twice the work of 256; an organ\n"
     "  does not need a small buffer.\n"
-    ;
-static const char* const kManualText_part5 =
     "- **The auxiliary route** halves the polyphony while it has a device.\n"
     "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
@@ -1204,6 +1212,8 @@ static const char* const kManualText_part5 =
     "### Full kernel from (sounding pitch)\n"
     "\n"
     "Pipes whose sounding fundamental lies at or above this frequency play through\n"
+    ;
+static const char* const kManualText_part6 =
     "the finer (8-tap sinc) kernel for their whole length, which keeps a retuned\n"
     "high tone free of the foreign tone the plain kernel leaves under it. Default\n"
     "3000 Hz on a processor with AVX2 (a few per cent of extra work), 20000 Hz\n"
@@ -1212,8 +1222,6 @@ static const char* const kManualText_part5 =
     "notes ([Retune buses and the full kernel](#109-retune-buses-and-the-full-kernel)).\n"
     "\n"
     "### Render threads for Aggregated WASAPI\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     "route is a stream with its own thread, so ten routes render on ten threads\n"
@@ -1406,6 +1414,8 @@ static const char* const kManualText_part6 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "### Key velocity: full strike from velocity\n"
     "\n"
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
@@ -1414,8 +1424,6 @@ static const char* const kManualText_part6 =
     "### Key velocity: fade-in at the lowest velocity\n"
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
-    ;
-static const char* const kManualText_part7 =
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "### LibreOrgans folder\n"
     "\n"
     "Where configurations live (`Documents\\LibreOrgan\\LibreOrgans` by\n"
+    ;
+static const char* const kManualText_part8 =
     "default): every import and save goes there, Load starts there. *Choose...*\n"
     "picks another; the path stands after the button.\n"
     "\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "Where *Record* writes its files (`LibreRecordings` beside the LibreOrgans\n"
     "folder by default). *Choose...* picks another.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Sample and IR locations\n"
     "\n"
     "The places the program looks for sample trees and impulse responses - every\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "### Wind: also affects divisions\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "The other divisions fed from this wind: they receive half of this division's\n"
     "sag.\n"
     "\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "# 9. Messages, the activity log, reporting a problem, licences\n"
     "\n"
     "## 9.1 Messages\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
@@ -1988,7 +1996,9 @@ static const char* const kManualText_part9 =
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
     "loaded twice. A stop with several ranks in one perspective (a left and a\n"
     "right component) becomes a stop folder with one child per rank. Ranks\n"
-    "without release samples make a one-shot stop. Tremmed ranks and the noise\n"
+    "without release samples make a one-shot stop; a stop whose release crossfade\n"
+    "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
+    "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
     "ranks (blower, action) are left out; combinations, wind, displays are ignored.\n"
     "Encrypted sets (.hbw/.hbx) refuse the import.\n"
     "\n"
@@ -2010,6 +2020,8 @@ static const char* const kManualText_part9 =
     "## 10.5 The tuning gate of a perspective join\n"
     "\n"
     "Two folders are the same pipes in two perspectives only when their files\n"
+    ;
+static const char* const kManualText_part10 =
     "carry the same tuning: the smpl chunks (unity note and fraction) of the\n"
     "same-named files - eight per folder, spread from the lowest pipe up - must be\n"
     "equal within 0.02 cent on at least two thirds of them and on three files at\n"
@@ -2020,8 +2032,6 @@ static const char* const kManualText_part9 =
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
     "perspective prefix, and the new head on three folders at least. The log\n"
-    ;
-static const char* const kManualText_part10 =
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
     "A head is a perspective only when the same stems exist under another head\n"

@@ -585,6 +585,14 @@ released (chimes, harp, celesta); nothing is cut or faded by the key going
 up. The switch starts as the *One-shot stops* patterns say and overrides
 them for this stop once touched.
 
+### Release crossfade
+
+The sustain-release crossfade of this stop as a multiple of the global
+[Sustain fade-out on key release](#sustain-fade-out-on-key-release) and
+[Release sample fade-in](#release-sample-fade-in) (x0.5 to x10, default x1). Bells,
+chimes and other ringing stops want x5 to x10; a Hauptwerk definition's own
+crossfade lengths set it at the import where they exceed the organ's usual.
+
 ### Rank count
 
 On stop folders: whether the button carries the Roman numeral of the ranks
@@ -1966,7 +1974,9 @@ stop with none becomes a transmission of the owner it borrows the most keys
 from, with that shift ("P. Tuba 4" = the Tuba 16' shifted). A folder is never
 loaded twice. A stop with several ranks in one perspective (a left and a
 right component) becomes a stop folder with one child per rank. Ranks
-without release samples make a one-shot stop. Tremmed ranks and the noise
+without release samples make a one-shot stop; a stop whose release crossfade
+lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's
+[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise
 ranks (blower, action) are left out; combinations, wind, displays are ignored.
 Encrypted sets (.hbw/.hbx) refuse the import.
 

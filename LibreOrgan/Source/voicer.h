@@ -72,6 +72,8 @@ public:
     std::function<void(Stop*, int)> transpositionRequest;
     // The One-shot switch of a stop (0.8.158): on/off, overriding the One-shot Patterns.
     std::function<void(Stop*, bool)> oneShotRequest;
+    // The Release crossfade multiplier of a stop (0.9.62): x the global fade-out and fade-in.
+    std::function<void(Stop*, float)> releaseCrossfadeRequest;
     juce::Rectangle<int> getStopButtonBounds() const { return stopButton.getBounds(); }
     // 0.8.206 (the guided tour, the video script): the button and the corner "+" as components, the alias set as the box sets it.
     juce::Component& buttonComponent() noexcept { return stopButton; }
@@ -102,7 +104,8 @@ public:
         auto one = [](const juce::String& name, const juce::Component& c)
         { return name + (c.isVisible() ? " " : " hidden ") + c.getBounds().toString(); };
         return "row " + getBounds().toString() + " | " + one("transposition", shiftBox) + " | " + one("diapason", diapasonLabel) + " | " + one("alias", aliasBox)
-            + " | " + one("oneShot", oneShotToggle) + (oneShotToggle.getToggleState() ? " on" : " off") + " | " + one("rankCount", rankCountToggle);
+            + " | " + one("oneShot", oneShotToggle) + (oneShotToggle.getToggleState() ? " on" : " off") + " | " + one("releaseCrossfade", releaseFadeBox) + " " + releaseFadeBox.getText()
+            + " | " + one("rankCount", rankCountToggle);
     }
     // Expanded rows carry two lines of controls above the per-key sliders.
     static constexpr int expandedControlsHeight = 104;
@@ -147,7 +150,7 @@ public:
     // below. ONE walk decides the lines for the owner's height (expandedHeightFor) and for the
     // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
     // return value is the bottom of the control lines (the key headers follow it).
-    enum class Control { transposition, oneShot, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox };
+    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox };
     static constexpr int compactLineStep = 27, compactSliderLineStep = 47, compactVelocityLineHeight = 30;
     static bool keyRowsFolded(const Stop* stop, int transmissionIndex) noexcept
     {
@@ -171,6 +174,7 @@ public:
         item(Control::transposition, 0, 362);   // label 100 + 4 + box 250 + 8
         item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
         if (!trsm) item(Control::oneShot, 0, 96);
+        if (!trsm) item(Control::releaseFade, 0, 150);   // 0.9.62: the Release crossfade box
         if (trsm) item(Control::source, 0, 528);
         else
         {
@@ -325,6 +329,7 @@ private:
     void aliasChanged();
     juce::ToggleButton rankCountToggle;   // a stop folder's "[II]" on its button (0.8.146; shown on stop folders only)
     juce::ToggleButton oneShotToggle;     // the stop plays each sample once through (0.8.158; overrides the One-shot Patterns)
+    juce::ComboBox releaseFadeBox;        // the stop's multiplier of the global sustain-release crossfade (0.9.62; items x0.5 .. x10, id = factor x 10)
     juce::Label ranksLabel;
     juce::OwnedArray<juce::ToggleButton> rankButtons;
     // Velocity layers ("_070" files): one tick box per layer of the stop; unticked,
@@ -520,6 +525,7 @@ public:
     std::function<void(int manual, int column, int row)> newStopFolderRequest;
     std::function<void(Stop*, int)> transpositionRequest;   // a stop's Transposition chosen in its voicing (0.8.158)
     std::function<void(Stop*, bool)> oneShotRequest;        // a stop's One-shot switch (0.8.158)
+    std::function<void(Stop*, float)> releaseCrossfadeRequest;   // a stop's Release crossfade multiplier (0.9.62)
     // Arrange mode: a stop folder dropped under a stop (after the question was
     // answered "Merge"): the owner moves its children under that stop, the folder
     // itself too when it has pipes, otherwise the empty folder row is removed.

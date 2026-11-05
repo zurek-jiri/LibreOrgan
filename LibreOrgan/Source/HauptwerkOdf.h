@@ -48,6 +48,7 @@ struct HauptwerkOdf
         juce::String perspective;       // "Direct", "Diffuse", "Rear", "Front" ... from the name; empty when the name says nothing
         std::vector<Pipe> pipes;        // the first layer's attack sample of every pipe (tremmed layers and "trem" folders excluded)
         int sampleOffset = 0;           // the files' numbers minus the pipes' notes, the most common value (Doesburg: -12 - "024" for note 36; 0.8.155)
+        float releaseCrossfadeMs = 0.0f;   // 0.9.62: the mean ReleaseCrossfadeLengthMs of the release rows of the pipes around A4 (notes 66-72, else all); 0 = none
         juce::File folder;              // the folder most of the pipes lie in (absolute, once the packages are resolved)
         int packageId = 0;              // the installation package that folder lies in
         juce::String folderRelative;    // the folder relative to its package ("pipe/PE/PEd_Princip16/01-dirMk2H-PEd_Princip16")
@@ -113,6 +114,8 @@ struct HauptwerkOdf
     std::map<int, Stop> stops;
     std::map<int, Rank> ranks;
     int sampleCount = 0, encryptedSamples = 0;      // of the samples the pipes use
+    float organReleaseCrossfadeMs = 0.0f;           // 0.9.62: the median of the ranks' releaseCrossfadeMs (the organ's usual, for the note); 0 = none
+    float referenceReleaseCrossfadeMs = 110.0f;     // 0.9.62: the program's release fade-out in force (set by the caller before plan()) - a stop's multiplier = its ms / this
     bool compacted = false;
     juce::String error;                             // set when the file is not an ODF or holds no playable stop
 
@@ -157,6 +160,10 @@ struct HauptwerkOdf
         // pipes (0.8.155): the Stop List row's "Files vs keys", the loader puts the
         // files on their keys (Doesburg: -12, before the organ sounded an octave high).
         int sampleOffset = 0;
+        // 0.9.62: the stop's release crossfade against the organ's usual (the mean of its ranks'
+        // ReleaseCrossfadeLengthMs around A4 over the organ's median), 1 when within 1.5x of it -
+        // the voicing's "Release crossfade" multiplier (Hildesheim Glocken: 1000 ms vs 100 = x9).
+        float releaseCrossfade = 1.0f;
         // The cell on our grid from the jamb page (0.8.142): the rank of the
         // drawknob's x among the division's columns and of its y among its rows;
         // -1 = none (no page, or a layout too wide or too tall to copy).

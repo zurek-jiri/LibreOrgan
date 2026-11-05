@@ -1820,6 +1820,13 @@ MainComponent::MainComponent()
         engine.setStopOneShot(stop, on ? 1 : 0);
         voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;   // saved with the voicing state
     };
+    voicer->releaseCrossfadeRequest = [this](Stop* stop, float factor)
+    {
+        // The voicing's Release crossfade multiplier (0.9.62): kept in the voicing state, new releases take it.
+        if (stop == nullptr) return;
+        engine.setStopReleaseCrossfade(stop, factor);
+        voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
+    };
     voicer->readyStopNames = [this](int manual)
     {
         std::vector<juce::String> names;
@@ -10998,6 +11005,7 @@ void MainComponent::saveStopSettings()
                 stopObj->setProperty("alias", stop->alias);
                 if (!stop->showRankCount) stopObj->setProperty("showRankCount", false);
                 if (stop->oneShotManual >= 0) stopObj->setProperty("oneShot", stop->oneShotManual == 1);   // the voicing's own switch (0.8.158)
+                if (stop->releaseCrossfade != 1.0f) stopObj->setProperty("releaseCrossfade", (double)stop->releaseCrossfade);   // the release crossfade multiplier (0.9.62)
                 stopObj->setProperty(juce::Identifier("globalDb"), stop->db);
                 stopObj->setProperty(juce::Identifier("gainDb"), stop->gainDb);
                 stopObj->setProperty(juce::Identifier("attackMs"), stop->attackMs);
@@ -11146,6 +11154,7 @@ void MainComponent::loadStopSettings()
                         stop->alias = stopObj->getProperty("alias").toString();
                         stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
                         engine.setStopOneShot(stop, stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1);
+                        engine.setStopReleaseCrossfade(stop, stopObj->hasProperty("releaseCrossfade") ? (float)(double)stopObj->getProperty("releaseCrossfade") : 1.0f);   // 0.9.62
                         engine.setStopRandomPitchError(stop, randomPitchErrorCents, true);
                         engine.replaceTransmissions(stop, Voicer::transmissionsFromVar(stopVar, stop->primaryManual));
                         if (stopObj->hasProperty("ranks"))
@@ -12813,6 +12822,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             setProgress(-1.0);
             setStatusMessage("Working out the organ: divisions, stops and their folders, perspectives, couplers, the crescendo, the jamb...");
             root = HauptwerkOdf::hauptwerkRootFor(file);
+            odf->referenceReleaseCrossfadeMs = referenceReleaseCrossfadeMs;   // 0.9.62
             plan = odf->plan(root);
             if (plan.error.isNotEmpty() || threadShouldExit()) { planned = plan.error.isNotEmpty(); return; }
             // 0.9.45 (the user: "dialog by měl říkat, co se právě děje, v každém okamžiku"): the scan of every tree
@@ -12837,9 +12847,11 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         HauptwerkOdf::Plan plan;
         std::map<juce::String, juce::String> automaticNameOfFolder;   // folder path (lower case) -> the scanned stop name
         bool planned = false;
+        float referenceReleaseCrossfadeMs = 110.0f;   // the release fade-out in force (0.9.62): the definition's crossfade lengths are judged against it
     };
     juce::Component::SafePointer<MainComponent> safeThis(this);
     auto job = std::make_shared<ParseJob>(odfFile, engine, this);
+    job->referenceReleaseCrossfadeMs = juce::jmax(1.0f, (float)releaseFadeOutSlider.getValue());   // 0.9.62
     job->launchThread();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [safeThis, job, poll, odfFile, mergeIntoLoaded]
@@ -12970,6 +12982,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         }
         safeThis->hauptwerkExtensions.clear();
         safeThis->hauptwerkCompass.clear();
+        safeThis->hauptwerkReleaseCrossfade.clear();
         juce::Array<juce::var> manuals;
         for (int i = 0; i < SamplerEngine::maxManuals; ++i)
         {
@@ -13049,6 +13062,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                             juce::DynamicObject::Ptr entry = new juce::DynamicObject();
                             entry->setProperty("name", childNames != childRowsOfStop.end() && (int)c < childNames->second.size() ? childNames->second[(int)c] : child.name);
                             if (child.lowKey >= 0) safeThis->hauptwerkCompass[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = { child.lowKey, child.highKey };
+                            if (child.releaseCrossfade != 1.0f) safeThis->hauptwerkReleaseCrossfade[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = child.releaseCrossfade;
                             entry->setProperty("alias", SamplerEngine::nameWithoutFootage(child.name));   // the rank name without its perspective and footage (0.8.158: the footage follows the transposition)
                             entry->setProperty("customName", false);
                             entry->setProperty("child", true);
@@ -13074,6 +13088,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     entry->setProperty("name", row != rowOfStop.end() ? row->second.second : stop.name);
                     gridCell((int)i, row != rowOfStop.end() ? row->second.second : stop.name, stop);
                     if (stop.lowKey >= 0) safeThis->hauptwerkCompass[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = { stop.lowKey, stop.highKey };
+                    if (stop.releaseCrossfade != 1.0f) safeThis->hauptwerkReleaseCrossfade[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = stop.releaseCrossfade;
                     entry->setProperty("alias", SamplerEngine::nameWithoutFootage(stop.name));   // the Hauptwerk stop name on the button, its footage added by the program (0.8.158)
                     entry->setProperty("customName", false);
                     entry->setProperty("child", false);
@@ -13444,6 +13459,7 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     // them are switched off in the stop's voicing, so they stay silent and no
     // filled pipes are made for them. A stop of several pieces is the union.
     int compassStops = 0, compassKeys = 0;
+    juce::StringArray crossfadeSet;   // stops given the definition's release crossfade multiplier (0.9.62)
     {
         std::vector<std::pair<Stop*, std::pair<int, int>>> limits;
         {
@@ -13460,6 +13476,9 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
                 // bass and a treble stop gives each its own keys); else every row of the folders.
                 const auto own = hauptwerkCompass.find({ stop->primaryManual, stopBuildKey(stop->name) });
                 if (own != hauptwerkCompass.end()) limits.push_back({ stop, own->second });
+                // 0.9.62: the definition's longer release crossfade (bells) as the voicing's multiplier.
+                const auto crossfade = hauptwerkReleaseCrossfade.find({ stop->primaryManual, stopBuildKey(stop->name) });
+                if (crossfade != hauptwerkReleaseCrossfade.end()) { engine.setStopReleaseCrossfade(stop, crossfade->second); crossfadeSet.add(stop->name + " x" + juce::String(crossfade->second, 1)); }
                 else if (odf->compassForFolders(folders, config.compassLow, config.compassHigh, low, high)) limits.push_back({ stop, { low, high } });
             }
         }
@@ -13499,6 +13518,8 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     }
     hauptwerkExtensions.clear();
     hauptwerkCompass.clear();
+    hauptwerkReleaseCrossfade.clear();
+    if (!crossfadeSet.isEmpty()) CrashHandler::note("Hauptwerk import: release crossfade multiplier set on " + juce::String(crossfadeSet.size()) + " stop(s): " + crossfadeSet.joinIntoString(", "));
     if (voicer != nullptr) { voicer->updateStopStates(); voicer->rebuildUI(stopsContent, stopsViewport); }
     CrashHandler::note("Hauptwerk import: voicing applied to " + juce::String(voicedStops) + " stop(s), " + juce::String(voicedNotes) + " pipe level(s), route volumes "
         + routeVolumesSet.joinIntoString(", ") + (partialStops > 0 ? "; " + juce::String(partialStops) + " stop(s) with a perspective of this definition only: route volume set, the stop's voicing left as it was" : juce::String()) + "; compass limited on " + juce::String(compassStops) + " stop(s), " + juce::String(compassKeys) + " key(s) switched off; "
@@ -13518,6 +13539,9 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
     if (compassStops > 0)
         text << "\nCompass: " << compassStops << " stop(s) play fewer keys than their division in the definition (a Cornet from c1 up): "
              << compassKeys << " key(s) switched off in their voicing, no filled pipes for them.";
+    if (!crossfadeSet.isEmpty())
+        text << "\nRelease crossfade: " << crossfadeSet.size() << " stop(s) ask for a longer sustain-release crossfade than the organ's usual (bells): the voicing's multiplier is set - "
+             << crossfadeSet.joinIntoString(", ") << ".";
     if (extensionsMade > 0 || !extensionsMissed.isEmpty())
         text << "\nExtensions/transmissions made: " << extensionsMade << (extensionsMissed.isEmpty() ? juce::String(".") : " (not made: " + extensionsMissed.joinIntoString(", ") + ").");
     text

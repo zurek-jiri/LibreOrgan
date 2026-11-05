@@ -6515,7 +6515,8 @@ struct SamplerEngine::Impl
                                 v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted });
                         const int vm = v.manual;
                         v.frozenExprRequested.store(vm >= 0 && vm < maxManuals ? releaseGains[(size_t)vm] : 1.0f, std::memory_order_relaxed);
-                        v.releaseFadeMsRequested.store(releaseFadeOut * fadeScale(v.rank != nullptr ? v.rank : v.stop, v.note), std::memory_order_relaxed);
+                        v.releaseFadeMsRequested.store(releaseFadeOut * fadeScale(v.rank != nullptr ? v.rank : v.stop, v.note)
+                            * (v.stop != nullptr ? v.stop->releaseCrossfade : 1.0f), std::memory_order_relaxed);   // x the voicing's multiplier (0.9.62)
                         v.ctlReleasing = true;
                         refreshStealable(v);
                         sendCommand(v, CmdFreeze | CmdRelease);
@@ -6651,7 +6652,7 @@ struct SamplerEngine::Impl
             v.couplingUsed = false;
             v.coupledPitchCents = 0.0f;
             v.couplingTotalSamples = 1;
-            v.fadeInTotal = (uint32_t)juce::jmax(0.0, releaseFadeIn * fadeScale(rank, pipe) * 0.001 * rate);
+            v.fadeInTotal = (uint32_t)juce::jmax(0.0, releaseFadeIn * fadeScale(rank, pipe) * stop->releaseCrossfade * 0.001 * rate);   // x the voicing's multiplier (0.9.62)
             v.fadeInRemaining = v.fadeInTotal;
             v.attackBoost = juce::Decibels::decibelsToGain(stop->gainDb);
             v.attackHold = (uint32_t)juce::jmax(0.0, stop->attackMs * 0.001 * rate);
@@ -13482,6 +13483,12 @@ void SamplerEngine::setStopOneShot(Stop* stop, int manual)
     if (stop == nullptr) return;
     stop->oneShotManual = juce::jlimit(-1, 1, manual);
     updateOneShotFlags();
+}
+
+void SamplerEngine::setStopReleaseCrossfade(Stop* stop, float factor)
+{
+    if (stop == nullptr) return;
+    stop->releaseCrossfade = juce::jlimit(0.25f, 20.0f, factor);
 }
 
 void SamplerEngine::reloadStopSamples(Stop* stop, bool evenIfLoaded)

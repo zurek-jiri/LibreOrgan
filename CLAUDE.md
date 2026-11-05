@@ -3129,6 +3129,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   destructor (every reorder rebuilds the headers); a mouseDown whose component is not the header or its child
   calls `endArranging()` (the one place that leaves the mode: flag, arrangeStateChanged, resized, repaint).
   Clicks in OTHER windows (dialogs) do not end it. No hook drives the 3 s press - smoke run only.
+  0.9.62 (5 Nov 2026, the user: "některé samply potřebují výrazně vyšší sustain-release crossfade ... Glocken v
+  Hildesheimu zhruba 1000 ms"; he chose A + "automatické hodnoty odečíst z HW ODF ... průměr kolem tónu 069-A"):
+  `Stop::releaseCrossfade` (1.0; `setStopReleaseCrossfade`, 0.25-20) multiplies the global fade-out
+  (`releaseFadeMsRequested` in finishNoteOff) and fade-in (`fadeInTotal` of the release voice); voicing row
+  `StopRow::releaseFadeBox` ("Release xfade xN", items x0.5 1 1.5 2 3 5 8 10 + the stop's odd value, id = factor x 10)
+  after One-shot in BOTH layouts (compact `Control::releaseFade` 150 px; the old line + `line1Width` + 150);
+  `releaseCrossfadeRequest` StopRow -> Voicer -> MainComponent (engine + voicingSaveAt); voicing state key
+  "releaseCrossfade" (written when != 1, read in the voicing-state load). HAUPTWERK: `Pipe_SoundEngine01_ReleaseSample`
+  column 14 = `ReleaseCrossfadeLengthMs` = compacted letter "n" (the letters follow the column order and SKIP "o" - the
+  row tag; q = LatestKeyReleaseTimeMs; verified on Hildesheim: Glocken 711-1000 ms, pipes 60-150 ms): `releaseMsOfLayer`
+  -> `Rank::releaseCrossfadeMs` (mean of the pipes with notes 66-72, else all) -> `PlanStop::releaseCrossfade` = the
+  stop's ranks' mean / `referenceReleaseCrossfadeMs` (the ParseJob sets it from `releaseFadeOutSlider`, 110 default;
+  --hauptwerk uses 110), kept only when >= 1.5 (rounded to 0.1) -> `hauptwerkReleaseCrossfade[(division, row key)]`
+  (beside hauptwerkCompass) -> `engine.setStopReleaseCrossfade` in applyHauptwerkVoicing; plan note + import report
+  line "Release crossfade: ...". NOT against the organ's median (`organReleaseCrossfadeMs`, kept for the note): Hildesheim's
+  median at A4 is 59 ms and every 16'/32' stop came out x1.8 (Hauptwerk lengthens low pipes' crossfades as our fadeScale
+  does), the Glocken x15.5 instead of the ~x8 (900 ms) they need. Test: `--hauptwerk` on the Hildesheim Surround ODF must
+  print "Release crossfade: 1 stop(s) ... "2. Glocken-Hw" x8.3"; %TEMP%\odf_release.py <odf> [filter] lists the per-rank
+  values; %TEMP%\test_row0936.ps1 -Tag xf pictures the row (its horizontal scrollbar at 2572 px is there with 0.9.61 too).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

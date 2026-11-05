@@ -371,6 +371,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
     std::map<int, SampleRow> samples;                 // SampleID -> file
     std::map<int, int> attackSampleOfLayer;           // LayerID -> SampleID (the first attack sample)
     std::map<int, int> releaseRowsOfLayer;            // LayerID -> release sample rows (none at all: a one-shot rank)
+    std::map<int, double> releaseMsOfLayer;           // LayerID -> the sum of the rows' ReleaseCrossfadeLengthMs (0.9.62)
     struct LayerRow { int pipeId = 0; float levelDb = 0.0f; };
     std::map<int, LayerRow> layers;                   // LayerID -> pipe, level (file order: the first layer of a pipe comes first)
     std::vector<int> layerOrder;
@@ -629,6 +630,9 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int layer = row.integer("LayerID", "b");
                 if (layer > 0) ++releaseRowsOfLayer[layer];
+                // 0.9.62: the crossfade length is the 14th column = "n" (the compacted letters follow the
+                // column order and skip "o", the row tag): Hildesheim's Glocken 711-1000 ms, its pipes 60-150.
+                if (layer > 0) releaseMsOfLayer[layer] += row.integer("ReleaseCrossfadeLengthMs", "n");
             }
         }
         else if (lower == "pipe_soundengine01_attacksample")
@@ -820,6 +824,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
     const auto root = hauptwerkRootFor(file);
     std::set<int> pipesDone;
     std::map<int, int> rankReleaseRows;   // RankID -> release sample rows of its first layers
+    std::map<int, std::pair<double, int>> rankReleaseNear, rankReleaseAll;   // RankID -> (sum of the pipes' mean crossfade ms, pipes): around A4 / every pipe (0.9.62)
     for (const int layerId : layerOrder)
     {
         const auto& layer = layers[layerId];
@@ -841,11 +846,38 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
         pipe.id = layer.pipeId; pipe.rankId = pipeIt->second.rankId; pipe.note = pipeIt->second.note;
         pipe.levelDb = layer.levelDb; pipe.packageId = sample->second.packageId; pipe.file = path;
         rankIt->second.pipes.push_back(pipe);
-        if (releaseRowsOfLayer.count(layerId) > 0) rankReleaseRows[pipe.rankId] += releaseRowsOfLayer[layerId];
+        if (releaseRowsOfLayer.count(layerId) > 0)
+        {
+            rankReleaseRows[pipe.rankId] += releaseRowsOfLayer[layerId];
+            const double meanMs = releaseMsOfLayer[layerId] / (double)releaseRowsOfLayer[layerId];
+            if (meanMs > 0.0)
+            {
+                auto& all = rankReleaseAll[pipe.rankId]; all.first += meanMs; ++all.second;
+                if (pipe.note >= 66 && pipe.note <= 72) { auto& near69 = rankReleaseNear[pipe.rankId]; near69.first += meanMs; ++near69.second; }
+            }
+        }
     }
     // A rank whose pipes have no release sample at all is a one-shot (chimes,
     // harp, carillon): the sample plays out whatever the key does.
     for (auto& [id, rank] : odf.ranks) rank.oneShot = !rank.pipes.empty() && rankReleaseRows[id] == 0;
+    // 0.9.62: every rank's release crossfade around A4 (the user: "an average around 069-A"), and
+    // the organ's usual = the median over the playable ranks.
+    {
+        std::vector<float> values;
+        for (auto& [id, rank] : odf.ranks)
+        {
+            const auto near69 = rankReleaseNear.find(id);
+            const auto all = rankReleaseAll.find(id);
+            if (near69 != rankReleaseNear.end() && near69->second.second > 0) rank.releaseCrossfadeMs = (float)(near69->second.first / near69->second.second);
+            else if (all != rankReleaseAll.end() && all->second.second > 0) rank.releaseCrossfadeMs = (float)(all->second.first / all->second.second);
+            if (rank.releaseCrossfadeMs > 0.0f && !rank.tremmed && !rank.noise) values.push_back(rank.releaseCrossfadeMs);
+        }
+        if (!values.empty())
+        {
+            std::sort(values.begin(), values.end());
+            odf.organReleaseCrossfadeMs = values[values.size() / 2];
+        }
+    }
     // The files' numbers against the pipes' notes (0.8.155): Doesburg names the
     // file of the pipe on key 36 "024" - the most common difference is the rank's
     // offset; the Stop List row carries it and the loader puts the files on their keys.
@@ -1440,6 +1472,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
     };
     // The stops in the order of the divisions of ours, each primary ODF division's first.
     int offsetStops = 0;   // stops whose files are numbered off their keys (0.8.155)
+    juce::StringArray crossfadeNotes;   // stops with a longer release crossfade than the organ's usual (0.9.62)
     std::vector<std::pair<int, int>> stopOrder;   // (division of ours, ODF stop id)
     for (size_t i = 0; i < ordered.size(); ++i)
         for (const int divisionId : divisionsOf(ordered[i]))
@@ -1575,6 +1608,24 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
         };
         planStop.sampleOffset = sampleOffsetFor(rankIds);
         if (planStop.sampleOffset != 0) ++offsetStops;
+        // 0.9.62: the release crossfade the definition asks for (its ranks' mean around A4) against the
+        // program's release fade-out in force (110 ms by default) - a stop at 1.5x or more (bells, chimes
+        // with a damper) gets the voicing's multiplier. Not against the organ's median: Hildesheim's is
+        // 59 ms at A4 and every 16'/32' stop (longer crossfades for low pipes, as the program scales them
+        // itself) came out at x1.8, the Glocken at x15.5 instead of the ~x8 = 900 ms they need.
+        auto releaseCrossfadeFor = [this](const std::vector<int>& ids)
+        {
+            if (referenceReleaseCrossfadeMs <= 0.0f) return 1.0f;
+            double sum = 0.0; int n = 0;
+            for (const int rankId : ids)
+                if (const auto rank = ranks.find(rankId); rank != ranks.end() && rank->second.releaseCrossfadeMs > 0.0f) { sum += rank->second.releaseCrossfadeMs; ++n; }
+            if (n == 0) return 1.0f;
+            const float factor = (float)(sum / n) / referenceReleaseCrossfadeMs;
+            return factor >= 1.5f ? juce::jlimit(1.5f, 20.0f, std::round(factor * 10.0f) / 10.0f) : 1.0f;
+        };
+        planStop.releaseCrossfade = releaseCrossfadeFor(rankIds);
+        if (planStop.releaseCrossfade != 1.0f)
+            crossfadeNotes.add("\"" + stop.name + "\" x" + juce::String(planStop.releaseCrossfade, 1));
         // The keys of the stop's OWN rows for these ranks (0.8.159): a rank folder
         // shared by a bass stop and a treble stop keeps every file, each stop
         // plays its own keys (the others are switched off in its voicing).
@@ -1642,6 +1693,7 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
                         keyRangeFor(ids, child.lowKey, child.highKey);
                         child.folders = foldersFor(ids);
                         child.sampleOffset = sampleOffsetFor(ids);
+                        child.releaseCrossfade = releaseCrossfadeFor(ids);
                         planStop.children.push_back(child);
                     }
                     result.notes.add("\"" + stop.name + "\" has " + juce::String((int)rankIds.size()) + " ranks in " + juce::String((int)ranksPerLabel.size())
@@ -1767,6 +1819,9 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
         if (placed > 0) result.notes.add("Grid: " + juce::String(placed) + " stop(s) placed as on the definition's page \"" + jambPageName + "\""
             + (skippedDivisions > 0 ? " (" + juce::String(skippedDivisions) + " division(s) left in the table's order: a layout too wide or too tall)" : juce::String()));
     }
+    if (!crossfadeNotes.isEmpty())
+        result.notes.add("Release crossfade: " + juce::String(crossfadeNotes.size()) + " stop(s) ask for a longer sustain-release crossfade around A4 than the program's release fade-out ("
+            + juce::String(juce::roundToInt(referenceReleaseCrossfadeMs)) + " ms; the organ's usual " + juce::String(juce::roundToInt(organReleaseCrossfadeMs)) + " ms): the voicing's multiplier is set - " + crossfadeNotes.joinIntoString(", "));
     if (offsetStops > 0)
         result.notes.add("Files vs keys: " + juce::String(offsetStops) + " stop(s) have their sample files numbered off the keys they play on "
             "(the definition's pipe notes against the file names, e.g. the file 024 on key 36): the Stop List rows carry the offset and the "

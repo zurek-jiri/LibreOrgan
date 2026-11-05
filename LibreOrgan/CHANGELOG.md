@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.62] - 2026-11-05
+
+### Added
+- Voicing row: "Release xfade" box (x0.5 to x10) - the stop's multiplier of the
+  global sustain-release fade-out and fade-in, for bells and chimes that need a
+  crossfade of a second; saved with the voicing. The Hauptwerk import sets it
+  from the definition's release crossfade lengths around A4 where a stop asks
+  for 1.5 times the organ's usual or more (Hildesheim Glocken: x9).
+
 ## [0.9.61] - 2026-11-05
 
 ### Fixed

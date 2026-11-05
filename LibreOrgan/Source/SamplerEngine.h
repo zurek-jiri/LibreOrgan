@@ -420,6 +420,7 @@ struct Stop
     bool isOneShot = false;                // plays each sample once through, whenever the key is released (chimes, harp)
     std::atomic<bool> reloading{ false };  // its samples are being decoded anew (a transposition change): no voice starts on it meanwhile (0.8.160)
     int oneShotManual = -1;                // the voicing's own One-shot switch: -1 = by the One-shot Patterns, 0 off, 1 on (saved)
+    float releaseCrossfade = 1.0f;         // the voicing's multiplier of the global sustain-release crossfade, fade-out and fade-in alike (0.9.62; saved when != 1)
     int primaryManual = 0;                 // home division: P., I., II., III., IV., V.
     // Transmissions: additional stop buttons (in any division, the home division
     // included) that play this stop's pipes, optionally transposed. A shift of
@@ -1397,6 +1398,8 @@ public:
     static int justIntervalDenominator(int semitoneClass);
     // The voicing's One-shot switch: -1 = by the patterns, 0 off, 1 on.
     void setStopOneShot(Stop* stop, int manual);
+    // The voicing's release crossfade multiplier (0.9.62): new releases take it.
+    void setStopReleaseCrossfade(Stop* stop, float factor);
     // The footage the stop's caption shows (written in its name or alias, else the
     // measured one that displayName() appends, else the smpl footage): the base
     // for the footage of its transmissions, so both agree.

@@ -975,6 +975,7 @@ private:
     struct HauptwerkExtension { int manual = 0, ownerManual = 0; juce::String ownerName; int shift = 0; juce::String alias; int column = -1, row = -1; int lowKey = -1, highKey = -1; };   // column/row: the grid cell from the jamb page (0.8.142), -1 none; lowKey/highKey: the keys of its rows (0.8.159)
     std::vector<HauptwerkExtension> hauptwerkExtensions;
     std::map<std::pair<int, juce::String>, std::pair<int, int>> hauptwerkCompass;   // (division, row key) -> the keys of the stop's own rows in the definition (0.8.159)
+    std::map<std::pair<int, juce::String>, float> hauptwerkReleaseCrossfade;      // (division, row key) -> the definition's release crossfade multiplier (0.9.62; only != 1)
     std::unique_ptr<juce::FileChooser> configurationRootChooser;
     juce::File lastSettingsDirectory;
     juce::File lastIrDirectory, lastSampleFolderDirectory;   // 0.9.1: Load IR and Load folder each start where they were last (lastdir.json)
