@@ -19665,8 +19665,46 @@ void MainComponent::applyStopBuild(int manual, const ManualConfig::StopBuild& bu
     CrashHandler::note("Stop building applied to division " + juce::String(manual) + ": " + juce::String((int)entries.size())
         + " stops, " + juce::String((int)config.stopBuild.perspectives.size()) + " perspectives");
     learnPrefixesFromTables();   // 0.8.223
+    applyTableAliasesToStops({ manual });   // 0.9.64
     saveSettings();
     reloadDivisionTrees(manual);
+}
+
+void MainComponent::applyTableAliasesToStops(const std::vector<int>& manuals)
+{
+    // 0.9.64 (the user: "aliasy jsou tam dvojmo ... obě místa by měly vést k totožnému jednomu aliasu"): the ONE
+    // alias is the stop's (`Stop::alias`, carried by the voicing state); the Stop List table's column is a view of it -
+    // filled from the stops when the dialog opens, and at Apply written BACK onto the stops here, before anything is
+    // saved or reloaded (saveSettings syncs the table from the stops, 0.8.201, and the reload's loadState restores
+    // the stops' aliases from the voicing state - both brought the old alias back when the table alone held the new
+    // one: Hradec's "Ped: " cut from every row returned after Apply and reload). An EMPTY table cell clears the alias:
+    // the user's edit is what the table says at that moment. Rows without a loaded stop keep their alias in the table
+    // until the stop exists (the loader's afterCommit applies it).
+    int applied = 0;
+    {
+        const juce::ScopedLock lock(engine.getLock());
+        for (const int manual : manuals)
+        {
+            if (manual < 0 || manual >= SamplerEngine::maxManuals) continue;
+            const auto& build = manualConfigs[(size_t)manual].stopBuild;
+            if (!build.active) continue;
+            for (const auto& entry : build.entries)
+            {
+                if (entry.isTransmission()) continue;
+                for (auto* stop : engine.getStops())
+                    if (stop != nullptr && stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(entry.name))
+                    {
+                        if (stop->alias != entry.alias) { stop->alias = entry.alias; ++applied; }
+                        break;
+                    }
+            }
+        }
+    }
+    if (applied > 0)
+    {
+        CrashHandler::note("Stop List: " + juce::String(applied) + " alias(es) of the table written onto the stops");
+        if (voicer != nullptr) voicer->saveState(voicerStateFile);   // the voicing state carries them before any reload reads it
+    }
 }
 
 void MainComponent::applyStopLists(const std::array<ManualConfig::StopBuild, SamplerEngine::maxManuals>& builds,
@@ -19699,6 +19737,7 @@ void MainComponent::applyStopLists(const std::array<ManualConfig::StopBuild, Sam
     }
     reopenStopBuildManual = reload.empty() ? -1 : reload.front();
     syncDivisionTreeLists();
+    applyTableAliasesToStops(reload);   // 0.9.64: the table's aliases onto the stops before the save syncs the table from them
     saveSettings();
     if (!reload.empty()) reloadDivisions(reload);
 }
@@ -20635,10 +20674,14 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
             if (manual < 0 || manual >= SamplerEngine::maxManuals) continue;
             const auto& build = manualConfigs[(size_t)manual].stopBuild;
             if (!build.active) continue;
+            // 0.9.64: a table alias that DIFFERS from the stop's is applied too, not only onto a stop without one -
+            // an alias edited in the Stop List table (the user cut "Ped: " from every row of Hradec) and applied:
+            // the adopted stops kept their old alias, the routes phase's saveSettings synced the table FROM them
+            // (0.8.201) and the edit was gone before the grid phase ("6 table alias(es), 0 applied").
             for (auto* stop : engine.getStops())
-                if (stop != nullptr && stop->primaryManual == manual && stop->alias.isEmpty())
+                if (stop != nullptr && stop->primaryManual == manual)
                     for (const auto& entry : build.entries)
-                        if (entry.alias.isNotEmpty() && !entry.isTransmission() && stopBuildKey(entry.name) == stopBuildKey(stop->name)) { stop->alias = entry.alias; break; }
+                        if (entry.alias.isNotEmpty() && !entry.isTransmission() && stopBuildKey(entry.name) == stopBuildKey(stop->name)) { if (stop->alias != entry.alias) stop->alias = entry.alias; break; }
         }
         takeDetectedSampleOffsets();   // the files' offsets the loader found (0.8.158) into the Stop List rows
         if (voicer == nullptr) return;
@@ -21065,6 +21108,20 @@ void MainComponent::showStopBuildingDialog(int)
             rebuildPerspectiveUnion();
             originalDrafts = drafts;   // 0.8.231: AFTER the union - its sorting of the perspective lists made every division
                                        // "changed" at every opening (an orange Apply that reloaded the whole organ for nothing)
+            // Development (0.9.64): ORGAN_TEST_TABLE_ALIAS="<manual>|<row name>|<alias>" edits the alias in the
+            // table as the user types it (the drafts only; Apply and reload must carry it onto the stop).
+            if (const char* test = std::getenv("ORGAN_TEST_TABLE_ALIAS"))
+            {
+                const auto parts = juce::StringArray::fromTokens(juce::String(test), "|", "");
+                if (parts.size() == 3)
+                {
+                    const int m = parts[0].getIntValue();
+                    if (m >= 0 && m < (int)drafts.size())
+                        for (auto& entry : drafts[(size_t)m].entries)
+                            if (stopBuildKey(entry.name) == stopBuildKey(parts[1]))
+                            { entry.alias = parts[2]; CrashHandler::note("ORGAN_TEST_TABLE_ALIAS: " + entry.name + " -> " + parts[2]); break; }
+                }
+            }
 
             intro.setText("One row per stop of the whole organ: its division, transmissions, name, alias and the sample "
                 "folder of every perspective. Click a folder cell to pick one of the free folders (the x frees it), or drag "

@@ -3165,6 +3165,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (the hook import/load into a temp configurations folder, settings restored, the Stop List dumped + the log slice):
   the Wet ODF must give aliases "Quinta", "Mixtura 3x" and captions "Quinta 2 2/3'"; his WetUprveny.json (aliases
   empty) "Quinta 2 2/3'" and "Quint 1 1/3' (Ext.)".
+  0.9.64 (5 Nov 2026, the user: aliases cut in the Stop List TABLE ("Ped: ", "HW: ") came back after Apply and reload;
+  "aliasy jsou tam dvojmo ... obě místa by měly vést k totožnému jednomu aliasu"): THE ONE ALIAS IS `Stop::alias`
+  (carried by the voicing state); the table's alias column is a VIEW - filled from the stops when the dialog opens
+  (0.8.201) and written back onto the stops by `MainComponent::applyTableAliasesToStops(manuals)` in applyStopLists and
+  applyStopBuild BEFORE saveSettings (which syncs the table FROM the stops) and before the reload (whose grid phase
+  `loadState`s the voicing file - the function saves the voicer state when it changed anything); an EMPTY cell clears
+  the alias. The log of the fault: "Stop List applied" then "Save settings: N table alias(es) replaced by an empty stop
+  alias" then "Division N rebuilt: ... 0 applied". The afterCommit rule of 0.9.32 now also applies a DIFFERING table
+  alias (for rows whose stop is new). Dev hook `ORGAN_TEST_TABLE_ALIAS="<manual>|<row>|<alias>"` (StopListDialog
+  constructor after originalDrafts: edits the draft as the user types). Test %TEMP%\test_tablealias0964.ps1 [-Row -Alias
+  ""] (a copy of his Hradec file in a temp configurations folder, Stop List + Apply and reload by ORGAN_TEST_CLICK at
+  30 s; the stops' aliases after the reload read from voicer.json before the restore - saveSettings writes no
+  configuration file). The activity log ROTATES at every start (activity-previous.log): a test's log slice must filter
+  both files by time, not by the old file's length.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

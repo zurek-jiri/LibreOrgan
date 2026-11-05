@@ -556,6 +556,9 @@ private:
     static juce::String perspectiveLabelForHead(const juce::String& head, const std::vector<juce::String>& patterns);   // "06-far__" -> "Far", or the label whose stem the head holds (dir/dif/rea)
     static std::vector<juce::String> patternsWithHead(const std::vector<juce::String>& patterns, const juce::String& label, const juce::String& head);   // the lines with "Label;head" added
     void applyStopBuild(int manual, const ManualConfig::StopBuild& build, bool arrangeGrid = false);
+    // The Stop List table's aliases written onto the loaded stops at Apply (0.9.64): the stop's alias is the one
+    // alias, the table a view of it.
+    void applyTableAliasesToStops(const std::vector<int>& manuals);
     // The Stop List applies the tables of several divisions at once (one reload).
     void applyStopLists(const std::array<ManualConfig::StopBuild, SamplerEngine::maxManuals>& builds,
         const std::set<int>& changed, const std::set<int>& arrangeGrid);

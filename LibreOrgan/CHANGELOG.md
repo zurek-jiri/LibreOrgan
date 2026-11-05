@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.64] - 2026-11-05
+
+### Fixed
+- Stop List: an alias edited in the table came back as it was after Apply and
+  reload. There is one alias per stop now: the table's column is a view of it,
+  filled from the stops when the dialog opens and written back onto them at
+  Apply (an empty cell clears the alias); the voicing row's Alias box edits the
+  same one.
+
 ## [0.9.63] - 2026-11-05
 
 ### Changed
