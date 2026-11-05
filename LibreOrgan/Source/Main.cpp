@@ -222,6 +222,10 @@ public:
     // line unquoted when it is one path; else the first token that is no "--" switch and exists.
     static juce::File fileFromCommandLine(const juce::String& commandLine)
     {
+        // 0.9.63: a line with a "--" switch (--hauptwerk, --selftest ...) is a developer run, never a file to
+        // open - a second instance started so handed its ODF to the user's running program (two imports of
+        // Hradec Kralove on 5 Nov 2026 he never asked for).
+        if (commandLine.contains(" --") || commandLine.trim().startsWith("--")) return {};
         const auto whole = commandLine.trim().unquoted().trim();
         if (whole.isNotEmpty() && !whole.startsWith("--") && juce::File::isAbsolutePath(whole) && juce::File(whole).existsAsFile()) return juce::File(whole);
         juce::StringArray tokens;

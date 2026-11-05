@@ -1389,6 +1389,10 @@ public:
     // The name without its footage ("Prestant 8" -> "Prestant"): the Hauptwerk
     // import's aliases, so the footage shown follows the transposition (0.8.158).
     static juce::String nameWithoutFootage(const juce::String& name);
+    // A footage glued to the word ("Quinta3", "Quint113", "Flauta8" - folder names) spelt out as
+    // "Quinta 2 2/3'" for the captions (0.9.63); mixture words ("Cornetbas3" = ranks) and anything
+    // else stay as they are. Never used for the tuning or the automatic transposition.
+    static juce::String ungluedFootageName(const juce::String& name);
     // The name with its footage token replaced by the label of 'semitones'
     // (appended when the name has none); a division prefix is skipped.
     static juce::String nameWithFootage(const juce::String& name, int semitones);

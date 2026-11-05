@@ -3148,6 +3148,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   does), the Glocken x15.5 instead of the ~x8 (900 ms) they need. Test: `--hauptwerk` on the Hildesheim Surround ODF must
   print "Release crossfade: 1 stop(s) ... "2. Glocken-Hw" x8.3"; %TEMP%\odf_release.py <odf> [filter] lists the per-rank
   values; %TEMP%\test_row0936.ps1 -Tag xf pictures the row (its horizontal scrollbar at 2572 px is there with 0.9.61 too).
+  0.9.63 (5 Nov 2026, the user's Hradec Králové: "Quinta3 2 2/3'" on the button after he cleared the alias; "někdy jsou
+  kvinty zapsány i takto Quint113, přilepené na slovo"; "hlavičku HW apod. ustřihnout, je-li pro všecky shodná"):
+  (1) `SamplerEngine::ungluedFootageName(name)` (after nameWithoutFootage): trailing digits right after a LETTER, no
+  footage the strict way, the word holding no mixture word (mixtur cimbel zimbel scharf cornet kornet rausch sesquialt
+  fourniture plein acuta tertian progressio harmonia carillon pleno ripieno - their number counts RANKS), the digits a
+  footage (1 2 3 4 6 8 12 16 32 64 with the 3/6/12 quint shorthand, or the compact 113/223/135) -> "<word> <label>'"
+  ("Quinta 2 2/3'", "Quint 1 1/3'", "Flauta 8'"). Used by `Stop::displayName` (the base) and `nameWithoutFootage` ONLY -
+  `footageFromName` (tuning, auto-transposition) stays strict: "Mixtur4" must never become 4'. (2) The import's `aliasOf`
+  (the entries loop of importHauptwerkOdf): `divisionHead` = the first word every stop of the division shares, ending
+  with ":" or "." (>= 2 stops), cut from the aliases and the extensions' aliases ("HW: Quinta 3" -> "Quinta"; Hildesheim's
+  "2. Prinzipal 16" -> "Prinzipal"). (3) Main.cpp `fileFromCommandLine` returns nothing for a line holding a "--" switch:
+  a `--hauptwerk` run of mine while the user's program ran was handed to it as a file from the desktop (0.9.16) and
+  IMPORTED Hradec twice in his instance (11:59, he cancelled) - NEVER start the exe with a switch while `Get-Process
+  LibreOrgan*` finds anything, even for a headless dump. Test %TEMP%\test_import_hradec.ps1 [-Odf <odf or json>]
+  (the hook import/load into a temp configurations folder, settings restored, the Stop List dumped + the log slice):
+  the Wet ODF must give aliases "Quinta", "Mixtura 3x" and captions "Quinta 2 2/3'"; his WetUprveny.json (aliases
+  empty) "Quinta 2 2/3'" and "Quint 1 1/3' (Ext.)".
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

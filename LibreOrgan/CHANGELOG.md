@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.63] - 2026-11-05
+
+### Changed
+- Captions: a footage glued to the folder's name ("Quinta3", "Quint113",
+  "Flauta8") reads "Quinta 2 2/3'", "Quint 1 1/3'", "Flauta 8'"; mixture words
+  ("Cornetbas3" = ranks) stay. The caption only - tuning and transposition
+  never read a glued number.
+- Hauptwerk import: a division mark every stop of a division carries as its
+  first word ("HW:", "Ped:", "2.") is cut from the aliases.
+
+### Fixed
+- A second instance started with a developer switch (--hauptwerk, --selftest)
+  no longer hands the file on its command line to the running program.
+
 ## [0.9.62] - 2026-11-05
 
 ### Added

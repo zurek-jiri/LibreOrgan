@@ -329,9 +329,9 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
 
 - Any folder holding WAV files is a stop, however deep it is nested. A folder
   whose name starts with "rel" holds the releases of its parent. The stop's
-  name comes from the folder's name: a footage at its end ("Nasat 3" = 2 2/3')
-  is shown with its foot mark; a name without footage is fine, the pitch is
-  read from the samples.
+  name comes from the folder's name: a footage at its end ("Nasat 3" = 2 2/3',
+  also glued to the word: "Quinta3", "Quint113") is shown with its foot mark;
+  a name without footage is fine, the pitch is read from the samples.
 - A file name begins with the MIDI key number, optionally with the note
   (036.wav, 036-C.wav, 059-B3.wav). Several files with the same number are
   round-robin variants; a two- or three-digit suffix after an underscore

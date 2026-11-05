@@ -13007,6 +13007,27 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 build->setProperty("active", true);
                 juce::StringArray perspectivesUsed;
                 juce::Array<juce::var> entries;
+                // 0.9.63 (the user): a division mark every stop of the division carries as its first word
+                // ("HW:", "Ped:", "2.") is cut from the aliases - "HW: Quinta 3" -> "Quinta" on the button.
+                juce::String divisionHead;
+                {
+                    int stops = 0;
+                    for (const auto& stop : division.stops)
+                    {
+                        const auto token = stop.name.trim().upToFirstOccurrenceOf(" ", false, false);
+                        if (token.isEmpty() || !(token.endsWith(":") || token.endsWith("."))) { divisionHead.clear(); stops = 0; break; }
+                        if (stops == 0) divisionHead = token;
+                        else if (!divisionHead.equalsIgnoreCase(token)) { divisionHead.clear(); stops = 0; break; }
+                        ++stops;
+                    }
+                    if (stops < 2) divisionHead.clear();
+                }
+                auto aliasOf = [&divisionHead](const juce::String& stopName)
+                {
+                    auto name = stopName.trim();
+                    if (divisionHead.isNotEmpty() && name.substring(0, divisionHead.length()).equalsIgnoreCase(divisionHead)) name = name.substring(divisionHead.length()).trim();
+                    return SamplerEngine::nameWithoutFootage(name);
+                };
                 for (const auto& stop : division.stops)
                 {
                     if (stop.extensionOfStopId > 0)
@@ -13016,7 +13037,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                         const auto owner = rowOfStop.find(stop.extensionOfStopId);
                         if (owner != rowOfStop.end())
                         {
-                            safeThis->hauptwerkExtensions.push_back({ i, owner->second.first, owner->second.second, stop.shift, stop.name, stop.gridColumn, stop.gridRow, stop.lowKey, stop.highKey });
+                            safeThis->hauptwerkExtensions.push_back({ i, owner->second.first, owner->second.second, stop.shift, aliasOf(stop.name), stop.gridColumn, stop.gridRow, stop.lowKey, stop.highKey });
                             extensionsOfOwner[stop.extensionOfStopId].push_back({ stop.stopId, i });
                         }
                         continue;
@@ -13089,7 +13110,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     gridCell((int)i, row != rowOfStop.end() ? row->second.second : stop.name, stop);
                     if (stop.lowKey >= 0) safeThis->hauptwerkCompass[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = { stop.lowKey, stop.highKey };
                     if (stop.releaseCrossfade != 1.0f) safeThis->hauptwerkReleaseCrossfade[{ (int)i, stopBuildKey(entry->getProperty("name").toString()) }] = stop.releaseCrossfade;
-                    entry->setProperty("alias", SamplerEngine::nameWithoutFootage(stop.name));   // the Hauptwerk stop name on the button, its footage added by the program (0.8.158)
+                    entry->setProperty("alias", aliasOf(stop.name));   // the Hauptwerk stop name on the button (the division mark cut, 0.9.63), its footage added by the program (0.8.158)
                     entry->setProperty("customName", false);
                     entry->setProperty("child", false);
                     entry->setProperty("sampleOffset", stop.sampleOffset);   // always: the definition's offset rules (0.8.158)

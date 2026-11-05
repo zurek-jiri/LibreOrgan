@@ -11478,12 +11478,48 @@ int SamplerEngine::untransposedFootageSemitones(const Stop* stop)
     return stop == nullptr ? 0 : stopFootageSemitones(stop) - stop->sampleOffset;
 }
 
-juce::String SamplerEngine::nameWithoutFootage(const juce::String& name)
+juce::String SamplerEngine::nameWithoutFootage(const juce::String& nameIn)
 {
+    const auto name = ungluedFootageName(nameIn);
     int start = 0, end = 0;
     double feet = 0.0;
     if (!findFootageToken(name, start, end, feet)) return name;
     return (name.substring(0, start).trimEnd() + " " + name.substring(end).trimStart()).trim();
+}
+
+juce::String SamplerEngine::ungluedFootageName(const juce::String& name)
+{
+    // 0.9.63 (the user: "Quinta3", "Quint113" - the number glued to the word, as folders are named):
+    // trailing digits right after a letter, no footage found the strict way, the word no mixture
+    // (its number counts ranks), the digits a footage - whole 1 2 3 4 6 8 12 16 32 64 (3/6/12 = the
+    // quints, as footageFromName reads them) or the spaceless mutation form (113, 223, 135) ->
+    // "<word> <footage>'" with the real footage label. The caption alone: the tuning never sees it.
+    const auto trimmed = name.trimEnd();
+    int j = trimmed.length() - 1;
+    if (j < 1 || !juce::CharacterFunctions::isDigit(trimmed[j])) return name;
+    int semitonesDummy = 0;
+    if (footageFromName(trimmed, semitonesDummy)) return name;   // a footage the strict way already ("Quinta 3", "Larigot 113")
+    const int digitsEnd = j + 1;
+    while (j >= 0 && juce::CharacterFunctions::isDigit(trimmed[j])) --j;
+    if (j < 0 || !juce::CharacterFunctions::isLetter(trimmed[j])) return name;   // "3x1man", "16LR", a bare number: no
+    const auto word = trimmed.substring(0, j + 1);
+    const auto digits = trimmed.substring(j + 1, digitsEnd);
+    const auto lower = word.toLowerCase();
+    static const char* const mixtureWords[] = { "mixtur", "mixture", "cimbel", "cymbel", "zimbel", "scharf", "cornet", "kornet", "rausch",
+        "sesquialt", "fourniture", "plein", "acuta", "tertian", "terzian", "progressio", "harmonia", "carillon", "pleno", "ripieno" };
+    for (const auto* w : mixtureWords) if (lower.contains(w)) return name;
+    double feet = 0.0;
+    if (digits.length() <= 2)
+    {
+        const int whole = digits.getIntValue();
+        static const int footages[] = { 1, 2, 3, 4, 6, 8, 12, 16, 32, 64 };
+        bool known = false;
+        for (const int f : footages) known = known || f == whole;
+        if (!known) return name;
+        feet = whole == 3 ? 8.0 / 3.0 : whole == 6 ? 16.0 / 3.0 : whole == 12 ? 32.0 / 3.0 : (double)whole;
+    }
+    else if (!compactFootage(digits, feet)) return name;
+    return word + " " + footageLabel(juce::roundToInt(12.0 * std::log2(8.0 / feet)));
 }
 
 
@@ -11514,7 +11550,7 @@ juce::String romanNumeral(int n)
 juce::String Stop::displayName() const
 {
     // An alias gets its foot mark like a name ("I. Quintadeen 8" reads "I. Quintadeen 8'").
-    const juce::String base = footageDisplayName(alias.isNotEmpty() ? alias : name);
+    const juce::String base = footageDisplayName(SamplerEngine::ungluedFootageName(alias.isNotEmpty() ? alias : name));   // "Quinta3" reads "Quinta 2 2/3'" (0.9.63)
     int written = 0;
     if (SamplerEngine::footageFromName(base, written))   // the name (or alias) says the footage itself ...
     {
