@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.60] - 2026-11-05
+
+### Added
+- Configuration Editor, Advanced global audio: "Pipe coupling: farthest pitch
+  offset to pull" (0-50 cents, default 14; travels with the organ) - a sounding
+  pipe pulls a starting one only when the pure interval with it lies within this
+  of where the starting pipe would settle; pipes further apart stay apart.
+
+### Changed
+- "Pipe coupling: pipes left untouched" ranges 0-100 % (100 % = no pipe pulled).
+
 ## [0.9.59] - 2026-11-04
 
 ### Added

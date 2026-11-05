@@ -1451,7 +1451,14 @@ move a little towards it. Celeste stops stay out of it. Travels with the organ.
 ### Pipe coupling: pipes left untouched
 
 The share of starting pipes the coupling passes over - they keep the detune they
-started with (default 10 %); 0 % pulls every pipe. Travels with the organ.
+started with (default 10 %); 0 % pulls every pipe, 100 % none. Travels with the
+organ.
+
+### Pipe coupling: farthest pitch offset to pull
+
+A sounding pipe pulls a starting one only when the pure interval with it lies
+within this of where the starting pipe would otherwise settle (default
+14 cents); pipes further apart stay apart. Travels with the organ.
 
 ### Filled pipes: resampling quality
 

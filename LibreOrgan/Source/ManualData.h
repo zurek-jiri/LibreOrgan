@@ -1469,7 +1469,14 @@ static const char* const kManualText_part7 =
     "### Pipe coupling: pipes left untouched\n"
     "\n"
     "The share of starting pipes the coupling passes over - they keep the detune they\n"
-    "started with (default 10 %); 0 % pulls every pipe. Travels with the organ.\n"
+    "started with (default 10 %); 0 % pulls every pipe, 100 % none. Travels with the\n"
+    "organ.\n"
+    "\n"
+    "### Pipe coupling: farthest pitch offset to pull\n"
+    "\n"
+    "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
+    "within this of where the starting pipe would otherwise settle (default\n"
+    "14 cents); pipes further apart stay apart. Travels with the organ.\n"
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
@@ -1609,6 +1616,8 @@ static const char* const kManualText_part7 =
     "Where *Record* writes its files (`LibreRecordings` beside the LibreOrgans\n"
     "folder by default). *Choose...* picks another.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Sample and IR locations\n"
     "\n"
     "The places the program looks for sample trees and impulse responses - every\n"
@@ -1616,8 +1625,6 @@ static const char* const kManualText_part7 =
     "adds one.\n"
     "\n"
     "### Sample and IR locations: the file\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "# 9. Messages, the activity log, reporting a problem, licences\n"
     "\n"
     "## 9.1 Messages\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
     "warnings and the polyphony report still come as boxes.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "## 9.2 The activity log\n"
     "\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
     "perspective prefix, and the new head on three folders at least. The log\n"
+    ;
+static const char* const kManualText_part10 =
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
     "A head is a perspective only when the same stems exist under another head\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "far, near, close, dry, wet, front, ab, ortf ...); a lone head such as \"HW_\"\n"
     "or \"Ped_\" is a division mark and never becomes a perspective.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"

@@ -3113,6 +3113,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   10 = the old 9 of 10; configuration key "couplingSkipPercent", engine atomic `couplingSkipPercent` +
   `setCouplingSkipPercent`, `couplingRoll = nextFloat() * 100 >= skip`; Editor slider right after "detune left after
   the pull"; manual ### of the same name). 0 % = every starting pipe couples.
+  0.9.60 (5 Nov 2026, the user's answer to the two-division question - cross-division partners and an organ-wide
+  base were REFUSED ("ne, tohle nechceme"): instead "Pipe coupling: farthest pitch offset to pull" (0-50 c, default
+  14; key "couplingMaxCents", engine atomic `couplingMaxCents` + `setCouplingMaxCents`): in the ensemble loop a
+  partner whose pure interval lies further than this from the new pipe's base (`|pureDeviation - baseDeviation| >
+  maxPull`) is skipped - it neither pulls nor is pulled; the no-partner shrink to the rank's tuning is untouched.
+  "Pipes left untouched" ranges 0-100 % now. The two-division non-locking stays by design: partners are the
+  voices of the SAME keyboard (`keyHeads[makeSourceKey(key, manualIndex)]`) and each pipe settles on its own rank's
+  diapason (II. 435.8 vs III. 435.6 Hz = ~1 c apart with the original tuning; 440 removes it).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

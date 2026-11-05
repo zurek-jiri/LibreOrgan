@@ -23231,6 +23231,8 @@ void MainComponent::loadSettings()
     engine.setCouplingLeftPercent(couplingLeftPercent);
     couplingSkipPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("couplingSkipPercent", 10.0));   // 0.9.59
     engine.setCouplingSkipPercent(couplingSkipPercent);
+    couplingMaxCents = juce::jlimit(0.0f, 50.0f, (float)(double)parsed.getProperty("couplingMaxCents", 14.0));   // 0.9.60
+    engine.setCouplingMaxCents(couplingMaxCents);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -23965,6 +23967,7 @@ void MainComponent::saveSettings()
     obj->setProperty("mistuneCorrectCents", mistuneCorrectCents);   // 0.9.10
     obj->setProperty("couplingLeftPercent", couplingLeftPercent);   // 0.9.56
     obj->setProperty("couplingSkipPercent", couplingSkipPercent);   // 0.9.59
+    obj->setProperty("couplingMaxCents", couplingMaxCents);   // 0.9.60
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -29929,7 +29932,7 @@ void MainComponent::showConfigurationEditor()
                 "share between 0 and this of what it was; a pipe starting while its octave of the same rank sounds is pulled towards the "
                 "pure octave with it instead. 0 % = pulled all the way, 100 % = no pull (the octave partner still counts). 20 % by "
                 "default; the setting travels with the organ. New notes take the change.");
-            addSlider("Pipe coupling: pipes left untouched", 0.0, 50.0, 1.0, " %", o.couplingSkipPercent, 10.0,
+            addSlider("Pipe coupling: pipes left untouched", 0.0, 100.0, 1.0, " %", o.couplingSkipPercent, 10.0,
                 [&o](double value)
                 {
                     o.couplingSkipPercent = juce::jlimit(0.0f, 100.0f, (float)value);
@@ -29938,7 +29941,18 @@ void MainComponent::showConfigurationEditor()
                 },
                 "The share of starting pipes the coupling passes over - they keep the detune they started with (a touch of "
                 "life). With 30 pipes sounding one key, 10 % leaves three of them untuned on average; 0 % = every pipe is "
-                "pulled. 10 % by default; the setting travels with the organ. New notes take the change.");
+                "pulled, 100 % = none. 10 % by default; the setting travels with the organ. New notes take the change.");
+            // 0.9.60 (the user): pipes further apart than this do not merge.
+            addSlider("Pipe coupling: farthest pitch offset to pull", 0.0, 50.0, 1.0, " c", o.couplingMaxCents, 14.0,
+                [&o](double value)
+                {
+                    o.couplingMaxCents = juce::jlimit(0.0f, 50.0f, (float)value);
+                    o.engine.setCouplingMaxCents(o.couplingMaxCents);
+                    o.saveSettings();
+                },
+                "A sounding pipe pulls a starting one only when the pure interval with it lies within this of where the "
+                "starting pipe would otherwise settle - pipes further apart stay apart (and the sounding one is not moved "
+                "either). 14 cents by default; the setting travels with the organ. New notes take the change.");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);

@@ -6284,6 +6284,7 @@ struct SamplerEngine::Impl
                         std::array<Partner, 24> partners{};
                         int partnerCount = 0;
                         const float baseDeviation = ownBase + coupledTarget;   // the pipe at its rank's tuning + the random remainder
+                        const float maxPull = owner.couplingMaxCents.load(std::memory_order_relaxed);   // 0.9.60: pipes further apart than this do not merge
                         float sum = 0.0f, factorSum = 0.0f;
                         for (int keyOffset = -24; keyOffset <= 24 && partnerCount < 24; ++keyOffset)
                         {
@@ -6310,6 +6311,7 @@ struct SamplerEngine::Impl
                                     + (p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed));
                                 const bool partnerLower = partnerSounding < ownSounding;
                                 const float pureDeviation = deviation + (partnerLower ? pureOffset : -pureOffset);   // where the new pipe would be pure with this partner
+                                if (std::abs(pureDeviation - baseDeviation) > maxPull) continue;   // 0.9.60 (the user): too far apart to merge - neither pulls the other
                                 sum += factor * strength * (pureDeviation - baseDeviation);
                                 factorSum += factor;
                                 partners[(size_t)partnerCount++] = { (uint32_t)i, strength, factor, pureOffset, deviation, partnerLower };
