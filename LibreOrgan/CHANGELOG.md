@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.76] - 2026-11-06
+
+### Changed
+- Wind model: the strokes twice as strong (the slider defaults unchanged); a
+  release kicks back with 75 % (60 before); a 4' stop draws 85 % of an 8'
+  (two thirds before), a 2' half; the Divisions dialog's "Wind depth" slider
+  goes to 150 cents like the others and its double-click returns the factory
+  depth (20 for the pedal, 15 for a manual).
+
 ## [0.9.75] - 2026-11-06
 
 ### Changed

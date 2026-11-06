@@ -1810,8 +1810,8 @@ value a full registration shimmers.
 How far the pitch sags with the wind at its lowest (0 to 150 cents, default
 15, the pedal 20); 0 switches the wind model off for this division. A stop
 draws air by the size of its pipes: a 16' twice an 8', a 32' three times, a
-4' two thirds, a 2' a third - so the pedal and the deep stops shake the wind
-most.
+4' nearly as much as an 8', a 2' half - so the pedal and the deep stops shake
+the wind most.
 
 ### Wind: oscillation frequency
 
@@ -1827,7 +1827,7 @@ a staccato of about half the wind period shakes the most.
 ### Wind: oscillation strength
 
 The impulse a key stroke gives the wind (0 to 100 %, default 40). A release
-kicks back with 60 % of it; a key struck or released while another is held
+kicks back with 75 % of it; a key struck or released while another is held
 kicks half; keys struck together are one stroke; the swing never exceeds the
 depth - the bellows has its end positions.
 

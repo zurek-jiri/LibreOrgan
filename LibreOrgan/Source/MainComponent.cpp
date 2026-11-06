@@ -8143,7 +8143,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             devices = juce::MidiInput::getAvailableDevices();
             static const juce::String names[8] { "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
             // Double-click defaults = the factory wind profile (applyDefaultWindProfile).
-            static constexpr double defaultWindDepth[8] { 2.67, 2.17, 2.5, 3.0, 2.33, 1.67, 3.0, 2.17 };
+            static constexpr double defaultWindDepth[8] { 20.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0 };   // 0.9.76: the double-click returns the factory depth of 0.9.75 (20 pedal, 15 manuals)
             static constexpr double defaultWindFrequency[8] { 4.5, 7.5, 5.5, 8.0, 9.0, 5.0, 8.0, 7.5 };
             static constexpr double defaultWindOscillations[8] { 5.6, 7.0, 5.0, 7.0, 10.0, 8.0, 7.0, 7.0 };
             static constexpr double defaultWindStrength[8] { 53.3, 25.3, 33.3, 56.7, 66.7, 53.3, 56.7, 25.3 };
@@ -8419,7 +8419,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     addAndMakeVisible(label);
                 };
                 setupWindSlider(windDepthSliders[(size_t)manual], windDepthLabels[(size_t)manual],
-                    "Wind depth", 50.0, " cents", "windDepth",
+                    "Wind depth", 150.0, " cents", "windDepth",   // 0.9.76: up to 150 (the engine and the other sliders since 0.9.75)
                     defaultWindDepth[manual]);
                 setupWindSlider(windFrequencySliders[(size_t)manual], windFrequencyLabels[(size_t)manual],
                     "Wind frequency", 10.0, " Hz", "windFrequency",

@@ -570,8 +570,9 @@ namespace
             --firstDigit;
         if (firstDigit == name.length()) return 1.0f;
         const int trailingNumber = name.substring(firstDigit).getIntValue();
-        if (trailingNumber <= 3) return 1.0f / 3.0f;
-        if (trailingNumber <= 5) return 2.0f / 3.0f;
+        // 0.9.76 (the user: "čtyřstopý rejstřík ... měl by působit skoro jako 8'"): a 4' 0.85, a 2' and smaller 0.5.
+        if (trailingNumber <= 3) return 0.5f;
+        if (trailingNumber <= 5) return 0.85f;
         // 0.9.75: the air a stop draws follows the size of its pipes - a 16' twice an 8', a 32' three times
         // (the pedal takes its larger share from its footages, no exception for the division).
         if (trailingNumber >= 32) return 3.0f;
@@ -5830,8 +5831,8 @@ struct SamplerEngine::Impl
             // once, and its release reuses it (separate draws left random remainders chattering).
             if (down) state.keyStrength[(size_t)note] = 0.60f + 0.40f * windRandom.nextFloat();
             const float strength = state.keyStrength[(size_t)note] > 0.0f ? state.keyStrength[(size_t)note] : 0.8f;
-            const float kick = state.depthCents * demandChange * 0.25f * state.oscillationStrength * stopFactor
-                * strength * maxEffect * (down ? 1.0f : 0.6f) * chordScale;
+            const float kick = state.depthCents * demandChange * 0.5f * state.oscillationStrength * stopFactor   // 0.9.76: 0.5 (0.25 in 0.9.74: "zesil 2x"), a release 75 %
+                * strength * maxEffect * (down ? 1.0f : 0.75f) * chordScale;
             // Four pieces over 30 ms: the demand rises with the pallet and the pipe's onset, it does not step.
             for (int piece = 0; piece < 4; ++piece)
                 queueWindKick(state, now + 10.0 * piece, kick * 0.25f);

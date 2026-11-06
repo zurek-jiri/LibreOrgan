@@ -3335,6 +3335,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   FOOTAGE, not from the division: `windStopContribution` 32' -> 3, 16' -> 2, 8' 1, <= 5' 2/3, <= 3' 1/3 (rules the
   steady sag's stop load and the strokes' stopFactor alike). `harmonicWindDb` default 4 dB (header, loadSettings,
   dialog row, Editor, manual). "Volume change per cent of sag" stays 0.2. Saved files keep their own depths/filter.
+  0.9.76 (the user: "zesil 2x, default nech. Dvojkliky na ukazatele musí nastavovat naše nové defaulty! Čtyřstopý
+  rejstřík skoro nic nepůsobí ... Wind depth stále vidím max 50 centů! Zpětné rázy 75 %"): the kick constant 0.5,
+  release x 0.75, `windStopContribution` 4'-5' 0.85 and <= 3' 0.5; THE DIVISIONS DIALOG has its OWN wind sliders
+  (`setupWindSlider` ~8421, `defaultWindDepth[8]` ~8146 - a second copy of the factory profile!) that 0.9.75
+  missed: max 150 and the defaults 20/15 now. RULE: the wind defaults live in THREE places - applyDefaultWindProfile,
+  the Divisions dialog's defaultWind* arrays, the Wind settings dialog rows / Editor addSlider defaults - change all.
+  The random strength IS drawn at every stroke (keyStrength at `down`), the release reuses the stroke's.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
