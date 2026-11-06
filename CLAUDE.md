@@ -3231,6 +3231,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "0 replaced" per file: READ that output; grep the previous version before tagging, as the rule says).
   0.9.68 (the user: "místo na oktávy podle znějící výšky, udělejme to na oktávy klaviatury"): `pitchFactor = ratio ^
   ((midiNote - 60) / 12)` - the KEY, so a 16' and a 2' stop on one key follow the sag alike; texts/manual say "key".
+  0.9.69 (6 Nov 2026, the user's Kdousov (000348) pedal: "superoctavbass4 040-E je o 14 centů níž a pipe coupling ho
+  nikdy nedoladí"; MEASURED with %TEMP%\test_coupling0968.ps1 (ORGAN_TEST_RECORD of key 40 with the two stops, the
+  subbass row removed from the copy, couplingMaxCents 50) + coupling0968_peaks.py (2 s FFT windows: the Octavbass h1
+  and the two components near 164 Hz): the file's E is 13 c flat, the recording ended 18 c WIDE (Superoctav +7, Octavbass
+  -10.5 vs ET) and the gap GREW over the glide): THE CAUSE - temperament mode 2 (Kirnberger III selected, each rank
+  with its own measured table) lifts the Superoctav's E by +12.5 c (its table had absorbed the flat E: 040 and 052 both
+  flat), while the coupling's `ownBase` and the partner `deviation` were raw tuning + 440 correction + random WITHOUT
+  the temperament term the render adds -> it saw 13 c and pulled 10 c more. Fix: `temperamentOf(rank, keyNote,
+  pitchNote, mode)` (a lambda before startRank, the render's formula over selectedPitchCents / pitchClassCents /
+  measuredTemperamentCents) added to both. RULE: every control-side estimate of where a voice SOUNDS must include
+  the render's temperament term (mode 1 selected[key class]; mode 2 selected - (measured[class] - measured[A]) of
+  the RANK; mode 0 pitchClassCents + the key/pitch class difference).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

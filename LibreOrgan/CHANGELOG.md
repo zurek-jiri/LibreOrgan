@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.69] - 2026-11-06
+
+### Fixed
+- Pipe coupling counts from the pitches that really sound: the temperament
+  term of each pipe (the selected temperament and, with the original tuning,
+  the correction of its own rank's measured table) is part of the deviations
+  now. Before, a rank whose own table had absorbed a flat pipe was lifted by
+  the temperament and pulled further by the coupling - the Kdousov pedal
+  octave E ended 18 cents wide instead of 2.
+
 ## [0.9.68] - 2026-11-06
 
 ### Changed

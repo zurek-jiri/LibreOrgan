@@ -6194,6 +6194,20 @@ struct SamplerEngine::Impl
                 int refNote = -1;
                 const Stop* refRank = referenceRankFor(stop, pipe, refNote);
                 struct PipeCoupling { bool computed = false, partnerFound = false; float coupledTarget = 0.0f; } pipeCoupling;
+                // 0.9.69: the temperament term the render adds to a voice (renderVoice's temperamentCents) - the
+                // coupling counts from the pitches that SOUND. The user's Kdousov: the Superoctavbass's own table
+                // had absorbed its flat E (mode 2 lifted the pipe 12.5 c), the coupling saw the raw 13 c and pulled it
+                // 10 c further - the octave with the Octavbass ended 18 c wide instead of 2.
+                auto temperamentOf = [&](const Stop* r, int keyNote, int pitchNote, uint8_t mode) -> float
+                {
+                    const int pitchClass = ((pitchNote % 12) + 12) % 12, keyClass = ((keyNote % 12) + 12) % 12;
+                    const auto sel = [&](int pc) { return selectedPitchCents[(size_t)pc].load(std::memory_order_relaxed); };
+                    if (mode == 1) return sel(keyClass);
+                    if (mode == 2 && r != nullptr) return sel(keyClass) - (r->measuredTemperamentCents[(size_t)pitchClass] - r->measuredTemperamentCents[9]);
+                    float t = pitchClassCents[(size_t)pitchClass].load(std::memory_order_relaxed);
+                    if (keyClass != pitchClass) t += sel(keyClass) - sel(pitchClass);
+                    return t;
+                };
 
                 auto startRank = [&](Stop* rank, int rankOrdinal)
                 {
@@ -6304,7 +6318,8 @@ struct SamplerEngine::Impl
                     }
                     else if (!newIsCeleste && manualIndex >= 0)
                     {
-                        const float ownBase = -devRank->rawTuningCents[(size_t)devNote] + devRank->tuningCentsFor(devNote, stop->tuneTo440);
+                        const float ownBase = -devRank->rawTuningCents[(size_t)devNote] + devRank->tuningCentsFor(devNote, stop->tuneTo440)
+                            + temperamentOf(rank, midiNote, pipe, v.tempMode.load(std::memory_order_relaxed));   // 0.9.69: as the render will place it
                         const int ownSounding = pipe + stop->sampleOffset + (rank->footageKnown ? rank->footageSemitones : stop->footageSemitones);
                         // 0.9.58 (the user's E major on Hildesheim: every G sharp went 14 c flat - the strength was a
                         // WEIGHT among the partners, not the size of the pull, so thirds alone pulled the full pure third):
@@ -6352,6 +6367,7 @@ struct SamplerEngine::Impl
                                     if (seenCount < 24) seen[(size_t)seenCount++] = { p.stop, p.note, factor, moveMs };
                                 }
                                 const float deviation = -p.rank->rawTuningCents[(size_t)p.sampleNote] + p.tuningCents.load(std::memory_order_relaxed)
+                                    + temperamentOf(p.rank, p.keyNote, p.note, p.tempMode.load(std::memory_order_relaxed))   // 0.9.69: where the partner really sounds
                                     + (p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed));
                                 const bool partnerLower = partnerSounding < ownSounding;
                                 const float pureDeviation = deviation + (partnerLower ? pureOffset : -pureOffset);   // where the new pipe would be pure with this partner
