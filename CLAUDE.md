@@ -3229,6 +3229,8 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   filter share reads that gain, so it scales with it. At ratio 1.3: 8' C 0.46, c1 1, c3 1.69. THE VERSION LESSON: the
   0.9.65/0.9.66 bumps replaced the jucer only - CMakeLists/site/rural README stayed 0.9.64 (bump_version.ps1 prints
   "0 replaced" per file: READ that output; grep the previous version before tagging, as the rule says).
+  0.9.68 (the user: "místo na oktávy podle znějící výšky, udělejme to na oktávy klaviatury"): `pitchFactor = ratio ^
+  ((midiNote - 60) / 12)` - the KEY, so a 16' and a 2' stop on one key follow the sag alike; texts/manual say "key".
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

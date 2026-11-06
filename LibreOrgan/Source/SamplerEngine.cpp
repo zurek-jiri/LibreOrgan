@@ -6423,10 +6423,10 @@ struct SamplerEngine::Impl
                     {
                         windHash *= 0x27d4eb2fu; windHash ^= windHash >> 15;
                         const float randomFactor = 0.55f + 0.9f * (float)(windHash & 1023u) / 1023.0f;   // 0.55 .. 1.45
-                        // 0.9.67: the ratio per octave of the SOUNDING pitch from c1 (the setting "Wind: sag ratio per
-                        // octave", 1.3 by default: 8' C 0.46, c3 1.69); it scales the pitch, the level and the filter share.
-                        const int sounding = pipe + (rank->footageKnown ? rank->footageSemitones + rank->sampleOffset : 0);
-                        const float pitchFactor = juce::jlimit(0.1f, 8.0f, std::pow(owner.windOctaveRatioValue.load(std::memory_order_relaxed), (float)(sounding - 60) / 12.0f));
+                        // 0.9.67: the ratio per octave of the KEY from c1 = 60 (the setting "Wind: sag ratio per octave",
+                        // 1.3 by default: key 36 0.46, key 84 1.69; 0.9.68: the key, not the sounding pitch - the user);
+                        // it scales the pitch, the level and the filter share.
+                        const float pitchFactor = juce::jlimit(0.1f, 8.0f, std::pow(owner.windOctaveRatioValue.load(std::memory_order_relaxed), (float)(midiNote - 60) / 12.0f));
                         v.windKeyScale = randomFactor * pitchFactor;
                     }
                     const int degrees = juce::roundToInt((stop->tremulantOrdinal % 2) * 7.0f + (rankOrdinal + stop->groupChildOrdinal) * rankDrift);   // stops differ by at most 7 degrees; a stop folder's children drift apart like ranks (0.8.128)

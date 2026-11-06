@@ -1367,10 +1367,10 @@ default 0.2).
 
 ### Wind: sag ratio per octave
 
-How much more a pipe an octave higher follows the sag - in pitch, level and
-tone - counted from c1 of 8' by the pipe's sounding pitch (1 to 2, default 1.3:
-the 8' C follows about half as much as c1, c3 about 1.7 times as much). 1 makes
-every pipe follow alike. The sag itself still comes from the low keys and the
+How much more the pipes of a key an octave higher follow the sag - in pitch,
+level and tone - counted from c1 of the keyboard (1 to 2, default 1.3: the
+pipes of the lowest C follow about half as much as those of c1, c3 about 1.7
+times as much). 1 makes every key follow alike. The sag itself still comes from the low keys and the
 stops drawn.
 
 ### Wind: one stop's share of the full sag

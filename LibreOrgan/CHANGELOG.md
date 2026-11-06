@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.68] - 2026-11-06
+
+### Changed
+- "Wind: sag ratio per octave" counts the octaves of the KEY from c1 of the
+  keyboard, not of the pipe's sounding pitch (a 16' and a 2' stop on the same
+  key follow the sag alike).
+
 ## [0.9.67] - 2026-11-06
 
 ### Added

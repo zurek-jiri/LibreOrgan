@@ -25931,7 +25931,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                         { "Sag settling lag", "Wind: sag settling lag", "How long the wind pressure takes to settle after stops or keys change." },
                         { "Maximum wind model effect", "Wind: maximum wind model effect", "The strength of the whole wind model (every division); 0 % switches it off everywhere." },
                         { "Volume change per cent of sag", "Wind: volume change per cent of sag", "How much quieter a pipe gets for every cent the sag lowers its pitch (every division)." },
-                        { "Sag ratio per octave", "Wind: sag ratio per octave", "How much more a pipe an octave higher follows the sag in pitch, level and tone; 1 = every pipe alike (every division)." },
+                        { "Sag ratio per octave", "Wind: sag ratio per octave", "How much more the pipes of a key an octave higher follow the sag in pitch, level and tone; 1 = every key alike (every division)." },
                         { "Harmonic filter at full sag", "Wind: harmonic filter", "This much high-frequency loss at the full sag: a starved pipe is duller as well as flatter (every division)." } };
                     for (const auto& help : helps)
                         if (row.text.startsWith(help.textStart))
@@ -29995,7 +29995,7 @@ void MainComponent::showConfigurationEditor()
                 "How much quieter a pipe gets for every cent the wind sag lowers its pitch.");
             addSlider("Wind: sag ratio per octave", 1.0, 2.0, 0.05, "x", o.windOctaveRatio, 1.3,
                 [&o](double value) { o.windOctaveRatio = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
-                "How much more a pipe an octave higher follows the sag in pitch, level and tone (from c1 of 8'); 1 = every pipe alike.");
+                "How much more the pipes of a key an octave higher follow the sag in pitch, level and tone (from c1 of the keyboard); 1 = every key alike.");
             addSlider("Wind: one stop's share of the full sag", 2.0, 100.0, 1.0, " %", o.windOneStopShare * 100.0, 20.0,
                 [&o](double value) { o.windOneStopShare = (float)(value / 100.0); o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "Sag of a single 8' stop relative to the sag with many stops drawn (smaller footages count less).");
