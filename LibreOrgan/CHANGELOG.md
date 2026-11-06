@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.66] - 2026-11-06
+
+### Fixed
+- Every perspective of one pipe keeps exactly the same pitch: the random
+  detune, the pipe coupling's pull and the wind model's variation are one set
+  of values per pipe, shared by its perspective voices (each perspective had
+  its own - a flanger under wind or coupling, e.g. Yokota's Mixtur). The
+  tremulant keeps its phase drift between perspectives on purpose.
+
 ## [0.9.65] - 2026-11-05
 
 ### Changed

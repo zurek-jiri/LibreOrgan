@@ -3202,6 +3202,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   loaded Diffuse, the note logged, the user's file restored by hand (the test script's backup would have kept the
   crafted one - back up the user's Patterns.json BEFORE such a run). THE USER'S RULE: a regression check runs over the
   published organs up to Ch only ("dál nechoď, tam nevíme, co se ještě stane"), economically.
+  0.9.66 (6 Nov 2026, the user's Yokota/Chico "HW Mixtur ... FLANGER at 052E" under coupling/wind; THE RULE: "ve všech
+  ostatních případech musí být perspektivy téhož tónu vždy perfektně při sobě na pitch", the TREMULANT is the one
+  exception - its phase drift between perspectives is essential): every perspective of one pipe is its own voice and
+  differed in (1) the WIND hash (`rank->folderHash` -> variation index + windKeyScale per perspective; now
+  `stop->folderHash`), (2) the random detune's SIGN since 0.9.55 (effectiveRandomCents read each rank's own
+  `rankDeviationCents`: +1 c vs -1 c smpl noise gave +4 / -4 c = 8 c apart; now `referenceRankFor(stop, pipe, refNote)`
+  = the stop's own pipes, else the first perspective rank holding the pipe, used for randomEff, `recorded` and `ownBase`
+  in startNote and in setStopRandomPitchError), (3) the ensemble pull (each perspective drew its own "sometimes"
+  factors; now `PipeCoupling` per pipe: computed for the first perspective, reused by the others; the partner PIPES'
+  factor/glide length drawn once (`SeenPipe`, keyed by (stop, note)), a partner pipe counts once in the sum and every
+  voice of it gets the same retarget). The tremulant's `tremBucket` from `rankOrdinal x rankDrift` is untouched (by
+  design). Temperament mode 2 / 440 per rank differ by hundredths of a cent - left. Self-test identical (one
+  perspective there); the acoustic proof is the user's.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -447,6 +447,19 @@ namespace
     // that may cancel it), with it on 0 (the per-pipe correction puts the pipe on ET). The drawn random
     // value is a CEILING for the pipe's total detune: nothing is added while the recorded one reaches it,
     // else the excess, in the recorded direction (the drawn sign where the recording has none).
+    // 0.9.66 (the user: every perspective of one pipe keeps EXACTLY the same pitch - the tremulant's
+    // phase drift is the one exception): the rank the recorded deviation of a pipe is read from, the
+    // same for every perspective = the stop's own pipes, else the first perspective rank holding it.
+    const Stop* referenceRankFor(const Stop* stop, int pipe, int& refNote)
+    {
+        refNote = -1;
+        if (stop == nullptr || pipe < 0 || pipe >= 128) return stop;
+        if (const int n = stop->sourceNoteFor(pipe); n >= 0) { refNote = n; return stop; }
+        for (const auto& r : stop->ranks)
+            if (const int n = r->sourceNoteFor(pipe); n >= 0) { refNote = n; return r.get(); }
+        return stop;
+    }
+
     float effectiveRandomCents(const Stop* stop, const Stop* rank, int sampleNote, int pipe)
     {
         if (stop == nullptr || rank == nullptr || pipe < 0 || pipe >= 128 || sampleNote < 0 || sampleNote >= 128) return 0.0f;
@@ -6171,6 +6184,15 @@ struct SamplerEngine::Impl
                 for (const auto& rank : stop->ranks) alreadySpeaking = alreadySpeaking || rank->speaking.test((size_t)pipe);
                 const float routeGain = pipeRouteGain(stop, pipe);
                 if (alreadySpeaking) setPipeRouteGain(stop, pipe, routeGain);
+                // 0.9.66 (the user: "ve všech ostatních případech musí být perspektivy téhož tónu vždy perfektně při
+                // sobě na pitch" - the tremulant's phase drift is the ONE exception): the recorded deviation, the
+                // random detune, the coupling target and the wind variation are ONE set of values per pipe, shared by
+                // every perspective voice - before, each perspective read its own rank's deviation (the sign of the
+                // random detune flipped between perspectives whose smpl noise differed: 8 c apart), drew its own
+                // "sometimes" factors in the ensemble pull and hashed the wind from its own folder = a flanger.
+                int refNote = -1;
+                const Stop* refRank = referenceRankFor(stop, pipe, refNote);
+                struct PipeCoupling { bool computed = false, partnerFound = false; float coupledTarget = 0.0f; } pipeCoupling;
 
                 auto startRank = [&](Stop* rank, int rankOrdinal)
                 {
@@ -6249,7 +6271,9 @@ struct SamplerEngine::Impl
                     // 0.9.55 (the user): the random detune counts the detune the RECORDING already has for the
                     // pipe (its deviation from the rank's own tuning; 0 with "Equal at 440 Hz", the correction
                     // removes it) - only the excess over it is added, in the recorded direction.
-                    const float randomEff = effectiveRandomCents(stop, rank, sampleNote, pipe);
+                    const Stop* devRank = refNote >= 0 ? refRank : rank;   // 0.9.66: the pipe's deviation from ONE rank for every perspective
+                    const int devNote = refNote >= 0 ? refNote : sampleNote;
+                    const float randomEff = effectiveRandomCents(stop, devRank, devNote, pipe);
                     v.randomPitchCents.store(randomEff, std::memory_order_relaxed);
                     v.tuningCents.store(rank->tuningCentsFor(sampleNote, stop->tuneTo440), std::memory_order_relaxed);
                     v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
@@ -6260,7 +6284,7 @@ struct SamplerEngine::Impl
                     // without a partner the pipe's own random detune shrinks to 0-20 % as before.
                     // The whole detune D = the recorded deviation from the rank (0 at 440) + the random part shrinks
                     // to a random share of itself; the glide moves the random part alone, so its target is D x share - E.
-                    const float recorded = stop->tuneTo440 ? 0.0f : rank->rankDeviationCents[(size_t)sampleNote] + rank->mistuneCents[(size_t)sampleNote];
+                    const float recorded = stop->tuneTo440 ? 0.0f : devRank->rankDeviationCents[(size_t)devNote] + devRank->mistuneCents[(size_t)devNote];
                     float coupledTarget = juce::jlimit(randomEff - 25.0f, randomEff + 25.0f, (recorded + randomEff) * couplingShrink - recorded);
                     // ENSEMBLE PULL (0.9.57, the user's rules): the pipes sounding from this keyboard whose pitch
                     // stands to the new one in a small ratio - unison 1:1, octave 2:1, fifth 3:2, fourth 4:3,
@@ -6271,18 +6295,29 @@ struct SamplerEngine::Impl
                     // few cents (a pure third is 14 c from equal temperament - the temperament's business).
                     bool partnerFound = false;
                     const bool newIsCeleste = rank->detectedCelesteBeats != 0.0f || rank->undulationBeats != 0.0f || stop->undulationBeats != 0.0f;
-                    if (!newIsCeleste && manualIndex >= 0)
+                    if (pipeCoupling.computed)
                     {
-                        const float ownBase = -rank->rawTuningCents[(size_t)sampleNote] + rank->tuningCentsFor(sampleNote, stop->tuneTo440);
+                        // 0.9.66: the pull was worked out for the first perspective of this pipe - the others take it as is.
+                        coupledTarget = pipeCoupling.coupledTarget;
+                        partnerFound = pipeCoupling.partnerFound;
+                    }
+                    else if (!newIsCeleste && manualIndex >= 0)
+                    {
+                        const float ownBase = -devRank->rawTuningCents[(size_t)devNote] + devRank->tuningCentsFor(devNote, stop->tuneTo440);
                         const int ownSounding = pipe + stop->sampleOffset + (rank->footageKnown ? rank->footageSemitones : stop->footageSemitones);
                         // 0.9.58 (the user's E major on Hildesheim: every G sharp went 14 c flat - the strength was a
                         // WEIGHT among the partners, not the size of the pull, so thirds alone pulled the full pure third):
                         // the BASE is the pipe's theoretical pitch in its rank's tuning (the no-partner target), and every
                         // partner displaces it from there by strength x (pure interval - base), averaged over the "sometimes"
                         // factors - a unison pulls all the way, an octave 80 %, a fifth 1 c, a third 2-3 c, never more.
-                        struct Partner { uint32_t index; float strength, factor, pureOffset, deviation; bool lower; };
+                        struct Partner { uint32_t index; float strength, factor, pureOffset, deviation; bool lower; bool counted; double moveMs; };
                         std::array<Partner, 24> partners{};
                         int partnerCount = 0;
+                        // 0.9.66: the perspective voices of ONE partner pipe share the "sometimes" factor and the glide
+                        // length, and count once in the sum - they are one pipe, pulled as one.
+                        struct SeenPipe { const Stop* stop; int note; float factor; double moveMs; };
+                        std::array<SeenPipe, 24> seen{};
+                        int seenCount = 0;
                         const float baseDeviation = ownBase + coupledTarget;   // the pipe at its rank's tuning + the random remainder
                         const float maxPull = owner.couplingMaxCents.load(std::memory_order_relaxed);   // 0.9.60: pipes further apart than this do not merge
                         float sum = 0.0f, factorSum = 0.0f;
@@ -6306,15 +6341,22 @@ struct SamplerEngine::Impl
                                 else if (d == 4 || d == 16) { strength = 0.2f; pureOffset = -13.686f; }
                                 else if (d == 3 || d == 15) { strength = 0.1f; pureOffset = 15.641f; }
                                 else continue;
-                                const float factor = 0.3f + 0.7f * tuningRandom.nextFloat();   // "sometimes": how much of the pull this pair gets
+                                float factor = 0.0f; double moveMs = 0.0; bool counted = true;
+                                for (int k = 0; k < seenCount; ++k)
+                                    if (seen[(size_t)k].stop == p.stop && seen[(size_t)k].note == p.note) { factor = seen[(size_t)k].factor; moveMs = seen[(size_t)k].moveMs; counted = false; break; }
+                                if (counted)
+                                {
+                                    factor = 0.3f + 0.7f * tuningRandom.nextFloat();   // "sometimes": how much of the pull this pair gets
+                                    moveMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
+                                    if (seenCount < 24) seen[(size_t)seenCount++] = { p.stop, p.note, factor, moveMs };
+                                }
                                 const float deviation = -p.rank->rawTuningCents[(size_t)p.sampleNote] + p.tuningCents.load(std::memory_order_relaxed)
                                     + (p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed));
                                 const bool partnerLower = partnerSounding < ownSounding;
                                 const float pureDeviation = deviation + (partnerLower ? pureOffset : -pureOffset);   // where the new pipe would be pure with this partner
                                 if (std::abs(pureDeviation - baseDeviation) > maxPull) continue;   // 0.9.60 (the user): too far apart to merge - neither pulls the other
-                                sum += factor * strength * (pureDeviation - baseDeviation);
-                                factorSum += factor;
-                                partners[(size_t)partnerCount++] = { (uint32_t)i, strength, factor, pureOffset, deviation, partnerLower };
+                                if (counted) { sum += factor * strength * (pureDeviation - baseDeviation); factorSum += factor; }
+                                partners[(size_t)partnerCount++] = { (uint32_t)i, strength, factor, pureOffset, deviation, partnerLower, counted, moveMs };
                             }
                         }
                         if (factorSum > 0.0f)
@@ -6332,11 +6374,12 @@ struct SamplerEngine::Impl
                                     const float wanted = newDeviation + (q.lower ? -q.pureOffset : q.pureOffset);
                                     const float move = (wanted - q.deviation) * 0.25f * q.strength * q.factor * (q.lower ? 0.5f : 1.0f);
                                     const float current = p.couplingUsed ? p.coupledPitchCents : p.randomPitchCents.load(std::memory_order_relaxed);
-                                    p.couplingRetargetTotal.store((uint32_t)juce::jmax(1.0, (500.0 + tuningRandom.nextDouble() * 2000.0) * 0.001 * rate), std::memory_order_relaxed);
+                                    p.couplingRetargetTotal.store((uint32_t)juce::jmax(1.0, q.moveMs * 0.001 * rate), std::memory_order_relaxed);
                                     p.couplingRetarget.store(juce::jlimit(current - 25.0f, current + 25.0f, current + move), std::memory_order_release);
                                 }
                             }
                         }
+                        pipeCoupling = { true, partnerFound, coupledTarget };   // 0.9.66: the other perspectives of this pipe take the same
                     }
                     v.couplingRetarget.store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);
                     v.couplingUsed = couplingRoll && !newIsCeleste && (couplingSituation || partnerFound);
@@ -6367,7 +6410,7 @@ struct SamplerEngine::Impl
                     v.attackActive = (v.attackHold > 0 || v.attackFade > 0) && std::abs(v.attackBoost - 1.0f) > 1.0e-6f;
                     v.releaseFadeMsRequested.store(releaseFadeOut, std::memory_order_relaxed);
                     uint32_t windHash = (uint32_t)pipe * 0x9e3779b9u;
-                    windHash ^= rank->folderHash;
+                    windHash ^= stop->folderHash;   // 0.9.66: the STOP's hash, not the perspective rank's - every perspective of the pipe sags alike
                     windHash ^= (uint32_t)(stop->primaryManual + 1) * 0x85ebca6bu;
                     windHash ^= windHash >> 16; windHash *= 0x7feb352du; windHash ^= windHash >> 15;
                     v.windPitchVar = (uint8_t)(windHash & 15u);
@@ -8372,7 +8415,12 @@ void SamplerEngine::setStopRandomPitchError(Stop* stop, float cents, bool regene
     {
         Voice& v = impl->voices[idx];
         if (v.stop == stop && !v.detachedRelease)
-            v.randomPitchCents.store(effectiveRandomCents(stop, v.rank, v.sampleNote, v.note), std::memory_order_relaxed);
+        {
+            int refNote = -1;
+            const Stop* refRank = referenceRankFor(stop, v.note, refNote);   // 0.9.66: the same value for every perspective of the pipe
+            if (refNote < 0) { refRank = v.rank; refNote = v.sampleNote; }
+            v.randomPitchCents.store(effectiveRandomCents(stop, refRank, refNote, v.note), std::memory_order_relaxed);
+        }
     }
 }
 
