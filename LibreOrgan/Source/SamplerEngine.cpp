@@ -12118,6 +12118,167 @@ SmplInfo SamplerEngine::parseSmpl(const juce::File& file, std::shared_ptr<juce::
     return info;
 }
 
+namespace
+{
+    // 0.9.70 (the user: "v první sekundě se sample často mění"): where a pipe's sustain is analysed - the middle of
+    // the loop span (the first loop's start to the last loop's end: the producer's own steady state), else the middle
+    // of the file; 'n' frames from there, kept inside the file. Used by every sound analysis of a pipe (the footage's
+    // harmonics, the pitch).
+    int64_t analysisStart(const Sample& sample, int64_t n)
+    {
+        int64_t centre = sample.numFrames / 2;
+        if (!sample.loops.empty())
+        {
+            int64_t first = sample.loops.front().start;
+            for (const auto& loop : sample.loops) first = std::min(first, loop.start);
+            centre = (first + sample.maxLoopEnd) / 2;
+        }
+        return juce::jlimit<int64_t>(0, std::max<int64_t>(0, sample.numFrames - n), centre - n / 2);
+    }
+
+    // The largest power of two up to 2^maxOrder that fits the loop span (else 60 % of the file), 2^12 at the least
+    // (a short sample); 0 when even that does not fit.
+    int analysisOrder(const Sample& sample, int maxOrder)
+    {
+        int64_t span = sample.numFrames * 6 / 10;
+        if (!sample.loops.empty())
+        {
+            int64_t first = sample.loops.front().start;
+            for (const auto& loop : sample.loops) first = std::min(first, loop.start);
+            span = std::max<int64_t>(sample.maxLoopEnd - first, (int64_t)1 << 12);
+        }
+        int order = maxOrder;
+        while (order > 12 && ((int64_t)1 << order) > span) --order;
+        return ((int64_t)1 << order) <= sample.numFrames ? order : 0;
+    }
+
+    juce::dsp::FFT& fftOfOrder(int order)
+    {
+        thread_local std::array<std::unique_ptr<juce::dsp::FFT>, 20> ffts;   // the twiddle tables once per thread and order
+        auto& slot = ffts[(size_t)juce::jlimit(0, 19, order)];
+        if (slot == nullptr) slot = std::make_unique<juce::dsp::FFT>(order);
+        return *slot;
+    }
+
+    // Blackman-Harris magnitude spectrum (n/2 + 1 bins) of channel 0, n = 2^order frames from 'start'.
+    void sustainSpectrum(const Sample& sample, int64_t start, int order, std::vector<float>& buffer)
+    {
+        const int n = 1 << order;
+        buffer.assign((size_t)n * 2, 0.0f);
+        std::vector<int16_t> scratch;
+        std::vector<float> scratch32;
+        const int16_t* x16 = sample.storesFloat ? nullptr : sample.read16(0, scratch);
+        const float* x32 = sample.storesFloat ? sample.read32(0, scratch32) : nullptr;
+        for (int i = 0; i < n; ++i)
+        {
+            const float phase = juce::MathConstants<float>::twoPi * (float)i / (float)(n - 1);
+            const float w = 0.35875f - 0.48829f * std::cos(phase) + 0.14128f * std::cos(2.0f * phase) - 0.01168f * std::cos(3.0f * phase);
+            const float v = sample.storesFloat ? x32[start + i] : (float)x16[start + i] / 32768.0f;
+            buffer[(size_t)i] = v * w;
+        }
+        fftOfOrder(order).performFrequencyOnlyForwardTransform(buffer.data(), true);
+    }
+
+    // 0.9.70: the pitch of a pipe from its sound, in Hz (NaN when nothing agrees). 'guessHz' is the smpl chunk's
+    // claim (NaN without one). Each harmonic k = 1..4 is looked for within +-2.5 % of k x f0: its peak bin must be a
+    // local maximum 12 dB above the median level between the neighbouring harmonics; a log-parabola over the
+    // three bins at the peak gives the frequency to a hundredth of a bin (the Blackman-Harris lobe is near enough
+    // Gaussian), divided by k. The estimates within 3 cents of their median (6 under 50 Hz) give the pitch - two at
+    // least. Without a guess the fundamental is found first: a harmonic product spectrum (k = 1..5) over 16 Hz -
+    // 2 kHz, then halved as long as the odd multiples of the half (1, 3, 5) all stand - a real fundamental an
+    // octave lower, whose even harmonics the product had taken for the series.
+    double pitchFromSound(const Sample& sample, double guessHz)
+    {
+        if (sample.numChannels < 1 || sample.sampleRate <= 0.0) return std::numeric_limits<double>::quiet_NaN();
+        const bool deep = !(guessHz > 50.0);
+        const int order = analysisOrder(sample, deep ? 17 : 16);
+        if (order < 14) return std::numeric_limits<double>::quiet_NaN();   // under a third of a second: no measurement
+        const int n = 1 << order;
+        std::vector<float> spec;
+        sustainSpectrum(sample, analysisStart(sample, n), order, spec);
+        const double sr = sample.sampleRate, binHz = sr / (double)n;
+        const int bins = n / 2;
+        auto db = [&](int bin) { return 20.0 * std::log10((double)spec[(size_t)juce::jlimit(0, bins, bin)] + 1.0e-9); };
+        // The peak of harmonic k of f0: frequency and level, or false.
+        auto peakOf = [&](double f0, int k, double& hz, double& levelDb)
+        {
+            const double centre = k * f0;
+            if (centre >= 0.45 * sr || centre < 2.0 * binHz) return false;
+            const int centreBin = (int)std::round(centre / binHz);
+            const int halfWidth = juce::jmax(4, (int)std::ceil(centre * 0.025 / binHz));
+            int best = -1; double bestDb = -300.0;
+            for (int bin = juce::jmax(2, centreBin - halfWidth); bin <= juce::jmin(bins - 2, centreBin + halfWidth); ++bin)
+            {
+                const double level = db(bin);
+                if (level > bestDb) { bestDb = level; best = bin; }
+            }
+            if (best < 0 || db(best - 1) > bestDb || db(best + 1) > bestDb) return false;
+            std::vector<double> around;
+            const int from = juce::jmax(1, (int)std::round((k - 0.5) * f0 / binHz));
+            const int to = juce::jmin(bins, (int)std::round((k + 0.5) * f0 / binHz));
+            for (int bin = from; bin <= to; ++bin)
+                if (std::abs(bin - centreBin) > halfWidth) around.push_back(db(bin));
+            if (around.size() >= 3)
+            {
+                std::sort(around.begin(), around.end());
+                if (bestDb < around[around.size() / 2] + 12.0) return false;
+            }
+            const double a = db(best - 1), b = bestDb, c = db(best + 1);
+            const double denominator = a - 2.0 * b + c;
+            const double delta = std::abs(denominator) > 1.0e-9 ? juce::jlimit(-0.5, 0.5, 0.5 * (a - c) / denominator) : 0.0;
+            hz = ((double)best + delta) * binHz;
+            levelDb = b;
+            return true;
+        };
+        double f0 = guessHz;
+        if (!(f0 > 0.0))
+        {
+            // The fundamental unaided: the harmonic product spectrum, then the octave test downwards.
+            const int lo = juce::jmax(2, (int)std::round(16.0 / binHz)), hi = juce::jmin(bins / 5, (int)std::round(2000.0 / binHz));
+            int bestBin = -1; double bestSum = -1.0e9;
+            for (int bin = lo; bin <= hi; ++bin)
+            {
+                double sum = 0.0;
+                for (int k = 1; k <= 5; ++k) sum += db(bin * k);
+                if (sum > bestSum) { bestSum = sum; bestBin = bin; }
+            }
+            if (bestBin < 0) return std::numeric_limits<double>::quiet_NaN();
+            f0 = bestBin * binHz;
+            for (int halvings = 0; halvings < 3; ++halvings)
+            {
+                const double half = f0 * 0.5;
+                if (half < 16.0) break;
+                double hz, level, strongest = -300.0; bool all = true;
+                for (int k = 1; k <= 4; ++k) if (peakOf(f0, k, hz, level)) strongest = juce::jmax(strongest, level);
+                for (int odd = 1; odd <= 5 && all; odd += 2)
+                    all = peakOf(half, odd, hz, level) && level >= strongest - 34.0;
+                if (!all) break;
+                f0 = half;
+            }
+        }
+        // The fine pitch: the agreeing harmonics' estimates.
+        std::vector<double> estimates;
+        for (int k = 1; k <= 4; ++k)
+        {
+            double hz, level;
+            if (peakOf(f0, k, hz, level)) estimates.push_back(hz / k);
+        }
+        if (estimates.size() < 2) return std::numeric_limits<double>::quiet_NaN();
+        std::sort(estimates.begin(), estimates.end());
+        const double median = estimates[estimates.size() / 2];
+        const double limitCents = f0 < 50.0 ? 6.0 : 3.0;
+        std::vector<double> agreeing;
+        for (const double e : estimates) if (std::abs(1200.0 * std::log2(e / median)) <= limitCents) agreeing.push_back(e);
+        if (agreeing.size() < 2) return std::numeric_limits<double>::quiet_NaN();
+        double sum = 0.0;
+        for (const double e : agreeing) sum += e;
+        return sum / (double)agreeing.size();
+    }
+
+    double hzOfMidi(double midi) { return 440.0 * std::pow(2.0, (midi - 69.0) / 12.0); }
+    double midiOfHz(double hz) { return 69.0 + 12.0 * std::log2(hz / 440.0); }
+}
+
 void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bool isRelease, int releaseMaxHoldMs)
 {
     struct Entry { juce::File file; int midi; int velocityLayer; std::shared_ptr<juce::MemoryBlock> data; bool archived; };
@@ -12145,6 +12306,12 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
     // The storage rate (0.8.143): 48 kHz as ever or lower; releases at half of it when asked.
     const bool halfRate = isRelease && releaseHalfRate;
     const double baseRate = halfRate ? storageSampleRate * 0.5 : storageSampleRate;
+    // 0.9.70: the pitch of every attack sample measured from its sound (the setting "Measure the pitch of every
+    // pipe from its sound"): a smpl chunk off the sound by more than 3 cents (6 under 50 Hz) is replaced, a missing
+    // one supplied; counted and logged per stop below.
+    const bool measurePitch = !isRelease && measurePipePitch.load(std::memory_order_relaxed);
+    std::atomic<int> pitchTaken{ 0 }, pitchNoSmplMeasured{ 0 }, pitchNoSmplFailed{ 0 };
+    std::vector<juce::String> pitchNotes;
     parallelFor((int)entries.size(), [&](int index, int thread)
     {
         if (loadOutOfMemory.load(std::memory_order_relaxed)) return;
@@ -12185,6 +12352,38 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
             loadBytesRead.fetch_add(entries[(size_t)index].data != nullptr ? (juce::int64)entries[(size_t)index].data->getSize()
                 : entries[(size_t)index].file.getSize(), std::memory_order_relaxed);
             entries[(size_t)index].data.reset();   // the archive bytes go as soon as the sample is decoded
+            if (!isRelease && decoded[(size_t)index] != nullptr)
+            {
+                Sample& s = *decoded[(size_t)index];
+                s.smplPitchInFile = s.smplPitch;
+                const bool hasSmpl = std::isfinite(s.smplPitch);
+                if (measurePitch)
+                {
+                    const double hz = pitchFromSound(s, hasSmpl ? hzOfMidi(s.smplPitch) : std::numeric_limits<double>::quiet_NaN());
+                    if (std::isfinite(hz))
+                    {
+                        s.measuredPitch = (float)midiOfHz(hz);
+                        if (!hasSmpl) { s.smplPitch = s.measuredPitch; s.pitchSource = 2; pitchNoSmplMeasured.fetch_add(1, std::memory_order_relaxed); }
+                        else
+                        {
+                            const float diffCents = (s.measuredPitch - s.smplPitch) * 100.0f;
+                            if (std::abs(diffCents) > (hz < 50.0 ? 6.0f : 3.0f))
+                            {
+                                const float nearest = std::round(s.smplPitch);
+                                const juce::SpinLock::ScopedLockType lk(managerLock);
+                                if (pitchNotes.size() < 8)
+                                    pitchNotes.push_back(entries[(size_t)index].file.getFileNameWithoutExtension() + " (smpl " + juce::String((s.smplPitch - nearest) * 100.0f, 1)
+                                        + " c, the sound " + juce::String((s.measuredPitch - nearest) * 100.0f, 1) + " c)");
+                                s.smplPitch = s.measuredPitch;
+                                s.pitchSource = 1;
+                                pitchTaken.fetch_add(1, std::memory_order_relaxed);
+                            }
+                        }
+                    }
+                    else if (!hasSmpl) { s.pitchSource = 3; pitchNoSmplFailed.fetch_add(1, std::memory_order_relaxed); }
+                }
+                else if (!hasSmpl) { s.pitchSource = 3; pitchNoSmplFailed.fetch_add(1, std::memory_order_relaxed); }
+            }
             if (halfRate && decoded[(size_t)index] != nullptr)
             {
                 (keptFull ? halfRateKeptFull : halfRateReleases).fetch_add(1, std::memory_order_relaxed);
@@ -12211,6 +12410,40 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
     {
         loadMemoryCutStops.insert(stop);
         return;
+    }
+    if (!isRelease && (pitchTaken.load() > 0 || pitchNoSmplMeasured.load() > 0 || pitchNoSmplFailed.load() > 0))
+    {
+        // A pitch measured without a smpl chunk is pinned to the octave of its neighbours in the rank (the file
+        // number's trend: the product spectrum may land an octave off on a pipe with a weak fundamental).
+        if (pitchNoSmplMeasured.load() > 0 && entries.size() >= 3)
+        {
+            std::vector<double> offsets;
+            for (size_t i = 0; i < entries.size(); ++i)
+                if (decoded[i] != nullptr && std::isfinite(decoded[i]->smplPitch)) offsets.push_back((double)decoded[i]->smplPitch - entries[i].midi);
+            if (offsets.size() >= 3)
+            {
+                std::sort(offsets.begin(), offsets.end());
+                const double median = offsets[offsets.size() / 2];
+                for (size_t i = 0; i < entries.size(); ++i)
+                    if (decoded[i] != nullptr && decoded[i]->pitchSource == 2)
+                    {
+                        const double off = (double)decoded[i]->smplPitch - entries[i].midi;
+                        const double octaves = std::round((median - off) / 12.0);
+                        if (octaves != 0.0 && std::abs(off - median) > 6.0) { decoded[i]->smplPitch += (float)(12.0 * octaves); decoded[i]->measuredPitch = decoded[i]->smplPitch; }
+                    }
+            }
+        }
+        juce::String line = "Pitch from the sound of \"" + stop->name + "\" (" + folder.getFileName() + "): ";
+        juce::StringArray parts;
+        if (pitchTaken.load() > 0)
+        {
+            juce::String s = juce::String(pitchTaken.load()) + " file(s) whose smpl chunk differs from the sound by more than 3 cents - the sound taken: " + juce::StringArray(pitchNotes.data(), (int)pitchNotes.size()).joinIntoString(", ");
+            if (pitchTaken.load() > (int)pitchNotes.size()) s << " ...";
+            parts.add(s);
+        }
+        if (pitchNoSmplMeasured.load() > 0) parts.add(juce::String(pitchNoSmplMeasured.load()) + " file(s) without a smpl chunk measured from the sound");
+        if (pitchNoSmplFailed.load() > 0) parts.add(juce::String(pitchNoSmplFailed.load()) + " file(s) without a smpl chunk " + (measurePitch ? "not measurable" : "not measured (the setting is off)") + " - the file number taken as the pitch");
+        CrashHandler::note(line + parts.joinIntoString("; "));
     }
     for (size_t i = 0; i < entries.size(); ++i)
     {
@@ -13814,34 +14047,15 @@ namespace
         if (residualDb != nullptr) *residualDb = 0.0f;
         if (sample.numChannels < 1 || sample.numFrames < 1 || !(f0Hz > 1.0) || sample.sampleRate <= 0.0) return 1;
         const double sr = sample.sampleRate;
-        // The sustain: after the attack (300 ms), the longest power-of-two stretch
-        // up to 65536 frames; a short sample gives 4096 frames after a shorter skip.
-        int64_t start = (int64_t)(0.3 * sr);
-        int order = 16;
-        while (order >= 12 && start + ((int64_t)1 << order) > sample.numFrames) --order;
-        if (order < 12)
-        {
-            start = (int64_t)(0.05 * sr);
-            order = 12;
-            if (start + ((int64_t)1 << order) > sample.numFrames) return 1;
-        }
+        // The sustain (0.9.70): the middle of the loop span (else of the file), the longest power-of-two stretch
+        // up to 65536 frames that fits it, 4096 at the least - before, 65536 frames from 0.3 s, inside the attack.
+        // Blackman-Harris window: side lobes below -92 dB, so the spectrum between the harmonics shows the real
+        // noise and aliasing, not window leakage. Channel 0 (every channel carries the same partials).
+        const int order = analysisOrder(sample, 16);
+        if (order < 12) return 1;
         const int n = 1 << order;
-        std::vector<float> buffer((size_t)n * 2, 0.0f);
-        std::vector<int16_t> scratch;
-        std::vector<float> scratch32;
-        const int16_t* x16 = sample.storesFloat ? nullptr : sample.read16(0, scratch);
-        const float* x32 = sample.storesFloat ? sample.read32(0, scratch32) : nullptr;
-        for (int i = 0; i < n; ++i)   // channel 0 (every channel carries the same partials)
-        {
-            // Blackman-Harris window: side lobes below -92 dB, so the spectrum between
-            // the harmonics shows the real noise and aliasing, not window leakage.
-            const float phase = juce::MathConstants<float>::twoPi * (float)i / (float)(n - 1);
-            const float w = 0.35875f - 0.48829f * std::cos(phase) + 0.14128f * std::cos(2.0f * phase) - 0.01168f * std::cos(3.0f * phase);
-            const float v = sample.storesFloat ? x32[start + i] : (float)x16[start + i] / 32768.0f;
-            buffer[(size_t)i] = v * w;
-        }
-        juce::dsp::FFT fft(order);
-        fft.performFrequencyOnlyForwardTransform(buffer.data(), true);
+        std::vector<float> buffer;
+        sustainSpectrum(sample, analysisStart(sample, n), order, buffer);
         const double binHz = sr / (double)n;
         auto magnitudeDb = [&](int bin) { return 20.0 * std::log10((double)buffer[(size_t)juce::jlimit(0, n / 2, bin)] + 1.0e-9); };
         struct Band { bool valid = false; double peakDb = -200.0, floorDb = -200.0; };

@@ -899,9 +899,25 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                     numLabel->setTooltip(tip);
                 }
             }
+            // 0.9.70: a RED note name - the pitch of the sample that sounds here does not come from an agreeing
+            // smpl chunk (the sound differed from it, or there is none); red wins over the orange "no loop".
+            if (const Sample* u = stop->noteWithUncertainPitchInAnyRank(source))
+            {
+                juce::String why;
+                const float nearest = std::round(std::isfinite(u->smplPitchInFile) ? u->smplPitchInFile : u->smplPitch);
+                auto cents = [&](float midi) { return juce::String((midi - nearest) * 100.0f, 1) + " c"; };
+                if (u->pitchSource == 1) why = "The smpl chunk of this sample says " + cents(u->smplPitchInFile) + ", the sound " + cents(u->measuredPitch) + " - the sound taken";
+                else if (u->pitchSource == 2) why = "No smpl chunk in this sample: the pitch measured from the sound, " + cents(u->measuredPitch);
+                else why = "No smpl chunk in this sample and no measurement (\"Measure the pitch of every pipe from its sound\" is off, or the sound gave nothing): the file number taken as the pitch";
+                if (!stop->noteHasLoopInAnyRank(source)) why << "; no loop in the smpl chunk either";
+                nameLabel->setColour(juce::Label::textColourId, juce::Colours::red);
+                nameLabel->setTooltip(why);
+                toneNameLabel->setColour(juce::Label::textColourId, juce::Colours::red);
+                toneNameLabel->setTooltip(why);
+            }
             // An orange note name (the shade of every emphasised text): the sample
             // that sounds here has no loop in its smpl chunk.
-            if (!stop->noteHasLoopInAnyRank(source))
+            else if (!stop->noteHasLoopInAnyRank(source))
             {
                 nameLabel->setColour(juce::Label::textColourId, juce::Colours::orange);
                 nameLabel->setTooltip("No loop in the smpl chunk of this sample");

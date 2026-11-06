@@ -4233,6 +4233,7 @@ void MainComponent::applyAdvancedAudioSettings()
     engine.setVelocityFadeInMs(velocityFadeInMs);
     engine.setVelocityFullFrom(velocityFullFrom);
     engine.setVelocityPlainStrict(velocityPlainStrict);
+    engine.setMeasurePipePitch(measurePipePitch);   // 0.9.70
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
     engine.setWindShares(windOneStopShare, windOnePipeShare, windTwoPipesShare);
@@ -23446,6 +23447,8 @@ void MainComponent::loadSettings()
     engine.setVelocityFullFrom(velocityFullFrom);
     velocityPlainStrict = (bool)parsed.getProperty("velocityPlainStrict", false);   // 0.8.192
     engine.setVelocityPlainStrict(velocityPlainStrict);
+    measurePipePitch = (bool)parsed.getProperty("measurePipePitch", true);   // 0.9.70
+    engine.setMeasurePipePitch(measurePipePitch);
     velocityShelfDb = juce::jlimit(0.0f, 24.0f, (float)(double)parsed.getProperty("velocityShelfDb", 9.0));
     velocityShelfMs = juce::jlimit(5.0f, 1000.0f, (float)(double)parsed.getProperty("velocityShelfMs", 180.0));
     engine.setVelocityShelfDb(velocityShelfDb);
@@ -24222,6 +24225,7 @@ void MainComponent::saveSettings()
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
     obj->setProperty("velocityFullFrom", velocityFullFrom);
     obj->setProperty("velocityPlainStrict", velocityPlainStrict);
+    obj->setProperty("measurePipePitch", measurePipePitch);   // 0.9.70
     obj->setProperty("velocityShelfDb", velocityShelfDb);
     obj->setProperty("velocityShelfMs", velocityShelfMs);
     obj->setProperty("uiScalePercent", uiScalePercent);
@@ -26726,6 +26730,8 @@ void MainComponent::globalResetControls(const GlobalResetOptions& o)
     engine.setVelocityFullFrom(80);
     velocityPlainStrict = false;
     engine.setVelocityPlainStrict(false);
+    measurePipePitch = true;
+    engine.setMeasurePipePitch(true);
     velocityShelfDb = 9.0f; velocityShelfMs = 180.0f;
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
@@ -30083,6 +30089,17 @@ void MainComponent::showConfigurationEditor()
                 },
                 "Undulating (celeste) stops beat this many times faster at the top of their compass than at the "
                 "bottom; the a1 key always beats as set in the stop's voicing. Equal beats (1x) detune the bass most.");
+            // 0.9.70: the pitch of every pipe from its sound (the smpl chunk checked, a missing one supplied).
+            addToggle("Measure the pitch of every pipe from its sound", o.measurePipePitch, [&o](bool state)
+                {
+                    o.measurePipePitch = state;
+                    o.engine.setMeasurePipePitch(state);
+                    o.saveSettings();
+                },
+                "At the load the pitch of every pipe is measured from the middle of its loops; a smpl chunk off the sound by more than "
+                "3 cents is replaced by the measurement, a missing one is supplied (the key's note name turns red in the voicing and its "
+                "tooltip says what happened). Off: the smpl chunk alone, a file without one sounds at its file number. Takes effect at "
+                "the next load; travels with the organ.");
             // 0.9.10 (the user: here, not under Filled pipes): the two thresholds of a pipe off its rank, in the
             // order they bite - retuned from N cents, replaced from M cents.
             addSlider("Retune pipes off by more than", 0.0, 1200.0, 5.0, " cents", o.mistuneCorrectCents, 50.0,

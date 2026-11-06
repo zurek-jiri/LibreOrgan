@@ -1442,6 +1442,18 @@ default 1800); a pipe whose fundamental lies higher starts there.
 Celeste stops beat this many times faster at the top of the compass than at
 the bottom (1 to 20, default 12); a1 beats as the voicing says.
 
+### Measure the pitch of every pipe from its sound
+
+On by default: at the load the pitch of every pipe is measured from the
+middle of its loops (the sustain), to about a cent. A smpl chunk that differs
+from the sound by more than 3 cents (6 under 50 Hz) is replaced by the
+measurement, a file without a smpl chunk gets one; the key's note name turns
+red in the voicing row and its tooltip says what happened (an orange name
+still means "no loop"; red wins when both). Off: the smpl chunk alone is
+believed, as before, and a file without one sounds at its file number. Takes
+effect at the next load. Travels with the organ. The loading takes a second
+or two longer on a large organ.
+
 ### Retune pipes off by more than
 
 A pipe further off its own rank's tuning than this is pulled to its key even

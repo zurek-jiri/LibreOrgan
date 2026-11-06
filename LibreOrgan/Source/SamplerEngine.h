@@ -74,6 +74,13 @@ struct Sample
     // Recorded pitch from the WAV "smpl" chunk (MIDI unity note + fraction) in
     // MIDI semitones on the equal-tempered a1 = 440 Hz scale; NaN when absent.
     float smplPitch = std::numeric_limits<float>::quiet_NaN();
+    // 0.9.70: the pitch measured from the sound (MIDI semitones; NaN when not measured or nothing agreed), the
+    // smpl chunk's own value as read from the file, and where smplPitch comes from: 0 the smpl chunk, 1 the sound
+    // (the smpl differed from it by more than the limit), 2 the sound (no smpl chunk), 3 nothing (no smpl chunk,
+    // not measured or not measurable: the file number stands). 1..3 paint the key's note name red in the voicing.
+    float measuredPitch = std::numeric_limits<float>::quiet_NaN();
+    float smplPitchInFile = std::numeric_limits<float>::quiet_NaN();
+    uint8_t pitchSource = 0;
     // A pitch-shifted copy: the "formants follow" share it was built with, in
     // per cent (-1 = not a pitch-shifted copy). Lets a build and the cache tell
     // a copy made for another setting of its stop.
@@ -545,6 +552,20 @@ struct Stop
         if (noteHasLoop(note)) return true;
         for (const auto& rank : ranks) if (rank->noteHasLoop(note)) return true;
         return false;
+    }
+    // 0.9.70: a sample of the note whose pitch does not come from an agreeing smpl chunk (Sample::pitchSource != 0).
+    const Sample* noteWithUncertainPitch(int note) const noexcept
+    {
+        if (note < 0 || note >= 128) return nullptr;
+        for (const auto& sample : samplesByNote[(size_t)note])
+            if (sample != nullptr && sample->pitchSource != 0) return sample.get();
+        return nullptr;
+    }
+    const Sample* noteWithUncertainPitchInAnyRank(int note) const noexcept
+    {
+        if (const Sample* s = noteWithUncertainPitch(note)) return s;
+        for (const auto& rank : ranks) if (const Sample* s = rank->noteWithUncertainPitch(note)) return s;
+        return nullptr;
     }
     // Anti-alias copies for filled pipes that play a neighbour's sample faster
     // (transposed up): the source sample low-passed so that nothing above the
@@ -1487,6 +1508,9 @@ public:
     // never plays - a key with no ticked layer stays silent. Off by default: the plain
     // files play when no ticked layer has the note (no gaps).
     void setVelocityPlainStrict(bool strict) { velocityPlainStrict.store(strict); }
+    // 0.9.70: the pitch of every pipe measured from its sound at the load (the smpl chunk checked, a missing one
+    // replaced); off = the smpl chunk alone, as before.
+    void setMeasurePipePitch(bool on) { measurePipePitch.store(on); }
     bool getVelocityPlainStrict() const noexcept { return velocityPlainStrict.load(std::memory_order_relaxed); }
     // ... and the chiff blunted by an extra high-shelf cut at the start: this many dB
     // at the lowest velocity (default 9), opening to nothing over velocityShelfMs (default 180).
@@ -1641,6 +1665,7 @@ private:
     std::atomic<float> velocityFadeInMs{ 100.0f };
     std::atomic<int> velocityFullFrom{ 80 };
     std::atomic<bool> velocityPlainStrict{ false };
+    std::atomic<bool> measurePipePitch{ true };
     std::atomic<float> velocityShelfDb{ 9.0f };
     std::atomic<float> velocityShelfMs{ 180.0f };
     std::atomic<float> releaseScalingGain{ 1.0f };

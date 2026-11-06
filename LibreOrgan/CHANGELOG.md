@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.70] - 2026-11-06
+
+### Added
+- The pitch of every pipe is measured from its sound at the load (setting
+  "Measure the pitch of every pipe from its sound", on by default, travels
+  with the organ): a smpl chunk off the sound by more than 3 cents (6 under
+  50 Hz) is replaced, a file without one gets a pitch; the key's note name is
+  red in the voicing row and its tooltip tells what happened. The Kdousov
+  Octavbass E (smpl +0.1 cents, sound -6.5) sounded 8 cents under the
+  Superoctavbass whatever the pipe coupling did.
+
+### Changed
+- Every sound analysis of a pipe (the sounding footage, the pitch) reads the
+  middle of the loop span (the first loop's start to the last loop's end), or
+  the middle of the file without loops - not 1.4 s from 0.3 s, inside the
+  attack.
+
 ## [0.9.69] - 2026-11-06
 
 ### Fixed

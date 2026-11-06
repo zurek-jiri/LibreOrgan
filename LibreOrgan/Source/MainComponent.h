@@ -1152,6 +1152,7 @@ private:
     float tremulantShelfPhaseDegrees = 90.0f;   // the tremulant's tone oscillation behind its volume oscillation
     float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
     int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)
+    bool measurePipePitch = true;               // 0.9.70: the pitch of every pipe measured from its sound at the load (the smpl chunk checked / supplied)
     bool velocityPlainStrict = false;           // velocity layers: an unticked "_128" never plays (0.8.192; off = the plain files fill the gaps)
     float velocityShelfDb = 9.0f;               // ... and the high-shelf cut on the attack at the lowest velocity (the chiff blunted)
     float velocityShelfMs = 180.0f;             // ... opening to nothing over this time (0.8.196: 180 ms, was 80)

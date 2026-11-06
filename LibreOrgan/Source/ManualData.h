@@ -1460,6 +1460,18 @@ static const char* const kManualText_part7 =
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
     "\n"
+    "### Measure the pitch of every pipe from its sound\n"
+    "\n"
+    "On by default: at the load the pitch of every pipe is measured from the\n"
+    "middle of its loops (the sustain), to about a cent. A smpl chunk that differs\n"
+    "from the sound by more than 3 cents (6 under 50 Hz) is replaced by the\n"
+    "measurement, a file without a smpl chunk gets one; the key's note name turns\n"
+    "red in the voicing row and its tooltip says what happened (an orange name\n"
+    "still means \"no loop\"; red wins when both). Off: the smpl chunk alone is\n"
+    "believed, as before, and a file without one sounds at its file number. Takes\n"
+    "effect at the next load. Travels with the organ. The loading takes a second\n"
+    "or two longer on a large organ.\n"
+    "\n"
     "### Retune pipes off by more than\n"
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
@@ -1604,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "On: the melody coupler waits a moment when the highest key changes in legato,\n"
     "so a brief overlap does not make the solo stop jump.\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Load the last configuration at startup\n"
     "\n"
@@ -1616,8 +1630,6 @@ static const char* const kManualText_part7 =
     "\n"
     "### Output discontinuity detector: count the clicks in the program's own output\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "On by default. The program counts every click between two blocks of its own\n"
     "output, logs it with the route and stage and shows \"!N\" in orange in the DSP\n"
     "cell. A few microseconds per period\n"
@@ -1806,6 +1818,8 @@ static const char* const kManualText_part8 =
     "0 to 360 degrees (default 260): with 0 every stop dips at once, with a large\n"
     "value a full registration shimmers.\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
     "How far the pitch sags with the wind at its lowest (0 to 50 cents, default\n"
@@ -1818,8 +1832,6 @@ static const char* const kManualText_part8 =
     "### Wind: number of oscillations\n"
     "\n"
     "How many die away after a stroke (0 to 20, default 7).\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Wind: oscillation strength\n"
     "\n"
@@ -2008,6 +2020,8 @@ static const char* const kManualText_part9 =
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
     "loaded twice. A stop with several ranks in one perspective (a left and a\n"
     "right component) becomes a stop folder with one child per rank. Ranks\n"
+    ;
+static const char* const kManualText_part10 =
     "without release samples make a one-shot stop; a stop whose release crossfade\n"
     "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
     "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
@@ -2020,8 +2034,6 @@ static const char* const kManualText_part9 =
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
     "caption's footage is the sounding one). A configuration whose rows an older\n"
     "import named with the prefix is renamed the same way when it loads, every\n"
-    ;
-static const char* const kManualText_part10 =
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
@@ -2210,6 +2222,8 @@ static const char* const kManualText_part10 =
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
     "encrypted archives are refused. Archives packed with PPMd or old filters go\n"
     "through a second reader (unarr) after the first fails, logged once. A\n"
+    ;
+static const char* const kManualText_part11 =
     "configuration never names an archive: every path is a disk path, and a folder\n"
     "that is also on the disk wins over the archive.\n"
     "\n"
@@ -2222,8 +2236,6 @@ static const char* const kManualText_part10 =
     "`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;\n"
     "`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*\n"
     "without a file. In the LibreOrgans folder: `<organ>.json` and its\n"
-    ;
-static const char* const kManualText_part11 =
     "`.json.bak`, `Publish/` with the exports, `../LibreRecordings` by default.\n"
     "A configuration file holds only what the instrument uses now - the divisions\n"
     "in use, the routes that exist and their settings; a route no stop plays\n"

@@ -3243,6 +3243,34 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   measuredTemperamentCents) added to both. RULE: every control-side estimate of where a voice SOUNDS must include
   the render's temperament term (mode 1 selected[key class]; mode 2 selected - (measured[class] - measured[A]) of
   the RANK; mode 0 pitchClassCents + the key/pitch class difference).
+  AFTER 0.9.69 the Kdousov octave was still 8 c wide: MEASURED PRECISELY (%TEMP%\coupling0969_precise.py <wav> <start s>
+  <f1> <f2>...: 4 s Hann, 4x zero-padded FFT, log-parabola, h1/h2/h3 agree) the Octavbass 040-E FILE sounds 82.10 Hz =
+  -6.5 c while its smpl says +0.1 c (041/042 also +0.1 = unfilled values); the Superoctav's smpl is honest (-13.2 vs
+  -13.6). The autocorrelation of carlo_pitch.py is +-3 c on bass pipes - never judge a few cents by it. The engine
+  trusted the smpl, so the "pure" octave it made was 6.5 c off in the sound; a unison with Principal 4 (honest smpl)
+  locked. The user's own tuner said 82.4 - the FFT is right (three harmonics, both files).
+  0.9.70 (6 Nov 2026, the user: "tak to udělej. Ale bez regresů"; his rules: the analysis window in the MIDDLE OF ALL
+  LOOPS (first loop's start .. last loop's end), a configuration switch so the user can turn the measurement off and
+  read the smpl alone, fallback = today's state (no smpl -> the file number, 0 c), RED note name in the voicing = "no
+  pitch" (smpl missing or off the sound), orange stays "no loop", red wins; the 0.2 c he first asked for is under the
+  measurement's precision - 3 c (6 c under 50 Hz) agreed): `analysisStart(sample, n)` / `analysisOrder(sample, max)`
+  (anonymous namespace before loadSamplesIntoStop) = the middle of the loop span, the largest 2^k <= the span (>= 2^12);
+  `sustainSpectrum` (Blackman-Harris + juce::dsp::FFT cached per thread and order in `fftOfOrder`); `pitchFromSound
+  (sample, guessHz)`: harmonics 1..4 within +-2.5 % of k x f0, local maximum 12 dB over the between-harmonics median,
+  log-parabola over the peak bin, /k, the estimates within 3 c of their median averaged (two at least, else NaN); no
+  guess = harmonic product spectrum (k 1..5, 16 Hz-2 kHz) then halved while the odd multiples of the half stand.
+  `lowestSoundingHarmonic` uses the same window (was 65536 frames from 0.3 s). In loadSamplesIntoStop's parallelFor
+  (attacks only, before packing): `Sample::smplPitchInFile`, `measuredPitch`, `pitchSource` (0 smpl / 1 the sound took
+  over / 2 no smpl, measured / 3 no smpl, nothing); a no-smpl pitch is snapped to the octave of the rank's median
+  (smplPitch - file number) after the loop; log "Pitch from the sound of "stop": N file(s) whose smpl chunk differs
+  ... the sound taken: 040-E (smpl +0.1 c, the sound -6.5 c) ...; M without a smpl chunk measured; K ... the file
+  number taken". Setting `measurePipePitch` (configuration key, default true; engine atomic `measurePipePitch`;
+  Editor addToggle "Measure the pitch of every pipe from its sound" right before "Retune pipes off by more than";
+  GLOBAL RESET true; manual ### of the label). Voicer: `Stop::noteWithUncertainPitchInAnyRank(note)` -> red
+  nameLabel/toneNameLabel + tooltip (the three cases; "; no loop in the smpl chunk either" appended), else the orange
+  rule. NOT changed: the perspective gate's autocorrelation (`measuredPitchCents`, reads files from the disk, no loop
+  info) - noted. The self-test baseline moves (the footage window) - compare against %TEMP%\selftest_0970.txt from
+  now on.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
