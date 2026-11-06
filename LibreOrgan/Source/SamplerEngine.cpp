@@ -613,11 +613,6 @@ namespace
         const float f = x - (float)i;
         return t[(size_t)i] + (t[(size_t)i + 1] - t[(size_t)i]) * f;
     }
-    inline float fastSinRad(double radians) noexcept
-    {
-        return fastSinTurns((float)(radians * (1.0 / juce::MathConstants<double>::twoPi)));
-    }
-
     // Publish a struct from the control thread to render threads without locks.
     template <typename T>
     struct SeqLocked
@@ -1552,12 +1547,9 @@ namespace
         double wallStartMs = 0.0;   // 0.8.208: the file keeps wall time - a device restart (a division reloaded, a route changed) is silence in it, not a cut
     };
 
-    struct WindTransient
-    {
-        double startMs = -1.0, durationMs = 0.0;
-        float amplitude = 0.0f, oscillations = 0.0f;
-        bool release = false;
-    };
+    // 0.9.72: a kick into the wind's resonator, due at a time (a stroke's kick is spread over 30 ms in four
+    // pieces: the pallet and the pipe's onset let the demand rise, they do not step it).
+    struct WindKick { double dueMs = -1.0; float amount = 0.0f; };
 
     struct WindSourceState
     {
@@ -1570,10 +1562,22 @@ namespace
         int heldCount = 0;
         std::array<int, 4> influentialNotes{ -1, -1, -1, -1 };
         int influentialCount = 0;
+        // The steady sag (the regulator): from baseStartSag at baseTransitionStartMs towards targetSag,
+        // exponentially (0.9.72: it settles from wherever it is - before, a smoothstep restarted at every key
+        // event and chattered in the rhythm of fast keys), 95 % of the way after baseTransitionDurationMs.
         double baseTransitionStartMs = 0.0;
         double baseTransitionDurationMs = 170.0;
         float baseStartSag = 0.0f, targetSag = 0.0f;
-        std::array<WindTransient, 64> transients{};
+        // The ringing (the bellows' resonance, 0.9.72): ONE damped oscillator per wind source,
+        // x(t) = A e^(-sigma t) sin(omega t + phi) from oscStartMs; every kick (a stroke, a release) lands in
+        // its current phase - in phase it grows, in antiphase it is cancelled, as on the real bellows. The
+        // sum of independent transients it replaces was the same mathematics (a linear resonator), this
+        // form only makes the kicks' timing exact and cheap to evaluate.
+        double oscStartMs = -1.0;
+        float oscAmplitude = 0.0f, oscPhase = 0.0f, oscSigmaPerMs = 0.0f, oscOmegaPerMs = 0.0f;
+        std::array<WindKick, 32> kicks{};
+        std::array<float, 128> keyStrength{};   // the random strength of a key's stroke (0.6-1.0), its release reuses it
+        float lastDemand = 0.0f;                // the saturated demand (0..1) the last event left
     };
 
     // Maximum sag a source may produce: 1.25 x depth, extended when the
@@ -1583,61 +1587,41 @@ namespace
         return juce::jmax(0.0f, state.depthCents * (1.25f + juce::jmax(0.0f, state.oscillationStrength - 1.0f)));
     }
 
-    // 0.9.71 (the user: a held treble tone wobbled far more under two staccato bass keys than under one - the
-    // strokes' impulses simply added): the running impulses of one kind are combined SATURATING - the largest
-    // whole, the next x strokeAdd, the next x strokeAdd^2 ... ("Wind: further strokes add", default 30 %: two
-    // strokes 130 %, three 139 %; 100 % = the plain sum of before).
-    float combineImpulses(float* values, int count, float strokeAdd) noexcept
+    // The steady sag at a time: exponential settling from the value the last event found towards the target.
+    inline float windBaseAt(const WindSourceState& state, double timeMs) noexcept
     {
-        if (count <= 1) return count == 1 ? values[0] : 0.0f;
-        std::sort(values, values + count, [](float a, float b) { return std::abs(a) > std::abs(b); });
-        float total = values[0], weight = strokeAdd;
-        for (int i = 1; i < count; ++i) { total += values[i] * weight; weight *= strokeAdd; }
-        return total;
+        const double tau = juce::jmax(1.0, state.baseTransitionDurationMs) / 3.0;   // 95 % settled after the duration
+        const double dt = juce::jmax(0.0, timeMs - state.baseTransitionStartMs);
+        return state.targetSag + (state.baseStartSag - state.targetSag) * (float)std::exp(-dt / tau);
     }
 
-    float windSagAt(const WindSourceState& state, double timeMs, float phase, bool affectsAnotherDivision, float strokeAdd) noexcept
+    // The ringing at a time (0 once it has died away: sigma t > 6 = under 0.25 %).
+    inline float windRingingAt(const WindSourceState& state, double timeMs, float& velocityPerMs) noexcept
     {
-        const double baseSmoothingMs = juce::jmax(1.0, state.baseTransitionDurationMs);
-        const double bp = juce::jlimit(0.0, 1.0, (timeMs - state.baseTransitionStartMs) / baseSmoothingMs);
-        const float smooth = (float)(bp * bp * (3.0 - 2.0 * bp));
+        velocityPerMs = 0.0f;
+        if (state.oscStartMs < 0.0 || state.oscAmplitude == 0.0f) return 0.0f;
+        const float dt = (float)juce::jmax(0.0, timeMs - state.oscStartMs);
+        const float decay = state.oscSigmaPerMs * dt;
+        if (decay > 6.0f) return 0.0f;
+        const float envelope = state.oscAmplitude * std::exp(-decay);
+        const float angle = state.oscOmegaPerMs * dt + state.oscPhase;
+        const float s = std::sin(angle), c = std::cos(angle);
+        velocityPerMs = envelope * (state.oscOmegaPerMs * c - state.oscSigmaPerMs * s);
+        return envelope * s;
+    }
+
+    float windSagAt(const WindSourceState& state, double timeMs, bool affectsAnotherDivision) noexcept
+    {
         const float divisionScale = affectsAnotherDivision ? 0.5f : 1.0f;
-        // The steady sag never goes negative; the oscillation is added on top so
-        // that a release impulse (pressure briefly rising, pitch slightly sharp)
-        // is heard immediately instead of being clipped by the zero floor until
-        // the steady sag has settled.
-        const float base = juce::jlimit(0.0f, windSagLimit(state),
-            (state.baseStartSag + (state.targetSag - state.baseStartSag) * smooth) * divisionScale);
-        const float sinPhase = fastSinRad(phase);
-        float pressValues[64], releaseValues[64];
-        int pressCount = 0, releaseCount = 0;
-        for (const auto& event : state.transients)
-        {
-            if (event.startMs < 0.0 || event.durationMs <= 0.0) continue;
-            const double p = (timeMs - event.startMs) / event.durationMs;
-            if (p < 0.0 || p >= 1.0) continue;
-            const float envelope = (float)((1.0 - p) * (1.0 - p));
-            const double angle = juce::MathConstants<double>::twoPi * event.oscillations * p;
-            // Release impulses at 85 % of the attack impulse; other divisions fed
-            // from this wind receive 80 % of the oscillation.
-            const float eventScale = affectsAnotherDivision
-                ? (event.release ? 0.68f : 0.80f)
-                : (event.release ? 0.85f : 1.00f);
-            const float value = event.amplitude * eventScale * envelope * (fastSinRad(angle + phase) - sinPhase);
-            if (event.release) releaseValues[releaseCount++] = -value;
-            else pressValues[pressCount++] = value;
-        }
-        const float pressSum = combineImpulses(pressValues, pressCount, strokeAdd);
-        const float releaseSum = combineImpulses(releaseValues, releaseCount, strokeAdd);
-        // Pressing keys can only ever lower pitch and level (sag >= 0): the
-        // oscillation's negative half is floored at normal wind, so nothing gets
-        // louder or sharper because a key was pressed. Only a release, where
-        // the pressure genuinely overshoots, may briefly exceed normal by a little.
-        // Release oscillations are limited to half the depth, however many stops
-        // are drawn; otherwise a full registration made them louder than the sag itself.
+        const float base = juce::jlimit(0.0f, windSagLimit(state), windBaseAt(state, timeMs) * divisionScale);
+        float velocity;
+        // Other divisions fed from this wind receive 80 % of the ringing. The ringing swings both ways
+        // (0.9.72: a stroke's negative half-wave is no longer cut at normal wind - that clipping halved a
+        // single key's shake and bent it into something that was no oscillation); the pressure may rise
+        // above normal by half the depth at most, and the whole never beyond the sag limit.
+        const float ringing = windRingingAt(state, timeMs, velocity) * (affectsAnotherDivision ? 0.8f : 1.0f);
         const float releaseLimit = 0.5f * state.depthCents * divisionScale;
-        const float sag = juce::jmax(0.0f, base + pressSum) + juce::jlimit(-releaseLimit, releaseLimit, releaseSum);
-        return juce::jlimit(-0.35f * state.depthCents * divisionScale, windSagLimit(state), sag);
+        return juce::jlimit(-releaseLimit, windSagLimit(state), base + ringing);
     }
 
     //==========================================================================
@@ -4252,6 +4236,8 @@ struct SamplerEngine::Impl
         lastAttackDelayNoteOnMs.fill(-1.0);
         noteFinishedMs.fill(-1.0);
         heldVelocity.fill(-1);
+        windPressMs.fill(-1.0);
+        pendingWindOffMs.fill(-1.0);
     }
 
     SamplerEngine& owner;
@@ -4322,6 +4308,7 @@ struct SamplerEngine::Impl
     // note bookkeeping by source key
     std::array<double, kSourceKeys> noteOnTimeMs{}, noteSoundStartMs{}, noteMinimumStartMs{},
         lastAttackDelayNoteOnMs{}, noteFinishedMs{};
+    std::array<double, kSourceKeys> windPressMs{}, pendingWindOffMs{};   // 0.9.72: the wind's stroke time per key, a release held to the 50 ms floor
     std::array<int8_t, kSourceKeys> heldVelocity{};
     struct PendingOn { double dueMs = 0.0; int velocity = 0; bool valid = false; };
     struct PendingOff { double dueMs = 0.0; std::array<float, maxManuals> gains{}; bool valid = false; };
@@ -4709,8 +4696,7 @@ struct SamplerEngine::Impl
         route->perspective = perspective;
         route->channelMask.store(manualDefaultMask[(size_t)route->manual].load());
         route->sampleRate.store(manualSampleRate[(size_t)route->manual].load());
-        const auto hash = (uint32_t)perspective.toLowerCase().hashCode();
-        route->windPhase = perspective.equalsIgnoreCase("default") ? 0.0f : ((int)(hash % 9u) - 4) * 0.12f;
+        route->windPhase = 0.0f;   // 0.9.72: every perspective of a pipe sags in the same phase (was +-0.48 rad by the hash - a flanger between perspectives)
         route->active.reserve((size_t)poolSize);
         route->addRing.resize((size_t)poolSize);
         route->finishedScratch.reserve((size_t)poolSize);
@@ -5622,6 +5608,8 @@ struct SamplerEngine::Impl
         lastAttackDelayNoteOnMs.fill(-1.0);
         noteFinishedMs.fill(-1.0);
         heldVelocity.fill(-1);
+        windPressMs.fill(-1.0);
+        pendingWindOffMs.fill(-1.0);
         for (auto& p : pendingOn) p.valid = false;
         for (auto& p : pendingOff) p.valid = false;
         for (int m = 0; m < maxManuals; ++m)
@@ -5632,6 +5620,9 @@ struct SamplerEngine::Impl
             w.heldCount = 0;
             w.influentialCount = 0;
             w.influentialNotes.fill(-1);
+            w.lastDemand = 0.0f;
+            w.oscStartMs = -1.0; w.oscAmplitude = 0.0f;
+            for (auto& k : w.kicks) k.dueMs = -1.0;
             windSnapshots[(size_t)m].write(w);
         }
     }
@@ -5741,10 +5732,7 @@ struct SamplerEngine::Impl
         auto& state = windSources[(size_t)sourceManual];
         if (state.held[(size_t)note] == down) return;
         const double now = nowMs();
-        const double baseSmoothingMs = juce::jmax(1.0, state.baseTransitionDurationMs);
-        const double oldProgress = juce::jlimit(0.0, 1.0, (now - state.baseTransitionStartMs) / baseSmoothingMs);
-        const float oldSmooth = (float)(oldProgress * oldProgress * (3.0 - 2.0 * oldProgress));
-        const float currentBase = state.baseStartSag + (state.targetSag - state.baseStartSag) * oldSmooth;
+        const float currentBase = windBaseAt(state, now);
         state.held[(size_t)note] = down;
         state.heldCount = juce::jmax(0, state.heldCount + (down ? 1 : -1));
         if (down && state.influentialCount < 4)
@@ -5817,33 +5805,75 @@ struct SamplerEngine::Impl
         state.baseTransitionDurationMs = down ? state.baseSmoothingMs
             : state.baseSmoothingMs * (1.0 + (130.0 / 170.0) * registrationAmount);
 
-        if (state.frequencyHz > 0.0f && state.oscillations > 0.0f && state.depthCents > 0.0f && maxEffect > 0.0f)
+        // 0.9.72: THE KICK IS THE CHANGE OF THE SATURATED DEMAND (the pipe shares x the keys' weights) - a
+        // first key on an empty keyboard kicks fully, a second one only by the difference of the shares
+        // (50/60 %: a fifth), a chord struck together is one step, not a sum of strokes; a release kicks the
+        // other way by the demand it takes away (x 0.9). Scaled so that a single pipe at the default 50 %
+        // share gives the old stroke impulse (the user: one key must shake as two did at 30 % in 0.9.71 -
+        // measured on Kdousov: factor 2.6 gave 2.3 x the old single stroke, 2.0 lands at ~1.7 x = the old pair).
+        const float demand = averageWeight * sustainedFraction;
+        const float demandChange = demand - state.lastDemand;
+        state.lastDemand = demand;
+        if (state.frequencyHz > 0.0f && state.oscillations > 0.0f && state.depthCents > 0.0f && maxEffect > 0.0f && std::abs(demandChange) > 1.0e-6f)
         {
-            WindTransient* slot = nullptr;
-            for (auto& event : state.transients)
-                if (event.startMs < 0.0 || now >= event.startMs + event.durationMs) { slot = &event; break; }
-            if (slot == nullptr)
-                slot = &*std::min_element(state.transients.begin(), state.transients.end(),
-                    [](const auto& a, const auto& b) { return a.startMs < b.startMs; });
             const float oscillationRegistration = juce::jlimit(0.0f, 1.0f, ((float)engagedStops - 3.0f) / 7.0f);
             const float registrationDamping = 1.0f - 0.15f * oscillationRegistration;
             const float averageStopContribution = engagedStops > 0 ? effectiveStopLoad / (float)engagedStops : 0.0f;
             const float smallRegistrationContribution = juce::jmin(1.0f, effectiveStopLoad);
             const float oscillationStopContribution = smallRegistrationContribution
                 + (averageStopContribution - smallRegistrationContribution) * oscillationRegistration;
-            const float fullImpulse = state.depthCents * juce::jmax(0.15f, averageWeight)
-                * state.oscillationStrength * registrationDamping * oscillationStopContribution;
-            // No two key strokes shake the wind alike: every impulse gets a random
-            // strength between 40 and 100 % of the computed one (times the model's
-            // maximum effect).
-            const float strokeStrength = (0.40f + 0.60f * windRandom.nextFloat()) * maxEffect;
-            slot->startMs = now;
-            slot->durationMs = 1000.0 * state.oscillations / state.frequencyHz;
-            slot->oscillations = state.oscillations;
-            slot->amplitude = fullImpulse * strokeStrength;
-            slot->release = !down;
+            // No two key strokes shake the wind alike: a key's stroke draws a strength between 60 and 100 %
+            // once, and its release reuses it (separate draws left random remainders chattering).
+            if (down) state.keyStrength[(size_t)note] = 0.60f + 0.40f * windRandom.nextFloat();
+            const float strength = state.keyStrength[(size_t)note] > 0.0f ? state.keyStrength[(size_t)note] : 0.8f;
+            const float kick = state.depthCents * demandChange * 2.0f * state.oscillationStrength * registrationDamping
+                * oscillationStopContribution * strength * maxEffect * (down ? 1.0f : 0.9f);
+            // Four pieces over 30 ms: the demand rises with the pallet and the pipe's onset, it does not step.
+            for (int piece = 0; piece < 4; ++piece)
+                queueWindKick(state, now + 10.0 * piece, kick * 0.25f);
         }
         publishWind(sourceManual);
+    }
+
+    void queueWindKick(WindSourceState& state, double dueMs, float amount)
+    {
+        WindKick* slot = nullptr;
+        for (auto& k : state.kicks) if (k.dueMs < 0.0) { slot = &k; break; }
+        if (slot == nullptr) slot = &*std::min_element(state.kicks.begin(), state.kicks.end(), [](const WindKick& a, const WindKick& b) { return a.dueMs < b.dueMs; });
+        *slot = { dueMs, amount };
+    }
+
+    // A kick lands in the resonator's current phase: the ringing's value and velocity now, the velocity
+    // kicked by amount x omega (a kick of 'amount' cents into a resting bellows rings with that amplitude),
+    // and the damped sinusoid re-derived from there. Frequency and damping from the settings at this moment:
+    // "Number of oscillations" N = the ringing falls to 5 % after N cycles (0 = no ringing at all).
+    void applyWindKick(WindSourceState& state, double now, float amount)
+    {
+        if (state.frequencyHz <= 0.0f || state.oscillations <= 0.0f) return;
+        float velocity;
+        const float x = windRingingAt(state, now, velocity);
+        const float omega = juce::MathConstants<float>::twoPi * state.frequencyHz * 0.001f;
+        const float sigma = 3.0f * state.frequencyHz / state.oscillations * 0.001f;
+        const float v = velocity + amount * omega;
+        const float q = (v + sigma * x) / omega;   // = A cos(phi)
+        state.oscAmplitude = std::sqrt(x * x + q * q);
+        state.oscPhase = std::atan2(x, q);
+        state.oscSigmaPerMs = sigma;
+        state.oscOmegaPerMs = omega;
+        state.oscStartMs = now;
+    }
+
+    // Due kicks of every wind source (called from the control tick).
+    void processWindKicks(double now)
+    {
+        for (int m = 0; m < maxManuals; ++m)
+        {
+            auto& state = windSources[(size_t)m];
+            bool changed = false;
+            for (auto& k : state.kicks)
+                if (k.dueMs >= 0.0 && k.dueMs <= now) { applyWindKick(state, k.dueMs, k.amount); k.dueMs = -1.0; changed = true; }
+            if (changed) publishWind(m);
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -6049,7 +6079,9 @@ struct SamplerEngine::Impl
         manualIndex = juce::jlimit(-1, maxManuals - 1, manualIndex);
         const int key = makeSourceKey(midiNote, manualIndex);
         heldVelocity[(size_t)key] = (int8_t)juce::jlimit(1, 127, velocity);
-        updateWindKey(manualIndex, midiNote, true);
+        // 0.9.72: the wind follows the PIPE, not the key - its stroke comes when the pipe really starts
+        // (processPending, after Attack min. delay) and its release when the pallet really closes
+        // (finishNoteOff, after Attack min. time), 50 ms after the stroke at the least.
         const double now = nowMs();
         const float delayMs = owner.attackMinimumDelayMs.load(std::memory_order_relaxed);
 
@@ -6083,6 +6115,7 @@ struct SamplerEngine::Impl
             resumeVoicesOfKey();
             noteOnTimeMs[(size_t)key] = now;
             noteMinimumStartMs[(size_t)key] = now;
+            windPipeStarted(key, now);   // the pallet stays open (a pending wind release is dropped)
             return;
         }
         if (noteOnTimeMs[(size_t)key] >= 0.0) return;
@@ -6110,7 +6143,6 @@ struct SamplerEngine::Impl
         manualIndex = juce::jlimit(-1, maxManuals - 1, manualIndex);
         const int key = makeSourceKey(midiNote, manualIndex);
         heldVelocity[(size_t)key] = -1;
-        updateWindKey(manualIndex, midiNote, false);
         std::array<float, maxManuals> gains{};
         for (int m = 0; m < maxManuals; ++m) gains[(size_t)m] = expressionGain[(size_t)m].load(std::memory_order_relaxed);
         for (int32_t i = keyHeads[(size_t)key]; i >= 0; i = voices[(size_t)i].keyNext)
@@ -6502,6 +6534,7 @@ struct SamplerEngine::Impl
             soundingTimeMs = juce::jmax(0.0, now - noteSoundStartMs[(size_t)sourceKey]);
         if (updateNoteBookkeeping)
         {
+            windPipeStopped(sourceKey, now);   // 0.9.72: the pallet closes now - the wind's release
             noteSoundStartMs[(size_t)sourceKey] = -1.0;
             noteMinimumStartMs[(size_t)sourceKey] = -1.0;
             noteFinishedMs[(size_t)sourceKey] = now;
@@ -6773,6 +6806,7 @@ struct SamplerEngine::Impl
             startNote(keyNote(key), on.velocity, keyManual(key), key);
             noteSoundStartMs[(size_t)key] = now;
             noteMinimumStartMs[(size_t)key] = now;
+            windPipeStarted(key, now);   // 0.9.72: the pipe really starts - the wind's stroke
             auto& off = pendingOff[(size_t)key];
             if (off.valid) off.dueMs = juce::jmax(off.dueMs, now + (double)minimumMs);
         }
@@ -6784,6 +6818,35 @@ struct SamplerEngine::Impl
             off.valid = false;
             finishNoteOff(key, off.gains, nullptr, true);
         }
+        // 0.9.72: wind releases held back to the 50 ms floor, and the due kicks into the resonator.
+        for (int key = 0; key < kSourceKeys; ++key)
+        {
+            const double due = pendingWindOffMs[(size_t)key];
+            if (due < 0.0 || due > now) continue;
+            pendingWindOffMs[(size_t)key] = -1.0;
+            updateWindKey(keyManual(key), keyNote(key), false);
+        }
+        processWindKicks(now);
+    }
+
+    // 0.9.72: the wind events of a source key (a pipe's real start and stop).
+    void windPipeStarted(int key, double now)
+    {
+        pendingWindOffMs[(size_t)key] = -1.0;
+        const int m = keyManual(key), n = keyNote(key);
+        if (m < 0 || m >= maxManuals || n < 0 || n >= 128) return;
+        if (windSources[(size_t)m].held[(size_t)n]) return;   // still open for the wind (a resumed key)
+        windPressMs[(size_t)key] = now;
+        updateWindKey(m, n, true);
+    }
+    void windPipeStopped(int key, double now)
+    {
+        const int m = keyManual(key), n = keyNote(key);
+        if (m < 0 || m >= maxManuals || n < 0 || n >= 128 || !windSources[(size_t)m].held[(size_t)n]) return;
+        // The shortest breath the wind sees: 50 ms from the stroke ("Attack min. time" may be 0).
+        const double due = windPressMs[(size_t)key] + 50.0;
+        if (due > now) pendingWindOffMs[(size_t)key] = due;
+        else updateWindKey(m, n, false);
     }
 
     // Every voice of a route finished at once, without a render (control lock
@@ -7004,7 +7067,7 @@ struct SamplerEngine::Impl
             if ((wind.targetMask & (1u << manual)) == 0) continue;
             const bool external = source != manual;
             hasExternalWind = hasExternalWind || external;
-            sag += windSagAt(wind, tEnd, route.windPhase, external, owner.windStrokeAddValue.load(std::memory_order_relaxed));
+            sag += windSagAt(wind, tEnd, external);   // 0.9.72: no phase per route - every perspective sags alike
             combinedSagLimit = juce::jmax(combinedSagLimit, windSagLimit(wind) * (external ? 0.5f : 1.0f));
             negativeLimit = juce::jmax(negativeLimit, 0.35f * wind.depthCents * (external ? 0.5f : 1.0f));
         }

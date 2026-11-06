@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.72] - 2026-11-06
+
+### Changed
+- Wind model, the strokes: the wind follows the pipe, not the key - a stroke
+  shakes the wind when the pipe really starts (after "Attack min. delay") and
+  a release when its pallet really closes (after "Attack min. time", 50 ms
+  after the stroke at the least). The ringing is one swinging of the bellows
+  (a damped resonator) kicked by every stroke in its current phase - in phase
+  it grows, in antiphase it is cancelled - with the kick spread over 30 ms;
+  a stroke's size is the change of the saturated demand (the pipe shares: a
+  first key fully, a second only by the difference of the shares, a chord
+  struck together once), a single key about as strong as two were; the
+  steady sag settles exponentially from where it is instead of restarting
+  at every key event; the ringing swings both ways (no half-wave clipping);
+  a key's random stroke strength (60-100 %) is drawn once and its release
+  reuses it; every perspective of a pipe sags in the same phase. Fast
+  repeated keys no longer chatter. The 0.9.71 setting "Wind: further
+  strokes add" is gone (the shares do its job).
+
 ## [0.9.71] - 2026-11-06
 
 ### Added

@@ -3286,6 +3286,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   settings row "Further strokes add (all divisions)" + help, manual ###). 100 % = the old plain sum. The pipe-count
   shares (one/two pipes) rule the STEADY sag only - at 50/50 one and two pipes are equal there; the user's
   difference was the impulse sum alone.
+  0.9.72 (6 Nov 2026, the user after 0.9.71: "jedna klávesa neudělá dost, dvě jsou moc ... když klávesy jedou rychleji
+  než wind frequency ... brblání"; three rounds of physics - his points: no extra damping ("nechci Schwimmer"),
+  antiphase cancellation is real and stays, staccato of half a period ADDS (press + release kicks in phase), the
+  wind must follow the PIPE and "Attack min. time" may be 0 so an inner floor of 50 ms): THE WIND REWRITE.
+  `WindSourceState`: the `transients[64]` array is GONE; ONE damped oscillator per source (`oscStartMs,
+  oscAmplitude, oscPhase, oscSigmaPerMs, oscOmegaPerMs`; `windRingingAt` evaluates x and x' analytically, sigma =
+  3 f / N so the ring is at 5 % after N = "Number of oscillations" cycles, N = 0 -> no kick), `kicks[32]` (a kick
+  queue: every stroke is four quarter-kicks at +0/10/20/30 ms, `queueWindKick`, `processWindKicks(now)` from
+  processPending applies the due ones: `applyWindKick` = x, v now, v += amount x omega, A/phi re-derived -> in
+  phase it grows, in antiphase it cancels), `keyStrength[128]` (random 0.6-1.0 drawn at the stroke, the release
+  reuses it), `lastDemand`. THE KICK = depth x (change of the saturated demand averageWeight x sustainedFraction)
+  x 2.0 x strength x registration terms x random x maxEffect (x 0.9 for a release): a first key at the 50 % share
+  ~ the old pair at 30 % (MEASURED by %TEMP%\test_wind0972.ps1 [-Exe old] + wind0972_track.py: a held Principal 4
+  key 77 on I. of Kdousov, the pitch tracked; the video-script hook with ORGAN_TEST_NOTE "1|84|17|1" switching the
+  one-stop table on 17 s after the start - the script's `stop` command and the file's registration both left the
+  recording SILENT, not explained; factor 2.6 gave one key rms 3.2 c vs the old 1.4 / old pair 2.3; 2.0 gives 2.7;
+  fast repetition at 120 ms: one smooth ~7 Hz wave, side components -14 dB (old: a 4.5 Hz component -5 dB = the
+  chatter); self-test unchanged but timings), a second key
+  only by the difference of the shares (50/50 = NOTHING - the user sets
+  "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
+  exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
+  every event = a sawtooth in the rhythm of fast keys). `windSagAt(state, t, external)` = clamp(base + ringing,
+  -0.5 depth, limit) - NO half-wave clipping (it halved one key's shake); no phase parameter: `route->windPhase =
+  0` (was +-0.48 rad per perspective by hash = a flanger between perspectives - the 0.9.66 rule). THE EVENTS:
+  `updateWindKey` is no longer called from noteOn/OffImmediate but from `windPipeStarted(key, now)` (processPending
+  after startNote, and the resume branch of noteOnImmediate) and `windPipeStopped(key, now)` (finishNoteOff with
+  updateNoteBookkeeping): the stroke when the pipe really starts (after Attack min. delay), the release when the
+  pallet really closes (after Attack min. time), held to `windPressMs + 50` through `pendingWindOffMs[]`
+  (processed in processPending). The 0.9.71 slider "Wind: further strokes add" and `windStrokeAdd*` are REMOVED
+  everywhere (engine, MainComponent x6, manual, help table). `fastSinRad` deleted (unused). Manual: Attack
+  minimum time (the wind's shortest breath), one pipe's share (sizes the strokes), number of oscillations (0 =
+  none; in phase / antiphase). RULES: the wind reacts to the pipe, never to the key; a kick lands in the
+  resonator's phase; never add damping beyond "Number of oscillations".
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

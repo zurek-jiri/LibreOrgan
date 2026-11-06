@@ -1042,8 +1042,6 @@ public:
     void setWindLevelDbPerCent(float db) noexcept { windLevelDbPerCentValue.store(juce::jlimit(0.0f, 1.0f, db), std::memory_order_relaxed); }
     // How much more a pipe an octave higher follows the sag (pitch, level, filter): 1 = every pipe alike (0.9.67).
     void setWindOctaveRatio(float ratio) noexcept { windOctaveRatioValue.store(juce::jlimit(1.0f, 2.0f, ratio), std::memory_order_relaxed); }
-    // 0.9.71: how much a further stroke's wind impulse adds to the strongest running one (0..1; 1 = the plain sum).
-    void setWindStrokeAdd(float share) noexcept { windStrokeAddValue.store(juce::jlimit(0.0f, 1.0f, share), std::memory_order_relaxed); }
     void setTremulantLevelDbPerCent(float db) noexcept { tremulantLevelDbPerCentValue.store(juce::jlimit(0.0f, 1.0f, db), std::memory_order_relaxed); }
     // Phase of the tremulant's harmonic-filter oscillation relative to its volume
     // oscillation, 0..360 degrees (default 90: the tone dips a quarter cycle after the level).
@@ -1608,7 +1606,6 @@ private:
     std::atomic<float> harmonicSwellMix{ 0.60189f }, harmonicWindMix{ 0.20567f }, harmonicTremulantMix{ 0.36904f };
     std::atomic<float> windLevelDbPerCentValue{ 0.2f };
     std::atomic<float> windOctaveRatioValue{ 1.3f };
-    std::atomic<float> windStrokeAddValue{ 0.3f };
     std::atomic<float> tremulantLevelDbPerCentValue{ 0.187f };
     std::atomic<float> tremulantShelfPhaseTurns{ 0.25f };
     std::atomic<float> windOneStopShare{ 0.2f }, windOnePipeShare{ 0.5f }, windTwoPipesShare{ 0.5f };

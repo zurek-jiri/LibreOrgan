@@ -1130,7 +1130,6 @@ private:
     float measurementShareLimit = 0.85f;
     float windLevelDbPerCent = 0.2f;
     float windOctaveRatio = 1.3f;   // how much more a pipe an octave higher follows the sag (0.9.67)
-    float windStrokeAdd = 0.3f;     // how much a further stroke's impulse adds to the strongest one (0.9.71)
     float tremulantLevelDbPerCent = 0.187f;
     float windOneStopShare = 0.2f, windOnePipeShare = 0.5f, windTwoPipesShare = 0.5f;
     float releaseCutPercent = 100.0f;

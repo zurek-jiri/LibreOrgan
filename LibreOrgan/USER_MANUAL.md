@@ -1338,7 +1338,9 @@ alone. Heard at once.
 ### Attack minimum time
 
 The shortest time a pipe sounds once started (0 to 500 ms, default 80): even
-the briefest touch lets the chiff be heard.
+the briefest touch lets the chiff be heard. It is also the shortest breath the
+wind model sees (50 ms at the least): the wind reacts to the pipe, not to the
+key, so a longer value lets staccato shake the wind more.
 
 ### Attack minimum delay
 
@@ -1373,13 +1375,6 @@ pipes of the lowest C follow about half as much as those of c1, c3 about 1.7
 times as much). 1 makes every key follow alike. The sag itself still comes from the low keys and the
 stops drawn.
 
-### Wind: further strokes add
-
-Keys struck together shake the wind less than the sum of their strokes: the
-strongest impulse counts whole, the next this much of itself, the third this
-much of that ... (0 to 100 %, default 30: two strokes 130 %, three 139 %, four
-142 %). 100 % lets the strokes simply add up.
-
 ### Wind: one stop's share of the full sag
 
 The sag a single engaged 8' stop produces, relative to many stops (2 to
@@ -1387,7 +1382,10 @@ The sag a single engaged 8' stop produces, relative to many stops (2 to
 
 ### Wind: one pipe's share of the full sag
 
-The sag with one key held, relative to many (default 50 %).
+The sag with one key held, relative to many (default 50 %). The shares also
+size the strokes: the first key on an empty keyboard shakes the wind by its
+share, a second key only by the difference of the shares (50 and 60 %: a
+fifth), a chord struck together counts as one step.
 
 ### Wind: two pipes' share of the full sag
 
@@ -1816,7 +1814,10 @@ The bounce of the bellows after a key stroke (2 to 10 Hz, default 7.5).
 
 ### Wind: number of oscillations
 
-How many die away after a stroke (0 to 20, default 7).
+How many die away after a stroke (0 to 20, default 7; 0 = a stroke leaves the
+wind without any ringing). The ringing is one swinging of the bellows: a
+stroke that lands in its phase strengthens it, one in antiphase cancels it -
+a staccato of about half the wind period shakes the most.
 
 ### Wind: oscillation strength
 
