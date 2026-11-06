@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.67] - 2026-11-06
+
+### Added
+- Wind model: the setting "Wind: sag ratio per octave" (Configuration Editor
+  and the Wind settings dialog, 1 to 2, default 1.3) - how much more a pipe an
+  octave higher follows the sag in pitch, level and harmonic filter, counted
+  from c1 of 8' by the pipe's sounding pitch. Before, the pitch had a fixed
+  mild ramp (0.65 at note 24 to 1.35 at note 96, by the sample number, about
+  1.13 per octave) and the level and the filter had none. The per-pipe random
+  factor and the way the sag arises (the low keys and the stops drawn) are
+  unchanged.
+
+### Fixed
+- The version number of the CMake project, the website and the demo README
+  had stayed at 0.9.64 through 0.9.65 and 0.9.66.
+
 ## [0.9.66] - 2026-11-06
 
 ### Fixed

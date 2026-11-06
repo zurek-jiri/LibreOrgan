@@ -4227,6 +4227,7 @@ void MainComponent::applyPerspectiveReverb(int manualIndex, const juce::String& 
 void MainComponent::applyAdvancedAudioSettings()
 {
     engine.setWindLevelDbPerCent(windLevelDbPerCent);
+    engine.setWindOctaveRatio(windOctaveRatio);
     engine.setTremulantLevelDbPerCent(tremulantLevelDbPerCent);
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
     engine.setVelocityFadeInMs(velocityFadeInMs);
@@ -23435,6 +23436,7 @@ void MainComponent::loadSettings()
     harmonicTremulantDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicTremulantDb", 4.0));
     engine.setHarmonicFilterDb(harmonicSwellDb, harmonicWindDb, harmonicTremulantDb);
     windLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windLevelDbPerCent", 0.2));
+    windOctaveRatio = juce::jlimit(1.0f, 2.0f, (float)(double)parsed.getProperty("windOctaveRatio", 1.3));
     tremulantLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("tremulantLevelDbPerCent", 0.187));
     tremulantShelfPhaseDegrees = juce::jlimit(0.0f, 360.0f, (float)(double)parsed.getProperty("tremulantShelfPhaseDegrees", 90.0));
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
@@ -24224,6 +24226,7 @@ void MainComponent::saveSettings()
     obj->setProperty("velocityShelfMs", velocityShelfMs);
     obj->setProperty("uiScalePercent", uiScalePercent);
     obj->setProperty("windLevelDbPerCent", windLevelDbPerCent);
+    obj->setProperty("windOctaveRatio", windOctaveRatio);
     obj->setProperty("tremulantLevelDbPerCent", tremulantLevelDbPerCent);
     obj->setProperty("windOneStopShare", windOneStopShare);
     obj->setProperty("windOnePipeShare", windOnePipeShare);
@@ -25928,6 +25931,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                         { "Sag settling lag", "Wind: sag settling lag", "How long the wind pressure takes to settle after stops or keys change." },
                         { "Maximum wind model effect", "Wind: maximum wind model effect", "The strength of the whole wind model (every division); 0 % switches it off everywhere." },
                         { "Volume change per cent of sag", "Wind: volume change per cent of sag", "How much quieter a pipe gets for every cent the sag lowers its pitch (every division)." },
+                        { "Sag ratio per octave", "Wind: sag ratio per octave", "How much more a pipe an octave higher follows the sag in pitch, level and tone; 1 = every pipe alike (every division)." },
                         { "Harmonic filter at full sag", "Wind: harmonic filter", "This much high-frequency loss at the full sag: a starved pipe is duller as well as flatter (every division)." } };
                     for (const auto& help : helps)
                         if (row.text.startsWith(help.textStart))
@@ -26056,6 +26060,8 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             [this](double value) { windMaxEffect = (float)(value / 100.0); applyAdvancedAudioSettings(); saveSettings(); } });
         rows.push_back({ "Volume change per cent of sag (all divisions)", 0.0, 0.6, 0.01, " dB/cent", windLevelDbPerCent, 0.2,
             [this](double value) { windLevelDbPerCent = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
+        rows.push_back({ "Sag ratio per octave (all divisions)", 1.0, 2.0, 0.05, "x", windOctaveRatio, 1.3,
+            [this](double value) { windOctaveRatio = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
         rows.push_back({ "Harmonic filter at full sag (all divisions)", 0.0, 12.0, 0.5, " dB", harmonicWindDb, 2.0,
             [this, harmonic](double value) { harmonicWindDb = (float)value; harmonic(); } });
     }
@@ -29987,6 +29993,9 @@ void MainComponent::showConfigurationEditor()
             addSlider("Wind: volume change per cent of sag", 0.0, 0.6, 0.01, " dB/cent", o.windLevelDbPerCent, 0.2,
                 [&o](double value) { o.windLevelDbPerCent = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "How much quieter a pipe gets for every cent the wind sag lowers its pitch.");
+            addSlider("Wind: sag ratio per octave", 1.0, 2.0, 0.05, "x", o.windOctaveRatio, 1.3,
+                [&o](double value) { o.windOctaveRatio = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
+                "How much more a pipe an octave higher follows the sag in pitch, level and tone (from c1 of 8'); 1 = every pipe alike.");
             addSlider("Wind: one stop's share of the full sag", 2.0, 100.0, 1.0, " %", o.windOneStopShare * 100.0, 20.0,
                 [&o](double value) { o.windOneStopShare = (float)(value / 100.0); o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "Sag of a single 8' stop relative to the sag with many stops drawn (smaller footages count less).");

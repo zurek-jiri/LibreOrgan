@@ -3215,6 +3215,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   voice of it gets the same retarget). The tremulant's `tremBucket` from `rankOrdinal x rankDrift` is untouched (by
   design). Temperament mode 2 / 440 per rank differ by hundredths of a cent - left. Self-test identical (one
   perspective there); the acoustic proof is the user's.
+  0.9.67 (6 Nov 2026, the user: "wind model víc působí na basy než na vysoké klávesy"; the ANSWER from the code: the sag
+  is DRIVEN by the low keys only (`windKeyWeight`: <= 48 full, 48-69 falling to 0, above nothing - the user: keep it),
+  the FOLLOWING had a mild pitch ramp by the SAMPLE number (0.65 at 24 .. 1.35 at 96 = ~1.13 per octave) under a
+  random 0.55-1.45 per pipe, and the level/filter none; coupling vs wind: nothing wins, `totalCents` sums them, the
+  coupling target ignores the wind): setting "Wind: sag ratio per octave" (`windOctaveRatio`, configuration key,
+  1.0-2.0 step 0.05, default 1.3 - the user's choice; "no percentages" - a ratio; engine atomic `windOctaveRatioValue`
+  + `setWindOctaveRatio` in applyAdvancedAudioSettings; Editor addSlider right after "Wind: volume change per cent of
+  sag", the Wind settings dialog row "Sag ratio per octave (all divisions)" + its help entry; manual ### of the label):
+  `pitchFactor = ratio ^ ((sounding - 60) / 12)` with sounding = pipe + footage + sampleOffset (as fadeScale), clamped
+  0.1-8; `windKeyScale = randomFactor x pitchFactor` (the random factor KEPT, the user); the level follows too:
+  `ctx.windGainDb[]` (dB, was `windGain[]` as gains) and the voice does `fastDbToGain(windDb x windKeyScale)` - the
+  filter share reads that gain, so it scales with it. At ratio 1.3: 8' C 0.46, c1 1, c3 1.69. THE VERSION LESSON: the
+  0.9.65/0.9.66 bumps replaced the jucer only - CMakeLists/site/rural README stayed 0.9.64 (bump_version.ps1 prints
+  "0 replaced" per file: READ that output; grep the previous version before tagging, as the rule says).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

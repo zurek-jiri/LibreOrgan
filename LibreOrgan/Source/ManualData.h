@@ -1381,6 +1381,14 @@ static const char* const kManualText_part6 =
     "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
     "default 0.2).\n"
     "\n"
+    "### Wind: sag ratio per octave\n"
+    "\n"
+    "How much more a pipe an octave higher follows the sag - in pitch, level and\n"
+    "tone - counted from c1 of 8' by the pipe's sounding pitch (1 to 2, default 1.3:\n"
+    "the 8' C follows about half as much as c1, c3 about 1.7 times as much). 1 makes\n"
+    "every pipe follow alike. The sag itself still comes from the low keys and the\n"
+    "stops drawn.\n"
+    "\n"
     "### Wind: one stop's share of the full sag\n"
     "\n"
     "The sag a single engaged 8' stop produces, relative to many stops (2 to\n"
@@ -1406,6 +1414,8 @@ static const char* const kManualText_part6 =
     "(default 4 dB).\n"
     "\n"
     "### Tremulant: harmonic filter phase\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
     "default 90).\n"
@@ -1414,8 +1424,6 @@ static const char* const kManualText_part6 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Key velocity: full strike from velocity\n"
     "\n"
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "### Output discontinuity detector: count the clicks in the program's own output\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "On by default. The program counts every click between two blocks of its own\n"
     "output, logs it with the route and stage and shows \"!N\" in orange in the DSP\n"
     "cell. A few microseconds per period\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "### LibreOrgans folder\n"
     "\n"
     "Where configurations live (`Documents\\LibreOrgan\\LibreOrgans` by\n"
-    ;
-static const char* const kManualText_part8 =
     "default): every import and save goes there, Load starts there. *Choose...*\n"
     "picks another; the path stands after the button.\n"
     "\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "### Wind: number of oscillations\n"
     "\n"
     "How many die away after a stroke (0 to 20, default 7).\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Wind: oscillation strength\n"
     "\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "### Wind: sag settling lag\n"
     "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
-    ;
-static const char* const kManualText_part9 =
     "ms, default 255).\n"
     "\n"
     "### Wind: also affects divisions\n"
@@ -2012,6 +2020,8 @@ static const char* const kManualText_part9 =
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
     "caption's footage is the sounding one). A configuration whose rows an older\n"
     "import named with the prefix is renamed the same way when it loads, every\n"
+    ;
+static const char* const kManualText_part10 =
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
@@ -2020,8 +2030,6 @@ static const char* const kManualText_part9 =
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
     "decided is written to `ImportReports` in the settings folder.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "## 10.5 The tuning gate of a perspective join\n"
     "\n"
@@ -2214,6 +2222,8 @@ static const char* const kManualText_part10 =
     "`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;\n"
     "`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*\n"
     "without a file. In the LibreOrgans folder: `<organ>.json` and its\n"
+    ;
+static const char* const kManualText_part11 =
     "`.json.bak`, `Publish/` with the exports, `../LibreRecordings` by default.\n"
     "A configuration file holds only what the instrument uses now - the divisions\n"
     "in use, the routes that exist and their settings; a route no stop plays\n"
@@ -2223,5 +2233,5 @@ static const char* const kManualText_part10 =
     "Voicing* exchange it as a file.\n"
     "\n"
     ;
-static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10 };
-static const int kManualTextPartCount = 11;
+static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10, kManualText_part11 };
+static const int kManualTextPartCount = 12;

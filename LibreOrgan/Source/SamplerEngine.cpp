@@ -1312,7 +1312,7 @@ namespace
         int outChannels[64]{};
         int outCount = 0;
         float windPitchCents[kWindVariations]{};
-        float windGain[kWindVariations]{};
+        float windGainDb[kWindVariations]{};   // level change of the sag in dB (scaled per voice by windKeyScale, 0.9.67)
         bool tremActive = false;
         float tremPitchCents[kTremBuckets]{};
         float tremGain[kTremBuckets]{};
@@ -3429,7 +3429,8 @@ namespace
         else
         {
             windPitch = c.windPitchCents[v.windPitchVar & (kWindVariations - 1)] * v.windKeyScale;
-            windGain = c.windGain[v.windGainVar & (kWindVariations - 1)];
+            const float windDb = c.windGainDb[v.windGainVar & (kWindVariations - 1)];
+            windGain = windDb != 0.0f ? fastDbToGain(windDb * v.windKeyScale) : 1.0f;   // the pipe's share of the sag (0.9.67)
         }
         v.lastWindGain = windGain;
         if (c.tremActive)
@@ -6422,7 +6423,10 @@ struct SamplerEngine::Impl
                     {
                         windHash *= 0x27d4eb2fu; windHash ^= windHash >> 15;
                         const float randomFactor = 0.55f + 0.9f * (float)(windHash & 1023u) / 1023.0f;   // 0.55 .. 1.45
-                        const float pitchFactor = 0.65f + 0.7f * juce::jlimit(0.0f, 1.0f, (float)(pipe - 24) / 72.0f);   // 0.65 .. 1.35
+                        // 0.9.67: the ratio per octave of the SOUNDING pitch from c1 (the setting "Wind: sag ratio per
+                        // octave", 1.3 by default: 8' C 0.46, c3 1.69); it scales the pitch, the level and the filter share.
+                        const int sounding = pipe + (rank->footageKnown ? rank->footageSemitones + rank->sampleOffset : 0);
+                        const float pitchFactor = juce::jlimit(0.1f, 8.0f, std::pow(owner.windOctaveRatioValue.load(std::memory_order_relaxed), (float)(sounding - 60) / 12.0f));
                         v.windKeyScale = randomFactor * pitchFactor;
                     }
                     const int degrees = juce::roundToInt((stop->tremulantOrdinal % 2) * 7.0f + (rankOrdinal + stop->groupChildOrdinal) * rankDrift);   // stops differ by at most 7 degrees; a stop folder's children drift apart like ranks (0.8.128)
@@ -6981,8 +6985,7 @@ struct SamplerEngine::Impl
             const float gainScale = 0.88f + 0.24f * proportion;
             ctx.windPitchCents[variation] = -sag * pitchScale;
             // Wind level change per cent of sag (Configuration Editor, default 0.2 dB).
-            ctx.windGain[variation] = std::abs(sag) > 1.0e-6f
-                ? fastDbToGain(-windLevelDbPerCent * sag * gainScale) : 1.0f;
+            ctx.windGainDb[variation] = std::abs(sag) > 1.0e-6f ? -windLevelDbPerCent * sag * gainScale : 0.0f;
         }
 
         // tremulant
