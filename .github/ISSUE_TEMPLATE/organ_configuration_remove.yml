@@ -21,6 +21,7 @@ body:
       multiple: true
       options:
         - "adlington-hall-smith"
+        - "adriatic-organ-model"
         - "altenbruch-klapmeyer-organ"
         - "arnstadt-wender-bach-organ"
         - "ashton-albion-church-lewis-organ"
