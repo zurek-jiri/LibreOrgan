@@ -1401,7 +1401,9 @@ static const char* const kManualText_part6 =
     "The sag with one key held, relative to many (default 50 %). The shares also\n"
     "size the strokes: the first key on an empty keyboard shakes the wind by its\n"
     "share, a second key only by the difference of the shares (50 and 60 %: a\n"
-    "fifth), a chord struck together counts as one step.\n"
+    "fifth), a chord struck together counts as one step. The registration scales\n"
+    "the strokes too: a full organ draws more wind and shakes more than a single\n"
+    "stop.\n"
     "\n"
     "### Wind: two pipes' share of the full sag\n"
     "\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
-    "\n"
-    "### Tremulant: harmonic filter\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
+    "### Tremulant: harmonic filter\n"
     "\n"
     "The shelf following the tremulant: this much loss at the bottom of its dip\n"
     "(default 4 dB).\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
-    "new highest (lowest) key held. Off: the coupled note always follows the\n"
-    "extreme key.\n"
     ;
 static const char* const kManualText_part8 =
+    "new highest (lowest) key held. Off: the coupled note always follows the\n"
+    "extreme key.\n"
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
-    "60 and 100 % of it.\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "60 and 100 % of it.\n"
+    "\n"
     "### Tremulant phase drift between ranks\n"
     "\n"
     "0 to 360 degrees (default 260): with 0 every stop dips at once, with a large\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
     "shown; the general crescendo (one stage per Hauptwerk combination \"Cresc...\",\n"
-    "spread over our steps when more than 60); the stops' places on the jamb page\n"
-    "with the most drawknobs (columns and rows copied).\n"
     ;
 static const char* const kManualText_part10 =
+    "spread over our steps when more than 60); the stops' places on the jamb page\n"
+    "with the most drawknobs (columns and rows copied).\n"
     "\n"
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
     "carries, else the stop playing it straight over the whole division, else the\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "\n"
     "## 10.12 RAR archives: how they are read\n"
     "\n"
-    "The program keeps its own index of every archive you choose (a walk of the\n"
-    "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     ;
 static const char* const kManualText_part11 =
+    "The program keeps its own index of every archive you choose (a walk of the\n"
+    "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"

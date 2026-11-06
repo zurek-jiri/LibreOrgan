@@ -1385,7 +1385,9 @@ The sag a single engaged 8' stop produces, relative to many stops (2 to
 The sag with one key held, relative to many (default 50 %). The shares also
 size the strokes: the first key on an empty keyboard shakes the wind by its
 share, a second key only by the difference of the shares (50 and 60 %: a
-fifth), a chord struck together counts as one step.
+fifth), a chord struck together counts as one step. The registration scales
+the strokes too: a full organ draws more wind and shakes more than a single
+stop.
 
 ### Wind: two pipes' share of the full sag
 

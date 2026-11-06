@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.73] - 2026-11-06
+
+### Changed
+- Wind model: the registration scales the strokes as it scales the steady
+  sag - a full organ draws more wind, so the same key shakes the bellows more
+  (a pleno up to three times a single 8' stop; a single stop as before). The
+  old rule did the opposite: from the fourth stop on the strokes were damped
+  and averaged per stop, a pleno shook about half as much as a solo stop.
+- Every stroke kicks the wind by its key's own weight (0.9.72 kicked by the
+  change of the saturated demand, so legato - a key struck while another was
+  still held - gave no kick at all); keys struck within 60 ms of each other
+  are one chord: the first whole, the rest 10 %. Releases alike.
+
 ## [0.9.72] - 2026-11-06
 
 ### Changed

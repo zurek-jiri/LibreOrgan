@@ -1577,7 +1577,7 @@ namespace
         float oscAmplitude = 0.0f, oscPhase = 0.0f, oscSigmaPerMs = 0.0f, oscOmegaPerMs = 0.0f;
         std::array<WindKick, 32> kicks{};
         std::array<float, 128> keyStrength{};   // the random strength of a key's stroke (0.6-1.0), its release reuses it
-        float lastDemand = 0.0f;                // the saturated demand (0..1) the last event left
+        double lastPressMs = -1.0e9, lastReleaseMs = -1.0e9;   // 0.9.73: keys struck (released) within 60 ms of another are one chord: the rest add 10 %
     };
 
     // Maximum sag a source may produce: 1.25 x depth, extended when the
@@ -5620,7 +5620,7 @@ struct SamplerEngine::Impl
             w.heldCount = 0;
             w.influentialCount = 0;
             w.influentialNotes.fill(-1);
-            w.lastDemand = 0.0f;
+            w.lastPressMs = w.lastReleaseMs = -1.0e9;
             w.oscStartMs = -1.0; w.oscAmplitude = 0.0f;
             for (auto& k : w.kicks) k.dueMs = -1.0;
             windSnapshots[(size_t)m].write(w);
@@ -5770,14 +5770,10 @@ struct SamplerEngine::Impl
         const int effectiveCount = state.influentialCount;
         const float averageWeight = effectiveCount > 0
             ? juce::jlimit(0.0f, 1.0f, state.heldWeight / (float)effectiveCount) : 0.0f;
-        int engagedStops = 0;
         float effectiveStopLoad = 0.0f;
         for (auto* stop : owner.stops)
             if (stop->primaryManual == sourceManual && stop->enabled)
-            {
-                ++engagedStops;
                 effectiveStopLoad += stop->windContribution;
-            }
         // Stops: one 8' stop alone (load 1.0) produces the "one stop share" of the
         // full sag (Configuration Editor, default 20 %); more stops approach the
         // full sag exponentially (about 86 % of the way at 11 stops). Smaller
@@ -5805,32 +5801,41 @@ struct SamplerEngine::Impl
         state.baseTransitionDurationMs = down ? state.baseSmoothingMs
             : state.baseSmoothingMs * (1.0 + (130.0 / 170.0) * registrationAmount);
 
-        // 0.9.72: THE KICK IS THE CHANGE OF THE SATURATED DEMAND (the pipe shares x the keys' weights) - a
-        // first key on an empty keyboard kicks fully, a second one only by the difference of the shares
-        // (50/60 %: a fifth), a chord struck together is one step, not a sum of strokes; a release kicks the
-        // other way by the demand it takes away (x 0.9). Scaled so that a single pipe at the default 50 %
-        // share gives the old stroke impulse (the user: one key must shake as two did at 30 % in 0.9.71 -
-        // measured on Kdousov: factor 2.6 gave 2.3 x the old single stroke, 2.0 lands at ~1.7 x = the old pair).
-        const float demand = averageWeight * sustainedFraction;
-        const float demandChange = demand - state.lastDemand;
-        state.lastDemand = demand;
+        // 0.9.73: EVERY STROKE KICKS BY THE KEY'S OWN WEIGHT x the one-pipe share (0.9.72 kicked by the change
+        // of the saturated demand - in legato, a key struck while another still held, the demand did not
+        // change and the wind got no kick at all: "teď to nemá žádné oscilace"). Keys struck within 60 ms of
+        // another (a chord) count as one stroke: the first whole, the rest 10 % (the user: two keys a little
+        // more than one); releases alike, and a release kicks the other way (x 0.9). Scaled so that a single
+        // key at the default 50 % share gives ~1.7 x the old stroke (measured: the old pair at 30 %).
+        const float demandChange = (down ? 1.0f : -1.0f) * weight * onePipeShare;
+        double& lastStrokeMs = down ? state.lastPressMs : state.lastReleaseMs;
+        const float chordScale = (now - lastStrokeMs) < 60.0 ? 0.1f : 1.0f;
+        lastStrokeMs = now;
         if (state.frequencyHz > 0.0f && state.oscillations > 0.0f && state.depthCents > 0.0f && maxEffect > 0.0f && std::abs(demandChange) > 1.0e-6f)
         {
-            const float oscillationRegistration = juce::jlimit(0.0f, 1.0f, ((float)engagedStops - 3.0f) / 7.0f);
-            const float registrationDamping = 1.0f - 0.15f * oscillationRegistration;
-            const float averageStopContribution = engagedStops > 0 ? effectiveStopLoad / (float)engagedStops : 0.0f;
-            const float smallRegistrationContribution = juce::jmin(1.0f, effectiveStopLoad);
-            const float oscillationStopContribution = smallRegistrationContribution
-                + (averageStopContribution - smallRegistrationContribution) * oscillationRegistration;
+            // 0.9.73 (the user: "body 1 a 2 byly blbost od začátku"): the registration SCALES the kick like the
+            // steady sag - the saturated stop load relative to one 8' stop (a single 8' stop 1.0, a pleno 3 to 4 x,
+            // capped at 3: a full organ draws more wind, so the same stroke shakes the bellows more; the old
+            // "registration damping" and per-stop average lowered a pleno to ~0.57 of a solo stop). The cap and
+            // the sag limit keep it whole; a lone small stop (load < 1) shakes less than an 8'.
+            const float stopFactor = juce::jlimit(0.0f, 3.0f, sustainedStopLoad / juce::jmax(0.02f, oneStopShare));
             // No two key strokes shake the wind alike: a key's stroke draws a strength between 60 and 100 %
             // once, and its release reuses it (separate draws left random remainders chattering).
             if (down) state.keyStrength[(size_t)note] = 0.60f + 0.40f * windRandom.nextFloat();
             const float strength = state.keyStrength[(size_t)note] > 0.0f ? state.keyStrength[(size_t)note] : 0.8f;
-            const float kick = state.depthCents * demandChange * 2.0f * state.oscillationStrength * registrationDamping
-                * oscillationStopContribution * strength * maxEffect * (down ? 1.0f : 0.9f);
+            const float kick = state.depthCents * demandChange * 2.0f * state.oscillationStrength * stopFactor
+                * strength * maxEffect * (down ? 1.0f : 0.9f) * chordScale;
             // Four pieces over 30 ms: the demand rises with the pallet and the pipe's onset, it does not step.
             for (int piece = 0; piece < 4; ++piece)
                 queueWindKick(state, now + 10.0 * piece, kick * 0.25f);
+            // Dev: ORGAN_WIND_DEBUG=1 logs every kick (allocates - development only).
+            static const bool windDebug = std::getenv("ORGAN_WIND_DEBUG") != nullptr;
+            if (windDebug)
+                CrashHandler::note("Wind kick: division " + juce::String(sourceManual) + " key " + juce::String(note) + (down ? " down" : " up")
+                    + ": weight " + juce::String(weight, 2) + " x share " + juce::String(onePipeShare, 2) + " x 2 x strength " + juce::String(state.oscillationStrength, 2)
+                    + " x stops " + juce::String(stopFactor, 2) + " (load " + juce::String(effectiveStopLoad, 2) + ") x random " + juce::String(strength, 2)
+                    + " x chord " + juce::String(chordScale, 1) + " x depth " + juce::String(state.depthCents, 1) + " c = " + juce::String(kick, 2) + " c; steady target "
+                    + juce::String(newTarget, 2) + " c");
         }
         publishWind(sourceManual);
     }

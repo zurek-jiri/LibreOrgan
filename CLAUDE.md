@@ -3304,6 +3304,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   recording SILENT, not explained; factor 2.6 gave one key rms 3.2 c vs the old 1.4 / old pair 2.3; 2.0 gives 2.7;
   fast repetition at 120 ms: one smooth ~7 Hz wave, side components -14 dB (old: a 4.5 Hz component -5 dB = the
   chatter); self-test unchanged but timings), a second key
+  [0.9.73 (the user: "při plénu v diskantu to působí míň než na jednotlivý rejstřík" - "body 1 a 2 byly blbost od
+  začátku"): the old `registrationDamping` (-15 % from the 4th stop) and `oscillationStopContribution` (the per-stop
+  AVERAGE load) are GONE - `stopFactor = clamp(sustainedStopLoad / oneStopShare, 0, 3)`: a single 8' stop 1.0 (solo
+  unchanged), a pleno up to 3 x, a lone small stop (load < 1) less; `engagedStops` removed. Test:
+  test_wind0972.ps1 -Pleno (every stop of I. on). THE USER ON 0.9.72: "teď to nemá žádné oscilace!!!" - the
+  saturated-demand kick gave NOTHING in LEGATO (a key struck while another still held: the demand 0.5 -> 0.5);
+  0.9.73 kicks per stroke by the key's weight x onePipeShare (solo unchanged), keys struck within 60 ms of
+  another are a chord (the first whole, the rest 10 %: `lastPressMs`/`lastReleaseMs`, `chordScale`), `lastDemand`
+  gone. RULE: a kick is per STROKE (every pallet that opens), never a difference of a steady figure. The test's
+  segment D = a legato bass line. TEST ARTEFACT: ORGAN_TEST_NOTE enables EVERY engine stop, the POOLED ones of the
+  stripped table too (they keep primaryManual 1), so `effectiveStopLoad` of the "solo" run counts 9 stops -> the
+  stopFactor cap 3 - the 0.9.73 "solo" rms 2.6 vs 0.9.72's 0.9 at the user's depth 4.4 c is that cap, not a change
+  of the solo stroke; read the kicks from the log instead: `ORGAN_WIND_DEBUG=1` logs "Wind kick: division m key n
+  down: weight x share x 2 x strength x stops (load) x random x chord x depth = K c; steady target T c". The user's
+  file at 18:35 had depth I. 4.4 c (17 at noon), pedal 5.6, strength 22 - small depths = small kicks whatever the
+  version.]
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
