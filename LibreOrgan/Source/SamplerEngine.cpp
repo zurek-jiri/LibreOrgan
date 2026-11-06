@@ -1583,7 +1583,20 @@ namespace
         return juce::jmax(0.0f, state.depthCents * (1.25f + juce::jmax(0.0f, state.oscillationStrength - 1.0f)));
     }
 
-    float windSagAt(const WindSourceState& state, double timeMs, float phase, bool affectsAnotherDivision) noexcept
+    // 0.9.71 (the user: a held treble tone wobbled far more under two staccato bass keys than under one - the
+    // strokes' impulses simply added): the running impulses of one kind are combined SATURATING - the largest
+    // whole, the next x strokeAdd, the next x strokeAdd^2 ... ("Wind: further strokes add", default 30 %: two
+    // strokes 130 %, three 139 %; 100 % = the plain sum of before).
+    float combineImpulses(float* values, int count, float strokeAdd) noexcept
+    {
+        if (count <= 1) return count == 1 ? values[0] : 0.0f;
+        std::sort(values, values + count, [](float a, float b) { return std::abs(a) > std::abs(b); });
+        float total = values[0], weight = strokeAdd;
+        for (int i = 1; i < count; ++i) { total += values[i] * weight; weight *= strokeAdd; }
+        return total;
+    }
+
+    float windSagAt(const WindSourceState& state, double timeMs, float phase, bool affectsAnotherDivision, float strokeAdd) noexcept
     {
         const double baseSmoothingMs = juce::jmax(1.0, state.baseTransitionDurationMs);
         const double bp = juce::jlimit(0.0, 1.0, (timeMs - state.baseTransitionStartMs) / baseSmoothingMs);
@@ -1596,7 +1609,8 @@ namespace
         const float base = juce::jlimit(0.0f, windSagLimit(state),
             (state.baseStartSag + (state.targetSag - state.baseStartSag) * smooth) * divisionScale);
         const float sinPhase = fastSinRad(phase);
-        float pressSum = 0.0f, releaseSum = 0.0f;
+        float pressValues[64], releaseValues[64];
+        int pressCount = 0, releaseCount = 0;
         for (const auto& event : state.transients)
         {
             if (event.startMs < 0.0 || event.durationMs <= 0.0) continue;
@@ -1610,9 +1624,11 @@ namespace
                 ? (event.release ? 0.68f : 0.80f)
                 : (event.release ? 0.85f : 1.00f);
             const float value = event.amplitude * eventScale * envelope * (fastSinRad(angle + phase) - sinPhase);
-            if (event.release) releaseSum -= value;
-            else pressSum += value;
+            if (event.release) releaseValues[releaseCount++] = -value;
+            else pressValues[pressCount++] = value;
         }
+        const float pressSum = combineImpulses(pressValues, pressCount, strokeAdd);
+        const float releaseSum = combineImpulses(releaseValues, releaseCount, strokeAdd);
         // Pressing keys can only ever lower pitch and level (sag >= 0): the
         // oscillation's negative half is floored at normal wind, so nothing gets
         // louder or sharper because a key was pressed. Only a release, where
@@ -6988,7 +7004,7 @@ struct SamplerEngine::Impl
             if ((wind.targetMask & (1u << manual)) == 0) continue;
             const bool external = source != manual;
             hasExternalWind = hasExternalWind || external;
-            sag += windSagAt(wind, tEnd, route.windPhase, external);
+            sag += windSagAt(wind, tEnd, route.windPhase, external, owner.windStrokeAddValue.load(std::memory_order_relaxed));
             combinedSagLimit = juce::jmax(combinedSagLimit, windSagLimit(wind) * (external ? 0.5f : 1.0f));
             negativeLimit = juce::jmax(negativeLimit, 0.35f * wind.depthCents * (external ? 0.5f : 1.0f));
         }

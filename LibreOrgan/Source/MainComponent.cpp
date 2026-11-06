@@ -4228,6 +4228,7 @@ void MainComponent::applyAdvancedAudioSettings()
 {
     engine.setWindLevelDbPerCent(windLevelDbPerCent);
     engine.setWindOctaveRatio(windOctaveRatio);
+    engine.setWindStrokeAdd(windStrokeAdd);
     engine.setTremulantLevelDbPerCent(tremulantLevelDbPerCent);
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
     engine.setVelocityFadeInMs(velocityFadeInMs);
@@ -23438,6 +23439,7 @@ void MainComponent::loadSettings()
     engine.setHarmonicFilterDb(harmonicSwellDb, harmonicWindDb, harmonicTremulantDb);
     windLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windLevelDbPerCent", 0.2));
     windOctaveRatio = juce::jlimit(1.0f, 2.0f, (float)(double)parsed.getProperty("windOctaveRatio", 1.3));
+    windStrokeAdd = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windStrokeAddPercent", 30.0) / 100.0f);
     tremulantLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("tremulantLevelDbPerCent", 0.187));
     tremulantShelfPhaseDegrees = juce::jlimit(0.0f, 360.0f, (float)(double)parsed.getProperty("tremulantShelfPhaseDegrees", 90.0));
     engine.setTremulantShelfPhaseDegrees(tremulantShelfPhaseDegrees);
@@ -24231,6 +24233,7 @@ void MainComponent::saveSettings()
     obj->setProperty("uiScalePercent", uiScalePercent);
     obj->setProperty("windLevelDbPerCent", windLevelDbPerCent);
     obj->setProperty("windOctaveRatio", windOctaveRatio);
+    obj->setProperty("windStrokeAddPercent", windStrokeAdd * 100.0f);
     obj->setProperty("tremulantLevelDbPerCent", tremulantLevelDbPerCent);
     obj->setProperty("windOneStopShare", windOneStopShare);
     obj->setProperty("windOnePipeShare", windOnePipeShare);
@@ -25936,6 +25939,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                         { "Maximum wind model effect", "Wind: maximum wind model effect", "The strength of the whole wind model (every division); 0 % switches it off everywhere." },
                         { "Volume change per cent of sag", "Wind: volume change per cent of sag", "How much quieter a pipe gets for every cent the sag lowers its pitch (every division)." },
                         { "Sag ratio per octave", "Wind: sag ratio per octave", "How much more the pipes of a key an octave higher follow the sag in pitch, level and tone; 1 = every key alike (every division)." },
+                        { "Further strokes add", "Wind: further strokes add", "How much the impulse of a second key stroke adds to the strongest one running, the third that much again of itself ... (two strokes 130 % at 30 %; 100 % = the strokes simply add up) (every division)." },
                         { "Harmonic filter at full sag", "Wind: harmonic filter", "This much high-frequency loss at the full sag: a starved pipe is duller as well as flatter (every division)." } };
                     for (const auto& help : helps)
                         if (row.text.startsWith(help.textStart))
@@ -26066,6 +26070,8 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             [this](double value) { windLevelDbPerCent = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
         rows.push_back({ "Sag ratio per octave (all divisions)", 1.0, 2.0, 0.05, "x", windOctaveRatio, 1.3,
             [this](double value) { windOctaveRatio = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
+        rows.push_back({ "Further strokes add (all divisions)", 0.0, 100.0, 1.0, " %", windStrokeAdd * 100.0, 30.0,
+            [this](double value) { windStrokeAdd = (float)(value / 100.0); applyAdvancedAudioSettings(); saveSettings(); } });
         rows.push_back({ "Harmonic filter at full sag (all divisions)", 0.0, 12.0, 0.5, " dB", harmonicWindDb, 2.0,
             [this, harmonic](double value) { harmonicWindDb = (float)value; harmonic(); } });
     }
@@ -30002,6 +30008,10 @@ void MainComponent::showConfigurationEditor()
             addSlider("Wind: sag ratio per octave", 1.0, 2.0, 0.05, "x", o.windOctaveRatio, 1.3,
                 [&o](double value) { o.windOctaveRatio = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "How much more the pipes of a key an octave higher follow the sag in pitch, level and tone (from c1 of the keyboard); 1 = every key alike.");
+            addSlider("Wind: further strokes add", 0.0, 100.0, 1.0, " %", o.windStrokeAdd * 100.0, 30.0,
+                [&o](double value) { o.windStrokeAdd = (float)(value / 100.0); o.applyAdvancedAudioSettings(); o.saveSettings(); },
+                "The wind impulses of keys struck together: the strongest counts whole, the next this much of itself, the third this much "
+                "of that ... (30 %: two strokes 130 %, three 139 %, four 142 %). 100 % = the strokes simply add up, as before.");
             addSlider("Wind: one stop's share of the full sag", 2.0, 100.0, 1.0, " %", o.windOneStopShare * 100.0, 20.0,
                 [&o](double value) { o.windOneStopShare = (float)(value / 100.0); o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "Sag of a single 8' stop relative to the sag with many stops drawn (smaller footages count less).");

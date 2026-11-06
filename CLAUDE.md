@@ -3270,7 +3270,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   nameLabel/toneNameLabel + tooltip (the three cases; "; no loop in the smpl chunk either" appended), else the orange
   rule. NOT changed: the perspective gate's autocorrelation (`measuredPitchCents`, reads files from the disk, no loop
   info) - noted. The self-test baseline moves (the footage window) - compare against %TEMP%\selftest_0970.txt from
-  now on.
+  now on. VERIFIED 0.9.70: Kdousov octave E ~2 c (was 18 / 8); the log found i_fletten8 038-D (smpl -7.0, the sound
+  +10.9) and 039-D# (0.0 / +17.9) too, confirmed by coupling0969_precise.py; self-test: only the harmonic LEVELS of
+  the footage lines and timings changed, every tuning/footage/temperament the same. Build lesson: a foreground
+  MSBuild that the tool moves to the background after 600 s leaves ORPHANED cl.exe (CPU 7 s, parent gone) - start
+  every full build with run_in_background from the beginning; `/p:SelectedFiles=a;b` with a semicolon is MSB1006 -
+  one file per MSBuild call.
+  0.9.71 (6 Nov 2026, the user: a held treble tone wobbles far more under two staccato bass keys than under one;
+  "aby oscilace přibývaly pouze málo oproti jen jedné klávese. Ale aby přibývaly"): `windSagAt` summed every running
+  stroke impulse (pressSum += ..., releases alike) - two keys together = double. Now `combineImpulses(values, count,
+  strokeAdd)` (anonymous namespace before windSagAt): sorted by magnitude, the largest whole + the next x p + the
+  next x p^2 ..., presses and releases each; `windSagAt(..., strokeAdd)` gets `owner.windStrokeAddValue` from
+  renderRoute. Setting "Wind: further strokes add" (key `windStrokeAddPercent`, 0-100, default 30; engine atomic
+  `windStrokeAddValue` 0..1 + `setWindStrokeAdd`; Editor addSlider after "Wind: sag ratio per octave", the Wind
+  settings row "Further strokes add (all divisions)" + help, manual ###). 100 % = the old plain sum. The pipe-count
+  shares (one/two pipes) rule the STEADY sag only - at 50/50 one and two pipes are equal there; the user's
+  difference was the impulse sum alone.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

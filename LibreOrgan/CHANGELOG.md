@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.71] - 2026-11-06
+
+### Added
+- Wind model: "Wind: further strokes add" (Configuration Editor and the Wind
+  settings dialog, 0 to 100 %, default 30 %) - the impulses of keys struck
+  together combine saturating: the strongest whole, the next 30 % of itself,
+  the third 30 % of that (two strokes 130 %, three 139 %). Before, they simply
+  added up: a held treble tone wobbled twice as much under two staccato bass
+  keys as under one. 100 % restores the plain sum.
+
 ## [0.9.70] - 2026-11-06
 
 ### Added

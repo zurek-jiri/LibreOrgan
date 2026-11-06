@@ -1373,6 +1373,13 @@ pipes of the lowest C follow about half as much as those of c1, c3 about 1.7
 times as much). 1 makes every key follow alike. The sag itself still comes from the low keys and the
 stops drawn.
 
+### Wind: further strokes add
+
+Keys struck together shake the wind less than the sum of their strokes: the
+strongest impulse counts whole, the next this much of itself, the third this
+much of that ... (0 to 100 %, default 30: two strokes 130 %, three 139 %, four
+142 %). 100 % lets the strokes simply add up.
+
 ### Wind: one stop's share of the full sag
 
 The sag a single engaged 8' stop produces, relative to many stops (2 to

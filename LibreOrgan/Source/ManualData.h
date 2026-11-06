@@ -1389,6 +1389,13 @@ static const char* const kManualText_part6 =
     "times as much). 1 makes every key follow alike. The sag itself still comes from the low keys and the\n"
     "stops drawn.\n"
     "\n"
+    "### Wind: further strokes add\n"
+    "\n"
+    "Keys struck together shake the wind less than the sum of their strokes: the\n"
+    "strongest impulse counts whole, the next this much of itself, the third this\n"
+    "much of that ... (0 to 100 %, default 30: two strokes 130 %, three 139 %, four\n"
+    "142 %). 100 % lets the strokes simply add up.\n"
+    "\n"
     "### Wind: one stop's share of the full sag\n"
     "\n"
     "The sag a single engaged 8' stop produces, relative to many stops (2 to\n"
@@ -1407,6 +1414,8 @@ static const char* const kManualText_part6 =
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "### Tremulant: harmonic filter\n"
     "\n"
@@ -1414,8 +1423,6 @@ static const char* const kManualText_part6 =
     "(default 4 dB).\n"
     "\n"
     "### Tremulant: harmonic filter phase\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
     "default 90).\n"
@@ -1609,6 +1616,8 @@ static const char* const kManualText_part7 =
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
+    ;
+static const char* const kManualText_part8 =
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
     "\n"
@@ -1616,8 +1625,6 @@ static const char* const kManualText_part7 =
     "\n"
     "On: the melody coupler waits a moment when the highest key changes in legato,\n"
     "so a brief overlap does not make the solo stop jump.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Load the last configuration at startup\n"
     "\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
+    ;
+static const char* const kManualText_part9 =
     "60 and 100 % of it.\n"
     "\n"
     "### Tremulant phase drift between ranks\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "0 to 360 degrees (default 260): with 0 every stop dips at once, with a large\n"
     "value a full registration shimmers.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
     "How far the pitch sags with the wind at its lowest (0 to 50 cents, default\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "spread over our steps when more than 60); the stops' places on the jamb page\n"
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
     "carries, else the stop playing it straight over the whole division, else the\n"
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
     "loaded twice. A stop with several ranks in one perspective (a left and a\n"
     "right component) becomes a stop folder with one child per rank. Ranks\n"
-    ;
-static const char* const kManualText_part10 =
     "without release samples make a one-shot stop; a stop whose release crossfade\n"
     "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
     "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
+    ;
+static const char* const kManualText_part11 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
     "encrypted archives are refused. Archives packed with PPMd or old filters go\n"
     "through a second reader (unarr) after the first fails, logged once. A\n"
-    ;
-static const char* const kManualText_part11 =
     "configuration never names an archive: every path is a disk path, and a folder\n"
     "that is also on the disk wins over the archive.\n"
     "\n"
