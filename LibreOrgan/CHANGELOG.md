@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.74] - 2026-11-06
+
+### Changed
+- Wind model, the strokes: the default "Oscillation strength" of 40 % now
+  gives what 5 % gave in 0.9.73 (the strokes were far too strong); a release
+  kicks back with 60 % of the stroke (90 % before); a key struck while
+  another is held, or released while another stays, kicks half; the ringing
+  never exceeds the depth (the bellows has its end positions) - before, only
+  the output was clipped at 1.25 times the depth.
+
 ## [0.9.73] - 2026-11-06
 
 ### Changed

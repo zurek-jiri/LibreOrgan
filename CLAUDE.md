@@ -3320,6 +3320,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   down: weight x share x 2 x strength x stops (load) x random x chord x depth = K c; steady target T c". The user's
   file at 18:35 had depth I. 4.4 c (17 at noon), pedal 5.6, strength 22 - small depths = small kicks whatever the
   version.]
+  0.9.74 (6 Nov 2026 evening, the user on 0.9.73: "míra oscilací je nyní příliš velká. Mám to na 5 procent ... dej,
+  aby to, co je nyní 5 %, bylo jako původní default"; "chceme opatrnost. Dej pouze 60 procent. Při druhé a další
+  píšťale polovic"): the kick constant 2.0 -> 0.25 (the default "Oscillation strength" 40 % = 0.8 in the engine
+  sounds as 5 % did), a release kicks back x 0.6 (was 0.9; 0.85 in the old model), `othersHeld` (heldBefore > 0
+  for a stroke, > 1 for a release) -> chordScale 0.5 (legato) unless the 60 ms chord rule's 0.1 applies, and
+  `applyWindKick` caps `oscAmplitude` at `depthCents` (the bellows' end positions - before, only the output was
+  clipped at 1.25 x depth, a waveform clip). The debug line prints "chord/legato" and "ringing now A c".
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

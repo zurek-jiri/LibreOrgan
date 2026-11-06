@@ -5733,6 +5733,7 @@ struct SamplerEngine::Impl
         if (state.held[(size_t)note] == down) return;
         const double now = nowMs();
         const float currentBase = windBaseAt(state, now);
+        const int heldBefore = state.heldCount;   // 0.9.74: a stroke or release with another key still held kicks half
         state.held[(size_t)note] = down;
         state.heldCount = juce::jmax(0, state.heldCount + (down ? 1 : -1));
         if (down && state.influentialCount < 4)
@@ -5805,11 +5806,13 @@ struct SamplerEngine::Impl
         // of the saturated demand - in legato, a key struck while another still held, the demand did not
         // change and the wind got no kick at all: "teď to nemá žádné oscilace"). Keys struck within 60 ms of
         // another (a chord) count as one stroke: the first whole, the rest 10 % (the user: two keys a little
-        // more than one); releases alike, and a release kicks the other way (x 0.9). Scaled so that a single
-        // key at the default 50 % share gives ~1.7 x the old stroke (measured: the old pair at 30 %).
+        // more than one); releases alike, and a release kicks the other way (x 0.6 - the user's caution; 0.9 before).
+        // 0.9.74 (the user): a key struck while another is held (legato), or released while another stays, kicks
+        // HALF; the constant 0.25 (2.0 before) makes the default strength 40 % sound as 5 % did ("příliš velká").
         const float demandChange = (down ? 1.0f : -1.0f) * weight * onePipeShare;
         double& lastStrokeMs = down ? state.lastPressMs : state.lastReleaseMs;
-        const float chordScale = (now - lastStrokeMs) < 60.0 ? 0.1f : 1.0f;
+        const bool othersHeld = down ? heldBefore > 0 : heldBefore > 1;
+        const float chordScale = (now - lastStrokeMs) < 60.0 ? 0.1f : (othersHeld ? 0.5f : 1.0f);
         lastStrokeMs = now;
         if (state.frequencyHz > 0.0f && state.oscillations > 0.0f && state.depthCents > 0.0f && maxEffect > 0.0f && std::abs(demandChange) > 1.0e-6f)
         {
@@ -5823,8 +5826,8 @@ struct SamplerEngine::Impl
             // once, and its release reuses it (separate draws left random remainders chattering).
             if (down) state.keyStrength[(size_t)note] = 0.60f + 0.40f * windRandom.nextFloat();
             const float strength = state.keyStrength[(size_t)note] > 0.0f ? state.keyStrength[(size_t)note] : 0.8f;
-            const float kick = state.depthCents * demandChange * 2.0f * state.oscillationStrength * stopFactor
-                * strength * maxEffect * (down ? 1.0f : 0.9f) * chordScale;
+            const float kick = state.depthCents * demandChange * 0.25f * state.oscillationStrength * stopFactor
+                * strength * maxEffect * (down ? 1.0f : 0.6f) * chordScale;
             // Four pieces over 30 ms: the demand rises with the pallet and the pipe's onset, it does not step.
             for (int piece = 0; piece < 4; ++piece)
                 queueWindKick(state, now + 10.0 * piece, kick * 0.25f);
@@ -5834,8 +5837,8 @@ struct SamplerEngine::Impl
                 CrashHandler::note("Wind kick: division " + juce::String(sourceManual) + " key " + juce::String(note) + (down ? " down" : " up")
                     + ": weight " + juce::String(weight, 2) + " x share " + juce::String(onePipeShare, 2) + " x 2 x strength " + juce::String(state.oscillationStrength, 2)
                     + " x stops " + juce::String(stopFactor, 2) + " (load " + juce::String(effectiveStopLoad, 2) + ") x random " + juce::String(strength, 2)
-                    + " x chord " + juce::String(chordScale, 1) + " x depth " + juce::String(state.depthCents, 1) + " c = " + juce::String(kick, 2) + " c; steady target "
-                    + juce::String(newTarget, 2) + " c");
+                    + " x chord/legato " + juce::String(chordScale, 1) + " x depth " + juce::String(state.depthCents, 1) + " c = " + juce::String(kick, 2) + " c; steady target "
+                    + juce::String(newTarget, 2) + " c; ringing now " + juce::String(state.oscAmplitude, 2) + " c");
         }
         publishWind(sourceManual);
     }
@@ -5861,7 +5864,9 @@ struct SamplerEngine::Impl
         const float sigma = 3.0f * state.frequencyHz / state.oscillations * 0.001f;
         const float v = velocity + amount * omega;
         const float q = (v + sigma * x) / omega;   // = A cos(phi)
-        state.oscAmplitude = std::sqrt(x * x + q * q);
+        // 0.9.74 (the user: "měch má své dané extrémy"): the swing never exceeds the depth - the bellows' top
+        // plate has its end positions; strokes in phase hold the ringing there, they cannot grow it further.
+        state.oscAmplitude = juce::jmin(std::sqrt(x * x + q * q), juce::jmax(0.0f, state.depthCents));
         state.oscPhase = std::atan2(x, q);
         state.oscSigmaPerMs = sigma;
         state.oscOmegaPerMs = omega;

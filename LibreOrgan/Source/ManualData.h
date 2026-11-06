@@ -1845,7 +1845,10 @@ static const char* const kManualText_part9 =
     "\n"
     "### Wind: oscillation strength\n"
     "\n"
-    "The impulse a key stroke gives the wind (0 to 100 %, default 40).\n"
+    "The impulse a key stroke gives the wind (0 to 100 %, default 40). A release\n"
+    "kicks back with 60 % of it; a key struck or released while another is held\n"
+    "kicks half; keys struck together are one stroke; the swing never exceeds the\n"
+    "depth - the bellows has its end positions.\n"
     "\n"
     "### Wind: sag settling lag\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
+    ;
+static const char* const kManualText_part10 =
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
     "shown; the general crescendo (one stage per Hauptwerk combination \"Cresc...\",\n"
-    ;
-static const char* const kManualText_part10 =
     "spread over our steps when more than 60); the stops' places on the jamb page\n"
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "## 10.12 RAR archives: how they are read\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
