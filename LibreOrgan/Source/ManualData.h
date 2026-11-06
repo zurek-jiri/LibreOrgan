@@ -1376,7 +1376,7 @@ static const char* const kManualText_part6 =
     "### Wind: harmonic filter\n"
     "\n"
     "The same shelf following the wind sag: this much loss at the full sag\n"
-    "(default 2 dB).\n"
+    "(default 4 dB).\n"
     "\n"
     "### Wind: volume change per cent of sag\n"
     "\n"
@@ -1829,8 +1829,11 @@ static const char* const kManualText_part9 =
     "\n"
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
-    "How far the pitch sags with the wind at its lowest (0 to 50 cents, default\n"
-    "8); 0 switches the wind model off for this division.\n"
+    "How far the pitch sags with the wind at its lowest (0 to 150 cents, default\n"
+    "15, the pedal 20); 0 switches the wind model off for this division. A stop\n"
+    "draws air by the size of its pipes: a 16' twice an 8', a 32' three times, a\n"
+    "4' two thirds, a 2' a third - so the pedal and the deep stops shake the wind\n"
+    "most.\n"
     "\n"
     "### Wind: oscillation frequency\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
+    ;
+static const char* const kManualText_part10 =
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
-    ;
-static const char* const kManualText_part10 =
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
     "shown; the general crescendo (one stage per Hauptwerk combination \"Cresc...\",\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
+    ;
+static const char* const kManualText_part11 =
     "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "## 10.12 RAR archives: how they are read\n"
     "\n"

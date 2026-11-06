@@ -572,6 +572,10 @@ namespace
         const int trailingNumber = name.substring(firstDigit).getIntValue();
         if (trailingNumber <= 3) return 1.0f / 3.0f;
         if (trailingNumber <= 5) return 2.0f / 3.0f;
+        // 0.9.75: the air a stop draws follows the size of its pipes - a 16' twice an 8', a 32' three times
+        // (the pedal takes its larger share from its footages, no exception for the division).
+        if (trailingNumber >= 32) return 3.0f;
+        if (trailingNumber >= 16) return 2.0f;
         return 1.0f;
     }
 
@@ -8833,7 +8837,7 @@ void SamplerEngine::setWindModel(int sourceManual, float depthCents, float frequ
     if (sourceManual < 0 || sourceManual >= maxManuals) return;
     const juce::ScopedLock sl(controlLock);
     auto& state = impl->windSources[(size_t)sourceManual];
-    state.depthCents = juce::jlimit(0.0f, 50.0f, depthCents);
+    state.depthCents = juce::jlimit(0.0f, 150.0f, depthCents);   // 0.9.75: up to 150 cents (was 50)
     state.frequencyHz = juce::jlimit(2.0f, 10.0f, frequencyHz);
     state.oscillations = juce::jlimit(0.0f, 20.0f, oscillations);
     // 50 % on the GUI slider arrives as 1.0; 100 % is a genuine 2.0 (no clamp at 50 %).

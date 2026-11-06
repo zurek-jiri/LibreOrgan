@@ -1043,9 +1043,9 @@ void MainComponent::applyDefaultWindProfile(int manualIndex)
 
     // Pedal, I., II., III., IV., V., VI., VII. factory wind profiles (VI. and
     // VII. repeat III. and I.).
-    // Depth is one third of the original profile (the level coupling is a fixed
-    // 0.2 dB per cent), oscillation strength 4/3 of the original profile.
-    static constexpr float depth[8]       {  2.67f, 2.17f, 2.5f,  3.0f, 2.33f, 1.67f, 3.0f, 2.17f };
+    // Depth (0.9.75, the user): 20 cents for the pedal, 15 for every manual - the profiles' 2-3 cents of
+    // before were inaudible since the strokes of 0.9.74; oscillation strength 4/3 of the original profile.
+    static constexpr float depth[8]       { 20.0f, 15.0f, 15.0f, 15.0f, 15.0f, 15.0f, 15.0f, 15.0f };
     static constexpr float frequency[8]   {  4.5f,  7.5f,  5.5f,  8.0f, 9.0f, 5.0f, 8.0f, 7.5f };
     static constexpr float oscillations[8]{ 5.6f,  7.0f,  5.0f,  7.0f,10.0f, 8.0f, 7.0f, 7.0f };
     static constexpr float strength[8]    { 53.3f, 25.3f, 33.3f, 56.7f, 66.7f, 53.3f, 56.7f, 25.3f };
@@ -23433,7 +23433,7 @@ void MainComponent::loadSettings()
     CrashHandler::note("Full kernel from: " + juce::String((int)sincKernelFromHz) + " Hz (the default for this CPU " + juce::String((int)SamplerEngine::defaultSincKernelFromHz())
         + " Hz, " + (juce::SystemStats::hasAVX2() ? "AVX2" : "no AVX2") + ")");
     harmonicSwellDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicSwellDb", 8.0));
-    harmonicWindDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicWindDb", 2.0));
+    harmonicWindDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicWindDb", 4.0));   // 0.9.75: 4 dB (was 2)
     harmonicTremulantDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicTremulantDb", 4.0));
     engine.setHarmonicFilterDb(harmonicSwellDb, harmonicWindDb, harmonicTremulantDb);
     windLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windLevelDbPerCent", 0.2));
@@ -26050,7 +26050,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 c.windOscillationStrength / 50.0f, c.windSmoothingMs, c.windTargetMask);
             saveSettings();
         };
-        rows.push_back({ "Depth (maximum pitch sag)", 0.0, 50.0, 0.1, " cents", config.windDepthCents, 8.0,
+        rows.push_back({ "Depth (maximum pitch sag)", 0.0, 150.0, 0.1, " cents", config.windDepthCents, m == 0 ? 20.0 : 15.0,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windDepthCents = (float)value; applyWind(); } });
         rows.push_back({ "Oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windFrequencyHz = (float)value; applyWind(); } });
@@ -26066,7 +26066,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             [this](double value) { windLevelDbPerCent = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
         rows.push_back({ "Sag ratio per octave (all divisions)", 1.0, 2.0, 0.05, "x", windOctaveRatio, 1.3,
             [this](double value) { windOctaveRatio = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
-        rows.push_back({ "Harmonic filter at full sag (all divisions)", 0.0, 12.0, 0.5, " dB", harmonicWindDb, 2.0,
+        rows.push_back({ "Harmonic filter at full sag (all divisions)", 0.0, 12.0, 0.5, " dB", harmonicWindDb, 4.0,
             [this, harmonic](double value) { harmonicWindDb = (float)value; harmonic(); } });
     }
     else return;
@@ -26307,7 +26307,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
             engine.setManualExpressionMaxAttenuationDb(manual, config.expressionMaxAttenuationDb);
             engine.setManualExpressionGain(manual, expressionGainFor(config));
         }
-        else if (parameter == "windDepth") config.windDepthCents = scaled(0.0, 50.0);
+        else if (parameter == "windDepth") config.windDepthCents = scaled(0.0, 150.0);
         else if (parameter == "windFrequency") config.windFrequencyHz = scaled(2.0, 10.0);
         else if (parameter == "windOscillations") config.windOscillations = scaled(0.0, 20.0);
         else if (parameter == "windStrength") config.windOscillationStrength = scaled(0.0, 100.0);
@@ -29993,7 +29993,7 @@ void MainComponent::showConfigurationEditor()
                 [&o, harmonicChanged](double value) { o.harmonicSwellDb = (float)value; harmonicChanged(); },
                 "High shelf above ~3 kHz that follows the swell: this much high-frequency loss with the shutters closed.");
             // --- Wind
-            addSlider("Wind: harmonic filter", 0.0, 12.0, 0.5, " dB", o.harmonicWindDb, 2.0,
+            addSlider("Wind: harmonic filter", 0.0, 12.0, 0.5, " dB", o.harmonicWindDb, 4.0,
                 [&o, harmonicChanged](double value) { o.harmonicWindDb = (float)value; harmonicChanged(); },
                 "High shelf that follows the wind sag: this much high-frequency loss at the full sag.");
             addSlider("Wind: volume change per cent of sag", 0.0, 0.6, 0.01, " dB/cent", o.windLevelDbPerCent, 0.2,
@@ -30711,7 +30711,7 @@ void MainComponent::showConfigurationEditor()
                         config.windOscillationStrength / 50.0f, config.windSmoothingMs, config.windTargetMask);
                     o.saveSettings();
                 };
-                addSlider("Wind: depth (maximum pitch sag)", 0.0, 50.0, 0.1, " cents", config.windDepthCents, 8.0,
+                addSlider("Wind: depth (maximum pitch sag)", 0.0, 150.0, 0.1, " cents", config.windDepthCents, 15.0,
                     [&config, applyWind](double value) { config.windDepthCents = (float)value; applyWind(); });
                 addSlider("Wind: oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
                     [&config, applyWind](double value) { config.windFrequencyHz = (float)value; applyWind(); });

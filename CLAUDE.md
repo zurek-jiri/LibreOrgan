@@ -3327,6 +3327,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   for a stroke, > 1 for a release) -> chordScale 0.5 (legato) unless the 60 ms chord rule's 0.1 applies, and
   `applyWindKick` caps `oscAmplitude` at `depthCents` (the bellows' end positions - before, only the output was
   clipped at 1.25 x depth, a waveform clip). The debug line prints "chord/legato" and "ringing now A c".
+  0.9.75 (6 Nov 2026 night, the user: "celkově dost slabý ... default 15 centů, max 100 ... pedál 2x" -> "max 150,
+  defaulty 15 manuál, 20 pedál, ostatní podle tebe"): the FACTORY WIND PROFILE (`applyDefaultWindProfile`,
+  MainComponent.cpp ~1048) had depths 2.67/2.17/2.5/3.0 c - inaudible with the 0.9.74 strokes - now 20 (pedal) /
+  15 (manuals); the dialog row default `m == 0 ? 20 : 15`, the Editor 15, the struct 15; max 150 in the engine
+  clamp (`setWindModel`), the dialog, the Editor, the MIDI-learn `scaled(0, 150)`. THE PEDAL'S 2x comes from the
+  FOOTAGE, not from the division: `windStopContribution` 32' -> 3, 16' -> 2, 8' 1, <= 5' 2/3, <= 3' 1/3 (rules the
+  steady sag's stop load and the strokes' stopFactor alike). `harmonicWindDb` default 4 dB (header, loadSettings,
+  dialog row, Editor, manual). "Volume change per cent of sag" stays 0.2. Saved files keep their own depths/filter.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

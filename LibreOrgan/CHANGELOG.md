@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.75] - 2026-11-06
+
+### Changed
+- Wind model: the depth goes up to 150 cents (was 50); the factory depths
+  are 15 cents for a manual and 20 for the pedal (2 to 3 before, inaudible);
+  a stop draws air by its footage - a 16' twice an 8', a 32' three times
+  (the pedal and the deep stops shake the wind most, no exception for the
+  division); the wind's harmonic filter defaults to 4 dB (was 2). Saved
+  configurations keep their depths and filter.
+
 ## [0.9.74] - 2026-11-06
 
 ### Changed

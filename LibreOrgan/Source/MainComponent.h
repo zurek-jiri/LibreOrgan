@@ -395,7 +395,7 @@ private:
         float tremulantRateHz = 4.4f;
         float tremulantDepthCents = 6.0f;
         float tremulantRankDriftDegrees = 260.0f;
-        float windDepthCents = 5.0f;
+        float windDepthCents = 15.0f;   // 0.9.75: 15 cents (the pedal's profile 20)
         float windFrequencyHz = 7.5f;
         float windOscillations = 7.0f;
         float windOscillationStrength = 23.3f;
@@ -1148,7 +1148,7 @@ private:
     void askPublicationDetails(std::function<void()> then);
     void applyAdvancedAudioSettings();
     // Harmonic filter depth (dB at full attenuation) following swell, wind and tremulant; 0 = off.
-    float harmonicSwellDb = 8.0f, harmonicWindDb = 2.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths
+    float harmonicSwellDb = 8.0f, harmonicWindDb = 4.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths (wind 4 dB since 0.9.75)
     float tremulantShelfPhaseDegrees = 90.0f;   // the tremulant's tone oscillation behind its volume oscillation
     float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
     int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)

@@ -1360,7 +1360,7 @@ capped at 12 dB; at 0 dB they cost nothing.
 ### Wind: harmonic filter
 
 The same shelf following the wind sag: this much loss at the full sag
-(default 2 dB).
+(default 4 dB).
 
 ### Wind: volume change per cent of sag
 
@@ -1807,8 +1807,11 @@ value a full registration shimmers.
 
 ### Wind: depth (maximum pitch sag)
 
-How far the pitch sags with the wind at its lowest (0 to 50 cents, default
-8); 0 switches the wind model off for this division.
+How far the pitch sags with the wind at its lowest (0 to 150 cents, default
+15, the pedal 20); 0 switches the wind model off for this division. A stop
+draws air by the size of its pipes: a 16' twice an 8', a 32' three times, a
+4' two thirds, a 2' a third - so the pedal and the deep stops shake the wind
+most.
 
 ### Wind: oscillation frequency
 
