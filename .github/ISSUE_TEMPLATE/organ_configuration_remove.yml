@@ -47,6 +47,7 @@ body:
         - "greccio-s-francesco-spada-organ"
         - "hildesheim-st-andreas-beckerath-organ"
         - "hradec-kralove-st-maria-streussel-organ"
+        - "kdousov-casparides-organ"
         - "stralsund-st-jakobi-kr-wegscheider"
         - "yokota-centennial-g-silbermann"
     validations:
