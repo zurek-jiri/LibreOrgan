@@ -618,7 +618,8 @@ the first half of Attack Time (0-500 ms, default 150), fading back over the
 second half: more chiff or a softer speaking, the held tone untouched. Attack
 delay (0-500 ms, default 0) lets this stop's pipes speak that much later than
 the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -
-a slow-speaking stop, a reed that waits behind the flues.
+a slow-speaking stop, a reed that waits behind the flues. It shortens on a
+repeated tone the same way and varies between 30 and 100 % at every stroke.
 
 ### Random pitch error
 

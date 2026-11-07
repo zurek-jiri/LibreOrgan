@@ -4245,6 +4245,9 @@ struct SamplerEngine::Impl
         pendingWindOffMs.fill(-1.0);
         keyStartMs.fill(-1.0e9);
         delayedStartMs.fill(-1.0);
+        keySinceFinishMs.fill(-1.0);
+        keyOnIntervalMs.fill(-1.0);
+        keyDelayRandom.fill(0.5);
     }
 
     SamplerEngine& owner;
@@ -4317,6 +4320,7 @@ struct SamplerEngine::Impl
         lastAttackDelayNoteOnMs{}, noteFinishedMs{};
     std::array<double, kSourceKeys> windPressMs{}, pendingWindOffMs{};   // 0.9.72: the wind's stroke time per key, a release held to the 50 ms floor
     std::array<double, kSourceKeys> keyStartMs{}, delayedStartMs{};     // 0.9.77: the key's real start; a re-run due for the stops' own attack delays (-1 none)
+    std::array<double, kSourceKeys> keySinceFinishMs{}, keyOnIntervalMs{}, keyDelayRandom{};   // 0.9.78: at the key's start - ms since its last tone finished (-1 none), ms between its last two note-ons (-1 none), a random 0..1 for the stops' own delays
     std::array<int8_t, kSourceKeys> heldVelocity{};
     struct PendingOn { double dueMs = 0.0; int velocity = 0; bool valid = false; };
     struct PendingOff { double dueMs = 0.0; std::array<float, maxManuals> gains{}; bool valid = false; };
@@ -5620,6 +5624,9 @@ struct SamplerEngine::Impl
         pendingWindOffMs.fill(-1.0);
         keyStartMs.fill(-1.0e9);
         delayedStartMs.fill(-1.0);
+        keySinceFinishMs.fill(-1.0);
+        keyOnIntervalMs.fill(-1.0);
+        keyDelayRandom.fill(0.5);
         for (auto& p : pendingOn) p.valid = false;
         for (auto& p : pendingOff) p.valid = false;
         for (int m = 0; m < maxManuals; ++m)
@@ -6106,10 +6113,12 @@ struct SamplerEngine::Impl
         const float delayMs = owner.attackMinimumDelayMs.load(std::memory_order_relaxed);
 
         bool continuesDelaySeries = false;
+        keyOnIntervalMs[(size_t)key] = -1.0;
         if (lastAttackDelayNoteOnMs[(size_t)key] >= 0.0)
         {
             const double intervalMs = now - lastAttackDelayNoteOnMs[(size_t)key];
             continuesDelaySeries = intervalMs >= 0.0 && intervalMs <= (double)delayMs;
+            if (intervalMs >= 0.0) keyOnIntervalMs[(size_t)key] = intervalMs;   // 0.9.78: the stops' own delays apply the series rule against their own value
         }
         lastAttackDelayNoteOnMs[(size_t)key] = now;
 
@@ -6226,18 +6235,30 @@ struct SamplerEngine::Impl
         const float releaseFadeOut = owner.releaseFadeOutMs.load(std::memory_order_relaxed);
 
         std::array<int, kMaxRouteShifts> shifts{};
+        int stopIndex = -1;
         for (auto* stop : owner.stops)
         {
+            ++stopIndex;
             if (stop->reloading.load(std::memory_order_acquire)) continue;   // its samples are being replaced (0.8.160)
             const int shiftCount = collectRouteShifts(stop, manualIndex, shifts);
             if (shiftCount == 0) continue;
             // 0.9.77: the stop's own "Attack delay" (voicing) counts from the key's real start (after the global
             // Attack min. delay - the two add up): its pipes wait, the key is run again when the delay is over
             // (processPending; the stops already speaking are skipped by the rank's speaking bit).
+            // 0.9.78: the global delay's repetition rules against the stop's own value (a tone finished within half
+            // of it: no delay; within the whole: half; a series of strikes within it: none), then 30-100 % at random
+            // per strike and stop - all from figures fixed at the key's start, so the re-run reaches the same due.
             if (stop->attackDelayMs > 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
             {
-                const double due = keyStartMs[(size_t)sourceKey] + (double)stop->attackDelayMs;
-                if (nowMs() < due)
+                double delay = (double)stop->attackDelayMs;
+                const double sinceFinish = keySinceFinishMs[(size_t)sourceKey], interval = keyOnIntervalMs[(size_t)sourceKey];
+                if (sinceFinish >= 0.0 && sinceFinish <= delay * 0.5) delay = 0.0;
+                else if (sinceFinish >= 0.0 && sinceFinish <= delay) delay *= 0.5;
+                else if (interval >= 0.0 && interval <= delay) delay = 0.0;
+                const double share = std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887, 1.0);
+                delay *= 0.3 + 0.7 * share;
+                const double due = keyStartMs[(size_t)sourceKey] + delay;
+                if (delay > 0.0 && nowMs() < due)
                 {
                     double& queued = delayedStartMs[(size_t)sourceKey];
                     queued = queued < 0.0 ? due : juce::jmin(queued, due);
@@ -6840,6 +6861,9 @@ struct SamplerEngine::Impl
             if (pastDeadline(deadlineTicks)) return;
             on.valid = false;
             keyStartMs[(size_t)key] = now;   // 0.9.77: the stops' own attack delays count from here
+            // 0.9.78: what the stops' own delays are judged by, fixed once per key start (the re-run must agree)
+            keySinceFinishMs[(size_t)key] = noteFinishedMs[(size_t)key] >= 0.0 ? now - noteFinishedMs[(size_t)key] : -1.0;
+            keyDelayRandom[(size_t)key] = delayRandom.nextDouble();
             startNote(keyNote(key), on.velocity, keyManual(key), key);
             noteSoundStartMs[(size_t)key] = now;
             noteMinimumStartMs[(size_t)key] = now;

@@ -679,25 +679,28 @@ namespace EngineSelfTest
         }
         if (!engine.getStops().isEmpty())
         {
-            // Attack delay (0.9.77): one stop waits 300 ms after the key while the others speak at once - the
-            // polyphony 100 ms after the key must be lower than 500 ms after it (the delayed stop's voices join).
+            // Attack delay (0.9.77): one stop waits 1000 ms after the key while the others speak at once - the
+            // polyphony 100 ms after the key must be lower than 1100 ms after it (the delayed stop's voices join).
+            // 0.9.78: the delay is 30-100 % at random (300-1000 ms here) and shortened after a tone finished
+            // within it - so 1.2 s of silence first, and the delay long enough for 100 ms to lie inside it.
             Stop* probe = engine.getStops()[0];
             const float savedDelay = probe->attackDelayMs;
-            probe->attackDelayMs = 300.0f;
+            probe->attackDelayMs = 1000.0f;
             const int division = juce::jlimit(0, divisions - 1, probe->primaryManual);
+            { BlockStats t; renderBlocks(225, t); }
             engine.noteOn(60, 127, division);
             int early = 0, late = 0;
-            for (int b = 0; b < 94; ++b)
+            for (int b = 0; b < 206; ++b)
             {
                 BlockStats t; renderBlocks(1, t);
                 if (b == 18) early = engine.getCurrentPolyphony();   // ~100 ms
             }
-            late = engine.getCurrentPolyphony();   // ~500 ms
+            late = engine.getCurrentPolyphony();   // ~1100 ms
             engine.noteOff(60, division);
             { BlockStats t; for (int drain = 0; drain < 300 && engine.getCurrentPolyphony() > 0; ++drain) renderBlocks(1, t); }
             probe->attackDelayMs = savedDelay;
-            report << "Attack delay (" << probe->name << " waits 300 ms, key 60 of division " << division << "): " << early
-                   << " voices 100 ms after the key, " << late << " voices after 500 ms -> " << (late > early && early > 0 ? "OK" : "WRONG") << "\n";
+            report << "Attack delay (" << probe->name << " waits 300-1000 ms, key 60 of division " << division << "): " << early
+                   << " voices 100 ms after the key, " << late << " voices after 1100 ms -> " << (late > early && early > 0 ? "OK" : "WRONG") << "\n";
         }
         if (selfTestIr.existsAsFile() && divisions >= 2)
         {

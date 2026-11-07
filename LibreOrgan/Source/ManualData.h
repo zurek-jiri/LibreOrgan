@@ -628,7 +628,8 @@ static const char* const kManualText_part3 =
     "second half: more chiff or a softer speaking, the held tone untouched. Attack\n"
     "delay (0-500 ms, default 0) lets this stop's pipes speak that much later than\n"
     "the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -\n"
-    "a slow-speaking stop, a reed that waits behind the flues.\n"
+    "a slow-speaking stop, a reed that waits behind the flues. It shortens on a\n"
+    "repeated tone the same way and varies between 30 and 100 % at every stroke.\n"
     "\n"
     "### Random pitch error\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "left or right** to change it: the lines take the new order, saved with the\n"
     "configuration, and the voicing boxes and the audio tabs follow at once;\n"
     "nothing is reloaded.\n"
-    "\n"
     ;
 static const char* const kManualText_part4 =
+    "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
     "*Ignored Patterns...* and *One-shot Patterns...* (top bar, or the\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "registers a few seconds after a rate switch) are waited for six seconds;\n"
     "devices still absent are named once, their routes stay silent until the\n"
     "device appears and then reopen by themselves.\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "\n"
     "## 5.7 Getting the most polyphony\n"
     "\n"
     "Every sounding pipe is one **voice** per audio route of its division: three\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "### Currently active\n"
     "\n"
     "The threads rendering now and the kernel in use. Information.\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
     "### Full kernel from (sounding pitch)\n"
     "\n"
     "Pipes whose sounding fundamental lies at or above this frequency play through\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "The sag with two keys held (default 50 %); from three keys on the rest closes\n"
     "gradually.\n"
     "\n"
-    "### Wind: maximum wind model effect\n"
     ;
 static const char* const kManualText_part7 =
+    "### Wind: maximum wind model effect\n"
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "### Tremulant rate\n"
     "\n"
     "2 to 11 Hz (default 4.4).\n"
-    "\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "division a keyboard's keys reach through the definition's switches joins it\n"
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
-    "without a coupler is placed stop by stop where the name says); the stops\n"
     ;
 static const char* const kManualText_part10 =
+    "without a coupler is placed stop by stop where the name says); the stops\n"
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
-    "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
     ;
 static const char* const kManualText_part11 =
+    "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"

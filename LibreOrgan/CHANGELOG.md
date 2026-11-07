@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.78] - 2026-11-07
+
+### Changed
+- The stop's own "Attack delay" follows the global Attack minimum delay's
+  repetition rules against its own value (a tone finished within half of it:
+  no delay; within the whole: half; a series of strikes within it: none) and
+  varies between 30 and 100 % at random for every stroke and stop. It still
+  adds to the global delay. The self-test probe uses 1000 ms after 1.2 s of
+  silence, so the random share cannot fool it.
+
 ## [0.9.77] - 2026-11-07
 
 ### Added
