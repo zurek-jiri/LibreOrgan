@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.77] - 2026-11-07
+
+### Added
+- Voicing row: "Attack delay" (0-500 ms, after Attack Time) - the stop's
+  pipes speak that much later than the key, on top of the global "Attack min.
+  delay"; saved with the voicing, MIDI-learnable.
+
+### Changed
+- The red note name of a pipe without a trusted pitch is a lighter red (pure
+  red was unreadable on the grey).
+- The releases page keeps the previous version beside the newest one.
+
 ## [0.9.76] - 2026-11-06
 
 ### Changed

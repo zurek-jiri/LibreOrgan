@@ -166,20 +166,22 @@ jobs:
             - The two *Source code* entries are added by GitHub to every release: not needed for playing.
 
             **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/LibreOrgan/releases/tag/rural-organ-0.8) brings its own sample folders.
-      # Only the newest build stays on the releases page: every older v* release
-      # (and its tag) is deleted; the Rural Organ demo release is kept.
+      # The newest build and the one before it stay on the releases page (0.9.77: the user wants the
+      # previous version kept); every older v* release (and its tag) is deleted; the Rural Organ demo
+      # release is kept.
       - name: Delete the older program releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="${GITHUB_REF_NAME}"
-          # Each tag once (a release listed twice made the second delete fail on the tag
+          keep=""
+          # Newest first; each tag once (a release listed twice made the second delete fail on the tag
           # already gone, 0.8.154); a release or tag gone by then is no failure.
-          for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName' | sort -u); do
+          for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName' | awk '!seen[$0]++'); do
             case "$tag" in
-              v*) if [ "$tag" != "$current" ]; then
-                    echo "deleting $tag"
-                    gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || echo "$tag: already gone"
-                  fi ;;
+              v*) if [ "$tag" = "$current" ]; then continue; fi
+                  if [ -z "$keep" ]; then keep="$tag"; echo "keeping the previous version $tag"; continue; fi
+                  echo "deleting $tag"
+                  gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || echo "$tag: already gone" ;;
             esac
           done

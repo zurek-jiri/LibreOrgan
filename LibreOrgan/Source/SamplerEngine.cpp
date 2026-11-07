@@ -4243,6 +4243,8 @@ struct SamplerEngine::Impl
         heldVelocity.fill(-1);
         windPressMs.fill(-1.0);
         pendingWindOffMs.fill(-1.0);
+        keyStartMs.fill(-1.0e9);
+        delayedStartMs.fill(-1.0);
     }
 
     SamplerEngine& owner;
@@ -4314,6 +4316,7 @@ struct SamplerEngine::Impl
     std::array<double, kSourceKeys> noteOnTimeMs{}, noteSoundStartMs{}, noteMinimumStartMs{},
         lastAttackDelayNoteOnMs{}, noteFinishedMs{};
     std::array<double, kSourceKeys> windPressMs{}, pendingWindOffMs{};   // 0.9.72: the wind's stroke time per key, a release held to the 50 ms floor
+    std::array<double, kSourceKeys> keyStartMs{}, delayedStartMs{};     // 0.9.77: the key's real start; a re-run due for the stops' own attack delays (-1 none)
     std::array<int8_t, kSourceKeys> heldVelocity{};
     struct PendingOn { double dueMs = 0.0; int velocity = 0; bool valid = false; };
     struct PendingOff { double dueMs = 0.0; std::array<float, maxManuals> gains{}; bool valid = false; };
@@ -5615,6 +5618,8 @@ struct SamplerEngine::Impl
         heldVelocity.fill(-1);
         windPressMs.fill(-1.0);
         pendingWindOffMs.fill(-1.0);
+        keyStartMs.fill(-1.0e9);
+        delayedStartMs.fill(-1.0);
         for (auto& p : pendingOn) p.valid = false;
         for (auto& p : pendingOff) p.valid = false;
         for (int m = 0; m < maxManuals; ++m)
@@ -6226,6 +6231,21 @@ struct SamplerEngine::Impl
             if (stop->reloading.load(std::memory_order_acquire)) continue;   // its samples are being replaced (0.8.160)
             const int shiftCount = collectRouteShifts(stop, manualIndex, shifts);
             if (shiftCount == 0) continue;
+            // 0.9.77: the stop's own "Attack delay" (voicing) counts from the key's real start (after the global
+            // Attack min. delay - the two add up): its pipes wait, the key is run again when the delay is over
+            // (processPending; the stops already speaking are skipped by the rank's speaking bit).
+            if (stop->attackDelayMs > 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
+            {
+                const double due = keyStartMs[(size_t)sourceKey] + (double)stop->attackDelayMs;
+                if (nowMs() < due)
+                {
+                    double& queued = delayedStartMs[(size_t)sourceKey];
+                    queued = queued < 0.0 ? due : juce::jmin(queued, due);
+                    static const bool attackDebug = std::getenv("ORGAN_ATTACK_DEBUG") != nullptr;   // dev: the waits and the re-runs
+                    if (attackDebug) CrashHandler::note("Attack delay: " + stop->name + " waits " + juce::String(due - nowMs(), 0) + " ms on key " + juce::String(midiNote));
+                    continue;
+                }
+            }
             const int expressionManual = juce::jlimit(0, maxManuals - 1, stop->primaryManual);
             const double couplingMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
             const bool couplingRoll = tuningRandom.nextFloat() * 100.0f >= owner.couplingSkipPercent.load(std::memory_order_relaxed);   // 0.9.59: the share left untouched is a setting (default 10 % = 9 of 10 couple; 0 = all)
@@ -6549,6 +6569,7 @@ struct SamplerEngine::Impl
             soundingTimeMs = juce::jmax(0.0, now - noteSoundStartMs[(size_t)sourceKey]);
         if (updateNoteBookkeeping)
         {
+            delayedStartMs[(size_t)sourceKey] = -1.0;   // 0.9.77: a stop still waiting for its attack delay starts no more
             windPipeStopped(sourceKey, now);   // 0.9.72: the pallet closes now - the wind's release
             noteSoundStartMs[(size_t)sourceKey] = -1.0;
             noteMinimumStartMs[(size_t)sourceKey] = -1.0;
@@ -6818,6 +6839,7 @@ struct SamplerEngine::Impl
             if (!on.valid || on.dueMs > now) continue;
             if (pastDeadline(deadlineTicks)) return;
             on.valid = false;
+            keyStartMs[(size_t)key] = now;   // 0.9.77: the stops' own attack delays count from here
             startNote(keyNote(key), on.velocity, keyManual(key), key);
             noteSoundStartMs[(size_t)key] = now;
             noteMinimumStartMs[(size_t)key] = now;
@@ -6832,6 +6854,21 @@ struct SamplerEngine::Impl
             if (pastDeadline(deadlineTicks)) return;
             off.valid = false;
             finishNoteOff(key, off.gains, nullptr, true);
+        }
+        // 0.9.77: the stops whose own attack delay is over - the key is run again, the stops already
+        // speaking are skipped inside; a key released meanwhile starts nothing more.
+        for (int key = 0; key < kSourceKeys; ++key)
+        {
+            const double due = delayedStartMs[(size_t)key];
+            if (due < 0.0 || due > now) continue;
+            if (pastDeadline(deadlineTicks)) return;
+            delayedStartMs[(size_t)key] = -1.0;
+            if (heldVelocity[(size_t)key] >= 0 && noteSoundStartMs[(size_t)key] >= 0.0)
+            {
+                static const bool attackDebug = std::getenv("ORGAN_ATTACK_DEBUG") != nullptr;
+                if (attackDebug) CrashHandler::note("Attack delay: key " + juce::String(keyNote(key)) + " of division " + juce::String(keyManual(key)) + " run again " + juce::String(now - keyStartMs[(size_t)key], 0) + " ms after its start");
+                startNote(keyNote(key), heldVelocity[(size_t)key], keyManual(key), key);
+            }
         }
         // 0.9.72: wind releases held back to the 50 ms floor, and the due kicks into the resonator.
         for (int key = 0; key < kSourceKeys; ++key)

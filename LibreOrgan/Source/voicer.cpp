@@ -277,6 +277,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         chapter(globalSlider, trsm ? "Transmissions and extensions" : "Stop volume"); chapter(globalLabel, trsm ? "Transmissions and extensions" : "Stop volume");
         chapter(gainSlider, "Attack Gain and Attack Time"); chapter(gainLabel, "Attack Gain and Attack Time");
         chapter(attackSlider, "Attack Gain and Attack Time"); chapter(attackLabel, "Attack Gain and Attack Time");
+        chapter(attackDelaySlider, "Attack Gain and Attack Time"); chapter(attackDelayLabel, "Attack Gain and Attack Time");
         chapter(randomPitchSlider, "Random pitch error"); chapter(randomPitchLabel, "Random pitch error");
         chapter(undulationSlider, "Undulation (beats/s at a1)"); chapter(undulationLabel, "Undulation (beats/s at a1)");
         chapter(formantSlider, "Formants (filled pipes)"); chapter(formantLabel, "Formants (filled pipes)");
@@ -634,6 +635,23 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     attackLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(attackLabel);
 
+    // 0.9.77: the stop's own attack delay, added to the global "Attack min. delay".
+    attackDelaySlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    attackDelaySlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 56, 18);
+    attackDelaySlider.setRange(0.0, 500.0, 1.0);
+    attackDelaySlider.setValue(stop->attackDelayMs, juce::dontSendNotification);
+    attackDelaySlider.setTextValueSuffix(" ms");
+    attackDelaySlider.setScrollWheelEnabled(true);
+    attackDelaySlider.setDoubleClickReturnValue(true, 0.0);
+    attackDelaySlider.setTooltip("This stop's pipes speak this much later than the key (0-500 ms, default 0), on top of the "
+        "global \"Attack min. delay\": a slow-speaking stop, a reed that waits behind the flues.");
+    attackDelaySlider.addMouseListener(this, false);
+    attackDelaySlider.onValueChange = [this] { attackDelaySliderChanged(); };
+    addAndMakeVisible(attackDelaySlider);
+    attackDelayLabel.setText("Attack delay", juce::dontSendNotification);
+    attackDelayLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(attackDelayLabel);
+
     randomPitchSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     randomPitchSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 56, 18);
     randomPitchSlider.setRange(0.0, 40.0, 0.1);
@@ -910,9 +928,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 else if (u->pitchSource == 2) why = "No smpl chunk in this sample: the pitch measured from the sound, " + cents(u->measuredPitch);
                 else why = "No smpl chunk in this sample and no measurement (\"Measure the pitch of every pipe from its sound\" is off, or the sound gave nothing): the file number taken as the pitch";
                 if (!stop->noteHasLoopInAnyRank(source)) why << "; no loop in the smpl chunk either";
-                nameLabel->setColour(juce::Label::textColourId, juce::Colours::red);
+                nameLabel->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));   // 0.9.77: a lighter red - pure red was unreadable on the grey
                 nameLabel->setTooltip(why);
-                toneNameLabel->setColour(juce::Label::textColourId, juce::Colours::red);
+                toneNameLabel->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));
                 toneNameLabel->setTooltip(why);
             }
             // An orange note name (the shade of every emphasised text): the sample
@@ -963,6 +981,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);
     attackSlider.setVisible(stopControls); attackLabel.setVisible(stopControls);
+    attackDelaySlider.setVisible(stopControls); attackDelayLabel.setVisible(stopControls);
     randomPitchSlider.setVisible(stopControls); randomPitchLabel.setVisible(stopControls);
     undulationSlider.setVisible(stopControls); undulationLabel.setVisible(stopControls);
     formantSlider.setVisible(withPipes); formantLabel.setVisible(withPipes);   // stops and transmissions alike
@@ -1061,6 +1080,7 @@ void StopRow::mouseDown(const juce::MouseEvent& event)
         if (event.eventComponent == &globalSlider) parameter = "volume";
         else if (event.eventComponent == &gainSlider) parameter = "attackGain";
         else if (event.eventComponent == &attackSlider) parameter = "attackTime";
+        else if (event.eventComponent == &attackDelaySlider) parameter = "attackDelay";
         else if (event.eventComponent == &randomPitchSlider) parameter = "randomPitch";
         else if (event.eventComponent == &undulationSlider) parameter = "undulation";
         else if (event.eventComponent == &formantSlider) parameter = "formantFollow";
@@ -1509,13 +1529,13 @@ void StopRow::resized()
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
                     case Control::slider:
                     {
-                        // The order of the full layout: global, [formant], gain, attack, random pitch, undulation, [formant].
-                        juce::Slider* sliders[6]; juce::Label* labels[6];
+                        // The order of the full layout: global, [formant], gain, attack, attack delay, random pitch, undulation, [formant].
+                        juce::Slider* sliders[7]; juce::Label* labels[7];
                         int n = 0;
                         auto add = [&](juce::Slider& s, juce::Label& l) { sliders[n] = &s; labels[n] = &l; ++n; };
                         add(globalSlider, globalLabel);
                         if (isTransmission()) add(formantSlider, formantLabel);
-                        add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
+                        add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(attackDelaySlider, attackDelayLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
                         if (!isTransmission()) add(formantSlider, formantLabel);
                         if (i < n) { labels[i]->setBounds(x, y, w, 16); sliders[i]->setBounds(x, y + 17, w, 26); }
                         break;
@@ -1607,6 +1627,7 @@ void StopRow::resized()
     if (isTransmission()) placeSlider(formantSlider, formantLabel, formantSliderWidth);   // the only other slider of a transmission
     placeSlider(gainSlider, gainLabel, gainSliderWidth);
     placeSlider(attackSlider, attackLabel, attackSliderWidth);
+    placeSlider(attackDelaySlider, attackDelayLabel, attackDelaySliderWidth);
     placeSlider(randomPitchSlider, randomPitchLabel, randomPitchSliderWidth);
     placeSlider(undulationSlider, undulationLabel, undulationSliderWidth);
     if (!isTransmission()) placeSlider(formantSlider, formantLabel, formantSliderWidth);
@@ -1715,6 +1736,7 @@ void StopRow::updateFromStop()
     globalSlider.setValue(stop->db, juce::sendNotification);
     gainSlider.setValue(stop->gainDb, juce::sendNotification);
     attackSlider.setValue(stop->attackMs + stop->attackFadeoutMs, juce::sendNotification);
+    attackDelaySlider.setValue(stop->attackDelayMs, juce::sendNotification);
     randomPitchSlider.setValue(stop->randomPitchErrorCents, juce::dontSendNotification);
     formantSlider.setValue(100.0 * stop->formantFollow, juce::dontSendNotification);
     for (int note = noteMin; note <= noteMax; ++note)
@@ -1762,6 +1784,13 @@ void StopRow::attackSliderChanged()
     juce::ScopedLock sl(engine.getLock());
     stop->attackMs = (float)attackSlider.getValue() * 0.5f;
     stop->attackFadeoutMs = stop->attackMs;
+    if (stateChanged) stateChanged();
+}
+
+void StopRow::attackDelaySliderChanged()
+{
+    juce::ScopedLock sl(engine.getLock());
+    stop->attackDelayMs = (float)attackDelaySlider.getValue();
     if (stateChanged) stateChanged();
 }
 
@@ -4233,6 +4262,7 @@ juce::var Voicer::createState() const
         stopObj->setProperty(juce::Identifier("gainDb"), stop->gainDb);
         stopObj->setProperty(juce::Identifier("attackMs"), stop->attackMs);
         stopObj->setProperty(juce::Identifier("attackFadeoutMs"), stop->attackFadeoutMs);
+        if (stop->attackDelayMs > 0.0f) stopObj->setProperty("attackDelayMs", (double)stop->attackDelayMs);   // 0.9.77
         stopObj->setProperty("randomPitchErrorCents", stop->randomPitchErrorCents);
         stopObj->setProperty("formantFollowPct", juce::roundToInt(stop->formantFollow * 100.0f));
         // Undulation is saved only when the user set it; otherwise the value the
@@ -4563,6 +4593,7 @@ void Voicer::loadState(const juce::File& file)
                 stop->gainDb = (float)gainDb;
                 stop->attackMs = (float)attackMs;
                 stop->attackFadeoutMs = (float)attackFadeoutMs;
+                stop->attackDelayMs = stopObj->hasProperty("attackDelayMs") ? juce::jlimit(0.0f, 500.0f, (float)(double)stopObj->getProperty("attackDelayMs")) : 0.0f;   // 0.9.77
                 stop->alias = stopObj->getProperty("alias").toString();
                 stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
                 engine.setStopRandomPitchError(stop, randomPitchErrorCents, true);
@@ -4908,6 +4939,7 @@ void Voicer::resetAll(bool resetGrid)
             for (auto& t : stop->transmissions) { t.keyDb.fill(0.0f); t.keyTone.fill(0.0f); }
             stop->gainDb = 0.0f;
             stop->attackMs = 75.0f;
+            stop->attackDelayMs = 0.0f;   // 0.9.77
             stop->attackFadeoutMs = 75.0f;
         }
     }

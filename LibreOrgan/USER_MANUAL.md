@@ -615,7 +615,10 @@ A tick box per layer and one for the plain files: [Velocity layers](#35-velocity
 
 The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for
 the first half of Attack Time (0-500 ms, default 150), fading back over the
-second half: more chiff or a softer speaking, the held tone untouched.
+second half: more chiff or a softer speaking, the held tone untouched. Attack
+delay (0-500 ms, default 0) lets this stop's pipes speak that much later than
+the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -
+a slow-speaking stop, a reed that waits behind the flues.
 
 ### Random pitch error
 

@@ -11012,6 +11012,7 @@ void MainComponent::saveStopSettings()
                 stopObj->setProperty(juce::Identifier("gainDb"), stop->gainDb);
                 stopObj->setProperty(juce::Identifier("attackMs"), stop->attackMs);
                 stopObj->setProperty(juce::Identifier("attackFadeoutMs"), stop->attackFadeoutMs);
+                if (stop->attackDelayMs > 0.0f) stopObj->setProperty("attackDelayMs", (double)stop->attackDelayMs);   // 0.9.77
                 stopObj->setProperty("randomPitchErrorCents", stop->randomPitchErrorCents);
                 stopObj->setProperty(juce::Identifier("primaryManual"), stop->primaryManual);
                 stopObj->setProperty("transmissions", Voicer::transmissionsToVar(stop));
@@ -11153,6 +11154,7 @@ void MainComponent::loadStopSettings()
                         stop->gainDb = (float)gainDb;
                         stop->attackMs = (float)attackMs;
                         stop->attackFadeoutMs = (float)attackFadeoutMs;
+                        stop->attackDelayMs = stopObj->hasProperty("attackDelayMs") ? juce::jlimit(0.0f, 500.0f, (float)(double)stopObj->getProperty("attackDelayMs")) : 0.0f;   // 0.9.77
                         stop->alias = stopObj->getProperty("alias").toString();
                         stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
                         engine.setStopOneShot(stop, stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1);
@@ -24991,6 +24993,7 @@ MemorySlot MainComponent::captureCurrentState() const
             st->setProperty("gainDb", s->gainDb);
             st->setProperty("attackMs", s->attackMs);
             st->setProperty("attackFadeoutMs", s->attackFadeoutMs);
+            if (s->attackDelayMs > 0.0f) st->setProperty("attackDelayMs", (double)s->attackDelayMs);   // 0.9.77
             st->setProperty("randomPitchErrorCents", s->randomPitchErrorCents);
             st->setProperty("primaryManual", s->primaryManual);
             st->setProperty("transmissions", Voicer::transmissionsToVar(s));
@@ -25067,6 +25070,7 @@ void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includ
             target->gainDb = static_cast<float>(stopObj.getProperty("gainDb", 0.0));
             target->attackMs = static_cast<float>(stopObj.getProperty("attackMs", 0.0));
             target->attackFadeoutMs = static_cast<float>(stopObj.getProperty("attackFadeoutMs", 0.0));
+            target->attackDelayMs = juce::jlimit(0.0f, 500.0f, static_cast<float>(stopObj.getProperty("attackDelayMs", 0.0)));   // 0.9.77
             engine.setStopRandomPitchError(target, (float)(double)stopObj.getProperty(
                 "randomPitchErrorCents", 4.0), true);
             // A combination, a crescendo step or a configuration's registration
@@ -26407,6 +26411,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
             if (parameter == "volume") stop->setDb((float)(-24.0 + normalized * 36.0));
             else if (parameter == "attackGain") stop->gainDb = (float)(-6.0 + normalized * 12.0);
             else if (parameter == "attackTime") { stop->attackMs = (float)(normalized * 250.0); stop->attackFadeoutMs = stop->attackMs; }   // 0..500 ms, half hold, half fade
+            else if (parameter == "attackDelay") stop->attackDelayMs = (float)(normalized * 500.0);   // 0.9.77
             else if (parameter == "attackDecay") stop->attackFadeoutMs = (float)(normalized * 250.0);   // older bindings
             else if (parameter == "note" && note >= 0 && note < 128)
                 stop->setNoteDb(note, (float)(-9.0 + normalized * 18.0));
@@ -26825,6 +26830,7 @@ void MainComponent::globalResetControls(const GlobalResetOptions& o)
             s->setDb(0.0f);
             s->gainDb = 0.0f;
             s->attackMs = 75.0f;
+            s->attackDelayMs = 0.0f;   // 0.9.77
             s->attackFadeoutMs = 75.0f;
             s->voicingExpanded = false;
             s->rankEnabled = true;

@@ -409,6 +409,7 @@ struct Stop
     float gainDb = 0.0f;          // attack boost, -6..6 dB
     float attackMs = 75.0f;       // the attack gain holds this long (the voicing's "Attack Time" = this + attackFadeoutMs, half each; 0..500 ms, default 150)
     float attackFadeoutMs = 75.0f; // ... and then fades back to the normal level over this long
+    float attackDelayMs = 0.0f;    // 0.9.77: the stop's own delay before its pipes speak (voicing "Attack delay", 0..500 ms), added to the global "Attack min. delay"
     float randomPitchErrorCents = 4.0f;
     // Pitch shift of this stop's filled pipes: how far the spectral envelope
     // follows the shift (0..1) for shifts downwards; upwards 0.3 more. Per stop

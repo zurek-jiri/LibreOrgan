@@ -134,8 +134,8 @@ public:
     }
     static constexpr int slidersRowWidth() noexcept   // margin, the widest inset and the six sliders as resized() places them
     {
-        return 5 + 26 + 134 + gainSliderWidth + attackSliderWidth
-            + randomPitchSliderWidth + undulationSliderWidth + formantSliderWidth + 6 * voicingSliderGap;
+        return 5 + 26 + 134 + gainSliderWidth + attackSliderWidth + attackDelaySliderWidth
+            + randomPitchSliderWidth + undulationSliderWidth + formantSliderWidth + 7 * voicingSliderGap;
     }
     static bool velocityRowWraps(const Stop* stop, int rowWidth) noexcept
     {
@@ -191,8 +191,9 @@ public:
         int sy = juce::jmax(y + 4, 54);
         const int sx0 = 5 + inset;
         x = sx0;
-        const int widths[] = { 134, trsm ? 170 : 194, trsm ? 194 : 194, trsm ? 194 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
-        for (int i = 0; i < 6; ++i)
+        // The full layout's order: global, [formant], gain, attack, attack delay (0.9.77), random pitch, undulation, [formant].
+        const int widths[] = { 134, trsm ? 170 : 194, 194, trsm ? 194 : 150, trsm ? 150 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
+        for (int i = 0; i < 7; ++i)
         {
             if (x != sx0 && x + widths[i] > right) { x = sx0; sy += compactSliderLineStep; }
             put(Control::slider, i, x, sy, widths[i]);
@@ -301,6 +302,7 @@ private:
     // slightly shorter than before so that the gaps between them are wider.
     static constexpr int gainSliderWidth = 194;
     static constexpr int attackSliderWidth = 194;
+    static constexpr int attackDelaySliderWidth = 150;   // 0.9.77
     static constexpr int randomPitchSliderWidth = 214;
     static constexpr int undulationSliderWidth = 234;
     static constexpr int formantSliderWidth = 170;
@@ -343,6 +345,8 @@ private:
     juce::Label gainLabel;
     LearnableSlider attackSlider;          // Attack time: the hold and the fade of the attack gain, half each
     juce::Label attackLabel;
+    LearnableSlider attackDelaySlider;     // 0.9.77: the stop's own attack delay (adds to the global Attack min. delay)
+    juce::Label attackDelayLabel;
     LearnableSlider randomPitchSlider;
     juce::Label randomPitchLabel;
     juce::Label diapasonLabel;                      // "Orig.: a1 = ...; temperament = ..."
@@ -385,6 +389,7 @@ private:
     void keySliderChanged(int note, float value);
     void gainSliderChanged();
     void attackSliderChanged();
+    void attackDelaySliderChanged();
     void randomPitchSliderChanged();
     void formantSliderChanged();
     void applyStopState(bool enabled);

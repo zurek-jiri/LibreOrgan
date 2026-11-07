@@ -625,7 +625,10 @@ static const char* const kManualText_part3 =
     "\n"
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
-    "second half: more chiff or a softer speaking, the held tone untouched.\n"
+    "second half: more chiff or a softer speaking, the held tone untouched. Attack\n"
+    "delay (0-500 ms, default 0) lets this stop's pipes speak that much later than\n"
+    "the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -\n"
+    "a slow-speaking stop, a reed that waits behind the flues.\n"
     "\n"
     "### Random pitch error\n"
     "\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "configuration, and the voicing boxes and the audio tabs follow at once;\n"
     "nothing is reloaded.\n"
     "\n"
+    ;
+static const char* const kManualText_part4 =
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
     "*Ignored Patterns...* and *One-shot Patterns...* (top bar, or the\n"
-    ;
-static const char* const kManualText_part4 =
     "Configuration Editor's [Folder name patterns](#85-folder-name-patterns-one-per-line)) are lists of folder-name\n"
     "parts. A folder matching an ignored pattern is not loaded; when the list is\n"
     "changed with an organ loaded, the next *Apply and reload* takes the folders\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "devices still absent are named once, their routes stay silent until the\n"
     "device appears and then reopen by themselves.\n"
     "\n"
+    ;
+static const char* const kManualText_part5 =
     "## 5.7 Getting the most polyphony\n"
     "\n"
     "Every sounding pipe is one **voice** per audio route of its division: three\n"
-    ;
-static const char* const kManualText_part5 =
     "perspectives render every pipe three times, the auxiliary route once more.\n"
     "So the polyphony a computer reaches depends on the organ - the routes, the\n"
     "IRs on them, the drivers and buffer sizes, the samples - which is why\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "\n"
     "The threads rendering now and the kernel in use. Information.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Full kernel from (sounding pitch)\n"
     "\n"
     "Pipes whose sounding fundamental lies at or above this frequency play through\n"
-    ;
-static const char* const kManualText_part6 =
     "the finer (8-tap sinc) kernel for their whole length, which keeps a retuned\n"
     "high tone free of the foreign tone the plain kernel leaves under it. Default\n"
     "3000 Hz on a processor with AVX2 (a few per cent of extra work), 20000 Hz\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "gradually.\n"
     "\n"
     "### Wind: maximum wind model effect\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### Tremulant: harmonic filter\n"
     "\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
-    ;
-static const char* const kManualText_part8 =
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "\n"
     "2 to 11 Hz (default 4.4).\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
-    ;
-static const char* const kManualText_part9 =
     "60 and 100 % of it.\n"
     "\n"
     "### Tremulant phase drift between ranks\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
     "without a coupler is placed stop by stop where the name says); the stops\n"
+    ;
+static const char* const kManualText_part10 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
-    ;
-static const char* const kManualText_part10 =
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
     "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
+    ;
+static const char* const kManualText_part11 =
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
-    ;
-static const char* const kManualText_part11 =
     "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"

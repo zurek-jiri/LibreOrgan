@@ -3342,6 +3342,27 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   missed: max 150 and the defaults 20/15 now. RULE: the wind defaults live in THREE places - applyDefaultWindProfile,
   the Divisions dialog's defaultWind* arrays, the Wind settings dialog rows / Editor addSlider defaults - change all.
   The random strength IS drawn at every stroke (keyStrength at `down`), the release reuses the stroke's.
+  0.9.77 (7 Nov 2026, the user: attack min. delay PER STOP in the voicing, "maybe after top volume" -> put after
+  Attack Time (the attack group stays together); the global and the stop's delay ADD; the red note name lighter;
+  "na webu raděj nech i předchozí verzi"): `Stop::attackDelayMs` (0-500, default 0); in `startNote`'s stop loop a
+  stop whose `keyStartMs[sourceKey] + attackDelayMs` lies ahead is skipped and `delayedStartMs[key]` = the earliest
+  due; processPending re-runs `startNote` for the held key at the due time (the stops already speaking are skipped by
+  the ranks' speaking bits; `keyStartMs[key] = now` is set right BEFORE the first startNote of processPending; a
+  release clears the queue - a stop still waiting never starts). Voicing: `attackDelaySlider`/Label after Attack
+  Time in BOTH layouts (placeSlider, the compact `widths[7]` array - the 0.9.36 rule -, `slidersRowWidth` + 150,
+  7 gaps), `attackDelaySliderChanged`, MIDI learn parameter "attackDelay" (normalized x 500), the voicing state key
+  "attackDelayMs" (written when > 0; voicer.cpp save/load, MainComponent's two copies of the voicing parse and the
+  memories' stop state, the GLOBAL RESET / resetAll zero it), manual sentence in "Attack Gain and Attack Time". Red
+  note names = `juce::Colour(0xffff6464)`. build.yml: the release job KEEPS the previous v* release (the newest
+  other tag by createdAt) and deletes the rest. VERIFICATION LESSON (3:30 at night, the Fireface OFF): every
+  ORGAN_TEST_RECORD / ORGAN_TEST_NOTE run was silent (the Kdousov routes "ASIO Fireface USB: hdspf init failed",
+  Rural's aggregated "All WASAPI Outputs" reopening every 6 s "plays through no endpoint" - voices published to a
+  route without a device are finished at once, polyphony 0) and `collectRouteShifts` gives 0 shifts for such stops,
+  so even the "Attack delay: X waits" debug line never came: a GUI hook proves nothing without a live device - the
+  SELF-TEST (its own device keys) is the way: EngineSelfTest.h "Attack delay (<stop> waits 300 ms ...): N voices
+  100 ms after the key, M after 500 ms -> OK" (M > N > 0). Dev env `ORGAN_ATTACK_DEBUG=1` logs the waits/re-runs.
+  The activity log is APPENDED and rotated at 1 MB (activity-previous.log), not per start - a log slice is read
+  from a length mark, and `Select-Object -First` on a grep of the whole file shows the OLDEST lines.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
