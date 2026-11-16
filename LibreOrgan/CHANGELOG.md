@@ -12,6 +12,48 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.79] - 2026-11-16
+
+### Added
+- Audio meter (#229) as the first cell of the polyphony display: a vertical
+  bargraph of the highest sample of every route and device, measured before
+  the limiter, with the CLIP dot that stays lit after a clip until clicked.
+  The limiter (the safety clip of every route) is described in the meter's
+  tooltip and in the manual.
+- "Attack per key" (#228): a third per-key row of the voicing (-300 to
+  +300 ms): a delay or a cut of the attack (the sample starts that far in,
+  with a short fade-in) per pipe, with a "Randomize" box (30-100 % per stroke
+  and the repetition rules; off = exact). The per-stop "Attack delay" slider
+  of 0.9.77 is gone; its value fills every key at the first load.
+- Audio routing dialog (#236, the top bar's "Audio routing"): every sound card
+  a block, its output channels the cells, every route (division / perspective)
+  a chip in the cells of its channels; drag a chip to change the channel, copy
+  it (Shift or the right button) for one more channel, drag it onto another
+  card to move the route there, onto "No sound card" to silence it; "All
+  divisions" rows fold the routes every division sends the same way; "Test"
+  plays a tone where a route goes; "Add sound card..." for further cards.
+  The Divisions dialog's audio tabs stay as the second way.
+- The combinations file last loaded or saved with an organ is read again once
+  the organ is loaded (#232; Configuration Editor "Load the last combinations
+  file with the organ", on by default).
+- The coupler rail is a cell grid like the stop grid (#233): every button the
+  same size, each keeps its cell, free cells stay free, a spare row while
+  arranging; "Button size" (small / normal / large) in the Couplers dialog.
+- A division goes to the other program window from the right-click menu of
+  its header (#235).
+- A start splash with the start's progress on Windows and macOS (#237); the
+  filled pipes cache is checked on a thread of its own at the start (it held
+  the program 11 s with nothing on the screen).
+
+### Changed
+- "Set" of the combination row is a button the size of a piston, latched
+  orange while on (#230); the bank number is typed by a click on it (#231).
+
+### Fixed
+- The typed name in the "Record" and "Save all combination banks" dialogs
+  could not replace the suggested one (the native dialog lost its caret every
+  half second to the program's modal-window guard).
+
 ## [0.9.78] - 2026-11-07
 
 ### Changed

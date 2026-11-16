@@ -318,8 +318,23 @@ namespace CrashHandler
        #endif
     }
 
+    // 0.9.79 (#237): the start splash shows every note of the start as its status line (set by Main.cpp while
+    // the splash lives, cleared with it; called on the message thread only - the start runs there).
+    inline std::function<void(const juce::String&)>& noteListener()
+    {
+        static std::function<void(const juce::String&)> listener;
+        return listener;
+    }
+
     inline void note(const juce::String& text) noexcept
     {
+        try
+        {
+            if (auto& listener = noteListener())
+                if (auto* mm = juce::MessageManager::getInstanceWithoutCreating(); mm != nullptr && mm->isThisTheMessageThread())
+                    listener(text);
+        }
+        catch (...) {}
         auto& list = detail::crumbs();
         const uint32_t index = detail::crumbIndex().fetch_add(1) % (uint32_t)list.size();
         auto& crumb = list[(size_t)index];

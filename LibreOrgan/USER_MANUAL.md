@@ -430,7 +430,8 @@ button fires even when hidden).
 ## 2.2 The combination row
 
 The pistons (their number: the *Pistons* box in the row), *Set*, the stepping
-buttons *<<* / *>>*, the bank buttons, the display of the combination in use,
+buttons *<<* / *>>*, the bank buttons (held down they scroll; click the bank
+number to type one), the display of the combination in use,
 *Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for
 combination files, and the crescendo.
 
@@ -458,7 +459,13 @@ difference: a chord held through the crescendo never restarts.
 
 The sliders of *Configuration Editor > Global sound* can each be shown on the
 main panel (the checkbox beside them in the editor); all are MIDI-learnable.
-The polyphony display shows the voices sounding now (*NOW*), the most at once
+The polyphony display begins with the **audio meter**: a vertical bargraph of
+the highest sample of every audio route and device, measured before the
+limiter (green to -12 dB, orange to -3 dB, red while the limiter works), and
+the *CLIP* dot above it, which stays lit after a clip until you click it. The
+limiter (the safety clip of every route) softens everything above -0.2 dBFS,
+so the driver never gets more than 0 dBFS - when the dot lights, lower the
+master or the division volumes. Then the voices sounding now (*NOW*), the most at once
 over the last seconds (*PEAK*), the *DSP* load (the time the busiest audio
 thread needed for its last block, as a share of the block; above 100 % the
 sound breaks - [Getting the most polyphony](#57-getting-the-most-polyphony)), the memory the program holds
@@ -480,7 +487,8 @@ division's name, the swell bar (drag it; right-click to learn the swell pedal
 or open *Swell settings...*), the *Tremulant* button (registration, like a
 stop; right-click: *Tremulant settings...*) and *Settings*, which opens the
 Divisions dialog. A right-click on the header's background lists the swell,
-tremulant and wind settings of the division. Drag the dividers between the
+tremulant and wind settings of the division and moves the division to the
+other program window. Drag the dividers between the
 columns to share out the width. The mouse wheel scrolls the workspace, except
 over the sliders of an open voicing row.
 
@@ -489,7 +497,8 @@ over the sliders of an open voicing row.
 The first start opens the main window nearly as large as the screen, with a
 margin at every edge and the taskbar free; from then on the window comes back
 where you left it. *Console > Program windows* opens a second window; *Shown
-in window* in a division's section moves the division there. *Interface
+in window* in a division's section, or *Move this division to window 2* in
+the right-click menu of its header, moves the division there. *Interface
 size* is the program's own scale over the system's display scale, estimated
 at the first start for Full HD, 4K and Retina screens alike. Every dialog
 scrolls when the window is smaller than its content.
@@ -615,11 +624,8 @@ A tick box per layer and one for the plain files: [Velocity layers](#35-velocity
 
 The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for
 the first half of Attack Time (0-500 ms, default 150), fading back over the
-second half: more chiff or a softer speaking, the held tone untouched. Attack
-delay (0-500 ms, default 0) lets this stop's pipes speak that much later than
-the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -
-a slow-speaking stop, a reed that waits behind the flues. It shortens on a
-repeated tone the same way and varies between 30 and 100 % at every stroke.
+second half: more chiff or a softer speaking, the held tone untouched. How
+much later or sooner each pipe speaks is the row [Attack per key](#attack-per-key).
 
 ### Random pitch error
 
@@ -661,6 +667,17 @@ row. The sliders light while the key sounds (the keys the couplers play too, in
 the division where they sound); a **green thumb** marks a filled
 pipe (hover it for its source), an **orange note name** a sample without
 loop points, a **grey slider** no pipe at all.
+
+### Attack per key
+
+A third folding row of the stop's own voicing: how much later (positive) or
+how much sooner (negative, -300 to +300 ms) each pipe speaks after the key. A
+delay adds to the global [Attack minimum delay](#attack-minimum-delay); a cut
+starts the sample that far into its attack with a short fade-in, so a lazy
+pipe speaks promptly. *Randomize* (on by default): 30 to 100 % of the value at
+every stroke, and a tone repeated within the delay comes sooner, as the global
+delay does; off = the value exactly. *Reset to 0 ms* beside the header; the
+right mouse button paints a value across the row.
 
 ## 3.4 Transmissions and extensions
 
@@ -877,6 +894,27 @@ divisions fed from the same wind get half of this one's sag); for every
 division: [Wind: harmonic filter](#wind-harmonic-filter), [Wind: volume change per cent of sag](#wind-volume-change-per-cent-of-sag), the shares of one stop, one pipe and two pipes in the full
 sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 % switches the whole model off).
 
+### Audio routing
+
+The *Audio routing* button of the top bar shows the same routes as one
+picture, in the language of the stop grid: every **sound card** is a block
+(its name, type, rate and buffer in the header), the block's **cells** are the
+card's output channels, and every **route** (a division's perspective, "I. /
+Front") lies as a chip in the cells of its channels - several chips of one
+row are several channels, the pipes spread over them in turn. A perspective
+that every division sends to the same card and channels is one folded row
+*All divisions / Front [N]*; the arrow before it unfolds the divisions.
+
+Drag a chip into a free cell to change the channel (an occupied cell swaps
+the two); with Shift or the right mouse button the chip is **copied**: one
+more channel for the route. Drag a chip onto another card to move the route
+there, or onto *No sound card* to silence it; drag it out of every grid to
+take that channel away (a route keeps one at least). *Add sound card...*
+makes a block for another card, opened when the first route lands there.
+*Test* beside a row plays a soft tone for a second on that route's channels
+alone - you hear where it goes. The audio tabs below show the same data and
+stay the second way.
+
 ## 5.3 The audio tabs
 
 Every perspective of the division has an audio tab, plus one **auxiliary**
@@ -1041,7 +1079,14 @@ pulled over keyboard I at 16'); they are registration (combinations,
 crescendo, MIDI). **Unison Off** silences the division's own pitch; its
 couplers still work. A **melody coupler** couples only the highest key held,
 a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key
-only*, *Melody couplers: legato grace time*).
+only*, *Melody couplers: legato grace time*). *Button size* (small, normal,
+large) sets the size of every coupler button; it travels with the organ.
+
+The coupler rail is a cell grid like the stop grid: every button the same
+size, each keeps its cell, free cells stay free. Hold a coupler three seconds
+to arrange: the free cells appear dashed (a spare row too), drag a coupler
+into a free cell or onto another coupler to swap the two; a click outside
+ends the arranging.
 
 ## 6.2 Combinations and the crescendo
 
@@ -1613,6 +1658,13 @@ so a brief overlap does not make the solo stop jump.
 ### Load the last configuration at startup
 
 Off by default. On: the configuration used last time opens at the start.
+
+### Load the last combinations file with the organ
+
+On by default. The combinations file (all banks of pistons) last loaded or
+saved with this organ is read again once the organ is loaded, on top of the
+combinations the configuration carries. Off: the configuration's own
+combinations only.
 
 ### Glow: a pressed button and a dragged stop glow for a moment
 

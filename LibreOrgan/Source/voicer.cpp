@@ -712,6 +712,23 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     }
     volumeReset.onClick = [this] { resetKeyRow(false); };
     toneReset.onClick = [this] { resetKeyRow(true); };
+    // 0.9.79 (#228): the third row "Attack per key" (the stop's own row only).
+    attackHeader.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+    attackHeader.onClick = [this] { if (toggleSection) toggleSection(2); };
+    attackHeader.setTooltip("Attack per key: a positive value delays this pipe (ms, on top of the global Attack min. delay); a negative "
+        "value CUTS the attack - the sample starts that far in with a short fade-in, a lazy pipe speaks promptly. "
+        "Randomize: 30-100 % of the value at random at every stroke, and a repeated tone comes sooner (as the global "
+        "delay does); off = the value exactly. Click to fold.");
+    attackHeader.getProperties().set("manualChapter", "Attack per key");
+    addAndMakeVisible(attackHeader);
+    attackReset.setTooltip("Sets every slider of this row back to 0 ms");
+    attackReset.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey);
+    attackReset.onClick = [this] { resetAttackRow(); };
+    addAndMakeVisible(attackReset);
+    attackRandomizeBox.setToggleState(stop->attackRandomize, juce::dontSendNotification);
+    attackRandomizeBox.setTooltip("On: 30-100 % of the key's value at random at every stroke, a repeated tone sooner. Off: the value exactly.");
+    attackRandomizeBox.onClick = [this] { this->stop->attackRandomize = attackRandomizeBox.getToggleState(); if (this->stateChanged) this->stateChanged(); };
+    addAndMakeVisible(attackRandomizeBox);
 
     // Per-key sliders and labels - for an OPEN voicing of a stop with pipes only (0.9.43). A compact row
     // shows its button alone, and every opening of a voicing rebuilds the grid (relayout), so nothing is
@@ -752,6 +769,29 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         tone->onValueChange = [this, note, tone] { toneSliderChanged(note, (float)tone->getValue()); };
         toneSliders.add(tone);
         addAndMakeVisible(tone);
+
+        // Third row (0.9.79, #228): the attack delay / cut of this key (-300..300 ms), the stop's own row only.
+        if (!isTransmission())
+        {
+            auto* attack = new LearnableSlider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
+            attack->setRange(-300.0, 300.0, 1.0);
+            attack->getProperties().set("manualChapter", "Attack per key");
+            attack->setValue(stop->getNoteAttackMs(note), juce::dontSendNotification);
+            attack->setTextValueSuffix("");
+            attack->setScrollWheelEnabled(true);
+            attack->setDoubleClickReturnValue(true, 0.0);
+            attack->addMouseListener(this, false);
+            attack->setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
+            attack->onValueChange = [this, note, attack] { attackSliderChanged(note, (float)attack->getValue()); };
+            attackSliders.add(attack);
+            addAndMakeVisible(attack);
+            auto* attackNameLabel = new juce::Label();
+            attackNameLabel->setText(juce::MidiMessage::getMidiNoteName(note, true, true, 3).upToFirstOccurrenceOf(" ", false, false), juce::dontSendNotification);
+            attackNameLabel->setJustificationType(juce::Justification::centred);
+            attackNameLabel->setFont(juce::FontOptions(10.0f));
+            attackNameLabels.add(attackNameLabel);
+            addAndMakeVisible(attackNameLabel);
+        }
 
         // Note name label (above slider)
         juce::String noteName = juce::MidiMessage::getMidiNoteName(note, true, true, 3);
@@ -799,6 +839,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         const bool usable = (hasSample || filled) && !pipeOff;
         slider->setEnabled(usable);
         tone->setEnabled(usable);
+        if (auto* attack = attackSliders[note - noteMin]) attack->setEnabled(usable);   // 0.9.79
 
         // Under the note name: the pipe on/off box. Off = the key stays silent
         // (no extension for a cornet); an extension's copies are freed.
@@ -958,6 +999,16 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     toneReset.setVisible(showToneRow);
     for (auto* s : toneSliders) s->setVisible(showToneRow);
     for (auto* label : toneNameLabels) label->setVisible(showToneRow);
+    {   // 0.9.79: the "Attack per key" row (the stop's own row only)
+        const bool attackRow = withPipes && !isTransmission();
+        const bool showAttackRow = attackRow && attackRowShown();
+        attackHeader.setVisible(attackRow);
+        attackHeader.setSection("Attack per key", attackRowShown());
+        attackReset.setVisible(showAttackRow);
+        attackRandomizeBox.setVisible(showAttackRow);
+        for (auto* s : attackSliders) s->setVisible(showAttackRow);
+        for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
+    }
     const bool stopControls = withPipes && !isTransmission();     // pipe properties: the stop's own row only
     const bool transmissionControls = showVoicing && isTransmission();
     transmissionLabel.setVisible(stopControls);
@@ -981,7 +1032,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);
     attackSlider.setVisible(stopControls); attackLabel.setVisible(stopControls);
-    attackDelaySlider.setVisible(stopControls); attackDelayLabel.setVisible(stopControls);
+    attackDelaySlider.setVisible(false); attackDelayLabel.setVisible(false);   // 0.9.79: replaced by the "Attack per key" row (#228)
     randomPitchSlider.setVisible(stopControls); randomPitchLabel.setVisible(stopControls);
     undulationSlider.setVisible(stopControls); undulationLabel.setVisible(stopControls);
     formantSlider.setVisible(withPipes); formantLabel.setVisible(withPipes);   // stops and transmissions alike
@@ -1314,6 +1365,12 @@ int StopRow::keySliderIndexForComponent(const juce::Component* component, juce::
             if (row != nullptr) *row = const_cast<juce::OwnedArray<LearnableSlider>*>(&toneSliders);
             return index;
         }
+    for (int index = 0; index < attackSliders.size(); ++index)   // 0.9.79: the attack row paints too
+        if (component == attackSliders[index])
+        {
+            if (row != nullptr) *row = const_cast<juce::OwnedArray<LearnableSlider>*>(&attackSliders);
+            return index;
+        }
     return -1;
 }
 
@@ -1322,6 +1379,20 @@ void StopRow::toneSliderChanged(int note, float value)
     if (isTransmission()) engine.setTransmissionKeyTone(stop, transmissionIndex, note, value);
     else engine.setStopNoteTone(stop, note, value);
     if (stateChanged) stateChanged();
+}
+
+// 0.9.79 (#228): the attack delay / cut of one key (the stop's own row; read at the next stroke).
+void StopRow::attackSliderChanged(int note, float value)
+{
+    if (isTransmission()) return;
+    stop->setNoteAttackMs(note, value);
+    if (stateChanged) stateChanged();
+}
+
+void StopRow::resetAttackRow()
+{
+    for (auto* slider : attackSliders)
+        if (slider != nullptr && slider->isEnabled()) slider->setValue(0.0, juce::sendNotificationSync);
 }
 
 void StopRow::resetKeyRow(bool tone)
@@ -1529,13 +1600,14 @@ void StopRow::resized()
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
                     case Control::slider:
                     {
-                        // The order of the full layout: global, [formant], gain, attack, attack delay, random pitch, undulation, [formant].
+                        // The order of the full layout: global, [formant], gain, attack, random pitch, undulation, [formant].
+                        // (0.9.79: the per-stop attack delay slider is gone - "Attack per key" is a per-key row, #228.)
                         juce::Slider* sliders[7]; juce::Label* labels[7];
                         int n = 0;
                         auto add = [&](juce::Slider& s, juce::Label& l) { sliders[n] = &s; labels[n] = &l; ++n; };
                         add(globalSlider, globalLabel);
                         if (isTransmission()) add(formantSlider, formantLabel);
-                        add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(attackDelaySlider, attackDelayLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
+                        add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
                         if (!isTransmission()) add(formantSlider, formantLabel);
                         if (i < n) { labels[i]->setBounds(x, y, w, 16); sliders[i]->setBounds(x, y + 17, w, 26); }
                         break;
@@ -1626,8 +1698,7 @@ void StopRow::resized()
     placeSlider(globalSlider, globalLabel, globalSliderWidth);
     if (isTransmission()) placeSlider(formantSlider, formantLabel, formantSliderWidth);   // the only other slider of a transmission
     placeSlider(gainSlider, gainLabel, gainSliderWidth);
-    placeSlider(attackSlider, attackLabel, attackSliderWidth);
-    placeSlider(attackDelaySlider, attackDelayLabel, attackDelaySliderWidth);
+    placeSlider(attackSlider, attackLabel, attackSliderWidth);   // 0.9.79: the per-stop attack delay slider is gone ("Attack per key" row, #228)
     placeSlider(randomPitchSlider, randomPitchLabel, randomPitchSliderWidth);
     placeSlider(undulationSlider, undulationLabel, undulationSliderWidth);
     if (!isTransmission()) placeSlider(formantSlider, formantLabel, formantSliderWidth);
@@ -1671,6 +1742,12 @@ void StopRow::resized()
         for (auto* box : pipeBoxes) box->setVisible(showVolumeRow);
         for (auto* slider : toneSliders) slider->setVisible(showToneRow);
         for (auto* label : toneNameLabels) label->setVisible(showToneRow);
+        const bool attackRow = showVoicing && !isTransmission();   // 0.9.79
+        const bool showAttackRow = attackRow && attackRowShown();
+        attackHeader.setSection("Attack per key", attackRowShown());
+        attackHeader.setVisible(attackRow); attackReset.setVisible(showAttackRow); attackRandomizeBox.setVisible(showAttackRow);
+        for (auto* slider : attackSliders) slider->setVisible(showAttackRow);
+        for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
     }
     int y = keyAreaTop;
     volumeHeader.setBounds(margin + inset, y, 170, keyHeaderHeight);
@@ -1710,6 +1787,28 @@ void StopRow::resized()
             }
             x += sliderWidth;
         }
+        y += toneLabelsHeight + keySliderHeight;
+    }
+    if (!isTransmission())   // 0.9.79 (#228): the "Attack per key" row under the tone row
+    {
+        attackHeader.setBounds(margin + inset, y, 170, keyHeaderHeight);
+        attackReset.setBounds(margin + inset + 172, y + 2, 92, keyHeaderHeight - 4);
+        attackRandomizeBox.setBounds(margin + inset + 272, y + 1, 110, keyHeaderHeight - 2);
+        y += keyHeaderHeight;
+        if (attackRowShown())
+        {
+            x = margin + inset;
+            for (int note = noteMin; note <= noteMax; ++note)
+            {
+                const int idx = note - noteMin;
+                if (auto* slider = attackSliders[idx])
+                {
+                    slider->setBounds(x, y + toneLabelsHeight, sliderWidth, keySliderHeight);
+                    if (auto* nameLabel = attackNameLabels[idx]) nameLabel->setBounds(x, y, sliderWidth, 12);
+                }
+                x += sliderWidth;
+            }
+        }
     }
 }
 
@@ -1746,7 +1845,10 @@ void StopRow::updateFromStop()
             slider->setValue(stop->getNoteDb(note), juce::sendNotification);
         if (auto* slider = toneSliders[idx])
             slider->setValue(stop->getNoteToneDb(note), juce::dontSendNotification);
+        if (auto* slider = attackSliders[idx])   // 0.9.79
+            slider->setValue(stop->getNoteAttackMs(note), juce::dontSendNotification);
     }
+    attackRandomizeBox.setToggleState(stop->attackRandomize, juce::dontSendNotification);
     stopButton.setButtonText(caption());
     stopButton.setColour(juce::TextButton::buttonColourId,
         stop->enabled ? onColour() : juce::Colours::darkgrey);
@@ -2536,22 +2638,52 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         {
             return basePreferredHeight(width) + (missing.isVisible() ? 34 : 0);
         }
+        // 0.9.79 (#233): the couplers lie in a CELL GRID like the stops - every cell the same size (the widest
+        // label x the size setting), a coupler keeps its cell (col, row) across rebuilds, free cells stay free,
+        // a new row appears when the last one holds a coupler (one more while arranging). Dragging moves a
+        // coupler into a free cell or swaps it with the one there. No flow layout, no "+ gap".
+        int couplerCellWidth() const
+        {
+            int w = 86;
+            for (auto* button : couplerButtons) w = juce::jmax(w, juce::jlimit(86, 150, 28 + button->getButtonText().length() * 8));
+            return juce::roundToInt((float)w * couplerScale);
+        }
+        int couplerCellHeight() const { return juce::roundToInt(36.0f * couplerScale); }
+        int couplerColumns(int width) const { return juce::jmax(1, (juce::jmax(90, width - 10) + 5) / (couplerCellWidth() + 5)); }
+        // The cell of every coupler: the stored one when it fits the columns and is free, else the first free cell.
+        std::vector<std::pair<int, int>> couplerCellsFor(int width) const
+        {
+            const int columns = couplerColumns(width);
+            std::vector<std::pair<int, int>> cells((size_t)couplerButtons.size(), { -1, -1 });
+            std::set<std::pair<int, int>> taken;
+            for (int i = 0; i < couplerButtons.size(); ++i)
+            {
+                if (!cellGetter) break;
+                const auto cell = cellGetter(couplerButtons[i]->getProperties().getWithDefault("couplerId", {}).toString());
+                if (cell.first < 0 || cell.second < 0 || cell.first >= columns || taken.count(cell) != 0) continue;
+                cells[(size_t)i] = cell;
+                taken.insert(cell);
+            }
+            int next = 0;
+            for (int i = 0; i < couplerButtons.size(); ++i)
+            {
+                if (cells[(size_t)i].first >= 0) continue;
+                while (taken.count({ next % columns, next / columns }) != 0) ++next;
+                cells[(size_t)i] = { next % columns, next / columns };
+                taken.insert(cells[(size_t)i]);
+            }
+            return cells;
+        }
+        int couplerRows(int width) const
+        {
+            int rows = 0;
+            for (const auto& cell : couplerCellsFor(width)) rows = juce::jmax(rows, cell.second + 1);
+            return rows + (couplerArrange ? 1 : 0);
+        }
         int basePreferredHeight(int width) const
         {
             if (couplerButtons.isEmpty() && !couplerArrange) return 42;
-            int x = 5, rows = 1;
-            const int usable = juce::jmax(90, width - 10);
-            for (auto* button : couplerButtons)
-            {
-                const int w = juce::jlimit(86, 150, 28 + button->getButtonText().length() * 8);
-                if (x > 5 && x + w > usable) { ++rows; x = 5; }
-                x += w + 5;
-            }
-            if (couplerArrange)   // the spare slot at the end
-            {
-                if (x > 5 && x + 100 > usable) ++rows;
-            }
-            return 40 + rows * 41;
+            return 40 + juce::jmax(1, couplerRows(width)) * (couplerCellHeight() + 5);
         }
         void paint(juce::Graphics& g) override
         {
@@ -2654,16 +2786,23 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             for (auto* button : couplerButtons)
                 drawMarchingBorder(g, button->getBounds().toFloat().expanded(2.0f), dashPhase,
                     juce::Colours::white.withAlpha(0.85f));
-            if (!spareSlot.isEmpty())   // the free place at the end
-            {
-                juce::Path outline;
-                outline.addRoundedRectangle(spareSlot.toFloat().reduced(3.0f), 4.0f);
-                juce::Path dashed;
-                const float dashes[]{ 4.0f, 4.0f };
-                juce::PathStrokeType(1.0f).createDashedStroke(dashed, outline, dashes, 2);
-                g.setColour(juce::Colours::white.withAlpha(0.35f));
-                g.fillPath(dashed);
-            }
+            // 0.9.79 (#233): every free cell of the grid (one spare row included) dashed, as the stop grid shows them.
+            const int cellW = couplerCellWidth(), cellH = couplerCellHeight();
+            const int columns = couplerColumns(getWidth()), rows = couplerRows(getWidth());
+            const auto cells = couplerCellsFor(getWidth());
+            for (int row = 0; row < rows; ++row)
+                for (int column = 0; column < columns; ++column)
+                {
+                    if (std::find(cells.begin(), cells.end(), std::make_pair(column, row)) != cells.end()) continue;
+                    const juce::Rectangle<int> cell(5 + column * (cellW + 5), 40 + row * (cellH + 5), cellW, cellH);
+                    juce::Path outline;
+                    outline.addRoundedRectangle(cell.toFloat().reduced(3.0f), 4.0f);
+                    juce::Path dashed;
+                    const float dashes[]{ 4.0f, 4.0f };
+                    juce::PathStrokeType(1.0f).createDashedStroke(dashed, outline, dashes, 2);
+                    g.setColour(juce::Colours::white.withAlpha(0.35f));
+                    g.fillPath(dashed);
+                }
         }
         void resized() override
         {
@@ -2678,21 +2817,11 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             swell.setBounds(top.removeFromLeft(juce::roundToInt(104 * scale)).reduced(2, 0));
             tremulant.setBounds(top.removeFromLeft(juce::roundToInt(94 * scale)).reduced(2));
             setup.setBounds(top.removeFromLeft(juce::roundToInt(80 * scale)).reduced(2));
-            int x = 5, y = 40;
-            const int right = juce::jmax(90, getWidth() - 5);
-            for (auto* button : couplerButtons)
-            {
-                const int w = juce::jlimit(86, 150, 28 + button->getButtonText().length() * 8);
-                if (x > 5 && x + w > right) { x = 5; y += 41; }
-                button->setBounds(x, y, w, 36);
-                x += w + 5;
-            }
-            spareSlot = {};
-            if (couplerArrange)
-            {
-                if (x > 5 && x + 100 > right) { x = 5; y += 41; }
-                spareSlot = { x, y, 100, 36 };
-            }
+            // 0.9.79 (#233): the cell grid of the couplers.
+            const int cellW = couplerCellWidth(), cellH = couplerCellHeight();
+            const auto cells = couplerCellsFor(getWidth());
+            for (int i = 0; i < couplerButtons.size(); ++i)
+                couplerButtons[i]->setBounds(5 + cells[(size_t)i].first * (cellW + 5), 40 + cells[(size_t)i].second * (cellH + 5), cellW, cellH);
             if (missing.isVisible()) missing.setBounds(5, getHeight() - 34, juce::jmax(60, getWidth() - 10), 30);
         }
     private:
@@ -2838,36 +2967,33 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
 
         void dropCoupler(LeftOnlyTextButton* dragged, juce::Point<int> screenPosition)
         {
+            // 0.9.79 (#233): the cell under the dragged coupler's centre - free: it moves there; held by another
+            // coupler: the two swap; outside the grid: it snaps back. The owner stores the cells and rebuilds.
             const auto centre = getLocalPoint(nullptr, screenPosition)
                 + (dragged->getLocalBounds().getCentre() - dragged->getLocalPoint(nullptr, screenPosition));
-            std::vector<LeftOnlyTextButton*> order;
-            for (auto* button : couplerButtons) order.push_back(button);
-            LeftOnlyTextButton* target = nullptr;
-            for (auto* button : order)
-                if (button != dragged && button->getBounds().contains(centre)) { target = button; break; }
-            if (target == nullptr && !spareSlot.contains(centre)) { resized(); return; }   // dropped outside: snap back
-            order.erase(std::remove(order.begin(), order.end(), dragged), order.end());
-            if (target == nullptr)
-                order.push_back(dragged);   // the spare slot: move to the end
-            else
-            {
-                std::vector<LeftOnlyTextButton*> original;
-                for (auto* button : couplerButtons) original.push_back(button);
-                const bool forward = std::find(original.begin(), original.end(), target)
-                    > std::find(original.begin(), original.end(), dragged);
-                auto at = std::find(order.begin(), order.end(), target);
-                order.insert(forward ? at + 1 : at, dragged);
-            }
-            std::vector<juce::String> ids;
-            for (auto* button : order) ids.push_back(button->getProperties().getWithDefault("couplerId", {}).toString());
-            if (!couplerReorder) { resized(); return; }
-            // The owner rebuilds the headers; do it after this mouse event.
-            auto callback = couplerReorder;
+            const int cellW = couplerCellWidth(), cellH = couplerCellHeight();
+            const int columns = couplerColumns(getWidth()), rows = couplerRows(getWidth());
+            const int column = (centre.x - 5) / (cellW + 5), row = (centre.y - 40) / (cellH + 5);
+            if (centre.x < 5 || centre.y < 40 || column < 0 || column >= columns || row < 0 || row >= rows || !cellSetter) { resized(); return; }
+            const auto cells = couplerCellsFor(getWidth());
+            const int draggedIndex = couplerButtons.indexOf(dragged);
+            if (draggedIndex < 0) { resized(); return; }
+            auto idOf = [this](int i) { return couplerButtons[i]->getProperties().getWithDefault("couplerId", {}).toString(); };
+            std::vector<std::pair<juce::String, std::pair<int, int>>> moves;
+            for (int i = 0; i < couplerButtons.size(); ++i)
+                if (i != draggedIndex && cells[(size_t)i] == std::make_pair(column, row)) moves.push_back({ idOf(i), cells[(size_t)draggedIndex] });   // the swap
+            moves.push_back({ idOf(draggedIndex), { column, row } });
+            auto setter = cellSetter;
             const int m = manual;
-            juce::MessageManager::callAsync([callback, m, ids] { callback(m, ids); });
+            // The owner rebuilds the headers; do it after this mouse event.
+            juce::MessageManager::callAsync([setter, m, moves] { for (const auto& move : moves) setter(m, move.first, move.second.first, move.second.second); });
         }
     public:
         std::function<void(int, const std::vector<juce::String>&)> couplerReorder;
+        // 0.9.79 (#233): the stored cell of a coupler id ((-1,-1) = none) and the store of a moved one (manual, id, col, row).
+        std::function<std::pair<int, int>(const juce::String&)> cellGetter;
+        std::function<void(int, const juce::String&, int, int)> cellSetter;
+        float couplerScale = 1.0f;   // the "Coupler buttons" size setting (0.8 / 1 / 1.3)
         std::function<void(int, bool)> arrangeStateChanged;
         std::function<void()> missingAction;   // the notice under the header was clicked   // (manual, arranging) - remembered by the owner
         std::function<void(int)> headerMenu;   // right-click on the header's background
@@ -3066,6 +3192,21 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             [this](int m) { return getManualActivityUntil(m); });
         header->setStopsAction([this, manual] { if (stopBuildCallback) stopBuildCallback(manual); });
         header->couplerReorder = couplerOrderSetter;
+        // 0.9.79 (#233): the couplers' cells (the voicing state's "couplerGrid") and the button size setting.
+        header->couplerScale = couplerButtonScale;
+        header->cellGetter = [this, manual](const juce::String& id) -> std::pair<int, int>
+        {
+            const auto division = couplerCells.find(manual);
+            if (division == couplerCells.end()) return { -1, -1 };
+            const auto cell = division->second.find(id);
+            return cell == division->second.end() ? std::make_pair(-1, -1) : cell->second;
+        };
+        header->cellSetter = [this](int m, const juce::String& id, int column, int row)
+        {
+            couplerCells[m][id] = { column, row };
+            if (stateChanged) stateChanged();
+            if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
+        };
         // Arranging couplers survives the rebuild that every reorder triggers.
         header->arrangeStateChanged = [this](int m, bool on) { couplerArrangeManual = on ? m : -1; };
         header->setCouplerArranging(couplerArrangeManual == manual);
@@ -3108,7 +3249,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             // Folding of the per-key rows: each stop (and transmission) remembers its own.
             row->setVoicingFolds([this, stop, transmissionIndex](int section)
                 {
-                    bool* flag = section == 0 ? &stop->volumeKeysExpanded : &stop->toneKeysExpanded;
+                    bool* flag = section == 0 ? &stop->volumeKeysExpanded : section == 1 ? &stop->toneKeysExpanded : &stop->attackKeysExpanded;   // 2 = "Attack per key" (0.9.79)
                     if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
                     {
                         auto& t = stop->transmissions[(size_t)transmissionIndex];
@@ -4299,6 +4440,15 @@ juce::var Voicer::createState() const
         }
         stopObj->setProperty(juce::Identifier("perNoteDb"), juce::var(perNoteObj.get()));
         stopObj->setProperty("perNoteTone", juce::var(perNoteToneObj.get()));
+        if (stop->anyNoteAttack())   // 0.9.79 (#228): "Attack per key", the non-zero keys only
+        {
+            auto attackObj = std::make_unique<juce::DynamicObject>();
+            for (int note = 0; note < 128; ++note)
+                if (stop->getNoteAttackMs(note) != 0.0f) attackObj->setProperty(juce::Identifier(juce::String(note)), (double)stop->getNoteAttackMs(note));
+            stopObj->setProperty("perNoteAttackMs", juce::var(attackObj.release()));
+        }
+        if (!stop->attackRandomize) stopObj->setProperty("attackRandomize", false);
+        if (stop->attackKeysExpanded) stopObj->setProperty("attackKeysExpanded", true);
         {
             juce::Array<juce::var> off;
             for (int pipe = 0; pipe < 128; ++pipe) if (stop->pipeDisabled.test((size_t)pipe)) off.add(pipe);
@@ -4348,6 +4498,18 @@ juce::var Voicer::createState() const
         if (columns > 0) columnsObj->setProperty(juce::Identifier(juce::String(division.first)), columns);
     }
     root->setProperty("stopGridColumns", juce::var(columnsObj.get()));
+    {   // 0.9.79 (#233): the couplers' cells per division {division: {coupler id: "col,row"}}
+        juce::DynamicObject::Ptr couplersObj = new juce::DynamicObject();
+        for (const auto& division : couplerCells)
+        {
+            if (division.second.empty()) continue;
+            juce::DynamicObject::Ptr cellsObj = new juce::DynamicObject();
+            for (const auto& cell : division.second)
+                cellsObj->setProperty(juce::Identifier(cell.first), juce::String(cell.second.first) + "," + juce::String(cell.second.second));
+            couplersObj->setProperty(juce::Identifier(juce::String(division.first)), juce::var(cellsObj.get()));
+        }
+        root->setProperty("couplerGrid", juce::var(couplersObj.get()));
+    }
     // Stops taken off the grid ("stop pool") per division.
     juce::DynamicObject::Ptr poolObj = new juce::DynamicObject();
     for (const auto& division : hiddenStops)
@@ -4452,6 +4614,18 @@ void Voicer::loadState(const juce::File& file)
     auto parsed = juce::JSON::parse(text);
     if (!parsed.isObject()) return;
     migrateTransmissionIds(parsed);   // 0.9.7
+    // 0.9.79 (#233): the couplers' cells (absent in older files: the couplers take the first free cells in order).
+    couplerCells.clear();
+    if (auto* couplersObj = parsed.getProperty("couplerGrid", juce::var()).getDynamicObject())
+        for (const auto& division : couplersObj->getProperties())
+            if (auto* cellsObj = division.value.getDynamicObject())
+                for (const auto& cell : cellsObj->getProperties())
+                {
+                    const auto text = cell.value.toString();
+                    const int column = text.upToFirstOccurrenceOf(",", false, false).getIntValue();
+                    const int row = text.fromFirstOccurrenceOf(",", false, false).getIntValue();
+                    if (column >= 0 && row >= 0) couplerCells[division.name.toString().getIntValue()][cell.name.toString()] = { column, row };
+                }
 
     if (auto* gridObj = parsed.getProperty("stopGrid", juce::var()).getDynamicObject())
     {
@@ -4656,6 +4830,15 @@ void Voicer::loadState(const juce::File& file)
                     if (auto* toneObj = stopObj->getProperty("perNoteTone").getDynamicObject())
                         for (const auto& prop : toneObj->getProperties())
                             stop->setNoteToneDb(prop.name.toString().getIntValue(), (float)(double)prop.value);
+                    // 0.9.79 (#228): "Attack per key"; an older file's per-stop "attackDelayMs" (0.9.77) fills every key.
+                    stop->attackKeyMs.fill(0.0f);
+                    if (auto* attackObj = stopObj->getProperty("perNoteAttackMs").getDynamicObject())
+                        for (const auto& prop : attackObj->getProperties())
+                            stop->setNoteAttackMs(prop.name.toString().getIntValue(), (float)(double)prop.value);
+                    else if (stop->attackDelayMs > 0.0f)
+                        for (int note = 0; note < 128; ++note) stop->setNoteAttackMs(note, stop->attackDelayMs);
+                    stop->attackRandomize = !stopObj->hasProperty("attackRandomize") || (bool)stopObj->getProperty("attackRandomize");
+                    stop->attackKeysExpanded = (bool)stopObj->getProperty("attackKeysExpanded");
                 }
                 // Pipes switched off in the voicing.
                 {
@@ -4940,6 +5123,7 @@ void Voicer::resetAll(bool resetGrid)
             stop->gainDb = 0.0f;
             stop->attackMs = 75.0f;
             stop->attackDelayMs = 0.0f;   // 0.9.77
+            stop->attackKeyMs.fill(0.0f); stop->attackRandomize = true;   // 0.9.79 (#228)
             stop->attackFadeoutMs = 75.0f;
         }
     }

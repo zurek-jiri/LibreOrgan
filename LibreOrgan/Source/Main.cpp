@@ -19,6 +19,47 @@
 #endif
 
 //==============================================================================
+// 0.9.79 (#237): the start splash - a borderless window shown BEFORE the main window is built (the build takes
+// seconds: the settings, the audio devices, the voice pool, the filled pipes cache - 11 s on 16 Nov 2026 with
+// nothing on the screen), with every note of the start as its status line. The message loop does not run while
+// the main window is built, so the splash paints itself synchronously (performAnyPendingRepaintsNow) at every
+// note. Not on Linux: a separate window never appeared on KDE Wayland (0.8.167); the StartCover inside the
+// window stays there.
+struct StartSplash final : public juce::TopLevelWindow
+{
+    StartSplash() : juce::TopLevelWindow("LibreOrgan Sampler", true)
+    {
+        picture = juce::ImageCache::getFromMemory(BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize);
+        setOpaque(true);
+        const int w = 520, h = 360;
+        juce::Rectangle<int> area(0, 0, 1920, 1080);
+        if (auto* display = UIScale::startDisplay()) area = display->userArea;
+        setBounds(area.getCentreX() - w / 2, area.getCentreY() - h / 2, w, h);
+        setVisible(true);
+        toFront(false);
+        paintNow();
+    }
+    float getDesktopScaleFactor() const override { return UIScale::factor(); }
+    void setStatus(const juce::String& text) { status = text; repaint(); paintNow(); }
+    void paintNow() { if (auto* peer = getPeer()) peer->performAnyPendingRepaintsNow(); }
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(juce::Colour(0xff1c1f24));
+        g.setColour(juce::Colours::darkgrey);
+        g.drawRect(getLocalBounds(), 1);
+        const float side = 220.0f;
+        g.drawImage(picture, juce::Rectangle<float>(((float)getWidth() - side) / 2.0f, 22.0f, side, side), juce::RectanglePlacement::centred);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(22.0f, juce::Font::bold));
+        g.drawText("LibreOrgan Sampler", 0, 252, getWidth(), 30, juce::Justification::centred);
+        g.setColour(juce::Colours::lightgrey);
+        g.setFont(juce::FontOptions(13.0f));
+        g.drawFittedText(status, getLocalBounds().withTop(getHeight() - 60).reduced(16, 6), juce::Justification::centred, 2, 0.8f);
+    }
+    juce::Image picture;
+    juce::String status{ "Starting ..." };
+};
+
 class LibreOrganApplication  : public juce::JUCEApplication
 {
 public:
@@ -210,11 +251,20 @@ public:
         }
         lookAndFeel = std::make_unique<UIScale::LookAndFeel>();
         juce::LookAndFeel::setDefaultLookAndFeel(lookAndFeel.get());
+       #if ! JUCE_LINUX
+        // 0.9.79 (#237): the splash with the start's notes as its status, until the main window stands.
+        startSplash = std::make_unique<StartSplash>();
+        CrashHandler::noteListener() = [splash = startSplash.get()](const juce::String& text) { splash->setStatus(text); };
+       #endif
         // A stall of the message thread (a frozen window) goes to the activity
         // log with the thread's stack, so it can be traced afterwards.
         stallWatchdog = std::make_unique<CrashHandler::StallWatchdog>();
         MainComponent::startupFile = fileFromCommandLine(commandLine);   // before the MainComponent exists (0.9.16)
         mainWindow.reset(new MainWindow(getApplicationName()));
+       #if ! JUCE_LINUX
+        CrashHandler::noteListener() = nullptr;   // the splash's last note; the window is up, the splash goes once it has painted
+        juce::Timer::callAfterDelay(700, [this] { startSplash.reset(); });
+       #endif
     }
 
     // A file named on the command line (0.9.16): a configuration, a published zip, a RAR archive or a
@@ -410,6 +460,7 @@ private:
     std::unique_ptr<UIScale::LookAndFeel> lookAndFeel;   // the default look and feel: alert boxes at the interface size
     std::unique_ptr<CrashHandler::StallWatchdog> stallWatchdog;
     std::unique_ptr<MainWindow> mainWindow;
+    std::unique_ptr<StartSplash> startSplash;   // 0.9.79 (#237): until the main window stands
     std::unique_ptr<juce::FileLogger> juceLog;
 };
 

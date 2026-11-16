@@ -684,8 +684,9 @@ namespace EngineSelfTest
             // 0.9.78: the delay is 30-100 % at random (300-1000 ms here) and shortened after a tone finished
             // within it - so 1.2 s of silence first, and the delay long enough for 100 ms to lie inside it.
             Stop* probe = engine.getStops()[0];
-            const float savedDelay = probe->attackDelayMs;
-            probe->attackDelayMs = 1000.0f;
+            // 0.9.79 (#228): the delay is per key ("Attack per key"); the probe sets key 60 alone.
+            const float savedDelay = probe->getNoteAttackMs(60);
+            probe->setNoteAttackMs(60, 1000.0f);
             const int division = juce::jlimit(0, divisions - 1, probe->primaryManual);
             { BlockStats t; renderBlocks(225, t); }
             engine.noteOn(60, 127, division);
@@ -698,7 +699,7 @@ namespace EngineSelfTest
             late = engine.getCurrentPolyphony();   // ~1100 ms
             engine.noteOff(60, division);
             { BlockStats t; for (int drain = 0; drain < 300 && engine.getCurrentPolyphony() > 0; ++drain) renderBlocks(1, t); }
-            probe->attackDelayMs = savedDelay;
+            probe->setNoteAttackMs(60, savedDelay);
             report << "Attack delay (" << probe->name << " waits 300-1000 ms, key 60 of division " << division << "): " << early
                    << " voices 100 ms after the key, " << late << " voices after 1100 ms -> " << (late > early && early > 0 ? "OK" : "WRONG") << "\n";
         }

@@ -6248,15 +6248,24 @@ struct SamplerEngine::Impl
             // 0.9.78: the global delay's repetition rules against the stop's own value (a tone finished within half
             // of it: no delay; within the whole: half; a series of strikes within it: none), then 30-100 % at random
             // per strike and stop - all from figures fixed at the key's start, so the re-run reaches the same due.
-            if (stop->attackDelayMs > 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
+            // 0.9.79 (#228): the value is PER KEY ("Attack per key" row, -300..300 ms): > 0 the delay as before,
+            // < 0 a CUT - the attack sample starts that far in with a short fade-in (a lazy pipe made prompt);
+            // the random 30-100 % share applies to both unless the row's "Randomize" is off.
+            const float attackKeyMs = stop->getNoteAttackMs(midiNote);
+            double attackCutMs = 0.0;   // the cut of this stop's pipes on this key (the startRank lambda below reads it)
+            if (attackKeyMs != 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
             {
-                double delay = (double)stop->attackDelayMs;
-                const double sinceFinish = keySinceFinishMs[(size_t)sourceKey], interval = keyOnIntervalMs[(size_t)sourceKey];
-                if (sinceFinish >= 0.0 && sinceFinish <= delay * 0.5) delay = 0.0;
-                else if (sinceFinish >= 0.0 && sinceFinish <= delay) delay *= 0.5;
-                else if (interval >= 0.0 && interval <= delay) delay = 0.0;
-                const double share = std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887, 1.0);
-                delay *= 0.3 + 0.7 * share;
+                const double share = stop->attackRandomize ? 0.3 + 0.7 * std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887, 1.0) : 1.0;
+                if (attackKeyMs < 0.0f) attackCutMs = -(double)attackKeyMs * share;
+                double delay = juce::jmax(0.0, (double)attackKeyMs);
+                if (delay > 0.0 && stop->attackRandomize)
+                {
+                    const double sinceFinish = keySinceFinishMs[(size_t)sourceKey], interval = keyOnIntervalMs[(size_t)sourceKey];
+                    if (sinceFinish >= 0.0 && sinceFinish <= delay * 0.5) delay = 0.0;
+                    else if (sinceFinish >= 0.0 && sinceFinish <= delay) delay *= 0.5;
+                    else if (interval >= 0.0 && interval <= delay) delay = 0.0;
+                }
+                delay *= share;
                 const double due = keyStartMs[(size_t)sourceKey] + delay;
                 if (delay > 0.0 && nowMs() < due)
                 {
@@ -6524,6 +6533,18 @@ struct SamplerEngine::Impl
                         const float shelfMs = juce::jmax(1.0f, owner.velocityShelfMs.load(std::memory_order_relaxed));
                         v.attackToneDb = -shelfDb;
                         v.attackToneStepPerFrame = shelfDb / (float)juce::jmax(1.0, shelfMs * 0.001 * rate);
+                    }
+                    // 0.9.79 (#228): the attack CUT of "Attack per key" (a negative value): the sample starts that
+                    // far in (never beyond half of it) with an 8 ms fade-in - the lazy pipe speaks promptly.
+                    if (attackCutMs > 0.0 && sampleToPlay != nullptr && sampleToPlay->numFrames > 0)
+                    {
+                        const double cutFrames = juce::jlimit(0.0, (double)sampleToPlay->numFrames * 0.5, attackCutMs * 0.001 * sampleToPlay->sampleRate);
+                        if (cutFrames >= 1.0)
+                        {
+                            v.pos = (uint64_t)cutFrames << 32;
+                            const uint32_t fade = (uint32_t)juce::jmax(1.0, 0.008 * rate);
+                            if (fade > v.fadeInTotal) { v.fadeInTotal = v.fadeInRemaining = fade; }
+                        }
                     }
                     v.attackBoost = juce::Decibels::decibelsToGain(stop->gainDb);
                     v.attackHold = (uint32_t)juce::jmax(0.0, stop->attackMs * 0.001 * rate);
@@ -7463,6 +7484,7 @@ struct SamplerEngine::Impl
 
         // Safety clip: identity below 0.98, smooth saturation above so a huge
         // registration can never hand hard-clipped garbage to the driver.
+        float blockPeak = 0.0f;   // 0.9.79 (#229): the level BEFORE the clip - what the audio meter shows
         for (int ci = 0; ci < ctx.outCount; ++ci)
         {
             const int ch = ctx.outChannels[ci];
@@ -7472,6 +7494,7 @@ struct SamplerEngine::Impl
             {
                 const float x = data[i];
                 const float a = std::abs(x);
+                if (a > blockPeak && std::isfinite(a)) blockPeak = a;
                 if (a > 0.98f)
                 {
                     const float over = a - 0.98f;
@@ -7480,6 +7503,15 @@ struct SamplerEngine::Impl
                 }
                 else if (!std::isfinite(x)) data[i] = 0.0f;
             }
+        }
+        {
+            // The peak over every route and device since the display last read it (positive floats
+            // order like their bits); the clip flag = the limiter worked on at least one sample.
+            uint32_t bits;
+            std::memcpy(&bits, &blockPeak, sizeof(bits));
+            uint32_t known = statOutputPeakBits.load(std::memory_order_relaxed);
+            while (bits > known && !statOutputPeakBits.compare_exchange_weak(known, bits, std::memory_order_relaxed)) {}
+            if (blockPeak > 0.98f) statOutputClipped.store(true, std::memory_order_relaxed);
         }
 
         lap(statRouteClip);
@@ -7578,6 +7610,8 @@ struct SamplerEngine::Impl
             atomicMax(statRouteMaxWait, tlPoolWaitTicks);
         }
     }
+    std::atomic<uint32_t> statOutputPeakBits{ 0 };   // 0.9.79 (#229): the audio meter's peak (float bits) since its last read
+    std::atomic<bool> statOutputClipped{ false };    // ... and whether the safety clip worked meanwhile
     std::atomic<int> activeAudioThreads{ 1 };   // device callback threads that rendered within 250 ms
     // The device thread's profile: profiling-clock ticks summed over the route
     // callbacks since the last takeRenderPoolStats (see RenderPoolStats).
@@ -7830,6 +7864,17 @@ void SamplerEngine::setKernelOverride(int kind) noexcept
         CrashHandler::note(juce::String("Render kernel: ") + (applied < 0 ? juce::String("automatic (") + kernelName(envKernel()) + ")" : juce::String(kernelName((KernelKind)applied))));
 }
 int SamplerEngine::getKernelOverride() noexcept { return gKernelOverride.load(); }
+
+float SamplerEngine::takeOutputPeak(bool& clipped) noexcept
+{
+    clipped = false;
+    if (impl == nullptr) return 0.0f;
+    const uint32_t bits = impl->statOutputPeakBits.exchange(0, std::memory_order_relaxed);
+    clipped = impl->statOutputClipped.exchange(false, std::memory_order_relaxed);
+    float peak;
+    std::memcpy(&peak, &bits, sizeof(peak));
+    return peak;
+}
 
 SamplerEngine::RenderPoolStats SamplerEngine::takeRenderPoolStats() noexcept
 {
@@ -10594,23 +10639,31 @@ void SamplerEngine::pruneStaleCopyCacheFiles()
     // Files of an older format (they would never be read) and leftover
     // temporaries go, so the folder holds nothing the cache cannot use.
     if (copyCacheDir == juce::File()) return;
-    int removed = 0;
-    int64_t bytes = 0;
-    for (const auto& file : copyCacheDir.findChildFiles(juce::File::findFiles, false, "*.ospc*"))
+    // 0.9.79 (#237): on a thread of its own - every file's header is opened, and 2 180 files (9.8 GB) on a cold
+    // disk held the message thread 11 s at every start before any window existed. A ".part" temporary younger
+    // than a minute may be a build writing right now: left alone.
+    juce::Thread::launch([directory = copyCacheDir]
     {
-        bool stale = file.getFileName().endsWithIgnoreCase(".part");
-        if (!stale)
+        int removed = 0;
+        int64_t bytes = 0;
+        const auto now = juce::Time::getCurrentTime();
+        for (const auto& file : directory.findChildFiles(juce::File::findFiles, false, "*.ospc*"))
         {
-            juce::FileInputStream in(file);
-            stale = !in.openedOk() || (uint32_t)in.readInt() != kCopyCacheMagic || in.readInt() != kCopyCacheVersion;
+            bool stale = file.getFileName().endsWithIgnoreCase(".part");
+            if (stale && (now - file.getLastModificationTime()).inSeconds() < 60.0) continue;
+            if (!stale)
+            {
+                juce::FileInputStream in(file);
+                stale = !in.openedOk() || (uint32_t)in.readInt() != kCopyCacheMagic || in.readInt() != kCopyCacheVersion;
+            }
+            if (!stale) continue;
+            const int64_t size = file.getSize();
+            if (file.deleteFile()) { ++removed; bytes += size; }
         }
-        if (!stale) continue;
-        const int64_t size = file.getSize();
-        if (file.deleteFile()) { ++removed; bytes += size; }
-    }
-    if (removed > 0)
-        CrashHandler::note("Filled pipes cache: " + juce::String(removed) + " file(s) of an older format removed ("
-            + juce::File::descriptionOfSizeInBytes(bytes) + ")");
+        if (removed > 0)
+            CrashHandler::note("Filled pipes cache: " + juce::String(removed) + " file(s) of an older format removed ("
+                + juce::File::descriptionOfSizeInBytes(bytes) + ")");
+    });
 }
 
 int SamplerEngine::removeCopyCacheFilesOfUnloadedRanks()

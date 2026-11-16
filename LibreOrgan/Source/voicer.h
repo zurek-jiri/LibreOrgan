@@ -113,10 +113,12 @@ public:
     // key" headers and, when unfolded, their rows of vertical sliders.
     // Volume row labels: MIDI number, note name and the pipe on/off checkbox.
     static constexpr int keyHeaderHeight = 22, keySliderHeight = 180, keyLabelsHeight = 40, toneLabelsHeight = 12;
-    static int keyAreaHeight(bool volumeExpanded, bool toneExpanded) noexcept
+    // 0.9.79 (#228): a third row "Attack per key" (the stop's own row only, never a transmission's).
+    static int keyAreaHeight(bool volumeExpanded, bool toneExpanded, bool attackRow = false, bool attackExpanded = false) noexcept
     {
         return keyHeaderHeight + (volumeExpanded ? keyLabelsHeight + keySliderHeight : 0)
-            + keyHeaderHeight + (toneExpanded ? toneLabelsHeight + keySliderHeight : 0);
+            + keyHeaderHeight + (toneExpanded ? toneLabelsHeight + keySliderHeight : 0)
+            + (attackRow ? keyHeaderHeight + (attackExpanded ? toneLabelsHeight + keySliderHeight : 0) : 0);
     }
     // Folding of the two per-key rows, per stop (or transmission): the owner
     // relayouts and saves when a header is clicked; section 0 = volume, 1 = tone.
@@ -134,8 +136,8 @@ public:
     }
     static constexpr int slidersRowWidth() noexcept   // margin, the widest inset and the six sliders as resized() places them
     {
-        return 5 + 26 + 134 + gainSliderWidth + attackSliderWidth + attackDelaySliderWidth
-            + randomPitchSliderWidth + undulationSliderWidth + formantSliderWidth + 7 * voicingSliderGap;
+        return 5 + 26 + 134 + gainSliderWidth + attackSliderWidth
+            + randomPitchSliderWidth + undulationSliderWidth + formantSliderWidth + 6 * voicingSliderGap;   // 0.9.79: no per-stop attack delay slider
     }
     static bool velocityRowWraps(const Stop* stop, int rowWidth) noexcept
     {
@@ -157,7 +159,7 @@ public:
         if (stop == nullptr) return true;
         if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
             return !stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded && !stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
-        return !stop->volumeKeysExpanded && !stop->toneKeysExpanded;
+        return !stop->volumeKeysExpanded && !stop->toneKeysExpanded && !stop->attackKeysExpanded;
     }
     template <typename Put>
     static int compactControlsLayout(const Stop* stop, int transmissionIndex, int rowWidth, bool folder, int inset, Put&& put)
@@ -191,9 +193,10 @@ public:
         int sy = juce::jmax(y + 4, 54);
         const int sx0 = 5 + inset;
         x = sx0;
-        // The full layout's order: global, [formant], gain, attack, attack delay (0.9.77), random pitch, undulation, [formant].
-        const int widths[] = { 134, trsm ? 170 : 194, 194, trsm ? 194 : 150, trsm ? 150 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
-        for (int i = 0; i < 7; ++i)
+        // The full layout's order: global, [formant], gain, attack, random pitch, undulation, [formant] (0.9.79: the
+        // per-stop attack delay slider of 0.9.77 is gone - "Attack per key" is a per-key row, #228).
+        const int widths[] = { 134, trsm ? 170 : 194, 194, trsm ? 194 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
+        for (int i = 0; i < 6; ++i)
         {
             if (x != sx0 && x + widths[i] > right) { x = sx0; sy += compactSliderLineStep; }
             put(Control::slider, i, x, sy, widths[i]);
@@ -221,19 +224,21 @@ public:
         if (stop == nullptr) return containerExpandedHeight;
         if (transmissionIndex < 0 && stop->container) return containerExpandedHeight;
         bool volume = stop->volumeKeysExpanded, tone = stop->toneKeysExpanded;
+        const bool attackRow = transmissionIndex < 0;   // 0.9.79: the stop's own row has the "Attack per key" header
+        const bool attack = attackRow && stop->attackKeysExpanded;
         if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
         {
             volume = stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded;
             tone = stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
         }
-        if (!volume && !tone)
+        if (!volume && !tone && !attack)
         {
             const int inset = folder ? 26 : 0;
             const int bottom = compactControlsLayout(stop, transmissionIndex, rowWidth, folder, inset, [](Control, int, int, int, int) {});
-            return bottom + 4 + keyAreaHeight(false, false) + 4;
+            return bottom + 4 + keyAreaHeight(false, false, attackRow, false) + 4;
         }
         const int velocityLine = transmissionIndex < 0 && velocityRowWraps(stop, rowWidth) ? velocityLineHeight : 0;
-        return expandedControlsHeight + velocityLine + 4 + keyAreaHeight(volume, tone) + 4;
+        return expandedControlsHeight + velocityLine + 4 + keyAreaHeight(volume, tone, attackRow, attack) + 4;
     }
     // Appends the recorded temperament to the "Orig.: a1 = ..." caption.
     void setTemperamentText(const juce::String& text)
@@ -374,6 +379,16 @@ private:
     bool toneRowShown() const { auto* t = transmission(); return t != nullptr ? t->toneKeysExpanded : stop->toneKeysExpanded; }
     void toneSliderChanged(int note, float value);
     void resetKeyRow(bool tone);
+    // 0.9.79 (#228): the third per-key row "Attack per key" (-300..300 ms: delay / cut) of the stop's own
+    // row, with its "Randomize" box (30-100 % per stroke + the repetition rules; off = exact).
+    juce::OwnedArray<LearnableSlider> attackSliders;
+    juce::OwnedArray<juce::Label> attackNameLabels;
+    SectionHeaderLabel attackHeader;
+    juce::TextButton attackReset{ "Reset to 0 ms" };
+    juce::ToggleButton attackRandomizeBox{ "Randomize" };
+    bool attackRowShown() const { return !isTransmission() && stop->attackKeysExpanded; }
+    void attackSliderChanged(int note, float value);
+    void resetAttackRow();
     juce::OwnedArray<LearnableSlider>* paintRow = nullptr;   // the row being painted with the right button
 
     // For note highlighting
@@ -614,6 +629,13 @@ private:
     bool arrangeMode = false;
     int arrangeManual = -1;
     int couplerArrangeManual = -1;   // division whose coupler buttons are being arranged (survives rebuilds)
+    // 0.9.79 (#233): the couplers' cells per division (coupler id -> col, row; the voicing state's "couplerGrid")
+    // and the size of the coupler buttons (the Couplers dialog's "Button size": 0.8 / 1 / 1.3).
+    std::map<int, std::map<juce::String, std::pair<int, int>>> couplerCells;
+    float couplerButtonScale = 1.0f;
+public:
+    void setCouplerButtonScale(float scale) { couplerButtonScale = scale; }
+private:
     float arrangeDashPhase = 0.0f;
     struct CompactCell
     {

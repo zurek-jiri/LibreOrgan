@@ -3363,6 +3363,74 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   100 ms after the key, M after 500 ms -> OK" (M > N > 0). Dev env `ORGAN_ATTACK_DEBUG=1` logs the waits/re-runs.
   The activity log is APPENDED and rotated at 1 MB (activity-previous.log), not per start - a log slice is read
   from a length mark, and `Select-Object -First` on a grep of the whole file shows the OLDEST lines.
+  0.9.78 (7 Nov 2026, the user: "per stop zpoždění má mít stejná pravidla při opakování jako globální ... randomizace
+  30-100 %"): the stop's "Attack delay" (startNote ~6240) applies the global delay's repetition rules against ITS OWN
+  value - a tone of the key finished within half of it (noteFinishedMs): 0; within the whole: half; else a series
+  of strikes within it (interval of the last two note-ons): 0 - then x (0.3 + 0.7 x share), share = fmod(a random
+  drawn ONCE per key start + stopIndex x 0.618, 1) so stops of one key differ and the re-run of processPending
+  reaches the SAME due (the figures `keySinceFinishMs` / `keyOnIntervalMs` / `keyDelayRandom` per key are fixed in
+  processPending at keyStartMs and in noteOnImmediate - never drawn inside startNote, or the re-run postpones for
+  ever). The self-test probe: 1000 ms after 225 blocks (1.2 s) of silence, early at 100 ms (< 300 = the random
+  floor), late at 1100 ms. SELF-TEST BASELINE: %TEMP%\selftest_0970.txt was made with "TA;NW" (two folders) -
+  compare with the same argument. `--selftest` DETACHES like the GUI (a `& exe` call returns at once and the exe stays
+  locked -> LNK1104 on the next build): Start-Process + WaitForExit, the report in %APPDATA%\LibreOrgan\selftest.txt.
+  0.9.79 (16 Nov 2026, the user: "Udělej vše, především odpověz na issues a uzavři issues" - #228-#237 in one build):
+  (1) #237 THE EMPTY START = `SamplerEngine::pruneStaleCopyCacheFiles` opened EVERY cache file (2 180, 9.8 GB) on the
+  message thread in loadSettings (the stack in the log: FileInputStream <- setCopyCache <- loadSettings <- the
+  MainComponent constructor), 11 s cold; now on a juce::Thread::launch (a ".part" younger than 60 s is a build's).
+  `StartSplash` (Main.cpp, a borderless TopLevelWindow, NOT on Linux) is made before `new MainWindow` and paints
+  SYNCHRONOUSLY (`peer->performAnyPendingRepaintsNow()`) at every `CrashHandler::note` through
+  `CrashHandler::noteListener()` (called on the message thread only) - the message loop does not run while the
+  window is built, so this is the only way a status line moves; the listener is cleared after the window exists,
+  the splash deleted 700 ms later. Verified: a window of the process visible 204 ms after the start. (2) #229
+  `SamplerEngine::takeOutputPeak(clipped)` = the max |sample| BEFORE the safety clip of renderRoute (float bits in
+  an atomic, CAS max) + the clip flag (> 0.98); `PolyphonyDisplay` has the meter cell first (`meterWidth()`,
+  8 segments 4 green/3 orange/1 red, 1 s hold, the CLIP dot latched until a click on the cell; the limiter in the
+  cell's tooltip - the manual never mentioned it). The cell is ~50 px high: 12 segments were 2 px each. (3) #228
+  `Stop::attackKeyMs[128]` + `attackRandomize` + `attackKeysExpanded` (SamplerEngine.h); startNote's stop loop
+  takes `getNoteAttackMs(midiNote)`: > 0 the 0.9.78 delay rules (repetition + 30-100 % only with randomize), < 0
+  `attackCutMs` -> in startRank `v.pos = cutFrames << 32` (<= half the sample) + an 8 ms fade-in. StopRow: the
+  third per-key row (attackSliders/attackNameLabels/attackHeader/attackReset/attackRandomizeBox, section 2 of
+  setVoicingFolds, `keyAreaHeight(volume, tone, attackRow, attack)` - the stop's own row only, never a
+  transmission's); state "perNoteAttackMs" {key: ms} / "attackRandomize" false / "attackKeysExpanded" in voicer.cpp
+  AND MainComponent's voicing copy (11090/11251 - the memories copy carries no per-key values); an old file's
+  "attackDelayMs" > 0 fills every key. The per-stop slider `attackDelaySlider` stays as a hidden member (removed
+  from both layouts, `slidersRowWidth` 6 gaps, the compact `widths[6]`); the self-test probe sets key 60.
+  LESSON: a lambda in StopRow's constructor must write `this->stop` - the constructor's parameter shadows the member
+  (C3493). (4) #236 `Source/AudioRouting.h` (header-only, `friend class AudioRoutingContent`): blocks per (type,
+  name) of the routes' open devices (`managerForRoute`), the "No sound card" block last, cells = output channels
+  (`cellWidthFor` shrinks them so 32 fit), rows = routes (folded "All divisions / X [N]" when every division has
+  the same device + channels), chips dragged: within a block `applyChannelsToDivision` (move = replace the channel,
+  Shift/right = add), onto another block `setRouteAudioType(manual, perspective, type, state xml, name)` + the
+  channel (mute, ignoreDeviceRestartsUntil, audioDeviceSelectionUnmuteAt as applyAudioSetupEverywhere does), onto
+  "No sound card" `detachRouteAudioQuietly`, out of every grid = the channel removed (one kept); "Add sound card"
+  = `deviceManager.getAvailableDeviceTypes()` names not shown yet (an empty block, 8 placeholder cells); a 1 s
+  timer rebuilds on a changed signature. "Test" = `MainComponent::startRouteTestTone` ->
+  `DivisionAudioCallback::startTestTone` (a 440 Hz, -20 dB, 1 s tone with 10 ms ramps on the route's channels,
+  rendered INSTEAD of the organ in that callback - the mute path's bookkeeping). `audioRoutingWindow` =
+  ModelessDialog; the top-bar button "audioRouting"; F1 title map "Audio routing". (5) #233 SectionHeader coupler
+  CELL GRID: `couplerCellWidth()` (the widest label x `couplerScale`), `couplerCellsFor(width)` (stored cells
+  within the columns and free, else the first free in list order), rows + a spare row while arranging, free cells
+  dashed; `dropCoupler` = the cell under the centre (swap when held); `cellGetter/cellSetter` from the Voicer
+  (`couplerCells` map, state "couplerGrid" {division: {id: "c,r"}}); `couplerButtonSize` (config key, 0/1/2 ->
+  0.8/1/1.3, `MainComponent::couplerButtonScale()`, `Voicer::setCouplerButtonScale`, the Couplers dialog's
+  "Button size" combo). (6) #232 `combinationsFiles` (machine key: configuration path -> combinations file) +
+  `loadLastCombinationsFile` (Editor toggle after Glow); `rememberCombinationsFile` in both choosers,
+  `loadRememberedCombinationsFile` 400 ms after "Compiling the Stop List: done" (log "Combinations file: ...").
+  (7) #230 `combinationSetButton` is a LeftOnlyTextButton (90 px, buttonOnColourId orange); #231 `bankLabel`
+  editable (digits, Enter -> currentBank). (8) #235 showDivisionMenu item 7 "Move this division to window 2/1".
+  (9) THE NATIVE SAVE DIALOGS (Record, Save all combination banks: "the typed name could not replace the
+  suggested one", the user on Windows too): `bringLostModalsToFront` raised the native chooser's PLACEHOLDER (a
+  plain Component, empty name) every half second - the log line "brought to the front: " with an empty name -
+  so the native dialog lost its caret; now TopLevelWindow tops only in both loops (0.9.52 excluded them from the
+  owner trick alone). (10) ORGAN_TEST_DIALOG_SNAPSHOT pictures the MAIN window too ("<n>-main.png"). Tests:
+  %TEMP%\test_0979.ps1 -Only A|B|C|D (A the splash timing, B Audio routing + the combinations hook, C the Save
+  chooser without a raise, D the attack row unfolded from the file + the main window). LESSONS: `-Only B` wipes
+  the work folder of an earlier run (the pictures of D went); a stop's NAME in Rural is "TA - subbass 16" (a
+  `-like "TA - subbass*"` in a test's json edit, never `-eq`); ORGAN_TEST_CLICK finds juce::Buttons by exact text
+  (the record button is a RecordButton without text; a SectionHeaderLabel header is no Button); the video hook
+  `record` without `window` wrote 0 frames. Issues #228-#233, #235-#237 answered and closed through the API; #234
+  stays open (the reporter's log is wanted).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

@@ -712,6 +712,20 @@ struct Stop
     {
         for (int note = 0; note < 128; ++note) setNoteToneDb(note, 0.0f);
     }
+    // 0.9.79 (#228): "Attack per key" - by the key played: > 0 the pipe speaks this much later than the key
+    // (on top of the global Attack min. delay, with the repetition rules), < 0 the attack is CUT: the sample
+    // starts that far in with a short fade-in (a lazy pipe made prompt). attackRandomize: 30-100 % of the
+    // value at random per stroke (and the repetition rules for delays); off = the value exactly.
+    std::array<float, 128> attackKeyMs{};
+    bool attackRandomize = true;
+    bool attackKeysExpanded = false;   // the row unfolded in the voicing
+    void setNoteAttackMs(int note, float ms) noexcept
+    {
+        if (note < 0 || note >= 128) return;
+        attackKeyMs[(size_t)note] = juce::jlimit(-300.0f, 300.0f, ms);
+    }
+    float getNoteAttackMs(int note) const noexcept { return note >= 0 && note < 128 ? attackKeyMs[(size_t)note] : 0.0f; }
+    bool anyNoteAttack() const noexcept { for (const float v : attackKeyMs) if (v != 0.0f) return true; return false; }
 
     Stop(const juce::String& n, const juce::File& f) : name(n), folder(f)
     {
@@ -1087,6 +1101,9 @@ public:
     // measurement; a take restarts the counter at the current value.
     int takeDisplayPeakPolyphony() noexcept { return peakPolyphonyDisplay.exchange(currentPolyphony.load(std::memory_order_relaxed), std::memory_order_relaxed); }
     int takeMeasuredPeakPolyphony() noexcept { return peakPolyphonyMeasured.exchange(currentPolyphony.load(std::memory_order_relaxed), std::memory_order_relaxed); }
+    // 0.9.79 (#229): the audio meter - the highest sample (absolute, before the safety clip) over every route
+    // and device since the last call, and whether the clip worked meanwhile; both reset by the call.
+    float takeOutputPeak(bool& clipped) noexcept;
     void setMaxPolyphony(int voices) noexcept { maxPolyphony.store(juce::jlimit(64, maxVoices, voices)); }
     int getMaxPolyphony() const noexcept { return maxPolyphony.load(); }
     // Fraction of the audio period spent rendering (0..1+), smoothed peak.

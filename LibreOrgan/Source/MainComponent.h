@@ -140,12 +140,19 @@ private:
     LeftOnlyTextButton configurationEditorButton{ "Configuration Editor" };
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
     LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
+    LeftOnlyTextButton audioRoutingButton{ "Audio routing" };   // 0.9.79 (#236)
     LeftOnlyTextButton messagesButton{ "Messages" };   // 0.9.39: shown while messages are unread (the top bar's bell; no timer of its own)
     void updateMessagesButton();   // caption from the count; the top bar laid out again only when the button comes or goes
     double compileDoneMs = 0.0;    // 0.9.39: when "Compiling the Stop List: done" was logged (the loader's release is timed against it)
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
     bool consoleGlow = false;   // 0.8.213: off by default (the user)
+    // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file path ->
+    // combinations file path; machine-specific) and the Editor switch that reads it again after the organ loads.
+    std::map<juce::String, juce::String> combinationsFiles;
+    bool loadLastCombinationsFile = true;
+    void rememberCombinationsFile(const juce::File& file);
+    void loadRememberedCombinationsFile();
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
     bool ramLogPending = false;            // "RAM held after the load" to be logged once the copies are built (0.8.184)
     bool loadConfigurationAgain = false;   // the test hook ORGAN_LOAD_CONFIGURATION_AGAIN is the file to take now (0.8.184)
@@ -255,7 +262,7 @@ private:
     // 0.8.233: a HelpTooltipWindow - every tip ends with "For details press F1."
     std::unique_ptr<juce::TooltipWindow> tooltipWindow;
 
-    LeftOnlyToggleButton combinationSetButton{ "Set" };
+    LeftOnlyTextButton combinationSetButton{ "Set" };   // 0.9.79 (#230): a button the size of a piston, latched orange - not a tick box
     LeftOnlyTextButton previousCombinationButton{ "<<" };
     LeftOnlyTextButton nextCombinationButton{ ">>" };
     LeftOnlyTextButton bankDownButton{ juce::String(juce::CharPointer_UTF8("Bank \xe2\x96\xbc")) };   // Bank ▼
@@ -952,6 +959,7 @@ private:
     std::unique_ptr<juce::DialogWindow> configurationWindow;
     std::unique_ptr<juce::DialogWindow> patternsWindow;   // 0.8.238: the patterns dialogs are modeless (one at a time)
     std::unique_ptr<juce::DialogWindow> couplersWindow, reverbToneWindow, featureWindow;   // 0.8.239: modeless too (their settings act at once)
+    std::unique_ptr<juce::DialogWindow> audioRoutingWindow;   // 0.9.79 (#236): "Audio routing" - the sound cards as blocks, the routes as chips in their channel cells
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.
     std::function<void()> configEditorRefresh;
@@ -1107,6 +1115,9 @@ private:
         std::map<int, int> activeNotes; // target MIDI note -> velocity
     };
     std::vector<Coupler> couplers;
+    // 0.9.79 (#233): the size of the coupler buttons (0 small, 1 normal, 2 large; configuration key "couplerButtonSize").
+    int couplerButtonSize = 1;
+    float couplerButtonScale() const noexcept { return couplerButtonSize == 0 ? 0.8f : couplerButtonSize == 2 ? 1.3f : 1.0f; }
     // Display order of the coupler buttons per source division (arranged by dragging).
     std::map<int, std::vector<juce::String>> couplerOrder;
     // Global sound sliders on the main panel: each may be shown or hidden
@@ -1359,6 +1370,7 @@ private:
     void mergeConfigurationFile(const juce::File& file);
     void mergeConfiguration(juce::var added, const juce::File& addedFile, const juce::String& addedName, std::function<void()> afterLoad);
     friend class PolyphonyDisplay;   // the RAM column reads the two memory figures below
+    friend class AudioRoutingContent;   // 0.9.79 (#236): AudioRouting.h reads the routes and applies devices/channels
     // Before a configuration loads: the WAV bytes of its trees against the free
     // memory, a warning (log + message) when the samples will not fit - the
     // system then pages them out and every stroke stalls (#16, #17). Counted on
@@ -1453,6 +1465,9 @@ private:
     void refreshCouplerRailState();
     std::vector<DivisionCouplerInfo> getDivisionCouplers(int manualIndex);
     void showCouplersDialog();
+    // 0.9.79 (#236): the Audio routing dialog (AudioRouting.h) and its "Test" tone on one route.
+    void showAudioRoutingDialog();
+    void startRouteTestTone(int manual, const juce::String& perspective);
     void setCouplerEnabled(const juce::String& id, bool enabled);
     void routeKeyboardNote(int manual, int note, int velocity, bool isOn);
     int mapKeyboardNote(int manual, int note) const;

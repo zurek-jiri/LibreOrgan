@@ -65,6 +65,7 @@ namespace
 #include "LicencesData.h"       // the licence texts embedded (GenerateLicencesData.ps1)
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
 #include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
+#include "AudioRouting.h"       // the Audio routing dialog: cards as blocks, routes as chips (0.9.79, #236)
 #include "ManualView.h"         // the manual's text laid out block by block (0.8.213)
 #include "UIScale.h"
 
@@ -95,7 +96,14 @@ public:
     // 0.9.14: a tooltip per cell (the user: "ani nad hlavním displejem" - the display had none).
     juce::String getTooltip() override
     {
-        const int column = juce::jlimit(0, 4, getMouseXYRelative().x / columnWidth());
+        // 0.9.79 (#229): the audio meter's cell first; its tooltip names the limiter (the user: the manual
+        // never mentioned it - the meter's tooltip is where it belongs).
+        if (getMouseXYRelative().x < meterWidth())
+            return "Audio meter: the highest sample of every audio route and device, measured before the limiter "
+                   "(green to -12 dB, orange to -3 dB, red = the limiter at work). Peak " + juce::String(meterDb, 1) + " dBFS. "
+                   "The limiter (safety clip) softens everything above -0.2 dBFS so the driver never gets more than "
+                   "0 dBFS; the red dot beside CLIP stays lit after a clip until you click it.";
+        const int column = juce::jlimit(0, 4, (getMouseXYRelative().x - meterWidth()) / columnWidth());
         static const char* const tips[5]{
             "NOW: the pipes sounding at this moment (attacks and release tails).",
             "PEAK: the most pipes sounding at once in the last seconds.",
@@ -129,11 +137,14 @@ public:
     {
         // Columns NOW, PEAK, DSP (peak hold), RAM (the program's memory), LIMIT (editable, wider for typing).
         const int column = columnWidth();
-        const int limitWidth = getWidth() - 4 * column;
+        const int limitWidth = getWidth() - meterWidth() - 4 * column;
         limitEditor.setFont(juce::FontOptions(limitWidth < 90 ? 14.0f : 17.0f, juce::Font::bold));
-        limitEditor.setBounds(4 * column + 4, getHeight() - 27, limitWidth - 8, 24);
+        limitEditor.setBounds(meterWidth() + 4 * column + 4, getHeight() - 27, limitWidth - 8, 24);
     }
-    int columnWidth() const noexcept { return juce::jmax(1, getWidth() * 18 / 100); }   // LIMIT gets the rest (28 %)
+    int meterWidth() const noexcept { return juce::jlimit(38, 60, getWidth() * 13 / 100); }   // 0.9.79 (#229): the audio meter's cell at the left
+    int columnWidth() const noexcept { return juce::jmax(1, (getWidth() - meterWidth()) * 18 / 100); }   // LIMIT gets the rest (28 %)
+    // A click on the meter clears the latched clip dot (the user: "uživatel by ji musel zrušit myší").
+    void mouseDown(const juce::MouseEvent& e) override { if (e.x < meterWidth()) { clipLatched = false; repaint(); } }
     // The measurement's verdict into the LIMIT box at once, the caret in it or not (0.8.135).
     void refreshLimit() { limitEditor.giveAwayKeyboardFocus(); limitEditor.setText(juce::String(engine.getMaxPolyphony()), false); }
     // Output discontinuities found in the last second (0.8.226, once a second from
@@ -162,6 +173,29 @@ public:
         g.setColour(juce::Colours::darkgrey);
         g.drawRoundedRectangle(r, 3.0f, 1.0f);
         const int column = columnWidth();
+        const int meter = meterWidth();
+        // 0.9.79 (#229): the audio meter - "CLIP" with its latched red dot on top, a vertical bargraph below
+        // (8 green segments to -12 dB, 3 orange to -3 dB, one red while the limiter works), 1 s peak hold.
+        {
+            g.setColour(juce::Colours::lightgrey);
+            g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+            g.drawText("CLIP", juce::Rectangle<int>(3, 3, meter - 14, 16), juce::Justification::centredLeft);
+            g.setColour(clipLatched ? juce::Colours::red : juce::Colours::darkred.withAlpha(0.5f));
+            g.fillEllipse((float)meter - 11.0f, 7.0f, 7.0f, 7.0f);
+            const int top = 21, bottom = getHeight() - 4;
+            constexpr int segments = 8;   // 4 green to -12 dB, 3 orange to -3 dB, 1 red = the limiter at work (the cell is ~50 px high)
+            const float segmentHeight = (float)(bottom - top) / (float)segments;
+            static const float thresholdsDb[segments]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f, 0.0f };
+            for (int s = 0; s < segments; ++s)
+            {
+                const bool red = s == segments - 1;
+                const bool lit = red ? clipNow : meterDb >= thresholdsDb[s];
+                const juce::Colour colour = red ? juce::Colours::red : s < 4 ? juce::Colours::lime : juce::Colours::orange;
+                g.setColour(lit ? colour : colour.withAlpha(0.18f));
+                const float y = (float)bottom - (float)(s + 1) * segmentHeight;
+                g.fillRect(juce::Rectangle<float>(8.0f, y + 1.0f, (float)meter - 16.0f, juce::jmax(1.0f, segmentHeight - 2.0f)));
+            }
+        }
         const juce::String labels[5]{ "NOW", "PEAK", "DSP", "RAM GB", "LIMIT" };
         const bool glitches = glitchCount > 0 && juce::Time::getMillisecondCounterHiRes() <= glitchUntil;
         const bool silent = !silentDevices.empty();   // 0.9.12
@@ -170,7 +204,7 @@ public:
         const float valueFont = juce::jlimit(13.0f, 22.0f, (float)getHeight() * 0.32f);
         for (int i = 0; i < 5; ++i)
         {
-            const juce::Rectangle<int> cell(i * column, 0, i < 4 ? column : getWidth() - 4 * column, getHeight());
+            const juce::Rectangle<int> cell(meter + i * column, 0, i < 4 ? column : getWidth() - meter - 4 * column, getHeight());
             g.setColour(juce::Colours::lightgrey);
             g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
             g.drawText(labels[i], cell.withHeight(20).translated(0, 3), juce::Justification::centred);
@@ -182,10 +216,9 @@ public:
                 // Digits must always fit the column: shrink rather than clip.
                 g.drawFittedText(values[i], cell.withTrimmedTop(21).reduced(2, 0), juce::Justification::centred, 1, 0.5f);
             }
-            if (i > 0)
             {
                 g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
-                g.drawVerticalLine(cell.getX(), 8.0f, (float)getHeight() - 8.0f);
+                g.drawVerticalLine(cell.getX(), 8.0f, (float)getHeight() - 8.0f);   // also between the meter and NOW
             }
         }
     }
@@ -211,6 +244,16 @@ private:
             }
         }
         current = engine.getCurrentPolyphony();
+        {
+            // 0.9.79 (#229): the meter's peak (dBFS, 1 s hold) and the clip flags.
+            bool clipped = false;
+            const float peak = engine.takeOutputPeak(clipped);
+            const double tick = juce::Time::getMillisecondCounterHiRes();
+            const float db = peak > 1.0e-6f ? juce::Decibels::gainToDecibels(peak) : -100.0f;
+            if (db >= meterDb || tick >= meterHoldUntil) { meterDb = db; meterHoldUntil = tick + 1000.0; }
+            if (clipped) { clipLatched = true; clipUntil = tick + 400.0; }
+            clipNow = tick < clipUntil;
+        }
         const int recentPeak = engine.takeDisplayPeakPolyphony();   // the most voices at once since the last tick (every change counted, nothing between ticks missed)
         load = engine.getDisplayLoad();   // the whole driver callback, not the render alone
         if (!limitEditor.hasKeyboardFocus(true))
@@ -246,6 +289,9 @@ private:
     double resetAt = -1.0, loadResetAt = -1.0;
     int glitchCount = 0;            // output discontinuities shown in the DSP cell (0.8.226)
     double glitchUntil = -1.0;      // ... until this time
+    float meterDb = -100.0f;        // 0.9.79 (#229): the audio meter's held peak (dBFS)
+    double meterHoldUntil = -1.0, clipUntil = -1.0;
+    bool clipLatched = false, clipNow = false;   // the dot beside CLIP (until clicked) and the red segment (400 ms)
     juce::TextEditor limitEditor;
 };
 
@@ -721,6 +767,33 @@ public:
             resetEdgeDetector();   // the mute is a cut of its own: the detector starts afresh after it
             return;
         }
+        // 0.9.79 (#236): "Test" of the Audio routing dialog - a soft 440 Hz tone for a second on this route's
+        // channels alone (the organ's voices of the route pause meanwhile), so the user HEARS where the route goes.
+        if (const double until = testToneUntilMs.load(std::memory_order_acquire); until > juce::Time::getMillisecondCounterHiRes())
+        {
+            const double rate = juce::jmax(8000.0, expectedRate.load(std::memory_order_relaxed));
+            const int count = testToneChannelCount.load(std::memory_order_acquire);
+            for (int channel = 0; channel < numOutputs; ++channel)
+                if (outputs[channel] != nullptr) juce::FloatVectorOperations::clear(outputs[channel], numSamples);
+            const double remaining = (until - juce::Time::getMillisecondCounterHiRes()) * 0.001 * rate;
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const double played = (double)testToneSamples++;
+                const float amp = 0.1f * (float)juce::jlimit(0.0, 1.0, juce::jmin(played, remaining - i) / (0.01 * rate));   // 10 ms in and out
+                const float v = amp * std::sin((float)testTonePhase);
+                testTonePhase += 2.0 * juce::MathConstants<double>::pi * 440.0 / rate;
+                if (testTonePhase > 2.0 * juce::MathConstants<double>::pi) testTonePhase -= 2.0 * juce::MathConstants<double>::pi;
+                for (int k = 0; k < count; ++k)
+                {
+                    const int channel = testToneChannels[(size_t)k];
+                    if (channel >= 0 && channel < numOutputs && outputs[channel] != nullptr) outputs[channel][i] += v;
+                }
+            }
+            if (deviceClock != nullptr) deviceClock->lastEnd.store(juce::Time::getHighResolutionTicks(), std::memory_order_relaxed);
+            resetEdgeDetector();
+            return;
+        }
+        else testToneSamples = 0;
         // Routing is updated only when the user changes audio settings. Doing
         // this here used to copy channel vectors into every active voice on
         // every real-time callback, an O(polyphony) operation with allocations.
@@ -993,6 +1066,21 @@ private:
     std::atomic<int> realtimeResult{ 0 };           // 1 = set, -1 = refused, 2 = was realtime already
     std::atomic<int> expectedBlock{ 0 };
     std::atomic<double> expectedRate{ 0.0 };
+    // 0.9.79 (#236): the Audio routing dialog's "Test" tone (set on the message thread, read in the callback).
+    std::atomic<double> testToneUntilMs{ 0.0 };
+    std::array<int, 64> testToneChannels{};
+    std::atomic<int> testToneChannelCount{ 0 };
+    double testTonePhase = 0.0;
+    uint64_t testToneSamples = 0;
+public:
+    void startTestTone(const std::vector<int>& channels)
+    {
+        const int n = juce::jmin(64, (int)channels.size());
+        for (int i = 0; i < n; ++i) testToneChannels[(size_t)i] = channels[(size_t)i];
+        testToneChannelCount.store(n, std::memory_order_release);
+        testToneUntilMs.store(juce::Time::getMillisecondCounterHiRes() + 1000.0, std::memory_order_release);
+    }
+private:
     int64_t healthTicks = 0;
     int healthGrace = 0;
     juce::String deviceLabel;   // written on the message thread only (device start), read there too
@@ -1250,6 +1338,11 @@ MainComponent::MainComponent()
     addChildComponent(guidedTourButton);   // visible on a teaching organ only (0.8.206)
     guidedTourButton.setTooltip("A tour of the console: what the stops, the stop folders, the transmissions, the couplers and the Stop List are, step by step, with the manual chapter of each.");
     guidedTourButton.onClick = [this] { startGuidedTour(); };
+    // 0.9.79 (#236): the Audio routing dialog - the sound cards as blocks, the routes as chips in channel cells.
+    addAndMakeVisible(audioRoutingButton);
+    audioRoutingButton.setTooltip("Which sound card and which output channels every division and perspective plays through, as a picture: "
+        "drag the routes' chips between the cards' channels; Test plays a tone where a route goes.");
+    audioRoutingButton.onClick = [this] { showAudioRoutingDialog(); };
     // 0.9.39 (the user: no strip at the bottom, "zvoneček" in the top bar instead): a button that is there
     // while a message is unread, a click opens the Messages tab; nothing periodic behind it.
     addChildComponent(messagesButton);
@@ -1496,7 +1589,8 @@ MainComponent::MainComponent()
     combinationSetButton.setTooltip("While on, clicking a piston stores the current registration (stops, transmissions, couplers, tremulants) in it.");
     addAndMakeVisible(combinationSetButton);
     combinationSetButton.setClickingTogglesState(true);
-    combinationSetButton.setColour(juce::ToggleButton::tickColourId, juce::Colours::orange);
+    combinationSetButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);   // 0.9.79 (#230): latched orange while on
+    combinationSetButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
 
     previousCombinationButton.setTooltip("The previous piston. Right-click: MIDI learn.");
     addAndMakeVisible(previousCombinationButton);
@@ -1519,6 +1613,18 @@ MainComponent::MainComponent()
     addAndMakeVisible(bankLabel);
     bankLabel.setJustificationType(juce::Justification::centred);
     bankLabel.setFont(juce::FontOptions(18.0f, juce::Font::bold));
+    // 0.9.79 (#231): the bank number is typed - a click opens the editor, Enter sets the bank (the buttons
+    // beside it still step, held down they scroll).
+    bankLabel.setEditable(true, false, false);
+    bankLabel.setTooltip("The bank of pistons: click and type its number, then Enter. The buttons beside step through the banks; held down they scroll.");
+    bankLabel.onEditorShow = [this] { if (auto* editor = bankLabel.getCurrentTextEditor()) { editor->setInputRestrictions(4, "0123456789"); editor->setText(juce::String(currentBank), false); editor->selectAll(); } };
+    bankLabel.onTextChange = [this]
+    {
+        const auto digits = bankLabel.getText().retainCharacters("0123456789");
+        if (digits.isNotEmpty()) { currentBank = juce::jlimit(0, maxBank, digits.getIntValue()); activePiston = -1; }
+        updateCombinationControls();
+        saveMemories();
+    };
     addAndMakeVisible(combinationDisplay);
     combinationDisplay.setJustificationType(juce::Justification::centred);
     combinationDisplay.setFont(juce::FontOptions(22.0f, juce::Font::bold));
@@ -1804,6 +1910,7 @@ MainComponent::MainComponent()
         return voicer == nullptr || !voicer->wheelBlockedAt(event.getScreenPosition());
     };
     // Two program windows: each division is shown on the window it was given.
+    voicer->setCouplerButtonScale(couplerButtonScale());   // 0.9.79 (#233): the size read by loadSettings before the voicer existed
     voicer->screenGetter = [this](int manual) { return twoWindows ? divisionScreen[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)] : 0; };
     // Arrange mode: a stop dragged into another division's grid moves house; its "x" removes it.
     voicer->moveStopRequest = [this](Stop* stop, int target) { moveStopToDivision(stop, target); };
@@ -2494,9 +2601,10 @@ MainComponent::MainComponent()
                         for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
                         {
                             auto* window = juce::Desktop::getInstance().getComponent(w);
-                            if (window == nullptr || window == main || !window->isVisible()) continue;
+                            if (window == nullptr || !window->isVisible()) continue;
+                            // 0.9.79: the main window too ("<n>-main.png") - the top panel's display and the headers.
                             const juce::Image image = window->createComponentSnapshot(window->getLocalBounds(), false, 1.0f);
-                            const juce::File file = dir.getChildFile(juce::String(w) + "-" + juce::File::createLegalFileName(window->getName()) + ".png");
+                            const juce::File file = dir.getChildFile(juce::String(w) + "-" + (window == main ? juce::String("main") : juce::File::createLegalFileName(window->getName())) + ".png");
                             file.deleteFile();
                             juce::FileOutputStream stream(file);
                             if (stream.openedOk()) juce::PNGImageFormat().writeImageToStream(image, stream);
@@ -3076,7 +3184,7 @@ void MainComponent::resized()
     const bool polyphonyHere = !anyGlobalSliderShown() && polyphonyDisplay != nullptr;
     struct RowItem { juce::Component* component; int natural, minimum; bool tall; };
     std::vector<RowItem> items{
-        { &combinationSetButton, 70, 46, false }, { &bankDownButton, 78, 44, false },
+        { &combinationSetButton, 90, 46, false }, { &bankDownButton, 78, 44, false },
         { &bankLabel, 92, 50, false }, { &bankUpButton, 78, 44, false },
         { &combinationDisplay, 88, 58, false }, { &pistonCountLabel, 70, 48, false },
         { &pistonCountBox, 58, 46, false } };
@@ -3789,6 +3897,21 @@ void MainComponent::showCouplersDialog()
             };
             graceTime.setTooltip("When the highest key changes in legato playing, the melody coupler waits a moment, so a brief overlap of two keys does not make the solo stop jump.");
             addAndMakeVisible(graceTime);
+            // 0.9.79 (#233): the size of the coupler buttons under the division headers (every button the same size,
+            // laid in a cell grid like the stops; hold a coupler three seconds to arrange them).
+            sizeLabel.setText("Button size", juce::dontSendNotification);
+            addAndMakeVisible(sizeLabel);
+            sizeBox.addItem("Small", 1); sizeBox.addItem("Normal", 2); sizeBox.addItem("Large", 3);
+            sizeBox.setSelectedId(owner.couplerButtonSize + 1, juce::dontSendNotification);
+            sizeBox.setTooltip("The size of the coupler buttons under the division headers (small / normal / large); travels with the organ.");
+            sizeBox.onChange = [this]
+            {
+                this->owner.couplerButtonSize = juce::jlimit(0, 2, sizeBox.getSelectedId() - 1);
+                if (this->owner.voicer) { this->owner.voicer->setCouplerButtonScale(this->owner.couplerButtonScale()); this->owner.voicer->rebuildUI(this->owner.stopsContent, this->owner.stopsViewport); }
+                this->owner.configurationDirty = true;
+                this->owner.saveSettings();
+            };
+            addAndMakeVisible(sizeBox);
 
             static const juce::String names[8]{ "Pedal", "I", "II", "III", "IV", "V", "VI", "VII" };
             for (int source = 0; source <= owner.manualCount; ++source)
@@ -3840,6 +3963,11 @@ void MainComponent::showCouplersDialog()
             title.setBounds(area.removeFromTop(34));
             newKeysOnly.setBounds(area.removeFromTop(38));
             graceTime.setBounds(area.removeFromTop(34));
+            {
+                auto row = area.removeFromTop(32);   // 0.9.79 (#233): "Button size" combo
+                sizeLabel.setBounds(row.removeFromLeft(100));
+                sizeBox.setBounds(row.removeFromLeft(140).reduced(0, 3));
+            }
             close.setBounds(area.removeFromBottom(38).removeFromRight(90).reduced(2));
             viewport.setBounds(area);
             const int columns = owner.manualCount + 1;
@@ -3867,6 +3995,8 @@ void MainComponent::showCouplersDialog()
         juce::OwnedArray<juce::ToggleButton> toggles;
         juce::ToggleButton newKeysOnly;
         juce::ToggleButton graceTime;
+        juce::Label sizeLabel;      // 0.9.79 (#233)
+        juce::ComboBox sizeBox;
         juce::TextButton close;
     };
     auto* editor = new Editor(*this);
@@ -3875,6 +4005,41 @@ void MainComponent::showCouplersDialog()
     placeDialog(*couplersWindow, "couplers", 1100, 760);
     couplersWindow->setVisible(true);
     couplersWindow->toFront(true);
+}
+
+// 0.9.79 (#236): the Audio routing dialog (AudioRouting.h), modeless like the Couplers dialog; kept while hidden.
+void MainComponent::showAudioRoutingDialog()
+{
+    if (audioRoutingWindow != nullptr)
+    {
+        audioRoutingWindow->setVisible(true);
+        audioRoutingWindow->toFront(true);
+        return;
+    }
+    auto* content = new AudioRoutingContent(*this);
+    content->setSize(1100, 700);
+    audioRoutingWindow = std::make_unique<ModelessDialog>("Audio routing", new ScrollableContent(content), true);
+    placeDialog(*audioRoutingWindow, "audioRouting", 1100, 700);
+    audioRoutingWindow->setVisible(true);
+    audioRoutingWindow->toFront(true);
+    CrashHandler::note("Audio routing dialog opened");
+}
+
+void MainComponent::startRouteTestTone(int manual, const juce::String& perspective)
+{
+    const auto key = perspectiveRouteKey(manual, perspective);
+    const auto found = perspectiveAudioRoutes.find(key);
+    const auto& channels = perspective.equalsIgnoreCase("default") ? manualConfigs[(size_t)manual].outputChannels
+        : manualConfigs[(size_t)manual].perspectiveAudio[key].outputChannels;
+    if (found != perspectiveAudioRoutes.end() && found->second != nullptr && found->second->callback != nullptr)
+    {
+        found->second->callback->startTestTone(channels);
+        return;
+    }
+    // The "default" routes of the divisions live in the main manager and the extra managers.
+    if (manual == 0 && primaryAudioCallback != nullptr) primaryAudioCallback->startTestTone(channels);
+    else if (manual > 0 && manual - 1 < (int)extraAudioCallbacks.size() && extraAudioCallbacks[(size_t)manual - 1] != nullptr)
+        extraAudioCallbacks[(size_t)manual - 1]->startTestTone(channels);
 }
 
 void MainComponent::panic()
@@ -11037,6 +11202,15 @@ void MainComponent::saveStopSettings()
                 }
                 stopObj->setProperty(juce::Identifier("perNoteDb"), juce::var(perNoteObj.get()));
                 stopObj->setProperty("perNoteTone", juce::var(perNoteToneObj.get()));
+                if (stop->anyNoteAttack())   // 0.9.79 (#228): "Attack per key" (as voicer.cpp saves it)
+                {
+                    juce::DynamicObject::Ptr attackObj = new juce::DynamicObject();
+                    for (int note = 0; note < 128; ++note)
+                        if (stop->getNoteAttackMs(note) != 0.0f) attackObj->setProperty(juce::Identifier(juce::String(note)), (double)stop->getNoteAttackMs(note));
+                    stopObj->setProperty("perNoteAttackMs", juce::var(attackObj.get()));
+                }
+                if (!stop->attackRandomize) stopObj->setProperty("attackRandomize", false);
+                if (stop->attackKeysExpanded) stopObj->setProperty("attackKeysExpanded", true);
                 {
                     juce::Array<juce::var> off;
                     for (int pipe = 0; pipe < 128; ++pipe) if (stop->pipeDisabled.test((size_t)pipe)) off.add(pipe);
@@ -11193,6 +11367,15 @@ void MainComponent::loadStopSettings()
                             if (auto* toneObj = stopObj->getProperty("perNoteTone").getDynamicObject())
                                 for (const auto& prop : toneObj->getProperties())
                                     stop->setNoteToneDb(prop.name.toString().getIntValue(), (float)(double)prop.value);
+                            // 0.9.79 (#228): "Attack per key"; an older file's per-stop "attackDelayMs" fills every key.
+                            stop->attackKeyMs.fill(0.0f);
+                            if (auto* attackObj = stopObj->getProperty("perNoteAttackMs").getDynamicObject())
+                                for (const auto& prop : attackObj->getProperties())
+                                    stop->setNoteAttackMs(prop.name.toString().getIntValue(), (float)(double)prop.value);
+                            else if (stop->attackDelayMs > 0.0f)
+                                for (int note = 0; note < 128; ++note) stop->setNoteAttackMs(note, stop->attackDelayMs);
+                            stop->attackRandomize = !stopObj->hasProperty("attackRandomize") || (bool)stopObj->getProperty("attackRandomize");
+                            stop->attackKeysExpanded = (bool)stopObj->getProperty("attackKeysExpanded");
                         }
                         {
                             std::bitset<128> wanted;
@@ -11333,7 +11516,46 @@ void MainComponent::chooseCombinationsFileToSave()
             if (!safeThis->saveMemoriesToFile(file))
                 queueNotice(juce::MessageBoxIconType::WarningIcon,
                     "Save combinations", "The combinations file could not be written.");
+            else safeThis->rememberCombinationsFile(file);   // 0.9.79 (#232)
         });
+}
+
+// 0.9.79 (#232): the combinations file of the loaded organ, read again after its next load.
+void MainComponent::rememberCombinationsFile(const juce::File& file)
+{
+    if (currentConfigurationFile == juce::File() || file == juce::File()) return;
+    combinationsFiles[currentConfigurationFile.getFullPathName()] = file.getFullPathName();
+    saveSettings();
+}
+
+void MainComponent::loadRememberedCombinationsFile()
+{
+    if (!loadLastCombinationsFile || currentConfigurationFile == juce::File())
+    {
+        CrashHandler::note(juce::String("Combinations file: ") + (loadLastCombinationsFile ? "no configuration file open" : "the switch is off"));
+        return;
+    }
+    const auto found = combinationsFiles.find(currentConfigurationFile.getFullPathName());
+    if (found == combinationsFiles.end())
+    {
+        CrashHandler::note("Combinations file: none remembered for " + currentConfigurationFile.getFullPathName() + " (" + juce::String((int)combinationsFiles.size()) + " remembered in all)");
+        return;
+    }
+    const juce::File file(found->second);
+    if (!file.existsAsFile())
+    {
+        CrashHandler::note("Combinations file: the one last used with this organ is not there now: " + file.getFullPathName());
+        noteMessage("Combinations file", "The combinations file last used with this organ is not there now: " + file.getFullPathName());
+        return;
+    }
+    if (loadMemoriesFromFile(file))
+    {
+        activePiston = -1;
+        pistonCountBox.setSelectedId(pistonCount + 1, juce::dontSendNotification);
+        updateCombinationControls();
+        CrashHandler::note("Combinations file read again with the organ: " + file.getFullPathName());
+    }
+    else noteMessage("Combinations file", "The combinations file last used with this organ could not be read: " + file.getFullPathName());
 }
 
 void MainComponent::chooseCombinationsFileToLoad()
@@ -11358,6 +11580,7 @@ void MainComponent::chooseCombinationsFileToLoad()
             }
             safeThis->lastSettingsDirectory = file.getParentDirectory();
             safeThis->saveLastDirectory();
+            safeThis->rememberCombinationsFile(file);   // 0.9.79 (#232)
             safeThis->activePiston = -1;
             safeThis->pistonCountBox.setSelectedId(safeThis->pistonCount + 1,
                 juce::dontSendNotification);
@@ -12125,7 +12348,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -15578,6 +15801,10 @@ void MainComponent::beginStartupFolderLoading()
                 showGeneratingMessage(false);
                 CrashHandler::note("Compiling the Stop List: done");
                 compileDoneMs = juce::Time::getMillisecondCounterHiRes();   // 0.9.39: the loader's release is timed against this (#172/#173: 16-55 s on the two-core laptops)
+                {   // 0.9.79 (#232): the combinations file last used with this organ, on top of the configuration's own
+                    juce::Component::SafePointer<MainComponent> safeThis(this);
+                    juce::Timer::callAfterDelay(400, [safeThis] { if (safeThis != nullptr) safeThis->loadRememberedCombinationsFile(); });
+                }
                 if (!pendingMergeTransmissions.empty())   // 0.9.28: the transmissions a merge owes the divisions whose rows it replaced
                 {
                     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -15949,6 +16176,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
         { &stopListButton, 120, "stopList", "Stop List", true },
         { &guidedTourButton, 115, "guidedTour", "Guided tour", true },   // shown on a teaching organ only (0.8.206; isHeaderButtonShown)
+        { &audioRoutingButton, 130, "audioRouting", "Audio routing", true },   // 0.9.79 (#236)
         { &messagesButton, 130, "messages", "Messages", true },   // shown while messages are unread (0.9.39; isHeaderButtonShown)
         { &couplersButton, 125, "couplers", "Couplers", true }, { &temperamentsButton, 145, "temperaments", "Temperaments", true },
         { &toggleAllVoicingButton, 145, "voicing", "Hide/Show all voicing", true },
@@ -23397,6 +23625,12 @@ void MainComponent::loadSettings()
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
     consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
+    // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file -> file) and
+    // whether it is read again once the organ is loaded.
+    loadLastCombinationsFile = parsed.getProperty("loadLastCombinationsFile", true);
+    combinationsFiles.clear();
+    if (auto* files = parsed.getProperty("combinationsFiles", juce::var()).getDynamicObject())
+        for (const auto& prop : files->getProperties()) combinationsFiles[prop.name.toString()] = prop.value.toString();
     outputDiscontinuityDetector.store(parsed.getProperty("outputDiscontinuityDetector", true));   // 0.8.227: on by default while the crackle is hunted
     engine.setOutputDiscontinuityDetector(outputDiscontinuityDetector.load());
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
@@ -23791,6 +24025,9 @@ void MainComponent::loadSettings()
                     coupler->enabled = false;
                     coupler->visible = item.getProperty("visible", true);
                 }
+    // 0.9.79 (#233): the size of the coupler buttons (0 small, 1 normal, 2 large; travels with the organ).
+    couplerButtonSize = juce::jlimit(0, 2, (int)parsed.getProperty("couplerButtonSize", 1));
+    if (voicer) voicer->setCouplerButtonScale(couplerButtonScale());
 
     auto buttonBindings = parsed.getProperty("midiButtonBindings", juce::var());
     if (buttonBindings.isArray())
@@ -24174,6 +24411,12 @@ void MainComponent::saveSettings()
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
     obj->setProperty("outputDiscontinuityDetector", outputDiscontinuityDetector.load());
+    obj->setProperty("loadLastCombinationsFile", loadLastCombinationsFile);   // 0.9.79 (#232)
+    {
+        juce::DynamicObject::Ptr files = new juce::DynamicObject();
+        for (const auto& [configuration, file] : combinationsFiles) files->setProperty(juce::Identifier(configuration), file);
+        obj->setProperty("combinationsFiles", juce::var(files.get()));
+    }
     obj->setProperty("manualFontScale", (double)manualFontScale);
     {
         juce::DynamicObject::Ptr relatives = new juce::DynamicObject();   // 0.8.216
@@ -24471,6 +24714,7 @@ void MainComponent::saveSettings()
         }
         obj->setProperty("couplers", couplerSettings);
     }
+    obj->setProperty("couplerButtonSize", couplerButtonSize);   // 0.9.79 (#233)
 
     juce::Array<juce::var> buttonBindings;
     {
@@ -25443,8 +25687,13 @@ void MainComponent::bringLostModalsToFront()
     for (int i = manager.getNumModalComponents(); --i >= 0;)
         if (auto* modal = manager.getModalComponent(i))
             if (auto* top = modal->getTopLevelComponent())
-                if (auto* peer = top->getPeer())
+                if (auto* peer = dynamic_cast<juce::TopLevelWindow*>(top) != nullptr ? top->getPeer() : nullptr)
                 {
+                    // 0.9.79: our boxes only, as above - the native file chooser's placeholder (a plain Component,
+                    // an empty name) was raised every half second while the native Save dialog stood open on its
+                    // own thread, and the dialog's name field lost the caret each time ("Record" and "Save all
+                    // combination banks": the typed name could never replace the suggested one; the log line
+                    // "brought to the front: " with an empty name at 11:09:02 on 16 Nov 2026).
                     // Only a box that is really BEHIND the main window in the Z order (or minimised) is touched -
                     // never a box already in front: a toFront every half second repaints the console each time.
                     const HWND box = (HWND)peer->getNativeHandle();
@@ -25712,6 +25961,7 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
 {
     struct Pair { const char* titleStart; const char* chapter; };
     static const Pair pairs[]{
+        { "Audio routing", "Audio routing" },   // 0.9.79 (#236)
         { "Couplers", "Couplers" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
         { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
         { "Report a problem", "Report a problem" }, { "IR reverb settings", "The audio tabs" }, { "Set for all", "The audio tabs" },
@@ -25872,6 +26122,10 @@ void MainComponent::showDivisionMenu(int manualIndex)
     menu.addItem(4, "Division settings (keyboard, audio, perspectives)...");
     menu.addItem(5, "Configuration Editor...");
     menu.addSeparator();
+    // 0.9.79 (#235): the division goes to the other window from here (the Divisions dialog's combo does the same).
+    const bool inSecond = twoWindows && divisionScreen[(size_t)manualIndex] == 1;
+    menu.addItem(7, inSecond ? "Move this division to window 1 (main)" : "Move this division to window 2");
+    menu.addSeparator();
     menu.addItem(6, "Manual: Division headers");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     menu.showMenuAsync(menuOptionsAtMouse(this), [safeThis, manualIndex](int result)
@@ -25883,6 +26137,15 @@ void MainComponent::showDivisionMenu(int manualIndex)
         else if (result == 4) safeThis->showKeyboardsDialog(manualIndex);
         else if (result == 5) safeThis->showConfigurationEditor();
         else if (result == 6) safeThis->showManualSection("Division headers");
+        else if (result == 7)
+        {
+            const bool toSecond = !(safeThis->twoWindows && safeThis->divisionScreen[(size_t)manualIndex] == 1);
+            safeThis->divisionScreen[(size_t)manualIndex] = toSecond ? 1 : 0;
+            if (toSecond && !safeThis->twoWindows) safeThis->setTwoWindows(true);
+            safeThis->saveSettings();
+            if (safeThis->voicer) safeThis->voicer->rebuildUI(safeThis->stopsContent, safeThis->stopsViewport);
+            CrashHandler::note("Division " + juce::String(manualIndex) + " moved to window " + juce::String(toSecond ? 2 : 1) + " (the header's menu)");
+        }
     });
 }
 
@@ -26831,6 +27094,7 @@ void MainComponent::globalResetControls(const GlobalResetOptions& o)
             s->gainDb = 0.0f;
             s->attackMs = 75.0f;
             s->attackDelayMs = 0.0f;   // 0.9.77
+            s->attackKeyMs.fill(0.0f); s->attackRandomize = true;   // 0.9.79 (#228)
             s->attackFadeoutMs = 75.0f;
             s->voicingExpanded = false;
             s->rankEnabled = true;
@@ -30416,6 +30680,10 @@ void MainComponent::showConfigurationEditor()
                 { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
                 "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
                 "and every stop being dragged glows for a moment. Off: the console as it was.");
+            addToggle("Load the last combinations file with the organ", o.loadLastCombinationsFile, [&o](bool state)   // 0.9.79 (#232)
+                { o.loadLastCombinationsFile = state; o.saveSettings(); },
+                "The combinations file (all banks of pistons) last loaded or saved with this organ is read again once the "
+                "organ is loaded, on top of the combinations the configuration carries. Off: the configuration's own combinations only.");
             addToggle("Output discontinuity detector: count the clicks in the program's own output", o.outputDiscontinuityDetector.load(), [&o](bool state)
                 { o.outputDiscontinuityDetector.store(state); o.engine.setOutputDiscontinuityDetector(state); o.saveSettings(); },
                 "On: every jump between two blocks of the program's own output (after the rendering, at the end of every route, "

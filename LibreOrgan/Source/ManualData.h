@@ -438,7 +438,8 @@ static const char* const kManualText_part2 =
     "## 2.2 The combination row\n"
     "\n"
     "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
-    "buttons *<<* / *>>*, the bank buttons, the display of the combination in use,\n"
+    "buttons *<<* / *>>*, the bank buttons (held down they scroll; click the bank\n"
+    "number to type one), the display of the combination in use,\n"
     "*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for\n"
     "combination files, and the crescendo.\n"
     "\n"
@@ -466,7 +467,13 @@ static const char* const kManualText_part2 =
     "\n"
     "The sliders of *Configuration Editor > Global sound* can each be shown on the\n"
     "main panel (the checkbox beside them in the editor); all are MIDI-learnable.\n"
-    "The polyphony display shows the voices sounding now (*NOW*), the most at once\n"
+    "The polyphony display begins with the **audio meter**: a vertical bargraph of\n"
+    "the highest sample of every audio route and device, measured before the\n"
+    "limiter (green to -12 dB, orange to -3 dB, red while the limiter works), and\n"
+    "the *CLIP* dot above it, which stays lit after a clip until you click it. The\n"
+    "limiter (the safety clip of every route) softens everything above -0.2 dBFS,\n"
+    "so the driver never gets more than 0 dBFS - when the dot lights, lower the\n"
+    "master or the division volumes. Then the voices sounding now (*NOW*), the most at once\n"
     "over the last seconds (*PEAK*), the *DSP* load (the time the busiest audio\n"
     "thread needed for its last block, as a share of the block; above 100 % the\n"
     "sound breaks - [Getting the most polyphony](#57-getting-the-most-polyphony)), the memory the program holds\n"
@@ -488,7 +495,8 @@ static const char* const kManualText_part2 =
     "or open *Swell settings...*), the *Tremulant* button (registration, like a\n"
     "stop; right-click: *Tremulant settings...*) and *Settings*, which opens the\n"
     "Divisions dialog. A right-click on the header's background lists the swell,\n"
-    "tremulant and wind settings of the division. Drag the dividers between the\n"
+    "tremulant and wind settings of the division and moves the division to the\n"
+    "other program window. Drag the dividers between the\n"
     "columns to share out the width. The mouse wheel scrolls the workspace, except\n"
     "over the sliders of an open voicing row.\n"
     "\n"
@@ -497,7 +505,8 @@ static const char* const kManualText_part2 =
     "The first start opens the main window nearly as large as the screen, with a\n"
     "margin at every edge and the taskbar free; from then on the window comes back\n"
     "where you left it. *Console > Program windows* opens a second window; *Shown\n"
-    "in window* in a division's section moves the division there. *Interface\n"
+    "in window* in a division's section, or *Move this division to window 2* in\n"
+    "the right-click menu of its header, moves the division there. *Interface\n"
     "size* is the program's own scale over the system's display scale, estimated\n"
     "at the first start for Full HD, 4K and Retina screens alike. Every dialog\n"
     "scrolls when the window is smaller than its content.\n"
@@ -597,6 +606,8 @@ static const char* const kManualText_part2 =
     "\n"
     "The sustain-release crossfade of this stop as a multiple of the global\n"
     "[Sustain fade-out on key release](#sustain-fade-out-on-key-release) and\n"
+    ;
+static const char* const kManualText_part3 =
     "[Release sample fade-in](#release-sample-fade-in) (x0.5 to x10, default x1). Bells,\n"
     "chimes and other ringing stops want x5 to x10; a Hauptwerk definition's own\n"
     "crossfade lengths set it at the import where they exceed the organ's usual.\n"
@@ -606,8 +617,6 @@ static const char* const kManualText_part2 =
     "On stop folders: whether the button carries the Roman numeral of the ranks\n"
     "that sound with it.\n"
     "\n"
-    ;
-static const char* const kManualText_part3 =
     "### Perspective boxes\n"
     "\n"
     "One on/off box per microphone perspective of the stop (their volumes are the\n"
@@ -625,11 +634,8 @@ static const char* const kManualText_part3 =
     "\n"
     "The start of every note raised or lowered by Attack Gain (-6 to +6 dB) for\n"
     "the first half of Attack Time (0-500 ms, default 150), fading back over the\n"
-    "second half: more chiff or a softer speaking, the held tone untouched. Attack\n"
-    "delay (0-500 ms, default 0) lets this stop's pipes speak that much later than\n"
-    "the key, on top of the global [Attack minimum delay](#attack-minimum-delay) -\n"
-    "a slow-speaking stop, a reed that waits behind the flues. It shortens on a\n"
-    "repeated tone the same way and varies between 30 and 100 % at every stroke.\n"
+    "second half: more chiff or a softer speaking, the held tone untouched. How\n"
+    "much later or sooner each pipe speaks is the row [Attack per key](#attack-per-key).\n"
     "\n"
     "### Random pitch error\n"
     "\n"
@@ -671,6 +677,17 @@ static const char* const kManualText_part3 =
     "the division where they sound); a **green thumb** marks a filled\n"
     "pipe (hover it for its source), an **orange note name** a sample without\n"
     "loop points, a **grey slider** no pipe at all.\n"
+    "\n"
+    "### Attack per key\n"
+    "\n"
+    "A third folding row of the stop's own voicing: how much later (positive) or\n"
+    "how much sooner (negative, -300 to +300 ms) each pipe speaks after the key. A\n"
+    "delay adds to the global [Attack minimum delay](#attack-minimum-delay); a cut\n"
+    "starts the sample that far into its attack with a short fade-in, so a lazy\n"
+    "pipe speaks promptly. *Randomize* (on by default): 30 to 100 % of the value at\n"
+    "every stroke, and a tone repeated within the delay comes sooner, as the global\n"
+    "delay does; off = the value exactly. *Reset to 0 ms* beside the header; the\n"
+    "right mouse button paints a value across the row.\n"
     "\n"
     "## 3.4 Transmissions and extensions\n"
     "\n"
@@ -791,6 +808,8 @@ static const char* const kManualText_part3 =
     "  shown. **Transp.**: [Transposition](#transposition) - empty means found by the program.\n"
     "- **Swap divisions...** exchanges the stop lists of two divisions;\n"
     "  **Reset division...** forgets one division's table.\n"
+    ;
+static const char* const kManualText_part4 =
     "\n"
     "## 4.3 Perspectives\n"
     "\n"
@@ -808,8 +827,6 @@ static const char* const kManualText_part3 =
     "left or right** to change it: the lines take the new order, saved with the\n"
     "configuration, and the voicing boxes and the audio tabs follow at once;\n"
     "nothing is reloaded.\n"
-    ;
-static const char* const kManualText_part4 =
     "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
@@ -888,6 +905,27 @@ static const char* const kManualText_part4 =
     "divisions fed from the same wind get half of this one's sag); for every\n"
     "division: [Wind: harmonic filter](#wind-harmonic-filter), [Wind: volume change per cent of sag](#wind-volume-change-per-cent-of-sag), the shares of one stop, one pipe and two pipes in the full\n"
     "sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 % switches the whole model off).\n"
+    "\n"
+    "### Audio routing\n"
+    "\n"
+    "The *Audio routing* button of the top bar shows the same routes as one\n"
+    "picture, in the language of the stop grid: every **sound card** is a block\n"
+    "(its name, type, rate and buffer in the header), the block's **cells** are the\n"
+    "card's output channels, and every **route** (a division's perspective, \"I. /\n"
+    "Front\") lies as a chip in the cells of its channels - several chips of one\n"
+    "row are several channels, the pipes spread over them in turn. A perspective\n"
+    "that every division sends to the same card and channels is one folded row\n"
+    "*All divisions / Front [N]*; the arrow before it unfolds the divisions.\n"
+    "\n"
+    "Drag a chip into a free cell to change the channel (an occupied cell swaps\n"
+    "the two); with Shift or the right mouse button the chip is **copied**: one\n"
+    "more channel for the route. Drag a chip onto another card to move the route\n"
+    "there, or onto *No sound card* to silence it; drag it out of every grid to\n"
+    "take that channel away (a route keeps one at least). *Add sound card...*\n"
+    "makes a block for another card, opened when the first route lands there.\n"
+    "*Test* beside a row plays a soft tone for a second on that route's channels\n"
+    "alone - you hear where it goes. The audio tabs below show the same data and\n"
+    "stay the second way.\n"
     "\n"
     "## 5.3 The audio tabs\n"
     "\n"
@@ -972,6 +1010,8 @@ static const char* const kManualText_part4 =
     "   for the desktop.\n"
     "2. **Install PipeWire's JACK library**: `sudo apt install pipewire-jack\n"
     "   pipewire-bin pavucontrol` (Ubuntu, Debian, Mint), `sudo dnf install\n"
+    ;
+static const char* const kManualText_part5 =
     "   pipewire-jack-audio-connection-kit pipewire-utils pavucontrol` (Fedora),\n"
     "   `sudo pacman -S pipewire-jack pavucontrol` (Arch), `sudo zypper install\n"
     "   pipewire-libjack-0_3 pipewire-tools pavucontrol` (openSUSE). Log out and\n"
@@ -1010,8 +1050,6 @@ static const char* const kManualText_part4 =
     "registers a few seconds after a rate switch) are waited for six seconds;\n"
     "devices still absent are named once, their routes stay silent until the\n"
     "device appears and then reopen by themselves.\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "## 5.7 Getting the most polyphony\n"
     "\n"
@@ -1055,7 +1093,14 @@ static const char* const kManualText_part5 =
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
     "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
-    "only*, *Melody couplers: legato grace time*).\n"
+    "only*, *Melody couplers: legato grace time*). *Button size* (small, normal,\n"
+    "large) sets the size of every coupler button; it travels with the organ.\n"
+    "\n"
+    "The coupler rail is a cell grid like the stop grid: every button the same\n"
+    "size, each keeps its cell, free cells stay free. Hold a coupler three seconds\n"
+    "to arrange: the free cells appear dashed (a spare row too), drag a coupler\n"
+    "into a free cell or onto another coupler to swap the two; a click outside\n"
+    "ends the arranging.\n"
     "\n"
     "## 6.2 Combinations and the crescendo\n"
     "\n"
@@ -1167,6 +1212,8 @@ static const char* const kManualText_part5 =
     "replaced. *Empty the cache*, *Remove them* (the files of stops not loaded\n"
     "now) and *Choose...* (another folder, the files moved there) are in the same\n"
     "section.\n"
+    ;
+static const char* const kManualText_part6 =
     "\n"
     "---\n"
     "\n"
@@ -1212,8 +1259,6 @@ static const char* const kManualText_part5 =
     "### Currently active\n"
     "\n"
     "The threads rendering now and the kernel in use. Information.\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "### Full kernel from (sounding pitch)\n"
     "\n"
@@ -1369,6 +1414,8 @@ static const char* const kManualText_part6 =
     "same instant; fast repetitions stay crisp.\n"
     "\n"
     "## 8.3 Advanced global audio\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "### Swell: harmonic filter\n"
     "\n"
@@ -1414,8 +1461,6 @@ static const char* const kManualText_part6 =
     "The sag with two keys held (default 50 %); from three keys on the rest closes\n"
     "gradually.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Wind: maximum wind model effect\n"
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
@@ -1571,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "On: a release copy plays at the level relation the source's release has to\n"
     "its sustain. Off (default): at its own level.\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
     "\n"
@@ -1616,8 +1663,6 @@ static const char* const kManualText_part7 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
@@ -1633,6 +1678,13 @@ static const char* const kManualText_part8 =
     "### Load the last configuration at startup\n"
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
+    "\n"
+    "### Load the last combinations file with the organ\n"
+    "\n"
+    "On by default. The combinations file (all banks of pistons) last loaded or\n"
+    "saved with this organ is read again once the organ is loaded, on top of the\n"
+    "combinations the configuration carries. Off: the configuration's own\n"
+    "combinations only.\n"
     "\n"
     "### Glow: a pressed button and a dragged stop glow for a moment\n"
     "\n"
@@ -1766,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "### MIDI transposition\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "The keyboard plays this many semitones away from what it sends (-24 to +24).\n"
     "\n"
     "### Swell pedal controller\n"
@@ -1818,8 +1872,6 @@ static const char* const kManualText_part8 =
     "### Tremulant rate\n"
     "\n"
     "2 to 11 Hz (default 4.4).\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Tremulant depth\n"
     "\n"
@@ -1968,6 +2020,8 @@ static const char* const kManualText_part9 =
     "really carry, measured on the audio (65 536 frames from 0.3 s in, the first\n"
     "harmonic within 34 dB of the strongest). A recording loses the fundamental of\n"
     "the deepest pipes - a 32' C at 16 Hz has it 50 dB under the second harmonic -\n"
+    ;
+static const char* const kManualText_part10 =
     "so when the lowest pipe sounds below 45 Hz the pipes 6, 7, 9, 10 and 12\n"
     "semitones above are asked whether they have a clear fundamental; two of them\n"
     "suffice and the stop keeps its 32'. A mixture has no fundamental on any pipe\n"
@@ -2020,8 +2074,6 @@ static const char* const kManualText_part9 =
     "division a keyboard's keys reach through the definition's switches joins it\n"
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
-    ;
-static const char* const kManualText_part10 =
     "without a coupler is placed stop by stop where the name says); the stops\n"
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
@@ -2170,6 +2222,8 @@ static const char* const kManualText_part10 =
     "system's shared mixer with many streams on one endpoint, a USB card starved\n"
     "by the system, an endpoint's \"audio enhancements\" boosting every quiet stream\n"
     "- leaves the run clean and the sound not. Such a case shows in the activity\n"
+    ;
+static const char* const kManualText_part11 =
     "log as \"Audio callback anomaly: ... no callbacks\" for a route, or not at all;\n"
     "the cure is the device layout (one driver for everything, ASIO where there is\n"
     "one, no unused routes left open on the same endpoint), never the limit. The\n"
@@ -2222,8 +2276,6 @@ static const char* const kManualText_part10 =
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
-    ;
-static const char* const kManualText_part11 =
     "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
