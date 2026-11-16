@@ -1616,16 +1616,33 @@ MainComponent::MainComponent()
     bankLabel.setMinimumHorizontalScale(0.7f);
     // 0.9.79 (#231): the bank number is typed - a click opens the editor, Enter sets the bank (the buttons
     // beside it still step, held down they scroll).
-    bankLabel.setEditable(true, false, false);
-    bankLabel.setTooltip("The bank of pistons: click and type its number, then Enter. The buttons beside step through the banks; held down they scroll.");
-    bankLabel.onEditorShow = [this] { if (auto* editor = bankLabel.getCurrentTextEditor()) { editor->setInputRestrictions(4, "0123456789"); editor->setText(juce::String(currentBank), false); editor->selectAll(); } };
-    bankLabel.onTextChange = [this]
+    // 0.9.81: a black display like the combination display (the file / "Bank N - note"); a click opens two
+    // boxes inside it - the number left, the note right - Enter or a click elsewhere sets both; the small
+    // "v" in its corner lists the annotated banks. No right-click (the user).
+    bankLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+    bankLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
+    bankLabel.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
+    bankLabel.setTooltip("The combinations file in use (default = the combinations saved in the configuration) and the bank of pistons with its note. "
+        "Click: type the bank number (left) and a note for it (right), Enter sets them. The buttons beside step through the banks; held down they scroll.");
+    bankLabel.addMouseListener(this, false);
+    bankLabel.getProperties().set("testName", "bankDisplay");   // ORGAN_TEST_MOUSE
+    for (auto* editor : { &bankNumberEditor, &bankNoteEditor })
     {
-        const auto digits = bankLabel.getText().retainCharacters("0123456789");
-        if (digits.isNotEmpty()) { currentBank = juce::jlimit(0, maxBank, digits.getIntValue()); activePiston = -1; }
-        updateCombinationControls();
-        saveMemories();
-    };
+        editor->setFont(juce::FontOptions(14.0f));
+        editor->onReturnKey = [this] { applyBankEdit(); };
+        editor->onEscapeKey = [this] { bankNumberEditor.setVisible(false); bankNoteEditor.setVisible(false); };
+        editor->onFocusLost = [this] { if (!bankNumberEditor.hasKeyboardFocus(true) && !bankNoteEditor.hasKeyboardFocus(true)) applyBankEdit(); };
+        addChildComponent(*editor);
+    }
+    bankNumberEditor.setInputRestrictions(4, "0123456789");
+    bankNumberEditor.setJustification(juce::Justification::centred);
+    bankNumberEditor.setTooltip("The bank number (0-999)");
+    bankNoteEditor.setTextToShowWhenEmpty("note (the piece, where it starts ...)", juce::Colours::grey);
+    bankNoteEditor.setTooltip("A note shown with the bank: the piece it serves, where it starts ... Empty = no note.");
+    bankListButton.setTooltip("The annotated banks - click one to go there.");
+    bankListButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey);
+    bankListButton.onClick = [this] { showBankMenu(); };
+    addAndMakeVisible(bankListButton);
     addAndMakeVisible(combinationDisplay);
     combinationDisplay.setJustificationType(juce::Justification::centred);
     combinationDisplay.setFont(juce::FontOptions(22.0f, juce::Font::bold));
@@ -1915,6 +1932,7 @@ MainComponent::MainComponent()
     // 0.9.80: the division's alias ("I. Hauptwerk"), edited by a double-click on the header's name or in the Divisions dialog.
     voicer->divisionAliasGetter = [this](int manual) { return manualConfigs[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)].alias; };
     voicer->divisionAliasSetter = [this](int manual, const juce::String& alias) { setDivisionAlias(manual, alias); };
+    voicer->couplersDialogRequest = [this] { showCouplersDialog(); };   // 0.9.81: from the coupler grid's menu
     voicer->screenGetter = [this](int manual) { return twoWindows ? divisionScreen[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)] : 0; };
     // Arrange mode: a stop dragged into another division's grid moves house; its "x" removes it.
     voicer->moveStopRequest = [this](Stop* stop, int target) { moveStopToDivision(stop, target); };
@@ -2568,6 +2586,49 @@ MainComponent::MainComponent()
     // of the console clicked 3 s after start, one every 2 s - a dialog opened without a
     // mouse (the Wayland desktop has no xdotool; the 0.8.172 regression of the launchAsync
     // dialogs is what this is for).
+    // 0.9.81: ORGAN_TEST_MOUSE="<text>|<action>[^<text>|<action>...]" (actions: click, right, dblclick) - a SYNTHETIC mouse
+    // event on the component found by its button text, label text or "testName" property in every window (the
+    // event goes to the component and to its parent, as a mouse listener would get it); ORGAN_TEST_MOUSE_AT = the
+    // first one's second (default 3), 2 s apart. The gestures have a hook now - "nemám hook" is no excuse (the user).
+    if (const char* env = std::getenv("ORGAN_TEST_MOUSE"))
+    {
+        const auto specs = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        const int firstMs = std::getenv("ORGAN_TEST_MOUSE_AT") != nullptr ? juce::jmax(1, juce::String(std::getenv("ORGAN_TEST_MOUSE_AT")).getIntValue()) * 1000 : 3000;
+        for (int i = 0; i < specs.size(); ++i)
+            juce::Timer::callAfterDelay(firstMs + 2000 * i, [safeThis, spec = specs[i]]
+            {
+                if (safeThis == nullptr) return;
+                const auto text = spec.upToFirstOccurrenceOf("|", false, false).trim();
+                const auto action = spec.fromFirstOccurrenceOf("|", false, false).trim().toLowerCase();
+                std::function<juce::Component*(juce::Component*)> find = [&find, &text](juce::Component* c) -> juce::Component*
+                {
+                    if (auto* button = dynamic_cast<juce::Button*>(c); button != nullptr && button->getButtonText() == text) return c;
+                    if (auto* label = dynamic_cast<juce::Label*>(c); label != nullptr && label->getText() == text) return c;
+                    if (c->getProperties().getWithDefault("testName", {}).toString() == text) return c;
+                    for (int i = 0; i < c->getNumChildComponents(); ++i)
+                        if (auto* found = find(c->getChildComponent(i))) return found;
+                    return nullptr;
+                };
+                juce::Component* target = nullptr;
+                for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && target == nullptr;)
+                    target = find(juce::Desktop::getInstance().getComponent(w));
+                if (target == nullptr) { CrashHandler::note("ORGAN_TEST_MOUSE: no component \"" + text + "\""); return; }
+                auto source = juce::Desktop::getInstance().getMainMouseSource();
+                const auto centre = target->getLocalBounds().getCentre().toFloat();
+                const juce::ModifierKeys mods = action == "right" ? juce::ModifierKeys(juce::ModifierKeys::rightButtonModifier) : juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier);
+                const juce::MouseEvent e(source, centre, mods, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, target, target,
+                    juce::Time::getCurrentTime(), centre, juce::Time::getCurrentTime(), action == "dblclick" ? 2 : 1, false);
+                CrashHandler::note("ORGAN_TEST_MOUSE: " + action + " on \"" + text + "\"");
+                if (action == "dblclick") target->mouseDoubleClick(e);
+                else
+                {
+                    target->mouseDown(e);
+                    if (auto* parent = target->getParentComponent()) parent->mouseDown(e);
+                    target->mouseUp(e);
+                }
+            });
+    }
     if (const char* env = std::getenv("ORGAN_TEST_CLICK"))
     {
         const auto names = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
@@ -3189,7 +3250,7 @@ void MainComponent::resized()
     struct RowItem { juce::Component* component; int natural, minimum; bool tall; };
     std::vector<RowItem> items{
         { &combinationSetButton, 90, 46, false }, { &bankDownButton, 78, 44, false },
-        { &bankLabel, 240, 50, false }, { &bankUpButton, 78, 44, false },   // 0.9.80: two lines (file / bank + note)
+        { &bankLabel, 176, 50, false }, { &bankUpButton, 78, 44, false },   // 0.9.81: a black display (file / bank + note), its editors inside
         { &combinationDisplay, 88, 58, false }, { &pistonCountLabel, 70, 48, false },
         { &pistonCountBox, 58, 46, false } };
     for (int i = 0; i < pistonCount; ++i) items.push_back({ pistonButtons[i], 74, 40, false });
@@ -3242,6 +3303,15 @@ void MainComponent::resized()
         if (auto* button = pistonButtons[i]) button->setBounds({});
     couplerRailLabel.setBounds({});
     couplerViewport.setBounds({});
+    {   // 0.9.81: the bank display's editors (shown while editing: the number left, the note right) and the list button in its corner
+        const auto b = bankLabel.getBounds();
+        bankListButton.setBounds(b.getRight() - 17, b.getY() + 2, 15, 14);
+        auto edit = b.reduced(3);
+        edit.removeFromRight(16);   // the list button's column stays clear of the note editor
+        bankNumberEditor.setBounds(edit.removeFromLeft(46));
+        edit.removeFromLeft(3);
+        bankNoteEditor.setBounds(edit);
+    }
 
     bounds.removeFromTop(8);
     stopsViewport.setBounds(bounds.reduced(4));
@@ -7290,6 +7360,7 @@ void MainComponent::beginKeyboardLearn(int manualIndex)
 void MainComponent::showKeyboardLearnMenu(int manualIndex)
 {
     if (manualIndex < 0 || manualIndex > manualCount) return;
+    CrashHandler::note("Menu: keyboard learn of division " + juce::String(manualIndex));   // 0.9.81: the hook runs read which menu a right-click opened
     juce::PopupMenu menu;
     menu.addItem(1, "MIDI Learn...");
     menu.addItem(2, "Clear learned keyboard MIDI",
@@ -9158,6 +9229,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 channelBoxes[(size_t)manual].setSelectedId(config.midiChannel, juce::dontSendNotification);
                 windowBoxes[(size_t)manual].setSelectedId(owner.twoWindows ? juce::jlimit(0, 1, owner.divisionScreen[(size_t)manual]) + 1 : 1,
                     juce::dontSendNotification);
+                // 0.9.81: the alias follows the model (a double-click on the header's name sets it while this dialog is open).
+                if (!aliasBoxes[(size_t)manual].hasKeyboardFocus(true) && aliasBoxes[(size_t)manual].getText() != config.alias)
+                    aliasBoxes[(size_t)manual].setText(config.alias, false);
                 keyboards[(size_t)manual]->setMidiChannel(config.midiChannel);
                 velocityButtons[(size_t)manual].setToggleState(config.disableVelocity, juce::dontSendNotification);
                 const int keyboardLayout = juce::jlimit(0, 3, config.bassOctaveLayout);
@@ -11596,38 +11670,14 @@ juce::File MainComponent::combinationsDirectory() const
 void MainComponent::showBankMenu()
 {
     juce::PopupMenu menu;
-    menu.addItem(1, "Annotate bank " + juce::String(currentBank) + "...");
     std::vector<int> annotated;
     for (const auto& [bank, text] : bankNotes) if (text.isNotEmpty()) annotated.push_back(bank);
-    if (!annotated.empty())
-    {
-        menu.addSeparator();
-        for (const int bank : annotated) menu.addItem(100 + bank, juce::String(bank) + " - " + bankNotes[bank], true, bank == currentBank);
-    }
+    if (annotated.empty()) menu.addItem(1, "No annotated bank yet - click the display, type a note on the right", false);
+    for (const int bank : annotated) menu.addItem(100 + bank, juce::String(bank) + " - " + bankNotes[bank], true, bank == currentBank);
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    menu.showMenuAsync(menuOptionsAtMouse(this), [safeThis](int result)
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&bankListButton), [safeThis](int result)
     {
         if (safeThis == nullptr || result <= 0) return;
-        if (result == 1)
-        {
-            auto* box = new juce::AlertWindow("Annotate bank " + juce::String(safeThis->currentBank),
-                "A note shown with the bank number - the piece it serves, where it starts ... (empty = no note)", juce::MessageBoxIconType::NoIcon);
-            const auto existing = safeThis->bankNotes.find(safeThis->currentBank);
-            box->addTextEditor("note", existing != safeThis->bankNotes.end() ? existing->second : juce::String(), "Note:");
-            box->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            box->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-            const int bank = safeThis->currentBank;
-            box->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, bank](int ok)
-            {
-                if (safeThis == nullptr || ok != 1) return;
-                const auto text = box->getTextEditorContents("note").trim();
-                if (text.isEmpty()) safeThis->bankNotes.erase(bank); else safeThis->bankNotes[bank] = text;
-                safeThis->configurationDirty = true;
-                safeThis->saveMemories();
-                safeThis->updateCombinationControls();
-            }), true);
-            return;
-        }
         const int bank = result - 100;
         if (bank < 0 || bank > maxBank) return;
         safeThis->currentBank = bank;
@@ -11635,6 +11685,34 @@ void MainComponent::showBankMenu()
         safeThis->updateCombinationControls();
         safeThis->saveMemories();
     });
+}
+
+// 0.9.81: the bank display's editing - the number left, the note right, inside the display itself.
+void MainComponent::beginBankEdit()
+{
+    const auto note = bankNotes.find(currentBank);
+    bankNumberEditor.setText(juce::String(currentBank), false);
+    bankNoteEditor.setText(note != bankNotes.end() ? note->second : juce::String(), false);
+    bankNumberEditor.setVisible(true);
+    bankNoteEditor.setVisible(true);
+    bankNumberEditor.toFront(true);
+    bankNumberEditor.selectAll();
+}
+
+void MainComponent::applyBankEdit()
+{
+    if (!bankNumberEditor.isVisible()) return;
+    const auto digits = bankNumberEditor.getText().retainCharacters("0123456789");
+    const int bank = digits.isNotEmpty() ? juce::jlimit(0, maxBank, digits.getIntValue()) : currentBank;
+    const auto text = bankNoteEditor.getText().trim();
+    bankNumberEditor.setVisible(false);
+    bankNoteEditor.setVisible(false);
+    if (bank != currentBank) { currentBank = bank; activePiston = -1; }
+    if (text.isEmpty()) bankNotes.erase(bank); else bankNotes[bank] = text;
+    configurationDirty = true;
+    updateCombinationControls();
+    saveMemories();
+    CrashHandler::note("Bank " + juce::String(bank) + (text.isNotEmpty() ? " - \"" + text + "\"" : juce::String()));
 }
 
 // 0.9.80: the division's alias (the header's name and the Divisions dialog share it); a leading numeral typed
@@ -26009,8 +26087,8 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
             applyAudioToAll.store(false); applyAudioToAllAux.store(false);
             break;
         }
+    if (event.eventComponent == &bankLabel) { if (!event.mods.isPopupMenu()) beginBankEdit(); return; }   // 0.9.81: a click opens the number + note boxes
     if (!event.mods.isPopupMenu()) return;
-    if (event.eventComponent == &bankLabel) { showBankMenu(); return; }   // 0.9.80: annotate the bank, jump to an annotated one
     const auto target = targetForComponent(event.eventComponent);
     if (target.isNotEmpty()) showMidiLearnMenu(target);
 }
@@ -26127,6 +26205,7 @@ static juce::String legacyStopBindingKey(const juce::String& target)
 
 void MainComponent::showMidiLearnMenu(const juce::String& target)
 {
+    CrashHandler::note("Menu: MIDI learn of " + target);
     juce::PopupMenu menu;
     const bool continuousTarget = target.startsWith("slider:");
     const bool triggerOnlyTarget = target.startsWith("temperament:") || target.startsWith("header:");
@@ -26223,6 +26302,7 @@ void MainComponent::clearMidiBinding(const juce::String& target)
 void MainComponent::showDivisionMenu(int manualIndex)
 {
     if (manualIndex < 0 || manualIndex >= SamplerEngine::maxManuals) return;
+    CrashHandler::note("Menu: division menu of division " + juce::String(manualIndex));
     juce::PopupMenu menu;
     menu.addItem(1, "Swell settings (attenuation, shutter inertia, harmonic filter)...");
     menu.addItem(2, "Tremulant settings (rate, depth, drift, harmonic filter)...");

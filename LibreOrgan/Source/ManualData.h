@@ -438,12 +438,13 @@ static const char* const kManualText_part2 =
     "## 2.2 The combination row\n"
     "\n"
     "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
-    "buttons *<<* / *>>*, the bank buttons (held down they scroll) with the bank\n"
-    "display between them - its first line names the combinations file in use\n"
-    "(\"default\" = the combinations saved in the configuration), its second line\n"
-    "the bank and its annotation; click it to type a bank number, right-click to\n"
-    "annotate the bank (the piece it serves, where it starts) or to jump to any\n"
-    "annotated bank -, the display of the combination in use,\n"
+    "buttons *<<* / *>>*, the bank buttons (held down they scroll) with the black\n"
+    "bank display between them - its first line names the combinations file in\n"
+    "use (\"default\" = the combinations saved in the configuration), its second\n"
+    "line the bank and its note; click the display and two boxes open in it: the\n"
+    "bank number on the left, a note on the right (the piece it serves, where it\n"
+    "starts), Enter sets both; the small *v* in its corner lists the annotated\n"
+    "banks -, the display of the combination in use,\n"
     "*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for\n"
     "combination files (their own folder, `Documents\\LibreOrgan\\LibreCombinations`;\n"
     "the file last used with an organ is read again when the organ loads), and\n"
@@ -502,9 +503,10 @@ static const char* const kManualText_part2 =
     "it travels with the organ), the swell bar (drag it; right-click to learn the swell pedal\n"
     "or open *Swell settings...*), the *Tremulant* button (registration, like a\n"
     "stop; right-click: *Tremulant settings...*) and *Settings*, which opens the\n"
-    "Divisions dialog. A right-click on the header's background lists the swell,\n"
+    "Divisions dialog. A right-click on the division's name lists the swell,\n"
     "tremulant and wind settings of the division and moves the division to the\n"
-    "other program window. Drag the dividers between the\n"
+    "other program window; a right-click on the coupler rows below opens the\n"
+    "[couplers' own menu](#61-couplers). Drag the dividers between the\n"
     "columns to share out the width. The mouse wheel scrolls the workspace, except\n"
     "over the sliders of an open voicing row.\n"
     "\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "bindings use the stop's real name.\n"
     "\n"
     "### One-shot\n"
-    "\n"
-    "The stop plays each sample once from start to end whenever the key is\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
+    "The stop plays each sample once from start to end whenever the key is\n"
     "released (chimes, harp, celesta); nothing is cut or faded by the key going\n"
     "up. The switch starts as the *One-shot stops* patterns say and overrides\n"
     "them for this stop once touched.\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "- **Add stop...** adds an empty stop folder or one of the ready-made stops no\n"
     "  division uses yet. The x at a row's start removes the stop (its folders\n"
     "  become free). **Remove empty stops** removes every row without folders and\n"
-    "  children. **Stop Grid Upside Down** reverses the rows of every division\n"
-    "  (a stop folder keeps its children); *Apply and reload* asks whether the\n"
     ;
 static const char* const kManualText_part4 =
+    "  children. **Stop Grid Upside Down** reverses the rows of every division\n"
+    "  (a stop folder keeps its children); *Apply and reload* asks whether the\n"
     "  grid follows.\n"
     "- **Aliases from folders** gives every stop without an alias the bare name of\n"
     "  its sample folder (no parents, no perspective prefix, a capital, the\n"
@@ -917,24 +919,32 @@ static const char* const kManualText_part4 =
     "\n"
     "### Audio routing\n"
     "\n"
-    "The *Audio routing* button of the top bar shows the same routes as one\n"
-    "picture, in the language of the stop grid: every **sound card** is a block\n"
-    "(its name, type, rate and buffer in the header), the block's **cells** are the\n"
-    "card's output channels, and every **route** (a division's perspective, \"I. /\n"
-    "Front\") lies as a chip in the cells of its channels - several chips of one\n"
-    "row are several channels, the pipes spread over them in turn. A perspective\n"
-    "that every division sends to the same card and channels is one folded row\n"
-    "*All divisions / Front [N]*; the arrow before it unfolds the divisions.\n"
+    "The *Audio routing* button of the top bar draws the routes as **cables**\n"
+    "between what plays and the sound cards. On the left stand the sources: one\n"
+    "row per **perspective** (Front, Rear ...) when every division sends it the\n"
+    "same way, the arrow before it unfolds the divisions (P., I., II.) so each\n"
+    "gets a cable of its own; a perspective the divisions send differently is\n"
+    "unfolded by itself. To the right lie the **sound cards in use** with their\n"
+    "**outputs** along the bottom edge (a card with many outputs grows wide,\n"
+    "never tall); each shows its driver, rate and buffer (combos), the latency,\n"
+    "*Driver panel*, *Reopen* and *Test* (a soft tone for a second on every\n"
+    "route of that card - you hear where it goes). Every other card of every\n"
+    "driver (ASIO, Windows Audio and Aggregated WASAPI; JACK and ALSA;\n"
+    "CoreAudio) is a compact label below, a line per driver: drop a source onto\n"
+    "one and the card opens with its first pair and moves up among the cards in\n"
+    "use. A card that is busy through another driver on the same hardware is\n"
+    "grey and takes no cable until that driver has no route on it. Drag a card\n"
+    "by its header onto another to swap their places when the cables cross.\n"
     "\n"
-    "Drag a chip into a free cell to change the channel (an occupied cell swaps\n"
-    "the two); with Shift or the right mouse button the chip is **copied**: one\n"
-    "more channel for the route. Drag a chip onto another card to move the route\n"
-    "there, or onto *No sound card* to silence it; drag it out of every grid to\n"
-    "take that channel away (a route keeps one at least). *Add sound card...*\n"
-    "makes a block for another card, opened when the first route lands there.\n"
-    "*Test* beside a row plays a soft tone for a second on that route's channels\n"
-    "alone - you hear where it goes. The audio tabs below show the same data and\n"
-    "stay the second way.\n"
+    "**Drag a source onto an output**: while the mouse is over a card its output\n"
+    "and the pair partner glow and the label under the cursor says what will\n"
+    "land there (\"7+8\"); let go and that stereo pair replaces the route's\n"
+    "channels, with **Shift** the pair is *added* (two pairs on one source =\n"
+    "the pipes alternate between them by key, a C / C# split), with **Alt** a\n"
+    "single channel is taken. A cable is **selected** by a click (the others\n"
+    "dim) and removed with Delete or the x at its end; the last cable gone, the\n"
+    "source is silent. The [audio tabs](#53-the-audio-tabs) show the same routes\n"
+    "the second way, in the Divisions dialog.\n"
     "\n"
     "## 5.3 The audio tabs\n"
     "\n"
@@ -1000,6 +1010,8 @@ static const char* const kManualText_part4 =
     "  included. More latency, less polyphony per route.\n"
     "- **Aggregated WASAPI**: several Windows devices joined into one with all\n"
     "  their channels; every device is a stereo pair in the channel list and the\n"
+    ;
+static const char* const kManualText_part5 =
     "  ticked channels are the devices the route opens. Keep its buffer at 480\n"
     "  samples or more (the Windows audio engine feeds 10 ms packets).\n"
     "\n"
@@ -1010,8 +1022,6 @@ static const char* const kManualText_part4 =
     "### Audio on Linux\n"
     "\n"
     "Every current distribution runs PipeWire, which reduces every card to a\n"
-    ;
-static const char* const kManualText_part5 =
     "stereo pair for the desktop. An organ needs every output, so:\n"
     "\n"
     "1. **Set the interface to the \"Pro Audio\" profile** (KDE: System Settings >\n"
@@ -1105,11 +1115,12 @@ static const char* const kManualText_part5 =
     "only*, *Melody couplers: legato grace time*). *Button size* (small, normal,\n"
     "large) sets the size of every coupler button; it travels with the organ.\n"
     "\n"
-    "The coupler rail is a cell grid like the stop grid: every button the same\n"
-    "size, each keeps its cell, free cells stay free. Hold a coupler three seconds\n"
-    "to arrange: the free cells appear dashed (a spare row too), drag a coupler\n"
-    "into a free cell or onto another coupler to swap the two; a click outside\n"
-    "ends the arranging.\n"
+    "The coupler grid under the division header is a cell grid like the stop\n"
+    "grid: every button the same size, each keeps its cell, free cells stay free.\n"
+    "Right-click the grid for its menu (*Enter arrange mode*, *Couplers...*, the\n"
+    "manual), or hold a coupler three seconds: the free cells appear dashed (a\n"
+    "spare row too), drag a coupler into a free cell or onto another coupler to\n"
+    "swap the two; a click outside ends the arranging.\n"
     "\n"
     "## 6.2 Combinations and the crescendo\n"
     "\n"
@@ -1201,6 +1212,8 @@ static const char* const kManualText_part5 =
     "  source's duration. The attack still speaks at the resampled speed.\n"
     "- **Pitch shift + time stretch**: the same copy, the attack (downwards) and\n"
     "  the release stretched back towards the source's duration. Large shifts\n"
+    ;
+static const char* const kManualText_part6 =
     "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
@@ -1212,8 +1225,6 @@ static const char* const kManualText_part5 =
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "## 7.3 The cache\n"
     "\n"
     "*Filled pipes: keep the generated copies on disk (cache)* (on by default)\n"
@@ -1403,6 +1414,8 @@ static const char* const kManualText_part6 =
     "100 %, default 100). Shorter releases free polyphony sooner and dry a wet set.\n"
     "\n"
     "### Release played from\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "Every release is played from this many milliseconds into its file (0 to 300,\n"
     "default 0), skipping a start that begins too aggressively. A release shorter\n"
@@ -1414,8 +1427,6 @@ static const char* const kManualText_part6 =
     "The shortest time a pipe sounds once started (0 to 500 ms, default 80): even\n"
     "the briefest touch lets the chiff be heard. It is also the shortest breath the\n"
     "wind model sees (50 ms at the least): the wind reacts to the pipe, not to the\n"
-    ;
-static const char* const kManualText_part7 =
     "key, so a longer value lets staccato shake the wind more.\n"
     "\n"
     "### Attack minimum delay\n"
@@ -1605,6 +1616,8 @@ static const char* const kManualText_part7 =
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Filled pipes: time stretch of the attack\n"
     "\n"
     "Pitch shift + time stretch: how far the attack is stretched back from the\n"
@@ -1616,8 +1629,6 @@ static const char* const kManualText_part7 =
     "The same for the release, both directions (default 55). Phase vocoder: a\n"
     "release shifted upwards is stretched towards the resampled length.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Filled pipes: release played from\n"
     "\n"
     "A filled pipe's release copy is played from this many milliseconds in (0 to\n"
@@ -1807,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
     "Stop List.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Shown in window\n"
     "\n"
@@ -1818,8 +1831,6 @@ static const char* const kManualText_part8 =
     "same device.\n"
     "\n"
     "### MIDI channel\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "1 to 16 on that device.\n"
     "\n"
@@ -2009,6 +2020,8 @@ static const char* const kManualText_part9 =
     "played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);\n"
     "a two- or three-digit suffix after an underscore at the very end is a\n"
     "velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release\n"
+    ;
+static const char* const kManualText_part10 =
     "folders: `rel500` (also `rel_0500`, `rel-500`, `release 500ms`) for keys held\n"
     "up to 500 ms, `rel1500` up to 1.5 s, plain `rel` (= `rel99999`) for the rest,\n"
     "files named like the attacks.\n"
@@ -2020,8 +2033,6 @@ static const char* const kManualText_part9 =
     "\"AB_quintaton16R\") marks the two halves of one stop; a rank count (\"Mixtur4x\",\n"
     "\"Zimbel3\") is no such mark. A mutation written without spaces (\"Nasard 223\",\n"
     "\"Terz 135\") is read as 2 2/3', 1 3/5'; the organ builders' shorthand \"3\",\n"
-    ;
-static const char* const kManualText_part10 =
     "\"6\", \"12\", \"1 1/2\" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after\n"
     "its sibling or parent with \"tr\" or \"trem\" appended is the tremmed recording\n"
     "and is skipped by every scan; a folder a Stop List row names explicitly is\n"
@@ -2211,6 +2222,8 @@ static const char* const kManualText_part10 =
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"
     "keys at the fastest rate produce no more voices and the sound stays clean,\n"
     "the organ itself is the limit. Afterwards the level glides up at 26 dB/s\n"
+    ;
+static const char* const kManualText_part11 =
     "after a short hold and the new limit takes effect once the tails are gone.\n"
     "\n"
     "The report: the CPU of the render cores (16 threads busy on a 32-thread\n"
@@ -2222,8 +2235,6 @@ static const char* const kManualText_part10 =
     "profile: own render, waiting for the lanes, mixing, IR hand-over,\n"
     "bookkeeping, the longest route callback of the run and the latest a lane\n"
     "joined a job. On Linux the CPU governor, on Windows the power plan.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "What moves the figure: the buffer size first (two cores: 1000 voices at\n"
     "256, 2300-2900 at 512, 3100-3800 at 1024; sixteen cores: 49 000 / 64 000 /\n"

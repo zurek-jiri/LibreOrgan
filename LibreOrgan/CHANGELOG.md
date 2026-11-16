@@ -12,6 +12,33 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.81] - 2026-11-16
+
+### Changed
+- Audio routing is drawn as cables: the sources (perspectives, unfolded
+  into divisions by an arrow) on the left, the sound cards in use with
+  their outputs along the bottom edge (the driver's channel names stand
+  vertically above them; a card with many outputs grows wide, never tall),
+  rate, buffer, latency, Driver panel, Reopen and Test on every card; every
+  other card of every driver is a compact label below, a drop opens it. A source dragged
+  onto an output glows where the stereo pair will land; Shift adds a second
+  pair (C / C# split), Alt takes one channel; a cable is selected by a
+  click and removed with Delete. A card busy through another driver is
+  grey until freed. No scan of the devices at runtime (the crash of 0.9.79's
+  "Add sound card" is gone with it); the cards can be dragged over the grid.
+- The division header: the keyboard icon alone learns the keyboard; the
+  division's name is the header (double-click = alias, right-click = the
+  division menu); the coupler grid has its own right-click menu (Enter or
+  leave arrange mode, Couplers..., the manual).
+- The bank display is a black panel; a click opens two boxes (the bank
+  number, its annotation), the "v" beside it lists the annotated banks.
+  No right-click.
+- An alias typed on the header appears in the Divisions dialog at once
+  (its field follows the model like every other field there).
+
+### Fixed
+- The per-key attack box takes "-300" (a smaller font in that box).
+
 ## [0.9.80] - 2026-11-16
 
 ### Added

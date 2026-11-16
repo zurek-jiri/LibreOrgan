@@ -781,6 +781,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             attack->setScrollWheelEnabled(true);
             attack->setDoubleClickReturnValue(true, 0.0);
             attack->addMouseListener(this, false);
+            attack->getProperties().set("smallTextBox", true);   // 0.9.81: "-300" must fit the 30 px column (UIScale::LookAndFeel)
             attack->setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
             attack->onValueChange = [this, note, attack] { attackSliderChanged(note, (float)attack->getValue()); };
             attackSliders.add(attack);
@@ -2584,8 +2585,20 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             // the right button on the name opens the header's menu like the background does.
             title.setEditable(false, true, false);
             title.setTooltip("The division. Double-click: its own name (alias) beside the numeral. Right-click: the division's menu.");
-            title.onEditorShow = [this] { if (auto* editor = title.getCurrentTextEditor()) { editor->setText(aliasGetter ? aliasGetter(manual) : juce::String(), false); editor->selectAll(); } };
-            title.onTextChange = [this] { const auto text = title.getText().trim(); if (aliasSetter) aliasSetter(manual, text); else refreshTitle(); };
+            title.onEditorShow = [this] { if (auto* editor = title.getCurrentTextEditor())
+            {
+                // 0.9.81: an empty alias gave an invisible editor (dark on dark) - the name seemed to vanish.
+                editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::orange);
+                editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::orange);
+                editor->setColour(juce::TextEditor::backgroundColourId, juce::Colours::black.withAlpha(0.6f));
+                editor->setTextToShowWhenEmpty("alias of " + title.getText(), juce::Colours::grey);
+                editor->setText(aliasGetter ? aliasGetter(manual) : juce::String(), false); editor->selectAll();
+                CrashHandler::note("Alias editor of division " + juce::String(manual) + " shown at " + editor->getBounds().toString() + (editor->isShowing() ? "" : " (NOT showing)"));
+            } };
+            title.onEditorHide = [this] { CrashHandler::note("Alias editor of division " + juce::String(manual) + " hidden; alias \"" + (aliasGetter ? aliasGetter(manual) : juce::String()) + "\""); };
+            // The Label takes the editor's text (the alias alone) as its own when the editor hides - refreshTitle puts the
+            // numeral back at once (the setter rebuilds only when the alias changed: an unchanged "" left the name BLANK).
+            title.onTextChange = [this] { const auto text = title.getText().trim(); if (aliasSetter) aliasSetter(manual, text); refreshTitle(); };
             title.addMouseListener(this, false);
             addAndMakeVisible(title);
             // "Load Stops" opens the Stop building table of the division, where the
@@ -2698,6 +2711,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         {
             const double until = activityGetter ? activityGetter(manual) : 0.0;
             const bool active = juce::Time::getMillisecondCounterHiRes() < until;
+            // (0.9.81 painted a darker band under the header line for the coupler grid - the user: "to nechceme"; gone.)
             const auto indicator = juce::Rectangle<float>(5.0f, 7.0f, 34.0f, 24.0f);
             g.setColour(juce::Colours::black);
             g.fillRoundedRectangle(indicator, 2.0f);
@@ -2718,10 +2732,15 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         }
         void mouseDown(const juce::MouseEvent& event) override
         {
-            if (event.mods.isPopupMenu()
+            // 0.9.81: the keyboard icon ALONE learns the keyboard - event.position is relative to the component
+            // clicked, so a click in the corner of the Tremulant button or of the name fell "into" the icon's rectangle
+            // and opened the keyboard learn (the user, 16 Nov 2026). Only the header's own background counts.
+            if (event.mods.isPopupMenu() && event.eventComponent == this
                 && juce::Rectangle<float>(5.0f, 7.0f, 34.0f, 24.0f).contains(event.position)
                 && keyboardLearn)
                 keyboardLearn(manual);
+            else if (event.mods.isPopupMenu() && event.eventComponent == this && event.position.y >= 38.0f && couplerMenu)
+                couplerMenu(manual, event.getScreenPosition());   // 0.9.81: the coupler grid below the header line has its own menu
             else if (event.mods.isPopupMenu() && (event.eventComponent == this || event.eventComponent == &title) && headerMenu)
                 headerMenu(manual);   // the header's own background or the name (0.9.80, #235): the division's menu
             else if (event.mods.isPopupMenu() && midiLearn && event.eventComponent != this)
@@ -3011,6 +3030,17 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         std::function<void(int, bool)> arrangeStateChanged;
         std::function<void()> missingAction;   // the notice under the header was clicked   // (manual, arranging) - remembered by the owner
         std::function<void(int)> headerMenu;   // right-click on the header's background
+        std::function<void(int, juce::Point<int>)> couplerMenu;   // 0.9.81: right-click on the coupler grid (manual, screen position)
+        // 0.9.81: the arrange mode of the couplers started from the grid's menu (the 3 s press does the same).
+        void beginArranging()
+        {
+            if (couplerArrange) return;
+            couplerArrange = true;
+            if (arrangeStateChanged) arrangeStateChanged(manual, true);
+            resized();
+        }
+        bool isArranging() const noexcept { return couplerArrange; }
+        void stopArranging() { endArranging(); }
         // 0.9.80: the division's alias (shown beside the numeral; edited by a double-click on the name).
         std::function<juce::String(int)> aliasGetter;
         std::function<void(int, const juce::String&)> aliasSetter;
@@ -3244,6 +3274,24 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             header->setMissingNotice(missingTreesGetter(manual), missingTreesDetail ? missingTreesDetail(manual) : juce::String());
         header->missingAction = [this, manual] { if (missingTreesAction) missingTreesAction(manual); };
         header->headerMenu = divisionMenu;
+        // 0.9.81: the coupler grid's own menu (right-click below the header line): arrange, the Couplers dialog, the manual.
+        header->couplerMenu = [this, safeHeader = juce::Component::SafePointer<SectionHeader>(header.get())](int m, juce::Point<int> at)
+        {
+            CrashHandler::note("Menu: coupler grid of division " + juce::String(m));
+            juce::PopupMenu menu;
+            const bool arranging = safeHeader != nullptr && safeHeader->isArranging();
+            menu.addItem(1, arranging ? "Leave arrange mode" : "Enter arrange mode (drag the couplers between the cells)");
+            menu.addItem(2, "Couplers... (which couplers the division shows, button size)");
+            menu.addSeparator();
+            menu.addItem(3, "Manual: Couplers");
+            menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(juce::Rectangle<int>(at.x, at.y, 1, 1)), [this, safeHeader, m](int result)
+            {
+                juce::ignoreUnused(m);
+                if (result == 1 && safeHeader != nullptr) { if (safeHeader->isArranging()) safeHeader->stopArranging(); else safeHeader->beginArranging(); }
+                else if (result == 2 && couplersDialogRequest) couplersDialogRequest();
+                else if (result == 3 && manualRequest) manualRequest("Couplers");
+            });
+        };
         header->aliasGetter = divisionAliasGetter;   // 0.9.80: "I. Hauptwerk"
         header->aliasSetter = divisionAliasSetter;
         header->refreshTitle();

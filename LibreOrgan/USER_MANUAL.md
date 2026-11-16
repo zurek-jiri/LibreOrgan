@@ -430,12 +430,13 @@ button fires even when hidden).
 ## 2.2 The combination row
 
 The pistons (their number: the *Pistons* box in the row), *Set*, the stepping
-buttons *<<* / *>>*, the bank buttons (held down they scroll) with the bank
-display between them - its first line names the combinations file in use
-("default" = the combinations saved in the configuration), its second line
-the bank and its annotation; click it to type a bank number, right-click to
-annotate the bank (the piece it serves, where it starts) or to jump to any
-annotated bank -, the display of the combination in use,
+buttons *<<* / *>>*, the bank buttons (held down they scroll) with the black
+bank display between them - its first line names the combinations file in
+use ("default" = the combinations saved in the configuration), its second
+line the bank and its note; click the display and two boxes open in it: the
+bank number on the left, a note on the right (the piece it serves, where it
+starts), Enter sets both; the small *v* in its corner lists the annotated
+banks -, the display of the combination in use,
 *Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for
 combination files (their own folder, `Documents\LibreOrgan\LibreCombinations`;
 the file last used with an organ is read again when the organ loads), and
@@ -494,9 +495,10 @@ beside its numeral, "I. Hauptwerk"; the Divisions dialog has the same field;
 it travels with the organ), the swell bar (drag it; right-click to learn the swell pedal
 or open *Swell settings...*), the *Tremulant* button (registration, like a
 stop; right-click: *Tremulant settings...*) and *Settings*, which opens the
-Divisions dialog. A right-click on the header's background lists the swell,
+Divisions dialog. A right-click on the division's name lists the swell,
 tremulant and wind settings of the division and moves the division to the
-other program window. Drag the dividers between the
+other program window; a right-click on the coupler rows below opens the
+[couplers' own menu](#61-couplers). Drag the dividers between the
 columns to share out the width. The mouse wheel scrolls the workspace, except
 over the sliders of an open voicing row.
 
@@ -905,24 +907,32 @@ sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 %
 
 ### Audio routing
 
-The *Audio routing* button of the top bar shows the same routes as one
-picture, in the language of the stop grid: every **sound card** is a block
-(its name, type, rate and buffer in the header), the block's **cells** are the
-card's output channels, and every **route** (a division's perspective, "I. /
-Front") lies as a chip in the cells of its channels - several chips of one
-row are several channels, the pipes spread over them in turn. A perspective
-that every division sends to the same card and channels is one folded row
-*All divisions / Front [N]*; the arrow before it unfolds the divisions.
+The *Audio routing* button of the top bar draws the routes as **cables**
+between what plays and the sound cards. On the left stand the sources: one
+row per **perspective** (Front, Rear ...) when every division sends it the
+same way, the arrow before it unfolds the divisions (P., I., II.) so each
+gets a cable of its own; a perspective the divisions send differently is
+unfolded by itself. To the right lie the **sound cards in use** with their
+**outputs** along the bottom edge (a card with many outputs grows wide,
+never tall); each shows its driver, rate and buffer (combos), the latency,
+*Driver panel*, *Reopen* and *Test* (a soft tone for a second on every
+route of that card - you hear where it goes). Every other card of every
+driver (ASIO, Windows Audio and Aggregated WASAPI; JACK and ALSA;
+CoreAudio) is a compact label below, a line per driver: drop a source onto
+one and the card opens with its first pair and moves up among the cards in
+use. A card that is busy through another driver on the same hardware is
+grey and takes no cable until that driver has no route on it. Drag a card
+by its header onto another to swap their places when the cables cross.
 
-Drag a chip into a free cell to change the channel (an occupied cell swaps
-the two); with Shift or the right mouse button the chip is **copied**: one
-more channel for the route. Drag a chip onto another card to move the route
-there, or onto *No sound card* to silence it; drag it out of every grid to
-take that channel away (a route keeps one at least). *Add sound card...*
-makes a block for another card, opened when the first route lands there.
-*Test* beside a row plays a soft tone for a second on that route's channels
-alone - you hear where it goes. The audio tabs below show the same data and
-stay the second way.
+**Drag a source onto an output**: while the mouse is over a card its output
+and the pair partner glow and the label under the cursor says what will
+land there ("7+8"); let go and that stereo pair replaces the route's
+channels, with **Shift** the pair is *added* (two pairs on one source =
+the pipes alternate between them by key, a C / C# split), with **Alt** a
+single channel is taken. A cable is **selected** by a click (the others
+dim) and removed with Delete or the x at its end; the last cable gone, the
+source is silent. The [audio tabs](#53-the-audio-tabs) show the same routes
+the second way, in the Divisions dialog.
 
 ## 5.3 The audio tabs
 
@@ -1091,11 +1101,12 @@ a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key
 only*, *Melody couplers: legato grace time*). *Button size* (small, normal,
 large) sets the size of every coupler button; it travels with the organ.
 
-The coupler rail is a cell grid like the stop grid: every button the same
-size, each keeps its cell, free cells stay free. Hold a coupler three seconds
-to arrange: the free cells appear dashed (a spare row too), drag a coupler
-into a free cell or onto another coupler to swap the two; a click outside
-ends the arranging.
+The coupler grid under the division header is a cell grid like the stop
+grid: every button the same size, each keeps its cell, free cells stay free.
+Right-click the grid for its menu (*Enter arrange mode*, *Couplers...*, the
+manual), or hold a coupler three seconds: the free cells appear dashed (a
+spare row too), drag a coupler into a free cell or onto another coupler to
+swap the two; a click outside ends the arranging.
 
 ## 6.2 Combinations and the crescendo
 

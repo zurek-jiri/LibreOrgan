@@ -109,6 +109,14 @@ namespace UIScale
 
     struct LookAndFeel final : public juce::LookAndFeel_V4
     {
+        // 0.9.81: a slider with the property "smallTextBox" gets a 9 px value box - the per-key "Attack per key"
+        // sliders show "-300" in a 30 px column (the default font cut it to "-3...").
+        juce::Label* createSliderTextBox(juce::Slider& slider) override
+        {
+            auto* label = juce::LookAndFeel_V4::createSliderTextBox(slider);
+            if (slider.getProperties().contains("smallTextBox")) label->setFont(juce::FontOptions(9.0f));
+            return label;
+        }
         // Tooltips: the long explanations of the Configuration Editor need air
         // between the lines (the stock layout packs them), a wider box and a
         // left-aligned text.

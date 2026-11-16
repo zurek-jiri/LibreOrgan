@@ -270,7 +270,11 @@ private:
     juce::Label bankLabel;   // two lines (0.9.80): the combinations file ("default" = the configuration's own) and "Bank N - annotation"
     std::map<int, juce::String> bankNotes;   // 0.9.80: the banks' annotations (saved with the combinations)
     juce::String combinationsFileName;       // the combinations file in use (empty = the configuration's own, shown "default")
-    void showBankMenu();                     // right-click on the bank: annotate, jump to an annotated bank
+    void showBankMenu();                     // the "v" of the bank display: jump to an annotated bank
+    juce::TextEditor bankNumberEditor, bankNoteEditor;   // 0.9.81: shown inside the display while editing (number left, note right)
+    juce::TextButton bankListButton{ "v" };
+    void beginBankEdit();
+    void applyBankEdit();
     void setDivisionAlias(int manual, const juce::String& alias);   // 0.9.80: the header's name / the Divisions dialog
     juce::File combinationsDirectory() const;   // Documents/LibreOrgan/LibreCombinations (created on demand)
     DisplayLabel combinationDisplay;   // same look as the swell bar and the polyphony display

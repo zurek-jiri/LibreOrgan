@@ -3457,6 +3457,74 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   TextEditor line under the window combo, Enter / focus lost). Test %TEMP%\test_0980.ps1 (Rural with "alias":
   "Hauptwerk" on manual 1 and bankNotes {"0": "Toccata BWV 565"}: the main window, window 2 and the Divisions
   dialog pictured - the user's settings have two windows, so division I sat in window 2).
+  0.9.81 (16 Nov 2026, the user's furious batch after 0.9.80 + the routing design in seven rounds; "Go"): (1) AUDIO
+  ROUTING = CABLES (`Source/AudioRouting.h` rewritten, header-only, `AudioRoutingContent`): LEFT the sources - a row per
+  PERSPECTIVE (folded when every division sends it to the same card + channels: one cable for all; "(various)" and
+  unfolded by itself otherwise; the arrow unfolds P./I./II. rows with cables of their own; `unfolded` set); RIGHT the
+  cards IN USE or open as full cards (name, driver + status line, Sample rate / Buffer combos = `setAudioDeviceSetup`
+  on the route's manager under the mute protocol, Driver panel = showControlPanel, Reopen = reopenAudioDeviceFresh,
+  Test = startRouteTestTone per route; the OUTPUTS as jacks along the bottom edge; a card grows WIDE with its outputs,
+  never tall - the user's first picture with 40 cards of 118 px each sent every cable off the screen: "tohle nemůže
+  být"); EVERY OTHER card of every driver (Windows Audio, Exclusive, Low Latency, DirectSound, ASIO, Aggregated WASAPI
+  ...) is a compact chip in rows per driver below ("Other sound cards - drop a source onto one to open it"; `Card::chip`),
+  a drop = the pair 1+2 and the card moves up. Cables: row right edge -> its own lane (row y) -> the card's gutter
+  (4 px per cable, `gutterUse`) -> under the card -> up INTO the jack; a pair = two strands + a clamp over both jacks;
+  click = selected (the rest dim), Delete/Backspace or the red x removes (`removeCable`: the last channel gone ->
+  `detachRouteAudioQuietly`); while dragging, the jack and its partner glow yellow and a label at the cursor says
+  "7+8" / "+ 7+8" (Shift = add a pair, Alt = one channel); `findDropTarget` nearest jack, the last odd jack snaps to
+  the pair below. Busy = a card of another driver whose `hardwareWords` (letters-only words >= 5, generic ones
+  dropped) match an OPEN device of another type: grey, no drop. Card key = type|name; `cardKeyOf(route)` = the open
+  device, else the route's STORED state XML (`audioDeviceStateXml` deviceType + audioOutputDeviceName - the manager's
+  own setup is EMPTY after a failed open; the first version compared the open device only, so a route on a card not
+  open yet was "elsewhere", the add replaced instead of adding and no cable was drawn). NO scanForDevices anywhere
+  (the 0.9.79 "Add sound card" crash); the names come from `deviceManager.getAvailableDeviceTypes()` ->
+  `getDeviceNames(false)` (the start's lists + what the system reported), refreshed by a 1 s `signature()` timer.
+  `assign()` = setRouteAudioType (DEVICESETUP xml: deviceType, audioOutputDeviceName, rate, buffer) when the card
+  differs (then the dropped pair alone) + applyChannelsToDivision, audioMuted/noteOffAll/ignoreDeviceRestartsUntil/
+  audioDeviceSelectionUnmuteAt as the Divisions dialog does. A card that FAILS to open at first (CABLE Input of
+  VB-Audio here: "Couldn't open the output device", appears 6 s later) is reverted by the missing-device watcher to
+  the previous device ("'All WASAPI Outputs': 3 route(s) reopened") - the Divisions dialog's behaviour, not changed;
+  test with a card that opens at once. Hook `ORGAN_TEST_ROUTE="<division|all>|<perspective>|<card name part>|<output
+  1-based>[|add|single|remove]"` (^-separated, the first 1.5 s after the dialog opens, then 3 s apart; log "Audio
+  routing: ..."). JUCE 9: `Font::getStringWidthFloat` is gone - `juce::GlyphArrangement::getStringWidth(font, text)`.
+  (2) HEADER GESTURES (the user: "Kurva! ... Keyboard learning musí být omezeno pouze na ikonu klaviatury"):
+  `SectionHeader::mouseDown` fires the keyboard learn only for `event.eventComponent == this` inside the icon rect
+  (5,7,34,24) - before, the header was a mouse listener of its children and a right-click on the Tremulant button /
+  the name at a child-local position inside that rect learned the keyboard; a right-click on the name = the division
+  menu (the title Label listens), below the header line (y >= 38) = the coupler grid's own menu (`couplerMenu`:
+  Enter/Leave arrange mode, Couplers..., Manual: Couplers; `beginArranging/isArranging/stopArranging`;
+  `Voicer::couplersDialogRequest`). The darker band under the header line (my 0.9.81 "panel") was REFUSED by the user
+  ("spojky teď mají tmavší pozadí, to nechceme!") - no background for the coupler grid. RULE: a parent that listens to
+  its children's mouse events must test `eventComponent` before reading positions. (3) BANK DISPLAY: a black Label
+  (176 px) between Bank down/up; a LEFT click = `beginBankEdit()` (two editors: the number, the annotation; Enter /
+  focus lost apply, Escape cancels), the "v" button lists the ANNOTATED banks (`showBankMenu` lists only); no right-
+  click (the user). testName "bankDisplay". (4) LINKED FIELDS (the user: "všechna políčka, která vedou na stejnou
+  funkci, musí být propojená"): `KeyboardsDialog::refreshControls` (10 Hz, every field from the model) now refreshes
+  `aliasBoxes` too (unless focused) - the AUDIT: every other field of the Divisions dialog was already read from the
+  model by that timer; the alias box was the one added without it (0.9.80). RULE: a new field in a dialog that mirrors
+  a model value goes into the dialog's refresh from the model, never set once at construction. (5) "-300" in the per-key
+  attack box: `UIScale::LookAndFeel::createSliderTextBox` honours the property "smallTextBox" (9 px font). (6) The
+  alias editor of the header name has an orange outline and "alias of I." as the empty text (dark on dark = "the name
+  vanished"). (7) HOOKS: `ORGAN_TEST_MOUSE="<text>|click|right|dblclick^..."` (+ ORGAN_TEST_MOUSE_AT): a synthetic
+  juce::MouseEvent on the component found by button text / label text / "testName" in every window, sent to it AND its
+  parent (as a listener gets it); the menus log "Menu: keyboard learn of division N" / "Menu: MIDI learn of <target>" /
+  "Menu: division menu of division N" / "Menu: coupler grid of division N" so a run proves which menu opened (a
+  PopupMenu of a non-foreground process dismisses itself at once - never picture it). Tests: %TEMP%\test_0981_mouse.ps1
+  (right on Tremulant -> "MIDI learn of tremulant:0", right on "I." -> division menu, dblclick -> the editor, click on
+  bankDisplay -> the boxes; main window pictured), %TEMP%\test_0981_route.ps1 [-Card <name part>] (Audio routing by
+  ORGAN_TEST_CLICK, three ORGAN_TEST_ROUTE specs, the dialog pictured at every change into pics\hNN.png). The user's
+  "proč děláš tyhle kraviny" answered: existence was verified by pictures, never by the gesture - the hooks above are
+  the cure, and every gesture of a build is run through them before delivery. LATER THE SAME DAY: (8) the user: "all
+  wasapi je na hovno, protože výstupy mají pouze čísla!" - `Card::jackNames` = `getOutputChannelNames()`, drawn
+  VERTICALLY (rotated -90°, read bottom-up, font 10.5) in a 150 px band above the jacks (`nameBand`; 0 when the names
+  are digits only or "Output channel N" - those cards stay 118 px). (9) THE BLANK NAME: a Label whose editor hides
+  takes the editor's text (our alias alone, "") as its own text - the header's "I." VANISHED after an alias edit
+  that changed nothing (the setter rebuilds only on a change): `title.onTextChange` always calls `refreshTitle()`;
+  the alias editor logs "Alias editor of division N shown at ... / hidden; alias ..." (onEditorShow/onEditorHide).
+  (10) The test run's lesson: a Label editor is MODAL (`enterModalState(false)` in Label::showEditor) - any click
+  elsewhere hides it; the first picture without the editor was that, not a paint fault. The deployed exe is
+  C:\LibreOrgan\LibreOrgan_0.9.81.exe (the shortcut's file name is still "OrganSampler_0.8.198.exe – zástupce.lnk" -
+  never rename it).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
