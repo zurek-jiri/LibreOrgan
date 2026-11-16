@@ -3603,6 +3603,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   first", then opened; test %TEMP%\test_0984_asio.ps1 with his Chalons configuration). A full card dragged onto a pool
   BUTTON moves every route of it there (`findDropTarget` allows chips only for a dragged card). Tests: test_0984_asio.ps1,
   test_0983_route.ps1 (unchanged results).
+  0.9.85 (16 Nov 2026 night, the user's five wishes): titles "Organ out" / "Sound cards" (he: "nejsou in"; "Sound Cards
+  Software Out" offered, the short one taken) in ORANGE 18 bold; `laneGap` 8 -> 14 (gutter and corridors); the source's
+  colour dot at BOTH ends of its row (the right one = where the cable is taken). His "alias perspektivy" does NOT exist in
+  the program (no perspective alias anywhere; the Stop List's header rename IS the perspective's name and Organ out
+  shows it) - told him, nothing invented.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.85] - 2026-11-16
+
+### Changed
+- Audio routing: the titles read "Organ out" and "Sound cards" (orange,
+  larger); the cables keep 14 px between them in the gutter and the
+  corridors; the colour dot of a source stands at both ends of its row - the
+  right one is where the cable is taken.
+
 ## [0.9.84] - 2026-11-16
 
 ### Changed

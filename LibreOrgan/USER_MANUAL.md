@@ -911,7 +911,7 @@ sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 %
 ### Audio routing
 
 The *Audio routing* button of the top bar draws the routes as **cables**
-between *Organ out* and *Sound cards in*. On the left stand the
+between *Organ out* and *Sound cards*. On the left stand the
 perspectives (Front, Rear ...), one row each when every division sends it
 the same way; the arrow before it unfolds the divisions (P., I., II.) so
 each gets a cable of its own; a perspective the divisions send differently

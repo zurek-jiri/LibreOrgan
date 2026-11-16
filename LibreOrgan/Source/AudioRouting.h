@@ -80,10 +80,10 @@ public:
         // The source column.
         g.setColour(juce::Colours::black.withAlpha(0.2f));
         g.fillRoundedRectangle(juce::Rectangle<float>(8.0f, (float)sourcesTop - 4.0f, (float)leftWidth - 8.0f, (float)juce::jmax(40, sourcesBottom - sourcesTop + 8)), 6.0f);
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-        g.drawText("Organ out", 14, sourcesTop - 26, leftWidth - 20, 20, juce::Justification::centredLeft);
-        g.drawText("Sound cards in", gridLeft, sourcesTop - 26, 300, 20, juce::Justification::centredLeft);
+        g.setColour(glow);   // 0.9.85: the two titles orange and larger (the user), "Sound cards" - they are no "in"
+        g.setFont(juce::FontOptions(18.0f, juce::Font::bold));
+        g.drawText("Organ out", 14, sourcesTop - 30, leftWidth - 20, 24, juce::Justification::centredLeft);
+        g.drawText("Sound cards", gridLeft, sourcesTop - 30, 300, 24, juce::Justification::centredLeft);
         for (const auto& row : rows)
         {
             const bool dragged = dragging && dragRow == &row - rows.data();
@@ -97,9 +97,10 @@ public:
             else area.removeFromLeft(26);
             g.setColour(row.colour.withAlpha(row.silent ? 0.35f : 1.0f));
             g.fillEllipse((float)area.getX(), (float)area.getCentreY() - 5.0f, 10.0f, 10.0f);
+            g.fillEllipse((float)area.getRight() - 12.0f, (float)area.getCentreY() - 5.0f, 10.0f, 10.0f);   // 0.9.85: the dot again at the right edge = where the cable is taken
             area.removeFromLeft(14);
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
-            g.drawFittedText(row.label, area.withTrimmedRight(4), juce::Justification::centredLeft, 1);
+            g.drawFittedText(row.label, area.withTrimmedRight(16), juce::Justification::centredLeft, 1);
         }
         // The free cells of the grid while a card is dragged.
         if (dragCard >= 0 && draggingCard)
@@ -414,7 +415,7 @@ private:
     };
     struct TypeSection { juce::String type; bool collapsed = false; int count = 0; juce::Rectangle<int> bounds; };
 
-    static constexpr int leftWidth = 250, rowHeight = 24, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 8;
+    static constexpr int leftWidth = 250, rowHeight = 24, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 14;   // laneGap 8 -> 14 (0.9.85, the user: "namačkané na sobě")
 
     float scale() const noexcept { return owner.audioRoutingButtonSize == 0 ? 0.85f : owner.audioRoutingButtonSize == 2 ? 1.25f : 1.0f; }
     int jackWidth() const noexcept { return juce::roundToInt(30.0f * scale()); }

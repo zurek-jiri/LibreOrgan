@@ -923,7 +923,7 @@ static const char* const kManualText_part4 =
     "### Audio routing\n"
     "\n"
     "The *Audio routing* button of the top bar draws the routes as **cables**\n"
-    "between *Organ out* and *Sound cards in*. On the left stand the\n"
+    "between *Organ out* and *Sound cards*. On the left stand the\n"
     "perspectives (Front, Rear ...), one row each when every division sends it\n"
     "the same way; the arrow before it unfolds the divisions (P., I., II.) so\n"
     "each gets a cable of its own; a perspective the divisions send differently\n"
