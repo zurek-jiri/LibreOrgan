@@ -896,7 +896,11 @@ a large value lets a full registration shimmer); for every division: [Tremulant:
 much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the
 level). The strength wanders between 60 and 100 % of the depth from cycle to
 cycle, and the children of a stop folder are spread in phase like the ranks of
-a mixture, so nothing pulses mechanically.
+a mixture, so nothing pulses mechanically. One tremulant may shake several
+divisions: tick them under *Tremulant also shakes* (the Divisions dialog, the
+Tremulant settings of the right-click, the Configuration Editor) - its own
+division always; a division shaken by another's tremulant follows its rate,
+depth and phase while its own tremulant is off.
 
 ### The wind model
 

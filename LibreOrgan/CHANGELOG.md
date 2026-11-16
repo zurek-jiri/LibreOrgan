@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.88] - 2026-11-16
+
+### Added
+- A tremulant can shake other divisions too: tick boxes "Tremulant also
+  shakes" in the Divisions dialog, in the Tremulant settings dialog of the
+  header's right-click and in the Configuration Editor (the own division
+  always); the divisions it shakes follow its rate, depth and phase. Travels
+  with the organ, swapped with the divisions.
+
+### Fixed
+- The "Attack per key" row opened with the other per-key rows folded was
+  cut at the bottom (the compact controls layout under a full-height row).
+
 ## [0.9.87] - 2026-11-16
 
 ### Fixed

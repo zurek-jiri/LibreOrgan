@@ -3633,6 +3633,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   každé platformě jinak ... líbí se mi ty veliké píšťaly, které má linux"): Windows/macOS `StartSplash` (Main.cpp)
   now 460 x 500 with the AppIcon at 384 px like the Linux juce::SplashScreen (0.8.165), the name and the start's
   status under it; Linux keeps its SplashScreen + StartCover (the Wayland lessons of 0.8.165-0.8.171).
+  0.9.88 (16 Nov 2026 night): TREMULANT TARGETS (the user: "které divize ovlivňuje ... stejně jako wind ... jeho vlastní
+  divize bez debaty ... i do right-click tremulantu"): `ManualConfig::tremulantTargetMask` (configuration key
+  "tremulantTargetMask", the own bit never set), engine `TremParams::targetMask` + `setManualTremulantTargets` +
+  `tremulantDriverOf(manual)` (own when on, else the first division whose tremulant is on and names it) used by the route
+  render (rate/depth/the wander hash of the DRIVER; the phase is nominal time, so the divisions agree); boxes in the
+  Divisions dialog (`tremulantTargetButtons/Labels`, under the rank drift when the group is unfolded, refreshed from
+  the model), in the right-click "Tremulant settings" (FeatureContent::setTargetBoxes) and in the Editor (the Editor's
+  TargetRow made generic with get/set functions - the wind row uses it too); swapped with the divisions. ATTACK ROW
+  CUT (the user): StopRow::resized took the COMPACT controls layout whenever volume+tone were folded, ignoring an open
+  attack row, while expandedHeightFor takes the full layout for it - the key area began lower than the height allowed;
+  resized() now counts `attackRowShown()` (keyRowsFolded already did). RULE: the layout branch and the height formula
+  must read the same three flags.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

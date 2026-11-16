@@ -1249,6 +1249,8 @@ public:
         uint8_t targetMask);
     void setManualTremulant(int manualIndex, bool enabled, float rateHz, float depthCents,
         float rankDriftDegrees);
+    // 0.9.88: the other divisions this division's tremulant shakes as well (bit = division index; its own is implied).
+    void setManualTremulantTargets(int manualIndex, int targetMask);
     std::vector<juce::String> getPerspectivesForManual(int manualIndex) const;
     // 0.9.87 (#238): the perspectives the division's Stop List table names (folders under a label), set by
     // MainComponent at every route rebuild - a perspective whose ranks a cancelled or memory-limited load left out

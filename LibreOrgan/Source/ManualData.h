@@ -908,7 +908,11 @@ static const char* const kManualText_part4 =
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
     "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
     "cycle, and the children of a stop folder are spread in phase like the ranks of\n"
-    "a mixture, so nothing pulses mechanically.\n"
+    "a mixture, so nothing pulses mechanically. One tremulant may shake several\n"
+    "divisions: tick them under *Tremulant also shakes* (the Divisions dialog, the\n"
+    "Tremulant settings of the right-click, the Configuration Editor) - its own\n"
+    "division always; a division shaken by another's tremulant follows its rate,\n"
+    "depth and phase while its own tremulant is off.\n"
     "\n"
     "### The wind model\n"
     "\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "One more route per division: a mix of everything the division plays, every\n"
     "pipe rendered once more, with its own device, channels, volume, separation\n"
     "and IR. For monitoring (headphones, a control room), or to give a dry set a\n"
+    ;
+static const char* const kManualText_part5 =
     "second room: the auxiliary route on the rear speakers with a different IR is\n"
     "a \"Rear\" perspective the set never had. It halves the reachable polyphony\n"
     "while it has a device; leave it at *none* otherwise - then it costs nothing.\n"
     "\n"
-    ;
-static const char* const kManualText_part5 =
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have\n"
     "inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and\n"
     "so does the stop once retuned. Leave such a stop at transposition 0, keep its\n"
+    ;
+static const char* const kManualText_part6 =
     "tuning as recorded, and switch off the keys it does not have instead of\n"
     "filling them.\n"
     "\n"
     "## 7.2 The transposition methods\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "*Filled pipes: transposition method* (Configuration Editor > Advanced global\n"
     "audio > Filled pipes). The default *Pitch shift + time stretch* suits most\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "\n"
     "How long the sounding pipe fades when its key goes up and the release takes\n"
     "over (default 110 ms). Set for the sounding c1; pipes below it get 1.25 times\n"
+    ;
+static const char* const kManualText_part7 =
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
     "\n"
     "### Release sample fade-in\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "copy per such pipe). Real pipes are never touched.\n"
     "\n"
     "### Filled pipes: transposition method\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "*Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase\n"
     "vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the\n"
     "cache when on); the sliders that do not apply are greyed out.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Missing pipes: neighbours borrowed as a group\n"
     "\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "One line per perspective: its name first, then its folder prefixes,\n"
     "separated by semicolons (\"Direct;01-dirMk2H-;dir-\"). The name is what the\n"
     "Stop List column and the audio route are called; the prefixes are cut off the\n"
+    ;
+static const char* const kManualText_part9 =
     "folder names. The order of the lines is the order of the perspectives\n"
     "everywhere (the Stop List columns, the voicing boxes, the audio tabs):\n"
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
-    ;
-static const char* const kManualText_part9 =
     "replaced; a prefix that means another perspective in this computer's list is\n"
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "\n"
     "The chapters above link here. Nothing in this part is needed to play.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "## 10.1 The smpl chunk and the file names\n"
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
-    ;
-static const char* const kManualText_part10 =
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "the loaded pipes), and INDEX.md lists it. Loading takes markedly longer with\n"
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"
+    ;
+static const char* const kManualText_part11 =
     "SATA SSD), a load from the page cache many times faster - never compare the\n"
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     "minimum time and delay off, two seconds of idle listening; every stop\n"

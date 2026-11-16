@@ -8854,6 +8854,33 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 setupTremulantSlider(tremulantRankDriftSliders[(size_t)manual],
                     tremulantRankDriftLabels[(size_t)manual], "Trem. rank drift", 0.0, 360.0,
                     defaultTremulantRankDrift, " deg", "tremulantRankDrift");
+                // 0.9.88 (the user): which OTHER divisions this tremulant shakes too - like the wind's targets; the own
+                // division is implied (its box ticked and disabled).
+                tremulantTargetLabels[(size_t)manual].setText("Tremulant also shakes:", juce::dontSendNotification);
+                tremulantTargetLabels[(size_t)manual].setTooltip("The divisions this tremulant shakes as well (one tremulant for several divisions); its own division always.");
+                addAndMakeVisible(tremulantTargetLabels[(size_t)manual]);
+                {
+                    static const juce::String tremNames[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+                    for (int target = 0; target < SamplerEngine::maxManuals; ++target)
+                    {
+                        auto& button = tremulantTargetButtons[(size_t)manual][(size_t)target];
+                        button.setButtonText(tremNames[target]);
+                        button.setTooltip("This tremulant shakes division " + tremNames[target] + " too");
+                        button.getProperties().set("manualChapter", "The tremulant");
+                        button.onClick = [this, manual]
+                        {
+                            auto& config = this->owner.manualConfigs[(size_t)manual];
+                            uint8_t mask = 0;
+                            for (int t = 0; t < SamplerEngine::maxManuals; ++t)
+                                if (t != manual && tremulantTargetButtons[(size_t)manual][(size_t)t].getToggleState()) mask |= (uint8_t)(1u << t);
+                            config.tremulantTargetMask = mask;
+                            this->owner.engine.setManualTremulantTargets(manual, mask);
+                            this->owner.configurationDirty = true;
+                            this->owner.saveSettings();
+                        };
+                        addAndMakeVisible(button);
+                    }
+                }
             }
 
             // Learn messages only (small, beside the division label); nothing otherwise.
@@ -8971,6 +8998,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 tremulantGroupHeaders[(size_t)manual].setSection("Tremulant", owner.divisionTremulantExpanded);
                 tremulantDepthSliders[(size_t)manual].setVisible(tremulantMore);
                 tremulantRankDriftSliders[(size_t)manual].setVisible(tremulantMore);
+                tremulantTargetLabels[(size_t)manual].setVisible(tremulantMore);
+                for (int target = 0; target < SamplerEngine::maxManuals; ++target)
+                    tremulantTargetButtons[(size_t)manual][(size_t)target].setVisible(tremulantMore && target <= owner.manualCount);
                 tremulantDepthLabels[(size_t)manual].setVisible(tremulantMore);
                 tremulantRankDriftLabels[(size_t)manual].setVisible(tremulantMore);
                 windDepthSliders[(size_t)manual].setVisible(visible);
@@ -9067,6 +9097,14 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         tremulantDepthSliders[(size_t)manual]);
                     placeSetting(settingsArea, tremulantRankDriftLabels[(size_t)manual],
                         tremulantRankDriftSliders[(size_t)manual]);
+                    tremulantTargetLabels[(size_t)manual].setBounds(settingsArea.removeFromTop(18));
+                    const int targetWidth = 44;
+                    const int perRow = juce::jmax(1, settingsArea.getWidth() / targetWidth);
+                    for (int target = 0; target <= owner.manualCount; ++target)
+                        tremulantTargetButtons[(size_t)manual][(size_t)target].setBounds(
+                            settingsArea.getX() + (target % perRow) * targetWidth,
+                            settingsArea.getY() + (target / perRow) * 25, targetWidth, 24);
+                    settingsArea.removeFromTop(25 * ((owner.manualCount + perRow) / perRow));
                 }
                 row.removeFromLeft(28);
                 auto windArea = row.removeFromLeft(260).reduced(6);
@@ -9138,6 +9176,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         std::array<juce::Label, SamplerEngine::maxManuals> tremulantRateLabels, tremulantDepthLabels,
             tremulantRankDriftLabels;
         std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> windTargetButtons;
+        std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> tremulantTargetButtons;   // 0.9.88
+        std::array<juce::Label, SamplerEngine::maxManuals> tremulantTargetLabels;
         std::array<SectionHeaderLabel, SamplerEngine::maxManuals> tremulantGroupHeaders, windGroupHeaders;   // "+ Tremulant" / "+ Wind model"
         // "Stop pool": which stops of the division are shown on the stop grid.
         struct StopPoolPanel final : public juce::Component
@@ -9310,6 +9350,12 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     juce::dontSendNotification);
                 tremulantRankDriftSliders[(size_t)manual].setValue(config.tremulantRankDriftDegrees,
                     juce::dontSendNotification);
+                for (int target = 0; target < SamplerEngine::maxManuals; ++target)
+                {   // 0.9.88: the tremulant's targets follow the model (the right-click dialog sets them too)
+                    tremulantTargetButtons[(size_t)manual][(size_t)target].setToggleState(
+                        target == manual || (config.tremulantTargetMask & (1u << target)) != 0, juce::dontSendNotification);
+                    tremulantTargetButtons[(size_t)manual][(size_t)target].setEnabled(target != manual);
+                }
                 divisionVolumeSliders[(size_t)manual].setValue(config.divisionVolumeDb,
                     juce::dontSendNotification);
                 randomTuningButtons[(size_t)manual].setToggleState(config.allowRandomTuningError,
@@ -23591,6 +23637,15 @@ void MainComponent::swapDivisionStops(int a, int b)
         std::swap(ca.windTargetMask, cb.windTargetMask);
         for (int m = 0; m < SamplerEngine::maxManuals; ++m)
             if (m != a && m != b) manualConfigs[(size_t)m].windTargetMask = (uint8_t)swapMaskBits(manualConfigs[(size_t)m].windTargetMask, a, b);
+        // 0.9.88: the tremulant's targets change hands the same way.
+        ca.tremulantTargetMask = (uint8_t)swapMaskBits(ca.tremulantTargetMask, a, b);
+        cb.tremulantTargetMask = (uint8_t)swapMaskBits(cb.tremulantTargetMask, a, b);
+        std::swap(ca.tremulantTargetMask, cb.tremulantTargetMask);
+        for (int m = 0; m < SamplerEngine::maxManuals; ++m)
+        {
+            if (m != a && m != b) manualConfigs[(size_t)m].tremulantTargetMask = (uint8_t)swapMaskBits(manualConfigs[(size_t)m].tremulantTargetMask, a, b);
+            engine.setManualTremulantTargets(m, manualConfigs[(size_t)m].tremulantTargetMask);
+        }
         std::swap(ca.allowRandomTuningError, cb.allowRandomTuningError);
         std::swap(ca.allowPipeCoupling, cb.allowPipeCoupling);
         std::swap(ca.divisionVolumeDb, cb.divisionVolumeDb);
@@ -24261,6 +24316,8 @@ void MainComponent::loadSettings()
                 "windSmoothingMs", manualConfigs[(size_t)i].windSmoothingMs);
             manualConfigs[(size_t)i].windTargetMask = (uint8_t)(int)item.getProperty(
                 "windTargetMask", manualConfigs[(size_t)i].windTargetMask);
+            manualConfigs[(size_t)i].tremulantTargetMask = (uint8_t)((int)item.getProperty("tremulantTargetMask", 0) & ~(1 << i));   // 0.9.88
+            engine.setManualTremulantTargets(i, manualConfigs[(size_t)i].tremulantTargetMask);
             engine.setWindModel(i, manualConfigs[(size_t)i].windDepthCents,
                 manualConfigs[(size_t)i].windFrequencyHz,
                 manualConfigs[(size_t)i].windOscillations,
@@ -24967,6 +25024,7 @@ void MainComponent::saveSettings()
         item->setProperty("windOscillationStrength", config.windOscillationStrength);
         item->setProperty("windSmoothingMs", config.windSmoothingMs);
         item->setProperty("windTargetMask", (int)config.windTargetMask);
+        item->setProperty("tremulantTargetMask", (int)config.tremulantTargetMask);   // 0.9.88
         const int audioManual = manualsArray.size();
         auto* manager = manualAsioHost[(size_t)audioManual] != nullptr
             ? manualAsioHost[(size_t)audioManual]
@@ -26589,7 +26647,36 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             juce::Component::SafePointer<MainComponent> safeOwner(&owner);
             juce::MessageManager::callAsync([safeOwner] { if (safeOwner != nullptr) safeOwner->refreshConfigurationEditor(); });
         }
-        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36; }
+        // 0.9.88: a row of tick boxes, one per division (the tremulant's targets) under the sliders - the same boxes as
+        // the Divisions dialog and the Configuration Editor show; the own division ticked and disabled.
+        void setTargetBoxes(const juce::String& caption, const juce::String& tip, int self, int count, std::function<uint8_t()> getMask, std::function<void(uint8_t)> setMask)
+        {
+            hasBoxes = true;
+            boxesLabel.setText(caption, juce::dontSendNotification);
+            boxesLabel.setTooltip(tip);
+            boxesLabel.getProperties().set("manualChapter", "The tremulant");
+            addAndMakeVisible(boxesLabel);
+            static const juce::String shortNames[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+            const uint8_t current = getMask();
+            for (int target = 0; target < SamplerEngine::maxManuals; ++target)
+            {
+                auto& button = boxes[(size_t)target];
+                button.setButtonText(shortNames[target]);
+                button.setTooltip(tip);
+                button.setToggleState(target == self || (current & (1u << target)) != 0, juce::dontSendNotification);
+                button.setEnabled(target != self);
+                button.setVisible(target < count);
+                button.onClick = [this, self, setMask]
+                {
+                    uint8_t mask = 0;
+                    for (int t = 0; t < SamplerEngine::maxManuals; ++t)
+                        if (t != self && boxes[(size_t)t].getToggleState()) mask |= (uint8_t)(1u << t);
+                    setMask(mask);
+                };
+                addChildComponent(button);
+            }
+        }
+        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36 + (hasBoxes ? 36 : 0); }
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
@@ -26600,12 +26687,22 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 labels[i]->setBounds(row.removeFromLeft(260));
                 sliders[i]->setBounds(row.reduced(0, 4));
             }
+            if (hasBoxes)
+            {
+                auto row = area.removeFromTop(36);
+                boxesLabel.setBounds(row.removeFromLeft(260));
+                int x = row.getX();
+                for (auto& button : boxes) { button.setBounds(x, row.getY() + 4, 58, row.getHeight() - 8); x += 62; }
+            }
         }
     private:
         MainComponent& owner;
         juce::Label note;
         std::vector<std::unique_ptr<juce::Label>> labels;
         std::vector<std::unique_ptr<juce::Slider>> sliders;
+        bool hasBoxes = false;
+        juce::Label boxesLabel;
+        std::array<juce::ToggleButton, SamplerEngine::maxManuals> boxes;
     };
 
     const int m = manualIndex;
@@ -26696,6 +26793,10 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
     else return;
 
     auto* content = new FeatureContent(*this, noteText, std::move(rows));
+    if (feature == "tremulant")   // 0.9.88: which other divisions this tremulant shakes (the Divisions dialog has the same boxes)
+        content->setTargetBoxes("Also shakes divisions", "The other divisions this tremulant shakes as well (one tremulant device for several divisions); its own always.",
+            m, manualCount + 1, [this, m] { return manualConfigs[(size_t)m].tremulantTargetMask; },
+            [this, m](uint8_t mask) { manualConfigs[(size_t)m].tremulantTargetMask = mask; engine.setManualTremulantTargets(m, mask); configurationDirty = true; saveSettings(); });
     const int height = content->neededHeight();
     content->setSize(700, height);
     // Modeless (0.8.239): the rows act at once; the Configuration Editor is refreshed when the window closes.
@@ -31332,6 +31433,39 @@ void MainComponent::showConfigurationEditor()
                 addToggle("Pipe coupling (detuned pipes pull together)", config.allowPipeCoupling, [&o, &config, manual](bool state)
                 { config.allowPipeCoupling = state; o.engine.setManualPipeCouplingAllowed(manual, state); o.saveSettings(); });
 
+                // A row of tick boxes, one per division (the wind's targets, 0.9.88 the tremulant's too): the mask
+                // read and written through the two functions, the own division ticked and disabled.
+                class TargetRow final : public juce::Component
+                {
+                public:
+                    TargetRow(int self, int count, std::function<uint8_t()> getMask, std::function<void(uint8_t)> setMask)
+                    {
+                        const uint8_t current = getMask();
+                        for (int target = 0; target < SamplerEngine::maxManuals; ++target)
+                        {
+                            auto& button = buttons[(size_t)target];
+                            button.setButtonText(shortNames[target]);
+                            button.setToggleState(target == self || (current & (1u << target)) != 0, juce::dontSendNotification);
+                            button.setEnabled(target != self);
+                            button.setVisible(target < count);
+                            button.onClick = [this, self, setMask]
+                            {
+                                uint8_t mask = (uint8_t)(1u << self);
+                                for (int t = 0; t < SamplerEngine::maxManuals; ++t)
+                                    if (buttons[(size_t)t].getToggleState()) mask |= (uint8_t)(1u << t);
+                                setMask(mask);
+                            };
+                            addAndMakeVisible(button);
+                        }
+                    }
+                    void resized() override
+                    {
+                        int x = 0;
+                        for (auto& button : buttons) { button.setBounds(x, 0, 58, getHeight()); x += 62; }
+                    }
+                private:
+                    std::array<juce::ToggleButton, SamplerEngine::maxManuals> buttons;
+                };
                 auto applyTremulant = [&o, &config, manual]
                 {
                     o.engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz,
@@ -31345,6 +31479,12 @@ void MainComponent::showConfigurationEditor()
                     [&config, applyTremulant](double value) { config.tremulantDepthCents = (float)value; applyTremulant(); });
                 addSlider("Tremulant phase drift between ranks", 0.0, 360.0, 1.0, " deg", config.tremulantRankDriftDegrees, 260.0,
                     [&config, applyTremulant](double value) { config.tremulantRankDriftDegrees = (float)value; applyTremulant(); });
+                dumpOption("tick boxes, one per division", "Tremulant: also shakes divisions",
+                    "The other divisions this tremulant shakes as well (one tremulant device for several divisions).");
+                addRow("Tremulant: also shakes divisions", std::make_unique<TargetRow>(manual, o.manualCount + 1,
+                    [&config] { return config.tremulantTargetMask; },
+                    [&o, &config, manual](uint8_t mask) { config.tremulantTargetMask = (uint8_t)(mask & ~(1u << manual)); o.engine.setManualTremulantTargets(manual, config.tremulantTargetMask); o.configurationDirty = true; o.saveSettings(); }),
+                    30, "The other divisions this tremulant shakes as well (one tremulant device for several divisions).");
 
                 auto applyWind = [&o, &config, manual]
                 {
@@ -31364,43 +31504,10 @@ void MainComponent::showConfigurationEditor()
                 addSlider("Wind: sag settling lag", 100.0, 400.0, 1.0, " ms", config.windSmoothingMs, 255.0,
                     [&config, applyWind](double value) { config.windSmoothingMs = (float)value; applyWind(); });
                 {
-                    class TargetRow final : public juce::Component
-                    {
-                    public:
-                        TargetRow(MainComponent::ManualConfig& c, int self, int count, std::function<void()> apply)
-                            : config(c)
-                        {
-                            for (int target = 0; target < SamplerEngine::maxManuals; ++target)
-                            {
-                                auto& button = buttons[(size_t)target];
-                                button.setButtonText(shortNames[target]);
-                                button.setToggleState(target == self || (config.windTargetMask & (1u << target)) != 0,
-                                    juce::dontSendNotification);
-                                button.setEnabled(target != self);
-                                button.setVisible(target < count);
-                                button.onClick = [this, self, apply]
-                                {
-                                    uint8_t mask = (uint8_t)(1u << self);
-                                    for (int t = 0; t < SamplerEngine::maxManuals; ++t)
-                                        if (buttons[(size_t)t].getToggleState()) mask |= (uint8_t)(1u << t);
-                                    config.windTargetMask = mask;
-                                    apply();
-                                };
-                                addAndMakeVisible(button);
-                            }
-                        }
-                        void resized() override
-                        {
-                            int x = 0;
-                            for (auto& button : buttons) { button.setBounds(x, 0, 58, getHeight()); x += 62; }
-                        }
-                    private:
-                        MainComponent::ManualConfig& config;
-                        std::array<juce::ToggleButton, SamplerEngine::maxManuals> buttons;
-                    };
                     dumpOption("tick boxes, one per division", "Wind: also affects divisions",
                         "Other divisions fed from this wind supply receive half of its sag.");
-                    addRow("Wind: also affects divisions", std::make_unique<TargetRow>(config, manual, o.manualCount + 1, applyWind),
+                    addRow("Wind: also affects divisions", std::make_unique<TargetRow>(manual, o.manualCount + 1,
+                        [&config] { return config.windTargetMask; }, [&config, applyWind](uint8_t mask) { config.windTargetMask = mask; applyWind(); }),
                         30, "Other divisions fed from this wind supply receive half of its sag.");
                 }
             }

@@ -423,6 +423,7 @@ private:
         float windOscillationStrength = 23.3f;
         float windSmoothingMs = 170.0f;
         uint8_t windTargetMask = 0;
+        uint8_t tremulantTargetMask = 0;   // 0.9.88: the OTHER divisions this tremulant shakes (bit = division); travels with the organ
         // Compass of the division (MIDI keys): the per-key voicing sliders cover it.
         // Pedal defaults to 36-67 (set in the constructor), manuals to 36-96.
         int compassLow = 36, compassHigh = 96;

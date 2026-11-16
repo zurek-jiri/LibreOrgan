@@ -1574,8 +1574,9 @@ void StopRow::resized()
     const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
     int keyAreaTop = 0;
-    if (isExpanded() && !stop->container && !volumeRowShown() && !toneRowShown())
-    {
+    if (isExpanded() && !stop->container && !volumeRowShown() && !toneRowShown() && !attackRowShown())
+    {   // 0.9.88: the attack row counts as a key row too - the compact controls under an open attack row pushed the
+        // sliders below the row's height (expandedHeightFor takes the full layout for it): "spodní okýnka uřízlá"
         // 0.9.36: both per-key rows folded - the compact layout (voicer.h compactControlsLayout:
         // the same walk gave the owner the row's height), the controls wrapped onto more lines.
         const bool folderRow = !isTransmission() && rankCountToggle.isVisible();

@@ -4344,7 +4344,19 @@ struct SamplerEngine::Impl
     {
         std::atomic<bool> enabled{ false };
         std::atomic<float> rateHz{ 4.4f }, depthCents{ 6.0f }, rankDriftDegrees{ 260.0f };
+        std::atomic<uint8_t> targetMask{ 0 };   // 0.9.88: the OTHER divisions this tremulant shakes too (bit = division; the own one always)
     };
+    // The tremulant that moves a division's pipes: its own when on, else the first division whose tremulant is on
+    // and names it among its targets (one device shaking several divisions - the same rate, the same nominal phase).
+    int tremulantDriverOf(int manual) const
+    {
+        if (manual < 0 || manual >= maxManuals) return manual;
+        if (trem[(size_t)manual].enabled.load(std::memory_order_relaxed)) return manual;
+        for (int d = 0; d < maxManuals; ++d)
+            if (d != manual && trem[(size_t)d].enabled.load(std::memory_order_relaxed) && (trem[(size_t)d].targetMask.load(std::memory_order_relaxed) & (1u << manual)) != 0)
+                return d;
+        return manual;
+    }
     std::array<TremParams, maxManuals> trem;
     std::array<std::atomic<float>, maxManuals> windLagMs{};   // wind sag lag per division (route volume glide)
 
@@ -7180,8 +7192,9 @@ struct SamplerEngine::Impl
             ctx.windGainDb[variation] = std::abs(sag) > 1.0e-6f ? -windLevelDbPerCent * sag * gainScale : 0.0f;
         }
 
-        // tremulant
-        auto& tp = trem[(size_t)manual];
+        // tremulant - the division's own, or another division's that names this one among its targets (0.9.88)
+        const int tremDriver = tremulantDriverOf(manual);
+        auto& tp = trem[(size_t)tremDriver];
         const float targetMix = tp.enabled.load(std::memory_order_relaxed) ? 1.0f : 0.0f;
         // Tremulant fades in over 700 ms and fades out over 1.4 s.
         const float move = (float)(blockMs / (targetMix > route.tremMix ? 700.0 : 1400.0));
@@ -7193,7 +7206,7 @@ struct SamplerEngine::Impl
         // about half a second.
         {
             const int64_t cycle = (int64_t)std::floor(tEnd * 0.001 * juce::jmax(0.1f, rateHz));
-            uint32_t h = ((uint32_t)cycle * 2654435761u) ^ ((uint32_t)(manual + 1) * 0x9e3779b9u);
+            uint32_t h = ((uint32_t)cycle * 2654435761u) ^ ((uint32_t)(tremDriver + 1) * 0x9e3779b9u);   // the driver's wander: every division it shakes agrees
             h ^= h >> 15; h *= 0x85ebca6bu; h ^= h >> 13;
             const float target = 0.60f + 0.40f * (float)(h & 1023u) / 1023.0f;
             const float step = (float)(blockMs / 500.0) * 0.40f;   // the whole 60..100 % span in 0.5 s
@@ -11345,6 +11358,12 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
     t.rateHz.store(juce::jlimit(2.0f, 11.0f, rateHz));
     t.depthCents.store(juce::jlimit(0.0f, 50.0f, depthCents));
     t.rankDriftDegrees.store(juce::jlimit(0.0f, 360.0f, rankDriftDegrees));
+}
+
+void SamplerEngine::setManualTremulantTargets(int manualIndex, int targetMask)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals) return;
+    impl->trem[(size_t)manualIndex].targetMask.store((uint8_t)(targetMask & ~(1 << manualIndex) & 0xff));
 }
 
 //------------------------------------------------------------------------------
