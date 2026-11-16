@@ -5174,6 +5174,24 @@ void Voicer::swapDivisions(int a, int b)
         for (const auto& key : division.second) pool.insert(renamed(key));
         division.second = std::move(pool);
     }
+    // 0.9.82 (the user: "i spojky by se měly symetricky prohodit"): the coupler cells of the two divisions change
+    // hands, and every coupler id "<target>-<source>-<type>" names the swapped divisions.
+    auto renamedCoupler = [a, b](const juce::String& id)
+    {
+        auto tokens = juce::StringArray::fromTokens(id, "-", "");
+        if (tokens.size() < 3) return id;
+        auto swapped = [a, b](int manual) { return manual == a ? b : (manual == b ? a : manual); };
+        tokens.set(0, juce::String(swapped(tokens[0].getIntValue())));
+        tokens.set(1, juce::String(swapped(tokens[1].getIntValue())));
+        return tokens.joinIntoString("-");
+    };
+    std::swap(couplerCells[a], couplerCells[b]);
+    for (auto& division : couplerCells)
+    {
+        std::map<juce::String, std::pair<int, int>> cells;
+        for (const auto& cell : division.second) cells[renamedCoupler(cell.first)] = cell.second;
+        division.second = std::move(cells);
+    }
 }
 
 void Voicer::refreshUndulationLabels()

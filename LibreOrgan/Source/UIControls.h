@@ -230,6 +230,7 @@ class DisplayLabel : public juce::Label
 {
 public:
     using juce::Label::Label;
+    int maxLines = 1;   // 0.9.82: the bank display shows three lines (file / bank / annotation) in the same frame
     void paint(juce::Graphics& g) override
     {
         auto r = getLocalBounds().toFloat().reduced(1.0f);
@@ -239,7 +240,15 @@ public:
         g.drawRoundedRectangle(r, 3.0f, 1.0f);
         g.setColour(findColour(juce::Label::textColourId));
         g.setFont(getFont());
-        g.drawFittedText(getText(), getLocalBounds().reduced(4, 2), getJustificationType(), 1, 0.6f);
+        g.drawFittedText(getText(), getLocalBounds().reduced(4, 2), getJustificationType(), maxLines, maxLines > 1 ? 1.0f : 0.6f);
+    }
+    // A line cut to the width with "..." (long combinations file names, bank annotations - the user: no wrapping).
+    static juce::String fitLine(const juce::Font& font, const juce::String& text, float width)
+    {
+        if (juce::GlyphArrangement::getStringWidth(font, text) <= width) return text;
+        juce::String cut = text;
+        while (cut.isNotEmpty() && juce::GlyphArrangement::getStringWidth(font, cut + "...") > width) cut = cut.dropLastCharacters(1);
+        return cut.trimEnd() + "...";
     }
 };
 

@@ -12,6 +12,26 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.82] - 2026-11-16
+
+### Changed
+- Audio routing: "Organ out" and "Sound cards in"; a selected cable can be
+  dragged to another output or card; the cards are dragged onto dashed
+  slots of the grid (the order is remembered); the other cards are buttons
+  sized like stop buttons in collapsible sections per driver, with a
+  "Button size" choice; every highlight is orange like a stop switched on;
+  several cables into the same outputs stripe the output in their colours
+  and clamp it in concentric rings; the buffer size list serves ASIO too
+  and a size set in the driver's panel shows within a second.
+- Swap divisions exchanges the divisions whole: alias, couplers (II/I
+  becomes I/II with state, visibility, order and cell), tremulant, swell,
+  wind, volume and the audio routes; only the keyboard stays with the numeral.
+- The bank display is rounded like the other displays and has three lines
+  (the combinations file, the bank, the annotation), long texts cut with
+  "..."; the annotation takes 28 characters.
+- The Set of the Crescendo Settings dialog is a latched orange button like
+  the combination row's.
+
 ## [0.9.81] - 2026-11-16
 
 ### Changed

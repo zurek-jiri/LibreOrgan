@@ -231,6 +231,10 @@ private:
     std::unique_ptr<class GuidedTour> guidedTour;
     bool guidedTourAvailable = false;
     juce::StringArray guidedTourDismissed;   // configuration names whose tour was closed with "Don't show again" (machine-specific)
+    // 0.9.82: the Audio routing dialog's memory (machine-specific): the cards' order on its grid, the folded driver
+    // sections, the button size (0 small, 1 normal, 2 large).
+    juce::StringArray audioRoutingCardOrder, audioRoutingCollapsed;
+    int audioRoutingButtonSize = 1;
     void startGuidedTour();
     // ORGAN_VIDEO_SCRIPT (0.8.206): an instruction video's frames and sound, driven by a script file.
     struct VideoScript;
@@ -267,7 +271,7 @@ private:
     LeftOnlyTextButton nextCombinationButton{ ">>" };
     LeftOnlyTextButton bankDownButton{ juce::String(juce::CharPointer_UTF8("Bank \xe2\x96\xbc")) };   // Bank ▼
     LeftOnlyTextButton bankUpButton{ juce::String(juce::CharPointer_UTF8("Bank \xe2\x96\xb2")) };     // Bank ▲
-    juce::Label bankLabel;   // two lines (0.9.80): the combinations file ("default" = the configuration's own) and "Bank N - annotation"
+    DisplayLabel bankLabel;   // 0.9.82: the rounded black display like the others; three lines: the combinations file ("default"), "Bank N", the annotation
     std::map<int, juce::String> bankNotes;   // 0.9.80: the banks' annotations (saved with the combinations)
     juce::String combinationsFileName;       // the combinations file in use (empty = the configuration's own, shown "default")
     void showBankMenu();                     // the "v" of the bank display: jump to an annotated bank

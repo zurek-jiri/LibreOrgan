@@ -433,7 +433,8 @@ The pistons (their number: the *Pistons* box in the row), *Set*, the stepping
 buttons *<<* / *>>*, the bank buttons (held down they scroll) with the black
 bank display between them - its first line names the combinations file in
 use ("default" = the combinations saved in the configuration), its second
-line the bank and its note; click the display and two boxes open in it: the
+the bank, its third the bank's note (long texts are cut with "...", the
+tooltip holds them whole); click the display and two boxes open in it: the
 bank number on the left, a note on the right (the piece it serves, where it
 starts), Enter sets both; the small *v* in its corner lists the annotated
 banks -, the display of the combination in use,
@@ -807,8 +808,10 @@ can be done here as well, and this is where the organ is built from folders.
 - **Name** is the stop's identity (voicing, combinations, MIDI); derived from
   the folders, a typed name is kept until cleared. **Alias** is only what is
   shown. **Transp.**: [Transposition](#transposition) - empty means found by the program.
-- **Swap divisions...** exchanges the stop lists of two divisions;
-  **Reset division...** forgets one division's table.
+- **Swap divisions...** exchanges two divisions whole - stops, alias,
+  couplers (II/I becomes I/II), tremulant, swell, wind, volume, audio routes,
+  combinations and crescendo; only the keyboard (MIDI, compass) stays with
+  the numeral. **Reset division...** forgets one division's table.
 
 ## 4.3 Perspectives
 
@@ -908,31 +911,37 @@ sag, and [Wind: maximum wind model effect](#wind-maximum-wind-model-effect) (0 %
 ### Audio routing
 
 The *Audio routing* button of the top bar draws the routes as **cables**
-between what plays and the sound cards. On the left stand the sources: one
-row per **perspective** (Front, Rear ...) when every division sends it the
-same way, the arrow before it unfolds the divisions (P., I., II.) so each
-gets a cable of its own; a perspective the divisions send differently is
-unfolded by itself. To the right lie the **sound cards in use** with their
-**outputs** along the bottom edge (a card with many outputs grows wide,
-never tall); each shows its driver, rate and buffer (combos), the latency,
-*Driver panel*, *Reopen* and *Test* (a soft tone for a second on every
-route of that card - you hear where it goes). Every other card of every
-driver (ASIO, Windows Audio and Aggregated WASAPI; JACK and ALSA;
-CoreAudio) is a compact label below, a line per driver: drop a source onto
-one and the card opens with its first pair and moves up among the cards in
-use. A card that is busy through another driver on the same hardware is
+between *Organ out* and *Sound cards in*. On the left stand the
+perspectives (Front, Rear ...), one row each when every division sends it
+the same way; the arrow before it unfolds the divisions (P., I., II.) so
+each gets a cable of its own; a perspective the divisions send differently
+is unfolded by itself. To the right lie the **sound cards in use** with
+their **outputs** along the bottom edge and the driver's channel names
+standing above them (a card with many outputs grows wide, never tall);
+each shows its driver, rate and buffer (combos - ASIO too; a size set in
+the driver's panel shows within a second), the latency, *Driver panel*,
+*Reopen* and *Test* (a soft tone for a second on every route of that card -
+you hear where it goes). Every other card of every driver (ASIO, Windows
+Audio and Aggregated WASAPI; JACK and ALSA; CoreAudio) is a button below in
+a section per driver (the orange caption folds it): drop a perspective
+onto one and the card opens with its first pair and moves up among the
+cards in use. *Button size* sets the size of those buttons, the outputs and
+their names. A card busy through another driver on the same hardware is
 grey and takes no cable until that driver has no route on it. Drag a card
-by its header onto another to swap their places when the cables cross.
+by its title: the places of the grid appear as dashed slots, the one under
+the mouse glows, let go and the card sits there.
 
-**Drag a source onto an output**: while the mouse is over a card its output
-and the pair partner glow and the label under the cursor says what will
-land there ("7+8"); let go and that stereo pair replaces the route's
-channels, with **Shift** the pair is *added* (two pairs on one source =
-the pipes alternate between them by key, a C / C# split), with **Alt** a
-single channel is taken. A cable is **selected** by a click (the others
-dim) and removed with Delete or the x at its end; the last cable gone, the
-source is silent. The [audio tabs](#53-the-audio-tabs) show the same routes
-the second way, in the Divisions dialog.
+**Drag a perspective onto an output**: while the mouse is over a card its
+output and the pair partner glow orange and the label under the cursor says
+what will land there ("7+8"); let go and that stereo pair replaces the
+route's channels, with **Shift** the pair is *added* (two pairs on one
+source = the pipes alternate between them by key, a C / C# split), with
+**Alt** a single channel is taken. A cable is **selected** by a click (the
+others dim): Delete or the x at its end removes it, dragging it moves it to
+another output or card; the last cable gone, the source is silent. Several
+cables into the same outputs stripe the output in all their colours and
+clamp it one ring outside the other. The [audio tabs](#53-the-audio-tabs)
+show the same routes the second way, in the Divisions dialog.
 
 ## 5.3 The audio tabs
 

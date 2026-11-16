@@ -3525,6 +3525,38 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   elsewhere hides it; the first picture without the editor was that, not a paint fault. The deployed exe is
   C:\LibreOrgan\LibreOrgan_0.9.81.exe (the shortcut's file name is still "OrganSampler_0.8.198.exe – zástupce.lnk" -
   never rename it).
+  0.9.82 (16 Nov 2026, the user's ten-point batch after 0.9.81, "go"): (1) BANK DISPLAY = `DisplayLabel` (UIControls.h,
+  the rounded black display of the combination display "0-"; `maxLines` 3 for the bank: file / "Bank N" / annotation,
+  `DisplayLabel::fitLine(font, text, width)` cuts with "..." - the user: no wrapping; the tooltip holds the whole;
+  `bankNoteEditor.setInputRestrictions(28)`; resized() recomputes the lines through updateCombinationControls). My first
+  attempt was a new RoundedDisplayLabel class - the existing DisplayLabel was the one to use: grep for "Display" before
+  inventing a display. (2) SWAP DIVISIONS WHOLE (`swapDivisionStops`): alias, tremulant (enabled/rate/depth/drift), swell
+  position/attenuation/inertia, wind (depth, frequency, oscillations, strength, smoothing, target masks with
+  `swapMaskBits` on every division), random tuning / pipe coupling, division volume, the audio (outputChannels,
+  audioDeviceStateXml, `perspectiveAudio` re-keyed "<manual>|<perspective>", `removePerspectiveAudioRoutesForManual`
+  for both, `attachDivisionRoute` from the swapped xml as loadSettings does, the engine setters), couplers (the state
+  of id X := the old state of `remapCouplerId(X)` through `setCouplerEnabled`, `visible`, `couplerOrder` re-keyed and
+  renamed) and `Voicer::swapDivisions` swaps `couplerCells` with the ids renamed. The keyboard stays with the numeral
+  (MIDI device/channel, compass, transposition, velocity, bass layout, swell pedal CC, window). Hook
+  `ORGAN_TEST_SWAP="<a>|<b>[|<seconds>]"` logs "ORGAN_TEST_SWAP before/after: division N: alias ..., outputs, device,
+  couplers"; test %TEMP%\test_0982_swap.ps1 (Rural: alias and wind 33 c of I. end on II., outputs 7+8 <-> 11+12).
+  (3) The Crescendo Settings "Set" is a juce::TextButton latched orange (was a ToggleButton tick) - the user's
+  "Set v crescendu se měl změnit na button"; never rename it ("Teach this step" refused: "nezaváděj nové výrazy").
+  (4) AUDIO ROUTING v3 (AudioRouting.h): "Organ out" / "Sound cards in" (the user's words; "What plays" refused);
+  ORANGE for every highlight (yellow refused: "udržuj stále stejný estetický kód"); the selected cable DRAGS to
+  another output/card (`pressedCable` -> `cableDrag`, `moveCable` = assign with `takeAway` = the old channels);
+  cards drag onto dashed SLOTS (`slots` = every full card's bounds + one after the last, `dropSlot` glows,
+  `moveCard` inserts; the order = `owner.audioRoutingCardOrder`, machine key); the other cards = buttons sized like
+  stop buttons (`chipHeight` 36 x scale, font 14 x scale) in COLLAPSIBLE driver sections (`typeSections`, caption
+  "- Windows Audio" / "+ ..." orange 15 bold like the Editor's addSection; `owner.audioRoutingCollapsed`); "Button
+  size" combo = `owner.audioRoutingButtonSize` (0.85 / 1 / 1.25 on chips, jacks, names); several cables into one
+  jack = STRIPES of their colours (`jackColours`) and concentric clamps (`Cable::ring` = the cable's order among
+  the cables into the same first jack, 3 px per ring); the signature includes rate/buffer/latency of every open
+  device (the ASIO panel's buffer size shows within a second - the Divisions dialog lesson again) and the Buffer
+  combo lists the current size even when the driver's list lacks it. Hook ORGAN_TEST_ROUTE: "...|movecable|<from
+  output>" and "card|<name part>|<slot>". Test %TEMP%\test_0982_route.ps1 (the pictures are "1-Audio routing.png" with
+  one window - the hNN copies watch "2-..." and miss; the final picture suffices). Not changed: the device-fail
+  revert (0.8.250) and the aggregate's channel names ("ADAT (7+8) (RME Fireface UCX) (L)" - the endpoint + L/R).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

@@ -1612,16 +1612,14 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(bankLabel);
     bankLabel.setJustificationType(juce::Justification::centred);
-    bankLabel.setFont(juce::FontOptions(15.0f, juce::Font::bold));   // 0.9.80: two lines (the combinations file, the bank + its note)
-    bankLabel.setMinimumHorizontalScale(0.7f);
+    bankLabel.setFont(juce::FontOptions(13.0f, juce::Font::bold));   // 0.9.82: three lines (the combinations file, the bank, its note), each cut with "..."
+    bankLabel.maxLines = 3;
     // 0.9.79 (#231): the bank number is typed - a click opens the editor, Enter sets the bank (the buttons
     // beside it still step, held down they scroll).
     // 0.9.81: a black display like the combination display (the file / "Bank N - note"); a click opens two
     // boxes inside it - the number left, the note right - Enter or a click elsewhere sets both; the small
     // "v" in its corner lists the annotated banks. No right-click (the user).
-    bankLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
     bankLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
-    bankLabel.setColour(juce::Label::outlineColourId, juce::Colours::darkgrey);
     bankLabel.setTooltip("The combinations file in use (default = the combinations saved in the configuration) and the bank of pistons with its note. "
         "Click: type the bank number (left) and a note for it (right), Enter sets them. The buttons beside step through the banks; held down they scroll.");
     bankLabel.addMouseListener(this, false);
@@ -1638,6 +1636,7 @@ MainComponent::MainComponent()
     bankNumberEditor.setJustification(juce::Justification::centred);
     bankNumberEditor.setTooltip("The bank number (0-999)");
     bankNoteEditor.setTextToShowWhenEmpty("note (the piece, where it starts ...)", juce::Colours::grey);
+    bankNoteEditor.setInputRestrictions(28);   // 0.9.82: what the display's third line holds (the user: the note must fit)
     bankNoteEditor.setTooltip("A note shown with the bank: the piece it serves, where it starts ... Empty = no note.");
     bankListButton.setTooltip("The annotated banks - click one to go there.");
     bankListButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey);
@@ -2629,6 +2628,39 @@ MainComponent::MainComponent()
                 }
             });
     }
+    // 0.9.82: ORGAN_TEST_SWAP="<a>|<b>[|<seconds>]" swaps two divisions whole (swapDivisionStops) and logs what each
+    // division carries before and after (alias, tremulant, swell, wind, volume, outputs, device, couplers).
+    if (const char* env = std::getenv("ORGAN_TEST_SWAP"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        if (parts.size() >= 2)
+        {
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            const int a = parts[0].getIntValue(), b = parts[1].getIntValue();
+            juce::Timer::callAfterDelay(1000 * (parts.size() >= 3 ? juce::jmax(1, parts[2].getIntValue()) : 20), [safeThis, a, b]
+            {
+                if (safeThis == nullptr) return;
+                auto describe = [safeThis](int m)
+                {
+                    const auto& c = safeThis->manualConfigs[(size_t)m];
+                    juce::String type, name;
+                    if (auto xml = juce::parseXML(c.audioDeviceStateXml)) { type = xml->getStringAttribute("deviceType"); name = xml->getStringAttribute("audioOutputDeviceName"); }
+                    juce::StringArray outputs, couplersOn, couplersShown;
+                    for (const int ch : c.outputChannels) outputs.add(juce::String(ch + 1));
+                    for (const auto& coupler : safeThis->couplers) { if (coupler.enabled) couplersOn.add(coupler.id); if (coupler.visible) couplersShown.add(coupler.id); }
+                    return "division " + juce::String(m) + ": alias \"" + c.alias + "\", tremulant " + (c.tremulantEnabled ? "on" : "off") + " " + juce::String(c.tremulantRateHz, 2)
+                        + " Hz, swell " + juce::String(c.expressionPosition, 2) + ", wind " + juce::String(c.windDepthCents, 1) + " c, volume " + juce::String(c.divisionVolumeDb, 1)
+                        + " dB, outputs " + outputs.joinIntoString("+") + ", device " + type + " \"" + name + "\", perspectives " + juce::String(c.perspectiveAudio.size())
+                        + " | couplers on: " + couplersOn.joinIntoString(" ") + " shown: " + couplersShown.joinIntoString(" ");
+                };
+                CrashHandler::note("ORGAN_TEST_SWAP before: " + describe(a));
+                CrashHandler::note("ORGAN_TEST_SWAP before: " + describe(b));
+                safeThis->swapDivisionStops(a, b);
+                CrashHandler::note("ORGAN_TEST_SWAP after: " + describe(a));
+                CrashHandler::note("ORGAN_TEST_SWAP after: " + describe(b));
+            });
+        }
+    }
     if (const char* env = std::getenv("ORGAN_TEST_CLICK"))
     {
         const auto names = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
@@ -3311,6 +3343,7 @@ void MainComponent::resized()
         bankNumberEditor.setBounds(edit.removeFromLeft(46));
         edit.removeFromLeft(3);
         bankNoteEditor.setBounds(edit);
+        updateCombinationControls();   // 0.9.82: the display's lines are cut to its width
     }
 
     bounds.removeFromTop(8);
@@ -10449,7 +10482,8 @@ void MainComponent::showCrescendoDialog()
             addAndMakeVisible(stepsBox);
             setButton.setButtonText("Set");
             setButton.setClickingTogglesState(true);
-            setButton.setColour(juce::ToggleButton::tickColourId, juce::Colours::orange);
+            setButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);   // 0.9.82: latched orange while on, as in the combination row
+            setButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
             setButton.setTooltip("While on, clicking a step stores the current stops and couplers in it");
             addAndMakeVisible(setButton);
             saveButton.setButtonText("Save...");
@@ -10593,7 +10627,8 @@ void MainComponent::showCrescendoDialog()
         MainComponent& owner;
         juce::Label legend, stepsLabel;
         juce::ComboBox stepsBox;
-        juce::ToggleButton setButton, cancelBox;
+        juce::TextButton setButton;   // 0.9.82: a latched button like the combination row's Set (was a tick box)
+        juce::ToggleButton cancelBox;
         juce::TextButton saveButton, loadButton, voidButton, closeButton;
         juce::OwnedArray<LeftOnlyTextButton> stepButtons;
     };
@@ -12521,7 +12556,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardOrder", "audioRoutingCollapsed", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -23505,6 +23540,96 @@ void MainComponent::swapDivisionStops(int a, int b)
     if (stopBuildWindow != nullptr) stopBuildWindow.reset();
     if (juce::File(manualConfigs[0].folderPath).isDirectory()) topFolder = juce::File(manualConfigs[0].folderPath);
     if (voicer) voicer->swapDivisions(a, b);
+    {
+        // 0.9.82 (the user: "Všecko se prostě prohodí ... jen číslo manuálu zůstane, protože nyní hraje tu divizi
+        // jiný manuál"): everything that is the DIVISION changes hands - the alias, the registration and settings of
+        // the tremulant, the swell (position, attenuation, inertia), the wind, the random tuning / pipe coupling
+        // switches, the division volume, the audio (the own route's device and channels, every perspective route
+        // with its volume, separation and IR) and the couplers (symmetrically: II/I becomes I/II with its state,
+        // visibility, order and cell). What stays with the NUMBER is the keyboard: MIDI device, channel, compass,
+        // transposition, velocity, bass octave layout, the swell pedal's controller, the window.
+        auto& ca = manualConfigs[(size_t)a];
+        auto& cb = manualConfigs[(size_t)b];
+        std::swap(ca.alias, cb.alias);
+        std::swap(ca.tremulantEnabled, cb.tremulantEnabled);
+        std::swap(ca.tremulantRateHz, cb.tremulantRateHz);
+        std::swap(ca.tremulantDepthCents, cb.tremulantDepthCents);
+        std::swap(ca.tremulantRankDriftDegrees, cb.tremulantRankDriftDegrees);
+        std::swap(ca.expressionPosition, cb.expressionPosition);
+        std::swap(ca.expressionMaxAttenuationDb, cb.expressionMaxAttenuationDb);
+        std::swap(ca.expressionInertiaMs, cb.expressionInertiaMs);
+        std::swap(ca.windDepthCents, cb.windDepthCents);
+        std::swap(ca.windFrequencyHz, cb.windFrequencyHz);
+        std::swap(ca.windOscillations, cb.windOscillations);
+        std::swap(ca.windOscillationStrength, cb.windOscillationStrength);
+        std::swap(ca.windSmoothingMs, cb.windSmoothingMs);
+        ca.windTargetMask = (uint8_t)swapMaskBits(ca.windTargetMask, a, b);
+        cb.windTargetMask = (uint8_t)swapMaskBits(cb.windTargetMask, a, b);
+        std::swap(ca.windTargetMask, cb.windTargetMask);
+        for (int m = 0; m < SamplerEngine::maxManuals; ++m)
+            if (m != a && m != b) manualConfigs[(size_t)m].windTargetMask = (uint8_t)swapMaskBits(manualConfigs[(size_t)m].windTargetMask, a, b);
+        std::swap(ca.allowRandomTuningError, cb.allowRandomTuningError);
+        std::swap(ca.allowPipeCoupling, cb.allowPipeCoupling);
+        std::swap(ca.divisionVolumeDb, cb.divisionVolumeDb);
+        // The audio: the own route's device + channels, the perspective routes (re-keyed "<manual>|<perspective>").
+        removePerspectiveAudioRoutesForManual(a);
+        removePerspectiveAudioRoutesForManual(b);
+        std::swap(ca.outputChannels, cb.outputChannels);
+        std::swap(ca.audioDeviceStateXml, cb.audioDeviceStateXml);
+        auto rekeyed = [](const std::map<std::string, ManualConfig::PerspectiveAudioConfig>& from, int to)
+        {
+            std::map<std::string, ManualConfig::PerspectiveAudioConfig> out;
+            for (const auto& [key, config] : from)
+                out[perspectiveRouteKey(to, juce::String(key).fromFirstOccurrenceOf("|", false, false))] = config;
+            return out;
+        };
+        auto audioA = rekeyed(cb.perspectiveAudio, a), audioB = rekeyed(ca.perspectiveAudio, b);
+        ca.perspectiveAudio = std::move(audioA);
+        cb.perspectiveAudio = std::move(audioB);
+        for (const int m : { a, b })
+        {
+            auto& c = manualConfigs[(size_t)m];
+            engine.setManualTremulant(m, c.tremulantEnabled, c.tremulantRateHz, c.tremulantDepthCents, c.tremulantRankDriftDegrees);
+            engine.setWindModel(m, c.windDepthCents, c.windFrequencyHz, c.windOscillations, c.windOscillationStrength / 50.0f, c.windSmoothingMs, c.windTargetMask);
+            engine.setManualRandomTuningAllowed(m, c.allowRandomTuningError);
+            engine.setManualPipeCouplingAllowed(m, c.allowPipeCoupling);
+            engine.setManualDivisionGain(m, juce::Decibels::decibelsToGain(c.divisionVolumeDb));
+            engine.setManualExpressionMaxAttenuationDb(m, c.expressionMaxAttenuationDb);
+            engine.setManualExpressionGain(m, expressionGainFor(c));
+            engine.setManualOutputChannels(m, c.outputChannels);
+            auto xml = juce::parseXML(c.audioDeviceStateXml);
+            juce::String typeName = defaultSharedTypeName(), deviceName;
+            if (xml != nullptr)
+            {
+                typeName = xml->getStringAttribute("deviceType");
+                if (typeName.equalsIgnoreCase("default")) typeName = defaultSharedTypeName();
+                deviceName = xml->getStringAttribute("audioOutputDeviceName");
+                if (xml->hasAttribute("audioOutputDeviceName") && deviceName.isEmpty()) typeName = "none";
+            }
+            attachDivisionRoute(m, typeName, deviceName, xml.get());
+        }
+        // The couplers: the state of "<target>-<source>-<type>" goes to the id with the divisions swapped.
+        {
+            std::map<juce::String, std::pair<bool, bool>> state;   // id -> enabled, visible
+            for (const auto& coupler : couplers) state[remapCouplerId(coupler.id, a, b)] = { coupler.enabled, coupler.visible };
+            for (auto& coupler : couplers)
+            {
+                const auto found = state.find(coupler.id);
+                if (found == state.end()) continue;
+                if (coupler.enabled != found->second.first) setCouplerEnabled(coupler.id, found->second.first);
+                coupler.visible = found->second.second;
+            }
+            std::map<int, std::vector<juce::String>> order;
+            for (const auto& [manual, ids] : couplerOrder)
+            {
+                std::vector<juce::String> renamed;
+                for (const auto& id : ids) renamed.push_back(remapCouplerId(id, a, b));
+                order[manual == a ? b : manual == b ? a : manual] = renamed;
+            }
+            couplerOrder = std::move(order);
+        }
+        CrashHandler::note("Swap divisions: the alias, tremulant, swell, wind, volume, audio routes and couplers of " + names[a] + " and " + names[b] + " exchanged too");
+    }
     for (auto& entry : combinations) remapRegistrationArrays(&entry.second.stopData, &entry.second.couplerData, a, b);
     for (auto& slot : crescendoSteps) remapRegistrationArrays(&slot.stopData, &slot.couplerData, a, b);
     remapRegistrationArrays(&crescendoRestore.stopData, &crescendoRestore.couplerData, a, b);
@@ -23822,6 +23947,12 @@ void MainComponent::loadSettings()
     guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
     if (auto* dismissed = parsed.getProperty("guidedTourDismissed", juce::var()).getArray())
         for (const auto& name : *dismissed) if (name.toString().isNotEmpty()) guidedTourDismissed.addIfNotAlreadyThere(name.toString());
+    audioRoutingCardOrder.clear(); audioRoutingCollapsed.clear();   // 0.9.82
+    if (auto* order = parsed.getProperty("audioRoutingCardOrder", juce::var()).getArray())
+        for (const auto& key : *order) if (key.toString().isNotEmpty()) audioRoutingCardOrder.addIfNotAlreadyThere(key.toString());
+    if (auto* folded = parsed.getProperty("audioRoutingCollapsed", juce::var()).getArray())
+        for (const auto& type : *folded) if (type.toString().isNotEmpty()) audioRoutingCollapsed.addIfNotAlreadyThere(type.toString());
+    audioRoutingButtonSize = juce::jlimit(0, 2, (int)parsed.getProperty("audioRoutingButtonSize", 1));
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
     if (auto* folded = parsed.getProperty("configEditorCollapsed", juce::var()).getDynamicObject())
@@ -24613,6 +24744,14 @@ void MainComponent::saveSettings()
         juce::Array<juce::var> dismissed;
         for (const auto& name : guidedTourDismissed) dismissed.add(name);
         obj->setProperty("guidedTourDismissed", dismissed);
+    }
+    {   // 0.9.82: the Audio routing dialog's own memory (this machine's cards)
+        juce::Array<juce::var> order, folded;
+        for (const auto& key : audioRoutingCardOrder) order.add(key);
+        for (const auto& type : audioRoutingCollapsed) folded.add(type);
+        obj->setProperty("audioRoutingCardOrder", order);
+        obj->setProperty("audioRoutingCollapsed", folded);
+        obj->setProperty("audioRoutingButtonSize", audioRoutingButtonSize);
     }
     {
         juce::DynamicObject::Ptr folded = new juce::DynamicObject();
@@ -25696,13 +25835,16 @@ void MainComponent::updateCombinationLights()
 
 void MainComponent::updateCombinationControls()
 {
-    {   // 0.9.80: line 1 the combinations file in use ("default" = the configuration's own), line 2 the bank and its annotation
+    {   // 0.9.82: three lines - the combinations file in use ("default" = the configuration's own), "Bank N", the annotation -
+        // each cut to the display's width with "..." (the user: long file names must not wrap); the whole text is the tooltip.
         const auto note = bankNotes.find(currentBank);
-        bankLabel.setText((combinationsFileName.isEmpty() ? juce::String("default") : combinationsFileName) + "\nBank " + juce::String(currentBank)
-            + (note != bankNotes.end() && note->second.isNotEmpty() ? " - " + note->second : juce::String()), juce::dontSendNotification);
-        bankLabel.setTooltip("The combinations file in use (default = the combinations saved in the configuration) and the bank of pistons"
-            + (note != bankNotes.end() && note->second.isNotEmpty() ? ": " + note->second : juce::String())
-            + ". Click and type the bank number, Enter sets it; right-click to annotate the bank or jump to an annotated one.");
+        const auto noteText = note != bankNotes.end() ? note->second : juce::String();
+        const auto fileText = combinationsFileName.isEmpty() ? juce::String("default") : combinationsFileName;
+        const float width = (float)juce::jmax(40, bankLabel.getWidth() - 10);
+        bankLabel.setText(DisplayLabel::fitLine(bankLabel.getFont(), fileText, width) + "\nBank " + juce::String(currentBank)
+            + "\n" + DisplayLabel::fitLine(bankLabel.getFont(), noteText, width), juce::dontSendNotification);
+        bankLabel.setTooltip("Combinations file: " + fileText + "\nBank " + juce::String(currentBank) + (noteText.isNotEmpty() ? " - " + noteText : juce::String())
+            + "\nClick: type the bank number (left) and a note for it (right), Enter sets them; the v lists the annotated banks.");
     }
     const bool anyPistons = pistonCount > 0;
     combinationSetButton.setEnabled(anyPistons);
