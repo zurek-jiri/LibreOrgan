@@ -927,8 +927,10 @@ then the rest, folded (the orange caption folds and unfolds; without ASIO
 the aggregate comes first): drop a perspective onto one and the card opens
 with its first pair and moves up among the cards in use. *Button size* sets
 the size of those buttons, the outputs and their names. A card busy through
-another driver on the same hardware is grey and takes no cable until that
-driver has no route on it. The cards in use sit on a grid of cells like the
+another driver on the same hardware is grey; it takes a drop only when the
+drop moves every route off that other card - drag the whole card (by its
+title) or its last cable onto the grey one and everything plays through it
+(a WASAPI card to its ASIO version, say). The cards in use sit on a grid of cells like the
 stops: drag a card by its title onto a free cell (dashed while you drag,
 orange under the mouse) or onto another card to swap their places; the
 cables run in the aisles between the cards, never across one.

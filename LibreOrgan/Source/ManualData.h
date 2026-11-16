@@ -939,8 +939,10 @@ static const char* const kManualText_part4 =
     "the aggregate comes first): drop a perspective onto one and the card opens\n"
     "with its first pair and moves up among the cards in use. *Button size* sets\n"
     "the size of those buttons, the outputs and their names. A card busy through\n"
-    "another driver on the same hardware is grey and takes no cable until that\n"
-    "driver has no route on it. The cards in use sit on a grid of cells like the\n"
+    "another driver on the same hardware is grey; it takes a drop only when the\n"
+    "drop moves every route off that other card - drag the whole card (by its\n"
+    "title) or its last cable onto the grey one and everything plays through it\n"
+    "(a WASAPI card to its ASIO version, say). The cards in use sit on a grid of cells like the\n"
     "stops: drag a card by its title onto a free cell (dashed while you drag,\n"
     "orange under the mouse) or onto another card to swap their places; the\n"
     "cables run in the aisles between the cards, never across one.\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "a \"Rear\" perspective the set never had. It halves the reachable polyphony\n"
     "while it has a device; leave it at *none* otherwise - then it costs nothing.\n"
     "\n"
-    "## 5.5 Sound cards on Windows, Linux and macOS\n"
-    "\n"
     ;
 static const char* const kManualText_part5 =
+    "## 5.5 Sound cards on Windows, Linux and macOS\n"
+    "\n"
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
     "\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "filling them.\n"
     "\n"
     "## 7.2 The transposition methods\n"
-    "\n"
-    "*Filled pipes: transposition method* (Configuration Editor > Advanced global\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
+    "*Filled pipes: transposition method* (Configuration Editor > Advanced global\n"
     "audio > Filled pipes). The default *Pitch shift + time stretch* suits most\n"
     "stops; compare on the lowest keys of a reed extension.\n"
     "\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
     "\n"
     "### Release sample fade-in\n"
-    "\n"
-    "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     ;
 static const char* const kManualText_part7 =
+    "\n"
+    "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
     "release.\n"
     "\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "*Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase\n"
     "vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the\n"
     "cache when on); the sliders that do not apply are greyed out.\n"
-    "\n"
-    "### Missing pipes: neighbours borrowed as a group\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
+    "### Missing pipes: neighbours borrowed as a group\n"
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
     "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "everywhere (the Stop List columns, the voicing boxes, the audio tabs):\n"
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
-    "replaced; a prefix that means another perspective in this computer's list is\n"
-    "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     ;
 static const char* const kManualText_part9 =
+    "replaced; a prefix that means another perspective in this computer's list is\n"
+    "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
     "definition's ranks without a perspective in their names take these prefixes\n"
     "at the import too.\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
-    "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
-    "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
     ;
 static const char* const kManualText_part10 =
+    "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
+    "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
     "cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's\n"
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"
-    "\n"
-    "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
+    "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
     "minimum time and delay off, two seconds of idle listening; every stop\n"
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"

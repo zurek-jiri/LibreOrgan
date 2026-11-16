@@ -128,13 +128,14 @@ public:
         for (const auto& card : cards)
         {
             if (!card.chip || card.bounds.isEmpty()) continue;
-            const bool target = dragging && dropCard == &card - cards.data();
+            const bool target = (dragging || draggingCard) && dropCard == &card - cards.data();
+            const bool grey = card.busy && !((dragging || draggingCard) && freedByDrag(card));   // a drag that frees its hardware lights it again
             const auto base = getLookAndFeel().findColour(juce::TextButton::buttonColourId);
-            g.setColour(card.busy ? base.withAlpha(0.35f) : target ? glow : base);
+            g.setColour(grey ? base.withAlpha(0.35f) : target ? glow : base);
             g.fillRoundedRectangle(card.bounds.toFloat(), 4.0f);
             g.setColour(juce::Colours::black.withAlpha(0.5f));
             g.drawRoundedRectangle(card.bounds.toFloat().reduced(0.5f), 4.0f, 1.0f);
-            g.setColour(card.busy ? juce::Colours::grey : target ? juce::Colours::black : juce::Colours::white);
+            g.setColour(grey ? juce::Colours::grey : target ? juce::Colours::black : juce::Colours::white);
             g.setFont(juce::FontOptions(14.0f * scale()));
             g.drawFittedText(card.name, card.bounds.reduced(8, 2), juce::Justification::centred, 2);
         }
@@ -274,7 +275,8 @@ public:
         // The x of the selected cable.
         if (selectedCable >= 0 && selectedCable < (int)cables.size() && cables[(size_t)selectedCable].removeBox.contains(e.getPosition()))
         {
-            removeCable(selectedCable);
+            const auto data = cableData(selectedCable);
+            later([this, data] { removeCableData(data); });
             return;
         }
         // A cable: the selected one first where cables overlap, else the one drawn last (on top); a press selects it
@@ -321,7 +323,8 @@ public:
             if (!draggingCard && e.getDistanceFromDragStart() > 6) draggingCard = true;
             if (!draggingCard) return;
             dragPoint = e.getPosition().toFloat();
-            dropCell = cellAt(e.getPosition());
+            findDropTarget(e.getPosition());   // over a pool button: every route of the card moves there (its ASIO version, for one)
+            dropCell = dropCard >= 0 ? Cell{ -1, -1 } : cellAt(e.getPosition());
             repaint();
         }
     }
@@ -330,20 +333,32 @@ public:
         juce::ignoreUnused(e);
         if (dragging && dropCard >= 0 && dropChannel >= 0)
         {
-            const auto& card = cards[(size_t)dropCard];
+            const Card card = cards[(size_t)dropCard];   // copies: the actions run after this event (later)
             std::vector<int> channels{ dropChannel };
             if (dropPairs && (card.jacks.empty() || dropChannel + 1 < (int)card.jacks.size())) channels.push_back(dropChannel + 1);
             if (card.jacks.empty()) channels = { 0, 1 };   // a card not open yet: it opens on the first pair
-            if (dragRow >= 0) assign(rows[(size_t)dragRow].routes, card, channels, dropAdd);
-            else if (liftedCable >= 0) moveCable(liftedCable, card, channels);
+            const bool add = dropAdd;
+            if (dragRow >= 0) { const auto routes = rows[(size_t)dragRow].routes; later([this, routes, card, channels, add] { assign(routes, card, channels, add); }); }
+            else if (liftedCable >= 0)
+            {
+                const auto& cable = cables[(size_t)liftedCable];
+                const auto routes = rows[(size_t)cable.row].routes; const auto old = cable.channels; const auto label = rows[(size_t)cable.row].label;
+                later([this, routes, card, channels, old, label] { moveCable(routes, old, label, card, channels); });
+            }
         }
-        else if (dragCard >= 0 && draggingCard && dropCell.first >= 0) placeCard(dragCard, dropCell);
+        else if (dragCard >= 0 && draggingCard && dropCard >= 0 && cards[(size_t)dropCard].chip)
+        {   // the whole card dropped on a pool button: every route of it moves there
+            const auto routes = cards[(size_t)dragCard].routes; const Card card = cards[(size_t)dropCard];
+            CrashHandler::note("Audio routing: every route of " + cards[(size_t)dragCard].name + " dragged onto " + card.name);
+            later([this, routes, card] { assign(routes, card, { 0, 1 }, false); });
+        }
+        else if (dragCard >= 0 && draggingCard && dropCell.first >= 0) { const int index = dragCard; const Cell cell = dropCell; later([this, index, cell] { placeCard(index, cell); }); }
         dragRow = -1; dragCard = -1; liftedCable = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropCell = { -1, -1 };
         repaint();   // a lifted cable let go elsewhere is drawn at its output again
     }
     bool keyPressed(const juce::KeyPress& key) override
     {
-        if ((key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) && selectedCable >= 0) { removeCable(selectedCable); return true; }
+        if ((key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) && selectedCable >= 0) { const auto data = cableData(selectedCable); later([this, data] { removeCableData(data); }); return true; }
         if (key == juce::KeyPress::escapeKey && selectedCable >= 0) { selectedCable = -1; repaint(); return true; }
         return false;
     }
@@ -372,7 +387,7 @@ private:
     using Cell = std::pair<int, int>;   // column, row
     struct Card
     {
-        juce::String key, type, name, status, busyReason;
+        juce::String key, type, name, status, busyReason, busyBecauseOf;   // busyBecauseOf = the key of the open card of another driver on the same hardware
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
@@ -407,10 +422,33 @@ private:
     int chipHeight() const noexcept { return juce::roundToInt(36.0f * scale()); }
     int cellWidth() const noexcept { return cardWidth + cellGap; }
 
-    static juce::Colour colourOf(int manual, const juce::String& perspective)
+    // Every action that changes the routes runs after the mouse event has returned (never inside it: the rebuild
+    // deletes controls and the detach rebuilds routes - the 0.9.83 vanishing without a crash file).
+    void later(std::function<void()> action)
     {
-        const float hue = (float)(((perspective.toLowerCase().hashCode() & 0xffff) + 97 * manual) % 360) / 360.0f;
-        return juce::Colour::fromHSV(hue, 0.6f, 0.95f, 1.0f);
+        juce::Component::SafePointer<AudioRoutingContent> safe(this);
+        juce::MessageManager::callAsync([safe, action = std::move(action)] { if (safe != nullptr) action(); });
+    }
+    // The routes the current drag carries (a source row, a lifted cable or a whole card).
+    std::vector<Route> draggedRoutes() const
+    {
+        if (dragRow >= 0 && dragRow < (int)rows.size()) return rows[(size_t)dragRow].routes;
+        if (liftedCable >= 0 && liftedCable < (int)cables.size()) return rows[(size_t)cables[(size_t)liftedCable].row].routes;
+        if (dragCard >= 0 && dragCard < (int)cards.size()) return cards[(size_t)dragCard].routes;
+        return {};
+    }
+    // A busy card (its hardware open through another driver) takes a drop when the drop moves EVERY route off the
+    // card that keeps it busy - the WASAPI card's last routes may go to its ASIO version (the user's question).
+    bool freedByDrag(const Card& card) const
+    {
+        if (!card.busy) return true;
+        const int blocker = cardIndexOf(card.busyBecauseOf);
+        if (blocker < 0) return false;
+        const auto dragged = draggedRoutes();
+        if (dragged.empty()) return false;
+        for (const auto& route : cards[(size_t)blocker].routes)
+            if (std::none_of(dragged.begin(), dragged.end(), [&](const Route& d) { return d.manual == route.manual && d.perspective == route.perspective; })) return false;
+        return true;
     }
     static const juce::String& divisionName(int manual)
     {
@@ -560,7 +598,7 @@ private:
             {
                 if (!other.open || other.type == card.type) continue;
                 for (const auto& word : hardwareWords(other.name))
-                    if (words.contains(word)) { card.busy = true; card.busyReason = "busy: " + other.name + " is open through " + other.type; break; }
+                    if (words.contains(word)) { card.busy = true; card.busyBecauseOf = other.key; card.busyReason = "busy: " + other.name + " is open through " + other.type + " - drag that card (or its last cable) here to move everything over"; break; }
                 if (card.busy) break;
             }
             if (card.busy) card.status = card.busyReason;
@@ -591,8 +629,13 @@ private:
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
                 if (std::find(perspectives.begin(), perspectives.end(), perspective) == perspectives.end()) perspectives.push_back(perspective);
-        for (const auto& perspective : perspectives)
+        owner.engine.sortPerspectives(perspectives);   // 0.9.84: the order of the Perspective patterns (the user), as the tabs and the voicing
+        for (size_t pi = 0; pi < perspectives.size(); ++pi)
         {
+            const auto& perspective = perspectives[pi];
+            // 0.9.84: the hues spread evenly over the circle by the number of perspectives (two cables = opposite colours),
+            // a division's row keeps its perspective's hue a step darker per division.
+            const float hue = std::fmod(0.08f + (float)pi / (float)juce::jmax<size_t>(1, perspectives.size()), 1.0f);
             std::vector<Route> routes;
             for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
                 for (const auto& p : owner.engine.getPerspectivesForManual(manual)) if (p == perspective) routes.push_back({ manual, p });
@@ -608,17 +651,18 @@ private:
             head.perspectiveRow = true; head.perspective = perspective; head.routes = routes;
             head.folded = uniform && unfolded.count(perspective) == 0;
             head.label = perspective + (routes.size() > 1 ? " (" + juce::String(routes.size()) + (uniform ? " divisions)" : " divisions, various)") : juce::String());
-            head.colour = colourOf(0, perspective);
+            head.colour = juce::Colour::fromHSV(hue, 0.65f, 0.95f, 1.0f);
             head.silent = uniform ? firstKey.isEmpty() : false;
             head.whereText = uniform ? whereOf(routes.front()) : juce::String("the divisions differ - see them below");
             rows.push_back(head);
             if (!head.folded)
-                for (const auto& route : routes)
+                for (size_t di = 0; di < routes.size(); ++di)
                 {
+                    const auto& route = routes[di];
                     Row row;
                     row.perspective = perspective; row.routes = { route };
                     row.label = divisionName(route.manual) + "  " + perspective;
-                    row.colour = colourOf(route.manual + 1, perspective);
+                    row.colour = juce::Colour::fromHSV(hue, 0.5f + 0.15f * (float)(di % 3), 0.95f - 0.16f * (float)juce::jmin<size_t>(3, di), 1.0f);
                     row.silent = cardKeyOf(route).isEmpty();
                     row.whereText = whereOf(route);
                     rows.push_back(row);
@@ -871,7 +915,7 @@ private:
             cable.path = p;
             cable.hitPath.clear();
             juce::PathStrokeType(10.0f).createStrokedPath(cable.hitPath, p);
-            cable.removeBox = juce::Rectangle<int>((int)jx - 7, (int)cy - 7, 14, 14);
+            cable.removeBox = juce::Rectangle<int>((int)x0 + 6, (int)y0 - 18, 14, 14);   // ABOVE the cable at its source end - never on the path (0.9.83: the x sat on the corridor turn and a grab removed the cable)
         }
     }
     void paintCables(juce::Graphics& g)
@@ -919,7 +963,8 @@ private:
         for (int i = 0; i < (int)cards.size(); ++i)
         {
             const auto& card = cards[(size_t)i];
-            if (card.bounds.isEmpty() || !card.bounds.expanded(6).contains(p) || card.busy) continue;
+            if (card.bounds.isEmpty() || !card.bounds.expanded(6).contains(p) || (card.busy && !freedByDrag(card))) continue;
+            if (dragCard >= 0 && (!card.chip || i == dragCard)) continue;   // a dragged card lands on a pool button only (its routes move there)
             dropCard = i;
             if (card.chip || card.jacks.empty()) { dropChannel = 0; return; }
             int best = -1; int bestDistance = 1 << 30;
@@ -940,6 +985,13 @@ private:
         juce::StringArray done, refused;
         const double now = juce::Time::getMillisecondCounterHiRes();
         bool deviceChanged = false;
+        if (card.busy)
+        {   // the hardware is open through another driver by these very routes (freedByDrag): close them first, so
+            // the other driver (ASIO) can open the card
+            owner.audioMuted.store(true); owner.engine.noteOffAll(); owner.ignoreDeviceRestartsUntil.store(now + 8000.0); deviceChanged = true;
+            for (const auto& route : routes) owner.detachRouteAudioQuietly(route.manual, route.perspective);
+            CrashHandler::note("Audio routing: " + card.name + " was busy through another driver - its routes closed first");
+        }
         for (const auto& route : routes)
         {
             juce::String type, name;
@@ -973,22 +1025,24 @@ private:
     }
     // The lifted cable let go on another output (or card): its channels leave, the new ones come; the route's other
     // cables stay (on another card the whole route moves - a route plays through one card).
-    void moveCable(int index, const Card& card, const std::vector<int>& channels)
+    void moveCable(const std::vector<Route>& routes, const std::vector<int>& oldChannels, const juce::String& label, const Card& card, const std::vector<int>& channels)
     {
-        if (index < 0 || index >= (int)cables.size()) return;
-        const auto cable = cables[(size_t)index];
-        const auto routes = rows[(size_t)cable.row].routes;
-        CrashHandler::note("Audio routing: cable " + channelsText(cable.channels) + " of " + rows[(size_t)cable.row].label + " moved to " + card.name + " outputs " + channelsText(channels));
-        assign(routes, card, channels, true, cable.channels);
+        CrashHandler::note("Audio routing: cable " + channelsText(oldChannels) + " of " + label + " moved to " + card.name + " outputs " + channelsText(channels));
+        assign(routes, card, channels, true, oldChannels);
     }
-    void removeCable(int index)
+    struct CableData { std::vector<Route> routes; std::vector<int> channels; juce::String label; };
+    CableData cableData(int index) const
     {
-        if (index < 0 || index >= (int)cables.size()) return;
-        const auto cable = cables[(size_t)index];
-        const auto& row = rows[(size_t)cable.row];
+        if (index < 0 || index >= (int)cables.size()) return {};
+        const auto& cable = cables[(size_t)index];
+        return { rows[(size_t)cable.row].routes, cable.channels, rows[(size_t)cable.row].label };
+    }
+    void removeCable(int index) { removeCableData(cableData(index)); }
+    void removeCableData(const CableData& cable)
+    {
         juce::StringArray done, refused;
         bool detached = false;
-        for (const auto& route : row.routes)
+        for (const auto& route : cable.routes)
         {
             auto channels = channelsOf(route);
             for (const int c : cable.channels) channels.erase(std::remove(channels.begin(), channels.end(), c), channels.end());
@@ -1080,7 +1134,8 @@ private:
         if (mode == "movecable")
         {
             const int i = cableOf(parts.size() >= 6 ? parts[5].getIntValue() - 1 : 0);
-            if (i >= 0) moveCable(i, cards[(size_t)cardIndex], channels); else CrashHandler::note("ORGAN_TEST_ROUTE: no cable to move");
+            if (i >= 0) { const auto data = cableData(i); moveCable(data.routes, data.channels, data.label, cards[(size_t)cardIndex], channels); }
+            else CrashHandler::note("ORGAN_TEST_ROUTE: no cable to move");
             return;
         }
         assign(routes, cards[(size_t)cardIndex], channels, mode == "add");

@@ -635,6 +635,13 @@ namespace CrashHandler
         _set_invalid_parameter_handler(detail::invalidParameterHandler);
         _set_purecall_handler(detail::pureCallHandler);
        #endif
+       #if JUCE_WINDOWS
+        {   // 0.9.84: a stack overflow on the message thread leaves the handler 64 KB to write its file (without the
+            // guarantee the process vanishes without a line - the 16 Nov 2026 routing crash left no crash file)
+            ULONG guarantee = 64 * 1024;
+            SetThreadStackGuarantee(&guarantee);
+        }
+       #endif
         note("Crash handler installed (build " __DATE__ " " __TIME__ ")");
     }
 }

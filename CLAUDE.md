@@ -3580,6 +3580,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `audioRoutingExpandedSet` - an empty saved list means all folded); folded captions show the count. Hook
   ORGAN_TEST_ROUTE "cell|<card>|<col>|<row>" (the 0.9.82 "card|.." is gone). Tests %TEMP%\test_0983_route.ps1 (ASUS to
   cell 0,0, the aggregate to 0,1; pictures hNN now watch "1-Audio routing.png") and test_0983_bank.ps1.
+  0.9.84 (16 Nov 2026 evening; the user's crash + four wishes; ASIO as the default REFUSED by him: "na to rezignujeme,
+  ať si uživatel poradí sám" - never make ASIO automatic, the dead/virtual drivers (FlexASIO, Generic Low Latency,
+  ReaRoute, UMC without hardware) can hang the start): THE CRASH: the log ended with "-> no sound card (its last cable
+  removed)" x3 and NO crash file; the user "nerušil kabel, chtěl ho chytit a přetáhnout" - the red x of the selected
+  cable sat ON the cable at the corridor turn (jx, cy), so a grab there hit the x = removeCable of a folded 3-division
+  row = three detachRouteAudioQuietly + rebuild INSIDE the mouse event; the hook reproduction (his Chalons config,
+  Rear + Diffuse on ASIO Komplete, Direct on Reproduktory WASAPI, removed) did NOT crash - the hook bypasses the mouse
+  path, so the vanishing is tied to the event re-entrancy and stays unproven. Done: (1) the x sits ABOVE the cable's
+  source end ((x0 + 6, y0 - 18)), never on the path; (2) `later(action)` = MessageManager::callAsync through a
+  SafePointer: every route change (assign, moveCable, removeCableData, placeCard, the card-to-button drop) runs AFTER
+  the mouse event with COPIED data (`CableData {routes, channels, label}`, a Card copy) - never an index into
+  `cables`/`cards` that the rebuild replaces; (3) `SetThreadStackGuarantee(64 KB)` in CrashHandler::install (Windows)
+  so a stack overflow writes its file. RULE: a mouse handler of a dialog that rebuilds itself never calls the rebuild
+  directly. ALSO: (4) "Organ out" in the Perspective patterns' order (`engine.sortPerspectives`); (5) hues spread
+  evenly: perspective i of n = hue 0.08 + i/n, its divisions the same hue a step darker/duller per division (two
+  cables = opposite colours); (6) BUSY CARD TAKES ITS OWN ROUTES: `Card::busyBecauseOf` (the open card of another
+  driver on the same hardware), `freedByDrag(card)` = every route of that blocker is among `draggedRoutes()` (a row, a
+  lifted cable or a whole dragged card) -> droppable and painted normal while dragging; `assign` with `card.busy`
+  detaches the routes FIRST (the WASAPI device closes) and then opens the other driver - verified: Direct x3 on
+  "Reproduktory (RME Fireface UCX)" moved to "ASIO Fireface USB" ("was busy through another driver - its routes closed
+  first", then opened; test %TEMP%\test_0984_asio.ps1 with his Chalons configuration). A full card dragged onto a pool
+  BUTTON moves every route of it there (`findDropTarget` allows chips only for a dragged card). Tests: test_0984_asio.ps1,
+  test_0983_route.ps1 (unchanged results).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

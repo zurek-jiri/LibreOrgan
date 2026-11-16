@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.84] - 2026-11-16
+
+### Changed
+- Audio routing: the perspectives stand in the order of the Perspective
+  patterns; the cable colours are spread evenly over the colour circle (two
+  cables = opposite colours, a division's row a step darker than its
+  perspective); the x of a selected cable sits above its source end, off
+  the cable (a grab near the output removed the cable); a busy card (its
+  hardware open through another driver) takes a drop when the drop moves
+  every route off that other card - a WASAPI card's routes go to its ASIO
+  version by dragging the card (or its last cable) onto it; every change
+  of the routes runs after the mouse event, never inside it.
+
+### Fixed
+- A stack overflow on the message thread now leaves a crash file (Windows).
+
 ## [0.9.83] - 2026-11-16
 
 ### Changed
