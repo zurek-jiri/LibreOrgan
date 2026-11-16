@@ -1554,6 +1554,7 @@ private:
     juce::AudioDeviceSelectorComponent* getAudioSettingsForPerspective(int manualIndex,
         const juce::String& perspective);
     void rebuildPerspectiveAudioRoutes();
+    void syncConfiguredPerspectives();   // 0.9.87 (#238): the Stop List tables' perspectives into the engine (a route per perspective of the organ, loaded or not)
     std::vector<std::pair<int, juce::String>> missingPerspectiveRoutes() const;   // perspectives without a route yet
     // The ASIO driver a route will ask for (empty: none) and its saved state, for opening the driver as its own loading step.
     std::unique_ptr<juce::XmlElement> requestedAsioStateForRoute(int manual, const juce::String& perspective, juce::String& driverName);

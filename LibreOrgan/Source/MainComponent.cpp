@@ -4256,8 +4256,30 @@ std::unique_ptr<juce::XmlElement> MainComponent::requestedAsioStateForRoute(int 
     return xml;
 }
 
+// 0.9.87 (#238): the perspectives of a division are the ones its stops' ranks carry AND the ones its Stop List table
+// names (folders under a label) - a cancelled or memory-limited load that left the Rear ranks out must not take the
+// Rear route and its settings with it ("Pedal / rear: settings of a route that does not exist dropped" in the
+// user's log), and an empty division with a table shows the table's perspectives, not "default".
+void MainComponent::syncConfiguredPerspectives()
+{
+    for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+    {
+        std::vector<juce::String> names;
+        const auto& build = manualConfigs[(size_t)manual].stopBuild;
+        if (build.active && manual <= manualCount)
+            for (const auto& entry : build.entries)
+                if (!entry.isTransmission())
+                    for (const auto& [label, ref] : entry.folders)
+                        if (label.isNotEmpty() && (ref.relativePath.isNotEmpty() || !ref.morePaths.isEmpty())
+                            && std::none_of(names.begin(), names.end(), [&](const juce::String& n) { return n.equalsIgnoreCase(label); }))
+                            names.push_back(label);
+        engine.setConfiguredPerspectives(manual, std::move(names));
+    }
+}
+
 void MainComponent::rebuildPerspectiveAudioRoutes()
 {
+    syncConfiguredPerspectives();
     ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
     for (const auto& [manual, perspective] : missingPerspectiveRoutes())
         buildPerspectiveAudioRoute(manual, perspective);
@@ -4267,6 +4289,7 @@ void MainComponent::rebuildPerspectiveAudioRoutes()
 
 void MainComponent::closeHiddenRoutes()
 {
+    syncConfiguredPerspectives();
     static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {

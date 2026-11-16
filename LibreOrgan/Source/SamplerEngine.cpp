@@ -11380,10 +11380,21 @@ std::vector<juce::String> SamplerEngine::getPerspectivesForManual(int manualInde
             addUnique(stop->perspective);
             for (const auto& rank : stop->ranks) addUnique(rank->perspective);
         }
+    // 0.9.87 (#238): the Stop List table's perspectives count too - a cancelled load left the Rear ranks out and the
+    // Rear route (with its settings) vanished although the organ has that perspective.
+    if (manualIndex >= 0 && manualIndex < maxManuals)
+        for (const auto& name : configuredPerspectives[(size_t)manualIndex]) if (name.isNotEmpty()) addUnique(name);
     if (result.empty()) result.push_back("default");
     sortPerspectives(result);   // 0.8.231: the order of the perspective patterns, not the alphabet
     result.push_back(auxiliaryPerspectiveName());   // the division's downmix route, always last
     return result;
+}
+
+void SamplerEngine::setConfiguredPerspectives(int manualIndex, std::vector<juce::String> names)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals) return;
+    const juce::ScopedLock sl(controlLock);
+    configuredPerspectives[(size_t)manualIndex] = std::move(names);
 }
 
 void SamplerEngine::setStopEnabled(Stop* stop, bool enabled)

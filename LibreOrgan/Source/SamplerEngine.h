@@ -1250,6 +1250,12 @@ public:
     void setManualTremulant(int manualIndex, bool enabled, float rateHz, float depthCents,
         float rankDriftDegrees);
     std::vector<juce::String> getPerspectivesForManual(int manualIndex) const;
+    // 0.9.87 (#238): the perspectives the division's Stop List table names (folders under a label), set by
+    // MainComponent at every route rebuild - a perspective whose ranks a cancelled or memory-limited load left out
+    // keeps its route (and its audio settings) like a loaded one; an empty division with a table shows the table's
+    // perspectives, not "default".
+    void setConfiguredPerspectives(int manualIndex, std::vector<juce::String> names);
+    std::array<std::vector<juce::String>, maxManuals> configuredPerspectives;
     void setStopEnabled(Stop* stop, bool enabled);
     void setRankEnabled(Stop* logicalStop, Stop* rank, bool enabled);
     // Transmissions (see Stop::Transmission). 'index' addresses stop->transmissions.

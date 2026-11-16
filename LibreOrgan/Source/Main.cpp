@@ -31,7 +31,9 @@ struct StartSplash final : public juce::TopLevelWindow
     {
         picture = juce::ImageCache::getFromMemory(BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize);
         setOpaque(true);
-        const int w = 520, h = 360;
+        // 0.9.87: the same picture as the Linux splash - the pipes at 384 px (the user: "líbí se mi ty veliké píšťaly,
+        // které má linux"; every platform shows the one picture).
+        const int w = 460, h = 500;
         juce::Rectangle<int> area(0, 0, 1920, 1080);
         if (auto* display = UIScale::startDisplay()) area = display->userArea;
         setBounds(area.getCentreX() - w / 2, area.getCentreY() - h / 2, w, h);
@@ -47,11 +49,11 @@ struct StartSplash final : public juce::TopLevelWindow
         g.fillAll(juce::Colour(0xff1c1f24));
         g.setColour(juce::Colours::darkgrey);
         g.drawRect(getLocalBounds(), 1);
-        const float side = 220.0f;
-        g.drawImage(picture, juce::Rectangle<float>(((float)getWidth() - side) / 2.0f, 22.0f, side, side), juce::RectanglePlacement::centred);
+        const float side = 384.0f;
+        g.drawImage(picture, juce::Rectangle<float>(((float)getWidth() - side) / 2.0f, 16.0f, side, side), juce::RectanglePlacement::centred);
         g.setColour(juce::Colours::white);
         g.setFont(juce::FontOptions(22.0f, juce::Font::bold));
-        g.drawText("LibreOrgan Sampler", 0, 252, getWidth(), 30, juce::Justification::centred);
+        g.drawText("LibreOrgan Sampler", 0, 408, getWidth(), 30, juce::Justification::centred);
         g.setColour(juce::Colours::lightgrey);
         g.setFont(juce::FontOptions(13.0f));
         g.drawFittedText(status, getLocalBounds().withTop(getHeight() - 60).reduced(16, 6), juce::Justification::centred, 2, 0.8f);

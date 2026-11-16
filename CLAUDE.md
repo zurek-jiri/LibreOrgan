@@ -3608,6 +3608,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   colour dot at BOTH ends of its row (the right one = where the cable is taken). His "alias perspektivy" does NOT exist in
   the program (no perspective alias anywhere; the Stop List's header rename IS the perspective's name and Organ out
   shows it) - told him, nothing invented.
+  0.9.86/0.9.87 (16 Nov 2026 night): 0.9.86 = the DIVISION alias ("I. Hauptwerk  default") in the Organ out rows (he meant
+  the division's alias, not a perspective's; the signature carries the aliases so the rows follow a rename) - deployed,
+  folded into the 0.9.87 commit. 0.9.87 (#238, his Linux log: Caen loaded and CANCELLED in the loader; the pedal's stops
+  came with their Front ranks only, "Pedal / rear: settings of a route that does not exist dropped", the Rear route gone
+  from the Audio routing and the Divisions tabs though the Stop List names it; the manuals without stops stayed on
+  "default"): `SamplerEngine::configuredPerspectives[manual]` + `setConfiguredPerspectives` (under controlLock) added by
+  `getPerspectivesForManual` before its "default" fallback; `MainComponent::syncConfiguredPerspectives()` (the labels
+  under which the ACTIVE table's non-transmission rows have folders, manual <= manualCount) called at the top of
+  `rebuildPerspectiveAudioRoutes` and `closeHiddenRoutes` - so a route exists for every perspective of the ORGAN (table),
+  loaded or not, its settings are never dropped by a partial load, and an unloaded division with a table shows the
+  table's perspectives. RULE (the user): "nesmí se stát, že existující perspektiva nemá audio routing, ani že
+  perspektiva, která neexistuje, má audio routing". The "stale default after a load" he saw was this (the dialog's
+  1 s signature timer DOES refresh after a load: verified with Chalons by %TEMP%\test_0987_loadopen.ps1 - the dialog open
+  on the empty console, the organ handed to the running program, the rows became Diffuse/Direct/Rear). Tests:
+  test_0987_cancel.ps1 (Caen Surround, "Cancel" clicked in the loader at 14 s, then Audio routing pictured),
+  test_0987_loadopen.ps1 [-Cfg]. The log slice by file length FAILS when the log rotates at 1 MB mid-run: read the
+  tail of activity.log instead. HIS OBJECTION ("načtené byly i některé ranky rear u pedálu ... ve stop listu je výčet
+  rear adresářů"): the Stop List shows the TABLE's folders (configured), not what the engine loaded; his log has the
+  pedal's engine perspectives = Front alone (the route "manual 0 perspective Front" started, "Pedal / rear ... dropped")
+  - the first ped tree (one perspective) loaded whole, the second was cancelled at its first stop. With the table's
+  perspectives counted the dispute is moot: Rear has its route either way. The right-edge dot is on EVERY row
+  (perspective rows too) since 0.9.85 - his Linux build was older. SPLASH (the user: "proč splash screen vypadá na
+  každé platformě jinak ... líbí se mi ty veliké píšťaly, které má linux"): Windows/macOS `StartSplash` (Main.cpp)
+  now 460 x 500 with the AppIcon at 384 px like the Linux juce::SplashScreen (0.8.165), the name and the start's
+  status under it; Linux keeps its SplashScreen + StartCover (the Wayland lessons of 0.8.165-0.8.171).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

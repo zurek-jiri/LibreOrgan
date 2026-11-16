@@ -662,7 +662,8 @@ private:
                     const auto& route = routes[di];
                     Row row;
                     row.perspective = perspective; row.routes = { route };
-                    row.label = divisionName(route.manual) + "  " + perspective;
+                    const auto& alias = owner.manualConfigs[(size_t)route.manual].alias;   // 0.9.86: the division's alias (0.9.80) belongs here too (the user)
+                    row.label = divisionName(route.manual) + (alias.isNotEmpty() ? " " + alias : juce::String()) + "  " + perspective;
                     row.colour = juce::Colour::fromHSV(hue, 0.5f + 0.15f * (float)(di % 3), 0.95f - 0.16f * (float)juce::jmin<size_t>(3, di), 1.0f);
                     row.silent = cardKeyOf(route).isEmpty();
                     row.whereText = whereOf(route);
@@ -1147,7 +1148,7 @@ private:
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
             {
-                s << cardKeyOf({ manual, perspective }) << ":" << channelsText(channelsOf({ manual, perspective })) << ";";
+                s << cardKeyOf({ manual, perspective }) << ":" << channelsText(channelsOf({ manual, perspective })) << ":" << owner.manualConfigs[(size_t)manual].alias << ";";
                 if (auto* manager = owner.managerForRoute(manual, perspective))
                     if (auto* device = manager->getCurrentAudioDevice())
                         s << juce::roundToInt(device->getCurrentSampleRate()) << "/" << device->getCurrentBufferSizeSamples() << "/" << device->getOutputLatencyInSamples() << ";";

@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.87] - 2026-11-16
+
+### Fixed
+- A perspective the Stop List names keeps its audio route (and the route's
+  settings) even when a cancelled or memory-limited load left its ranks
+  out, and a division whose stops are not loaded shows the table's
+  perspectives instead of "default" - the Rear route of a half-loaded Caen
+  vanished from the Audio routing and the audio tabs (#238).
+
+### Changed
+- The start picture is the same on every platform: the pipes at 384 px as
+  on Linux, the name and the start's progress under them on Windows and macOS.
+
+## [0.9.86] - 2026-11-16
+
+### Changed
+- Audio routing: a division's alias stands in its rows of "Organ out"
+  ("I. Hauptwerk  Front").
+
 ## [0.9.85] - 2026-11-16
 
 ### Changed
