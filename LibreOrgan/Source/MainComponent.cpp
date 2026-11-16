@@ -1612,7 +1612,8 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(bankLabel);
     bankLabel.setJustificationType(juce::Justification::centred);
-    bankLabel.setFont(juce::FontOptions(18.0f, juce::Font::bold));
+    bankLabel.setFont(juce::FontOptions(15.0f, juce::Font::bold));   // 0.9.80: two lines (the combinations file, the bank + its note)
+    bankLabel.setMinimumHorizontalScale(0.7f);
     // 0.9.79 (#231): the bank number is typed - a click opens the editor, Enter sets the bank (the buttons
     // beside it still step, held down they scroll).
     bankLabel.setEditable(true, false, false);
@@ -1911,6 +1912,9 @@ MainComponent::MainComponent()
     };
     // Two program windows: each division is shown on the window it was given.
     voicer->setCouplerButtonScale(couplerButtonScale());   // 0.9.79 (#233): the size read by loadSettings before the voicer existed
+    // 0.9.80: the division's alias ("I. Hauptwerk"), edited by a double-click on the header's name or in the Divisions dialog.
+    voicer->divisionAliasGetter = [this](int manual) { return manualConfigs[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)].alias; };
+    voicer->divisionAliasSetter = [this](int manual, const juce::String& alias) { setDivisionAlias(manual, alias); };
     voicer->screenGetter = [this](int manual) { return twoWindows ? divisionScreen[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, manual)] : 0; };
     // Arrange mode: a stop dragged into another division's grid moves house; its "x" removes it.
     voicer->moveStopRequest = [this](Stop* stop, int target) { moveStopToDivision(stop, target); };
@@ -3185,7 +3189,7 @@ void MainComponent::resized()
     struct RowItem { juce::Component* component; int natural, minimum; bool tall; };
     std::vector<RowItem> items{
         { &combinationSetButton, 90, 46, false }, { &bankDownButton, 78, 44, false },
-        { &bankLabel, 92, 50, false }, { &bankUpButton, 78, 44, false },
+        { &bankLabel, 240, 50, false }, { &bankUpButton, 78, 44, false },   // 0.9.80: two lines (file / bank + note)
         { &combinationDisplay, 88, 58, false }, { &pistonCountLabel, 70, 48, false },
         { &pistonCountBox, 58, 46, false } };
     for (int i = 0; i < pistonCount; ++i) items.push_back({ pistonButtons[i], 74, 40, false });
@@ -8343,6 +8347,15 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     if (this->owner.voicer) this->owner.voicer->rebuildUI(this->owner.stopsContent, this->owner.stopsViewport);
                 };
                 addAndMakeVisible(windowBoxes[(size_t)manual]);
+                // 0.9.80: the division's alias - its own name beside the numeral ("I. Hauptwerk"), the same as a
+                // double-click on the header's name sets; travels with the organ.
+                aliasBoxes[(size_t)manual].setText(owner.manualConfigs[(size_t)manual].alias, false);
+                aliasBoxes[(size_t)manual].setTextToShowWhenEmpty("Alias (the division's name beside its numeral)", juce::Colours::grey);
+                aliasBoxes[(size_t)manual].setTooltip("The division's own name, shown beside its numeral in the header (\"I. Hauptwerk\"). Enter sets it; empty = the numeral alone. Travels with the organ.");
+                aliasBoxes[(size_t)manual].getProperties().set("manualChapter", "Division headers");
+                aliasBoxes[(size_t)manual].onReturnKey = [this, manual] { this->owner.setDivisionAlias(manual, aliasBoxes[(size_t)manual].getText()); };
+                aliasBoxes[(size_t)manual].onFocusLost = [this, manual] { this->owner.setDivisionAlias(manual, aliasBoxes[(size_t)manual].getText()); };
+                addAndMakeVisible(aliasBoxes[(size_t)manual]);
 
                 // Right-click: the same MIDI Learn menu and dialog as every other control.
                 auto keyboard = std::make_unique<LearnKeyboard>(
@@ -8888,6 +8901,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     doneButton.setBounds(foot.removeFromLeft(foot.getWidth() / 2).reduced(2));
                     clearButton.setBounds(foot.reduced(2));
                 }
+                aliasBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(28).reduced(0, 2));   // 0.9.80: the division's alias
                 deviceLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
                 deviceBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 channelLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
@@ -8965,6 +8979,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         juce::Array<juce::MidiDeviceInfo> devices;
         std::array<juce::Label, SamplerEngine::maxManuals> labels;
         std::array<juce::ComboBox, SamplerEngine::maxManuals> windowBoxes;   // "Window 1 / 2" of the division
+        std::array<juce::TextEditor, SamplerEngine::maxManuals> aliasBoxes;   // 0.9.80: the division's alias (its name beside the numeral)
         std::array<std::unique_ptr<LearnKeyboard>, SamplerEngine::maxManuals> keyboards;
         std::array<juce::ComboBox, SamplerEngine::maxManuals> deviceBoxes;
         std::array<juce::Label, SamplerEngine::maxManuals> deviceLabels;
@@ -11416,6 +11431,11 @@ juce::var MainComponent::combinationsToVar() const
     root->setProperty("version", 2);
     root->setProperty("pistonCount", pistonCount);
     root->setProperty("currentBank", currentBank);
+    {   // 0.9.80: the banks' annotations {bank: text} - in the configuration and in a combinations file alike
+        juce::DynamicObject::Ptr notes = new juce::DynamicObject();
+        for (const auto& [bank, text] : bankNotes) if (text.isNotEmpty()) notes->setProperty(juce::Identifier(juce::String(bank)), text);
+        root->setProperty("bankNotes", juce::var(notes.get()));
+    }
     juce::Array<juce::var> scenes;
 
     for (const auto& entry : combinations)
@@ -11460,6 +11480,10 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
         memoriesArray = parsed.getProperty("memories", juce::var());
     if (!memoriesArray.isArray()) return false;
 
+    bankNotes.clear();   // 0.9.80: the banks' annotations
+    if (auto* notes = parsed.getProperty("bankNotes", juce::var()).getDynamicObject())
+        for (const auto& note : notes->getProperties())
+            if (note.value.toString().isNotEmpty()) bankNotes[juce::jlimit(0, maxBank, note.name.toString().getIntValue())] = note.value.toString();
     combinations.clear();
     for (int i = 0; i < memoriesArray.size(); ++i)
     {
@@ -11495,10 +11519,8 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
 
 void MainComponent::chooseCombinationsFileToSave()
 {
-    auto start = lastSettingsDirectory.isDirectory()
-        ? lastSettingsDirectory.getChildFile("Organ combinations.json")
-        : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-            .getChildFile("Organ combinations.json");
+    // 0.9.80: the combinations live in their own folder (LibreCombinations beside LibreOrgans), never among the configurations.
+    auto start = combinationsDirectory().getChildFile(combinationsFileName.isNotEmpty() ? combinationsFileName + ".json" : currentConfigurationName + " combinations.json");
     combinationsFileChooser = std::make_unique<juce::FileChooser>(
         "Save all combination banks", start, "*.json");
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -11525,6 +11547,8 @@ void MainComponent::rememberCombinationsFile(const juce::File& file)
 {
     if (currentConfigurationFile == juce::File() || file == juce::File()) return;
     combinationsFiles[currentConfigurationFile.getFullPathName()] = file.getFullPathName();
+    combinationsFileName = file.getFileNameWithoutExtension();   // 0.9.80: shown on the bank display
+    updateCombinationControls();
     saveSettings();
 }
 
@@ -11551,6 +11575,7 @@ void MainComponent::loadRememberedCombinationsFile()
     if (loadMemoriesFromFile(file))
     {
         activePiston = -1;
+        combinationsFileName = file.getFileNameWithoutExtension();   // 0.9.80
         pistonCountBox.setSelectedId(pistonCount + 1, juce::dontSendNotification);
         updateCombinationControls();
         CrashHandler::note("Combinations file read again with the organ: " + file.getFullPathName());
@@ -11558,10 +11583,80 @@ void MainComponent::loadRememberedCombinationsFile()
     else noteMessage("Combinations file", "The combinations file last used with this organ could not be read: " + file.getFullPathName());
 }
 
+// 0.9.80: the combinations' own folder beside LibreOrgans and LibreRecordings (the user: never among the configurations).
+juce::File MainComponent::combinationsDirectory() const
+{
+    const auto folder = configurationsDirectory().getParentDirectory().getChildFile("LibreCombinations");
+    folder.createDirectory();
+    return folder;
+}
+
+// 0.9.80: the right-click menu of the bank display - annotate this bank (a text, e.g. the piece it serves),
+// jump to any annotated bank (the annotated ones alone: a list of a thousand numbers serves nobody).
+void MainComponent::showBankMenu()
+{
+    juce::PopupMenu menu;
+    menu.addItem(1, "Annotate bank " + juce::String(currentBank) + "...");
+    std::vector<int> annotated;
+    for (const auto& [bank, text] : bankNotes) if (text.isNotEmpty()) annotated.push_back(bank);
+    if (!annotated.empty())
+    {
+        menu.addSeparator();
+        for (const int bank : annotated) menu.addItem(100 + bank, juce::String(bank) + " - " + bankNotes[bank], true, bank == currentBank);
+    }
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    menu.showMenuAsync(menuOptionsAtMouse(this), [safeThis](int result)
+    {
+        if (safeThis == nullptr || result <= 0) return;
+        if (result == 1)
+        {
+            auto* box = new juce::AlertWindow("Annotate bank " + juce::String(safeThis->currentBank),
+                "A note shown with the bank number - the piece it serves, where it starts ... (empty = no note)", juce::MessageBoxIconType::NoIcon);
+            const auto existing = safeThis->bankNotes.find(safeThis->currentBank);
+            box->addTextEditor("note", existing != safeThis->bankNotes.end() ? existing->second : juce::String(), "Note:");
+            box->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+            box->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+            const int bank = safeThis->currentBank;
+            box->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, bank](int ok)
+            {
+                if (safeThis == nullptr || ok != 1) return;
+                const auto text = box->getTextEditorContents("note").trim();
+                if (text.isEmpty()) safeThis->bankNotes.erase(bank); else safeThis->bankNotes[bank] = text;
+                safeThis->configurationDirty = true;
+                safeThis->saveMemories();
+                safeThis->updateCombinationControls();
+            }), true);
+            return;
+        }
+        const int bank = result - 100;
+        if (bank < 0 || bank > maxBank) return;
+        safeThis->currentBank = bank;
+        safeThis->activePiston = -1;
+        safeThis->updateCombinationControls();
+        safeThis->saveMemories();
+    });
+}
+
+// 0.9.80: the division's alias (the header's name and the Divisions dialog share it); a leading numeral typed
+// with it ("I. Hauptwerk") is dropped - the numeral is the program's.
+void MainComponent::setDivisionAlias(int manual, const juce::String& aliasIn)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    auto alias = aliasIn.trim();
+    if (alias.startsWithIgnoreCase(names[manual] + " ")) alias = alias.fromFirstOccurrenceOf(" ", false, false).trim();
+    if (manualConfigs[(size_t)manual].alias == alias) return;
+    manualConfigs[(size_t)manual].alias = alias;
+    configurationDirty = true;
+    saveSettings();
+    CrashHandler::note("Division " + juce::String(manual) + " alias: \"" + alias + "\"");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr && safeThis->voicer) safeThis->voicer->rebuildUI(safeThis->stopsContent, safeThis->stopsViewport); });
+}
+
 void MainComponent::chooseCombinationsFileToLoad()
 {
-    const auto start = lastSettingsDirectory.isDirectory() ? lastSettingsDirectory
-        : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    const auto start = combinationsDirectory();   // 0.9.80: the LibreCombinations folder
     combinationsFileChooser = std::make_unique<juce::FileChooser>(
         "Load all combination banks", start, "*.json");
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -15279,6 +15374,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     pendingConfigurationRegistration = std::move(registration);
     // Combination banks saved with the configuration replace the current ones; a
     // configuration without any EMPTIES them (0.8.241: the previous organ's pistons stayed).
+    combinationsFileName.clear();   // 0.9.80: the organ's own combinations ("default") until a file is loaded
     if (combinationsFromVar(root->getProperty("combinationMemory")))
     {
         activePiston = -1;
@@ -23577,6 +23673,8 @@ void MainComponent::loadSettings()
     engine.setCouplingSkipPercent(couplingSkipPercent);
     couplingMaxCents = juce::jlimit(0.0f, 50.0f, (float)(double)parsed.getProperty("couplingMaxCents", 14.0));   // 0.9.60
     engine.setCouplingMaxCents(couplingMaxCents);
+    attackCutFadeMs = juce::jlimit(6.0f, 150.0f, (float)(double)parsed.getProperty("attackCutFadeMs", 20.0));   // 0.9.80
+    engine.setAttackCutFadeMs(attackCutFadeMs);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -23868,6 +23966,7 @@ void MainComponent::loadSettings()
             manualConfigs[(size_t)i].compassLow = juce::jlimit(0, 127, (int)item.getProperty("compassLow", 36));
             manualConfigs[(size_t)i].compassHigh = juce::jlimit(manualConfigs[(size_t)i].compassLow, 127,
                 (int)item.getProperty("compassHigh", i == 0 ? 67 : 96));
+            manualConfigs[(size_t)i].alias = item.getProperty("alias", "").toString().trim();   // 0.9.80: the division's own name beside its numeral
             engine.setManualCompass(i, manualConfigs[(size_t)i].compassLow, manualConfigs[(size_t)i].compassHigh);
             manualConfigs[(size_t)i].expressionDeviceIdentifier = item.getProperty("expressionDeviceIdentifier", "").toString();
             manualConfigs[(size_t)i].expressionChannel = juce::jlimit(1, 16, (int)item.getProperty("expressionChannel", 1));
@@ -24393,6 +24492,7 @@ void MainComponent::saveSettings()
     obj->setProperty("couplingLeftPercent", couplingLeftPercent);   // 0.9.56
     obj->setProperty("couplingSkipPercent", couplingSkipPercent);   // 0.9.59
     obj->setProperty("couplingMaxCents", couplingMaxCents);   // 0.9.60
+    obj->setProperty("attackCutFadeMs", attackCutFadeMs);     // 0.9.80
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -24595,6 +24695,7 @@ void MainComponent::saveSettings()
         item->setProperty("midiTranspose", config.midiTranspose);
         item->setProperty("compassLow", config.compassLow);
         item->setProperty("compassHigh", config.compassHigh);
+        if (config.alias.isNotEmpty()) item->setProperty("alias", config.alias);   // 0.9.80
         item->setProperty("expressionDeviceIdentifier", config.expressionDeviceIdentifier);
         item->setProperty("expressionChannel", config.expressionChannel);
         item->setProperty("expressionController", config.expressionController);
@@ -25517,7 +25618,14 @@ void MainComponent::updateCombinationLights()
 
 void MainComponent::updateCombinationControls()
 {
-    bankLabel.setText("Bank " + juce::String(currentBank), juce::dontSendNotification);
+    {   // 0.9.80: line 1 the combinations file in use ("default" = the configuration's own), line 2 the bank and its annotation
+        const auto note = bankNotes.find(currentBank);
+        bankLabel.setText((combinationsFileName.isEmpty() ? juce::String("default") : combinationsFileName) + "\nBank " + juce::String(currentBank)
+            + (note != bankNotes.end() && note->second.isNotEmpty() ? " - " + note->second : juce::String()), juce::dontSendNotification);
+        bankLabel.setTooltip("The combinations file in use (default = the combinations saved in the configuration) and the bank of pistons"
+            + (note != bankNotes.end() && note->second.isNotEmpty() ? ": " + note->second : juce::String())
+            + ". Click and type the bank number, Enter sets it; right-click to annotate the bank or jump to an annotated one.");
+    }
     const bool anyPistons = pistonCount > 0;
     combinationSetButton.setEnabled(anyPistons);
     previousCombinationButton.setEnabled(anyPistons);
@@ -25902,6 +26010,7 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
             break;
         }
     if (!event.mods.isPopupMenu()) return;
+    if (event.eventComponent == &bankLabel) { showBankMenu(); return; }   // 0.9.80: annotate the bank, jump to an annotated one
     const auto target = targetForComponent(event.eventComponent);
     if (target.isNotEmpty()) showMidiLearnMenu(target);
 }
@@ -30430,6 +30539,16 @@ void MainComponent::showConfigurationEditor()
                 "A sounding pipe pulls a starting one only when the pure interval with it lies within this of where the "
                 "starting pipe would otherwise settle - pipes further apart stay apart (and the sounding one is not moved "
                 "either). 14 cents by default; the setting travels with the organ. New notes take the change.");
+            addSlider("Attack cut fade-in", 6.0, 150.0, 1.0, " ms", o.attackCutFadeMs, 20.0,   // 0.9.80
+                [&o](double value)
+                {
+                    o.attackCutFadeMs = juce::jlimit(6.0f, 150.0f, (float)value);
+                    o.engine.setAttackCutFadeMs(o.attackCutFadeMs);
+                    o.saveSettings();
+                },
+                "The fade-in of a pipe whose attack is CUT by a negative \"Attack per key\" value: the sample starts that far "
+                "in and rises over this time (6 to 150 ms, default 20). Too short clicks or sounds like an edit, too long "
+                "softens the speech. Travels with the organ; new notes take the change.");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);

@@ -578,6 +578,9 @@ public:
         screenViewports[1] = viewport;
     }
     std::function<int(int)> screenGetter;   // manual -> 0 or 1
+    // 0.9.80: the division's alias beside its numeral in the header (set by MainComponent; the owner rebuilds on a change).
+    std::function<juce::String(int)> divisionAliasGetter;
+    std::function<void(int, const juce::String&)> divisionAliasSetter;
     // Compass (lowest, highest MIDI key) of a division: the per-key voicing
     // sliders of its stops cover exactly this range.
     void setCompassGetter(std::function<std::pair<int, int>(int)> getter) { compassGetter = std::move(getter); }

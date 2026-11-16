@@ -12,6 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.80] - 2026-11-16
+
+### Added
+- The bank display of the combination row has two lines: the combinations
+  file in use ("default" = the configuration's own) and the bank with its
+  annotation; right-click annotates the bank or jumps to any annotated bank.
+  Combination files have their own folder, Documents/LibreOrgan/LibreCombinations.
+- A division's alias (its own name beside the numeral, "I. Hauptwerk"): a
+  double-click on the header's name or the field in the Divisions dialog;
+  travels with the organ.
+- "Attack cut fade-in" (Advanced global audio, 6-150 ms, default 20): the
+  fade-in of a pipe whose attack is cut by "Attack per key".
+
+### Changed
+- One current release on GitHub again (the previous version kept since
+  0.9.77 pushed the Rural Organ demo down the page).
+
+### Fixed
+- The coupler rail grows by its spare row when the arranging starts and
+  loses the empty row when it ends (the row stayed until the next rebuild).
+- The right mouse button on a division's name opens the division's menu too
+  (#235: it worked on the header's bare background only).
+- The "Attack per key" sliders light green while the key sounds, like the
+  other two rows.
+
 ## [0.9.79] - 2026-11-16
 
 ### Added

@@ -267,7 +267,12 @@ private:
     LeftOnlyTextButton nextCombinationButton{ ">>" };
     LeftOnlyTextButton bankDownButton{ juce::String(juce::CharPointer_UTF8("Bank \xe2\x96\xbc")) };   // Bank ▼
     LeftOnlyTextButton bankUpButton{ juce::String(juce::CharPointer_UTF8("Bank \xe2\x96\xb2")) };     // Bank ▲
-    juce::Label bankLabel;
+    juce::Label bankLabel;   // two lines (0.9.80): the combinations file ("default" = the configuration's own) and "Bank N - annotation"
+    std::map<int, juce::String> bankNotes;   // 0.9.80: the banks' annotations (saved with the combinations)
+    juce::String combinationsFileName;       // the combinations file in use (empty = the configuration's own, shown "default")
+    void showBankMenu();                     // right-click on the bank: annotate, jump to an annotated bank
+    void setDivisionAlias(int manual, const juce::String& alias);   // 0.9.80: the header's name / the Divisions dialog
+    juce::File combinationsDirectory() const;   // Documents/LibreOrgan/LibreCombinations (created on demand)
     DisplayLabel combinationDisplay;   // same look as the swell bar and the polyphony display
     juce::Label pistonCountLabel{ {}, "Pistons:" };
     juce::ComboBox pistonCountBox;
@@ -411,6 +416,7 @@ private:
         // Compass of the division (MIDI keys): the per-key voicing sliders cover it.
         // Pedal defaults to 36-67 (set in the constructor), manuals to 36-96.
         int compassLow = 36, compassHigh = 96;
+        juce::String alias;   // 0.9.80: the division's own name shown beside its numeral ("I. Hauptwerk"); travels with the organ
         juce::String audioDeviceStateXml;
         std::map<std::string, PerspectiveAudioConfig> perspectiveAudio;
         // Stop building (the table of the Stop building dialog): which sample
@@ -1152,6 +1158,7 @@ private:
     float couplingLeftPercent = 20.0f;   // 0.9.56: the share of a pipe's detune the coupling leaves (a random share 0..this); travels with the organ
     float couplingSkipPercent = 10.0f;   // 0.9.59: the share of pipes the coupling leaves untouched (0 = every pipe couples); travels with the organ
     float couplingMaxCents = 14.0f;      // 0.9.60: the farthest pitch offset the coupling pulls together (pipes further apart stay apart); travels with the organ
+    float attackCutFadeMs = 20.0f;       // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0); travels with the organ
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.
     juce::String publicationOrgan, publicationProducer, publicationProduct, publicationLink, publicationAuthor;

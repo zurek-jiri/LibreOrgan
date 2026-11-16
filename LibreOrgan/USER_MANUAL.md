@@ -430,10 +430,16 @@ button fires even when hidden).
 ## 2.2 The combination row
 
 The pistons (their number: the *Pistons* box in the row), *Set*, the stepping
-buttons *<<* / *>>*, the bank buttons (held down they scroll; click the bank
-number to type one), the display of the combination in use,
+buttons *<<* / *>>*, the bank buttons (held down they scroll) with the bank
+display between them - its first line names the combinations file in use
+("default" = the combinations saved in the configuration), its second line
+the bank and its annotation; click it to type a bank number, right-click to
+annotate the bank (the piece it serves, where it starts) or to jump to any
+annotated bank -, the display of the combination in use,
 *Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for
-combination files, and the crescendo.
+combination files (their own folder, `Documents\LibreOrgan\LibreCombinations`;
+the file last used with an organ is read again when the organ loads), and
+the crescendo.
 
 - Click a piston to recall its registration (stops, transmissions, couplers,
   tremulants, Unison Off). With *Set* on, a click stores the current
@@ -483,7 +489,9 @@ named in a message and stay in the pool of the Stop List
 
 Each column starts with a header: the keyboard icon (red while a key is
 pressed; right-click: *MIDI Learn...*, *Clear learned keyboard MIDI*), the
-division's name, the swell bar (drag it; right-click to learn the swell pedal
+division's name (double-click it to give the division an **alias** shown
+beside its numeral, "I. Hauptwerk"; the Divisions dialog has the same field;
+it travels with the organ), the swell bar (drag it; right-click to learn the swell pedal
 or open *Swell settings...*), the *Tremulant* button (registration, like a
 stop; right-click: *Tremulant settings...*) and *Settings*, which opens the
 Divisions dialog. A right-click on the header's background lists the swell,
@@ -673,7 +681,8 @@ loop points, a **grey slider** no pipe at all.
 A third folding row of the stop's own voicing: how much later (positive) or
 how much sooner (negative, -300 to +300 ms) each pipe speaks after the key. A
 delay adds to the global [Attack minimum delay](#attack-minimum-delay); a cut
-starts the sample that far into its attack with a short fade-in, so a lazy
+starts the sample that far into its attack with a fade-in
+([Attack cut fade-in](#attack-cut-fade-in), 20 ms by default), so a lazy
 pipe speaks promptly. *Randomize* (on by default): 30 to 100 % of the value at
 every stroke, and a tone repeated within the delay comes sooner, as the global
 delay does; off = the value exactly. *Reset to 0 ms* beside the header; the
@@ -1543,6 +1552,13 @@ organ.
 A sounding pipe pulls a starting one only when the pure interval with it lies
 within this of where the starting pipe would otherwise settle (default
 14 cents); pipes further apart stay apart. Travels with the organ.
+
+### Attack cut fade-in
+
+The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)
+value: the sample starts that far in and rises over this time (6 to 150 ms,
+default 20). Too short clicks or sounds like an edit, too long softens the
+speech. Travels with the organ.
 
 ### Filled pipes: resampling quality
 

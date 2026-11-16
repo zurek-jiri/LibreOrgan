@@ -6535,14 +6535,14 @@ struct SamplerEngine::Impl
                         v.attackToneStepPerFrame = shelfDb / (float)juce::jmax(1.0, shelfMs * 0.001 * rate);
                     }
                     // 0.9.79 (#228): the attack CUT of "Attack per key" (a negative value): the sample starts that
-                    // far in (never beyond half of it) with an 8 ms fade-in - the lazy pipe speaks promptly.
+                    // far in (never beyond half of it) with the "Attack cut fade-in" (20 ms) - the lazy pipe speaks promptly.
                     if (attackCutMs > 0.0 && sampleToPlay != nullptr && sampleToPlay->numFrames > 0)
                     {
                         const double cutFrames = juce::jlimit(0.0, (double)sampleToPlay->numFrames * 0.5, attackCutMs * 0.001 * sampleToPlay->sampleRate);
                         if (cutFrames >= 1.0)
                         {
                             v.pos = (uint64_t)cutFrames << 32;
-                            const uint32_t fade = (uint32_t)juce::jmax(1.0, 0.008 * rate);
+                            const uint32_t fade = (uint32_t)juce::jmax(1.0, owner.attackCutFadeMs.load(std::memory_order_relaxed) * 0.001 * rate);   // 0.9.80: the "Attack cut fade-in" setting (20 ms default; 8 ms was an edit, not a speech)
                             if (fade > v.fadeInTotal) { v.fadeInTotal = v.fadeInRemaining = fade; }
                         }
                     }

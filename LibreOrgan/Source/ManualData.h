@@ -438,10 +438,16 @@ static const char* const kManualText_part2 =
     "## 2.2 The combination row\n"
     "\n"
     "The pistons (their number: the *Pistons* box in the row), *Set*, the stepping\n"
-    "buttons *<<* / *>>*, the bank buttons (held down they scroll; click the bank\n"
-    "number to type one), the display of the combination in use,\n"
+    "buttons *<<* / *>>*, the bank buttons (held down they scroll) with the bank\n"
+    "display between them - its first line names the combinations file in use\n"
+    "(\"default\" = the combinations saved in the configuration), its second line\n"
+    "the bank and its annotation; click it to type a bank number, right-click to\n"
+    "annotate the bank (the piece it serves, where it starts) or to jump to any\n"
+    "annotated bank -, the display of the combination in use,\n"
     "*Tutti* (every stop on), *X* (every stop off), *Save* / *Load* for\n"
-    "combination files, and the crescendo.\n"
+    "combination files (their own folder, `Documents\\LibreOrgan\\LibreCombinations`;\n"
+    "the file last used with an organ is read again when the organ loads), and\n"
+    "the crescendo.\n"
     "\n"
     "- Click a piston to recall its registration (stops, transmissions, couplers,\n"
     "  tremulants, Unison Off). With *Set* on, a click stores the current\n"
@@ -491,7 +497,9 @@ static const char* const kManualText_part2 =
     "\n"
     "Each column starts with a header: the keyboard icon (red while a key is\n"
     "pressed; right-click: *MIDI Learn...*, *Clear learned keyboard MIDI*), the\n"
-    "division's name, the swell bar (drag it; right-click to learn the swell pedal\n"
+    "division's name (double-click it to give the division an **alias** shown\n"
+    "beside its numeral, \"I. Hauptwerk\"; the Divisions dialog has the same field;\n"
+    "it travels with the organ), the swell bar (drag it; right-click to learn the swell pedal\n"
     "or open *Swell settings...*), the *Tremulant* button (registration, like a\n"
     "stop; right-click: *Tremulant settings...*) and *Settings*, which opens the\n"
     "Divisions dialog. A right-click on the header's background lists the swell,\n"
@@ -598,6 +606,8 @@ static const char* const kManualText_part2 =
     "### One-shot\n"
     "\n"
     "The stop plays each sample once from start to end whenever the key is\n"
+    ;
+static const char* const kManualText_part3 =
     "released (chimes, harp, celesta); nothing is cut or faded by the key going\n"
     "up. The switch starts as the *One-shot stops* patterns say and overrides\n"
     "them for this stop once touched.\n"
@@ -606,8 +616,6 @@ static const char* const kManualText_part2 =
     "\n"
     "The sustain-release crossfade of this stop as a multiple of the global\n"
     "[Sustain fade-out on key release](#sustain-fade-out-on-key-release) and\n"
-    ;
-static const char* const kManualText_part3 =
     "[Release sample fade-in](#release-sample-fade-in) (x0.5 to x10, default x1). Bells,\n"
     "chimes and other ringing stops want x5 to x10; a Hauptwerk definition's own\n"
     "crossfade lengths set it at the import where they exceed the organ's usual.\n"
@@ -683,7 +691,8 @@ static const char* const kManualText_part3 =
     "A third folding row of the stop's own voicing: how much later (positive) or\n"
     "how much sooner (negative, -300 to +300 ms) each pipe speaks after the key. A\n"
     "delay adds to the global [Attack minimum delay](#attack-minimum-delay); a cut\n"
-    "starts the sample that far into its attack with a short fade-in, so a lazy\n"
+    "starts the sample that far into its attack with a fade-in\n"
+    "([Attack cut fade-in](#attack-cut-fade-in), 20 ms by default), so a lazy\n"
     "pipe speaks promptly. *Randomize* (on by default): 30 to 100 % of the value at\n"
     "every stroke, and a tone repeated within the delay comes sooner, as the global\n"
     "delay does; off = the value exactly. *Reset to 0 ms* beside the header; the\n"
@@ -799,6 +808,8 @@ static const char* const kManualText_part3 =
     "  become free). **Remove empty stops** removes every row without folders and\n"
     "  children. **Stop Grid Upside Down** reverses the rows of every division\n"
     "  (a stop folder keeps its children); *Apply and reload* asks whether the\n"
+    ;
+static const char* const kManualText_part4 =
     "  grid follows.\n"
     "- **Aliases from folders** gives every stop without an alias the bare name of\n"
     "  its sample folder (no parents, no perspective prefix, a capital, the\n"
@@ -808,8 +819,6 @@ static const char* const kManualText_part3 =
     "  shown. **Transp.**: [Transposition](#transposition) - empty means found by the program.\n"
     "- **Swap divisions...** exchanges the stop lists of two divisions;\n"
     "  **Reset division...** forgets one division's table.\n"
-    ;
-static const char* const kManualText_part4 =
     "\n"
     "## 4.3 Perspectives\n"
     "\n"
@@ -1001,6 +1010,8 @@ static const char* const kManualText_part4 =
     "### Audio on Linux\n"
     "\n"
     "Every current distribution runs PipeWire, which reduces every card to a\n"
+    ;
+static const char* const kManualText_part5 =
     "stereo pair for the desktop. An organ needs every output, so:\n"
     "\n"
     "1. **Set the interface to the \"Pro Audio\" profile** (KDE: System Settings >\n"
@@ -1010,8 +1021,6 @@ static const char* const kManualText_part4 =
     "   for the desktop.\n"
     "2. **Install PipeWire's JACK library**: `sudo apt install pipewire-jack\n"
     "   pipewire-bin pavucontrol` (Ubuntu, Debian, Mint), `sudo dnf install\n"
-    ;
-static const char* const kManualText_part5 =
     "   pipewire-jack-audio-connection-kit pipewire-utils pavucontrol` (Fedora),\n"
     "   `sudo pacman -S pipewire-jack pavucontrol` (Arch), `sudo zypper install\n"
     "   pipewire-libjack-0_3 pipewire-tools pavucontrol` (openSUSE). Log out and\n"
@@ -1203,6 +1212,8 @@ static const char* const kManualText_part5 =
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "## 7.3 The cache\n"
     "\n"
     "*Filled pipes: keep the generated copies on disk (cache)* (on by default)\n"
@@ -1212,8 +1223,6 @@ static const char* const kManualText_part5 =
     "replaced. *Empty the cache*, *Remove them* (the files of stops not loaded\n"
     "now) and *Choose...* (another folder, the files moved there) are in the same\n"
     "section.\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "---\n"
     "\n"
@@ -1405,6 +1414,8 @@ static const char* const kManualText_part6 =
     "The shortest time a pipe sounds once started (0 to 500 ms, default 80): even\n"
     "the briefest touch lets the chiff be heard. It is also the shortest breath the\n"
     "wind model sees (50 ms at the least): the wind reacts to the pipe, not to the\n"
+    ;
+static const char* const kManualText_part7 =
     "key, so a longer value lets staccato shake the wind more.\n"
     "\n"
     "### Attack minimum delay\n"
@@ -1414,8 +1425,6 @@ static const char* const kManualText_part6 =
     "same instant; fast repetitions stay crisp.\n"
     "\n"
     "## 8.3 Advanced global audio\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### Swell: harmonic filter\n"
     "\n"
@@ -1562,6 +1571,13 @@ static const char* const kManualText_part7 =
     "within this of where the starting pipe would otherwise settle (default\n"
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
     "\n"
+    "### Attack cut fade-in\n"
+    "\n"
+    "The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)\n"
+    "value: the sample starts that far in and rises over this time (6 to 150 ms,\n"
+    "default 20). Too short clicks or sounds like an edit, too long softens the\n"
+    "speech. Travels with the organ.\n"
+    "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
@@ -1600,6 +1616,8 @@ static const char* const kManualText_part7 =
     "The same for the release, both directions (default 55). Phase vocoder: a\n"
     "release shifted upwards is stretched towards the resampled length.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Filled pipes: release played from\n"
     "\n"
     "A filled pipe's release copy is played from this many milliseconds in (0 to\n"
@@ -1616,8 +1634,6 @@ static const char* const kManualText_part7 =
     "\n"
     "On: a release copy plays at the level relation the source's release has to\n"
     "its sustain. Off (default): at its own level.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
     "\n"
@@ -1802,6 +1818,8 @@ static const char* const kManualText_part8 =
     "same device.\n"
     "\n"
     "### MIDI channel\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "1 to 16 on that device.\n"
     "\n"
@@ -1818,8 +1836,6 @@ static const char* const kManualText_part8 =
     "\n"
     "### MIDI transposition\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "The keyboard plays this many semitones away from what it sends (-24 to +24).\n"
     "\n"
     "### Swell pedal controller\n"
@@ -2004,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\"AB_quintaton16R\") marks the two halves of one stop; a rank count (\"Mixtur4x\",\n"
     "\"Zimbel3\") is no such mark. A mutation written without spaces (\"Nasard 223\",\n"
     "\"Terz 135\") is read as 2 2/3', 1 3/5'; the organ builders' shorthand \"3\",\n"
+    ;
+static const char* const kManualText_part10 =
     "\"6\", \"12\", \"1 1/2\" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after\n"
     "its sibling or parent with \"tr\" or \"trem\" appended is the tremmed recording\n"
     "and is skipped by every scan; a folder a Stop List row names explicitly is\n"
@@ -2020,8 +2038,6 @@ static const char* const kManualText_part9 =
     "really carry, measured on the audio (65 536 frames from 0.3 s in, the first\n"
     "harmonic within 34 dB of the strongest). A recording loses the fundamental of\n"
     "the deepest pipes - a 32' C at 16 Hz has it 50 dB under the second harmonic -\n"
-    ;
-static const char* const kManualText_part10 =
     "so when the lowest pipe sounds below 45 Hz the pipes 6, 7, 9, 10 and 12\n"
     "semitones above are asked whether they have a clear fundamental; two of them\n"
     "suffice and the stop keeps its 32'. A mixture has no fundamental on any pipe\n"
@@ -2206,6 +2222,8 @@ static const char* const kManualText_part10 =
     "profile: own render, waiting for the lanes, mixing, IR hand-over,\n"
     "bookkeeping, the longest route callback of the run and the latest a lane\n"
     "joined a job. On Linux the CPU governor, on Windows the power plan.\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "What moves the figure: the buffer size first (two cores: 1000 voices at\n"
     "256, 2300-2900 at 512, 3100-3800 at 1024; sixteen cores: 49 000 / 64 000 /\n"
@@ -2222,8 +2240,6 @@ static const char* const kManualText_part10 =
     "system's shared mixer with many streams on one endpoint, a USB card starved\n"
     "by the system, an endpoint's \"audio enhancements\" boosting every quiet stream\n"
     "- leaves the run clean and the sound not. Such a case shows in the activity\n"
-    ;
-static const char* const kManualText_part11 =
     "log as \"Audio callback anomaly: ... no callbacks\" for a route, or not at all;\n"
     "the cure is the device layout (one driver for everything, ASIO where there is\n"
     "one, no unused routes left open on the same endpoint), never the limit. The\n"

@@ -3431,6 +3431,32 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (the record button is a RecordButton without text; a SectionHeaderLabel header is no Button); the video hook
   `record` without `window` wrote 0 frames. Issues #228-#233, #235-#237 answered and closed through the API; #234
   stays open (the reporter's log is wanted).
+  0.9.80 (16 Nov 2026, the user's remarks on 0.9.79 - "řekni, proč jsi to zkurvil napoprvé"): (1) the coupler
+  SPARE ROW stayed after the arranging ended: endArranging only re-laid the buttons, the header's height is the
+  Voicer's (rebuildUI) - now `arrangeStateChanged` (both start and end) posts a rebuildUI, the row comes and goes
+  with the mode. (2) #235 "the right click does nothing": `headerMenu` fired for `eventComponent == this` only -
+  the division NAME is a child Label, a click on it never reached the menu; the title now has the header as a
+  mouse listener and counts. I had tested the menu ITEM, not the click. (3) the attack row's sliders did not light
+  green: `setNoteActive` knew keySliders/toneSliders only (and `originalTrackColours` was not filled for the attack
+  row); I never pressed a key with the row open. (4) the 8 ms cut fade-in was a click-avoidance minimum, not a
+  speech - now the setting "Attack cut fade-in" (6-150 ms, default 20; config key `attackCutFadeMs`, engine atomic
+  + `setAttackCutFadeMs`, Editor slider after the coupling group). (5) GitHub releases: back to ONE current
+  release (the kept previous version pushed the Rural demo down - releases sort by date, nothing pins). (6) THE
+  BANK DISPLAY (`bankLabel`, 240 px, two lines, font 15): line 1 the combinations file in use
+  (`combinationsFileName`; empty = "default" = the configuration's own, cleared at every configuration load before
+  combinationsFromVar), line 2 "Bank N - annotation"; `bankNotes` {bank: text} saved in combinationsToVar as
+  "bankNotes" (the configuration AND a combinations file carry it); right-click = `showBankMenu` (an AlertWindow
+  with a text editor "Annotate bank N...", then the ANNOTATED banks only as items 100+bank); `MainComponent::
+  mouseDown` routes the popup click on the label there. Combination files live in `combinationsDirectory()` =
+  Documents/LibreOrgan/LibreCombinations (both choosers start there; the save suggests "<organ> combinations.json").
+  (7) DIVISION ALIAS: `ManualConfig::alias` (config key "alias" of manualKeyboards, travels with the organ, absent
+  = none), `MainComponent::setDivisionAlias` (a leading numeral typed with it is dropped, saveSettings, a posted
+  rebuildUI), `Voicer::divisionAliasGetter/Setter` -> `SectionHeader::aliasGetter/aliasSetter` + `refreshTitle()`
+  ("I. Hauptwerk", the title width follows the text up to 270 px); the title Label is editable on a DOUBLE-click
+  (onEditorShow puts the alias alone into the editor); the Divisions dialog has `aliasBoxes[manual]` (a
+  TextEditor line under the window combo, Enter / focus lost). Test %TEMP%\test_0980.ps1 (Rural with "alias":
+  "Hauptwerk" on manual 1 and bankNotes {"0": "Toccata BWV 565"}: the main window, window 2 and the Divisions
+  dialog pictured - the user's settings have two windows, so division I sat in window 2).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

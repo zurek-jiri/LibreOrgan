@@ -889,6 +889,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             // Store original track colour for later restoration (both rows light up while the key sounds)
             originalTrackColours[slider] = slider->findColour(juce::Slider::trackColourId);
             originalTrackColours[tone] = tone->findColour(juce::Slider::trackColourId);
+            if (auto* attack = attackSliders[note - noteMin]) originalTrackColours[attack] = attack->findColour(juce::Slider::trackColourId);   // 0.9.80
             int source = pipe;
             if (filled)
             {
@@ -1940,6 +1941,7 @@ void StopRow::setNoteActive(int note, bool active)
     auto* slider = keySliders[idx];
     if (!slider) return;
     auto* tone = idx < toneSliders.size() ? toneSliders[idx] : nullptr;   // the treble row lights up as well
+    auto* attack = idx < attackSliders.size() ? attackSliders[idx] : nullptr;   // 0.9.80: and the attack row
 
     if (active)
     {
@@ -1947,7 +1949,7 @@ void StopRow::setNoteActive(int note, bool active)
         if (count == 0)
         {
             // First activation: highlight (the original colours are in originalTrackColours)
-            for (auto* s : { slider, tone })
+            for (auto* s : { slider, tone, attack })
                 if (s != nullptr && originalTrackColours.find(s) != originalTrackColours.end())
                     s->setColour(juce::Slider::trackColourId, juce::Colours::lightgreen);
         }
@@ -1961,7 +1963,7 @@ void StopRow::setNoteActive(int note, bool active)
             if (--(it->second) == 0)
             {
                 // Last release: restore original colours
-                for (auto* s : { slider, tone })
+                for (auto* s : { slider, tone, attack })
                 {
                     if (s == nullptr) continue;
                     auto colIt = originalTrackColours.find(s);
@@ -2578,6 +2580,13 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
             title.setText(names[index], juce::dontSendNotification);
             title.setFont(juce::FontOptions(24.0f, juce::Font::bold));
+            // 0.9.80: a double-click on the name edits the division's ALIAS ("I. Hauptwerk" - the numeral stays);
+            // the right button on the name opens the header's menu like the background does.
+            title.setEditable(false, true, false);
+            title.setTooltip("The division. Double-click: its own name (alias) beside the numeral. Right-click: the division's menu.");
+            title.onEditorShow = [this] { if (auto* editor = title.getCurrentTextEditor()) { editor->setText(aliasGetter ? aliasGetter(manual) : juce::String(), false); editor->selectAll(); } };
+            title.onTextChange = [this] { const auto text = title.getText().trim(); if (aliasSetter) aliasSetter(manual, text); else refreshTitle(); };
+            title.addMouseListener(this, false);
             addAndMakeVisible(title);
             // "Load Stops" opens the Stop building table of the division, where the
             // folder trees are loaded and unloaded and the stops are arranged.
@@ -2713,8 +2722,8 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 && juce::Rectangle<float>(5.0f, 7.0f, 34.0f, 24.0f).contains(event.position)
                 && keyboardLearn)
                 keyboardLearn(manual);
-            else if (event.mods.isPopupMenu() && event.eventComponent == this && headerMenu)
-                headerMenu(manual);   // the header's own background: the division's feature settings
+            else if (event.mods.isPopupMenu() && (event.eventComponent == this || event.eventComponent == &title) && headerMenu)
+                headerMenu(manual);   // the header's own background or the name (0.9.80, #235): the division's menu
             else if (event.mods.isPopupMenu() && midiLearn && event.eventComponent != this)
             {
                 if (event.eventComponent == &tremulant)
@@ -2809,7 +2818,12 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             auto r = getLocalBounds().reduced(5);
             auto top = r.removeFromTop(30);
             top.removeFromLeft(40);
-            title.setBounds(top.removeFromLeft(50));
+            {   // 0.9.80: the alias beside the numeral takes the room its text needs (up to 220 px)
+                int titleWidth = 50;
+                if (aliasGetter && aliasGetter(manual).isNotEmpty())
+                    titleWidth = juce::jlimit(50, 270, 10 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(title.getFont(), title.getText())));
+                title.setBounds(top.removeFromLeft(titleWidth));
+            }
             // One line: keyboard indicator, division name, swell display, Tremulant,
             // Settings. A narrow column shrinks the three controls proportionally.
             const int natural = 104 + 94 + 80;
@@ -2997,6 +3011,16 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         std::function<void(int, bool)> arrangeStateChanged;
         std::function<void()> missingAction;   // the notice under the header was clicked   // (manual, arranging) - remembered by the owner
         std::function<void(int)> headerMenu;   // right-click on the header's background
+        // 0.9.80: the division's alias (shown beside the numeral; edited by a double-click on the name).
+        std::function<juce::String(int)> aliasGetter;
+        std::function<void(int, const juce::String&)> aliasSetter;
+        void refreshTitle()
+        {
+            static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+            const auto alias = aliasGetter ? aliasGetter(manual) : juce::String();
+            title.setText(names[juce::jlimit(0, 7, manual)] + (alias.isNotEmpty() ? " " + alias : juce::String()), juce::dontSendNotification);
+            resized();
+        }
         void setCouplerArranging(bool on) { couplerArrange = on; }
     };
 
@@ -3208,12 +3232,21 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
         };
         // Arranging couplers survives the rebuild that every reorder triggers.
-        header->arrangeStateChanged = [this](int m, bool on) { couplerArrangeManual = on ? m : -1; };
+        header->arrangeStateChanged = [this](int m, bool on)
+        {
+            couplerArrangeManual = on ? m : -1;
+            // 0.9.80: the header's height follows the mode - the spare row appears at once and goes when the
+            // arranging ends (an empty row stayed under the couplers until the next rebuild).
+            juce::MessageManager::callAsync([this] { if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport); });
+        };
         header->setCouplerArranging(couplerArrangeManual == manual);
         if (missingTreesGetter)
             header->setMissingNotice(missingTreesGetter(manual), missingTreesDetail ? missingTreesDetail(manual) : juce::String());
         header->missingAction = [this, manual] { if (missingTreesAction) missingTreesAction(manual); };
         header->headerMenu = divisionMenu;
+        header->aliasGetter = divisionAliasGetter;   // 0.9.80: "I. Hauptwerk"
+        header->aliasSetter = divisionAliasSetter;
+        header->refreshTitle();
         const int headerHeight = header->getPreferredHeight(columnWidth);
         header->setBounds(x, y, columnWidth, headerHeight);
         container.addAndMakeVisible(header.get());
