@@ -1,32 +1,34 @@
 #pragma once
-// 0.9.81/0.9.82 (#236, the user's design): THE AUDIO ROUTING DIALOG - "Organ out" (the sources), "Sound cards in"
+// 0.9.81-0.9.83 (#236, the user's design): THE AUDIO ROUTING DIALOG - "Organ out" (the sources), "Sound cards in"
 // (the cards) and the cables between them.
 //   - LEFT ("Organ out"): the sources grouped by PERSPECTIVE: a perspective row ("Front") rolls the divisions up when
 //     every division sends it the same way (one cable for all); "(various)" and unfolded when they differ; the arrow
 //     unfolds the divisions (P., I., II. ...) so each gets its own cable. Where a source plays now is in the tooltip.
-//   - RIGHT ("Sound cards in"): the cards IN USE or open as full cards - name, driver + status, Sample rate / Buffer
-//     combos (ASIO too: the driver's sizes), the latency, Driver panel, Reopen, Test - with the OUTPUTS as jacks along
+//   - RIGHT ("Sound cards in"): the cards IN USE or open as full cards on a GRID OF CELLS like the stop grid (0.9.83:
+//     a card has its cell, remembered per machine; a wide card spans several cells; dragged by its title onto a free
+//     cell - dashed while dragging, orange under the mouse - or onto another card to swap) - name, driver + status,
+//     Sample rate / Buffer combos (ASIO too), the latency, Driver panel, Reopen, Test - with the OUTPUTS as jacks along
 //     the bottom edge and the driver's channel names standing vertically above them; a card grows WIDE with its
-//     outputs, never tall. Every other card of every driver (Windows Audio, Exclusive, ASIO, Aggregated WASAPI; JACK /
-//     ALSA; CoreAudio) is a button sized like a stop button in a COLLAPSIBLE section per driver (the orange caption
-//     folds it, remembered per machine); a drop on it opens the card with the pair 1+2 and it moves up. A card busy
-//     through another driver on the same hardware is grey and takes no cable. Cards plugged in after the start appear
-//     as the system reports them (no scan of ours: a rescan of ASIO with an open driver, or JACK beside ALSA, crashes).
-//     The full cards are dragged by their title onto a SLOT of the grid (the slot under the mouse glows orange).
-//   - CABLES: from the right edge of the source row, along its own lane to the card's gutter, down under the card and
-//     up INTO the output from below, in the source's colour; a stereo cable (a pair) is two strands ending in a clamp
-//     over both outputs (several cables into one pair = concentric clamps, the jack striped in all their colours), a
-//     single channel one strand. Drag a source onto an output: the output and its pair partner glow ORANGE (the
-//     colour of a stop switched on) while the mouse is over them; drop = that pair replaces the route's channels,
-//     Shift = the pair is added (C / C# split: the pipes alternate between the pairs by key), Alt = one channel. Click
-//     a cable to select it (the others dim); Delete or the x at its end removes it, dragging the selected cable moves it
-//     to another output (or card); the last cable gone = the source is silent.
+//     outputs, never tall. Every other card of every driver is a button sized like a stop button in a COLLAPSIBLE
+//     section per driver: ASIO first and unfolded, then Aggregated WASAPI, then the rest folded (the user: "to jsou
+//     vesměs shity"; without ASIO the aggregate is first and unfolded); a drop on a button opens the card with the
+//     pair 1+2 and it moves up. A card busy through another driver on the same hardware is grey and takes no cable.
+//     Cards plugged in after the start appear as the system reports them (no scan of ours).
+//   - CABLES run in the AISLES only: from the source row right into the gutter left of the grid, down (or up) the
+//     gutter to the corridor under the target card's row, along the corridor to the output, up into it - never across
+//     a card, side by side 8 px apart (the gutter and the corridors widen with the cables they carry). A pair = two
+//     strands + a clamp over both outputs (several cables into one pair = concentric clamps, the jack striped in all
+//     their colours), a single channel one strand. Drag a source onto an output: the output and its pair partner
+//     glow ORANGE (the colour of a stop switched on); drop = that pair replaces the route's channels, Shift = the pair
+//     is added (C / C# split: the pipes alternate between the pairs by key), Alt = one channel. PRESS A CABLE and it is
+//     picked up: it leaves its output and follows the mouse, let go on an output (or card) plugs it there, anywhere
+//     else it returns; a click alone selects it (the others dim), Delete or the x at its end removes it.
 // Everything goes through the Divisions dialog's own calls (setRouteAudioType, applyChannelsToDivision,
 // detachRouteAudioQuietly); both dialogs read the same model and refresh by timer (rate, buffer and latency too:
 // a size set in the ASIO panel shows within a second).
 // Dev: ORGAN_TEST_ROUTE="<division|all>|<perspective>|<card name part>|<output 1-based>[|add|single|remove|movecable
-// <from output>]" or "card|<name part>|<slot>" (several specs separated by ^, the first 1.5 s after the dialog opens,
-// then 3 s apart) drives the actions without a mouse; the log says "Audio routing: ...".
+// <from output>]" or "cell|<card name part>|<column>|<row>" (several specs separated by ^, the first 1.5 s after the
+// dialog opens, then 3 s apart) drives the actions without a mouse; the log says "Audio routing: ...".
 #include <JuceHeader.h>
 #include "MainComponent.h"
 
@@ -39,8 +41,8 @@ public:
         setWantsKeyboardFocus(true);
         help.setText("Drag a perspective (left) onto an output of a card: the output and its partner glow where the stereo pair will land; "
             "Shift adds a second pair to the same source (the pipes alternate between the pairs by key, a C / C# split), Alt takes one channel. "
-            "Click a cable to select it: Delete (or its x) removes it, dragging it moves it to another output. A grey card is busy through "
-            "another driver; the arrow before a perspective splits it into its divisions; drag a card by its title onto another place of the grid.",
+            "Press a cable and it follows the mouse: let go on another output to plug it there; a click alone selects it, Delete (or its x) removes it. "
+            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title onto a cell of the grid.",
             juce::dontSendNotification);
         help.setFont(juce::FontOptions(12.5f));
         help.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -81,7 +83,7 @@ public:
         g.setColour(juce::Colours::white);
         g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
         g.drawText("Organ out", 14, sourcesTop - 26, leftWidth - 20, 20, juce::Justification::centredLeft);
-        g.drawText("Sound cards in", leftWidth + 20 + gutter, sourcesTop - 26, 300, 20, juce::Justification::centredLeft);
+        g.drawText("Sound cards in", gridLeft, sourcesTop - 26, 300, 20, juce::Justification::centredLeft);
         for (const auto& row : rows)
         {
             const bool dragged = dragging && dragRow == &row - rows.data();
@@ -99,6 +101,17 @@ public:
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
             g.drawFittedText(row.label, area.withTrimmedRight(4), juce::Justification::centredLeft, 1);
         }
+        // The free cells of the grid while a card is dragged.
+        if (dragCard >= 0 && draggingCard)
+            for (const auto& cell : freeCells)
+            {
+                const bool under = dropCell == cell.first;
+                g.setColour(under ? glow : juce::Colours::lightgrey.withAlpha(0.5f));
+                const float dashes[]{ 6.0f, 4.0f };
+                juce::Path p; p.addRoundedRectangle(cell.second.toFloat().reduced(1.0f), 6.0f);
+                juce::Path dashed; juce::PathStrokeType(under ? 2.5f : 1.5f).createDashedStroke(dashed, p, dashes, 2);
+                g.fillPath(dashed);
+            }
         // The other cards: buttons per driver under a collapsible caption.
         if (!typeSections.empty())
         {
@@ -109,7 +122,7 @@ public:
             {
                 g.setColour(section.collapsed ? glow.withAlpha(0.85f) : glow);
                 g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-                g.drawText((section.collapsed ? "+ " : "- ") + section.type, section.bounds, juce::Justification::centredLeft);
+                g.drawText((section.collapsed ? "+ " : "- ") + section.type + (section.collapsed ? " (" + juce::String(section.count) + ")" : juce::String()), section.bounds, juce::Justification::centredLeft);
             }
         }
         for (const auto& card : cards)
@@ -125,25 +138,15 @@ public:
             g.setFont(juce::FontOptions(14.0f * scale()));
             g.drawFittedText(card.name, card.bounds.reduced(8, 2), juce::Justification::centred, 2);
         }
-        // The slots while a card is dragged.
-        if (dragCard >= 0 && draggingCard)
-            for (int i = 0; i < (int)slots.size(); ++i)
-            {
-                const bool under = i == dropSlot;
-                g.setColour(under ? glow : juce::Colours::lightgrey.withAlpha(0.5f));
-                const float dashes[]{ 6.0f, 4.0f };
-                juce::Path p; p.addRoundedRectangle(slots[(size_t)i].toFloat().reduced(1.0f), 6.0f);
-                juce::Path dashed; juce::PathStrokeType(under ? 2.5f : 1.5f).createDashedStroke(dashed, p, dashes, 2);
-                g.fillPath(dashed);
-            }
         // The cards in use / open.
         for (const auto& card : cards)
         {
             if (card.chip) continue;
             const auto b = card.bounds.toFloat();
+            const bool swapTarget = dragCard >= 0 && draggingCard && dropCell.first >= 0 && cellOccupant(dropCell) == &card - cards.data() && dragCard != &card - cards.data();
             g.setColour(card.busy ? juce::Colours::black.withAlpha(0.12f) : juce::Colours::black.withAlpha(0.28f));
             g.fillRoundedRectangle(b, 6.0f);
-            if (dragging && dropCard == &card - cards.data())
+            if ((dragging && dropCard == &card - cards.data()) || swapTarget)
             {
                 g.setColour(glow.withAlpha(0.6f));
                 g.drawRoundedRectangle(b.reduced(1.0f), 6.0f, 2.0f);
@@ -157,7 +160,7 @@ public:
             // The channel names, vertical, above the jacks (read from the bottom up).
             if (card.nameBand > 0)
             {
-                g.setFont(juce::FontOptions(10.5f * scale()));
+                g.setFont(juce::FontOptions(12.0f * scale()));
                 for (int ch = 0; ch < (int)card.jacks.size() && ch < card.jackNames.size(); ++ch)
                 {
                     const auto jack = card.jacks[(size_t)ch];
@@ -166,7 +169,7 @@ public:
                     g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi, band.getCentreX(), band.getCentreY()));
                     const auto rotated = juce::Rectangle<float>(band.getHeight(), band.getWidth()).withCentre(band.getCentre());
                     g.setColour(card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
-                    g.drawFittedText(card.jackNames[ch], rotated.toNearestInt(), juce::Justification::centredLeft, 1, 0.8f);
+                    g.drawFittedText(card.jackNames[ch], rotated.toNearestInt(), juce::Justification::centredLeft, 1, 0.9f);
                     g.restoreState();
                 }
             }
@@ -204,17 +207,22 @@ public:
             }
         }
         if (showCables.getToggleState() || dragging || selectedCable >= 0) paintCables(g);
-        // The cable being dragged (a source, or the selected cable on the move): from its start to the mouse.
+        // The cable being dragged (a source, or the lifted cable): from its row to the mouse.
         if (dragging)
         {
-            juce::Point<float> from; juce::Colour colour = glow;
+            juce::Point<float> from; juce::Colour colour = glow; bool pair = dropPairs;
             if (dragRow >= 0 && dragRow < (int)rows.size()) { const auto& row = rows[(size_t)dragRow]; from = { (float)row.bounds.getRight(), (float)row.bounds.getCentreY() }; colour = row.colour; }
-            else if (cableDrag >= 0 && cableDrag < (int)cables.size()) { const auto& row = rows[(size_t)cables[(size_t)cableDrag].row]; from = { (float)row.bounds.getRight(), (float)row.bounds.getCentreY() }; colour = row.colour; }
+            else if (liftedCable >= 0 && liftedCable < (int)cables.size()) { const auto& row = rows[(size_t)cables[(size_t)liftedCable].row]; from = { (float)row.bounds.getRight(), (float)row.bounds.getCentreY() }; colour = row.colour; }
             juce::Path p;
             p.startNewSubPath(from);
             p.cubicTo(from.x + 60.0f, from.y, dragPoint.x - 60.0f, dragPoint.y, dragPoint.x, dragPoint.y);
             g.setColour(colour.withAlpha(0.9f));
-            g.strokePath(p, juce::PathStrokeType(3.0f));
+            if (pair)
+            {
+                g.strokePath(p, juce::PathStrokeType(2.5f), juce::AffineTransform::translation(-1.6f, -1.6f));
+                g.strokePath(p, juce::PathStrokeType(2.5f), juce::AffineTransform::translation(1.6f, 1.6f));
+            }
+            else g.strokePath(p, juce::PathStrokeType(3.0f));
             if (dropCard >= 0)
             {
                 const auto& target = cards[(size_t)dropCard];
@@ -252,12 +260,13 @@ public:
                 rebuild();
                 return;
             }
-        // A driver section's caption: fold / unfold.
+        // A driver section's caption: fold / unfold (remembered).
         for (const auto& section : typeSections)
             if (section.bounds.contains(e.getPosition()))
             {
-                if (owner.audioRoutingCollapsed.contains(section.type)) owner.audioRoutingCollapsed.removeString(section.type);
-                else owner.audioRoutingCollapsed.add(section.type);
+                if (!owner.audioRoutingExpandedSet) { owner.audioRoutingExpandedSet = true; owner.audioRoutingExpanded.clear(); for (const auto& s : typeSections) if (!s.collapsed) owner.audioRoutingExpanded.add(s.type); }
+                if (owner.audioRoutingExpanded.contains(section.type)) owner.audioRoutingExpanded.removeString(section.type);
+                else owner.audioRoutingExpanded.add(section.type);
                 owner.saveSettings();
                 rebuild();
                 return;
@@ -268,14 +277,19 @@ public:
             removeCable(selectedCable);
             return;
         }
-        // A cable: a click selects it; a press on the SELECTED one may start its move (mouseDrag decides).
-        for (int i = 0; i < (int)cables.size(); ++i)
-            if (cables[(size_t)i].hitPath.contains(e.getPosition().toFloat()))
+        // A cable: the selected one first where cables overlap, else the one drawn last (on top); a press selects it
+        // and may pick it up (mouseDrag decides).
+        {
+            int hit = -1;
+            if (selectedCable >= 0 && selectedCable < (int)cables.size() && cables[(size_t)selectedCable].hitPath.contains(e.getPosition().toFloat())) hit = selectedCable;
+            else for (int i = (int)cables.size(); --i >= 0;) if (cables[(size_t)i].hitPath.contains(e.getPosition().toFloat())) { hit = i; break; }
+            if (hit >= 0)
             {
-                if (selectedCable == i) { pressedCable = i; dragPoint = e.getPosition().toFloat(); }
-                else { selectedCable = i; repaint(); }
+                selectedCable = hit; pressedCable = hit; dragPoint = e.getPosition().toFloat();
+                repaint();
                 return;
             }
+        }
         // A source row: the start of a drag.
         for (int i = 0; i < (int)rows.size(); ++i)
             if (rows[(size_t)i].bounds.contains(e.getPosition()))
@@ -291,14 +305,14 @@ public:
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        if (dragRow >= 0 || cableDrag >= 0 || pressedCable >= 0)
+        if (dragRow >= 0 || liftedCable >= 0 || pressedCable >= 0)
         {
-            if (pressedCable >= 0 && cableDrag < 0 && e.getDistanceFromDragStart() > 6) { cableDrag = pressedCable; pressedCable = -1; }
-            if (!dragging && e.getDistanceFromDragStart() > 6 && (dragRow >= 0 || cableDrag >= 0)) dragging = true;
+            if (pressedCable >= 0 && liftedCable < 0 && e.getDistanceFromDragStart() > 6) { liftedCable = pressedCable; pressedCable = -1; }
+            if (!dragging && e.getDistanceFromDragStart() > 6 && (dragRow >= 0 || liftedCable >= 0)) dragging = true;
             if (!dragging) return;
             dragPoint = e.getPosition().toFloat();
             dropAdd = dragRow >= 0 && e.mods.isShiftDown();
-            dropPairs = cableDrag >= 0 ? cables[(size_t)cableDrag].channels.size() > 1 : !e.mods.isAltDown();
+            dropPairs = liftedCable >= 0 ? cables[(size_t)liftedCable].channels.size() > 1 : !e.mods.isAltDown();
             findDropTarget(e.getPosition());
             repaint();
         }
@@ -307,18 +321,13 @@ public:
             if (!draggingCard && e.getDistanceFromDragStart() > 6) draggingCard = true;
             if (!draggingCard) return;
             dragPoint = e.getPosition().toFloat();
-            dropSlot = -1; int best = 1 << 30;
-            for (int i = 0; i < (int)slots.size(); ++i)
-            {
-                const int d = slots[(size_t)i].getCentre().getDistanceFrom(e.getPosition());
-                if (slots[(size_t)i].contains(e.getPosition())) { dropSlot = i; break; }
-                if (d < best) { best = d; dropSlot = i; }
-            }
+            dropCell = cellAt(e.getPosition());
             repaint();
         }
     }
     void mouseUp(const juce::MouseEvent& e) override
     {
+        juce::ignoreUnused(e);
         if (dragging && dropCard >= 0 && dropChannel >= 0)
         {
             const auto& card = cards[(size_t)dropCard];
@@ -326,12 +335,11 @@ public:
             if (dropPairs && (card.jacks.empty() || dropChannel + 1 < (int)card.jacks.size())) channels.push_back(dropChannel + 1);
             if (card.jacks.empty()) channels = { 0, 1 };   // a card not open yet: it opens on the first pair
             if (dragRow >= 0) assign(rows[(size_t)dragRow].routes, card, channels, dropAdd);
-            else if (cableDrag >= 0) moveCable(cableDrag, card, channels);
+            else if (liftedCable >= 0) moveCable(liftedCable, card, channels);
         }
-        else if (dragCard >= 0 && draggingCard && dropSlot >= 0) moveCard(dragCard, dropSlot);
-        dragRow = -1; dragCard = -1; cableDrag = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropSlot = -1;
-        juce::ignoreUnused(e);
-        repaint();
+        else if (dragCard >= 0 && draggingCard && dropCell.first >= 0) placeCard(dragCard, dropCell);
+        dragRow = -1; dragCard = -1; liftedCable = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropCell = { -1, -1 };
+        repaint();   // a lifted cable let go elsewhere is drawn at its output again
     }
     bool keyPressed(const juce::KeyPress& key) override
     {
@@ -361,23 +369,26 @@ private:
         juce::Colour colour;
         juce::Rectangle<int> bounds;
     };
+    using Cell = std::pair<int, int>;   // column, row
     struct Card
     {
         juce::String key, type, name, status, busyReason;
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
-        juce::StringArray jackNames;               // the driver's channel names, drawn vertically above the jacks (the user: numbers alone say nothing)
+        juce::StringArray jackNames;               // the driver's channel names, drawn vertically above the jacks
         int nameBand = 0;                          // the height of that band (0 when the names are numbers only)
         std::vector<Route> routes;                 // the routes playing on it
         juce::AudioDeviceManager* manager = nullptr;
         juce::Rectangle<int> bounds;
-        int gutterUse = 0;
+        Cell cell{ -1, -1 }; int span = 1;         // the grid cell (full cards) and the cells it covers
+        int width = 0;
     };
     struct Cable
     {
         int row = -1, card = -1, ring = 0;   // ring = this cable's order among the cables into the same jacks (concentric clamps)
         std::vector<int> channels;           // one or two (a pair)
+        int gutterLane = 0, corridorLane = 0;
         juce::Path path, hitPath;
         juce::Rectangle<int> removeBox;
     };
@@ -386,14 +397,15 @@ private:
         juce::ComboBox rate, buffer;
         juce::TextButton panel{ "Driver panel" }, reopen{ "Reopen" }, test{ "Test" };
     };
-    struct TypeSection { juce::String type; bool collapsed = false; juce::Rectangle<int> bounds; };
+    struct TypeSection { juce::String type; bool collapsed = false; int count = 0; juce::Rectangle<int> bounds; };
 
-    static constexpr int leftWidth = 250, rowHeight = 24, cardWidth = 372, cardHeight = 118, gutter = 44, cardGap = 28;
+    static constexpr int leftWidth = 250, rowHeight = 24, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 8;
 
     float scale() const noexcept { return owner.audioRoutingButtonSize == 0 ? 0.85f : owner.audioRoutingButtonSize == 2 ? 1.25f : 1.0f; }
     int jackWidth() const noexcept { return juce::roundToInt(30.0f * scale()); }
     int jackHeight() const noexcept { return juce::roundToInt(24.0f * scale()); }
     int chipHeight() const noexcept { return juce::roundToInt(36.0f * scale()); }
+    int cellWidth() const noexcept { return cardWidth + cellGap; }
 
     static juce::Colour colourOf(int manual, const juce::String& perspective)
     {
@@ -423,6 +435,13 @@ private:
         }
         return words;
     }
+    // The driver sections' order: ASIO, Aggregated WASAPI, the rest as listed.
+    static int typeRank(const juce::String& type)
+    {
+        if (type.containsIgnoreCase("ASIO")) return 0;
+        if (type.containsIgnoreCase("Aggregated")) return 1;
+        return 2;
+    }
 
     const std::vector<int>& channelsOf(const Route& route) const
     {
@@ -444,8 +463,6 @@ private:
             if (nameOut) *nameOut = device->getName();
             return manager->getCurrentAudioDeviceType() + "|" + device->getName();
         }
-        // Not open: the stored state of the route says what it asks for (as the audio tab's savedDeviceName does -
-        // the manager's own setup is empty after a failed open).
         const auto& config = owner.manualConfigs[(size_t)route.manual];
         const auto key = MainComponent::perspectiveRouteKey(route.manual, route.perspective);
         const auto foundAudio = config.perspectiveAudio.find(key);
@@ -467,17 +484,33 @@ private:
     std::vector<juce::Colour> jackColours(const Card& card, int channel) const
     {
         std::vector<juce::Colour> colours;
-        for (const auto& cable : cables)
-            if (cable.card == &card - cards.data())
-                for (const int c : cable.channels) if (c == channel) colours.push_back(rows[(size_t)cable.row].colour);
+        for (int i = 0; i < (int)cables.size(); ++i)
+        {
+            const auto& cable = cables[(size_t)i];
+            if (i == liftedCable || cable.card != &card - cards.data()) continue;
+            for (const int c : cable.channels) if (c == channel) colours.push_back(rows[(size_t)cable.row].colour);
+        }
         return colours;
+    }
+    int cellOccupant(Cell cell) const
+    {
+        for (int i = 0; i < (int)cards.size(); ++i)
+        {
+            const auto& card = cards[(size_t)i];
+            if (card.chip || card.cell.second != cell.second) continue;
+            if (cell.first >= card.cell.first && cell.first < card.cell.first + card.span) return i;
+        }
+        return -1;
+    }
+    Cell cellAt(juce::Point<int> p) const
+    {
+        for (const auto& cell : allCells) if (cell.second.contains(p)) return cell.first;
+        return { -1, -1 };
     }
 
     // ---- the model -> rows, cards, cables ----
     void rebuild()
     {
-        // The cards: every device name of every driver type (the start's scan plus what the system reported since -
-        // never a scan of ours), the open ones with their figures.
         std::vector<Card> fresh;
         for (auto* type : owner.deviceManager.getAvailableDeviceTypes())
         {
@@ -490,7 +523,6 @@ private:
                 fresh.push_back(card);
             }
         }
-        // The routes on them (a route's card may be absent from the lists: added).
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
             {
@@ -515,12 +547,11 @@ private:
                     const int outputs = card.jackNames.size();
                     card.jacks.assign((size_t)juce::jmax(0, outputs), {});
                     for (const auto& jackName : card.jackNames)   // a band only for real names ("ADAT (7+8) ..."), not "3" or "Output channel 3"
-                        if (jackName.trim().retainCharacters("0123456789").length() != jackName.trim().length() && !jackName.trim().startsWithIgnoreCase("output channel ")) { card.nameBand = juce::roundToInt(150.0f * scale()); break; }
+                        if (jackName.trim().retainCharacters("0123456789").length() != jackName.trim().length() && !jackName.trim().startsWithIgnoreCase("output channel ")) { card.nameBand = juce::roundToInt(180.0f * scale()); break; }
                     card.status = juce::String(outputs) + " outputs, " + juce::String(juce::roundToInt(card.rate)) + " Hz, buffer " + juce::String(card.buffer)
                         + " (" + juce::String(1000.0 * card.buffer / juce::jmax(1.0, card.rate), 1) + " ms), latency " + juce::String(card.latency) + " samples";
                 }
             }
-        // Busy: a card of one driver whose hardware word is in an OPEN device of another driver.
         for (auto& card : fresh)
         {
             if (card.open) continue;
@@ -534,19 +565,27 @@ private:
             }
             if (card.busy) card.status = card.busyReason;
         }
-        // A FULL card (outputs along its bottom edge) only for a card that plays something or is open; the rest are
-        // buttons (the user: cards with many outputs would eat the height and send every cable far away).
         for (auto& card : fresh) card.chip = card.routes.empty() && !card.open;
-        // The order: the user's (dragged) order first, then the lists' order.
-        std::vector<Card> ordered;
-        for (const auto& key : owner.audioRoutingCardOrder)
-            for (auto& card : fresh) if (card.key == key && !card.chip && std::none_of(ordered.begin(), ordered.end(), [&](const Card& c) { return c.key == key; })) ordered.push_back(card);
-        for (auto& card : fresh)
-            if (!card.chip && std::none_of(ordered.begin(), ordered.end(), [&](const Card& c) { return c.key == card.key; })) ordered.push_back(card);
-        for (auto& card : fresh) if (card.chip) ordered.push_back(card);
-        cards = std::move(ordered);
+        // Full cards first (the remembered cells decide the places, not this order), then the buttons by driver rank.
+        std::stable_sort(fresh.begin(), fresh.end(), [](const Card& a, const Card& b)
+        {
+            if (a.chip != b.chip) return !a.chip;
+            if (a.chip) return typeRank(a.type) < typeRank(b.type);
+            return false;
+        });
+        cards = std::move(fresh);
+        // The remembered cells.
+        for (auto& card : cards)
+        {
+            if (card.chip) continue;
+            for (const auto& line : owner.audioRoutingCardCells)
+                if (line.fromFirstOccurrenceOf("|", false, false) == card.key)
+                {
+                    const auto place = line.upToFirstOccurrenceOf("|", false, false);
+                    card.cell = { place.upToFirstOccurrenceOf(",", false, false).getIntValue(), place.fromFirstOccurrenceOf(",", false, false).getIntValue() };
+                }
+        }
 
-        // The rows: per perspective a header row (folded when every division sends it the same way).
         rows.clear();
         std::vector<juce::String> perspectives;
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
@@ -585,7 +624,6 @@ private:
                     rows.push_back(row);
                 }
         }
-        // The card controls.
         controls.clear();
         for (int i = 0; i < (int)cards.size(); ++i)
         {
@@ -598,8 +636,6 @@ private:
             {
                 for (const double rate : device->getAvailableSampleRates()) c->rate.addItem(juce::String(juce::roundToInt(rate)) + " Hz", juce::roundToInt(rate));
                 c->rate.setSelectedId(juce::roundToInt(card.rate), juce::dontSendNotification);
-                // The buffer sizes the driver offers (ASIO: its range as JUCE reads it from the driver); the current
-                // size is listed even when the driver's list lacks it (a size set in the ASIO panel).
                 auto sizes = device->getAvailableBufferSizes();
                 if (!sizes.contains(card.buffer) && card.buffer > 0) sizes.add(card.buffer);
                 sizes.sort();
@@ -630,87 +666,14 @@ private:
         if (cardKeyOf(route, &type, &name).isEmpty()) return "no sound card (silent)";
         return name + " (" + type + "), outputs " + channelsText(channelsOf(route)) + (channelsOf(route).size() > 2 ? " - the pipes alternate between the pairs by key" : "");
     }
-    void layout()
-    {
-        const int width = juce::jmax(700, getWidth());
-        help.setBounds(10, 6, width - 330, 56);
-        showCables.setBounds(width - 310, 8, 110, 24);
-        sizeLabel.setBounds(width - 200, 8, 90, 24);
-        sizeBox.setBounds(width - 106, 8, 96, 24);
-        sourcesTop = 94;
-        int y = sourcesTop;
-        for (auto& row : rows) { row.bounds = { 12, y, leftWidth - 16, rowHeight }; y += rowHeight; }
-        sourcesBottom = y;
-        // The full cards (in use / open) flow right of the sources, each as wide as its outputs need (32 outputs =
-        // a wide card, never a taller one); a row of cards leaves room below for the cable runs.
-        const int gridLeft = leftWidth + 20 + gutter;
-        const int right = width - 10;
-        int x = gridLeft, y0 = sourcesTop - 2, rowBottom = y0;
-        slots.clear();
-        const int jw0 = jackWidth(), jh = jackHeight();
-        for (int i = 0; i < (int)cards.size(); ++i)
-        {
-            auto& card = cards[(size_t)i];
-            if (card.chip) continue;
-            const int n = (int)card.jacks.size();
-            const int jw = n > 0 ? juce::jlimit(16, jw0, (right - gridLeft - 20) / juce::jmax(1, n) - 2) : jw0;
-            const int w = juce::jmax(cardWidth, 20 + n * (jw + 2));
-            if (x + w > right && x > gridLeft) { x = gridLeft; y0 = rowBottom + 60; }
-            card.bounds = { x, y0, w, cardHeight + card.nameBand };
-            slots.push_back(card.bounds);
-            for (int ch = 0; ch < n; ++ch)
-                card.jacks[(size_t)ch] = { card.bounds.getX() + 10 + ch * (jw + 2), card.bounds.getBottom() - jh - 4, jw, jh };
-            if (auto* c = controls[i])
-            {
-                const int cx = card.bounds.getX() + 10, cy = card.bounds.getY() + 44;
-                c->rate.setBounds(cx, cy, 90, 22); c->buffer.setBounds(cx + 96, cy, 70, 22);
-                c->panel.setBounds(cx + 172, cy, 84, 22); c->reopen.setBounds(cx + 260, cy, 56, 22); c->test.setBounds(cx + 320, cy, 42, 22);
-            }
-            x += w + gutter + cardGap;
-            rowBottom = juce::jmax(rowBottom, card.bounds.getBottom());
-        }
-        if (!slots.empty()) slots.push_back(juce::Rectangle<int>(x > right - cardWidth ? gridLeft : x, x > right - cardWidth ? rowBottom + 60 : y0, cardWidth, cardHeight));   // the place after the last card
-        fullCardsBottom = rowBottom + 60;
-        // The other cards as buttons, a collapsible section per driver, below the full cards and the sources.
-        chipsTop = juce::jmax(fullCardsBottom, sourcesBottom + 24);
-        int cy = chipsTop + 24, cx = 12;
-        juce::String lastType;
-        typeSections.clear();
-        bool collapsed = false;
-        const int ch = chipHeight();
-        for (auto& card : cards)
-        {
-            if (!card.chip) continue;
-            if (card.type != lastType)
-            {
-                if (lastType.isNotEmpty()) cy += collapsed ? 8 : ch + 8;   // past the last row of the previous driver
-                collapsed = owner.audioRoutingCollapsed.contains(card.type);
-                typeSections.push_back({ card.type, collapsed, { 12, cy, 400, 22 } });
-                lastType = card.type; cx = 12; cy += 26;
-            }
-            if (collapsed) { card.bounds = {}; continue; }
-            const int w = juce::jlimit(juce::roundToInt(120.0f * scale()), juce::roundToInt(320.0f * scale()),
-                24 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(14.0f * scale())), card.name)));
-            if (cx + w > right) { cx = 12; cy += ch + 6; }
-            card.bounds = { cx, cy, w, ch };
-            cx += w + 6;
-        }
-        const int bottom = lastType.isNotEmpty() ? cy + (collapsed ? 4 : ch + 8) : chipsTop;
-        buildCables();
-        const int height = juce::jmax(sourcesBottom + 20, bottom + 10);
-        if (height != getHeight()) setSize(getWidth(), height);
-    }
-    // The cables from the rows to the jacks: a lane per row (its y), a gutter per card (vertical runs side by side),
-    // under the card to the jack, up into it. Hit paths for the mouse.
-    void buildCables()
+    // The cables as a list (which row to which card and outputs) - the geometry comes in layout().
+    void listCables()
     {
         cables.clear();
-        for (auto& card : cards) card.gutterUse = 0;
         for (int r = 0; r < (int)rows.size(); ++r)
         {
             const auto& row = rows[(size_t)r];
-            if (row.perspectiveRow && !row.folded) continue;   // the divisions below carry the cables
-            if (row.routes.empty()) continue;
+            if ((row.perspectiveRow && !row.folded) || row.routes.empty()) continue;
             const auto& route = row.routes.front();
             const int cardIndex = cardIndexOf(cardKeyOf(route));
             if (cardIndex < 0) continue;
@@ -726,34 +689,196 @@ private:
                 cables.push_back(cable);
             }
         }
+    }
+    void layout()
+    {
+        const int width = juce::jmax(700, getWidth());
+        help.setBounds(10, 6, width - 330, 56);
+        showCables.setBounds(width - 310, 8, 110, 24);
+        sizeLabel.setBounds(width - 200, 8, 90, 24);
+        sizeBox.setBounds(width - 106, 8, 96, 24);
+        sourcesTop = 94;
+        int y = sourcesTop;
+        for (auto& row : rows) { row.bounds = { 12, y, leftWidth - 16, rowHeight }; y += rowHeight; }
+        sourcesBottom = y;
+        listCables();
+        // THE GRID: cells of cellWidth() right of the gutter (the gutter widens with the cables it carries); a card
+        // spans as many cells as its width needs; a card without a remembered cell takes the first free one.
+        gutterWidth = juce::jmax(44, 16 + laneGap * (int)cables.size());
+        gridLeft = leftWidth + 20 + gutterWidth;
+        const int right = width - 10;
+        const int cw = cellWidth();
+        columns = juce::jmax(1, (right - gridLeft) / cw);
+        const int jw0 = jackWidth(), jh = jackHeight();
+        for (auto& card : cards)
+        {
+            if (card.chip) continue;
+            const int n = (int)card.jacks.size();
+            const int jw = n > 0 ? juce::jlimit(18, jw0, (columns * cw - cellGap - 20) / juce::jmax(1, n) - 2) : jw0;
+            card.width = juce::jmax(cardWidth, 20 + n * (jw + 2));
+            card.span = juce::jmax(1, juce::jmin(columns, (card.width + cellGap + cw - 1) / cw));
+            if (card.cell.first >= 0 && card.cell.first + card.span > columns) card.cell.first = juce::jmax(0, columns - card.span);
+        }
+        // Collisions of remembered cells and the cards without one: the first free place, row by row.
+        auto fits = [this](const Card& who, Cell at)
+        {
+            if (at.first < 0 || at.first + who.span > columns) return false;
+            for (const auto& other : cards)
+            {
+                if (other.chip || &other == &who || other.cell.first < 0 || other.cell.second != at.second) continue;
+                if (at.first < other.cell.first + other.span && other.cell.first < at.first + who.span) return false;
+            }
+            return true;
+        };
+        for (auto& card : cards)
+        {
+            if (card.chip || (card.cell.first >= 0 && fits(card, card.cell))) continue;
+            card.cell = { -1, -1 };
+            for (int r = 0; card.cell.first < 0; ++r)
+                for (int c = 0; c + card.span <= columns; ++c)
+                    if (fits(card, { c, r })) { card.cell = { c, r }; break; }
+        }
+        int maxRow = -1;
+        for (const auto& card : cards) if (!card.chip) maxRow = juce::jmax(maxRow, card.cell.second);
+        // The rows' heights (the tallest card) and the corridors under them (the cables that end in that row).
+        std::vector<int> rowHeights((size_t)maxRow + 1, cardHeight), corridorCount((size_t)maxRow + 1, 0);
+        for (const auto& card : cards) if (!card.chip) rowHeights[(size_t)card.cell.second] = juce::jmax(rowHeights[(size_t)card.cell.second], cardHeight + card.nameBand);
+        for (const auto& cable : cables) ++corridorCount[(size_t)cards[(size_t)cable.card].cell.second];
+        rowTop.assign((size_t)maxRow + 1, 0); rowBottom.assign((size_t)maxRow + 1, 0);
+        int gy = sourcesTop - 2;
+        for (int r = 0; r <= maxRow; ++r)
+        {
+            rowTop[(size_t)r] = gy; rowBottom[(size_t)r] = gy + rowHeights[(size_t)r];
+            gy = rowBottom[(size_t)r] + 20 + laneGap * corridorCount[(size_t)r] + 12;   // the corridor
+        }
+        const int gridBottom = maxRow >= 0 ? gy : sourcesTop;
+        for (int i = 0; i < (int)cards.size(); ++i)
+        {
+            auto& card = cards[(size_t)i];
+            if (card.chip) continue;
+            card.bounds = { gridLeft + card.cell.first * cw, rowTop[(size_t)card.cell.second], card.width, cardHeight + card.nameBand };
+            const int n = (int)card.jacks.size();
+            const int jw = n > 0 ? juce::jlimit(18, jw0, (card.width - 20) / n - 2) : jw0;
+            for (int ch = 0; ch < n; ++ch)
+                card.jacks[(size_t)ch] = { card.bounds.getX() + 10 + ch * (jw + 2), card.bounds.getBottom() - jh - 4, jw, jh };
+            if (auto* c = controls[i])
+            {
+                const int cx = card.bounds.getX() + 10, cy = card.bounds.getY() + 44;
+                c->rate.setBounds(cx, cy, 90, 22); c->buffer.setBounds(cx + 96, cy, 70, 22);
+                c->panel.setBounds(cx + 172, cy, 84, 22); c->reopen.setBounds(cx + 260, cy, 56, 22); c->test.setBounds(cx + 320, cy, 42, 22);
+            }
+        }
+        // Every cell of the grid (one spare row) and the free ones: the drop places of a dragged card.
+        allCells.clear(); freeCells.clear();
+        {
+            int cy = maxRow >= 0 ? gridBottom : sourcesTop - 2;
+            for (int r = 0; r <= maxRow + 1; ++r)
+            {
+                const int top = r <= maxRow ? rowTop[(size_t)r] : cy, h = r <= maxRow ? rowHeights[(size_t)r] : cardHeight;
+                for (int c = 0; c < columns; ++c)
+                {
+                    const juce::Rectangle<int> rect(gridLeft + c * cw, top, cw - cellGap, h);
+                    allCells.push_back({ { c, r }, rect });
+                    if (cellOccupant({ c, r }) < 0) freeCells.push_back({ { c, r }, rect });
+                }
+            }
+        }
+        fullCardsBottom = (maxRow >= 0 ? gridBottom : sourcesTop - 2) + cardHeight + 10;   // the spare row stays free below the grid
+        // The other cards as buttons, a collapsible section per driver (ASIO first ...), below the grid and the sources.
+        chipsTop = juce::jmax(fullCardsBottom + 10, sourcesBottom + 24);
+        int cy = chipsTop + 24, cx = 12;
+        juce::String lastType;
+        typeSections.clear();
+        bool collapsed = false;
+        const int ch = chipHeight();
+        juce::StringArray chipTypes;
+        for (const auto& card : cards) if (card.chip) chipTypes.addIfNotAlreadyThere(card.type);
+        juce::StringArray expanded = owner.audioRoutingExpanded;
+        if (!owner.audioRoutingExpandedSet)
+        {
+            expanded.clear();
+            for (const auto& type : chipTypes) if (typeRank(type) == 0) expanded.add(type);
+            if (expanded.isEmpty()) for (const auto& type : chipTypes) if (typeRank(type) == 1) expanded.add(type);
+            if (expanded.isEmpty() && !chipTypes.isEmpty()) expanded.add(chipTypes[0]);
+        }
+        for (auto& card : cards)
+        {
+            if (!card.chip) continue;
+            if (card.type != lastType)
+            {
+                if (lastType.isNotEmpty()) cy += collapsed ? 8 : ch + 8;
+                collapsed = !expanded.contains(card.type);
+                int count = 0; for (const auto& other : cards) if (other.chip && other.type == card.type) ++count;
+                typeSections.push_back({ card.type, collapsed, count, { 12, cy, 400, 22 } });
+                lastType = card.type; cx = 12; cy += 26;
+            }
+            if (collapsed) { card.bounds = {}; continue; }
+            const int w = juce::jlimit(juce::roundToInt(120.0f * scale()), juce::roundToInt(320.0f * scale()),
+                24 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(14.0f * scale())), card.name)));
+            if (cx + w > right) { cx = 12; cy += ch + 6; }
+            card.bounds = { cx, cy, w, ch };
+            cx += w + 6;
+        }
+        const int bottom = lastType.isNotEmpty() ? cy + (collapsed ? 4 : ch + 8) : chipsTop;
+        buildCablePaths();
+        const int height = juce::jmax(sourcesBottom + 20, bottom + 10);
+        if (height != getHeight()) setSize(getWidth(), height);
+    }
+    // The cables' geometry in the aisles: the gutter (left of the grid, a lane per cable, the inner lanes for the
+    // nearest row and the leftmost outputs so the runs do not cross), the corridor under the target's row (a lane per
+    // cable, the upper lanes for the leftmost outputs), up into the output.
+    void buildCablePaths()
+    {
+        std::vector<int> order((size_t)cables.size());
+        for (size_t i = 0; i < order.size(); ++i) order[i] = (int)i;
+        auto jackX = [this](const Cable& cable)
+        {
+            const auto& card = cards[(size_t)cable.card];
+            const int first = cable.channels.front();
+            return first < (int)card.jacks.size() ? card.jacks[(size_t)first].getCentreX() : card.bounds.getX() + 10;
+        };
+        std::sort(order.begin(), order.end(), [&](int a, int b)
+        {
+            const int ra = cards[(size_t)cables[(size_t)a].card].cell.second, rb = cards[(size_t)cables[(size_t)b].card].cell.second;
+            if (ra != rb) return ra < rb;
+            return jackX(cables[(size_t)a]) < jackX(cables[(size_t)b]);
+        });
+        std::map<int, int> corridorUse;
+        for (size_t k = 0; k < order.size(); ++k)
+        {
+            auto& cable = cables[(size_t)order[k]];
+            cable.gutterLane = (int)k;
+            cable.corridorLane = corridorUse[cards[(size_t)cable.card].cell.second]++;
+        }
         for (auto& cable : cables)
         {
-            auto& card = cards[(size_t)cable.card];
+            const auto& card = cards[(size_t)cable.card];
             const auto& row = rows[(size_t)cable.row];
-            const int lane = card.gutterUse++;
-            const float gx = (float)card.bounds.getX() - 8.0f - 4.0f * (float)lane;
+            const float gx = (float)gridLeft - 10.0f - (float)laneGap * (float)cable.gutterLane;
             const float y0 = (float)row.bounds.getCentreY();
             const float x0 = (float)row.bounds.getRight();
-            const float under = (float)card.bounds.getBottom() + 10.0f + 4.0f * (float)lane;
+            const float cy = (float)rowBottom[(size_t)card.cell.second] + 12.0f + (float)laneGap * (float)cable.corridorLane;
             const int first = cable.channels.front();
             const auto jack = first < (int)card.jacks.size() ? card.jacks[(size_t)first] : card.bounds.withTrimmedTop(card.bounds.getHeight() - 10).withWidth(20);
             const float jx = (float)jack.getCentreX() + (cable.channels.size() > 1 ? (float)(jack.getWidth() + 2) / 2.0f : 0.0f) + 3.0f * (float)cable.ring;
+            const float r = 6.0f, down = cy > y0 ? 1.0f : -1.0f;
             juce::Path p;
             p.startNewSubPath(x0, y0);
-            p.lineTo(gx - 6.0f, y0); p.quadraticTo(gx, y0, gx, y0 + 6.0f);
-            p.lineTo(gx, under - 6.0f); p.quadraticTo(gx, under, gx + 6.0f, under);
-            p.lineTo(jx - 6.0f, under); p.quadraticTo(jx, under, jx, under - 6.0f);
+            p.lineTo(gx - r, y0); p.quadraticTo(gx, y0, gx, y0 + r * down);
+            p.lineTo(gx, cy - r * down); p.quadraticTo(gx, cy, gx + r, cy);
+            p.lineTo(jx - r, cy); p.quadraticTo(jx, cy, jx, cy - r);
             p.lineTo(jx, (float)jack.getBottom() + 3.0f * (float)cable.ring);
             cable.path = p;
             cable.hitPath.clear();
             juce::PathStrokeType(10.0f).createStrokedPath(cable.hitPath, p);
-            cable.removeBox = juce::Rectangle<int>((int)jx - 7, (int)under - 7, 14, 14);
+            cable.removeBox = juce::Rectangle<int>((int)jx - 7, (int)cy - 7, 14, 14);
         }
     }
     void paintCables(juce::Graphics& g)
     {
         for (int i = 0; i < (int)cables.size(); ++i)
         {
+            if (i == liftedCable) continue;   // picked up: it hangs from the mouse
             const auto& cable = cables[(size_t)i];
             const auto& row = rows[(size_t)cable.row];
             const bool selected = i == selectedCable;
@@ -761,7 +886,7 @@ private:
             g.setColour(row.colour.withAlpha(alpha));
             const float width = selected ? 3.5f : 2.5f;
             const auto& card = cards[(size_t)cable.card];
-            const float ring = 3.0f * (float)cable.ring;   // concentric clamps for several cables into the same outputs
+            const float ring = 3.0f * (float)cable.ring;
             if (cable.channels.size() > 1)
             {
                 g.strokePath(cable.path, juce::PathStrokeType(width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), juce::AffineTransform::translation(-1.6f, -1.6f));
@@ -776,10 +901,7 @@ private:
             {
                 g.strokePath(cable.path, juce::PathStrokeType(width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
                 if (cable.channels.front() < (int)card.jacks.size() && cable.ring > 0)
-                {
-                    const auto a = card.jacks[(size_t)cable.channels.front()];
-                    g.drawRoundedRectangle(a.toFloat().expanded(3.0f + ring), 4.0f, 2.0f);
-                }
+                    g.drawRoundedRectangle(card.jacks[(size_t)cable.channels.front()].toFloat().expanded(3.0f + ring), 4.0f, 2.0f);
             }
             if (selected)
             {
@@ -807,7 +929,7 @@ private:
                 if (d < bestDistance) { bestDistance = d; best = ch; }
             }
             dropChannel = best;
-            if (dropPairs && dropChannel + 1 >= (int)card.jacks.size() && dropChannel > 0 && (int)card.jacks.size() % 2 == 0) dropChannel -= 1;   // the last output alone: the pair below it
+            if (dropPairs && dropChannel + 1 >= (int)card.jacks.size() && dropChannel > 0 && (int)card.jacks.size() % 2 == 0) dropChannel -= 1;
             return;
         }
     }
@@ -849,8 +971,8 @@ private:
         selectedCable = -1;
         rebuild();
     }
-    // The selected cable dragged onto another output (or card): its channels leave, the new ones come; the route's
-    // other cables stay (on another card the whole route moves - a route plays through one card).
+    // The lifted cable let go on another output (or card): its channels leave, the new ones come; the route's other
+    // cables stay (on another card the whole route moves - a route plays through one card).
     void moveCable(int index, const Card& card, const std::vector<int>& channels)
     {
         if (index < 0 || index >= (int)cables.size()) return;
@@ -887,20 +1009,22 @@ private:
         selectedCable = -1;
         rebuild();
     }
-    // A full card dragged onto a slot of the grid: the order is the machine's memory.
-    void moveCard(int from, int slot)
+    // A full card dropped on a cell: a free cell takes it (its span shifted left when it would stick out), an
+    // occupied one swaps the two cards; the cells are the machine's memory.
+    void placeCard(int index, Cell cell)
     {
-        std::vector<juce::String> order;
-        for (const auto& card : cards) if (!card.chip) order.push_back(card.key);
-        if (from < 0 || from >= (int)order.size()) return;
-        const auto key = order[(size_t)from];
-        order.erase(order.begin() + from);
-        slot = juce::jlimit(0, (int)order.size(), slot > from ? slot - 1 : slot);
-        order.insert(order.begin() + slot, key);
-        owner.audioRoutingCardOrder.clear();
-        for (const auto& k : order) owner.audioRoutingCardOrder.add(k);
+        if (index < 0 || index >= (int)cards.size() || cards[(size_t)index].chip) return;
+        auto& card = cards[(size_t)index];
+        cell.first = juce::jlimit(0, juce::jmax(0, columns - card.span), cell.first);
+        const Cell old = card.cell;
+        const int occupant = cellOccupant(cell);
+        if (occupant >= 0 && occupant != index) cards[(size_t)occupant].cell = old;
+        card.cell = cell;
+        owner.audioRoutingCardCells.clear();
+        for (const auto& c : cards) if (!c.chip && c.cell.first >= 0) owner.audioRoutingCardCells.add(juce::String(c.cell.first) + "," + juce::String(c.cell.second) + "|" + c.key);
         owner.saveSettings();
-        CrashHandler::note("Audio routing: card " + key + " moved to place " + juce::String(slot + 1));
+        CrashHandler::note("Audio routing: card " + card.name + " placed in cell " + juce::String(cell.first) + "," + juce::String(cell.second)
+            + (occupant >= 0 && occupant != index ? " (" + cards[(size_t)occupant].name + " takes its old cell)" : ""));
         rebuild();
     }
     void reopenWith(juce::AudioDeviceManager* manager, const juce::AudioDeviceManager::AudioDeviceSetup& setup, const juce::String& what)
@@ -918,12 +1042,12 @@ private:
     void runTestSpec(const juce::String& spec)
     {
         const auto parts = juce::StringArray::fromTokens(spec, "|", "");
-        if (parts.size() >= 3 && parts[0].trim().equalsIgnoreCase("card"))
+        if (parts.size() >= 4 && parts[0].trim().equalsIgnoreCase("cell"))
         {
-            int index = -1, full = 0;
-            for (int i = 0; i < (int)cards.size(); ++i) { if (cards[(size_t)i].chip) continue; if (index < 0 && cards[(size_t)i].name.containsIgnoreCase(parts[1].trim())) index = full; ++full; }
+            int index = -1;
+            for (int i = 0; i < (int)cards.size(); ++i) if (!cards[(size_t)i].chip && cards[(size_t)i].name.containsIgnoreCase(parts[1].trim())) { index = i; break; }
             CrashHandler::note("ORGAN_TEST_ROUTE: " + spec + (index < 0 ? " - no such full card" : ""));
-            if (index >= 0) moveCard(index, parts[2].getIntValue() - 1);
+            if (index >= 0) placeCard(index, { parts[2].getIntValue(), parts[3].getIntValue() });
             return;
         }
         if (parts.size() < 4) { CrashHandler::note("ORGAN_TEST_ROUTE: bad spec " + spec); return; }
@@ -969,7 +1093,7 @@ private:
             {
                 s << cardKeyOf({ manual, perspective }) << ":" << channelsText(channelsOf({ manual, perspective })) << ";";
                 if (auto* manager = owner.managerForRoute(manual, perspective))
-                    if (auto* device = manager->getCurrentAudioDevice())   // rate / buffer / latency: a size set in the ASIO panel shows within a second
+                    if (auto* device = manager->getCurrentAudioDevice())
                         s << juce::roundToInt(device->getCurrentSampleRate()) << "/" << device->getCurrentBufferSizeSamples() << "/" << device->getOutputLatencyInSamples() << ";";
             }
         for (auto* type : owner.deviceManager.getAvailableDeviceTypes()) if (type != nullptr) s << type->getDeviceNames(false).size() << ",";
@@ -989,12 +1113,14 @@ private:
     std::vector<Row> rows;
     std::vector<Card> cards;
     std::vector<Cable> cables;
-    std::vector<juce::Rectangle<int>> slots;   // the places of the full cards (+ one after the last) while a card is dragged
+    std::vector<std::pair<Cell, juce::Rectangle<int>>> allCells, freeCells;
+    std::vector<int> rowTop, rowBottom;   // the grid rows' top and bottom (the corridor lies under the bottom)
     juce::OwnedArray<CardControls> controls;
     std::set<juce::String> unfolded;
     std::vector<TypeSection> typeSections;
-    int sourcesTop = 94, sourcesBottom = 94, fullCardsBottom = 94, chipsTop = 94;
-    int dragRow = -1, dragCard = -1, cableDrag = -1, pressedCable = -1, dropCard = -1, dropChannel = -1, dropSlot = -1, selectedCable = -1;
+    int sourcesTop = 94, sourcesBottom = 94, fullCardsBottom = 94, chipsTop = 94, gridLeft = 320, gutterWidth = 44, columns = 1;
+    int dragRow = -1, dragCard = -1, liftedCable = -1, pressedCable = -1, dropCard = -1, dropChannel = -1, selectedCable = -1;
+    Cell dropCell{ -1, -1 };
     bool dragging = false, draggingCard = false, dropAdd = false, dropPairs = true;
     juce::Point<float> dragPoint;
     juce::String lastSignature;

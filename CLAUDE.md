@@ -3557,6 +3557,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   output>" and "card|<name part>|<slot>". Test %TEMP%\test_0982_route.ps1 (the pictures are "1-Audio routing.png" with
   one window - the hNN copies watch "2-..." and miss; the final picture suffices). Not changed: the device-fail
   revert (0.8.250) and the aggregate's channel names ("ADAT (7+8) (RME Fireface UCX) (L)" - the endpoint + L/R).
+  0.9.83 (16 Nov 2026, the user's seven complaints on 0.9.82 + "ASIO první, ostatní sbalené"): WHY THE 0.9.82 FAULTS -
+  the dialog was built from the design, not from the program's own vocabulary (the "v" was invented while the stop
+  rows' voicing opener is a plain 18 px juce::TextButton at the bottom-left; the "grid" was a flow of cards with
+  pretended slots; cables took the shortest way across cards); the hooks proved the actions, not the gestures.
+  RULE: a new element of a dialog is an instance of what the program has (opener dot, grid cells, orange glow), and a
+  gesture is tried by the gesture. DONE: (1) bank boxes: `bankNoteEditor.setJustification(centredLeft)` (the number
+  was centred, the note top-left); the list button = the stop buttons' 18 px dot at the display's bottom-left (the
+  editors start 20 px in). (2) AUDIO ROUTING v4: a press on a cable SELECTS AND LIFTS it (`pressedCable` ->
+  `liftedCable` after 6 px; the lifted cable is not painted at its output, `jackColours` skip it, the drag cable hangs
+  from its row; drop on an output = `moveCable`, elsewhere = nothing = it is back); where cables overlap the selected
+  one is hit first, else the last drawn. The cards sit on a GRID OF CELLS (`Card::cell/span`, `cellWidth()` = 372 +
+  24, columns from the width, `fits()` places cards without a cell or with a collision in the first free cell,
+  `allCells`/`freeCells` with a spare row, `placeCard(index, cell)` = free cell takes it / occupied swaps; stored as
+  "<c>,<r>|<key>" lines in `audioRoutingCardCells`). CABLES IN THE AISLES: `listCables()` (no geometry) first, the
+  gutter left of the grid widens with the cable count (`gutterWidth` = 16 + 8 n), each cable a gutter lane and a
+  corridor lane (`buildCablePaths`: order by target row then jack x - inner lanes for the nearest row and the leftmost
+  outputs so the long runs do not cross), the corridor under each grid row grows with its cables, the path = row ->
+  gutter lane -> down/up to the corridor -> along it -> up into the jack; never across a card. Channel names font 12,
+  band 180 x scale, jacks >= 18 px. Driver sections: `typeRank` (ASIO 0, Aggregated 1, the rest 2) orders the chips;
+  the default unfolded set = ASIO alone, else Aggregated WASAPI alone, else the first (`audioRoutingExpanded` +
+  `audioRoutingExpandedSet` - an empty saved list means all folded); folded captions show the count. Hook
+  ORGAN_TEST_ROUTE "cell|<card>|<col>|<row>" (the 0.9.82 "card|.." is gone). Tests %TEMP%\test_0983_route.ps1 (ASUS to
+  cell 0,0, the aggregate to 0,1; pictures hNN now watch "1-Audio routing.png") and test_0983_bank.ps1.
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

@@ -231,9 +231,11 @@ private:
     std::unique_ptr<class GuidedTour> guidedTour;
     bool guidedTourAvailable = false;
     juce::StringArray guidedTourDismissed;   // configuration names whose tour was closed with "Don't show again" (machine-specific)
-    // 0.9.82: the Audio routing dialog's memory (machine-specific): the cards' order on its grid, the folded driver
-    // sections, the button size (0 small, 1 normal, 2 large).
-    juce::StringArray audioRoutingCardOrder, audioRoutingCollapsed;
+    // 0.9.82/0.9.83: the Audio routing dialog's memory (machine-specific): the cards' cells on its grid ("<column>,<row>|<card key>"),
+    // the driver sections that are unfolded (default: ASIO alone, else Aggregated WASAPI alone - the user: the rest
+    // are "shits"), the button size (0 small, 1 normal, 2 large).
+    juce::StringArray audioRoutingCardCells, audioRoutingExpanded;
+    bool audioRoutingExpandedSet = false;   // the key was read: an empty list means "all folded", not the default
     int audioRoutingButtonSize = 1;
     void startGuidedTour();
     // ORGAN_VIDEO_SCRIPT (0.8.206): an instruction video's frames and sound, driven by a script file.

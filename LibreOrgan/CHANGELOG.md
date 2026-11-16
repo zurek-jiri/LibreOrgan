@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.83] - 2026-11-16
+
+### Changed
+- Audio routing: a cable is picked up by a press (it leaves its output and
+  follows the mouse; let go on an output to plug it there, elsewhere it
+  returns); the cards sit on a real grid of cells like the stops (drag one
+  onto a free cell or swap with an occupied one; remembered); cables run in
+  the aisles between the cards, never across one, side by side 8 px apart;
+  the channel names above the outputs are larger; the driver sections
+  stand ASIO first (unfolded), then Aggregated WASAPI, then the rest
+  (folded) - without ASIO the aggregate is first.
+- The bank display: both edit boxes vertically centred, the note from the
+  left; the list of annotated banks opens from the small dot at the
+  bottom-left corner like the voicing of a stop.
+
 ## [0.9.82] - 2026-11-16
 
 ### Changed

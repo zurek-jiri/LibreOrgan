@@ -1634,12 +1634,12 @@ MainComponent::MainComponent()
     }
     bankNumberEditor.setInputRestrictions(4, "0123456789");
     bankNumberEditor.setJustification(juce::Justification::centred);
+    bankNoteEditor.setJustification(juce::Justification::centredLeft);   // 0.9.83: vertically centred like the number, the text from the left
     bankNumberEditor.setTooltip("The bank number (0-999)");
     bankNoteEditor.setTextToShowWhenEmpty("note (the piece, where it starts ...)", juce::Colours::grey);
     bankNoteEditor.setInputRestrictions(28);   // 0.9.82: what the display's third line holds (the user: the note must fit)
     bankNoteEditor.setTooltip("A note shown with the bank: the piece it serves, where it starts ... Empty = no note.");
-    bankListButton.setTooltip("The annotated banks - click one to go there.");
-    bankListButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey);
+    bankListButton.setTooltip("The annotated banks - click one to go there.");   // 0.9.83: the 18 px dot of the stop buttons (the voicing opener), bottom-left
     bankListButton.onClick = [this] { showBankMenu(); };
     addAndMakeVisible(bankListButton);
     addAndMakeVisible(combinationDisplay);
@@ -3337,10 +3337,10 @@ void MainComponent::resized()
     couplerViewport.setBounds({});
     {   // 0.9.81: the bank display's editors (shown while editing: the number left, the note right) and the list button in its corner
         const auto b = bankLabel.getBounds();
-        bankListButton.setBounds(b.getRight() - 17, b.getY() + 2, 15, 14);
+        bankListButton.setBounds(b.getX() + 2, b.getBottom() - 20, 18, 18);   // 0.9.83: the stop buttons' dot, bottom-left
         auto edit = b.reduced(3);
-        edit.removeFromRight(16);   // the list button's column stays clear of the note editor
-        bankNumberEditor.setBounds(edit.removeFromLeft(46));
+        edit.removeFromLeft(20);   // the dot's column stays clear of the editors
+        bankNumberEditor.setBounds(edit.removeFromLeft(44));
         edit.removeFromLeft(3);
         bankNoteEditor.setBounds(edit);
         updateCombinationControls();   // 0.9.82: the display's lines are cut to its width
@@ -12556,7 +12556,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardOrder", "audioRoutingCollapsed", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -23947,11 +23947,14 @@ void MainComponent::loadSettings()
     guidedTourDismissed.clear();   // 0.8.206: the organs whose tour was closed with "Don't show again"
     if (auto* dismissed = parsed.getProperty("guidedTourDismissed", juce::var()).getArray())
         for (const auto& name : *dismissed) if (name.toString().isNotEmpty()) guidedTourDismissed.addIfNotAlreadyThere(name.toString());
-    audioRoutingCardOrder.clear(); audioRoutingCollapsed.clear();   // 0.9.82
-    if (auto* order = parsed.getProperty("audioRoutingCardOrder", juce::var()).getArray())
-        for (const auto& key : *order) if (key.toString().isNotEmpty()) audioRoutingCardOrder.addIfNotAlreadyThere(key.toString());
-    if (auto* folded = parsed.getProperty("audioRoutingCollapsed", juce::var()).getArray())
-        for (const auto& type : *folded) if (type.toString().isNotEmpty()) audioRoutingCollapsed.addIfNotAlreadyThere(type.toString());
+    audioRoutingCardCells.clear(); audioRoutingExpanded.clear(); audioRoutingExpandedSet = false;   // 0.9.82/0.9.83
+    if (auto* cells = parsed.getProperty("audioRoutingCardCells", juce::var()).getArray())
+        for (const auto& cell : *cells) if (cell.toString().isNotEmpty()) audioRoutingCardCells.addIfNotAlreadyThere(cell.toString());
+    if (auto* expanded = parsed.getProperty("audioRoutingExpanded", juce::var()).getArray())
+    {
+        audioRoutingExpandedSet = true;
+        for (const auto& type : *expanded) if (type.toString().isNotEmpty()) audioRoutingExpanded.addIfNotAlreadyThere(type.toString());
+    }
     audioRoutingButtonSize = juce::jlimit(0, 2, (int)parsed.getProperty("audioRoutingButtonSize", 1));
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
@@ -24745,12 +24748,12 @@ void MainComponent::saveSettings()
         for (const auto& name : guidedTourDismissed) dismissed.add(name);
         obj->setProperty("guidedTourDismissed", dismissed);
     }
-    {   // 0.9.82: the Audio routing dialog's own memory (this machine's cards)
-        juce::Array<juce::var> order, folded;
-        for (const auto& key : audioRoutingCardOrder) order.add(key);
-        for (const auto& type : audioRoutingCollapsed) folded.add(type);
-        obj->setProperty("audioRoutingCardOrder", order);
-        obj->setProperty("audioRoutingCollapsed", folded);
+    {   // 0.9.82/0.9.83: the Audio routing dialog's own memory (this machine's cards)
+        juce::Array<juce::var> cells, expanded;
+        for (const auto& cell : audioRoutingCardCells) cells.add(cell);
+        for (const auto& type : audioRoutingExpanded) expanded.add(type);
+        obj->setProperty("audioRoutingCardCells", cells);
+        if (audioRoutingExpandedSet) obj->setProperty("audioRoutingExpanded", expanded);
         obj->setProperty("audioRoutingButtonSize", audioRoutingButtonSize);
     }
     {

@@ -933,27 +933,31 @@ static const char* const kManualText_part4 =
     "each shows its driver, rate and buffer (combos - ASIO too; a size set in\n"
     "the driver's panel shows within a second), the latency, *Driver panel*,\n"
     "*Reopen* and *Test* (a soft tone for a second on every route of that card -\n"
-    "you hear where it goes). Every other card of every driver (ASIO, Windows\n"
-    "Audio and Aggregated WASAPI; JACK and ALSA; CoreAudio) is a button below in\n"
-    "a section per driver (the orange caption folds it): drop a perspective\n"
-    "onto one and the card opens with its first pair and moves up among the\n"
-    "cards in use. *Button size* sets the size of those buttons, the outputs and\n"
-    "their names. A card busy through another driver on the same hardware is\n"
-    "grey and takes no cable until that driver has no route on it. Drag a card\n"
-    "by its title: the places of the grid appear as dashed slots, the one under\n"
-    "the mouse glows, let go and the card sits there.\n"
+    "you hear where it goes). Every other card of every driver is a button below\n"
+    "in a section per driver - ASIO first and unfolded, then Aggregated WASAPI,\n"
+    "then the rest, folded (the orange caption folds and unfolds; without ASIO\n"
+    "the aggregate comes first): drop a perspective onto one and the card opens\n"
+    "with its first pair and moves up among the cards in use. *Button size* sets\n"
+    "the size of those buttons, the outputs and their names. A card busy through\n"
+    "another driver on the same hardware is grey and takes no cable until that\n"
+    "driver has no route on it. The cards in use sit on a grid of cells like the\n"
+    "stops: drag a card by its title onto a free cell (dashed while you drag,\n"
+    "orange under the mouse) or onto another card to swap their places; the\n"
+    "cables run in the aisles between the cards, never across one.\n"
     "\n"
     "**Drag a perspective onto an output**: while the mouse is over a card its\n"
     "output and the pair partner glow orange and the label under the cursor says\n"
     "what will land there (\"7+8\"); let go and that stereo pair replaces the\n"
     "route's channels, with **Shift** the pair is *added* (two pairs on one\n"
     "source = the pipes alternate between them by key, a C / C# split), with\n"
-    "**Alt** a single channel is taken. A cable is **selected** by a click (the\n"
-    "others dim): Delete or the x at its end removes it, dragging it moves it to\n"
-    "another output or card; the last cable gone, the source is silent. Several\n"
-    "cables into the same outputs stripe the output in all their colours and\n"
-    "clamp it one ring outside the other. The [audio tabs](#53-the-audio-tabs)\n"
-    "show the same routes the second way, in the Divisions dialog.\n"
+    "**Alt** a single channel is taken. Press a **cable** and it is yours: it\n"
+    "leaves its output and follows the mouse - let go on another output (or\n"
+    "card) to plug it there, anywhere else and it returns; a click alone selects\n"
+    "it (the others dim), Delete or the x at its end removes it; the last cable\n"
+    "gone, the source is silent. Several cables into the same outputs stripe the\n"
+    "output in all their colours and clamp it one ring outside the other. The\n"
+    "[audio tabs](#53-the-audio-tabs) show the same routes the second way, in\n"
+    "the Divisions dialog.\n"
     "\n"
     "## 5.3 The audio tabs\n"
     "\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "\n"
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
+    ;
+static const char* const kManualText_part5 =
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
     "\n"
     "### Audio on Windows\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "- **ASIO**: the professional driver of an interface - the lowest latency, the\n"
     "  most polyphony. One driver is opened once and shared by every route on it;\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "## 7.2 The transposition methods\n"
     "\n"
     "*Filled pipes: transposition method* (Configuration Editor > Advanced global\n"
+    ;
+static const char* const kManualText_part6 =
     "audio > Filled pipes). The default *Pitch shift + time stretch* suits most\n"
     "stops; compare on the lowest keys of a reed extension.\n"
     "\n"
     "- **Resampling**: the sample played faster or slower, like a tape. Exact,\n"
-    ;
-static const char* const kManualText_part6 =
     "  nothing to build - but an octave down lasts twice as long and the timbre\n"
     "  moves fully with the pitch. (An upward resampled pipe loses 0.1 dB of\n"
     "  level and treble per semitone to sound like a pipe of its pitch.)\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
+    ;
+static const char* const kManualText_part7 =
     "the fade-out. The two together shape the join between the note and its\n"
     "release.\n"
     "\n"
     "### Release sample volume\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "All release samples, -20 to +10 dB (default 0); \"-inf\" silences them.\n"
     "\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "cache when on); the sliders that do not apply are greyed out.\n"
     "\n"
     "### Missing pipes: neighbours borrowed as a group\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
     "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
-    ;
-static const char* const kManualText_part8 =
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
     "that width.\n"
     "\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
     "replaced; a prefix that means another perspective in this computer's list is\n"
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
+    ;
+static const char* const kManualText_part9 =
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
     "definition's ranks without a perspective in their names take these prefixes\n"
     "at the import too.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
     "\n"
     "One collapsed section per division, the same settings as the Divisions\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
+    ;
+static const char* const kManualText_part10 =
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
     "cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's\n"
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
     "and fraction give the exact recorded pitch, from which the tuning, the\n"
-    ;
-static const char* const kManualText_part10 =
     "temperament, the footage and the celeste detection follow. Files without the\n"
     "chunk play as they are: no retuning, no temperament, the footage from the\n"
     "folder name only.\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "## 10.8 The polyphony measurement\n"
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
+    ;
+static const char* const kManualText_part11 =
     "minimum time and delay off, two seconds of idle listening; every stop\n"
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"
     "second at first, more keys and a faster rate whenever the voices stop rising\n"
-    ;
-static const char* const kManualText_part11 =
     "(up to every key, 16 strikes a second); the target raised in steps of 2000\n"
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"

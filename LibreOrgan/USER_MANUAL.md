@@ -921,27 +921,31 @@ standing above them (a card with many outputs grows wide, never tall);
 each shows its driver, rate and buffer (combos - ASIO too; a size set in
 the driver's panel shows within a second), the latency, *Driver panel*,
 *Reopen* and *Test* (a soft tone for a second on every route of that card -
-you hear where it goes). Every other card of every driver (ASIO, Windows
-Audio and Aggregated WASAPI; JACK and ALSA; CoreAudio) is a button below in
-a section per driver (the orange caption folds it): drop a perspective
-onto one and the card opens with its first pair and moves up among the
-cards in use. *Button size* sets the size of those buttons, the outputs and
-their names. A card busy through another driver on the same hardware is
-grey and takes no cable until that driver has no route on it. Drag a card
-by its title: the places of the grid appear as dashed slots, the one under
-the mouse glows, let go and the card sits there.
+you hear where it goes). Every other card of every driver is a button below
+in a section per driver - ASIO first and unfolded, then Aggregated WASAPI,
+then the rest, folded (the orange caption folds and unfolds; without ASIO
+the aggregate comes first): drop a perspective onto one and the card opens
+with its first pair and moves up among the cards in use. *Button size* sets
+the size of those buttons, the outputs and their names. A card busy through
+another driver on the same hardware is grey and takes no cable until that
+driver has no route on it. The cards in use sit on a grid of cells like the
+stops: drag a card by its title onto a free cell (dashed while you drag,
+orange under the mouse) or onto another card to swap their places; the
+cables run in the aisles between the cards, never across one.
 
 **Drag a perspective onto an output**: while the mouse is over a card its
 output and the pair partner glow orange and the label under the cursor says
 what will land there ("7+8"); let go and that stereo pair replaces the
 route's channels, with **Shift** the pair is *added* (two pairs on one
 source = the pipes alternate between them by key, a C / C# split), with
-**Alt** a single channel is taken. A cable is **selected** by a click (the
-others dim): Delete or the x at its end removes it, dragging it moves it to
-another output or card; the last cable gone, the source is silent. Several
-cables into the same outputs stripe the output in all their colours and
-clamp it one ring outside the other. The [audio tabs](#53-the-audio-tabs)
-show the same routes the second way, in the Divisions dialog.
+**Alt** a single channel is taken. Press a **cable** and it is yours: it
+leaves its output and follows the mouse - let go on another output (or
+card) to plug it there, anywhere else and it returns; a click alone selects
+it (the others dim), Delete or the x at its end removes it; the last cable
+gone, the source is silent. Several cables into the same outputs stripe the
+output in all their colours and clamp it one ring outside the other. The
+[audio tabs](#53-the-audio-tabs) show the same routes the second way, in
+the Divisions dialog.
 
 ## 5.3 The audio tabs
 
