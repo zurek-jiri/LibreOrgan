@@ -404,6 +404,7 @@ private:
         bool disableVelocity = true;
         int bassOctaveLayout = 0; // 0 standard, 1 short octave, 2 CDD#, 3 CDE
         int midiTranspose = 0;    // the MIDI keyboard plays this many semitones away (-24..24)
+        bool bassLayoutFollowsTranspose = false;   // 0.9.93: the bass octave layout sits on the keys that play the division's lowest octave (after the transposition), not on MIDI 36-44
         juce::String expressionDeviceIdentifier;
         int expressionChannel = 1;
         int expressionController = -1;
@@ -815,6 +816,7 @@ private:
         bool disableVelocity = true;
         int bassOctaveLayout = 0;
         int midiTranspose = 0;
+        bool bassLayoutFollowsTranspose = false;
         juce::String expressionDevice;
         int expressionChannel = 1;
         int expressionController = -1;
@@ -832,6 +834,26 @@ private:
         const int result = note + semitones;
         return result < 0 || result > 127 ? -1 : result;
     }
+    // 0.9.93: the division's note of a key as sent (-1: the key plays nothing). The bass octave layout applies to
+    // the keys MIDI 36-44 as sent and the transposition comes after it; with `follows` the transposition comes
+    // first, so the layout sits on the keys that play the division's lowest octave.
+    static int routedNoteFor(int layout, int semitones, bool follows, int note) noexcept
+    {
+        if (follows)
+        {
+            const int transposed = transposedNote(note, semitones);
+            return transposed < 0 ? -1 : mapNoteForLayout(layout, transposed);
+        }
+        const int mapped = mapNoteForLayout(layout, note);
+        return mapped < 0 ? -1 : transposedNote(mapped, semitones);
+    }
+    // 0.9.93: one device playing through two drivers at once (ASIO and Windows Audio on one card): allowed on
+    // Windows, said on both cards of the Audio routing, on its top-bar button (orange), in the Messages and in
+    // the measurement's advice. "" = none. audioHardwareWords: the words of a device name that name the hardware.
+    static juce::StringArray audioHardwareWords(const juce::String& name);
+    juce::String audioDriverConflict();
+    juce::String audioDriverConflictText;
+    int driverConflictDivider = 0;
     bool sampleStorageFloat = false;
     bool resampleOnLoad = true;   // samples of other rates are resampled to 48 kHz while loading
     double storageSampleRate = 48000.0;   // the rate the samples are stored at when resampled (48 000 / 36 000 / 32 000; 0.8.143)

@@ -1336,8 +1336,7 @@ MainComponent::MainComponent()
     guidedTourButton.onClick = [this] { startGuidedTour(); };
     // 0.9.79 (#236): the Audio routing dialog - the sound cards as blocks, the routes as chips in channel cells.
     addAndMakeVisible(audioRoutingButton);
-    audioRoutingButton.setTooltip("Which sound card and which output channels every division and perspective plays through, as a picture: "
-        "drag the routes' chips between the cards' channels; Test plays a tone where a route goes.");
+    audioRoutingButton.setTooltip("The audio routes as cables between the organ and the sound cards, with the effects of every route");
     audioRoutingButton.onClick = [this] { showAudioRoutingDialog(); };
     // 0.9.39 (the user: no strip at the bottom, "zvoneček" in the top bar instead): a button that is there
     // while a message is unread, a click opens the Messages tab; nothing periodic behind it.
@@ -3474,6 +3473,7 @@ void MainComponent::refreshMidiRouting()
         routing.disableVelocity = config.disableVelocity;
         routing.bassOctaveLayout = config.bassOctaveLayout;
         routing.midiTranspose = config.midiTranspose;
+        routing.bassLayoutFollowsTranspose = config.bassLayoutFollowsTranspose;
         routing.expressionDevice = config.expressionDeviceIdentifier;
         routing.expressionChannel = config.expressionChannel;
         routing.expressionController = config.expressionController;
@@ -3578,8 +3578,7 @@ void MainComponent::handleIncomingMidiMessage(juce::MidiInput* source,
         suppressKeyboardStateNotesTL = true;
         manualKeyboardStates[(size_t)manual].processNextMidiEvent(message);
         suppressKeyboardStateNotesTL = false;
-        int routedNote = mapNoteForLayout(config.bassOctaveLayout, message.getNoteNumber());
-        if (routedNote >= 0) routedNote = transposedNote(routedNote, config.midiTranspose);
+        const int routedNote = routedNoteFor(config.bassOctaveLayout, config.midiTranspose, config.bassLayoutFollowsTranspose, message.getNoteNumber());
         const int routedVelocity = config.disableVelocity && message.isNoteOn() ? 127 : message.getVelocity();
         if (routedNote >= 0)
             routeKeyboardNote(manual, routedNote, routedVelocity,
@@ -3823,8 +3822,73 @@ int MainComponent::newestHeldKey(int manual, int& velocity) const
 int MainComponent::mapKeyboardNote(int manual, int note) const
 {
     if (manual < 0 || manual >= SamplerEngine::maxManuals || note < 0 || note >= 128) return -1;
-    const int mapped = mapNoteForLayout(manualConfigs[(size_t)manual].bassOctaveLayout, note);
-    return mapped < 0 ? -1 : transposedNote(mapped, manualConfigs[(size_t)manual].midiTranspose);
+    const auto& config = manualConfigs[(size_t)manual];
+    return routedNoteFor(config.bassOctaveLayout, config.midiTranspose, config.bassLayoutFollowsTranspose, note);
+}
+
+// A word of a device name that identifies the hardware ("Fireface", "Komplete"): letters only, 5+ long, not generic.
+juce::StringArray MainComponent::audioHardwareWords(const juce::String& name)
+{
+    static const juce::StringArray generic{ "audio", "output", "outputs", "input", "speakers", "definition", "device", "driver", "default", "digital", "analog", "aggregated", "wasapi", "windows", "all", "high", "realtek", "nvidia", "intel" };
+    juce::StringArray words;
+    for (const auto& raw : juce::StringArray::fromTokens(name, " ()[]-_/,.:", ""))
+    {
+        const auto word = raw.retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toLowerCase();
+        if (word.length() >= 5 && !generic.contains(word)) words.addIfNotAlreadyThere(word);
+    }
+    return words;
+}
+
+// 0.9.93: the pairs "device through driver A and driver B" among the routes that play now. A driver family is
+// ASIO, WASAPI (Windows Audio in every mode and the aggregate) or the type itself; the aggregate counts by the
+// endpoints its routes use. "" when every device plays through one family.
+juce::String MainComponent::audioDriverConflict()
+{
+    struct Use { juce::String family, type, name; juce::StringArray words; };
+    std::vector<Use> uses;
+    auto familyOf = [](const juce::String& type)
+    {
+        if (type.containsIgnoreCase("ASIO")) return juce::String("ASIO");
+        if (type.containsIgnoreCase("WASAPI") || type.containsIgnoreCase("Windows Audio")) return juce::String("Windows Audio");
+        return type;
+    };
+    auto add = [&](const juce::String& type, const juce::String& name)
+    {
+        for (const auto& use : uses) if (use.type == type && use.name == name) return;
+        uses.push_back({ familyOf(type), type, name, audioHardwareWords(name) });
+    };
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            auto* manager = managerForRoute(manual, perspective);
+            auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
+            if (device == nullptr) continue;
+            const auto type = manager->getCurrentAudioDeviceType();
+            if (dynamic_cast<AggregatedWASAPIAudioDevice*>(device) != nullptr)
+            {
+                const auto names = device->getOutputChannelNames();
+                const auto& config = manualConfigs[(size_t)manual];
+                const auto found = config.perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+                const auto& channels = perspective.equalsIgnoreCase("default") ? config.outputChannels
+                    : found != config.perspectiveAudio.end() ? found->second.outputChannels : config.outputChannels;
+                for (const int channel : channels)
+                    if (channel >= 0 && channel < names.size()) add(type, names[channel].upToLastOccurrenceOf(" (", false, false));
+            }
+            else add(type, device->getName());
+        }
+    juce::StringArray found;
+    for (size_t a = 0; a < uses.size(); ++a)
+        for (size_t b = a + 1; b < uses.size(); ++b)
+        {
+            if (uses[a].family == uses[b].family) continue;
+            for (const auto& word : uses[a].words)
+                if (uses[b].words.contains(word))
+                {
+                    found.addIfNotAlreadyThere(uses[a].name + " (" + uses[a].type + ") and " + uses[b].name + " (" + uses[b].type + ")");
+                    break;
+                }
+        }
+    return found.joinIntoString("; ");
 }
 
 int MainComponent::mapNoteForLayout(int layout, int note) noexcept
@@ -5271,8 +5335,8 @@ void MainComponent::showSafeStartNoticeIfDue()
     queueNotice(juce::MessageBoxIconType::WarningIcon, "Audio device opened with the default buffer",
         "The last start of LibreOrgan Sampler crashed while opening " + notice + ".\n\n"
         "This time the device was opened with the default buffer size (512 samples) and rate (48 kHz) instead, so the program "
-        "starts again. Choose a buffer size the driver can take in the audio tab of the division (Settings in the division "
-        "header); the program remembers the one you choose.\n\nThe crash is in the CrashLogs folder of the program's "
+        "starts again. Choose a buffer size the driver can take on the card in the Audio routing (its Buffer box); "
+        "the program remembers the one you choose.\n\nThe crash is in the CrashLogs folder of the program's "
         "application-data folder - Configuration Editor > Report a problem... sends it.");
 }
 
@@ -5311,7 +5375,7 @@ void MainComponent::showMissingAudioDevicesIfDue()
     queueNotice(juce::MessageBoxIconType::WarningIcon, "Audio devices not available",
         "These audio devices could not be opened (waited " + juce::String(kAudioDevicesWaitMs / 1000.0, 0) + " s for them):" + list
         + "\n\nThe routes using them stay silent until the device is switched on again (checked every 2 s) or another "
-          "device is chosen for them (division Settings, audio tabs).");
+          "card is given to them in the Audio routing (drag their cable onto it).");
 }
 
 void MainComponent::noteIfDeviceMissing(juce::AudioDeviceManager& manager, const juce::XmlElement* wanted)
@@ -7623,8 +7687,8 @@ void MainComponent::checkAudioCallbackHealth()
                     if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->setDeviceSilent(label, true);
                     queueNotice(juce::MessageBoxIconType::InfoIcon, "No audio",
                         "The audio device of " + label + " opened but gives no audio (switched off, asleep, or its driver hung - a USB "
-                        "interface after a reset). The program reopened it once without success. Reopen device or choose the device again in "
-                        "Divisions, switch it off and on, or take another device (ASIO).");
+                        "interface after a reset). The program reopened it once without success. Press Reopen on its card in the Audio routing, "
+                        "switch the device off and on, or drag its cables onto another card (ASIO).");
                     CrashHandler::note("No audio: " + label + " still gives no callbacks 8 s after the automatic reopen - the DSP cell says so");
                 }
             }
@@ -7882,9 +7946,48 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         // The key pressed last shows its MIDI velocity in a badge over the keys (the
         // badge is three keys wide, so only the newest key carries one; the keyboard
         // itself keeps its size).
+        // 0.9.93: what the division takes from this keyboard (set by the Divisions dialog): the division's note of a
+        // key as sent (-1 = the key plays nothing), the compass in the division's notes, the MIDI transposition.
+        std::function<int(int)> routedNote;
+        std::function<std::pair<int, int>()> compass;
+        std::function<int()> transposition;
+
         void paint(juce::Graphics& g) override
         {
             juce::MidiKeyboardComponent::paint(g);
+            if (routedNote && compass)
+            {
+                const auto range = compass();
+                const int shift = transposition ? transposition() : 0;
+                auto dark = [&](int key) { const int routed = routedNote(key); return routed < 0 || routed < range.first || routed > range.second; };
+                // The dark keys: the white ones as rectangles less every black key standing on them, then the dark black keys.
+                juce::RectangleList<float> whites, blacks;
+                for (int key = getRangeStart(); key <= getRangeEnd(); ++key)
+                    if (!juce::MidiMessage::isMidiNoteBlack(key) && dark(key)) whites.add(getRectangleForKey(key));
+                for (int key = getRangeStart(); key <= getRangeEnd(); ++key)
+                    if (juce::MidiMessage::isMidiNoteBlack(key))
+                    {
+                        whites.subtract(getRectangleForKey(key));
+                        if (dark(key)) blacks.add(getRectangleForKey(key));
+                    }
+                g.setColour(juce::Colours::black.withAlpha(0.55f));
+                g.fillRectList(whites);
+                g.setColour(juce::Colour(0xff4a4a4a));   // a dark black key is grey: on the darkened white keys it would not show otherwise
+                g.fillRectList(blacks);
+                // A key the bass octave layout moves: the note it plays (the E key of a short octave says C).
+                g.setFont(juce::FontOptions(juce::jlimit(8.0f, 11.0f, getKeyWidth() * 0.85f), juce::Font::bold));
+                for (int key = getRangeStart(); key <= getRangeEnd(); ++key)
+                {
+                    const int routed = routedNote(key);
+                    if (routed < 0 || routed == key + shift || routed < range.first || routed > range.second) continue;
+                    const auto rect = getRectangleForKey(key);
+                    if (rect.isEmpty()) continue;
+                    const bool black = juce::MidiMessage::isMidiNoteBlack(key);
+                    const juce::Rectangle<float> box(rect.getCentreX() - 8.0f, black ? rect.getBottom() - 14.0f : rect.getBottom() - 15.0f, 16.0f, 12.0f);
+                    g.setColour(juce::Colours::orange);
+                    g.drawText(juce::MidiMessage::getMidiNoteName(routed, true, false, 3), box.toNearestInt(), juce::Justification::centred, false);
+                }
+            }
             if (!velocityOf) return;
             int velocity = 0;
             const int note = velocityOf(velocity);   // the newest held key, its velocity
@@ -8856,8 +8959,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 // 0.9.80: the division's alias - its own name beside the numeral ("I. Hauptwerk"), the same as a
                 // double-click on the header's name sets; travels with the organ.
                 aliasBoxes[(size_t)manual].setText(owner.manualConfigs[(size_t)manual].alias, false);
-                aliasBoxes[(size_t)manual].setFont(juce::FontOptions(26.0f, juce::Font::bold));   // 0.9.91: beside the numeral, in its size
-                aliasBoxes[(size_t)manual].setIndents(6, 2);
+                aliasBoxes[(size_t)manual].applyFontToAllText(juce::FontOptions(26.0f, juce::Font::bold));   // 0.9.91: beside the numeral, in its size (0.9.93: applyFontToAllText - setFont left the text set above in the small font)
+                aliasBoxes[(size_t)manual].setJustification(juce::Justification::centredLeft);
+                aliasBoxes[(size_t)manual].setIndents(6, 0);
                 aliasBoxes[(size_t)manual].setTextToShowWhenEmpty("alias", juce::Colours::grey);
                 aliasBoxes[(size_t)manual].setTooltip("The division's own name, shown beside its numeral in the header (\"I. Hauptwerk\"). Enter sets it; empty = the numeral alone. Travels with the organ.");
                 aliasBoxes[(size_t)manual].getProperties().set("manualChapter", "Division headers");
@@ -8870,6 +8974,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     owner.manualKeyboardStates[(size_t)manual],
                     [this, manual] { this->owner.showKeyboardLearnMenu(manual); },
                     [this, manual](int& velocity) { return this->owner.newestHeldKey(manual, velocity); });
+                // 0.9.93: the keyboard shows what the division takes from it - the keys outside the compass and the keys
+                // a bass octave layout leaves out are dark, a key the layout moves carries the note it plays.
+                keyboard->routedNote = [this, manual](int key) { return this->owner.mapKeyboardNote(manual, key); };
+                keyboard->compass = [this, manual] { const auto& c = this->owner.manualConfigs[(size_t)manual]; return std::pair<int, int>(c.compassLow, c.compassHigh); };
+                keyboard->transposition = [this, manual] { return this->owner.manualConfigs[(size_t)manual].midiTranspose; };
                 addAndMakeVisible(*keyboard);
                 keyboards[(size_t)manual] = std::move(keyboard);
 
@@ -8944,15 +9053,36 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
                 // Compass of the division: lowest and highest key. Missing pipes of
                 // its stops are filled from neighbours; the voicing sliders cover it.
-                compassLabels[(size_t)manual].setText("Compass:", juce::dontSendNotification);
-                compassLabels[(size_t)manual].setJustificationType(juce::Justification::centredRight);
+                compassLabels[(size_t)manual].setText("Compass from", juce::dontSendNotification);
+                compassLabels[(size_t)manual].setJustificationType(juce::Justification::centredLeft);
                 addAndMakeVisible(compassLabels[(size_t)manual]);
+                compassToLabels[(size_t)manual].setText("Compass to", juce::dontSendNotification);
+                compassToLabels[(size_t)manual].setJustificationType(juce::Justification::centredLeft);
+                addAndMakeVisible(compassToLabels[(size_t)manual]);
+                // 0.9.93: the bass octave layout on the keys that play the division's lowest octave (after the transposition).
+                {
+                    auto& follows = layoutFollowsButtons[(size_t)manual];
+                    follows.setButtonText("follows MIDI transposition");
+                    follows.getProperties().set("manualChapter", "Bass octave layout follows MIDI transposition");
+                    follows.onClick = [this, manual]
+                    {
+                        auto& config = this->owner.manualConfigs[(size_t)manual];
+                        const bool state = layoutFollowsButtons[(size_t)manual].getToggleState();
+                        if (config.bassLayoutFollowsTranspose == state) return;
+                        this->owner.panic();
+                        config.bassLayoutFollowsTranspose = state;
+                        this->owner.refreshMidiRouting();
+                        this->owner.saveSettings();
+                    };
+                    addAndMakeVisible(follows);
+                }
                 for (auto* box : { &compassLowBoxes[(size_t)manual], &compassHighBoxes[(size_t)manual] })
                 {
                     for (int key = 12; key <= 120; ++key)
                         box->addItem(juce::MidiMessage::getMidiNoteName(key, true, true, 3) + " (" + juce::String(key) + ")", key + 1);
                     box->setTooltip("Compass of this division (lowest / highest key). Pipes a stop lacks inside it are "
-                        "filled from neighbouring pipes, transposed; the per-key voicing sliders cover this range.");
+                        "filled from neighbouring pipes, transposed; the per-key voicing sliders cover this range. "
+                        "Keys outside it (dark on the keyboard below) are free for another division on the same MIDI channel, or for MIDI learn.");
                     box->onChange = [this, manual]
                     {
                         auto& config = this->owner.manualConfigs[(size_t)manual];
@@ -9340,8 +9470,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             auto area = getLocalBounds().reduced(12);
             auto audioArea = area.removeFromBottom(48);   // 0.9.89: the audio tabs are gone - the Audio routing button and Close
             auto buttonRow = audioArea.removeFromBottom(38);
-            // 0.9.90: Close under the keyboard's right end (the user: the dialog narrower, Close moved left under the keyboard).
-            closeButton.setBounds(juce::Rectangle<int>(area.getX() + 700 - 110, buttonRow.getY(), 110, buttonRow.getHeight()).reduced(4));
+            // 0.9.93: the right edge of the wind column's boxes - the keyboard and Close end there too.
+            const int dialogRightEdge = 232 + 28 + 260 + 28 + 260 - 6;   // from the left edge of the content: the three columns less the wind column's margin
+            closeButton.setBounds(juce::Rectangle<int>(area.getX() + dialogRightEdge + 4 - 110, buttonRow.getY(), 110, buttonRow.getHeight()).reduced(4));
             audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4));
             // 0.9.91: the learn messages between the two buttons (the alias took their place beside the numeral).
             status.setBounds(audioRoutingButton.getRight() + 12, buttonRow.getY(), juce::jmax(10, closeButton.getX() - audioRoutingButton.getRight() - 24), buttonRow.getHeight());
@@ -9363,6 +9494,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 for (auto& button : keyboardLayoutButtons[(size_t)manual])
                     button.setVisible(visible);
                 compassLabels[(size_t)manual].setVisible(visible);
+                compassToLabels[(size_t)manual].setVisible(visible);
+                layoutFollowsButtons[(size_t)manual].setVisible(visible);
+                aliasBoxes[(size_t)manual].setVisible(visible);
                 compassLowBoxes[(size_t)manual].setVisible(visible);
                 compassHighBoxes[(size_t)manual].setVisible(visible);
                 transposeLabels[(size_t)manual].setVisible(visible);
@@ -9418,8 +9552,10 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 auto bottomStrip = row.removeFromBottom(78);
                 // The layout + compass line is as wide as the keyboard canvas (the last
                 // compass box may stick out a little); the stop pool keeps its column.
-                auto layoutArea = bottomStrip.removeFromTop(30).withWidth(800).reduced(4, 0);
-                auto keyboardArea = bottomStrip.removeFromLeft(700);
+                // 0.9.93: the keyboard runs to the right edge of the wind column's boxes (dialogRightEdge), its keys as
+                // wide as that takes; the compass went to the MIDI column, the layout line got the "follows" box.
+                auto layoutArea = bottomStrip.removeFromTop(30).withWidth(dialogRightEdge + 4).reduced(4, 0);
+                auto keyboardArea = bottomStrip.removeFromLeft(dialogRightEdge + 4);
                 bassLayoutLabel.setBounds(layoutArea.removeFromLeft(112));
                 static constexpr int layoutWidths[4] { 92, 118, 80, 74 };
                 for (int layout = 0; layout < 4; ++layout)
@@ -9428,14 +9564,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         layoutArea.removeFromLeft(layoutWidths[layout]));
                     layoutArea.removeFromLeft(6);
                 }
-                // Same line: the compass comboboxes.
-                compassLabels[(size_t)manual].setBounds(layoutArea.removeFromLeft(62));
-                layoutArea.removeFromLeft(4);
-                compassLowBoxes[(size_t)manual].setBounds(layoutArea.removeFromLeft(90).reduced(0, 3));
-                layoutArea.removeFromLeft(4);
-                compassHighBoxes[(size_t)manual].setBounds(layoutArea.removeFromLeft(90).reduced(0, 3));
+                layoutArea.removeFromLeft(18);
+                layoutFollowsButtons[(size_t)manual].setBounds(layoutArea.removeFromLeft(230));
                 keyboards[(size_t)manual]->setBounds(keyboardArea.reduced(4, 4));
-                auto midiArea = row.removeFromLeft(232).reduced(8);   // narrow: leaves room for the stop pool
+                keyboards[(size_t)manual]->setKeyWidth((float)juce::jmax(100, keyboardArea.getWidth() - 8) / 75.0f);   // the 75 white keys of MIDI 0-127 fill the width (61 left the top octaves behind a scroll arrow)
+                auto midiArea = row.removeFromLeft(232).reduced(8);   // the keyboard / MIDI column
                 {
                     // Division label ("I.") above the MIDI column; learn messages (small) beside it.
                     auto head = midiArea.removeFromTop(38);
@@ -9457,19 +9590,26 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 channelLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
                 channelBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 channelNotes[(size_t)manual].setBounds(midiArea.removeFromTop(16));
-                // The MIDI transposition of the keyboard: right under the MIDI channel (0.9.90, the user).
+                // The MIDI transposition of the keyboard right under the MIDI channel (0.9.90), the compass under it
+                // (0.9.93, the user: the column is the keyboard's alone): three labels left, three boxes of one width right.
                 {
                     auto line = midiArea.removeFromTop(32).reduced(0, 3);
                     transposeLabels[(size_t)manual].setBounds(line.removeFromLeft(128));
                     transposeBoxes[(size_t)manual].setBounds(line);
+                    line = midiArea.removeFromTop(32).reduced(0, 3);
+                    compassLabels[(size_t)manual].setBounds(line.removeFromLeft(128));
+                    compassLowBoxes[(size_t)manual].setBounds(line);
+                    line = midiArea.removeFromTop(32).reduced(0, 3);
+                    compassToLabels[(size_t)manual].setBounds(line.removeFromLeft(128));
+                    compassHighBoxes[(size_t)manual].setBounds(line);
                 }
-                velocityButtons[(size_t)manual].setBounds(midiArea.removeFromTop(34).reduced(0, 2));   // 0.9.90: 42 -> 34 like the two under it
-                randomTuningButtons[(size_t)manual].setBounds(
-                    midiArea.removeFromTop(34).reduced(0, 2));
-                pipeCouplingButtons[(size_t)manual].setBounds(
-                    midiArea.removeFromTop(34).reduced(0, 2));
+                velocityButtons[(size_t)manual].setBounds(midiArea.removeFromTop(34).reduced(0, 2));   // 0.9.90: 42 -> 34
                 row.removeFromLeft(28);
                 auto settingsArea = row.removeFromLeft(260).reduced(8);
+                // 0.9.93: the two switches of the pipes' tuning head the sound column (they were under the MIDI boxes).
+                randomTuningButtons[(size_t)manual].setBounds(settingsArea.removeFromTop(30).reduced(0, 2));
+                pipeCouplingButtons[(size_t)manual].setBounds(settingsArea.removeFromTop(30).reduced(0, 2));
+                settingsArea.removeFromTop(4);
                 auto placeSetting = [](juce::Rectangle<int>& settingArea,
                     juce::Label& label, juce::Slider& slider)
                 {
@@ -9547,6 +9687,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         std::array<std::array<juce::ToggleButton, 4>, SamplerEngine::maxManuals> keyboardLayoutButtons;
         std::array<juce::ComboBox, SamplerEngine::maxManuals> compassLowBoxes, compassHighBoxes;   // division compass (lowest, highest key)
         std::array<juce::Label, SamplerEngine::maxManuals> compassLabels;
+        std::array<juce::Label, SamplerEngine::maxManuals> compassToLabels;                 // 0.9.93: "Compass to" (compassLabels reads "Compass from")
+        std::array<juce::ToggleButton, SamplerEngine::maxManuals> layoutFollowsButtons;     // 0.9.93: "follows MIDI transposition" of the bass octave layout
+        std::array<int, SamplerEngine::maxManuals> keyboardMarks{};                         // what the keyboard drawing marked last (layout, transposition, compass): repainted on a change
         std::array<juce::ComboBox, SamplerEngine::maxManuals> transposeBoxes;   // MIDI transposition of the keyboard
         std::array<juce::Label, SamplerEngine::maxManuals> transposeLabels;
         std::array<juce::TextEditor, SamplerEngine::maxManuals> outputEditors;
@@ -9730,6 +9873,19 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 compassLowBoxes[(size_t)manual].setSelectedId(config.compassLow + 1, juce::dontSendNotification);
                 compassHighBoxes[(size_t)manual].setSelectedId(config.compassHigh + 1, juce::dontSendNotification);
                 transposeBoxes[(size_t)manual].setSelectedId(juce::jlimit(-24, 24, config.midiTranspose) + 25, juce::dontSendNotification);
+                {
+                    // 0.9.93: "follows MIDI transposition" matters only with a layout other than Standard AND a transposition:
+                    // grey otherwise, and its tooltip says why. The keyboard drawing follows every change of the four values.
+                    auto& follows = layoutFollowsButtons[(size_t)manual];
+                    const bool matters = keyboardLayout != 0 && config.midiTranspose != 0;
+                    follows.setToggleState(config.bassLayoutFollowsTranspose, juce::dontSendNotification);
+                    if (follows.isEnabled() != matters) follows.setEnabled(matters);
+                    follows.setTooltip(matters
+                        ? "Off: the layout sits on the keys MIDI 36-44 as the keyboard sends them. On: it moves with the MIDI transposition and sits on the keys that play the division's lowest octave. The keyboard below shows where."
+                        : "No difference now: it matters with a layout other than Standard and a MIDI transposition other than 0.");
+                    const int marks = keyboardLayout + 8 * (config.midiTranspose + 24) + 512 * (config.bassLayoutFollowsTranspose ? 1 : 0) + 1024 * config.compassLow + 262144 * config.compassHigh;
+                    if (keyboardMarks[(size_t)manual] != marks) { keyboardMarks[(size_t)manual] = marks; keyboards[(size_t)manual]->repaint(); }
+                }
                 juce::StringArray outputNames;
                 for (int channel : config.outputChannels) outputNames.add(juce::String(channel + 1));
                 outputEditors[(size_t)manual].setText(outputNames.joinIntoString(","), false);
@@ -22979,7 +23135,7 @@ void MainComponent::showStopBuildingDialog(int)
                 cell.label->setText(perspectives[p], juce::dontSendNotification);
                 cell.label->setFont(juce::FontOptions(15.0f, juce::Font::bold));
                 cell.label->setTooltip("Perspective \"" + perspectives[p] + "\": one audio output per division. Double-click to rename it; "
-                    "drag it left or right to change the order of the perspectives (the Perspective prefixes, the voicing boxes and the audio tabs follow).");
+                    "drag it left or right to change the order of the perspectives (the Perspective prefixes, the voicing boxes and the rows of the Audio routing follow).");
                 cell.label->setEditable(false, true, false);   // double-click: rename (0.8.228)
                 {
                     auto* label = cell.label.get();
@@ -24517,7 +24673,7 @@ void MainComponent::loadSettings()
         audioRoutingExpandedSet = true;
         for (const auto& type : *expanded) if (type.toString().isNotEmpty()) audioRoutingExpanded.addIfNotAlreadyThere(type.toString());
     }
-    audioRoutingButtonSize = juce::jlimit(0, 2, (int)parsed.getProperty("audioRoutingButtonSize", 1));
+    audioRoutingButtonSize = juce::jlimit(0, 3, (int)parsed.getProperty("audioRoutingButtonSize", 1));   // 0.9.93: 3 = compact
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
     if (auto* folded = parsed.getProperty("configEditorCollapsed", juce::var()).getDynamicObject())
@@ -24737,6 +24893,7 @@ void MainComponent::loadSettings()
             manualConfigs[(size_t)i].bassOctaveLayout = juce::jlimit(0, 3,
                 (int)item.getProperty("bassOctaveLayout", 0));
             manualConfigs[(size_t)i].midiTranspose = juce::jlimit(-24, 24, (int)item.getProperty("midiTranspose", 0));
+            manualConfigs[(size_t)i].bassLayoutFollowsTranspose = (bool)item.getProperty("bassLayoutFollowsTranspose", false);   // 0.9.93
             manualConfigs[(size_t)i].compassLow = juce::jlimit(0, 127, (int)item.getProperty("compassLow", 36));
             manualConfigs[(size_t)i].compassHigh = juce::jlimit(manualConfigs[(size_t)i].compassLow, 127,
                 (int)item.getProperty("compassHigh", i == 0 ? 67 : 96));
@@ -25555,6 +25712,7 @@ void MainComponent::saveSettingsNow()
         item->setProperty("disableVelocity", config.disableVelocity);
         item->setProperty("bassOctaveLayout", config.bassOctaveLayout);
         item->setProperty("midiTranspose", config.midiTranspose);
+        if (config.bassLayoutFollowsTranspose) item->setProperty("bassLayoutFollowsTranspose", true);   // 0.9.93
         item->setProperty("compassLow", config.compassLow);
         item->setProperty("compassHigh", config.compassHigh);
         if (config.alias.isNotEmpty()) item->setProperty("alias", config.alias);   // 0.9.80
@@ -26720,6 +26878,30 @@ void MainComponent::timerCallback()
     if (settingsSavePending && !juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown()   // 0.9.90: the deferred write
         && juce::Time::getMillisecondCounterHiRes() - settingsLastWrittenMs >= 1000.0)
         saveSettingsNow();
+    // 0.9.93: one device through two drivers - looked at once a second; the Audio routing button's text is orange
+    // while it lasts and the Messages name it once (the cards of the dialog say it themselves).
+    if (++driverConflictDivider >= 40)
+    {
+        driverConflictDivider = 0;
+        const auto conflict = applicationReady.load() && activeFolderLoader == nullptr ? audioDriverConflict() : audioDriverConflictText;
+        if (conflict != audioDriverConflictText)
+        {
+            audioDriverConflictText = conflict;
+            if (conflict.isNotEmpty())
+            {
+                audioRoutingButton.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+                audioRoutingButton.setTooltip("One device plays through two drivers (" + conflict + "): less polyphony. Open the Audio routing and move its cables to one driver.");
+                CrashHandler::note("Audio routing: one device through two drivers - " + conflict);
+                noteMessage("One device through two drivers", conflict + ". It works, but two drivers on one device cost polyphony: in the Audio routing drag one of the two cards onto the other (ASIO where there is one).");
+            }
+            else
+            {
+                audioRoutingButton.removeColour(juce::TextButton::textColourOffId);
+                audioRoutingButton.setTooltip("The audio routes as cables between the organ and the sound cards, with the effects of every route");
+                CrashHandler::note("Audio routing: every device through one driver again");
+            }
+        }
+    }
     if (++lostModalDivider >= 20) { lostModalDivider = 0; bringLostModalsToFront(); }   // 0.9.29: every half second
     if (editorMeasureButton != nullptr)   // 0.9.48: the Editor's Measure... follows the loader like the Divisions dialog's (setEnabled with the same value is a no-op)
     {
@@ -29577,7 +29759,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             details << "The audio routes as they ran:" << routes;
             if (buffers.size() > 1 || rates.size() > 1)
                 advice << "\n\nThe routes differ in " << (buffers.size() > 1 ? "buffer size" : "") << (buffers.size() > 1 && rates.size() > 1 ? " and " : "")
-                       << (rates.size() > 1 ? "sample rate" : "") << ": give every device the same buffer and 48 kHz (see the manual, \"Audio drivers\").";
+                       << (rates.size() > 1 ? "sample rate" : "") << ": give every card the same buffer and 48 kHz (the Rate and Buffer boxes of the cards in the Audio routing).";
         }
     }
     // Advice: where the time goes. Routes on Windows Audio (one thread each),
@@ -29617,11 +29799,15 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
     if (aggregatedCount > 0)
         advice << "\n\n" << (aggregatedCount == 1 ? "One route plays" : juce::String(aggregatedCount) + " routes play") << " through Aggregated WASAPI, each rendered by its own thread "
                   "(\"Render threads for Aggregated WASAPI\"): " << aggregatedRoutes << ". For the most polyphony move them to one ASIO driver or Windows Audio device "
-                  "(all routes of a device rendered by the whole pool), or set to none what should not play; save the configuration and measure again.";
+                  "(all routes of a device rendered by the whole pool) in the Audio routing, or remove the cable of what should not play; save the configuration and measure again.";
     if (auxiliaryCount > 0)
         advice << "\n\n" << (auxiliaryCount == 1 ? "One auxiliary route has a device" : juce::String(auxiliaryCount) + " auxiliary routes have a device")
                << " - every pipe of the division rendered once more: " << auxiliaryRoutes
-               << ". If you do not need them, set them to none, save the configuration and measure again.";
+               << ". If you do not need them, remove their cables in the Audio routing, save the configuration and measure again.";
+    // 0.9.93: one device through two drivers (ASIO and Windows Audio on one card) - allowed, but it costs voices.
+    if (const auto conflict = audioDriverConflict(); conflict.isNotEmpty())
+        advice << "\n\nOne device plays through two drivers: " << conflict << ". In the Audio routing drag one of the two cards by its title onto the other "
+                  "(ASIO where there is one), so that every cable of the device plays through one driver, and measure again.";
     // The heaviest single route and its IR: a convolution costs its share at every
     // period whatever the polyphony - on a dry set with IRs it is the main cost.
     if (state->worstBlock > 0.15f && state->worstRoute.isNotEmpty())
@@ -29866,7 +30052,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
                       "shared stream in 10 ms packets (" << juce::roundToInt(aggregateRate / 100.0) << " samples): a smaller buffer only splits "
                       "the packet into shorter deadlines - an IR's tail FFT alone can exceed a block of " << smallAggregateBlock
                    << " - and does not lower the latency. Set the buffer to " << juce::roundToInt(aggregateRate / 100.0)
-                   << " or more on those routes, save the configuration and measure again.";
+                   << " or more in the Buffer box of that card in the Audio routing, save the configuration and measure again.";
     }
     // A buffer below 256 samples decides everything: at 64 samples (1.3 ms) the
     // sound breaks at a few hundred voices whatever the routes and IRs do. Then
@@ -29899,7 +30085,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             advice << "\n\nThe audio buffer of \"" << smallDevice << "\" is " << smallBlock << " samples (" << juce::String(ms, 1) << " ms): every block pays its fixed "
                       "costs, and short blocks pay them more often. 256 or 512 samples (" << juce::String(1000.0 * 512 / juce::jmax(1.0, smallRate), 1)
                    << " ms of latency at 512, still fine for an organ) usually give more polyphony; set in the "
-                   << (smallType.equalsIgnoreCase("ASIO") ? juce::String("driver's control panel") : juce::String("audio tab"))
+                   << (smallType.equalsIgnoreCase("ASIO") ? juce::String("driver's control panel") : juce::String("Buffer box of the card in the Audio routing"))
                    << (smallType.equalsIgnoreCase("JACK") ? juce::String(" (the value goes to PipeWire and holds for every JACK route)") : juce::String())
                    << " and measured again, if you want to see.";
         }
@@ -30781,6 +30967,18 @@ void MainComponent::showConfigurationEditor()
             viewport.setViewedComponent(&content, false);
             viewport.setScrollBarsShown(true, false);
             addAndMakeVisible(viewport);
+            // ORGAN_TEST_EDITOR_SECTION=<section title> (tests, 0.9.93): the editor scrolls to that section's header
+            // (the dialog snapshot pictures the window, and a division's section lies far below the first page).
+            if (const char* env = std::getenv("ORGAN_TEST_EDITOR_SECTION"))
+            {
+                juce::Component::SafePointer<Editor> safeThis(this);
+                juce::Timer::callAfterDelay(400, [safeThis, title = juce::String::fromUTF8(env)]
+                {
+                    if (safeThis == nullptr) return;
+                    for (const auto& row : safeThis->rows)
+                        if (row.header && row.title == title && row.label != nullptr) { safeThis->viewport.setViewPosition(0, row.label->getY()); break; }
+                });
+            }
             openFolder.setButtonText("Show settings.json");
             openFolder.onClick = [this] { this->owner.saveSettingsNow(); this->owner.settingsFile.revealToUser(); };
             addAndMakeVisible(openFolder);
@@ -31382,6 +31580,13 @@ void MainComponent::showConfigurationEditor()
                 "sizes - so the set must be loaded and its audio outputs configured first, and the result belongs to this "
                 "configuration: save it afterwards. Takes one to two minutes; the registration is restored afterwards.",
                 "Measure the maximum polyphony", true);
+            // 0.9.93: the detector stood among the console's looks (Console); it is the engine's own check of its output.
+            addToggle("Output discontinuity detector: count the clicks in the program's own output", o.outputDiscontinuityDetector.load(), [&o](bool state)
+                { o.outputDiscontinuityDetector.store(state); o.engine.setOutputDiscontinuityDetector(state); o.saveSettings(); },
+                "On: every jump between two blocks of the program's own output (after the rendering, at the end of every route, "
+                "on the way to the driver) is counted, written to the activity log as \"Output discontinuities\" with the route "
+                "and the stage, and shown as \"!N\" in the DSP cell for ten seconds. Its cost is a few microseconds per period. "
+                "Off: nothing is counted. The setting belongs to this computer.");
 
             //---------------------------------------------------------------- Global sound
             addSection("Global sound");
@@ -31875,12 +32080,6 @@ void MainComponent::showConfigurationEditor()
                 { o.loadLastCombinationsFile = state; o.saveSettings(); },
                 "The combinations file (all banks of pistons) last loaded or saved with this organ is read again once the "
                 "organ is loaded, on top of the combinations the configuration carries. Off: the configuration's own combinations only.");
-            addToggle("Output discontinuity detector: count the clicks in the program's own output", o.outputDiscontinuityDetector.load(), [&o](bool state)
-                { o.outputDiscontinuityDetector.store(state); o.engine.setOutputDiscontinuityDetector(state); o.saveSettings(); },
-                "On: every jump between two blocks of the program's own output (after the rendering, at the end of every route, "
-                "on the way to the driver) is counted, written to the activity log as \"Output discontinuities\" with the route "
-                "and the stage, and shown as \"!N\" in the DSP cell for ten seconds. Its cost is a few microseconds per period. "
-                "Off: nothing is counted. The setting belongs to this computer.");
             // Where the configurations and the samples live (0.8.190).
             addButtonWithNote("LibreOrgans folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
                 {
@@ -32025,15 +32224,19 @@ void MainComponent::showConfigurationEditor()
                         + "\n\nThe table loads and unloads folder trees, moves them between divisions, swaps divisions and "
                           "decides which folder forms which perspective of which stop.");
                 }
-                if (o.twoWindows)
-                    addCombo("Shown in window", { "Window 1 (main)", "Window 2" }, juce::jlimit(0, 1, o.divisionScreen[(size_t)manual]),
-                        [&o, manual](int index)
-                        {
-                            o.divisionScreen[(size_t)manual] = juce::jlimit(0, 1, index);
-                            if (index == 1 && !o.twoWindows) o.setTwoWindows(true);   // the second window opens when asked for
-                            o.saveSettings();
-                            if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);
-                        }, "A division is shown in one window only; the others share out the remaining width by their weights.");
+                // 0.9.93: always there, as in the Divisions dialog (it was shown only with two windows already on - the
+                // user could not send a division to window 2 from here); choosing Window 2 opens the second window.
+                addCombo("Shown in window", { "Window 1 (main)", "Window 2" }, o.twoWindows ? juce::jlimit(0, 1, o.divisionScreen[(size_t)manual]) : 0,
+                    [&o, manual](int index)
+                    {
+                        if (!o.twoWindows && index == 0) return;   // one window: nothing to change
+                        o.divisionScreen[(size_t)manual] = juce::jlimit(0, 1, index);
+                        if (index == 1 && !o.twoWindows) o.setTwoWindows(true);   // the second window opens when asked for
+                        o.saveSettings();
+                        if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);
+                    }, "A division is shown in one window only; Window 2 opens the second program window when it is not open yet.");
+                addText("Division alias", config.alias, false, [&o, manual](const juce::String& text) { o.setDivisionAlias(manual, text); },
+                    "The division's own name, shown beside its numeral in the header (\"I. Hauptwerk\"). Empty = the numeral alone. Travels with the organ.");
                 {
                     juce::StringArray devices{ "None" };
                     int selected = 0;
@@ -32063,6 +32266,15 @@ void MainComponent::showConfigurationEditor()
                     config.bassOctaveLayout = index;
                     o.saveSettings();
                 });
+                addToggle("Bass octave layout follows MIDI transposition", config.bassLayoutFollowsTranspose, [&o, &config](bool state)
+                {
+                    if (config.bassLayoutFollowsTranspose == state) return;
+                    o.panic();
+                    config.bassLayoutFollowsTranspose = state;
+                    o.refreshMidiRouting();
+                    o.saveSettings();
+                }, "Off: the layout sits on the keys MIDI 36-44 as the keyboard sends them. On: it moves with the MIDI transposition and "
+                   "sits on the keys that play the division's lowest octave. No difference with the Standard layout or a transposition of 0.");
                 {
                     juce::StringArray semitoneNames;
                     for (int semitones = -24; semitones <= 24; ++semitones)
@@ -32078,6 +32290,26 @@ void MainComponent::showConfigurationEditor()
                         o.saveSettings();
                     }, "The keys of this division's MIDI keyboard play this many semitones away from what they send: "
                        "-12 makes key 036 play the pipe of 024. Default 0.");
+                }
+                {
+                    // 0.9.93: the compass was in the Divisions dialog alone.
+                    juce::StringArray keyNames;
+                    for (int key = 12; key <= 120; ++key) keyNames.add(juce::MidiMessage::getMidiNoteName(key, true, true, 3) + " (" + juce::String(key) + ")");
+                    auto setCompass = [&o, &config, manual](int low, int high)
+                    {
+                        if (high < low) std::swap(low, high);
+                        if (config.compassLow == low && config.compassHigh == high) return;
+                        config.compassLow = low; config.compassHigh = high;
+                        o.engine.setManualCompass(manual, low, high);
+                        o.saveSettings();
+                        if (o.voicer) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);
+                    };
+                    const juce::String tip = "The division's lowest and highest key. Pipes a stop lacks inside the compass are filled from neighbouring pipes; "
+                        "keys outside it are free for another division on the same MIDI channel, or for MIDI learn.";
+                    addCombo("Compass from", keyNames, juce::jlimit(12, 120, config.compassLow) - 12,
+                        [&config, setCompass](int index) { setCompass(index + 12, config.compassHigh); }, tip, "Compass");
+                    addCombo("Compass to", keyNames, juce::jlimit(12, 120, config.compassHigh) - 12,
+                        [&config, setCompass](int index) { setCompass(config.compassLow, index + 12); }, tip, "Compass");
                 }
                 addInfo("Swell pedal controller", config.expressionController >= 0
                     ? "CC " + juce::String(config.expressionController) + " on channel " + juce::String(config.expressionChannel)
@@ -32095,62 +32327,12 @@ void MainComponent::showConfigurationEditor()
                     config.expressionInertiaMs, 300.0, [&o, &config](double value)
                 { config.expressionInertiaMs = (float)value; o.saveSettings(); },
                     "How slowly the shutters follow the pedal. Larger = heavier, smoother movement.");
-                addSlider("Division volume", -60.0, 12.0, 0.1, " dB", config.divisionVolumeDb, 0.0,
-                    [&o, &config, manual](double value)
-                {
-                    config.divisionVolumeDb = (float)value;
-                    o.engine.setManualDivisionGain(manual, juce::Decibels::decibelsToGain(config.divisionVolumeDb));
-                    o.saveSettings();
-                });
-                addText("Audio output channels (default perspective)", channelsToText(config.outputChannels), false,
-                    [&o, &config, manual](const juce::String& text)
-                {
-                    config.outputChannels = textToChannels(text);
-                    o.engine.setManualOutputChannels(manual, config.outputChannels);
-                    o.engine.setPerspectiveOutputChannels(manual, "default", config.outputChannels);
-                    o.saveSettings();
-                }, "Channel numbers of the division's audio device, e.g. 1, 2");
-                // Only the perspectives this division has now (the loaded ranks and the
-                // Stop List's columns): entries left over from earlier pattern lists
-                // ("difMk2H" before it joined the Diffuse line) are not shown.
-                std::vector<juce::String> livePerspectives = o.engine.getPerspectivesForManual(manual);
-                for (const auto& column : config.stopBuild.perspectives) livePerspectives.push_back(column);
-                auto isLive = [&livePerspectives](const juce::String& perspective)
-                {
-                    for (const auto& live : livePerspectives) if (live.equalsIgnoreCase(perspective)) return true;
-                    return false;
-                };
-                for (const auto& entry : config.perspectiveAudio)
-                {
-                    const auto perspective = juce::String(entry.first).fromFirstOccurrenceOf("|", false, false);
-                    if (perspective.equalsIgnoreCase("default") || !isLive(perspective)) continue;
-                    const auto key = entry.first;
-                    addText("Perspective \"" + perspective + "\" output channels", channelsToText(entry.second.outputChannels), false,
-                        [&o, &config, manual, perspective, key](const juce::String& text)
-                    {
-                        auto& route = config.perspectiveAudio[key];
-                        route.outputChannels = textToChannels(text);
-                        o.engine.setPerspectiveOutputChannels(manual, perspective, route.outputChannels);
-                        o.saveSettings();
-                    }, "Channel numbers of the perspective's audio device, e.g. 3, 4", "Perspective output channels");
-                    addSlider("Perspective \"" + perspective + "\" volume", -31.0, 6.0, 0.1, " dB",
-                        entry.second.volumeDb, 0.0, [&o, &config, manual, perspective, key](double value)
-                    {
-                        auto& route = config.perspectiveAudio[key];
-                        route.volumeDb = (float)value;
-                        o.engine.setPerspectiveVolumeDb(manual, perspective, route.volumeDb);
-                        o.saveSettings();
-                    }, "-31 dB switches the perspective off completely.", "Perspective volume");
-                    addSlider("Perspective \"" + perspective + "\" channel separation", 0.0, 100.0, 1.0, " %",
-                        entry.second.channelSeparation * 100.0, 100.0, [&o, &config, manual, perspective, key](double value)
-                    {
-                        auto& route = config.perspectiveAudio[key];
-                        route.channelSeparation = (float)(value / 100.0);
-                        o.engine.setPerspectiveChannelSeparation(manual, perspective, route.channelSeparation);
-                        o.saveSettings();
-                    }, "100 % = every pipe only on its own channel pair; less lets the other channels carry that share too; "
-                       "0 % = all channels carry the same sum.", "Perspective channel separation");
-                }
+                // 0.9.93 (the user): the audio is a module of its own - the sound card, the output channels, the levels and
+                // the effects of a division's routes are set in the Audio routing (the rows that stood here wrote a
+                // route's volume and separation past its LINKED state).
+                addButton("Audio and effects", "Audio routing...", [&o] { o.showAudioRoutingDialog(); },
+                    "The sound cards, the output channels and the effects (volume, channel separation, equalizer, IR reverb) of this division's "
+                    "routes are set in the Audio routing: drag a cable, press fx on a row.");
                 addToggle("Random tuning error of pipes", config.allowRandomTuningError, [&o, &config, manual](bool state)
                 { config.allowRandomTuningError = state; o.engine.setManualRandomTuningAllowed(manual, state); o.saveSettings(); });
                 addToggle("Pipe coupling (detuned pipes pull together)", config.allowPipeCoupling, [&o, &config, manual](bool state)
@@ -32170,7 +32352,6 @@ void MainComponent::showConfigurationEditor()
                             button.setButtonText(shortNames[target]);
                             button.setToggleState(target == self || (current & (1u << target)) != 0, juce::dontSendNotification);
                             button.setEnabled(target != self);
-                            button.setVisible(target < count);
                             button.onClick = [this, self, setMask]
                             {
                                 uint8_t mask = (uint8_t)(1u << self);
@@ -32178,7 +32359,8 @@ void MainComponent::showConfigurationEditor()
                                     if (buttons[(size_t)t].getToggleState()) mask |= (uint8_t)(1u << t);
                                 setMask(mask);
                             };
-                            addAndMakeVisible(button);
+                            addChildComponent(button);
+                            button.setVisible(target < count);   // 0.9.93: only the divisions the organ has (addAndMakeVisible after setVisible showed all eight)
                         }
                     }
                     void resized() override

@@ -63,9 +63,9 @@ public:
         sizeLabel.setText("Button size:", juce::dontSendNotification);
         sizeLabel.setJustificationType(juce::Justification::centredRight);
         addAndMakeVisible(sizeLabel);
-        sizeBox.addItem("small", 1); sizeBox.addItem("normal", 2); sizeBox.addItem("large", 3);
-        sizeBox.setSelectedId(juce::jlimit(0, 2, owner.audioRoutingButtonSize) + 1, juce::dontSendNotification);
-        sizeBox.setTooltip("The size of the sound card buttons, the outputs and their names");
+        sizeBox.addItem("compact", 4); sizeBox.addItem("small", 1); sizeBox.addItem("normal", 2); sizeBox.addItem("large", 3);   // 0.9.93: compact = size 3
+        sizeBox.setSelectedId(juce::jlimit(0, 3, owner.audioRoutingButtonSize) + 1, juce::dontSendNotification);
+        sizeBox.setTooltip("The size of the sound card buttons, the outputs and their names. Compact, for a small screen: small squares, the first ten letters of a channel's name (the whole name in its tooltip).");
         sizeBox.onChange = [this] { owner.audioRoutingButtonSize = sizeBox.getSelectedId() - 1; owner.saveSettings(); rebuild(); };
         addAndMakeVisible(sizeBox);
         // The master strip: the console's master volume (the same value, two places - never a copy), the console's
@@ -229,13 +229,15 @@ public:
             g.setColour(card.busy ? juce::Colours::grey : juce::Colours::white);
             g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
             g.drawFittedText(card.name, card.bounds.getX() + 10, card.bounds.getY() + 4, card.bounds.getWidth() - 20, 20, juce::Justification::centredLeft, 1);
-            g.setColour(card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
+            // The status line; orange with the note when the device also plays through another driver (0.9.93 - the
+            // figures of the status are in the card's tooltip then).
+            g.setColour(card.sharedNote.isNotEmpty() ? glow : card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
             g.setFont(juce::FontOptions(11.5f));
-            g.drawFittedText(card.type + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 24, card.bounds.getWidth() - 20, 16, juce::Justification::centredLeft, 1);
-            // The channel names, vertical, above the jacks (read from the bottom up).
+            g.drawFittedText(card.sharedNote.isNotEmpty() ? card.sharedNote : card.type + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 24, card.bounds.getWidth() - 20, 16, juce::Justification::centredLeft, 1);
+            // The channel names, vertical, above the jacks (read from the bottom up). Compact: the first ten letters.
             if (card.nameBand > 0)
             {
-                g.setFont(juce::FontOptions(12.0f * scale()));
+                g.setFont(juce::FontOptions(compact() ? 10.0f : 12.0f * scale()));
                 for (int ch = 0; ch < (int)card.jacks.size() && ch < card.jackNames.size(); ++ch)
                 {
                     const auto jack = card.jacks[(size_t)ch];
@@ -244,7 +246,9 @@ public:
                     g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi, band.getCentreX(), band.getCentreY()));
                     const auto rotated = juce::Rectangle<float>(band.getHeight(), band.getWidth()).withCentre(band.getCentre());
                     g.setColour(card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
-                    g.drawFittedText(card.jackNames[ch], rotated.toNearestInt(), juce::Justification::centredLeft, 1, 0.9f);
+                    const auto& full = card.jackNames[ch];
+                    if (compact()) g.drawText(full.length() > 10 ? full.substring(0, 10) + "..." : full, rotated.toNearestInt(), juce::Justification::centredLeft, false);
+                    else g.drawFittedText(full, rotated.toNearestInt(), juce::Justification::centredLeft, 1, 0.9f);
                     g.restoreState();
                 }
             }
@@ -271,7 +275,7 @@ public:
                 }
                 if (lit) { g.setColour(glow.withAlpha(0.35f)); g.fillRoundedRectangle(jack.toFloat().expanded(4.0f), 5.0f); }
                 g.setColour(card.busy ? juce::Colours::grey : lit || !held.empty() ? juce::Colours::black : juce::Colours::lightgrey);
-                g.setFont(juce::FontOptions(10.5f * scale(), juce::Font::bold));
+                g.setFont(juce::FontOptions(juce::jmax(8.5f, 10.5f * scale()), juce::Font::bold));
                 g.drawText(juce::String(ch + 1), jack, juce::Justification::centred);
             }
             if (card.jacks.empty())
@@ -442,7 +446,18 @@ public:
         for (const auto& row : rows)
             if (row.bounds.contains(p)) return row.label + ": " + row.whereText;
         for (const auto& card : cards)
-            if (card.bounds.contains(p)) return card.name + " (" + card.type + "): " + card.status + (card.busy ? "\n" + card.busyReason : juce::String());
+            if (card.bounds.contains(p))
+            {
+                // An output (its square or its name above it): the whole name of the channel (compact shows ten letters).
+                for (int ch = 0; ch < (int)card.jacks.size() && ch < card.jackNames.size(); ++ch)
+                {
+                    const auto jack = card.jacks[(size_t)ch];
+                    if (juce::Rectangle<int>(jack.getX(), jack.getY() - card.nameBand, jack.getWidth(), jack.getHeight() + card.nameBand).contains(p))
+                        return "Output " + juce::String(ch + 1) + ": " + card.jackNames[ch];
+                }
+                return card.name + " (" + card.type + "): " + card.status + (card.busy ? "\n" + card.busyReason : juce::String())
+                    + (card.sharedNote.isNotEmpty() ? "\nThis device also plays through " + card.sharedWith + ": one device, two drivers. It works; for the most polyphony drag one of the two cards by its title onto the other - every cable then plays through one driver." : juce::String());
+            }
         for (const auto& section : typeSections)
             if (section.bounds.contains(p)) return section.collapsed ? "Click to show the cards of this driver" : "Click to hide the cards of this driver";
         return {};
@@ -462,6 +477,7 @@ private:
     struct Card
     {
         juce::String key, type, name, status, busyReason, busyBecauseOf;   // busyBecauseOf = the key of the open card of another driver on the same hardware
+        juce::String sharedNote, sharedWith;                              // 0.9.93: "Also open through ASIO ..." - the orange line of a card that shares its device with another driver (sharedWith = that card's name, for the tooltip)
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
@@ -507,9 +523,13 @@ private:
         MainComponent& owner;
     };
 
-    float scale() const noexcept { return owner.audioRoutingButtonSize == 0 ? 0.85f : owner.audioRoutingButtonSize == 2 ? 1.25f : 1.0f; }
-    int jackWidth() const noexcept { return juce::roundToInt(30.0f * scale()); }
-    int jackHeight() const noexcept { return juce::roundToInt(24.0f * scale()); }
+    // 0.9.93: "compact" (size 3, for small screens): small squares for the outputs, ten letters of a channel's name,
+    // a lower card - the grid takes little height.
+    bool compact() const noexcept { return owner.audioRoutingButtonSize == 3; }
+    float scale() const noexcept { return compact() ? 0.7f : owner.audioRoutingButtonSize == 0 ? 0.85f : owner.audioRoutingButtonSize == 2 ? 1.25f : 1.0f; }
+    int jackWidth() const noexcept { return compact() ? 18 : juce::roundToInt(30.0f * scale()); }
+    int jackHeight() const noexcept { return compact() ? 16 : juce::roundToInt(24.0f * scale()); }
+    int cardBase() const noexcept { return compact() ? 92 : cardHeight; }   // a card's height without the band of channel names
     int chipHeight() const noexcept { return juce::roundToInt(36.0f * scale()); }
     int cellWidth() const noexcept { return cardWidth + cellGap; }
 
@@ -553,16 +573,23 @@ private:
         return parts.joinIntoString("+");
     }
     // A word of a device name that identifies the hardware ("Fireface", "Komplete"): letters only, 5+ long, not generic.
-    static juce::StringArray hardwareWords(const juce::String& name)
+    static juce::StringArray hardwareWords(const juce::String& name) { return MainComponent::audioHardwareWords(name); }   // 0.9.93: one rule, MainComponent's (the conflict note of the top bar uses it too)
+    // The hardware a card stands for: its name's words; the aggregate by the outputs its routes use.
+    juce::StringArray cardHardwareWords(const Card& card) const
     {
-        static const juce::StringArray generic{ "audio", "output", "outputs", "input", "speakers", "definition", "device", "driver", "default", "digital", "analog", "aggregated", "wasapi", "windows", "all", "high", "realtek", "nvidia", "intel" };
+        if (!card.type.containsIgnoreCase("Aggregated")) return hardwareWords(card.name);
         juce::StringArray words;
-        for (const auto& raw : juce::StringArray::fromTokens(name, " ()[]-_/,.:", ""))
-        {
-            const auto word = raw.retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toLowerCase();
-            if (word.length() >= 5 && !generic.contains(word)) words.addIfNotAlreadyThere(word);
-        }
+        for (const auto& route : card.routes)
+            for (const int channel : channelsOf(route))
+                if (channel >= 0 && channel < card.jackNames.size())
+                    for (const auto& word : hardwareWords(card.jackNames[channel])) words.addIfNotAlreadyThere(word);
         return words;
+    }
+    static juce::String driverFamily(const juce::String& type)
+    {
+        if (type.containsIgnoreCase("ASIO")) return "ASIO";
+        if (type.containsIgnoreCase("WASAPI") || type.containsIgnoreCase("Windows Audio")) return "Windows Audio";
+        return type;
     }
     // The driver sections' order: ASIO, Aggregated WASAPI, the rest as listed.
     static int typeRank(const juce::String& type)
@@ -676,7 +703,7 @@ private:
                     const int outputs = card.jackNames.size();
                     card.jacks.assign((size_t)juce::jmax(0, outputs), {});
                     for (const auto& jackName : card.jackNames)   // a band only for real names ("ADAT (7+8) ..."), not "3" or "Output channel 3"
-                        if (jackName.trim().retainCharacters("0123456789").length() != jackName.trim().length() && !jackName.trim().startsWithIgnoreCase("output channel ")) { card.nameBand = juce::roundToInt(180.0f * scale()); break; }
+                        if (jackName.trim().retainCharacters("0123456789").length() != jackName.trim().length() && !jackName.trim().startsWithIgnoreCase("output channel ")) { card.nameBand = compact() ? 74 : juce::roundToInt(180.0f * scale()); break; }
                     card.status = juce::String(outputs) + " outputs, " + juce::String(juce::roundToInt(card.rate)) + " Hz, buffer " + juce::String(card.buffer)
                         + " (" + juce::String(1000.0 * card.buffer / juce::jmax(1.0, card.rate), 1) + " ms), latency " + juce::String(card.latency) + " samples";
                 }
@@ -688,11 +715,29 @@ private:
             for (const auto& other : fresh)
             {
                 if (!other.open || other.type == card.type) continue;
-                for (const auto& word : hardwareWords(other.name))
+                // 0.9.93 (the user): on Windows a card plays through ASIO and Windows Audio at once - only an
+                // exclusive-mode driver keeps the hardware to itself. Elsewhere (ALSA) the card is busy, as before.
+               #if JUCE_WINDOWS
+                if (!card.type.containsIgnoreCase("Exclusive") && !other.type.containsIgnoreCase("Exclusive")) continue;
+               #endif
+                for (const auto& word : cardHardwareWords(other))
                     if (words.contains(word)) { card.busy = true; card.busyBecauseOf = other.key; card.busyReason = "busy: " + other.name + " is open through " + other.type + " - drag that card (or its last cable) here to move everything over"; break; }
                 if (card.busy) break;
             }
             if (card.busy) card.status = card.busyReason;
+        }
+        // 0.9.93: two OPEN cards of different drivers on one device: both say so (an orange line in the card).
+        for (auto& card : fresh)
+        {
+            if (!card.open) continue;
+            const auto words = cardHardwareWords(card);
+            for (const auto& other : fresh)
+            {
+                if (&other == &card || !other.open || driverFamily(other.type) == driverFamily(card.type)) continue;
+                bool same = false;
+                for (const auto& word : cardHardwareWords(other)) if (words.contains(word)) { same = true; break; }
+                if (same) { card.sharedNote = "Also open through " + other.type + ": two drivers, less polyphony"; card.sharedWith = other.name; break; }   // short: it must fit a 372 px card (the first build cut it)
+            }
         }
         for (auto& card : fresh) card.chip = card.routes.empty() && !card.open;
         // Full cards first (the remembered cells decide the places, not this order), then the buttons by driver rank.
@@ -918,7 +963,7 @@ private:
         {
             if (card.chip) continue;
             const int n = (int)card.jacks.size();
-            const int jw = n > 0 ? juce::jlimit(18, jw0, (columns * cw - cellGap - 20) / juce::jmax(1, n) - 2) : jw0;
+            const int jw = n > 0 ? juce::jlimit(juce::jmin(18, jw0), jw0, (columns * cw - cellGap - 20) / juce::jmax(1, n) - 2) : jw0;
             card.width = juce::jmax(cardWidth, 20 + n * (jw + 2));
             card.span = juce::jmax(1, juce::jmin(columns, (card.width + cellGap + cw - 1) / cw));
             if (card.cell.first >= 0 && card.cell.first + card.span > columns) card.cell.first = juce::jmax(0, columns - card.span);
@@ -945,8 +990,8 @@ private:
         int maxRow = -1;
         for (const auto& card : cards) if (!card.chip) maxRow = juce::jmax(maxRow, card.cell.second);
         // The rows' heights (the tallest card) and the corridors under them (the cables that end in that row).
-        std::vector<int> rowHeights((size_t)maxRow + 1, cardHeight), corridorCount((size_t)maxRow + 1, 0);
-        for (const auto& card : cards) if (!card.chip) rowHeights[(size_t)card.cell.second] = juce::jmax(rowHeights[(size_t)card.cell.second], cardHeight + card.nameBand);
+        std::vector<int> rowHeights((size_t)maxRow + 1, cardBase()), corridorCount((size_t)maxRow + 1, 0);
+        for (const auto& card : cards) if (!card.chip) rowHeights[(size_t)card.cell.second] = juce::jmax(rowHeights[(size_t)card.cell.second], cardBase() + card.nameBand);
         for (const auto& cable : cables) ++corridorCount[(size_t)cards[(size_t)cable.card].cell.second];
         rowTop.assign((size_t)maxRow + 1, 0); rowBottom.assign((size_t)maxRow + 1, 0);
         int gy = sourcesTop - 2;
@@ -960,9 +1005,9 @@ private:
         {
             auto& card = cards[(size_t)i];
             if (card.chip) continue;
-            card.bounds = { gridLeft + card.cell.first * cw, rowTop[(size_t)card.cell.second], card.width, cardHeight + card.nameBand };
+            card.bounds = { gridLeft + card.cell.first * cw, rowTop[(size_t)card.cell.second], card.width, cardBase() + card.nameBand };
             const int n = (int)card.jacks.size();
-            const int jw = n > 0 ? juce::jlimit(18, jw0, (card.width - 20) / n - 2) : jw0;
+            const int jw = n > 0 ? juce::jlimit(juce::jmin(18, jw0), jw0, (card.width - 20) / n - 2) : jw0;
             for (int ch = 0; ch < n; ++ch)
                 card.jacks[(size_t)ch] = { card.bounds.getX() + 10 + ch * (jw + 2), card.bounds.getBottom() - jh - 4, jw, jh };
             if (auto* c = controls[i])
@@ -978,7 +1023,7 @@ private:
             int cy = maxRow >= 0 ? gridBottom : sourcesTop - 2;
             for (int r = 0; r <= maxRow + 1; ++r)
             {
-                const int top = r <= maxRow ? rowTop[(size_t)r] : cy, h = r <= maxRow ? rowHeights[(size_t)r] : cardHeight;
+                const int top = r <= maxRow ? rowTop[(size_t)r] : cy, h = r <= maxRow ? rowHeights[(size_t)r] : cardBase();
                 for (int c = 0; c < columns; ++c)
                 {
                     const juce::Rectangle<int> rect(gridLeft + c * cw, top, cw - cellGap, h);
@@ -987,7 +1032,7 @@ private:
                 }
             }
         }
-        fullCardsBottom = (maxRow >= 0 ? gridBottom : sourcesTop - 2) + cardHeight + 10;   // the spare row stays free below the grid
+        fullCardsBottom = (maxRow >= 0 ? gridBottom : sourcesTop - 2) + cardBase() + 10;   // the spare row stays free below the grid
         // The other cards as buttons, a collapsible section per driver (ASIO first ...), below the grid and the sources.
         chipsTop = juce::jmax(fullCardsBottom + 10, sourcesBottom + 24);
         int cy = chipsTop + 24, cx = 12;

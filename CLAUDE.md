@@ -3823,7 +3823,65 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the box of "I. default" lit in the picture taken while it sounds), test_0992_inline.ps1 (Rural with
   renderThreadsWasapi 1 in the settings copy = the inline path: "0 route job(s) ... (356224 voice renders)"),
   test_0989_measure.ps1 (its clicks say "Measure Polyphony" now).
+  0.9.93 (17 Nov 2026, the user's design in four rounds, "oprav přesně, jak jsi naplánoval. Beru vše"): THE PRINCIPLE -
+  AUDIO IS A MODULE OF ITS OWN (Audio routing + Effects); nothing audio in the Divisions dialog or in the Editor's
+  division sections. (1) EDITOR, division sections: the rows Division volume, Audio output channels (default
+  perspective), Perspective output channels / volume / channel separation are GONE (they wrote a route's values past
+  LINKED) - one row "Audio and effects" with the button "Audio routing..."; added "Division alias" (addText ->
+  setDivisionAlias), "Compass from" / "Compass to" (helpSection "Compass"), "Bass octave layout follows MIDI
+  transposition"; "Shown in window" is always there (it was inside `if (o.twoWindows)`); the Output discontinuity
+  detector moved from Console to the end of Engine; TargetRow showed all eight division boxes (addAndMakeVisible
+  after setVisible) - addChildComponent + setVisible. Dev hook `ORGAN_TEST_EDITOR_SECTION=<title>` scrolls the Editor
+  to a section's header (with "configEditorCollapsed" {"Pedal": false} in the settings copy the section is open).
+  (2) MIDI: the COMPASS is the MIDI range of a division (the user: a second range box would be "EXTRÉMNĚ matoucí" -
+  never add one); `ManualConfig::bassLayoutFollowsTranspose` (key "bassLayoutFollowsTranspose", written when true;
+  MidiRouting carries it) and `MainComponent::routedNoteFor(layout, semitones, follows, note)` = the one mapping
+  (follows: transpose first, then the layout on the division's notes 36-44; else the layout on MIDI 36-44, then the
+  transposition) used by handleIncomingMidiMessage and mapKeyboardNote. (3) DIVISIONS DIALOG: left column = the
+  keyboard's alone (numeral + alias, Window, MIDI device, channel, note, then three label/box rows of one width:
+  MIDI transposition, Compass from, Compass to (`compassToLabels`), Disable MIDI velocity); Allow Random Tuning Error
+  and Allow Pipe Coupling head the second column; the layout line ends with `layoutFollowsButtons` ("follows MIDI
+  transposition", grey with a tooltip saying why when the layout is Standard or the transposition 0); the keyboard
+  runs to `dialogRightEdge` (232+28+260+28+260-6 from the content's left = the wind column's boxes) with
+  setKeyWidth(width / 75) - 75 white keys of MIDI 0-127 (61 left a scroll arrow); Close ends at the same edge.
+  `LearnKeyboard::routedNote/compass/transposition` (std::functions set by the dialog) -> paint: white keys outside
+  the compass or left out by the layout darkened (RectangleList less every black key), dark black keys grey
+  0xff4a4a4a, a key the layout moves carries the note it plays in orange; `keyboardMarks` repaints on a change.
+  LESSON: `TextEditor::setFont` changes the font of text typed LATER - the alias set before it stayed small; use
+  `applyFontToAllText`. (4) AUDIO ROUTING: `audioRoutingButtonSize` 3 = "compact" (first item of the combo, id 4):
+  `compact()`, scale 0.7, jacks 18 x 16, `cardBase()` 92 instead of cardHeight 118, nameBand 74, a channel's name cut
+  to 10 letters + "..." (drawText, the whole name in the tooltip of the jack or its name: "Output N: ..."). TWO DRIVERS
+  ON ONE DEVICE: on Windows a card of another driver is NOT busy any more unless one of the two types is an
+  "Exclusive" mode (Linux/macOS keep the busy rule); two OPEN cards of different driver FAMILIES (`driverFamily`:
+  ASIO / Windows Audio incl. the aggregate / the type) sharing a hardware word get `Card::sharedNote` = "Also open
+  through <type>: two drivers, less polyphony" drawn as the card's status line in orange (the note alone - with the
+  type prefix it was cut on a 372 px card; the figures and what to do are in the tooltip); the aggregate's hardware =
+  the words of the outputs its routes use (`cardHardwareWords`). `MainComponent::audioHardwareWords` (the one rule,
+  AudioRouting's hardwareWords forwards to it) and `audioDriverConflict()` (routes -> uses -> pairs of different
+  families sharing a word), looked at once a second in timerCallback: `audioDriverConflictText` change -> the top
+  bar's Audio routing button text orange + tooltip, a Messages note once, log "Audio routing: one device through
+  two drivers - ..."; the measurement's advice has the paragraph too. (5) STALE TEXTS fixed: the safe-start notice,
+  "Audio devices not available", "No audio", the Stop List header tooltip, the measurement's "set to none" / "audio
+  tab" / "on those routes" / "Audio drivers" - all name the Audio routing (its cards' Buffer / Reopen, "remove the
+  cable"). Still in the code and NOT built: AudioTabPanel, StopPoolPanel, the "Set for all" tick boxes (dead since
+  0.9.89; a separate cleanup). Manual: 5.1, Audio routing, 8.1 (detector), 8.6 (Division alias, Compass, Bass octave
+  layout follows MIDI transposition, Audio and effects; the five audio headings gone); %TEMP%\manual_links.py checks
+  headings/links (233 / 110, no duplicate, none broken). Test %TEMP%\test_0993_gui.ps1 (compact, I. default onto
+  "ASIO Fireface USB" beside the aggregate's Fireface endpoints -> both cards orange, the top bar button orange; the
+  pedal's Divisions dialog with short octave, -12 and follows; the Editor scrolled to Pedal).
 ## Pending for the next session (delete when done)
+- DEFAULT AUDIO LAYOUT (17 Nov 2026, the user's question during 0.9.93, PROPOSED, not coded - wait for his word):
+  "it is annoying having each new organ loaded with the silly default WASAPI card ... the division and perspective
+  volumes are taken from Hauptwerk ODF and they make the use of loaded audio configurations impossible". Proposal
+  given: (a) split the ORGAN's balance from the user's audio: the import's route levels (0.8.126 medians per division
+  x perspective, today in `perspectiveAudio[key].volumeDb`) go into a separate per-route `organLevelDb` saved with
+  the organ and summed into the route gain (engine.setPerspectiveVolumeDb(volume + organLevel)), shown as a line in
+  the Volume module, never touched by a layout or LINKED; (b) an AUDIO LAYOUT = what the Audio routing shows (card,
+  channels, rate/buffer, the user's effects and LINKED) per perspective NAME and division number, kept as this
+  computer's default (a file beside settings.json) with "Use this layout for new organs" in the Audio routing and
+  Save layout... / Load layout... for alternatives; an organ without devices of this computer (published/portable,
+  Hauptwerk import, dropped folders) takes the default at load, perspectives matched by name (unknown ones take the
+  layout's first perspective, noted in Messages); "load last at startup" is not needed (a saved organ keeps its own).
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
   division I, then AdlingtonHallVol0.CompPkg.Hauptwerk.rar onto division II with "Load the folders" (as if without

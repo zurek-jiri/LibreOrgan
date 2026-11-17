@@ -12,6 +12,40 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.93] - 2026-11-17
+
+### Added
+- Audio routing: *compact* button size for small screens - small squares for
+  the outputs, the first ten letters of a channel's name (the whole name in
+  its tooltip), low cards.
+- Bass octave layout *follows MIDI transposition* (Divisions dialog and
+  Editor): the layout sits on the keys that play the division's lowest
+  octave instead of MIDI 36 to 44. Off by default.
+- The keyboard of the Divisions dialog shows what the division takes: the
+  keys outside the compass and the keys a layout leaves out are dark, a moved
+  key carries the note it plays.
+- Configuration Editor, division sections: *Division alias*, *Compass from*
+  and *Compass to*; *Shown in window* is always there (it was shown only with
+  two windows already open).
+
+### Changed
+- On Windows a device may play through ASIO and Windows Audio at once (the
+  card was grey until every cable had left the other driver). Both cards say
+  so in an orange line, the *Audio routing* button of the top bar turns
+  orange, the Messages and the measurement's advice name it. Linux keeps the
+  restriction.
+- The audio left the Configuration Editor: the division sections no longer
+  carry the output channels, the perspective volume and separation or the
+  division volume (they wrote a route's values past its LINKED state) - one
+  *Audio routing...* button instead.
+- Divisions dialog: the left column is the keyboard's alone (alias, window,
+  MIDI device, channel, transposition, Compass from / to, velocity); the two
+  *Allow* switches head the second column; the keyboard runs to the right
+  edge of the wind column.
+- *Output discontinuity detector* moved from Console to Engine.
+- Messages, the measurement's advice and tooltips no longer send the user to
+  the audio tabs that are gone: they name the Audio routing.
+
 ## [0.9.92] - 2026-11-17
 
 ### Fixed

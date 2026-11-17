@@ -622,7 +622,7 @@ that sound with it.
 ### Perspective boxes
 
 One on/off box per microphone perspective of the stop (their volumes are the
-routes' volumes in the Divisions dialog).
+routes' volumes in the [Effects](#53-effects) of the Audio routing).
 
 ### Velocity layer boxes
 
@@ -870,11 +870,17 @@ the *Audio routing...* button at the bottom opens it.
   program runs is opened at once.
 - *Ignore MIDI velocity (organ keys)* (the dialog says *Disable MIDI
   velocity*): on by default - every key is a full stroke ([Velocity layers](#35-velocity-layers)).
-- *Bass octave layout* for historic bass octaves; *Compass*: the lowest and
-  highest key (defaults: pedal 36 to 67, manuals 36 to 96; keys outside are
-  silent on every stop of the division); *MIDI transposition*: the keyboard
-  plays this many semitones away.
-- The keyboard drawing shows the last key with its velocity.
+- *MIDI transposition*: the keyboard plays this many semitones away.
+  [Compass](#compass) *from* and *to*: the lowest and highest key (defaults:
+  pedal 36 to 67, manuals 36 to 96); keys outside play nothing on this
+  division and are free for another division on the same channel or for MIDI
+  learn.
+- *Bass octave layout* for historic bass octaves, with
+  [follows MIDI transposition](#bass-octave-layout-follows-midi-transposition).
+- The keyboard drawing shows what the division takes: the keys outside the
+  compass and the keys a layout leaves out are dark, a key the layout moves
+  carries the note it plays; the last key shows its velocity.
+- The alias of the division is typed beside its numeral.
 
 ## 5.2 Swell, tremulant, wind
 
@@ -932,11 +938,16 @@ in a section per driver - ASIO first and unfolded, then Aggregated WASAPI,
 then the rest, folded (the orange caption folds and unfolds; without ASIO
 the aggregate comes first): drop a perspective onto one and the card opens
 with its first pair and moves up among the cards in use. *Button size* sets
-the size of those buttons, the outputs and their names. A card busy through
-another driver on the same hardware is grey; it takes a drop only when the
-drop moves every route off that other card - drag the whole card (by its
-title) or its last cable onto the grey one and everything plays through it
-(a WASAPI card to its ASIO version, say). The cards in use sit on a grid of cells like the
+the size of those buttons, the outputs and their names; *compact*, for a
+small screen, draws small squares and the first ten letters of a channel's
+name (the whole name in its tooltip), so the cards are low. On Windows a
+device may play through two drivers at once (ASIO and Windows Audio): both
+cards then say so in an orange line and the *Audio routing* button of the top
+bar turns orange - it works, but costs polyphony; drag one of the two cards by
+its title onto the other and every cable plays through one driver. Only an
+exclusive-mode driver keeps a card to itself there. On Linux a card open
+through another driver is grey; it takes a drop only when the drop moves
+every route off that other card. The cards in use sit on a grid of cells like the
 stops: drag a card by its title onto a free cell (dashed while you drag,
 orange under the mouse) or onto another card to swap their places; the
 cables run in the aisles between the cards, never across one.
@@ -1431,6 +1442,12 @@ configuration afterwards; measure again after a change of routes, IRs,
 buffer or samples. The same button sits in the header of
 [Audio routing](#audio-routing). Details: [The polyphony measurement](#108-the-polyphony-measurement).
 
+### Output discontinuity detector: count the clicks in the program's own output
+
+On by default. The program counts every click between two blocks of its own
+output, logs it with the route and stage and shows "!N" in orange in the DSP
+cell. A few microseconds per period
+([The discontinuity detector](#1010-the-discontinuity-detector)).
 ## 8.2 Global sound
 
 Every slider has a checkbox that shows it on the main panel too; all are
@@ -1769,12 +1786,6 @@ combinations only.
 Off by default: the golden halo of the instruction video on every pressed
 button and dragged stop.
 
-### Output discontinuity detector: count the clicks in the program's own output
-
-On by default. The program counts every click between two blocks of its own
-output, logs it with the route and stage and shows "!N" in orange in the DSP
-cell. A few microseconds per period
-([The discontinuity detector](#1010-the-discontinuity-detector)).
 
 ### LibreOrgans folder
 
@@ -1851,7 +1862,7 @@ One line per perspective: its name first, then its folder prefixes,
 separated by semicolons ("Direct;01-dirMk2H-;dir-"). The name is what the
 Stop List column and the audio route are called; the prefixes are cut off the
 folder names. The order of the lines is the order of the perspectives
-everywhere (the Stop List columns, the voicing boxes, the audio tabs):
+everywhere (the Stop List columns, the voicing boxes, the rows of the Audio routing):
 reorder them here, or drag a column header in the Stop List. Prefixes found
 in a set are added by themselves (prefix by prefix, your own lines are never
 replaced; a prefix that means another perspective in this computer's list is
@@ -1872,7 +1883,14 @@ Stop List.
 
 ### Shown in window
 
-With two program windows: which one shows this division.
+Which program window shows this division; *Window 2* opens the second window
+when it is not open yet.
+
+### Division alias
+
+The division's own name beside its numeral ("I. Hauptwerk"); empty = the
+numeral alone. The same field stands beside the numeral in the Divisions
+dialog, and a double-click on the name in the division header edits it.
 
 ### MIDI keyboard device
 
@@ -1894,9 +1912,27 @@ want to play by touch.
 *Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E
 ...* for historic bass octaves.
 
+### Bass octave layout follows MIDI transposition
+
+Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.
+On: it moves with the MIDI transposition and sits on the keys that play the
+division's lowest octave. No difference with the *Standard* layout or a
+transposition of 0; the keyboard drawing of the Divisions dialog shows where
+the layout sits.
+
 ### MIDI transposition
 
 The keyboard plays this many semitones away from what it sends (-24 to +24).
+
+### Compass
+
+*Compass from* and *Compass to*: the division's lowest and highest key
+(defaults: pedal 36 to 67, manuals 36 to 96). Pipes a stop lacks inside the
+compass are filled from neighbouring pipes. Keys outside it play nothing on
+this division - they are free for another division on the same MIDI channel
+(two divisions with different compasses split one keyboard) or for MIDI
+learn. The compass counts after the MIDI transposition; the keyboard drawing
+of the Divisions dialog shows the keys it takes.
 
 ### Swell pedal controller
 
@@ -1911,29 +1947,11 @@ How much quieter the division is with the box closed (0 to 60 dB, default
 
 How slowly the shutters follow the pedal (50 to 2000 ms, default 300).
 
-### Division volume
+### Audio and effects
 
--60 to +12 dB (default 0), for balancing the divisions. Set in the
-[Effects](#53-effects) of any route of the division (Audio routing, fx).
-
-### Audio output channels (default perspective)
-
-The channels of the device the default perspective plays on, as numbers
-separated by commas (the same as the cables of [Audio routing](#audio-routing)).
-
-### Perspective output channels
-
-The same for a named perspective (Direct, Diffuse, Rear, auxiliary).
-
-### Perspective volume
-
--31 to +6 dB (default 0); -31 switches the perspective off and saves its
-voices. The same slider as *Volume* in the route's [Effects](#53-effects).
-
-### Perspective channel separation
-
-100 % (default): every pipe only on its own channel pair; 0 %: all channels
-the same sum. The same as *Channel separation* in the route's [Effects](#53-effects).
+*Audio routing...* opens the [Audio routing](#audio-routing): the sound
+cards, the output channels and the [Effects](#53-effects) of the division's
+routes (the division volume among them) are set there, nowhere in this editor.
 
 ### Random tuning error of pipes
 
