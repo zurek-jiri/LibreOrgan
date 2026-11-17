@@ -1346,10 +1346,22 @@ private:
         {
             const double now = juce::Time::getMillisecondCounterHiRes();
             bool changed = false;
+            // 0.9.92: every route's peak is TAKEN once per tick and shared by the rows that hold the route - the
+            // perspective's row took (and reset) the peaks first, so the division rows under it read nothing.
+            std::map<std::string, float> peaks;
+            auto peakOf = [&](const Route& route)
+            {
+                const auto key = MainComponent::perspectiveRouteKey(route.manual, route.perspective);
+                const auto found = peaks.find(key);
+                if (found != peaks.end()) return found->second;
+                const float peak = owner.engine.takeRoutePeak(route.manual, route.perspective);
+                peaks[key] = peak;
+                return peak;
+            };
             for (size_t ri = 0; ri < rows.size() && ri < rowMeters.size(); ++ri)
             {
                 float peak = 0.0f;
-                for (const auto& route : rows[ri].routes) peak = juce::jmax(peak, owner.engine.takeRoutePeak(route.manual, route.perspective));
+                for (const auto& route : rows[ri].routes) peak = juce::jmax(peak, peakOf(route));
                 const float db = peak > 1.0e-6f ? juce::Decibels::gainToDecibels(peak) : -100.0f;
                 auto& m = rowMeters[ri];
                 if (db >= m.db || now >= m.holdUntil) { if (std::abs(db - m.db) > 0.5f) changed = true; m.db = db; m.holdUntil = now + 1000.0; }

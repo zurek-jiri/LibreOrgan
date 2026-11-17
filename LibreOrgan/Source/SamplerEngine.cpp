@@ -3805,6 +3805,7 @@ namespace
             {
                 renderRange(voiceIndices, 0, num, pool, ctx, mine);
                 if (prof) tlPoolOwnTicks += profileDelta(profEntry, profileTicks());
+                foldVoiceProfile();   // 0.9.92: a route rendered by its own thread alone (Aggregated WASAPI at one lane a route) gave "0 voice renders" - the profile was folded by pool jobs only
                 return;
             }
 

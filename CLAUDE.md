@@ -3800,6 +3800,29 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ANY dialog change LOOK at the picture for edges, heights, widths and dead space before delivering - an element that
   works is not done until it is aligned with its neighbours; %TEMP%\test_0991_audit.ps1 pictures Couplers,
   Temperaments and the Editor.
+  0.9.92 (17 Nov 2026, the user on 0.9.91): (1) AUDIO ROUTING ROW METERS of the divisions stayed dark under an unfolded
+  perspective: `engine.takeRoutePeak` is a TAKE (read and reset) and the perspective's row, first in the loop, took
+  every route's peak - the timer now takes each route once per tick into a map (`peakOf`) shared by the rows. RULE:
+  a "take" value read by several displays is taken once and shared. (2) "unpacking took 0 ns of the 0 ns": the
+  voice profile was folded into the pool statistics only by pool JOBS; a route rendered by its own thread alone
+  (`RenderPool::render` with laneLimit == 1 = Aggregated WASAPI at one lane a route, the user's 16 routes on 16
+  cores) never folded it, and finishPolyphonyMeasurement counted the profile only inside `if (pool.jobs > 0)`. Now
+  `foldVoiceProfile()` in the inline path and the profile counted without jobs; the advice prints figures ONLY when
+  measured (`unpackNs > 0.5 && totalNs > 0.5`). RULE: never print a figure that was not measured. (3) THE CEILING
+  EXPLAINED (the user: "only 11 % - that needs a better explanation"): after "The kernel alone would reach about C
+  voices; the limit is P % of that" the details say "Why so far from the ceiling: 1. the benchmark's plain voice X ns
+  per frame, a voice of this run Y ns (N times): the packed samples are unpacked (u ns of it); the halved releases /
+  the pipes above F Hz play through the sinc kernel; thousands of voices read as many places of the RAM at once -
+  at that cost the render cores carry about V voices at 85 %. 2. The run is judged by its LONGEST callback: it broke
+  at B voices because <failReason>, while the render cores were busy A % on average". Frankfurt packed (16 Windows
+  Audio routes): 1.64 vs 7.2 ns per frame (4.4 x), 39 200 voices by the average cost, broke at 23 134 on one 90 %
+  callback at 35 % average load - the PEAK halves what the average would carry; the limit this time 21 300 (the
+  12-key level stayed clean in this run, 19 800 in the two before: the same peak lottery). `nsBest()` of the bench
+  is the streaming-from-RAM figure, not the cache one - say "the benchmark's plain voice". (4) The option lines of
+  the advice are one short sentence each. Tests: %TEMP%\test_0992_meters.ps1 (Rural, I. default apart, key 60 held:
+  the box of "I. default" lit in the picture taken while it sounds), test_0992_inline.ps1 (Rural with
+  renderThreadsWasapi 1 in the settings copy = the inline path: "0 route job(s) ... (356224 voice renders)"),
+  test_0989_measure.ps1 (its clicks say "Measure Polyphony" now).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

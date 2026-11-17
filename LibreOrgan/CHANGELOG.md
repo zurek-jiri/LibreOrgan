@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.92] - 2026-11-17
+
+### Fixed
+- Audio routing: the meters of the division rows under an unfolded
+  perspective stayed dark (the perspective's row took the peaks first).
+- The polyphony report on routes rendered by their own thread alone
+  (Aggregated WASAPI at one lane a route) had no voice profile: "unpacking
+  took 0 ns of the 0 ns". The profile is counted there too, and a figure that
+  was not measured is not printed.
+
+### Changed
+- The report explains the distance from the kernel's ceiling with the run's
+  own figures: what a voice of the run cost per frame against the
+  benchmark's voice and why, how many voices the render cores carry at that
+  cost, and the single longest callback the run broke on.
+- The report's lines on the loading options are one short sentence each.
+
 ## [0.9.91] - 2026-11-17
 
 ### Changed

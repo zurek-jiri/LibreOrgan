@@ -28957,14 +28957,16 @@ void MainComponent::startPolyphonyMeasurement()
             state->poolUtilisationSum += pool.laneUtilisation; ++state->poolSamples;
             state->lastPoolUtilisation = pool.laneUtilisation;
             state->lastPoolJobs = pool.jobs;
-            if (pool.profiledVoices > 0)
-            {
-                const double w = (double)pool.profiledVoices;
-                state->profHeaderSum += pool.voiceHeaderNs * w; state->profSpansSum += pool.voiceSpansNs * w;
-                state->profKernelSum += pool.voiceKernelNs * w; state->profPostSum += pool.voicePostNs * w;
-                state->profUnpackSum += pool.voiceUnpackNs * w;
-                state->profVoicesSum += w;
-            }
+        }
+        // 0.9.92: the voice profile is counted with or without pool jobs (routes rendered by their own thread
+        // alone - Aggregated WASAPI at one lane a route - have no jobs: the report said "0 ns of the 0 ns").
+        if (pool.profiledVoices > 0)
+        {
+            const double w = (double)pool.profiledVoices;
+            state->profHeaderSum += pool.voiceHeaderNs * w; state->profSpansSum += pool.voiceSpansNs * w;
+            state->profKernelSum += pool.voiceKernelNs * w; state->profPostSum += pool.voicePostNs * w;
+            state->profUnpackSum += pool.voiceUnpackNs * w;
+            state->profVoicesSum += w;
         }
         if (pool.routeCallbacks > 0)
         {
@@ -29648,19 +29650,18 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         const double voices = state->profVoicesSum;
         const double unpackNs = voices > 0.0 ? state->profUnpackSum / voices : 0.0;
         const double totalNs = voices > 0.0 ? (state->profHeaderSum + state->profSpansSum + state->profKernelSum + state->profPostSum + state->profUnpackSum) / voices : 0.0;
+        // 0.9.92 (the user: short; and never a figure that was not measured - "0 ns of the 0 ns").
         if (compressSamples || unpackNs > 0.5)
-            options << "\n  - Compress samples in RAM (lossless) is on: unpacking the samples took " << juce::roundToInt(unpackNs) << " ns of the "
-                    << juce::roundToInt(totalNs) << " ns a voice cost per block, and the kernel reads the unpacked pieces slower than a plain sample. "
-                       "Load the organ again with the packing off when it fits the RAM: roughly twice the polyphony.";
+            options << "\n  - Compress samples in RAM: about half the polyphony"
+                    << (unpackNs > 0.5 && totalNs > 0.5 ? " (unpacking took " + juce::String(juce::roundToInt(unpackNs)) + " of the " + juce::String(juce::roundToInt(totalNs)) + " ns a voice cost per block)" : juce::String())
+                    << ". Load the organ without it if the RAM allows.";
         if (releaseHalfRate && !sampleStorageFloat)
-            options << "\n  - Releases at half the rate: a bright release plays through the sinc kernel (about three times the work of a plain one). "
-                       "Full releases cost RAM instead of voices.";
+            options << "\n  - Releases at half the rate: they play through the sinc kernel. Full releases cost RAM instead.";
         if (sincKernelFromHz < 19999.0f)
-            options << "\n  - Full kernel from " << juce::roundToInt(sincKernelFromHz) << " Hz: every pipe sounding from there up plays through the sinc kernel "
-                       "(three to five times the work of the linear one) - a quality choice (no foreign tone under a retuned high pipe); "
+            options << "\n  - Full kernel from " << juce::roundToInt(sincKernelFromHz) << " Hz: the sinc kernel for the high pipes - "
                     << (sincKernelFromHz < 2500.0f ? "a higher value (3000 Hz is the default) gives voices back" : "raise it only if you need the voices more than the quality sound of the top octaves") << ".";
         if (options.isNotEmpty())
-            advice << "\n\nThe loading options of this organ (the load box, Configuration Editor > Engine) and their price in voices:" << options;
+            advice << "\n\nOptions of this organ that cost voices (the load box, Configuration Editor > Engine):" << options;
         if (const auto& hybrid = CpuInfo::hybrid(); hybrid.hybrid() && !(renderThreadPreset == "performance" && renderThreads == 0))
             advice << "\n\nThis processor has " << hybrid.performanceCores << " performance and " << hybrid.efficiencyCores
                    << " efficiency cores - a render worker on an efficiency core holds the others up: try Render threads: Performance cores only (Configuration Editor > Engine) and measure again.";
@@ -29757,7 +29758,28 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             // The ceiling: every render core rendering voices for 85 % of the block, nothing else.
             const double ceiling = (double)renderCores * 0.85 * blockMs * 1.0e6 / ((double)blockFrames * nsBest);
             details << " The kernel alone would reach about " << juce::String(juce::roundToInt(ceiling / 100.0) * 100) << " voices at this buffer; the limit of "
-                   << newLimit << " is " << juce::roundToInt(100.0 * newLimit / juce::jmax(1.0, ceiling)) << " % of that - the rest is bookkeeping, hand-over and the device thread's own work.";
+                   << newLimit << " is " << juce::roundToInt(100.0 * newLimit / juce::jmax(1.0, ceiling)) << " % of that.";
+            // 0.9.92 (the user: "only 11 % - that needs a better explanation"): the two measured reasons - what a
+            // voice of THIS run cost against the benchmark's voice, and the peak the run broke on.
+            if (state->profVoicesSum > 0.0)
+            {
+                const double v = state->profVoicesSum;
+                const double total = (state->profHeaderSum + state->profSpansSum + state->profKernelSum + state->profPostSum + state->profUnpackSum) / v;
+                const double perFrame = total / (double)blockFrames, unpackFrame = state->profUnpackSum / v / (double)blockFrames;
+                juce::StringArray reasons;
+                if (unpackFrame > 0.05) reasons.add("the packed samples are unpacked (" + juce::String(unpackFrame, 1) + " ns of it)");
+                if (releaseHalfRate && !sampleStorageFloat) reasons.add("the halved releases play through the sinc kernel");
+                if (sincKernelFromHz < 19999.0f) reasons.add("the pipes above " + juce::String(juce::roundToInt(sincKernelFromHz)) + " Hz play through the sinc kernel");
+                reasons.add("thousands of voices read as many places of the RAM at once, where the benchmark reads one stream");
+                const double byAverage = (double)renderCores * 0.85 * blockMs * 1.0e6 / juce::jmax(1.0, total);
+                details << "\n\nWhy so far from the ceiling:\n  1. The ceiling counts the benchmark's plain voice: " << juce::String(nsBest, 2) << " ns per frame. A voice of this run cost "
+                        << juce::String(perFrame, 1) << " ns per frame (" << juce::String(perFrame / nsBest, 1) << " times as much): " << reasons.joinIntoString("; ")
+                        << ". At that cost the " << renderCores << " render cores carry about " << juce::String(juce::roundToInt(byAverage / 100.0) * 100) << " voices at 85 % of the period.";
+                details << "\n  2. The run is judged by its LONGEST callback, not by the average: it broke at " << state->firstFailingPeak << " voices because " << state->failReason;
+                if (state->cpuSamples > 0)
+                    details << ", while the render cores were busy " << juce::roundToInt(juce::jlimit(0.0, 1.0, state->cpuProcessSum / state->cpuSamples * cpus / renderCores) * 100.0) << " % on average over the run";
+                details << " - a single late callback (the system scheduled something else, a lane waited), and the limit is set below it.";
+            }
         }
         if (state->devCalls > 0.0)
         {
