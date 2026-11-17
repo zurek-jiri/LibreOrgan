@@ -3769,6 +3769,37 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   %TEMP%\test_0990_gui.ps1 (the queue, the remembered module, the resets, the Divisions dialog, the settings.json
   write times >= 1 s apart), test_0990_report.ps1 (Rural measured through "Measure Polyphony", "Advanced analysis  >"
   clicked, both states pictured), test_0989_measure.ps1 -Tag packed0990 (Frankfurt packed with the AVX2 unpacker).
+  FRANKFURT PACKED with the AVX2 unpacker: unpack 1582 -> 1070 ns per voice and block, the voice 4300 -> 3538 ns, the
+  LIMIT UNCHANGED at 19 800 - the run steps by keys (11 keys = 19 835 voices clean with the longest callback at 43 %,
+  12 keys = 21 300 broke on ONE callback of 92 %): a peak decided, not the average cost. Never promise a higher
+  limit from a cheaper voice without a measurement.
+  0.9.91 (17 Nov 2026, the user's furious list on 0.9.90 - "Texty musí být maximálně jasné, výstižné, STRUČNÉ", "umíš
+  trochu estetiku?"): THE RULES HE SET: (1) OPTION TEXTS ARE A FEW WORDS: the choice and its price, nothing else -
+  "16-bit" (never "integer"), "16-bit, releases at half the rate: half the polyphony, a quarter of the RAM" (HIS
+  wording; never "bright releases keep the full rate", never "up to two thirds on a big organ"), "On: a third less
+  RAM, half the polyphony", "36 kHz: a quarter less RAM"; an Editor explanation is two sentences. (2) A HEADER IS A
+  BLOCK WITH COMMON EDGES: Audio routing = Measure Polyphony and the meter both 72 px high at the right, left of
+  them two rows (Master volume + slider; Show cables + Button size) sharing their left and right edges (the size box
+  ends where the slider's value box ends). Never an "orphaned" control, never a box aligned with nothing. (3) EVERY
+  TEXT BOX HAS THE COMBO BOX'S ROUND CORNERS: `UIScale::LookAndFeel::drawLabel` (a Label with a background = a
+  slider's value box), `fillTextEditorBackground`, `drawTextEditorOutline` (boxCorner 3 px; an AlertWindow's editors
+  keep JUCE's). (4) BOXES OF ONE COLUMN HAVE ONE WIDTH AND ONE HEIGHT (Divisions: Window = MIDI device = MIDI
+  channel, 38 px rows). (5) A DIALOG IS AS WIDE AS ITS CONTENT: Divisions 852 px (the stop pool column right of the
+  wind model had not been built for months - `StopPoolPanel` is never created - and the window kept its width);
+  placeDialog key "divisions4". (6) The division's ALIAS is typed beside the numeral in the Divisions dialog
+  (`aliasBoxes` in the head row, font 26 bold, empty text "alias"), the learn messages (`status`) between "Audio
+  routing..." and Close. (7) THE ROW METER of Audio routing = ONE box of 12 x 16 px with three parts above each other
+  (green bottom from -36 dB, yellow from -12, red top from -3) - never three boxes in a row. (8) NO DIALOG PER CABLE:
+  the 0.9.90 progress window of an aggregated drop is shown only for >= 3 routes changing card at once; and the cause
+  of the second per cable is gone - every route's AggregatedWASAPIAudioDevice created and SCANNED its own WASAPI
+  device type: now one `std::shared_ptr` type for all aggregates of the program (a function-static weak_ptr in
+  `openEndpoint`, alive while any aggregate is open), and `setSelectedOutputChannels` only switches the channel
+  flags when every endpoint asked for is open and playing and the master endpoint stays (no stop/start). Measured:
+  three cable moves 5+6 -> 7+8 -> 5+6 each done within the second of the drop, no window (%TEMP%\test_0991_gui.ps1).
+  (9) The Editor's button reads "Measure Polyphony" too. LESSON (the user: "proč na tyhle věci nepřijdeš sám"): after
+  ANY dialog change LOOK at the picture for edges, heights, widths and dead space before delivering - an element that
+  works is not done until it is aligned with its neighbours; %TEMP%\test_0991_audit.ps1 pictures Couplers,
+  Temperaments and the Editor.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

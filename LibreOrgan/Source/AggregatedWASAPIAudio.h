@@ -89,6 +89,30 @@ public:
     {
         if (requestedOutputs == activeOutputs) return {};
         juce::String refused;
+        // 0.9.91 (the user: "open it once and for all, not at every cable"): when every endpoint asked for is open
+        // already and the master endpoint stays, only the channel flags change - nothing stops, nothing opens. An
+        // endpoint once opened stays open (silent while unselected) until the aggregate closes.
+        if (playing && master != nullptr)
+        {
+            bool allOpen = true;
+            Endpoint* firstWanted = nullptr;
+            for (int endpointIndex = 0; endpointIndex < endpointNames.size() && allOpen; ++endpointIndex)
+            {
+                if (!requestedOutputs[endpointIndex * 2] && !requestedOutputs[endpointIndex * 2 + 1]) continue;
+                Endpoint* existing = nullptr;
+                for (auto* endpoint : endpoints) if (endpoint->index == endpointIndex) existing = endpoint;
+                if (existing == nullptr || !existing->device || !existing->device->isOpen() || !existing->device->isPlaying()) allOpen = false;
+            }
+            for (auto* endpoint : endpoints)
+                if (firstWanted == nullptr && (requestedOutputs[endpoint->index * 2] || requestedOutputs[endpoint->index * 2 + 1])) firstWanted = endpoint;
+            if (allOpen && firstWanted == master)
+            {
+                const juce::ScopedLock lock(renderLock);
+                activeOutputs = requestedOutputs;
+                updateActiveFlags(requestedOutputs);
+                return {};
+            }
+        }
         const bool restart = playing;
         if (restart)
         {
@@ -453,7 +477,7 @@ private:
 
     juce::StringArray endpointNames, outputNames;
     juce::OwnedArray<Endpoint> endpoints;
-    std::unique_ptr<juce::AudioIODeviceType> sharedWasapiType;   // outlives the endpoints
+    std::shared_ptr<juce::AudioIODeviceType> sharedWasapiType;   // outlives the endpoints; shared by every aggregate that is open (0.9.91)
     Endpoint* master = nullptr;
     juce::AudioIODeviceCallback* callback = nullptr;
     juce::AudioBuffer<float> virtualBuffer;
@@ -473,19 +497,26 @@ inline AggregatedWASAPIAudioDevice::Endpoint*
 AggregatedWASAPIAudioDevice::openEndpoint(int endpointIndex)
 {
     auto endpoint = std::make_unique<Endpoint>(*this, endpointIndex);
-    // One WASAPI device type (and one endpoint scan) per aggregate; scanning
-    // once per endpoint made opening the aggregate take seconds.
+    // ONE WASAPI device type (and one endpoint scan) for every aggregate of the program while any of them
+    // is open (0.9.91, the user: "open it once and for all" - every route has its own aggregate, and each
+    // scanned every endpoint of the computer again: the second per cable). Message thread only.
     if (sharedWasapiType == nullptr)
     {
-        sharedWasapiType.reset(juce::AudioIODeviceType::createAudioIODeviceType_WASAPI(
-            juce::WASAPIDeviceMode::shared));
+        static std::weak_ptr<juce::AudioIODeviceType> programWide;
+        sharedWasapiType = programWide.lock();
+        if (sharedWasapiType == nullptr)
+        {
+            sharedWasapiType.reset(juce::AudioIODeviceType::createAudioIODeviceType_WASAPI(
+                juce::WASAPIDeviceMode::shared));
+            if (sharedWasapiType != nullptr) sharedWasapiType->scanForDevices();
+            programWide = sharedWasapiType;
+        }
         if (sharedWasapiType == nullptr)
         {
             lastError = "Shared-mode WASAPI is unavailable.";
             setEndpointError(endpointIndex, lastError);
             return nullptr;
         }
-        sharedWasapiType->scanForDevices();
     }
     endpoint->device.reset(sharedWasapiType->createDevice(endpointNames[endpointIndex], {}));
     if (!endpoint->device) { setEndpointError(endpointIndex, "is not present"); return nullptr; }

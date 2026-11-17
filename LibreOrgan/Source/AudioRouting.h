@@ -155,20 +155,22 @@ public:
             area.removeFromRight(20 + fxWidth + 6 + meterWidth + 6);   // the meter, the fx button and the dot sit at the right
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
             g.drawFittedText(row.label, area, juce::Justification::centredLeft, 1);
-            // The row's mini meter: three segments (green to -12 dB, orange to -3 dB, red above), 1 s hold.
+            // The row's mini meter (0.9.91, the user): ONE box the size of a letter, three parts one above the other -
+            // green at the bottom (sound), yellow (from -12 dB), red on top (from -3 dB: clip near); 1 s hold.
             if (ri < rowMeters.size())
             {
                 const auto m = rowMeters[ri];
-                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 6, meterWidth, 12);
+                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 8, meterWidth, 16);
+                g.setColour(juce::Colours::black);
+                g.fillRect(meter);
                 const float db = m.db;
                 static const float thresholds[3]{ -36.0f, -12.0f, -3.0f };
-                const int segment = (meterWidth - 4) / 3;
-                for (int s = 0; s < 3; ++s)
+                for (int s = 0; s < 3; ++s)   // s = 0 the bottom part
                 {
-                    const juce::Colour colour = s == 0 ? juce::Colours::lime : s == 1 ? juce::Colours::orange : juce::Colours::red;
+                    const juce::Colour colour = s == 0 ? juce::Colours::lime : s == 1 ? juce::Colours::yellow : juce::Colours::red;
                     const bool lit = db >= thresholds[s] && !row.silent;
-                    g.setColour(lit ? colour : colour.withAlpha(0.18f));
-                    g.fillRoundedRectangle(juce::Rectangle<float>((float)(meter.getX() + s * (segment + 2)), (float)meter.getY(), (float)segment, (float)meter.getHeight()), 2.0f);
+                    g.setColour(lit ? colour : colour.withAlpha(0.22f));
+                    g.fillRect(meter.getX() + 1, meter.getBottom() - 1 - (s + 1) * 5 + 1, meter.getWidth() - 2, 4);
                 }
             }
         }
@@ -487,7 +489,7 @@ private:
     struct TypeSection { juce::String type; bool collapsed = false; int count = 0; juce::Rectangle<int> bounds; };
 
     static constexpr int leftWidth = 340, rowHeight = 32, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 14;   // laneGap 8 -> 14 (0.9.85, the user: "namačkané na sobě"); 0.9.89: rows 24 -> 32, the column wider for the meter and fx
-    static constexpr int fxWidth = 34, meterWidth = 40;   // 0.9.89: the fx button and the mini meter of a row
+    static constexpr int fxWidth = 34, meterWidth = 12;   // 0.9.89: the fx button and the mini meter of a row (0.9.91: one letter-sized box)
 
     // 0.9.89: the console's audio meter in the header (one state: MainComponent::outputMeterState).
     struct MasterMeter final : public juce::Component, public juce::SettableTooltipClient
@@ -877,16 +879,21 @@ private:
         help.setBounds(10, 6, width - 660, 72);
         // 0.9.90: the right block of the header is ONE aligned strip - Master volume, the meter, Measure Polyphony -
         // with the switches on the line under it (the user: "the top right corner looks untidy").
-        const int stripRight = width - 10;
-        measureButton.setBounds(stripRight - 150, 8, 150, 24);
-        masterMeter.setBounds(stripRight - 150 - 10 - 46, 6, 46, 72);
-        masterSlider.setBounds(stripRight - 150 - 10 - 46 - 10 - 270, 8, 270, 24);
-        masterLabel.setBounds(masterSlider.getX() - 112, 8, 108, 24);
-        showCables.setBounds(masterLabel.getX(), 44, 110, 24);
-        sizeLabel.setBounds(masterLabel.getX() + 114, 44, 90, 24);
-        sizeBox.setBounds(masterLabel.getX() + 208, 44, 96, 24);
+        // 0.9.91: a block of two rows as high as the meter (72 px): Measure Polyphony and the meter stand over both
+        // rows at the right; left of them row 1 = Master volume + its slider, row 2 = Show cables + Button size, the
+        // two rows sharing their left and right edges (the size box ends where the slider's value box ends).
+        const int stripRight = width - 10, blockTop = 6, blockHeight = 72, rowHeight2 = 28;
+        measureButton.setBounds(stripRight - 150, blockTop, 150, blockHeight);
+        masterMeter.setBounds(measureButton.getX() - 10 - 46, blockTop, 46, blockHeight);
+        const int rowsRight = masterMeter.getX() - 12, rowsLeft = rowsRight - 390;
+        const int row1 = blockTop + 4, row2 = blockTop + blockHeight - 4 - rowHeight2;
+        masterLabel.setBounds(rowsLeft, row1, 112, rowHeight2);
+        masterSlider.setBounds(rowsLeft + 116, row1, rowsRight - rowsLeft - 116, rowHeight2);
+        showCables.setBounds(rowsLeft, row2, 120, rowHeight2);
+        sizeBox.setBounds(rowsRight - 110, row2, 110, rowHeight2);
+        sizeLabel.setBounds(sizeBox.getX() - 96, row2, 92, rowHeight2);
 #if JUCE_LINUX
-        unusableButton.setBounds(masterLabel.getX() + 314, 44, 220, 24);
+        unusableButton.setBounds(rowsLeft - 230, row2, 220, rowHeight2);
 #endif
         sourcesTop = 110;
         int y = sourcesTop;
@@ -1147,7 +1154,11 @@ private:
         }
         // 0.9.90: an aggregated card opens anew for every route's outputs (up to a second each): the routes go one at a
         // time behind the "set for all" progress window, the dialog is rebuilt when the queue is done.
-        if (card.type.equalsIgnoreCase("Aggregated WASAPI"))
+        // 0.9.91 (the user: "why the dialog at every cable?"): the window only for three or more routes that change
+        // card at once (a folded perspective of a big organ); a cable or two are set at once, as before 0.9.90.
+        int cardChanges = 0;
+        for (const auto& route : routes) if (cardKeyOf(route) != card.key) ++cardChanges;
+        if (card.type.equalsIgnoreCase("Aggregated WASAPI") && cardChanges >= 3)
         {
             std::vector<MainComponent::RoutingAssignStep> steps;
             for (const auto& route : routes)

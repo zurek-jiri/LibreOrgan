@@ -8856,7 +8856,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 // 0.9.80: the division's alias - its own name beside the numeral ("I. Hauptwerk"), the same as a
                 // double-click on the header's name sets; travels with the organ.
                 aliasBoxes[(size_t)manual].setText(owner.manualConfigs[(size_t)manual].alias, false);
-                aliasBoxes[(size_t)manual].setTextToShowWhenEmpty("Alias (the division's name beside its numeral)", juce::Colours::grey);
+                aliasBoxes[(size_t)manual].setFont(juce::FontOptions(26.0f, juce::Font::bold));   // 0.9.91: beside the numeral, in its size
+                aliasBoxes[(size_t)manual].setIndents(6, 2);
+                aliasBoxes[(size_t)manual].setTextToShowWhenEmpty("alias", juce::Colours::grey);
                 aliasBoxes[(size_t)manual].setTooltip("The division's own name, shown beside its numeral in the header (\"I. Hauptwerk\"). Enter sets it; empty = the numeral alone. Travels with the organ.");
                 aliasBoxes[(size_t)manual].getProperties().set("manualChapter", "Division headers");
                 aliasBoxes[(size_t)manual].onReturnKey = [this, manual] { this->owner.setDivisionAlias(manual, aliasBoxes[(size_t)manual].getText()); };
@@ -9341,6 +9343,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             // 0.9.90: Close under the keyboard's right end (the user: the dialog narrower, Close moved left under the keyboard).
             closeButton.setBounds(juce::Rectangle<int>(area.getX() + 700 - 110, buttonRow.getY(), 110, buttonRow.getHeight()).reduced(4));
             audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4));
+            // 0.9.91: the learn messages between the two buttons (the alias took their place beside the numeral).
+            status.setBounds(audioRoutingButton.getRight() + 12, buttonRow.getY(), juce::jmax(10, closeButton.getX() - audioRoutingButton.getRight() - 24), buttonRow.getHeight());
             // No banner line: the division label sits above the MIDI column, the
             // settings, wind and stop-pool columns start right at the top.
             attenuationHeader.setVisible(onlyManual >= 0);
@@ -9434,18 +9438,20 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 auto midiArea = row.removeFromLeft(232).reduced(8);   // narrow: leaves room for the stop pool
                 {
                     // Division label ("I.") above the MIDI column; learn messages (small) beside it.
-                    auto head = midiArea.removeFromTop(36);   // 0.9.90: 40 -> 36 (the Window box took a row of its own: the column must stay within 366 px)
-                    labels[(size_t)manual].setBounds(head.removeFromLeft(60));
-                    status.setBounds(head);
+                    auto head = midiArea.removeFromTop(38);
+                    // 0.9.91 (the user): the alias is typed right beside the numeral, in the numeral's size - no row of its own.
+                    const int numeralWidth = juce::jlimit(34, 90, juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(30.0f, juce::Font::bold)), labels[(size_t)manual].getText())) + 14);
+                    labels[(size_t)manual].setBounds(head.removeFromLeft(numeralWidth));
+                    aliasBoxes[(size_t)manual].setBounds(head.reduced(0, 1));
                     // Done / Clear of a learn in progress (hidden otherwise): over the
                     // foot of the MIDI column, which keeps its full height for the checkboxes.
                     auto foot = midiArea.removeFromBottom(0).withHeight(28).translated(0, -28);
                     doneButton.setBounds(foot.removeFromLeft(foot.getWidth() / 2).reduced(2));
                     clearButton.setBounds(foot.reduced(2));
                 }
-                // 0.9.90 (the user): the Window box as wide as the boxes under it, the right edges aligned.
-                windowBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(30).reduced(0, 3));
-                aliasBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(28).reduced(0, 2));   // 0.9.80: the division's alias
+                // 0.9.90/0.9.91 (the user): the Window box as wide AND as high as the MIDI boxes under it.
+                midiArea.removeFromTop(4);
+                windowBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 deviceLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
                 deviceBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 channelLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
@@ -9868,7 +9874,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     };
 
     auto* content = new KeyboardsDialog(*this, onlyManual);
-    const int dialogWidth = onlyManual >= 0 ? 1060 : 1240;   // 0.9.90: 80 px narrower (the user)
+    const int dialogWidth = onlyManual >= 0 ? 852 : 1032;   // 0.9.91: the three columns and the 800 px layout line - nothing stands right of the wind column (the stop pool list has not been built since the Stop List took it over)
     const int dialogHeight = onlyManual >= 0 ? 522 : 562;   // 0.9.89: the division row (460) + the button row + margins (the audio tabs are gone)
     content->setSize(dialogWidth, dialogHeight);
     keyboardsWindow = std::make_unique<ModelessKeyboardWindow>([this]
@@ -9881,7 +9887,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     keyboardsWindow->setUsingNativeTitleBar(true);
     keyboardsWindow->setResizable(true, true);
     keyboardsWindow->setContentOwned(new ScrollableContent(content), true);   // scrollbars when the window is smaller
-    placeDialog(*keyboardsWindow, "divisions3", dialogWidth, dialogHeight);   // one position for all divisions; a new key at every size change (0.9.89, 0.9.90: a remembered larger size would leave the window half empty)
+    placeDialog(*keyboardsWindow, "divisions4", dialogWidth, dialogHeight);   // one position for all divisions; a new key at every size change (0.9.89, 0.9.90: a remembered larger size would leave the window half empty)
     keyboardsWindow->setVisible(true);
     keyboardsWindow->toFront(true);
     // 0.8.250 (the user: he opens the dialog to see whether the card came back): a
@@ -12996,14 +13002,15 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         + juce::String(fromFile ? "They come from the configuration file; " : "The file carries none, these are this computer's last choices; ")
         + "what you choose is saved with the configuration. The same choices are in the Configuration Editor (Engine) for the next load.",
         juce::MessageBoxIconType::QuestionIcon);
-    window->addComboBox("storage", { "32-bit float (less polyphony, full fidelity)",
-        "16-bit integer (more polyphony, more hiss)",
-        "16-bit integer, releases at half the rate (a quarter of their RAM; bright releases keep the full rate; some polyphony: a halved release plays through the sinc kernel)" }, "Sample storage in RAM");
+    // 0.9.91 (the user): the choices in a few words each - the price in RAM and voices, nothing more.
+    window->addComboBox("storage", { "32-bit float: full fidelity, less polyphony",
+        "16-bit",
+        "16-bit, releases at half the rate: half the polyphony, a quarter of the RAM" }, "Sample storage in RAM");
     window->getComboBoxComponent("storage")->setSelectedItemIndex(asFloat ? 0 : halfRate ? 2 : 1, juce::dontSendNotification);
-    window->addComboBox("packing", { "Off  [default]", "On: a third less RAM, half the polyphony gone (up to two thirds on a big organ)" }, "Compress samples in RAM (lossless)");
+    window->addComboBox("packing", { "Off  [default]", "On: a third less RAM, half the polyphony" }, "Compress samples in RAM (lossless)");
     window->getComboBoxComponent("packing")->setSelectedItemIndex(packed ? 1 : 0, juce::dontSendNotification);
-    window->addComboBox("rate", { "Resample everything to 48 kHz  [default]", "Resample everything to 36 kHz (content up to 17 kHz; a quarter less RAM)",
-        "Resample everything to 32 kHz (content up to 15 kHz; a third less RAM)", "Keep each file's own rate (faster loading, played by interpolation)" }, "Sample rate on loading");
+    window->addComboBox("rate", { "48 kHz  [default]", "36 kHz: a quarter less RAM",
+        "32 kHz: a third less RAM", "Each file's own rate: faster loading" }, "Sample rate on loading");
     window->getComboBoxComponent("rate")->setSelectedItemIndex(!resample ? 3 : rate < 34000.0 ? 2 : rate < 42000.0 ? 1 : 0, juce::dontSendNotification);
     juce::StringArray choiceIds;
     if (offerChoice)
@@ -29651,7 +29658,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         if (sincKernelFromHz < 19999.0f)
             options << "\n  - Full kernel from " << juce::roundToInt(sincKernelFromHz) << " Hz: every pipe sounding from there up plays through the sinc kernel "
                        "(three to five times the work of the linear one) - a quality choice (no foreign tone under a retuned high pipe); "
-                    << (sincKernelFromHz < 2500.0f ? "a higher value (3000 Hz is the default) gives voices back" : "raise it only if you need the voices more than the sound of the top octaves") << ".";
+                    << (sincKernelFromHz < 2500.0f ? "a higher value (3000 Hz is the default) gives voices back" : "raise it only if you need the voices more than the quality sound of the top octaves") << ".";
         if (options.isNotEmpty())
             advice << "\n\nThe loading options of this organ (the load box, Configuration Editor > Engine) and their price in voices:" << options;
         if (const auto& hybrid = CpuInfo::hybrid(); hybrid.hybrid() && !(renderThreadPreset == "performance" && renderThreads == 0))
@@ -31279,9 +31286,9 @@ void MainComponent::showConfigurationEditor()
                    "ASIO and a single Windows Audio device use the setting above.");
             }
 #endif
-            addCombo("Sample storage in RAM", { "32-bit float (less polyphony, full fidelity)",
-                "16-bit integer (more polyphony, more hiss)",
-                "16-bit integer, releases at half the rate (the releases take a quarter of their RAM)" },
+            addCombo("Sample storage in RAM", { "32-bit float: full fidelity, less polyphony",
+                "16-bit",
+                "16-bit, releases at half the rate: half the polyphony, a quarter of the RAM" },
                 o.sampleStorageFloat ? 0 : o.releaseHalfRate ? 2 : 1, [&o](int index)
             {
                 o.sampleStorageFloat = index == 0;
@@ -31289,28 +31296,19 @@ void MainComponent::showConfigurationEditor()
                 o.engine.setSampleStorageFloat(o.sampleStorageFloat);
                 o.engine.setReleaseHalfRate(o.releaseHalfRate);
                 o.saveSettings();
-            }, "The releases are a large part of a set and a decaying tail: stored at half the rate (24 kHz at the 48 kHz base) "
-               "they lose what lies above 12 kHz and take a quarter of the RAM they would; nothing is requantised, the room noise "
-               "of the tail stays as recorded. The price in voices: a bright halved release plays through the sinc kernel, about three "
-               "times the work of a plain one. Takes effect the next time a division folder is loaded.");
+            }, "Releases at half the rate lose what lies above 12 kHz and take a quarter of their RAM; they play through the sinc kernel, "
+               "which costs about half the polyphony. Takes effect at the next load.");
             addToggle("Compress samples in RAM (lossless)", o.compressSamples, [&o](bool state)
             {
                 o.compressSamples = state;
                 o.engine.setCompressSamples(state);
                 o.saveSettings();
-            }, "Packs the 16-bit samples the way FLAC does (a predictor per block of 256 frames, the residuals with the bits they need): "
-               "every frame comes back exactly, loops, pitch and voicing are untouched, and a set takes about a third less RAM "
-               "(the log says how much: \"Packed samples: ...\"). THE PRICE: every voice unpacks the piece it plays before every "
-               "block, about as much work again as the interpolation itself - half the polyphony is gone, up to two thirds on a big organ "
-               "(Caen on a 16-core notebook: 60 000 -> 25 000 voices); measure it, the report shows the unpacking as its own figure. "
-               "Use it only when an organ does not fit the memory otherwise. 32-bit float storage is packed as 24-bit integers: bit for bit "
-               "when the files hold such integers (24-bit or 16-bit WAV), rounded to 24 bits for real floats (32-bit float WAV, a sample resampled "
-               "on loading, a filled pipe's copy) - half a 24-bit step at most, below what any converter resolves; the log says how many were rounded. "
-               "Takes effect the next time a division folder is loaded.");
-            addCombo("Sample rate on loading", { "Resample everything to 48 kHz (the base rate, windowed sinc)  [default]",
-                "Resample everything to 36 kHz (content up to 17 kHz; a quarter less RAM)",
-                "Resample everything to 32 kHz (content up to 15 kHz; a third less RAM)",
-                "Keep each file's own rate (faster loading, played by interpolation)" },
+            }, "FLAC-like packing of the samples in RAM: every frame comes back exactly, a third less RAM, half the polyphony "
+               "(every voice unpacks what it plays). Only when the organ does not fit the RAM otherwise. Takes effect at the next load.");
+            addCombo("Sample rate on loading", { "48 kHz  [default]",
+                "36 kHz: a quarter less RAM",
+                "32 kHz: a third less RAM",
+                "Each file's own rate: faster loading" },
                 !o.resampleOnLoad ? 3 : o.storageSampleRate < 34000.0 ? 2 : o.storageSampleRate < 42000.0 ? 1 : 0, [&o](int index)
             {
                 o.resampleOnLoad = index != 3;
@@ -31318,11 +31316,8 @@ void MainComponent::showConfigurationEditor()
                 o.engine.setResampleOnLoad(o.resampleOnLoad);
                 o.engine.setStorageSampleRate(o.storageSampleRate);
                 o.saveSettings();
-            }, "Files recorded at 96 or 44.1 kHz: resampling them once while loading takes longer but they then play "
-               "exactly like 48 kHz files and need half the RAM (96 kHz). 36 or 32 kHz store every file at that rate: what lies "
-               "above 17 or 15 kHz goes (organ pipes carry next to nothing there), the RAM drops by a quarter or a third, the "
-               "kernel interpolates from the coarser grid at the same cost - more stops fit, the polyphony stays. "
-               "Takes effect the next time a division folder is loaded.");
+            }, "The rate every file is stored at. 36 or 32 kHz drop what lies above 17 or 15 kHz and save a quarter or a third of the RAM; "
+               "the polyphony stays. Takes effect at the next load.");
             {
                 const int selected = o.irProcessing == "full" ? 1 : o.irProcessing == "light" ? 2 : 0;
                 addCombo("IR processing", { "Automatic: Light when this computer cannot afford Full  [default]",
@@ -31355,7 +31350,7 @@ void MainComponent::showConfigurationEditor()
                 "limit it sets breaks up on the first callback that runs a little longer. Fit for seeing how far the computer goes.");
             // 0.9.48: the button follows canMeasurePolyphony() from the main timer (an Editor opened or refreshed
             // while a load ran kept its grey Measure... for good - the state was read once, here).
-            o.editorMeasureButton = addButton("Measure the maximum polyphony", "Measure...", [&o] { o.startPolyphonyMeasurement(); },
+            o.editorMeasureButton = addButton("Measure the maximum polyphony", "Measure Polyphony", [&o] { o.startPolyphonyMeasurement(); },
                 "Finds the limit for THIS organ on THIS computer: with the loaded samples, every stop engaged and the "
                 "keys struck repeatedly on every division (heard very quietly, at -52 dB), the limit is raised step by step "
                 "until the busiest audio thread exceeds the measurement limit above (85 % unless set otherwise) or the driver calls late, then narrowed down; the "

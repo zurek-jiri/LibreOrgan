@@ -956,8 +956,8 @@ channels of a route may be any number: the pipes are spread over them by key,
 so a chord spreads across the speakers like pipes across a windchest (a mono
 sample to one channel in turn, a stereo sample to a pair).
 
-**Every row** of *Organ out* ends with a small **meter** (what that row plays
-now: green to -12 dB, orange to -3 dB, red above) and the **fx** button -
+**Every row** of *Organ out* ends with a small **meter** (one box, three
+parts: green = it sounds, yellow from -12 dB, red from -3 dB) and the **fx** button -
 grey while everything of it is default, orange when an effect is set or a
 module set apart; it opens the row's [Effects](#53-effects), a right-click
 on it resets them to the default. The cables take the primary colours first
@@ -966,8 +966,8 @@ the perspectives; the auxiliary takes the next one. The header of
 the dialog carries the **Master volume** (the console's slider itself - one
 value, two places), the console's **audio meter** with its CLIP dot, and
 **Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).
-A drop onto an Aggregated WASAPI card goes route by route behind a progress
-window (the aggregate opens anew for every route's outputs).
+Three or more routes dropped onto an Aggregated WASAPI card at once go one by
+one behind a progress window.
 
 **A device that is not there** (switched off, unplugged, taken by another
 program): the route keeps it and its channels, the card says so, the program
@@ -1350,11 +1350,11 @@ routes lanes.
 
 ### Sample storage in RAM
 
-*32-bit float* keeps the samples as read; *16-bit integer* halves the RAM
-with a little hiss; *16-bit integer, releases at half the rate* stores the
-releases - a large part of a set - at half the rate (they lose what lies
-above 12 kHz; a reed whose release is bright above 11 kHz keeps the full
-rate). Effect at the next load; the load box asks it before every load and
+*32-bit float* keeps the samples as read; *16-bit* halves the RAM
+with a little hiss; *16-bit, releases at half the rate* stores the
+releases - a large part of a set - at half the rate: a quarter of their RAM,
+nothing above 12 kHz, and voices (they play through the sinc kernel).
+Effect at the next load; the load box asks it before every load and
 saves it with the organ. What each choice costs, measured:
 [RAM: the storage options measured](#107-ram-the-storage-options-measured).
 

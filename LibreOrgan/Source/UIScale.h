@@ -117,6 +117,43 @@ namespace UIScale
             if (slider.getProperties().contains("smallTextBox")) label->setFont(juce::FontOptions(9.0f));
             return label;
         }
+        // 0.9.91 (the user: "why has a combo box round corners and a text box square ones?"): every text box - the
+        // value box of a slider (a Label with a background) and every TextEditor - has the combo box's 3 px corners.
+        static constexpr float boxCorner = 3.0f;
+        void drawLabel(juce::Graphics& g, juce::Label& label) override
+        {
+            const auto bounds = label.getLocalBounds().toFloat();
+            g.setColour(label.findColour(juce::Label::backgroundColourId));
+            g.fillRoundedRectangle(bounds, boxCorner);
+            if (!label.isBeingEdited())
+            {
+                const float alpha = label.isEnabled() ? 1.0f : 0.5f;
+                const juce::Font font(getLabelFont(label));
+                g.setColour(label.findColour(juce::Label::textColourId).withMultipliedAlpha(alpha));
+                g.setFont(font);
+                const auto textArea = getLabelBorderSize(label).subtractedFrom(label.getLocalBounds());
+                g.drawFittedText(label.getText(), textArea, label.getJustificationType(),
+                    juce::jmax(1, (int)((float)textArea.getHeight() / font.getHeight())), label.getMinimumHorizontalScale());
+                g.setColour(label.findColour(juce::Label::outlineColourId).withMultipliedAlpha(alpha));
+            }
+            else if (label.isEnabled()) g.setColour(label.findColour(juce::Label::outlineColourId));
+            else return;
+            g.drawRoundedRectangle(bounds.reduced(0.5f), boxCorner, 1.0f);
+        }
+        void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
+        {
+            if (dynamic_cast<juce::AlertWindow*>(editor.getParentComponent()) != nullptr) { juce::LookAndFeel_V4::fillTextEditorBackground(g, width, height, editor); return; }
+            g.setColour(editor.findColour(juce::TextEditor::backgroundColourId));
+            g.fillRoundedRectangle(0.0f, 0.0f, (float)width, (float)height, boxCorner);
+        }
+        void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor& editor) override
+        {
+            if (dynamic_cast<juce::AlertWindow*>(editor.getParentComponent()) != nullptr) { juce::LookAndFeel_V4::drawTextEditorOutline(g, width, height, editor); return; }
+            if (!editor.isEnabled()) return;
+            const bool focused = editor.hasKeyboardFocus(true) && !editor.isReadOnly();
+            g.setColour(editor.findColour(focused ? juce::TextEditor::focusedOutlineColourId : juce::TextEditor::outlineColourId));
+            g.drawRoundedRectangle(juce::Rectangle<float>(0.0f, 0.0f, (float)width, (float)height).reduced(focused ? 1.0f : 0.5f), boxCorner, focused ? 2.0f : 1.0f);
+        }
         // Tooltips: the long explanations of the Configuration Editor need air
         // between the lines (the stock layout packs them), a wider box and a
         // left-aligned text.

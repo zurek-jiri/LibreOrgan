@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.91] - 2026-11-17
+
+### Changed
+- The loading options (load box, Editor) say what they cost in a few words:
+  "16-bit", "16-bit, releases at half the rate: half the polyphony, a quarter
+  of the RAM", "On: a third less RAM, half the polyphony", "36 kHz: a quarter
+  less RAM"; their Editor explanations are two sentences.
+- Audio routing: the header is a block as high as the audio meter - Measure
+  Polyphony and the meter over both rows, Master volume and Show cables /
+  Button size in two rows with common edges; a row's meter is one letter-sized
+  box of three parts (green, yellow, red); no progress window for a cable or
+  two onto an Aggregated WASAPI card (only for three or more routes at once).
+- Aggregated WASAPI: one endpoint scan for every aggregate of the program
+  (each route's aggregate scanned every endpoint again - the second per
+  cable), and a change among endpoints already open only switches channels.
+- Every text box (a slider's value box, every text field) has the combo
+  box's round corners.
+- Divisions dialog: the alias is typed beside the numeral in its size, the
+  Window box is as high as the MIDI boxes, the dialog is as wide as its three
+  columns (852 px), the learn messages stand between the two buttons.
+- The report's kernel sentence: "... the quality sound of the top octaves".
+
 ## [0.9.90] - 2026-11-17
 
 ### Fixed
