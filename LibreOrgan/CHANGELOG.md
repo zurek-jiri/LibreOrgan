@@ -12,6 +12,30 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.89] - 2026-11-17
+
+### Added
+- Effects (Audio routing): every row of "Organ out" has an fx button (grey
+  = everything default, orange = something set) that opens the effects of the
+  route or of the whole perspective - Division volume, Volume, Channel
+  separation, a five-band parametric Equalizer (low shelf, three peaks, high
+  shelf, with a graph) and the IR reverb with its settings, in the order the
+  engine applies them. LINKED: a route's module follows its perspective (the
+  sliders locked and showing the perspective's values); switched off, the
+  route keeps its own values. Every slider has MIDI learn and F1.
+- Audio routing: a mini audio meter on every row, and the master volume, the
+  console's audio meter and Measure... in the header. The rows are taller,
+  with a larger font and dots.
+- Wind oscillation frequency up to 15 Hz (was 10).
+
+### Changed
+- The Divisions dialog has no audio tabs any more: the sound cards, channels,
+  effects and the measurement live in Audio routing, which its new "Audio
+  routing..." button opens; the division volume moved to the Effects dialog.
+  The guided tour has a step on Audio routing.
+- CLIP on the polyphony display in the same font as the other labels; the
+  bank display shows "Bank N" alone until a combinations file is loaded.
+
 ## [0.9.88] - 2026-11-16
 
 ### Added

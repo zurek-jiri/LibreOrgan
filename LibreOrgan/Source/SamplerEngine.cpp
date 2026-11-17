@@ -1428,6 +1428,16 @@ namespace
         // every channel carries the sum of all (mono to everywhere); in between the
         // other channels leak (1 - separation) of each pipe.
         std::atomic<float> separation{ 1.0f };
+        // 0.9.89: the parametric EQ (SamplerEngine::EqSettings). The settings live on the control side; the biquad
+        // coefficients are double-buffered (the writer fills the set not in use and flips eqIndex, the render thread
+        // copies the current set at the block start); eqAny = some band does something. State per channel and band.
+        SamplerEngine::EqSettings eqSettings;
+        struct EqCoefs { float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f, a1 = 0.0f, a2 = 0.0f; bool on = false; };
+        EqCoefs eqSets[2][5];
+        std::atomic<int> eqIndex{ 0 };
+        std::atomic<bool> eqAny{ false };
+        float eqState[64][5][2]{};                  // transposed direct form II: two state values per channel and band
+        std::atomic<uint32_t> peakBits{ 0 };        // 0.9.89: this route's meter - the highest sample before the clip (float bits) since the last take
         float windPhase = 0.0f;
         // The harmonic filter's input of the block per output channel (the wet
         // shares of all voices, see LaneOutputs) and the low-pass state per channel.
@@ -7488,6 +7498,36 @@ struct SamplerEngine::Impl
             }
         }
 
+        // 0.9.89: the route's parametric EQ (five biquads per channel at most), after the separation and before the
+        // IR, so the room hears the equalized sound. A flat EQ is skipped as a whole (eqAny), a band at 0 dB per band.
+        if (route.eqAny.load(std::memory_order_relaxed))
+        {
+            Route::EqCoefs coefs[5];
+            const int set = route.eqIndex.load(std::memory_order_acquire);
+            for (int b = 0; b < 5; ++b) coefs[b] = route.eqSets[set][b];
+            for (int ci = 0; ci < ctx.outCount && ci < 64; ++ci)
+            {
+                const int ch = ctx.outChannels[ci];
+                if (ch < 0 || ch >= numOuts) continue;
+                float* data = buffer.getWritePointer(ch);
+                for (int b = 0; b < 5; ++b)
+                {
+                    const auto& c = coefs[b];
+                    if (!c.on) continue;
+                    float s1 = route.eqState[ci][b][0], s2 = route.eqState[ci][b][1];
+                    for (int i = 0; i < totalSamples; ++i)
+                    {
+                        const float x = data[i];
+                        const float y = c.b0 * x + s1;
+                        s1 = c.b1 * x - c.a1 * y + s2;
+                        s2 = c.b2 * x - c.a2 * y;
+                        data[i] = y;
+                    }
+                    if (!std::isfinite(s1) || !std::isfinite(s2)) { s1 = 0.0f; s2 = 0.0f; }
+                    route.eqState[ci][b][0] = s1; route.eqState[ci][b][1] = s2;
+                }
+            }
+        }
         lap(statRouteSeparation);
         // IR reverb of this route (its output pairs), before the safety clip and
         // the recording so both see the final sound of the perspective.
@@ -7525,6 +7565,8 @@ struct SamplerEngine::Impl
             uint32_t known = statOutputPeakBits.load(std::memory_order_relaxed);
             while (bits > known && !statOutputPeakBits.compare_exchange_weak(known, bits, std::memory_order_relaxed)) {}
             if (blockPeak > 0.98f) statOutputClipped.store(true, std::memory_order_relaxed);
+            uint32_t routeKnown = route.peakBits.load(std::memory_order_relaxed);   // 0.9.89: the route's own meter
+            while (bits > routeKnown && !route.peakBits.compare_exchange_weak(routeKnown, bits, std::memory_order_relaxed)) {}
         }
 
         lap(statRouteClip);
@@ -8909,6 +8951,8 @@ void SamplerEngine::setManualSampleRate(int manualIndex, double newSampleRate)
     }
 }
 
+namespace { void rebuildRouteEq(Route& r); }   // 0.9.89: defined with the EQ below
+
 void SamplerEngine::setPerspectiveSampleRate(int manualIndex, const juce::String& perspective, double newSampleRate)
 {
     if (manualIndex < 0 || manualIndex >= maxManuals || newSampleRate <= 0.0) return;
@@ -8920,6 +8964,7 @@ void SamplerEngine::setPerspectiveSampleRate(int manualIndex, const juce::String
             const bool rateChanged = std::abs(r->sampleRate.load() - newSampleRate) > 0.5;
             r->sampleRate.store(newSampleRate);
             r->rateExplicit.store(true);
+            if (rateChanged) rebuildRouteEq(*r);   // 0.9.89: the EQ's coefficients belong to the rate
             // The reverb's convolution was prepared for the old rate: rebuild it.
             if (r->reverb != nullptr && (rateChanged || std::abs(r->reverb->preparedRate - newSampleRate) > 0.5)) changed = r;
         }
@@ -8951,6 +8996,109 @@ void SamplerEngine::setPerspectiveChannelSeparation(int manualIndex, const juce:
 }
 
 //------------------------------------------------------------------------------
+// 0.9.89: the parametric EQ - RBJ cookbook biquads (a0 normalised away). Band 0 = low shelf, 1-3 = peaks, 4 = high
+// shelf; Q is the peak's width / the shelf's slope. A band off or within 0.01 dB of flat is left out (on = false).
+namespace
+{
+    struct EqBiquad { double b0 = 1.0, b1 = 0.0, b2 = 0.0, a1 = 0.0, a2 = 0.0; bool on = false; };
+
+    EqBiquad eqBiquadFor(const SamplerEngine::EqBand& band, int index, double sampleRate) noexcept
+    {
+        EqBiquad c;
+        if (!band.on || std::abs(band.gainDb) < 0.01f || sampleRate <= 0.0) return c;
+        const double hz = juce::jlimit(10.0, 0.45 * sampleRate, (double)band.hz);
+        const double A = std::pow(10.0, juce::jlimit(-30.0, 30.0, (double)band.gainDb) / 40.0);
+        const double w0 = juce::MathConstants<double>::twoPi * hz / sampleRate;
+        const double cosW = std::cos(w0), sinW = std::sin(w0);
+        const double alpha = sinW / (2.0 * juce::jlimit(0.1, 10.0, (double)band.q));
+        double b0, b1, b2, a0, a1, a2;
+        if (index == 0)   // low shelf
+        {
+            const double s = 2.0 * std::sqrt(A) * alpha;
+            b0 = A * ((A + 1.0) - (A - 1.0) * cosW + s);
+            b1 = 2.0 * A * ((A - 1.0) - (A + 1.0) * cosW);
+            b2 = A * ((A + 1.0) - (A - 1.0) * cosW - s);
+            a0 = (A + 1.0) + (A - 1.0) * cosW + s;
+            a1 = -2.0 * ((A - 1.0) + (A + 1.0) * cosW);
+            a2 = (A + 1.0) + (A - 1.0) * cosW - s;
+        }
+        else if (index == 4)   // high shelf
+        {
+            const double s = 2.0 * std::sqrt(A) * alpha;
+            b0 = A * ((A + 1.0) + (A - 1.0) * cosW + s);
+            b1 = -2.0 * A * ((A - 1.0) + (A + 1.0) * cosW);
+            b2 = A * ((A + 1.0) + (A - 1.0) * cosW - s);
+            a0 = (A + 1.0) - (A - 1.0) * cosW + s;
+            a1 = 2.0 * ((A - 1.0) - (A + 1.0) * cosW);
+            a2 = (A + 1.0) - (A - 1.0) * cosW - s;
+        }
+        else   // peak
+        {
+            b0 = 1.0 + alpha * A; b1 = -2.0 * cosW; b2 = 1.0 - alpha * A;
+            a0 = 1.0 + alpha / A; a1 = -2.0 * cosW; a2 = 1.0 - alpha / A;
+        }
+        if (std::abs(a0) < 1.0e-12) return c;
+        c.b0 = b0 / a0; c.b1 = b1 / a0; c.b2 = b2 / a0; c.a1 = a1 / a0; c.a2 = a2 / a0; c.on = true;
+        return c;
+    }
+
+    void rebuildRouteEq(Route& r)
+    {
+        const int next = 1 - r.eqIndex.load(std::memory_order_relaxed);
+        bool any = false;
+        for (int b = 0; b < 5; ++b)
+        {
+            const auto c = eqBiquadFor(r.eqSettings.bands[b], b, r.sampleRate.load());
+            auto& set = r.eqSets[next][b];
+            set.b0 = (float)c.b0; set.b1 = (float)c.b1; set.b2 = (float)c.b2; set.a1 = (float)c.a1; set.a2 = (float)c.a2; set.on = c.on;
+            any = any || c.on;
+        }
+        r.eqIndex.store(next, std::memory_order_release);
+        r.eqAny.store(any, std::memory_order_release);
+    }
+}
+
+void SamplerEngine::setPerspectiveEq(int manualIndex, const juce::String& perspective, const EqSettings& eq)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals || perspective.isEmpty()) return;
+    const juce::ScopedLock sl(controlLock);
+    if (Route* r = impl->ensureRoute(manualIndex, perspective))
+    {
+        r->eqSettings = eq;
+        rebuildRouteEq(*r);
+    }
+}
+
+float SamplerEngine::eqResponseDb(const EqSettings& eq, float hz, double sampleRate) noexcept
+{
+    if (sampleRate <= 0.0) sampleRate = 48000.0;
+    const double w = juce::MathConstants<double>::twoPi * juce::jlimit(1.0, 0.5 * sampleRate, (double)hz) / sampleRate;
+    const double c1 = std::cos(w), s1 = std::sin(w), c2 = std::cos(2.0 * w), s2 = std::sin(2.0 * w);
+    double db = 0.0;
+    for (int b = 0; b < 5; ++b)
+    {
+        const auto c = eqBiquadFor(eq.bands[b], b, sampleRate);
+        if (!c.on) continue;
+        const double nr = c.b0 + c.b1 * c1 + c.b2 * c2, ni = c.b1 * s1 + c.b2 * s2;
+        const double dr = 1.0 + c.a1 * c1 + c.a2 * c2, di = c.a1 * s1 + c.a2 * s2;
+        const double mag2 = (nr * nr + ni * ni) / juce::jmax(1.0e-20, dr * dr + di * di);
+        db += 10.0 * std::log10(juce::jmax(1.0e-20, mag2));
+    }
+    return (float)db;
+}
+
+float SamplerEngine::takeRoutePeak(int manualIndex, const juce::String& perspective) noexcept
+{
+    if (impl == nullptr || manualIndex < 0 || manualIndex >= maxManuals) return 0.0f;
+    Route* r = impl->findRoute(manualIndex, perspective.isEmpty() ? juce::String("default") : perspective);
+    if (r == nullptr) return 0.0f;
+    const uint32_t bits = r->peakBits.exchange(0, std::memory_order_relaxed);
+    float peak;
+    std::memcpy(&peak, &bits, sizeof(peak));
+    return peak;
+}
+
+//------------------------------------------------------------------------------
 void SamplerEngine::setWindModel(int sourceManual, float depthCents, float frequencyHz,
     float oscillations, float oscillationStrength, float baseSmoothingMs, uint8_t targetMask)
 {
@@ -8958,7 +9106,7 @@ void SamplerEngine::setWindModel(int sourceManual, float depthCents, float frequ
     const juce::ScopedLock sl(controlLock);
     auto& state = impl->windSources[(size_t)sourceManual];
     state.depthCents = juce::jlimit(0.0f, 150.0f, depthCents);   // 0.9.75: up to 150 cents (was 50)
-    state.frequencyHz = juce::jlimit(2.0f, 10.0f, frequencyHz);
+    state.frequencyHz = juce::jlimit(2.0f, 15.0f, frequencyHz);   // 0.9.89: up to 15 Hz (the user)
     state.oscillations = juce::jlimit(0.0f, 20.0f, oscillations);
     // 50 % on the GUI slider arrives as 1.0; 100 % is a genuine 2.0 (no clamp at 50 %).
     state.oscillationStrength = juce::jlimit(0.0f, 2.0f, oscillationStrength);

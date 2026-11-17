@@ -393,6 +393,11 @@ private:
             juce::String reverbIrPath;     // impulse response WAV of this perspective's IR reverb (empty = none)
             float reverbWet = 0.3f;        // dry/wet ratio 0..1
             SamplerEngine::ReverbTone reverbTone;   // high/low cut, pre-delay, wet level, decay
+            SamplerEngine::EqSettings eq;  // 0.9.89: the route's parametric EQ
+            // 0.9.89 LINKED (the user's design): a module of the route follows its PERSPECTIVE's settings
+            // (perspectiveEffects) while linked - the values above are then copies of the perspective's and the
+            // dialog's sliders are locked; switched off, the route keeps its own. New routes are born linked.
+            bool linkedVolume = true, linkedSeparation = true, linkedEq = true, linkedIr = true;
         };
         juce::String deviceIdentifier;
         int midiChannel = 1;
@@ -465,6 +470,39 @@ private:
         StopBuild stopBuild;
     };
     std::array<ManualConfig, SamplerEngine::maxManuals> manualConfigs;
+    // 0.9.89: the effects of a PERSPECTIVE (organ-wide, keyed by the lower-case name): what every linked route of
+    // it plays. Saved with the organ ("perspectiveEffects"); an old file without the block takes each
+    // perspective's values from its first route, and a route stays linked only where its values agree.
+    struct PerspectiveEffects
+    {
+        float volumeDb = 0.0f, channelSeparation = 1.0f;
+        juce::String reverbIrPath; float reverbWet = 0.3f; SamplerEngine::ReverbTone reverbTone;
+        SamplerEngine::EqSettings eq;
+    };
+    std::map<std::string, PerspectiveEffects> perspectiveEffects;
+    enum class EffectModule { Volume, Separation, Eq, Ir };
+    PerspectiveEffects& effectsOfPerspective(const juce::String& perspective);
+    void applyRouteEffect(int manual, const juce::String& perspective, EffectModule module);    // the stored values of that module of the route into the engine
+    static juce::var eqToVar(const SamplerEngine::EqSettings& eq);
+    static SamplerEngine::EqSettings eqFromVar(const juce::var& v);
+    void chooseReverbIrForPerspective(const juce::String& perspective);                        // the file dialog for a perspective's IR (every linked route takes it)
+    void perspectiveEffectChanged(const juce::String& perspective, EffectModule module);        // copied into every linked route of it, applied, saved
+    void setRouteEffectLinked(int manual, const juce::String& perspective, EffectModule module, bool linked);   // on = the perspective's values taken
+    bool routeEffectLinked(int manual, const juce::String& perspective, EffectModule module) const;
+    void unlinkRouteEffect(int manual, const juce::String& perspective, EffectModule module);   // a change of the route's own control (MIDI) ends the link
+    bool routeEffectsActive(int manual, const juce::String& perspective) const;                // the fx button is orange: something set apart or off default
+    bool perspectiveEffectsActive(const juce::String& perspective) const;
+    int routesLinked(const juce::String& perspective, EffectModule module, juce::StringArray* apart = nullptr) const;   // how many of its routes follow (the others named)
+    static bool& linkedFlagOf(ManualConfig::PerspectiveAudioConfig& c, EffectModule m);
+    static void copyEffectModule(const PerspectiveEffects& p, ManualConfig::PerspectiveAudioConfig& c, EffectModule m);
+    static bool effectModuleAgrees(const PerspectiveEffects& p, const ManualConfig::PerspectiveAudioConfig& c, EffectModule m);
+    static const char* effectModuleName(EffectModule m);
+    void showEffectsDialog(const juce::String& perspective, int manual);                        // manual -1 = the perspective's own dialog
+    std::unique_ptr<juce::DialogWindow> effectsWindow;                                         // one at a time (modeless)
+    // 0.9.89: the audio meter's painting and state, shared by the console display and the Audio routing dialog.
+    static void paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> area, float meterDb, bool clipNow, bool clipLatched);
+    void outputMeterState(float& meterDb, bool& clipNow, bool& clipLatched) const;
+    void clearOutputClipLatch();
     // The tree pool: every loaded sample folder tree, once, for the whole organ.
     // FolderRef.tree indexes this list; the per-division folderPath/extraFolderPaths
     // are derived from the tables (syncDivisionTreeLists) for the older code paths.
@@ -1389,6 +1427,7 @@ private:
     void mergeConfiguration(juce::var added, const juce::File& addedFile, const juce::String& addedName, std::function<void()> afterLoad);
     friend class PolyphonyDisplay;   // the RAM column reads the two memory figures below
     friend class AudioRoutingContent;   // 0.9.79 (#236): AudioRouting.h reads the routes and applies devices/channels
+    friend class EffectsContent;        // 0.9.89: EffectsDialog.h - the effects of a route / a perspective (LINKED)
     // Before a configuration loads: the WAV bytes of its trees against the free
     // memory, a warning (log + message) when the samples will not fit - the
     // system then pages them out and every stroke stalls (#16, #17). Counted on

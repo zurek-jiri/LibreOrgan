@@ -29,20 +29,28 @@
 // Dev: ORGAN_TEST_ROUTE="<division|all>|<perspective>|<card name part>|<output 1-based>[|add|single|remove|movecable
 // <from output>]" or "cell|<card name part>|<column>|<row>" (several specs separated by ^, the first 1.5 s after the
 // dialog opens, then 3 s apart) drives the actions without a mouse; the log says "Audio routing: ...".
+// 0.9.89 (the user): the rows of "Organ out" taller with a larger font and dots, a mini audio meter and the fx
+// button (grey = everything default, ORANGE = an effect set or a module set apart) on every row - the fx opens the
+// Effects dialog (EffectsDialog.h) of the route (a division row) or of the perspective; the header carries the
+// master volume (the console's slider, one value), the master audio meter (the console's, one state) and Measure...
+// (the polyphony measurement - the Divisions dialog lost its audio tabs, this dialog is the one way to the audio).
 #include <JuceHeader.h>
 #include "MainComponent.h"
+#include "UIControls.h"
+#include "PlatformAudio.h"
 
 class AudioRoutingContent final : public juce::Component, public juce::TooltipClient, private juce::Timer
 {
 public:
-    explicit AudioRoutingContent(MainComponent& o) : owner(o)
+    explicit AudioRoutingContent(MainComponent& o) : owner(o), masterMeter(o)
     {
         getProperties().set("manualChapter", "Audio routing");
         setWantsKeyboardFocus(true);
         help.setText("Drag a perspective (left) onto an output of a card: the output and its partner glow where the stereo pair will land; "
             "Shift adds a second pair to the same source (the pipes alternate between the pairs by key, a C / C# split), Alt takes one channel. "
             "Press a cable and it follows the mouse: let go on another output to plug it there; a click alone selects it, Delete (or its x) removes it. "
-            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title onto a cell of the grid.",
+            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title onto a cell of the grid. "
+            "fx opens the effects of a row (volume, channel separation, equalizer, IR reverb); the meter beside it shows what the row plays.",
             juce::dontSendNotification);
         help.setFont(juce::FontOptions(12.5f));
         help.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -60,8 +68,52 @@ public:
         sizeBox.setTooltip("The size of the sound card buttons, the outputs and their names");
         sizeBox.onChange = [this] { owner.audioRoutingButtonSize = sizeBox.getSelectedId() - 1; owner.saveSettings(); rebuild(); };
         addAndMakeVisible(sizeBox);
+        // The master strip: the console's master volume (the same value, two places - never a copy), the console's
+        // audio meter, and the polyphony measurement.
+        masterLabel.setText("Master volume", juce::dontSendNotification);
+        masterLabel.setJustificationType(juce::Justification::centredRight);
+        addAndMakeVisible(masterLabel);
+        masterSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+        masterSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 70, 22);
+        masterSlider.setRange(owner.masterVolumeSlider.getMinimum(), owner.masterVolumeSlider.getMaximum(), 0.1);
+        masterSlider.setTextValueSuffix(" dB");
+        masterSlider.setScrollWheelEnabled(true);
+        masterSlider.setDoubleClickReturnValue(true, owner.masterVolumeSlider.getDoubleClickReturnValue());
+        masterSlider.setValue(owner.masterVolumeSlider.getValue(), juce::dontSendNotification);
+        masterSlider.setTooltip("The level of the whole organ - the console's master slider itself. Right-click: MIDI learn.");
+        masterSlider.getProperties().set("midiTarget", "slider:global:master");
+        masterSlider.getProperties().set("manualChapter", "Master volume");
+        masterSlider.addMouseListener(&owner, false);
+        masterSlider.onValueChange = [this] { owner.masterVolumeSlider.setValue(masterSlider.getValue(), juce::sendNotification); };
+        addAndMakeVisible(masterSlider);
+        masterMeter.setTooltip("The audio meter of the console: the highest sample of every route and device before the limiter (green to -12 dB, orange to -3 dB, red = the limiter at work); the CLIP dot stays lit until you click it.");
+        masterMeter.getProperties().set("manualChapter", "The polyphony display");
+        addAndMakeVisible(masterMeter);
+        measureButton.setButtonText("Measure...");
+        measureButton.setTooltip("Measures the most voices this organ renders cleanly with the devices, buffers and effects as set now, "
+            "and proposes the LIMIT of the polyphony display (the Configuration Editor has the same button).");
+        measureButton.getProperties().set("manualChapter", "Measure the maximum polyphony");
+        measureButton.onClick = [this] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target] { if (target != nullptr) target->startPolyphonyMeasurement(); }); };
+        addAndMakeVisible(measureButton);
+#if JUCE_LINUX
+        // The Linux switch of the audio tabs (0.8.228): every ALSA device listed, the unusable ones too.
+        unusableButton.setButtonText("List unusable devices too");
+        unusableButton.setTooltip("Every ALSA device is tried when the list is made; one that cannot be opened now (held by PipeWire or another program) "
+            "is left out, with the reason in the activity log, and JACK lists only clients with audio ports. Ticked: everything is listed.");
+        unusableButton.setToggleState(owner.showUnusableAudioDevices, juce::dontSendNotification);
+        unusableButton.onClick = [this]
+        {
+            owner.showUnusableAudioDevices = unusableButton.getToggleState();
+            unusableAudioDevicesShown().store(owner.showUnusableAudioDevices);
+            owner.saveSettings();
+            CrashHandler::note(juce::String("Audio lists: unusable devices ") + (owner.showUnusableAudioDevices ? "listed" : "left out")
+                + (hiddenAlsaDevicesNote().isNotEmpty() ? " - " + hiddenAlsaDevicesNote() : juce::String()));
+            rebuild();
+        };
+        addAndMakeVisible(unusableButton);
+#endif
         rebuild();
-        startTimer(1000);
+        startTimer(100);   // the meters; the model's signature every 10th tick (1 s, as before)
         if (const char* env = std::getenv("ORGAN_TEST_ROUTE"))
         {
             const auto specs = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", "");
@@ -84,24 +136,43 @@ public:
         g.setFont(juce::FontOptions(18.0f, juce::Font::bold));
         g.drawText("Organ out", 14, sourcesTop - 30, leftWidth - 20, 24, juce::Justification::centredLeft);
         g.drawText("Sound cards", gridLeft, sourcesTop - 30, 300, 24, juce::Justification::centredLeft);
-        for (const auto& row : rows)
+        for (size_t ri = 0; ri < rows.size(); ++ri)
         {
-            const bool dragged = dragging && dragRow == &row - rows.data();
-            g.setFont(juce::FontOptions(13.0f, row.perspectiveRow ? juce::Font::bold : juce::Font::plain));
+            const auto& row = rows[ri];
+            const bool dragged = dragging && dragRow == (int)ri;
+            g.setFont(juce::FontOptions(15.0f, row.perspectiveRow ? juce::Font::bold : juce::Font::plain));   // 0.9.89: 13 -> 15 (the user: "mrňavé")
             auto area = row.bounds;
             if (row.perspectiveRow)
             {
                 g.setColour(juce::Colours::lightgrey);
-                g.drawText(row.folded ? juce::String::charToString(0x25B8) : juce::String::charToString(0x25BE), area.removeFromLeft(16), juce::Justification::centred);
+                g.drawText(row.folded ? juce::String::charToString(0x25B8) : juce::String::charToString(0x25BE), area.removeFromLeft(18), juce::Justification::centred);
             }
-            else area.removeFromLeft(26);
+            else area.removeFromLeft(28);
             g.setColour(row.colour.withAlpha(row.silent ? 0.35f : 1.0f));
-            g.fillEllipse((float)area.getX(), (float)area.getCentreY() - 5.0f, 10.0f, 10.0f);
-            g.fillEllipse((float)area.getRight() - 12.0f, (float)area.getCentreY() - 5.0f, 10.0f, 10.0f);   // 0.9.85: the dot again at the right edge = where the cable is taken
-            area.removeFromLeft(14);
+            g.fillEllipse((float)area.getX(), (float)area.getCentreY() - 7.0f, 14.0f, 14.0f);   // 0.9.89: the dots 10 -> 14 px
+            g.fillEllipse((float)area.getRight() - 16.0f, (float)area.getCentreY() - 7.0f, 14.0f, 14.0f);   // 0.9.85: the dot again at the right edge = where the cable is taken
+            area.removeFromLeft(18);
+            area.removeFromRight(20 + fxWidth + 6 + meterWidth + 6);   // the meter, the fx button and the dot sit at the right
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
-            g.drawFittedText(row.label, area.withTrimmedRight(16), juce::Justification::centredLeft, 1);
+            g.drawFittedText(row.label, area, juce::Justification::centredLeft, 1);
+            // The row's mini meter: three segments (green to -12 dB, orange to -3 dB, red above), 1 s hold.
+            if (ri < rowMeters.size())
+            {
+                const auto m = rowMeters[ri];
+                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 6, meterWidth, 12);
+                const float db = m.db;
+                static const float thresholds[3]{ -36.0f, -12.0f, -3.0f };
+                const int segment = (meterWidth - 4) / 3;
+                for (int s = 0; s < 3; ++s)
+                {
+                    const juce::Colour colour = s == 0 ? juce::Colours::lime : s == 1 ? juce::Colours::orange : juce::Colours::red;
+                    const bool lit = db >= thresholds[s] && !row.silent;
+                    g.setColour(lit ? colour : colour.withAlpha(0.18f));
+                    g.fillRoundedRectangle(juce::Rectangle<float>((float)(meter.getX() + s * (segment + 2)), (float)meter.getY(), (float)segment, (float)meter.getHeight()), 2.0f);
+                }
+            }
         }
+        // 0.9.89: the signature also follows the effects (the fx buttons' colour) - see signature().
         // The free cells of the grid while a card is dragged.
         if (dragCard >= 0 && draggingCard)
             for (const auto& cell : freeCells)
@@ -415,7 +486,24 @@ private:
     };
     struct TypeSection { juce::String type; bool collapsed = false; int count = 0; juce::Rectangle<int> bounds; };
 
-    static constexpr int leftWidth = 250, rowHeight = 24, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 14;   // laneGap 8 -> 14 (0.9.85, the user: "namačkané na sobě")
+    static constexpr int leftWidth = 340, rowHeight = 32, cardWidth = 372, cardHeight = 118, cellGap = 24, laneGap = 14;   // laneGap 8 -> 14 (0.9.85, the user: "namačkané na sobě"); 0.9.89: rows 24 -> 32, the column wider for the meter and fx
+    static constexpr int fxWidth = 34, meterWidth = 40;   // 0.9.89: the fx button and the mini meter of a row
+
+    // 0.9.89: the console's audio meter in the header (one state: MainComponent::outputMeterState).
+    struct MasterMeter final : public juce::Component, public juce::SettableTooltipClient
+    {
+        explicit MasterMeter(MainComponent& o) : owner(o) {}
+        void paint(juce::Graphics& g) override
+        {
+            g.setColour(juce::Colours::black); g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 3.0f);
+            g.setColour(juce::Colours::darkgrey); g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.0f), 3.0f, 1.0f);
+            float db; bool now, latched;
+            owner.outputMeterState(db, now, latched);
+            MainComponent::paintOutputMeter(g, getLocalBounds(), db, now, latched);
+        }
+        void mouseDown(const juce::MouseEvent&) override { owner.clearOutputClipLatch(); repaint(); }
+        MainComponent& owner;
+    };
 
     float scale() const noexcept { return owner.audioRoutingButtonSize == 0 ? 0.85f : owner.audioRoutingButtonSize == 2 ? 1.25f : 1.0f; }
     int jackWidth() const noexcept { return juce::roundToInt(30.0f * scale()); }
@@ -670,6 +758,30 @@ private:
                     rows.push_back(row);
                 }
         }
+        // 0.9.89: the fx button of every row and its meter.
+        fxButtons.clear();
+        rowMeters.assign(rows.size(), {});
+        for (size_t ri = 0; ri < rows.size(); ++ri)
+        {
+            const auto& row = rows[ri];
+            auto* b = fxButtons.add(new juce::TextButton("fx"));
+            const bool active = row.perspectiveRow ? owner.perspectiveEffectsActive(row.perspective)
+                : (!row.routes.empty() && owner.routeEffectsActive(row.routes.front().manual, row.routes.front().perspective));
+            if (active)
+            {
+                b->setColour(juce::TextButton::buttonColourId, juce::Colours::orange);
+                b->setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+            }
+            b->setTooltip((row.perspectiveRow ? "The effects of the perspective " + row.perspective + " - every linked route of it follows"
+                : "The effects of this route: volume, channel separation, equalizer, IR reverb - LINKED to the perspective, or its own")
+                + juce::String(active ? "\n(orange: something is set here)" : "\n(grey: everything default)"));
+            b->getProperties().set("manualChapter", "Effects");
+            b->getProperties().set("testName", "fx " + row.label);   // ORGAN_TEST_MOUSE finds it ("fx Front (3 divisions)", "fx I.  Front")
+            const juce::String perspective = row.perspective;
+            const int manual = row.perspectiveRow || row.routes.empty() ? -1 : row.routes.front().manual;
+            b->onClick = [this, perspective, manual] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target, perspective, manual] { if (target != nullptr) target->showEffectsDialog(perspective, manual); }); };
+            addAndMakeVisible(b);
+        }
         controls.clear();
         for (int i = 0; i < (int)cards.size(); ++i)
         {
@@ -738,14 +850,28 @@ private:
     }
     void layout()
     {
-        const int width = juce::jmax(700, getWidth());
-        help.setBounds(10, 6, width - 330, 56);
-        showCables.setBounds(width - 310, 8, 110, 24);
-        sizeLabel.setBounds(width - 200, 8, 90, 24);
-        sizeBox.setBounds(width - 106, 8, 96, 24);
-        sourcesTop = 94;
+        const int width = juce::jmax(760, getWidth());
+        help.setBounds(10, 6, width - 560, 72);
+        // The right block of the header: the switches on the first line, the master strip on the second, the meter beside.
+        masterMeter.setBounds(width - 56, 6, 46, 72);
+        showCables.setBounds(width - 540, 8, 110, 24);
+        sizeLabel.setBounds(width - 430, 8, 90, 24);
+        sizeBox.setBounds(width - 336, 8, 96, 24);
+        measureButton.setBounds(width - 170, 8, 104, 24);
+        masterLabel.setBounds(width - 540, 44, 110, 24);
+        masterSlider.setBounds(width - 426, 44, 260, 24);
+#if JUCE_LINUX
+        unusableButton.setBounds(width - 540, 76, 220, 22);
+#endif
+        sourcesTop = 110;
         int y = sourcesTop;
-        for (auto& row : rows) { row.bounds = { 12, y, leftWidth - 16, rowHeight }; y += rowHeight; }
+        for (size_t ri = 0; ri < rows.size(); ++ri)
+        {
+            auto& row = rows[ri];
+            row.bounds = { 12, y, leftWidth - 16, rowHeight };
+            if ((int)ri < fxButtons.size()) fxButtons[(int)ri]->setBounds(row.bounds.getRight() - 20 - fxWidth, y + 4, fxWidth, rowHeight - 8);
+            y += rowHeight;
+        }
         sourcesBottom = y;
         listCables();
         // THE GRID: cells of cellWidth() right of the gutter (the gutter widens with the cables it carries); a card
@@ -1148,7 +1274,8 @@ private:
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
             {
-                s << cardKeyOf({ manual, perspective }) << ":" << channelsText(channelsOf({ manual, perspective })) << ":" << owner.manualConfigs[(size_t)manual].alias << ";";
+                s << cardKeyOf({ manual, perspective }) << ":" << channelsText(channelsOf({ manual, perspective })) << ":" << owner.manualConfigs[(size_t)manual].alias
+                  << ":" << (owner.routeEffectsActive(manual, perspective) ? "fx" : "-") << (owner.perspectiveEffectsActive(perspective) ? "p" : "-") << ";";   // 0.9.89: the fx buttons follow the effects
                 if (auto* manager = owner.managerForRoute(manual, perspective))
                     if (auto* device = manager->getCurrentAudioDevice())
                         s << juce::roundToInt(device->getCurrentSampleRate()) << "/" << device->getCurrentBufferSizeSamples() << "/" << device->getOutputLatencyInSamples() << ";";
@@ -1158,15 +1285,45 @@ private:
     }
     void timerCallback() override
     {
+        // 0.9.89: the meters every tick (100 ms): the row's peak = the highest of its routes since the last tick, 1 s hold.
+        {
+            const double now = juce::Time::getMillisecondCounterHiRes();
+            bool changed = false;
+            for (size_t ri = 0; ri < rows.size() && ri < rowMeters.size(); ++ri)
+            {
+                float peak = 0.0f;
+                for (const auto& route : rows[ri].routes) peak = juce::jmax(peak, owner.engine.takeRoutePeak(route.manual, route.perspective));
+                const float db = peak > 1.0e-6f ? juce::Decibels::gainToDecibels(peak) : -100.0f;
+                auto& m = rowMeters[ri];
+                if (db >= m.db || now >= m.holdUntil) { if (std::abs(db - m.db) > 0.5f) changed = true; m.db = db; m.holdUntil = now + 1000.0; }
+            }
+            if (changed) repaint(juce::Rectangle<int>(12, sourcesTop, leftWidth, juce::jmax(0, sourcesBottom - sourcesTop)));
+            masterMeter.repaint();
+            if (!masterSlider.isMouseButtonDown() && std::abs(masterSlider.getValue() - owner.masterVolumeSlider.getValue()) > 0.001)
+                masterSlider.setValue(owner.masterVolumeSlider.getValue(), juce::dontSendNotification);
+            const bool canMeasure = owner.canMeasurePolyphony();
+            if (measureButton.isEnabled() != canMeasure) measureButton.setEnabled(canMeasure);
+        }
+        if (++ticks % 10 != 0) return;
         if (dragging || dragCard >= 0 || pressedCable >= 0) return;
         const auto now = signature();
         if (now != lastSignature) { lastSignature = now; rebuild(); }
     }
 
     MainComponent& owner;
-    juce::Label help, sizeLabel;
+    juce::Label help, sizeLabel, masterLabel;
     juce::ToggleButton showCables;
     juce::ComboBox sizeBox;
+    LearnableSlider masterSlider;      // 0.9.89: the console's master volume (the same value)
+    MasterMeter masterMeter;           // 0.9.89: the console's audio meter (the same state)
+    juce::TextButton measureButton;    // 0.9.89: the polyphony measurement (was on the audio tabs)
+#if JUCE_LINUX
+    juce::ToggleButton unusableButton; // 0.9.89: the ALSA "list unusable devices" switch (was on the audio tabs)
+#endif
+    juce::OwnedArray<juce::TextButton> fxButtons;   // 0.9.89: one per row
+    struct RowMeter { float db = -100.0f; double holdUntil = 0.0; };
+    std::vector<RowMeter> rowMeters;
+    int ticks = 0;
     std::vector<Row> rows;
     std::vector<Card> cards;
     std::vector<Cable> cables;

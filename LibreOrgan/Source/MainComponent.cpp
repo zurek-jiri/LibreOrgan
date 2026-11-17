@@ -66,6 +66,7 @@ namespace
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
 #include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
 #include "AudioRouting.h"       // the Audio routing dialog: cards as blocks, routes as chips (0.9.79, #236)
+#include "EffectsDialog.h"      // the Effects dialog of a route / a perspective: Volume, Separation, EQ, IR, LINKED (0.9.89)
 #include "ManualView.h"         // the manual's text laid out block by block (0.8.213)
 #include "UIScale.h"
 
@@ -145,6 +146,9 @@ public:
     int columnWidth() const noexcept { return juce::jmax(1, (getWidth() - meterWidth()) * 18 / 100); }   // LIMIT gets the rest (28 %)
     // A click on the meter clears the latched clip dot (the user: "uživatel by ji musel zrušit myší").
     void mouseDown(const juce::MouseEvent& e) override { if (e.x < meterWidth()) { clipLatched = false; repaint(); } }
+    // 0.9.89: the meter's state for the Audio routing dialog (one state, read here; the dialog paints it too).
+    void meterState(float& db, bool& now, bool& latched) const noexcept { db = meterDb; now = clipNow; latched = clipLatched; }
+    void clearClipLatch() { clipLatched = false; repaint(); }
     // The measurement's verdict into the LIMIT box at once, the caret in it or not (0.8.135).
     void refreshLimit() { limitEditor.giveAwayKeyboardFocus(); limitEditor.setText(juce::String(engine.getMaxPolyphony()), false); }
     // Output discontinuities found in the last second (0.8.226, once a second from
@@ -174,28 +178,9 @@ public:
         g.drawRoundedRectangle(r, 3.0f, 1.0f);
         const int column = columnWidth();
         const int meter = meterWidth();
-        // 0.9.79 (#229): the audio meter - "CLIP" with its latched red dot on top, a vertical bargraph below
-        // (8 green segments to -12 dB, 3 orange to -3 dB, one red while the limiter works), 1 s peak hold.
-        {
-            g.setColour(juce::Colours::lightgrey);
-            g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
-            g.drawText("CLIP", juce::Rectangle<int>(3, 3, meter - 14, 16), juce::Justification::centredLeft);
-            g.setColour(clipLatched ? juce::Colours::red : juce::Colours::darkred.withAlpha(0.5f));
-            g.fillEllipse((float)meter - 11.0f, 7.0f, 7.0f, 7.0f);
-            const int top = 21, bottom = getHeight() - 4;
-            constexpr int segments = 8;   // 4 green to -12 dB, 3 orange to -3 dB, 1 red = the limiter at work (the cell is ~50 px high)
-            const float segmentHeight = (float)(bottom - top) / (float)segments;
-            static const float thresholdsDb[segments]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f, 0.0f };
-            for (int s = 0; s < segments; ++s)
-            {
-                const bool red = s == segments - 1;
-                const bool lit = red ? clipNow : meterDb >= thresholdsDb[s];
-                const juce::Colour colour = red ? juce::Colours::red : s < 4 ? juce::Colours::lime : juce::Colours::orange;
-                g.setColour(lit ? colour : colour.withAlpha(0.18f));
-                const float y = (float)bottom - (float)(s + 1) * segmentHeight;
-                g.fillRect(juce::Rectangle<float>(8.0f, y + 1.0f, (float)meter - 16.0f, juce::jmax(1.0f, segmentHeight - 2.0f)));
-            }
-        }
+        // 0.9.79 (#229): the audio meter - the painting is MainComponent::paintOutputMeter since 0.9.89 (the Audio
+        // routing dialog shows the same meter from the same state).
+        MainComponent::paintOutputMeter(g, juce::Rectangle<int>(0, 0, meter, getHeight()), meterDb, clipNow, clipLatched);
         const juce::String labels[5]{ "NOW", "PEAK", "DSP", "RAM GB", "LIMIT" };
         const bool glitches = glitchCount > 0 && juce::Time::getMillisecondCounterHiRes() <= glitchUntil;
         const bool silent = !silentDevices.empty();   // 0.9.12
@@ -294,6 +279,17 @@ private:
     bool clipLatched = false, clipNow = false;   // the dot beside CLIP (until clicked) and the red segment (400 ms)
     juce::TextEditor limitEditor;
 };
+
+void MainComponent::outputMeterState(float& meterDb, bool& clipNow, bool& clipLatched) const
+{
+    meterDb = -100.0f; clipNow = false; clipLatched = false;
+    if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->meterState(meterDb, clipNow, clipLatched);
+}
+
+void MainComponent::clearOutputClipLatch()
+{
+    if (auto* display = dynamic_cast<PolyphonyDisplay*>(polyphonyDisplay.get())) display->clearClipLatch();
+}
 
 // The message strip (0.8.228): bottom-left of the console, "Messages (N new): the
 // last title" for ten seconds, then "Messages (N new)" until the Messages tab of
@@ -4285,6 +4281,28 @@ void MainComponent::rebuildPerspectiveAudioRoutes()
         buildPerspectiveAudioRoute(manual, perspective);
     closeHiddenRoutes();
     pruneUnusedAsioHosts();
+    // 0.9.89 LINKED: a route born now (a perspective new to the organ) still has default effects - it takes its
+    // perspective's; a route that already carries values of its own which differ (a Hauptwerk import's per-division
+    // route volumes, for one) is set apart instead - nothing is ever overwritten quietly.
+    juce::StringArray taken, apart;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            auto& c = manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)];
+            const auto p = effectsOfPerspective(perspective);
+            const bool fresh = std::abs(c.volumeDb) < 0.001f && c.channelSeparation > 0.9999f && c.reverbIrPath.isEmpty() && c.eq.flat();
+            for (const auto module : { EffectModule::Volume, EffectModule::Separation, EffectModule::Eq, EffectModule::Ir })
+            {
+                if (!linkedFlagOf(c, module) || effectModuleAgrees(p, c, module)) continue;
+                static const juce::String divisionNames[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+                const juce::String what = divisionNames[juce::jlimit(0, 7, manual)] + " " + perspective + " " + effectModuleName(module);
+                if (fresh) { copyEffectModule(p, c, module); applyRouteEffect(manual, perspective, module); taken.add(what); }
+                else { linkedFlagOf(c, module) = false; apart.add(what); }
+            }
+        }
+    if (!taken.isEmpty() || !apart.isEmpty())
+        CrashHandler::note("Effects of the routes: " + (taken.isEmpty() ? juce::String() : "taken from the perspective (LINKED): " + taken.joinIntoString(", "))
+            + (apart.isEmpty() ? juce::String() : juce::String(taken.isEmpty() ? "" : "; ") + "set apart (own values that differ): " + apart.joinIntoString(", ")));
 }
 
 void MainComponent::closeHiddenRoutes()
@@ -4765,6 +4783,7 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
             safeThis->noteSampleLocation(file.getParentDirectory().getParentDirectory());   // 0.8.191: the IR collection's folder - the IR is found by its tail there
             safeThis->applyPerspectiveReverb(manualIndex, perspective);
             safeThis->propagateEffectsIfLinked(manualIndex, perspective);
+            safeThis->unlinkRouteEffect(manualIndex, perspective, EffectModule::Ir);   // 0.9.89: an IR chosen for the route alone sets it apart
             const auto info = safeThis->engine.getPerspectiveReverbInfo(manualIndex, perspective);
             CrashHandler::note("IR reverb for manual " + juce::String(manualIndex) + " perspective " + perspective + ": "
                 + file.getFullPathName() + " -> " + juce::String(info.channels) + " ch, " + juce::String(info.seconds, 2) + " s"
@@ -4773,6 +4792,276 @@ void MainComponent::chooseReverbIr(int manualIndex, const juce::String& perspect
                 queueNotice(juce::MessageBoxIconType::WarningIcon, "Impulse response", info.error);
             safeThis->saveSettings();
         });
+}
+
+//==============================================================================
+// 0.9.89 EFFECTS AND LINKED (the user's design, 17 Nov 2026): the effects live on the ROUTES (what plays); a
+// PERSPECTIVE holds the shared settings of every module (perspectiveEffects). A module of a route follows the
+// perspective while LINKED (the orange button in its dialog: the route's values are copies, its sliders locked);
+// switched off, the route keeps its own values; switched on again, the perspective's are copied back. New routes
+// are born linked. Nothing is summed and nothing is a second path: the engine still processes every route alone
+// (a perspective's effect = the same instance on each of its routes, N times the DSP).
+//==============================================================================
+juce::var MainComponent::eqToVar(const SamplerEngine::EqSettings& eq)
+{
+    juce::Array<juce::var> bands;
+    for (const auto& b : eq.bands)
+    {
+        juce::DynamicObject::Ptr o = new juce::DynamicObject();
+        o->setProperty("on", b.on);
+        o->setProperty("hz", b.hz);
+        o->setProperty("gainDb", b.gainDb);
+        o->setProperty("q", b.q);
+        bands.add(juce::var(o.get()));
+    }
+    return bands;
+}
+
+SamplerEngine::EqSettings MainComponent::eqFromVar(const juce::var& v)
+{
+    SamplerEngine::EqSettings eq;
+    if (!v.isArray()) return eq;
+    for (int i = 0; i < 5 && i < v.size(); ++i)
+    {
+        const auto& b = v[i];
+        if (!b.isObject()) continue;
+        eq.bands[i].on = (bool)b.getProperty("on", true);
+        eq.bands[i].hz = juce::jlimit(10.0f, 22000.0f, (float)(double)b.getProperty("hz", eq.bands[i].hz));
+        eq.bands[i].gainDb = juce::jlimit(-18.0f, 18.0f, (float)(double)b.getProperty("gainDb", 0.0));
+        eq.bands[i].q = juce::jlimit(0.1f, 10.0f, (float)(double)b.getProperty("q", eq.bands[i].q));
+    }
+    return eq;
+}
+
+MainComponent::PerspectiveEffects& MainComponent::effectsOfPerspective(const juce::String& perspective)
+{
+    return perspectiveEffects[perspective.toLowerCase().toStdString()];
+}
+
+bool& MainComponent::linkedFlagOf(ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
+{
+    switch (m)
+    {
+        case EffectModule::Volume: return c.linkedVolume;
+        case EffectModule::Separation: return c.linkedSeparation;
+        case EffectModule::Eq: return c.linkedEq;
+        default: return c.linkedIr;
+    }
+}
+void MainComponent::copyEffectModule(const PerspectiveEffects& p, ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
+{
+    switch (m)
+    {
+        case EffectModule::Volume: c.volumeDb = p.volumeDb; break;
+        case EffectModule::Separation: c.channelSeparation = p.channelSeparation; break;
+        case EffectModule::Eq: c.eq = p.eq; break;
+        default: c.reverbIrPath = p.reverbIrPath; c.reverbWet = p.reverbWet; c.reverbTone = p.reverbTone; break;
+    }
+}
+bool MainComponent::effectModuleAgrees(const PerspectiveEffects& p, const ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
+{
+    switch (m)
+    {
+        case EffectModule::Volume: return std::abs(p.volumeDb - c.volumeDb) < 0.01f;
+        case EffectModule::Separation: return std::abs(p.channelSeparation - c.channelSeparation) < 0.001f;
+        case EffectModule::Eq: return p.eq == c.eq;
+        default:
+            return p.reverbIrPath == c.reverbIrPath && std::abs(p.reverbWet - c.reverbWet) < 0.001f
+                && std::abs(p.reverbTone.highCutHz - c.reverbTone.highCutHz) < 0.5f && std::abs(p.reverbTone.lowCutHz - c.reverbTone.lowCutHz) < 0.5f
+                && std::abs(p.reverbTone.preDelayMs - c.reverbTone.preDelayMs) < 0.01f && std::abs(p.reverbTone.wetDb - c.reverbTone.wetDb) < 0.01f
+                && std::abs(p.reverbTone.decayPercent - c.reverbTone.decayPercent) < 0.01f && std::abs(p.reverbTone.fadePercent - c.reverbTone.fadePercent) < 0.01f;
+    }
+}
+const char* MainComponent::effectModuleName(EffectModule m)
+{
+    switch (m)
+    {
+        case EffectModule::Volume: return "Volume";
+        case EffectModule::Separation: return "Channel separation";
+        case EffectModule::Eq: return "Equalizer";
+        default: return "IR reverb";
+    }
+}
+namespace
+{
+    const juce::String& effectsDivisionName(int manual)
+    {
+        static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+        return names[juce::jlimit(0, 7, manual)];
+    }
+}
+
+void MainComponent::applyRouteEffect(int manual, const juce::String& perspective, EffectModule module)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    const auto key = perspectiveRouteKey(manual, perspective);
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(key);
+    if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return;
+    const auto& c = found->second;
+    switch (module)
+    {
+        case EffectModule::Volume: engine.setPerspectiveVolumeDb(manual, perspective, c.volumeDb); break;
+        case EffectModule::Separation: engine.setPerspectiveChannelSeparation(manual, perspective, c.channelSeparation); break;
+        case EffectModule::Eq: engine.setPerspectiveEq(manual, perspective, c.eq); break;
+        default: applyPerspectiveReverb(manual, perspective); break;
+    }
+}
+
+void MainComponent::perspectiveEffectChanged(const juce::String& perspective, EffectModule module)
+{
+    const auto p = effectsOfPerspective(perspective);   // a copy: the map may grow below
+    int copied = 0;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& name : engine.getPerspectivesForManual(manual))
+        {
+            if (!name.equalsIgnoreCase(perspective)) continue;
+            auto& c = manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, name)];
+            if (!linkedFlagOf(c, module)) continue;
+            if (effectModuleAgrees(p, c, module)) continue;
+            copyEffectModule(p, c, module);
+            applyRouteEffect(manual, name, module);
+            ++copied;
+        }
+    if (copied > 0 && module == EffectModule::Ir)
+        CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of the perspective " + perspective + " -> " + juce::String(copied) + " linked route(s)");
+    saveSettings();
+}
+
+bool MainComponent::routeEffectLinked(int manual, const juce::String& perspective, EffectModule module) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return false;
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+    if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return true;
+    return linkedFlagOf(const_cast<ManualConfig::PerspectiveAudioConfig&>(found->second), module);
+}
+
+void MainComponent::setRouteEffectLinked(int manual, const juce::String& perspective, EffectModule module, bool linked)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    auto& c = manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)];
+    bool& flag = linkedFlagOf(c, module);
+    if (flag == linked) return;
+    flag = linked;
+    if (linked)
+    {
+        const auto p = effectsOfPerspective(perspective);
+        if (!effectModuleAgrees(p, c, module)) { copyEffectModule(p, c, module); applyRouteEffect(manual, perspective, module); }
+    }
+    CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of " + effectsDivisionName(manual) + " " + perspective
+        + (linked ? " LINKED to the perspective again (its values taken)" : " set apart from the perspective (its own values from now on)"));
+    saveSettings();
+}
+
+void MainComponent::unlinkRouteEffect(int manual, const juce::String& perspective, EffectModule module)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+    if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return;
+    bool& flag = linkedFlagOf(found->second, module);
+    if (!flag) return;
+    flag = false;
+    CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of " + effectsDivisionName(manual) + " " + perspective + " changed on the route itself - set apart from the perspective");
+}
+
+namespace
+{
+    bool effectsOffDefault(float volumeDb, float separation, const juce::String& ir, const SamplerEngine::EqSettings& eq)
+    {
+        return std::abs(volumeDb) >= 0.05f || separation < 0.995f || ir.isNotEmpty() || !eq.flat();
+    }
+}
+
+bool MainComponent::routeEffectsActive(int manual, const juce::String& perspective) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return false;
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+    if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return false;
+    const auto& c = found->second;
+    return !c.linkedVolume || !c.linkedSeparation || !c.linkedEq || !c.linkedIr || effectsOffDefault(c.volumeDb, c.channelSeparation, c.reverbIrPath, c.eq);
+}
+
+bool MainComponent::perspectiveEffectsActive(const juce::String& perspective) const
+{
+    const auto found = perspectiveEffects.find(perspective.toLowerCase().toStdString());
+    if (found == perspectiveEffects.end()) return false;
+    const auto& p = found->second;
+    return effectsOffDefault(p.volumeDb, p.channelSeparation, p.reverbIrPath, p.eq);
+}
+
+int MainComponent::routesLinked(const juce::String& perspective, EffectModule module, juce::StringArray* apart) const
+{
+    int linked = 0;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& name : engine.getPerspectivesForManual(manual))
+        {
+            if (!name.equalsIgnoreCase(perspective)) continue;
+            if (routeEffectLinked(manual, name, module)) ++linked;
+            else if (apart != nullptr) apart->add(effectsDivisionName(manual) + " " + name);
+        }
+    return linked;
+}
+
+void MainComponent::chooseReverbIrForPerspective(const juce::String& perspective)
+{
+    const auto current = effectsOfPerspective(perspective).reverbIrPath;
+    const auto start = lastIrDirectory.isDirectory() ? lastIrDirectory
+        : (juce::File(current).existsAsFile() ? juce::File(current).getParentDirectory()
+            : juce::File::getSpecialLocation(juce::File::userMusicDirectory));
+    irChooser = std::make_unique<juce::FileChooser>("Impulse response for the perspective " + perspective + " (mono, stereo or true stereo WAV)",
+        start, "*.wav;*.aif;*.aiff;*.flac");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    irChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [safeThis, perspective](const juce::FileChooser& chooser)
+        {
+            if (safeThis == nullptr) return;
+            const auto file = chooser.getResult();
+            if (!file.existsAsFile()) return;
+            safeThis->effectsOfPerspective(perspective).reverbIrPath = file.getFullPathName();
+            safeThis->lastIrDirectory = file.getParentDirectory();
+            safeThis->saveLastDirectory();
+            safeThis->noteSampleLocation(file.getParentDirectory().getParentDirectory());
+            CrashHandler::note("IR reverb for the perspective " + perspective + ": " + file.getFullPathName());
+            safeThis->perspectiveEffectChanged(perspective, EffectModule::Ir);
+        });
+}
+
+void MainComponent::showEffectsDialog(const juce::String& perspective, int manual)
+{
+    effectsWindow.reset();   // one effects window at a time: remade for the new target (a DialogWindow is shown by its birth - 0.8.213)
+    auto* content = new EffectsContent(*this, perspective, manual);
+    content->setSize(900, 640);
+    const juce::String title = "Effects: " + (manual >= 0 ? effectsDivisionName(manual) + " " : juce::String()) + perspective;
+    effectsWindow = std::make_unique<ModelessDialog>(title, new ScrollableContent(content), true);
+    placeDialog(*effectsWindow, "effects", 900, 640);
+    effectsWindow->setVisible(true);
+    effectsWindow->toFront(true);
+    CrashHandler::note("Effects dialog opened: " + title);
+}
+
+void MainComponent::paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> area, float meterDb, bool clipNow, bool clipLatched)
+{
+    // 0.9.79 (#229): "CLIP" with its latched red dot on top, a vertical bargraph below (4 green segments to -12 dB,
+    // 3 orange to -3 dB, one red while the limiter works), 1 s peak hold - the console's display and, since 0.9.89,
+    // the Audio routing dialog paint it alike (one painting, one state: outputMeterState).
+    const int x = area.getX(), y = area.getY(), w = area.getWidth();
+    g.setColour(juce::Colours::lightgrey);
+    g.setFont(juce::FontOptions(12.0f, juce::Font::bold));   // 0.9.89: the same font as NOW / PEAK (the user)
+    g.drawText("CLIP", juce::Rectangle<int>(x + 3, y + 3, w - 14, 16), juce::Justification::centredLeft);
+    g.setColour(clipLatched ? juce::Colours::red : juce::Colours::darkred.withAlpha(0.5f));
+    g.fillEllipse((float)(x + w) - 11.0f, (float)y + 7.0f, 7.0f, 7.0f);
+    const int top = y + 21, bottom = area.getBottom() - 4;
+    constexpr int segments = 8;
+    const float segmentHeight = (float)(bottom - top) / (float)segments;
+    static const float thresholdsDb[segments]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f, 0.0f };
+    for (int s = 0; s < segments; ++s)
+    {
+        const bool red = s == segments - 1;
+        const bool lit = red ? clipNow : meterDb >= thresholdsDb[s];
+        const juce::Colour colour = red ? juce::Colours::red : s < 4 ? juce::Colours::lime : juce::Colours::orange;
+        g.setColour(lit ? colour : colour.withAlpha(0.18f));
+        const float sy = (float)bottom - (float)(s + 1) * segmentHeight;
+        g.fillRect(juce::Rectangle<float>((float)x + 8.0f, sy + 1.0f, (float)w - 16.0f, juce::jmax(1.0f, segmentHeight - 2.0f)));
+    }
 }
 
 //==============================================================================
@@ -8414,14 +8703,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         explicit KeyboardsDialog(MainComponent& owner, int onlyManual)
             : owner(owner), onlyManual(onlyManual)
         {
-            addAndMakeVisible(audioTabs);
-            for (const auto& perspective : owner.engine.getPerspectivesForManual(onlyManual))
-                if (auto* audio = owner.getAudioSettingsForPerspective(onlyManual, perspective))
-                {
-                    auto* panel = audioPanels.add(new AudioTabPanel(owner, onlyManual, perspective, audio));
-                    panel->getProperties().set("manualChapter", MainComponent::isAuxiliaryPerspective(perspective) ? "The auxiliary route" : "The audio tabs");   // F1 (0.8.232)
-                    audioTabs.addTab(perspective, juce::Colours::darkgrey, panel, false);
-                }
+            // 0.9.89 (the user): NO audio tabs any more - the sound cards, channels, effects and the measurement live
+            // in the Audio routing dialog, the one way to them; the button below opens it. (AudioTabPanel stays
+            // in the code unused: nothing of it is built.)
             // Lets MainComponent swap the audio selectors underneath this dialog
             // instead of closing it when a route changes its device manager.
             owner.keyboardsDialogSelectorHook = [this](bool detach)
@@ -8727,9 +9011,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     "Wind depth", 150.0, " cents", "windDepth",   // 0.9.76: up to 150 (the engine and the other sliders since 0.9.75)
                     defaultWindDepth[manual]);
                 setupWindSlider(windFrequencySliders[(size_t)manual], windFrequencyLabels[(size_t)manual],
-                    "Wind frequency", 10.0, " Hz", "windFrequency",
+                    "Wind frequency", 15.0, " Hz", "windFrequency",
                     defaultWindFrequency[manual]);
-                windFrequencySliders[(size_t)manual].setRange(2.0, 10.0, 0.1);
+                windFrequencySliders[(size_t)manual].setRange(2.0, 15.0, 0.1);   // 0.9.89: up to 15 Hz (the user)
                 setupWindSlider(windOscillationSliders[(size_t)manual], windOscillationLabels[(size_t)manual],
                     "Wind oscillations", 20.0, "x", "windOscillations",
                     defaultWindOscillations[manual]);
@@ -8919,6 +9203,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             };
             addAndMakeVisible(closeButton);
             closeButton.setButtonText("Close");
+            audioRoutingButton.setButtonText("Audio routing...");   // 0.9.89: the way to the sound cards, channels and effects (the audio tabs are gone)
+            audioRoutingButton.setTooltip("The sound cards, the output channels and the effects of every division and perspective - the Audio routing dialog (the same one as the console's button opens).");
+            audioRoutingButton.getProperties().set("manualChapter", "Audio routing");
+            audioRoutingButton.onClick = [this] { this->owner.showAudioRoutingDialog(); };
+            addAndMakeVisible(audioRoutingButton);
             refreshControls();
             owner.audioTabsReorder = [this] { reorderAudioTabs(); };
             startTimerHz(10);
@@ -8952,9 +9241,10 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
-            auto audioArea = area.removeFromBottom(492);   // the audio tab: three device buttons on a taller row, the running-device line below
-            closeButton.setBounds(audioArea.removeFromBottom(38).removeFromRight(110).reduced(4));
-            audioTabs.setBounds(audioArea.reduced(4));
+            auto audioArea = area.removeFromBottom(48);   // 0.9.89: the audio tabs are gone - the Audio routing button and Close
+            auto buttonRow = audioArea.removeFromBottom(38);
+            closeButton.setBounds(buttonRow.removeFromRight(110).reduced(4));
+            audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4));
             // No banner line: the division label sits above the MIDI column, the
             // settings, wind and stop-pool columns start right at the top.
             attenuationHeader.setVisible(onlyManual >= 0);
@@ -8981,8 +9271,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 outputLabels[(size_t)manual].setVisible(false);
                 deviceLabels[(size_t)manual].setVisible(visible);
                 channelLabels[(size_t)manual].setVisible(visible);
-                divisionVolumeSliders[(size_t)manual].setVisible(visible);
-                divisionVolumeLabels[(size_t)manual].setVisible(visible);
+                divisionVolumeSliders[(size_t)manual].setVisible(false);   // 0.9.89: the division volume lives in the Effects dialog of its routes (Audio routing)
+                divisionVolumeLabels[(size_t)manual].setVisible(false);
                 keyboards[(size_t)manual]->setVisible(visible);
                 expressionSliders[(size_t)manual]->setVisible(false);
                 attenuationSliders[(size_t)manual].setVisible(visible);
@@ -9023,7 +9313,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 if (!visible) continue;
                 labels[(size_t)manual].setFont(juce::FontOptions(30.0f, juce::Font::bold));
                 labels[(size_t)manual].setJustificationType(juce::Justification::centredLeft);
-                const auto fullRow = area.removeFromTop(420);   // the MIDI column: device, channel, three boxes, the transposition line
+                const auto fullRow = area.removeFromTop(460);   // the MIDI column: device, channel, three boxes, the transposition line (0.9.89: 420 -> 460 - the transposition line overflowed into the bass layout row and was hidden under it)
                 auto row = fullRow;
                 auto bottomStrip = row.removeFromBottom(78);
                 // The layout + compass line is as wide as the keyboard canvas (the last
@@ -9084,8 +9374,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     label.setBounds(line.removeFromTop(18));
                     slider.setBounds(line);
                 };
-                placeSetting(settingsArea, divisionVolumeLabels[(size_t)manual],
-                    divisionVolumeSliders[(size_t)manual]);
+                // (the division volume row is gone since 0.9.89 - the Effects dialog has it)
                 placeSetting(settingsArea, attenuationHeader,
                     attenuationSliders[(size_t)manual]);
                 placeSetting(settingsArea, tremulantRateLabels[(size_t)manual],
@@ -9282,6 +9571,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         juce::TextButton doneButton;
         juce::TextButton clearButton;
         juce::TextButton closeButton;
+        juce::TextButton audioRoutingButton;   // 0.9.89
         juce::TabbedComponent audioTabs{ juce::TabbedButtonBar::TabsAtTop };
         juce::OwnedArray<AudioTabPanel> audioPanels;
         bool blinkState = false;
@@ -9482,7 +9772,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
 
     auto* content = new KeyboardsDialog(*this, onlyManual);
     const int dialogWidth = onlyManual >= 0 ? 1140 : 1320;
-    const int dialogHeight = onlyManual >= 0 ? 926 : 966;   // the division row (420) + the audio tabs (480) + margins
+    const int dialogHeight = onlyManual >= 0 ? 522 : 562;   // 0.9.89: the division row (460) + the button row + margins (the audio tabs are gone)
     content->setSize(dialogWidth, dialogHeight);
     keyboardsWindow = std::make_unique<ModelessKeyboardWindow>([this]
     {
@@ -9494,7 +9784,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     keyboardsWindow->setUsingNativeTitleBar(true);
     keyboardsWindow->setResizable(true, true);
     keyboardsWindow->setContentOwned(new ScrollableContent(content), true);   // scrollbars when the window is smaller
-    placeDialog(*keyboardsWindow, "divisions", dialogWidth, dialogHeight);   // one position for all divisions
+    placeDialog(*keyboardsWindow, "divisions2", dialogWidth, dialogHeight);   // one position for all divisions; a new key since 0.9.89 (the remembered 926 px of the old dialog with the audio tabs would leave half the window empty)
     keyboardsWindow->setVisible(true);
     keyboardsWindow->toFront(true);
     // 0.8.250 (the user: he opens the dialog to see whether the card came back): a
@@ -17609,8 +17899,13 @@ void MainComponent::startGuidedTour()
         "another stop until a bar appears under it and pull it down onto the bar: it is indented - a stop folder is born.", "Arranging the grid" });
     steps.push_back({ [this]() -> juce::Component* { return voicer->headerButton(1, "Tremulant"); },
         "The division header: the tremulant switch, the swell bar beside it, and Settings - the MIDI keyboard and channel, "
-        "the compass, the wind, and the audio routes of every microphone perspective. Right-click the Tremulant for its rate, "
+        "the compass, the wind and the tremulant. Right-click the Tremulant for its rate, "
         "depth and drift, right-click the swell bar for the shutters' attenuation and inertia - and set them as you like.", "Division headers" });
+    steps.push_back({ [this]() -> juce::Component* { return &audioRoutingButton; },
+        "Audio routing: the sound cards and the cables - drag a perspective onto an output of a card and the organ plays "
+        "there. The fx button of every row opens its effects: volume, channel separation, a parametric equalizer and the IR "
+        "reverb; set them once for the perspective, and every division follows while LINKED. The master volume, the audio "
+        "meter and the polyphony measurement sit at the top.", "Audio routing" });
     steps.push_back({ [this]() -> juce::Component* { return &couplersButton; },
         "Couplers...: choose the couplers the console shows - unison, 16', 4', melody, bass. They sit under the division "
         "headers and work like the stops.", "Couplers" });
@@ -24388,6 +24683,14 @@ void MainComponent::loadSettings()
                         config.reverbTone.wetDb = -4.0f;
                     }
                     applyPerspectiveReverb(i, name);
+                    // 0.9.89: the EQ and the LINKED flags (absent in an old file = linked; the derivation after the
+                    // loop then unlinks the modules whose values differ from the perspective's).
+                    config.eq = eqFromVar(route.getProperty("eq", juce::var()));
+                    engine.setPerspectiveEq(i, name, config.eq);
+                    config.linkedVolume = (bool)route.getProperty("linkedVolume", true);
+                    config.linkedSeparation = (bool)route.getProperty("linkedSeparation", true);
+                    config.linkedEq = (bool)route.getProperty("linkedEq", true);
+                    config.linkedIr = (bool)route.getProperty("linkedIr", true);
                     const auto routeOutputs = route.getProperty("outputChannels", juce::var());
                     if (routeOutputs.isArray())
                     {
@@ -24399,6 +24702,66 @@ void MainComponent::loadSettings()
             engine.setManualExpressionMaxAttenuationDb(i, manualConfigs[(size_t)i].expressionMaxAttenuationDb);
             engine.setManualExpressionGain(i, expressionGainFor(manualConfigs[(size_t)i]));
         }
+    }
+
+    // 0.9.89: the effects of the PERSPECTIVES (what their linked routes play). A file without the block (older than
+    // 0.9.89) gets each perspective's values from its first route, and a route stays linked only for the modules
+    // whose values agree with it - so an old file sounds exactly as it did.
+    perspectiveEffects.clear();
+    {
+        const auto block = parsed.getProperty("perspectiveEffects", juce::var());
+        const bool present = block.isArray();
+        if (present)
+            for (const auto& item : *block.getArray())
+            {
+                if (!item.isObject()) continue;
+                auto& p = effectsOfPerspective(item.getProperty("name", "default").toString());
+                p.volumeDb = (float)(double)item.getProperty("volumeDb", 0.0);
+                p.channelSeparation = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("channelSeparation", 1.0));
+                p.reverbIrPath = item.getProperty("reverbIr", "").toString();
+                p.reverbWet = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("reverbWet", 0.3));
+                p.reverbTone.highCutHz = (float)(double)item.getProperty("reverbHighCutHz", 2000.0);
+                p.reverbTone.lowCutHz = (float)(double)item.getProperty("reverbLowCutHz", 195.0);
+                p.reverbTone.preDelayMs = (float)(double)item.getProperty("reverbPreDelayMs", 0.0);
+                p.reverbTone.wetDb = (float)(double)item.getProperty("reverbWetDb", -4.0);
+                p.reverbTone.decayPercent = (float)(double)item.getProperty("reverbDecayPercent", 100.0);
+                p.reverbTone.fadePercent = (float)(double)item.getProperty("reverbFadePercent", 0.0);
+                p.eq = eqFromVar(item.getProperty("eq", juce::var()));
+            }
+        int derived = 0, unlinked = 0;
+        for (int i = 0; i < SamplerEngine::maxManuals; ++i)
+            for (auto& entry : manualConfigs[(size_t)i].perspectiveAudio)
+            {
+                const auto name = juce::String(entry.first).fromFirstOccurrenceOf("|", false, false);
+                if (name.isEmpty()) continue;
+                auto& c = entry.second;
+                const auto lower = name.toLowerCase().toStdString();
+                if (perspectiveEffects.find(lower) == perspectiveEffects.end())
+                {   // no block, or a perspective the block does not name: its first route is the perspective's setting
+                    auto& p = perspectiveEffects[lower];
+                    p.volumeDb = c.volumeDb; p.channelSeparation = c.channelSeparation;
+                    p.reverbIrPath = c.reverbIrPath; p.reverbWet = c.reverbWet; p.reverbTone = c.reverbTone; p.eq = c.eq;
+                    ++derived;
+                }
+                if (!present)
+                {
+                    const auto& p = perspectiveEffects[lower];
+                    for (const auto module : { EffectModule::Volume, EffectModule::Separation, EffectModule::Eq, EffectModule::Ir })
+                        if (linkedFlagOf(c, module) && !effectModuleAgrees(p, c, module)) { linkedFlagOf(c, module) = false; ++unlinked; }
+                }
+            }
+        // The perspective's IR path as the file names it may not exist here while a linked route's was resolved
+        // (the portable load resolves the routes' paths): take the resolved one.
+        for (auto& [lower, p] : perspectiveEffects)
+            if (p.reverbIrPath.isNotEmpty() && !SampleFiles::existsAsFile(juce::File(p.reverbIrPath)))
+                for (int i = 0; i < SamplerEngine::maxManuals; ++i)
+                    for (const auto& entry : manualConfigs[(size_t)i].perspectiveAudio)
+                        if (juce::String(entry.first).fromFirstOccurrenceOf("|", false, false).toLowerCase().toStdString() == lower
+                            && entry.second.linkedIr && entry.second.reverbIrPath.isNotEmpty() && SampleFiles::existsAsFile(juce::File(entry.second.reverbIrPath)))
+                        { p.reverbIrPath = entry.second.reverbIrPath; break; }
+        if (derived > 0 || unlinked > 0)
+            CrashHandler::note("Effects: " + juce::String(perspectiveEffects.size()) + " perspective(s)" + (present ? "" : " (a file without perspective effects)")
+                + ", " + juce::String(derived) + " taken from their first route, " + juce::String(unlinked) + " route module(s) left apart because their values differ");
     }
 
     auto couplerSettings = parsed.getProperty("couplers", juce::var());
@@ -25092,6 +25455,11 @@ void MainComponent::saveSettings()
             routeObject->setProperty("reverbWetDb", entry.second.reverbTone.wetDb);
             routeObject->setProperty("reverbDecayPercent", entry.second.reverbTone.decayPercent);
             routeObject->setProperty("reverbFadePercent", entry.second.reverbTone.fadePercent);
+            routeObject->setProperty("eq", eqToVar(entry.second.eq));   // 0.9.89
+            routeObject->setProperty("linkedVolume", entry.second.linkedVolume);
+            routeObject->setProperty("linkedSeparation", entry.second.linkedSeparation);
+            routeObject->setProperty("linkedEq", entry.second.linkedEq);
+            routeObject->setProperty("linkedIr", entry.second.linkedIr);
             juce::Array<juce::var> routeOutputs;
             for (int channel : entry.second.outputChannels) routeOutputs.add(channel);
             routeObject->setProperty("outputChannels", routeOutputs);
@@ -25102,6 +25470,27 @@ void MainComponent::saveSettings()
         manualsArray.add(juce::var(item.get()));
     }
     obj->setProperty("manualKeyboards", manualsArray);
+    {   // 0.9.89: the perspectives' effects (what their linked routes play)
+        juce::Array<juce::var> block;
+        for (const auto& [lower, p] : perspectiveEffects)
+        {
+            juce::DynamicObject::Ptr item = new juce::DynamicObject();
+            item->setProperty("name", juce::String(lower));
+            item->setProperty("volumeDb", p.volumeDb);
+            item->setProperty("channelSeparation", p.channelSeparation);
+            item->setProperty("reverbIr", p.reverbIrPath);
+            item->setProperty("reverbWet", p.reverbWet);
+            item->setProperty("reverbHighCutHz", p.reverbTone.highCutHz);
+            item->setProperty("reverbLowCutHz", p.reverbTone.lowCutHz);
+            item->setProperty("reverbPreDelayMs", p.reverbTone.preDelayMs);
+            item->setProperty("reverbWetDb", p.reverbTone.wetDb);
+            item->setProperty("reverbDecayPercent", p.reverbTone.decayPercent);
+            item->setProperty("reverbFadePercent", p.reverbTone.fadePercent);
+            item->setProperty("eq", eqToVar(p.eq));
+            block.add(juce::var(item.get()));
+        }
+        obj->setProperty("perspectiveEffects", block);
+    }
 
     {
         const juce::ScopedLock lock(couplerLock);
@@ -25923,11 +26312,14 @@ void MainComponent::updateCombinationControls()
         // each cut to the display's width with "..." (the user: long file names must not wrap); the whole text is the tooltip.
         const auto note = bankNotes.find(currentBank);
         const auto noteText = note != bankNotes.end() ? note->second : juce::String();
-        const auto fileText = combinationsFileName.isEmpty() ? juce::String("default") : combinationsFileName;
+        // 0.9.89 (the user): no "default" line - the file's name only once a combinations file is loaded; until then
+        // "Bank N" (and the annotation when there is one).
         const float width = (float)juce::jmax(40, bankLabel.getWidth() - 10);
-        bankLabel.setText(DisplayLabel::fitLine(bankLabel.getFont(), fileText, width) + "\nBank " + juce::String(currentBank)
-            + "\n" + DisplayLabel::fitLine(bankLabel.getFont(), noteText, width), juce::dontSendNotification);
-        bankLabel.setTooltip("Combinations file: " + fileText + "\nBank " + juce::String(currentBank) + (noteText.isNotEmpty() ? " - " + noteText : juce::String())
+        juce::String text = combinationsFileName.isNotEmpty() ? DisplayLabel::fitLine(bankLabel.getFont(), combinationsFileName, width) + "\n" : juce::String();
+        text << "Bank " << juce::String(currentBank);
+        if (noteText.isNotEmpty()) text << "\n" << DisplayLabel::fitLine(bankLabel.getFont(), noteText, width);
+        bankLabel.setText(text, juce::dontSendNotification);
+        bankLabel.setTooltip("Combinations file: " + (combinationsFileName.isNotEmpty() ? combinationsFileName : juce::String("none loaded - the organ's own combinations")) + "\nBank " + juce::String(currentBank) + (noteText.isNotEmpty() ? " - " + noteText : juce::String())
             + "\nClick: type the bank number (left) and a note for it (right), Enter sets them; the v lists the annotated banks.");
     }
     const bool anyPistons = pistonCount > 0;
@@ -26363,9 +26755,11 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
     }
     if (target.startsWith("slider:division:")) return target.endsWith(":maxSwell") ? "Swell: maximum attenuation when closed" : "Division sections (Pedal, Manual I ... Manual VII)";
     if (target.startsWith("slider:voicing:")) return "The voicing row";
-    if (target.startsWith("slider:perspective:")) return "Perspective volume";
-    if (target.startsWith("slider:separation:")) return "Perspective channel separation";
-    if (target.startsWith("slider:reverb:")) return "The audio tabs";
+    if (target.startsWith("slider:perspective:")) return "Volume";   // 0.9.89: the Effects chapters
+    if (target.startsWith("slider:separation:")) return "Channel separation";
+    if (target.startsWith("slider:reverb:")) return "IR reverb";
+    if (target.startsWith("slider:eq:")) return "Equalizer";
+    if (target.startsWith("slider:pfx:")) return target.contains(":volume:") ? "Volume" : target.contains(":separation:") ? "Channel separation" : "IR reverb";
     if (target.startsWith("swell")) return "The swell";
     return "The combination row";   // pistons, banks, Tutti, X, Set
 }
@@ -26377,7 +26771,7 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
         { "Audio routing", "Audio routing" },   // 0.9.79 (#236)
         { "Couplers", "Couplers" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
         { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
-        { "Report a problem", "Report a problem" }, { "IR reverb settings", "The audio tabs" }, { "Set for all", "The audio tabs" },
+        { "Report a problem", "Report a problem" }, { "IR reverb settings", "IR reverb" }, { "Set for all", "Audio routing" }, { "Effects", "Effects" },   // 0.9.89: the Effects dialog, the audio tabs are gone
         { "Measuring the maximum polyphony", "Measure the maximum polyphony" }, { "Maximum polyphony measured", "Measure the maximum polyphony" },
         { "One-shot Patterns", "One-shot stops (folder contains)" }, { "Ignored Patterns", "Ignored folders (folder contains)" },
         { "Perspective Patterns", "Perspective prefixes" }, { "Save Configuration", "Saving and loading" }, { "Load Configuration", "Saving and loading" },
@@ -26611,7 +27005,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                         { "Volume change per cent of pitch", "Tremulant: volume change per cent of pitch", "The level modulation per cent of pitch modulation (every division)." },
                         { "Harmonic filter at the dip", "Tremulant: harmonic filter", "This much high-frequency loss at the bottom of the tremulant's dip, so the tone breathes with the level (every division)." },
                         { "Harmonic filter phase", "Tremulant: harmonic filter phase", "How far the tone oscillation lags the volume oscillation (0 to 360 degrees; every division)." },
-                        { "Oscillation frequency", "Wind: oscillation frequency", "The bounce of the bellows after a key stroke (2 to 10 Hz)." },
+                        { "Oscillation frequency", "Wind: oscillation frequency", "The bounce of the bellows after a key stroke (2 to 15 Hz)." },
                         { "Number of oscillations", "Wind: number of oscillations", "How many oscillations die away after a stroke." },
                         { "Oscillation strength", "Wind: oscillation strength", "The impulse a key stroke gives the wind." },
                         { "Sag settling lag", "Wind: sag settling lag", "How long the wind pressure takes to settle after stops or keys change." },
@@ -26773,7 +27167,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         };
         rows.push_back({ "Depth (maximum pitch sag)", 0.0, 150.0, 0.1, " cents", config.windDepthCents, m == 0 ? 20.0 : 15.0,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windDepthCents = (float)value; applyWind(); } });
-        rows.push_back({ "Oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
+        rows.push_back({ "Oscillation frequency", 2.0, 15.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windFrequencyHz = (float)value; applyWind(); } });
         rows.push_back({ "Number of oscillations", 0.0, 20.0, 0.1, "x", config.windOscillations, 7.0,
             [this, m, applyWind](double value) { manualConfigs[(size_t)m].windOscillations = (float)value; applyWind(); } });
@@ -27007,6 +27401,59 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
         auto& config = manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)];
         config.reverbWet = (float)normalized;
         engine.setPerspectiveReverbWet(manual, perspective, config.reverbWet);
+        unlinkRouteEffect(manual, perspective, EffectModule::Ir);   // 0.9.89: MIDI on the route's own control sets it apart
+        saveSettings();
+        return true;
+    }
+    // 0.9.89: the effects of a PERSPECTIVE (every linked route follows) - "slider:pfx:<volume|separation|reverb>:<perspective>"
+    if (target.startsWith("slider:pfx:"))
+    {
+        const auto rest = target.fromFirstOccurrenceOf("slider:pfx:", false, false);
+        const auto what = rest.upToFirstOccurrenceOf(":", false, false);
+        const auto perspective = rest.fromFirstOccurrenceOf(":", false, false);
+        if (perspective.isEmpty()) return false;
+        auto& p = effectsOfPerspective(perspective);
+        if (what == "volume")
+        {
+            float db = (float)(-31.0 + normalized * 37.0);
+            if (db > -31.0f && db < -30.0f) db = db < -30.5f ? -31.0f : -30.0f;
+            p.volumeDb = db; perspectiveEffectChanged(perspective, EffectModule::Volume);
+        }
+        else if (what == "separation") { p.channelSeparation = juce::jlimit(0.0f, 1.0f, (float)normalized); perspectiveEffectChanged(perspective, EffectModule::Separation); }
+        else if (what == "reverb") { p.reverbWet = (float)normalized; perspectiveEffectChanged(perspective, EffectModule::Ir); }
+        else return false;
+        return true;
+    }
+    // 0.9.89: the EQ - "slider:eq:<manual or -1 for the perspective>:<band 0-4>:<gain|hz|q>:<perspective>"
+    if (target.startsWith("slider:eq:"))
+    {
+        const auto rest = target.fromFirstOccurrenceOf("slider:eq:", false, false);
+        const auto fields = juce::StringArray::fromTokens(rest, ":", "");
+        if (fields.size() < 4) return false;
+        const int manual = fields[0].getIntValue();
+        const int band = juce::jlimit(0, 4, fields[1].getIntValue());
+        const auto param = fields[2];
+        const auto perspective = rest.fromFirstOccurrenceOf(fields[0] + ":" + fields[1] + ":" + fields[2] + ":", false, false);
+        if (perspective.isEmpty() || manual >= SamplerEngine::maxManuals) return false;
+        auto apply = [&](SamplerEngine::EqSettings& eq)
+        {
+            auto& b = eq.bands[band];
+            if (param == "gain") b.gainDb = (float)(-18.0 + normalized * 36.0);
+            else if (param == "hz") b.hz = (float)(20.0 * std::pow(1000.0, normalized));
+            else if (param == "q") b.q = (float)(0.1 * std::pow(100.0, normalized));
+            else return false;
+            return true;
+        };
+        if (manual < 0)
+        {
+            if (!apply(effectsOfPerspective(perspective).eq)) return false;
+            perspectiveEffectChanged(perspective, EffectModule::Eq);
+            return true;
+        }
+        auto& config = manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)];
+        if (!apply(config.eq)) return false;
+        engine.setPerspectiveEq(manual, perspective, config.eq);
+        unlinkRouteEffect(manual, perspective, EffectModule::Eq);
         saveSettings();
         return true;
     }
@@ -27033,7 +27480,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
             engine.setManualExpressionGain(manual, expressionGainFor(config));
         }
         else if (parameter == "windDepth") config.windDepthCents = scaled(0.0, 150.0);
-        else if (parameter == "windFrequency") config.windFrequencyHz = scaled(2.0, 10.0);
+        else if (parameter == "windFrequency") config.windFrequencyHz = scaled(2.0, 15.0);
         else if (parameter == "windOscillations") config.windOscillations = scaled(0.0, 20.0);
         else if (parameter == "windStrength") config.windOscillationStrength = scaled(0.0, 100.0);
         else if (parameter == "windSmoothing") config.windSmoothingMs = scaled(100.0, 400.0);
@@ -27081,6 +27528,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
         auto& config = manualConfigs[(size_t)manual].perspectiveAudio[key];
         config.channelSeparation = juce::jlimit(0.0f, 1.0f, (float)normalized);
         engine.setPerspectiveChannelSeparation(manual, perspective, config.channelSeparation);
+        unlinkRouteEffect(manual, perspective, EffectModule::Separation);   // 0.9.89
         saveSettings();
         return true;
     }
@@ -27097,6 +27545,7 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
         const auto key = perspectiveRouteKey(manual, perspective);
         manualConfigs[(size_t)manual].perspectiveAudio[key].volumeDb = db;
         engine.setPerspectiveVolumeDb(manual, perspective, db);
+        unlinkRouteEffect(manual, perspective, EffectModule::Volume);   // 0.9.89
         saveSettings();
         return true;
     }
@@ -31494,7 +31943,7 @@ void MainComponent::showConfigurationEditor()
                 };
                 addSlider("Wind: depth (maximum pitch sag)", 0.0, 150.0, 0.1, " cents", config.windDepthCents, 15.0,
                     [&config, applyWind](double value) { config.windDepthCents = (float)value; applyWind(); });
-                addSlider("Wind: oscillation frequency", 2.0, 10.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
+                addSlider("Wind: oscillation frequency", 2.0, 15.0, 0.1, " Hz", config.windFrequencyHz, 7.5,
                     [&config, applyWind](double value) { config.windFrequencyHz = (float)value; applyWind(); });
                 addSlider("Wind: number of oscillations", 0.0, 20.0, 0.1, "x", config.windOscillations, 7.0,
                     [&config, applyWind](double value) { config.windOscillations = (float)value; applyWind(); });

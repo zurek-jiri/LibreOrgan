@@ -3659,6 +3659,55 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   counterpart (`POST /actions/runs/<id>/rerun-failed-jobs`) is 403 for the local token. A compile fix = a new commit
   + the tag moved (`git tag -d`, `git push origin :refs/tags/vX`, re-tag, push). A whole run on the same tag without
   a new commit = `POST /actions/workflows/build.yml/dispatches {"ref":"vX"}` (0.8.153; a dispatched tag run publishes).
+  0.9.89 (17 Nov 2026, the user's design in seven rounds, "Go. Udělej všecko"): EFFECTS AND LINKED. The effects live
+  on the ROUTES (what plays); `MainComponent::perspectiveEffects` (map lower-case name -> `PerspectiveEffects`:
+  volumeDb, channelSeparation, IR path/wet/tone, eq; saved as the top-level "perspectiveEffects" block) holds what
+  every LINKED route of a perspective plays; `PerspectiveAudioConfig` got `eq` + `linkedVolume/Separation/Eq/Ir`
+  (saved per route; absent = linked). LINKED (per module, a route's dialog): orange = follows the perspective
+  (the values are COPIES, the sliders locked), off = the route's own; on again = the perspective's copied back
+  (`setRouteEffectLinked`); a change of a route's own control (MIDI on `slider:perspective/separation/reverb/eq`,
+  Load IR of the route) `unlinkRouteEffect`s; `perspectiveEffectChanged(name, module)` copies into every linked route
+  and applies (`applyRouteEffect` per module: never applyPerspectiveReverb for a volume change - an IR rebuild).
+  Nothing is summed: the engine still processes every route alone (a perspective's effect = N instances; the
+  perspective dialog says so). OLD FILES (no block): each perspective takes its first route's values and a route
+  stays linked only for modules whose values agree (`effectModuleAgrees`) - the sound is unchanged (Rural: the
+  I. default separation 0.27 vs 0.22 is "set apart"); `rebuildPerspectiveAudioRoutes` ends with the LINKED sync: a
+  FRESH route (all defaults) takes the perspective's values, a route with own differing values is set apart (a
+  Hauptwerk import's per-division route volumes) - nothing is overwritten quietly, log "Effects of the routes: ...".
+  The user's decisions: TWO volumes stay (division x route; the division volume is the first item of a route's
+  chain, "a division's own, never a perspective's"); perspective-level effects exist as the dialog of the
+  perspective (not a bus - batching the routes of a card was refused for now); the word is LINKED, never "Own".
+  ENGINE: `SamplerEngine::EqSettings` (5 bands: low shelf, 3 peaks, high shelf; RBJ biquads, `eqBiquadFor`,
+  double-buffered coefficient sets per Route `eqSets[2][5]` + `eqIndex` + `eqAny`, TDF-II state per channel/band,
+  processed in renderRoute after the separation and before the IR; a band off or within 0.01 dB = left out;
+  `rebuildRouteEq` on setPerspectiveEq and on a rate change - the anonymous-namespace prototype stands before
+  setPerspectiveSampleRate), `eqResponseDb` (the graph), `takeRoutePeak` (`Route::peakBits`, CAS max before the clip
+  beside the global one). `Source/EffectsDialog.h` (header-only, friend `EffectsContent`; `EqGraph` with draggable
+  points, wheel = Q): the chain on the left (TextButtons, the chosen orange), the panel on the right, a 10 Hz refresh
+  from the model (the 0.9.81 rule), every slider `LearnableSlider` with midiTarget (route: the old keys; perspective:
+  "slider:pfx:<volume|separation|reverb>:<perspective>"; EQ: "slider:eq:<manual or -1>:<band>:<gain|hz|q>:<perspective>"
+  - the perspective LAST, it may hold ":"); `showEffectsDialog(perspective, manual)` remakes the one `effectsWindow`
+  (called through callAsync from the fx button and the "open a route set apart" menu - never from inside the window
+  being replaced). AUDIO ROUTING: rows 24 -> 32 px, font 13 -> 15, dots 10 -> 14, `leftWidth` 340; per row a mini
+  meter (3 segments, 100 ms timer, 1 s hold) and the fx button (`testName` "fx <row label>"; orange when
+  `routeEffectsActive`/`perspectiveEffectsActive` = anything off default or set apart; the signature carries it);
+  the header: Master volume (`LearnableSlider` mirroring `masterVolumeSlider`, "slider:global:master"), `MasterMeter`
+  (`MainComponent::paintOutputMeter` + `outputMeterState`/`clearOutputClipLatch` = the PolyphonyDisplay's one state;
+  the display's own paint uses the same function; CLIP font 12 like the labels), Measure..., the Linux "List
+  unusable devices" toggle. DIVISIONS DIALOG: no audio tabs (the AudioTabPanel class stays in the code, nothing of
+  it built), height 926/966 -> 482/522, an "Audio routing..." button at the bottom, the division volume hidden
+  (the Effects dialog has it); Measure is in Audio routing and the Editor. Bank display: "Bank N" alone until a
+  combinations file is loaded (no "default"). Wind frequency up to 15 Hz (engine clamp, both sliders, the dialog
+  row, the Editor, MIDI scaled(2, 15)). Tour: a step on the Audio routing button. Manual: 5.3 "Effects" (### LINKED,
+  Volume, Channel separation, Equalizer, IR reverb) replaces "The audio tabs"; the F1 title map "Effects" ->
+  "Effects", "IR reverb settings" -> "IR reverb". Tests: %TEMP%\test_0989_fx.ps1 (Rural, I. default moved to 5+6 so
+  the perspective unfolds, ORGAN_TEST_MOUSE "fx I.  default|click", the chain buttons by ORGAN_TEST_CLICK), test_0989_linked.ps1
+  (ORGAN_TEST_MOUSE "LINKED Volume|click" twice - ORGAN_TEST_CLICK "LINKED" by text found the division-volume header's
+  HIDDEN button first and the first run "proved" nothing: the LINKED buttons carry testName "LINKED <module>", and a hidden
+  header's button has no onClick), test_0989_fxp.ps1
+  (the perspective dialog), test_0989_div.ps1, test_0989_eq.ps1 [-Plain] + eq0989_cmp.py (the I. default route with
+  Peak 2 +12 dB at 1 kHz recorded by ORGAN_TEST_RECORD vs plain), test_0989_save.ps1 (the round trip: the block and
+  the linked flags written). VST3/AU hosting is the user's "časem" - not done; the EQ/IR order is fixed (EQ first).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at

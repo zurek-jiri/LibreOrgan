@@ -105,14 +105,15 @@ from GitHub or an installed Hauptwerk organ take shorter roads:
 
 ### Step 5: Audio
 
-*Settings* in a division's header, then the audio tabs of the Divisions
-dialog: one tab per perspective of the division and one *auxiliary* tab. On a tab choose the device type (Windows: ASIO when you have it), the
-device, 48 kHz, a buffer of 512 samples, and tick the output channels of the
-device the perspective plays through. *Set for all perspectives and divisions*
-copies the device to every route; the tick box *Set these channels for all
-divisions (this perspective)* above the channel list copies the channels to
-the same perspective of every division (a later change of one route's
-channels unticks it). Leave the *auxiliary* tab at *none*. Details: [The audio tabs](#53-the-audio-tabs).
+*Audio routing* in the top bar (or the button of the same name in a
+division's *Settings*): drag a perspective of *Organ out* onto an output of
+a sound card - the pair glows where it will land, let go, and the organ plays
+there (Windows: an ASIO card when you have it); a card not open yet is a
+button below, drop the perspective on it. One row per perspective sends every
+division the same way; the arrow before it unfolds the divisions. Give the
+card 48 kHz and a buffer of 512 samples in its combos. Leave the *auxiliary*
+perspective silent. Details: [Audio routing](#audio-routing); the effects of
+a row (volume, equalizer, IR reverb) in [Effects](#53-effects).
 
 ### Step 6: Play
 
@@ -824,10 +825,10 @@ patterns line, the routes and the saved voicing follow after *Apply and
 reload*. "default" is the route of folders without a perspective prefix.
 
 **The order of the perspectives** - the columns here, the boxes of every
-voicing row, the audio tabs of the Divisions dialog - is the order of the
+voicing row, the rows of Audio routing - is the order of the
 lines in *Perspective prefixes*, "default" first. **Drag a column header
 left or right** to change it: the lines take the new order, saved with the
-configuration, and the voicing boxes and the audio tabs follow at once;
+configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.
 
 ## 4.4 Ignored and one-shot patterns
@@ -858,8 +859,9 @@ the window shows while it loads: [The loading window](#the-loading-window).
 
 *Settings* in a division header opens the Divisions dialog at that division.
 Its settings are the same as the division's section of the Configuration
-Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing and the
-audio tabs.
+Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing. The
+sound cards, channels and effects are in [Audio routing](#audio-routing) -
+the *Audio routing...* button at the bottom opens it.
 
 ## 5.1 Keyboard, MIDI and compass
 
@@ -950,40 +952,75 @@ card) to plug it there, anywhere else and it returns; a click alone selects
 it (the others dim), Delete or the x at its end removes it; the last cable
 gone, the source is silent. Several cables into the same outputs stripe the
 output in all their colours and clamp it one ring outside the other. The
-[audio tabs](#53-the-audio-tabs) show the same routes the second way, in
-the Divisions dialog.
+channels of a route may be any number: the pipes are spread over them by key,
+so a chord spreads across the speakers like pipes across a windchest (a mono
+sample to one channel in turn, a stereo sample to a pair).
 
-## 5.3 The audio tabs
+**Every row** of *Organ out* ends with a small **meter** (what that row plays
+now: green to -12 dB, orange to -3 dB, red above) and the **fx** button -
+grey while everything of it is default, orange when an effect is set or a
+module set apart; it opens the row's [Effects](#53-effects). The header of
+the dialog carries the **Master volume** (the console's slider itself - one
+value, two places), the console's **audio meter** with its CLIP dot, and
+**Measure...**, the [polyphony measurement](#measure-the-maximum-polyphony).
 
-Every perspective of the division has an audio tab, plus one **auxiliary**
-tab. Every tab is one **audio route**: the pipes of that perspective rendered
-to that device and those channels. Each tab, top to bottom:
+**A device that is not there** (switched off, unplugged, taken by another
+program): the route keeps it and its channels, the card says so, the program
+tries it every 2 seconds and plays again the moment it answers. A device that
+opened but gives no audio is reopened by itself; when that does not help, the
+DSP cell reads *no audio* and the Messages name it.
 
-- **Perspective volume** (-31 dB switches the perspective off) and **Channel
-  separation** (at 100 % every pipe sounds only on its own channel pair, at
-  0 % all channels carry the same sum).
-- **IR reverb**: *Load IR* (WAV, AIFF or FLAC; mono, stereo or true stereo
-  with four channels; the chooser starts where an IR was chosen last),
-  *Clear* (the reverb is gone at once), the IR caption (hover for its details,
-  right-click for the IR settings: high and low cut, pre-delay, wet volume,
-  decay, fade-out), *Reverb dry/wet*, *Set effects for all ...*.
-- **Output channels**: tick any channels of the device, in any number. The
-  pipes are spread over them by key number, so a chord spreads across the
-  speakers like pipes across a windchest (a mono sample to one channel in
-  turn, a stereo sample to a pair; an odd number of channels lets the pairs
-  circulate). The tick box **Set these channels for all divisions (this
-  perspective)** above the list copies these channels to the same perspective
-  of every division; a later change of one route's channels unticks it, like
-  the effects box.
-- **The device box**: type, device, sample rate, buffer size; *Driver
-  Control Panel*, *Reopen device*, and **Set for all perspectives and
-  divisions**, which copies the device, rate and buffer size to every route
-  (on the auxiliary tab: to the auxiliary routes of all divisions).
-- **A device that is not there** (switched off, unplugged, taken by another
-  program): the route keeps it and its channels (*NOT AVAILABLE now* under the
-  device box), tries it every 2 seconds and plays again the moment it answers.
-  A device that opened but gives no audio is reopened by itself; when that
-  does not help, the DSP cell reads *no audio* and the Messages name it.
+## 5.3 Effects
+
+The **fx** button of a row in [Audio routing](#audio-routing) opens the
+effects of that **route** (a division row: "Effects: I. Front") or of the
+whole **perspective** ("Effects: Front"). On the left stands the chain in the
+order the engine applies it - *Division volume* (a route's only), *Volume*,
+*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you
+chose. Every slider has MIDI learn (right-click) and F1.
+
+### LINKED
+
+A route's modules follow the **perspective** while their *LINKED* button is
+orange: the sliders show the perspective's values and are locked - set the
+perspective once and every division plays it. Press *LINKED* and it goes
+grey: the values are the route's own from now on; press it again and the
+perspective's come back. New routes are born linked. The perspective's dialog
+says how many routes follow each module and opens any route set apart. Nothing
+is summed and nothing is a second path: a perspective's effect is the same
+effect on each of its routes, each rendered alone - with four divisions, four
+times the DSP of one.
+
+### Volume
+
+The route's level, -30 to +6 dB; the far left is silence (the perspective
+off, its voices saved). *Division volume* above it is the level of the whole
+division, every perspective of it - a division's own, never a perspective's.
+
+### Channel separation
+
+At 100 % every pipe sounds only on its own channel pair; lower, every channel
+also carries that share of the others - the stereo width narrows; at 0 % all
+channels carry the same sum.
+
+### Equalizer
+
+Five bands - a low shelf, three peaks, a high shelf - each with its
+frequency, gain (+-18 dB), Q (the width of a peak, the slope of a shelf) and
+an on/off box. The graph shows the response: drag a point for frequency and
+gain, the wheel over it for Q; the boxes beside it do the same in numbers. A
+band at 0 dB costs nothing. The EQ sits after the separation and before the
+IR, so the room hears the equalized sound.
+
+### IR reverb
+
+*Load IR...* (WAV, AIFF or FLAC; mono, stereo or true stereo with four
+channels; the chooser starts where an IR was chosen last), *Clear*, the
+dry/wet ratio, and the shaping of the wet signal: high and low cut (they grow
+with the dry/wet ratio - nothing is cut at 0 % wet), pre-delay, wet volume,
+decay (the IR shortened) and fade-out (the shortened IR dies away over that
+share of its end). An IR costs the DSP a fixed amount per route whatever the
+polyphony; [IR processing](#ir-processing) lightens it on weak computers.
 
 **The buffer size decides more than anything else.** 512 samples at 48 kHz
 (10.7 ms, unnoticeable on an organ) renders tens of thousands of voices; 64
@@ -1377,7 +1414,8 @@ buffer sizes. One to two minutes; *Cancel* restores everything. Pressed while
 the filled pipes are still being built, the window waits for them and the run
 starts by itself. Save the
 configuration afterwards; measure again after a change of routes, IRs,
-buffer or samples. Details: [The polyphony measurement](#108-the-polyphony-measurement).
+buffer or samples. The same button sits in the header of
+[Audio routing](#audio-routing). Details: [The polyphony measurement](#108-the-polyphony-measurement).
 
 ## 8.2 Global sound
 
@@ -1861,13 +1899,13 @@ How slowly the shutters follow the pedal (50 to 2000 ms, default 300).
 
 ### Division volume
 
--60 to +12 dB (default 0), for balancing the divisions.
+-60 to +12 dB (default 0), for balancing the divisions. Set in the
+[Effects](#53-effects) of any route of the division (Audio routing, fx).
 
 ### Audio output channels (default perspective)
 
 The channels of the device the default perspective plays on, as numbers
-separated by commas (the same as the tick boxes of the audio tab -
-[The audio tabs](#53-the-audio-tabs)).
+separated by commas (the same as the cables of [Audio routing](#audio-routing)).
 
 ### Perspective output channels
 
@@ -1876,12 +1914,12 @@ The same for a named perspective (Direct, Diffuse, Rear, auxiliary).
 ### Perspective volume
 
 -31 to +6 dB (default 0); -31 switches the perspective off and saves its
-voices.
+voices. The same slider as *Volume* in the route's [Effects](#53-effects).
 
 ### Perspective channel separation
 
 100 % (default): every pipe only on its own channel pair; 0 %: all channels
-the same sum.
+the same sum. The same as *Channel separation* in the route's [Effects](#53-effects).
 
 ### Random tuning error of pipes
 
@@ -1917,7 +1955,7 @@ the wind most.
 
 ### Wind: oscillation frequency
 
-The bounce of the bellows after a key stroke (2 to 10 Hz, default 7.5).
+The bounce of the bellows after a key stroke (2 to 15 Hz, default 7.5).
 
 ### Wind: number of oscillations
 

@@ -1052,6 +1052,38 @@ public:
             fadePercent = 0.0f;
     };
     void setPerspectiveReverbTone(int manualIndex, const juce::String& perspective, const ReverbTone& tone);
+    // 0.9.89: the parametric equalizer of a route - five bands in a fixed order: a low shelf, three peaks, a high
+    // shelf (RBJ biquads, Q = the shelf's slope / the peak's width), applied after the channel separation and before
+    // the IR reverb. A band off, or at 0 dB, costs nothing; a flat EQ is skipped as a whole. Message thread.
+    struct EqBand { bool on = true; float hz = 1000.0f, gainDb = 0.0f, q = 1.0f; };
+    struct EqSettings
+    {
+        EqBand bands[5];
+        EqSettings() noexcept
+        {
+            static const float hz[5]{ 80.0f, 250.0f, 1000.0f, 4000.0f, 10000.0f };
+            for (int i = 0; i < 5; ++i) { bands[i].hz = hz[i]; bands[i].q = (i == 0 || i == 4) ? 0.7f : 1.0f; }
+        }
+        bool flat() const noexcept
+        {
+            for (const auto& b : bands) if (b.on && std::abs(b.gainDb) >= 0.01f) return false;
+            return true;
+        }
+        bool operator== (const EqSettings& o) const noexcept
+        {
+            for (int i = 0; i < 5; ++i)
+                if (bands[i].on != o.bands[i].on || std::abs(bands[i].hz - o.bands[i].hz) > 0.01f
+                    || std::abs(bands[i].gainDb - o.bands[i].gainDb) > 0.001f || std::abs(bands[i].q - o.bands[i].q) > 0.0001f) return false;
+            return true;
+        }
+        bool operator!= (const EqSettings& o) const noexcept { return !(*this == o); }
+    };
+    void setPerspectiveEq(int manualIndex, const juce::String& perspective, const EqSettings& eq);
+    // The magnitude response of an EQ in dB at a frequency (for the dialog's graph; the rate as the route's).
+    static float eqResponseDb(const EqSettings& eq, float hz, double sampleRate) noexcept;
+    // 0.9.89: the audio meter of one route - the highest sample of its output (before the safety clip) since the
+    // last call; 0 for a route that does not exist or rendered nothing. Lock-free.
+    float takeRoutePeak(int manualIndex, const juce::String& perspective) noexcept;
 
     // Advanced global audio (Configuration Editor).
     // Level change per cent of wind sag (default 0.2 dB) and per cent of tremulant pitch (default 0.187 dB).
