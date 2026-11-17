@@ -986,6 +986,25 @@ tries it every 2 seconds and plays again the moment it answers. A device that
 opened but gives no audio is reopened by itself; when that does not help, the
 DSP cell reads *no audio* and the Messages name it.
 
+### Routing files
+
+Three buttons on the line of the titles keep a routing for later.
+
+- **Save routing...** writes the cables (sound cards, outputs, rate, buffer)
+  and the effects of every route into one file.
+- **Load routing...** asks once: **Load cables only** (the usual choice) or
+  **Load cables and effects**. The effects carry the volumes of the divisions
+  and perspectives - on another organ they overwrite its balance, and the box
+  says so in a warning; it names the organ the file was saved from.
+- **Use as default for new organs** makes these cables this computer's
+  default. An organ that brings no audio of this computer - a published
+  configuration, a Hauptwerk import, folders dropped on an empty console -
+  gets them by itself: the cables only, never the effects.
+
+A route is matched by its perspective's name and its division; a route the
+file does not know takes the cables of its nearest one, and the
+[Messages](#91-messages) name it.
+
 ## 5.3 Effects
 
 The **fx** button of a row in [Audio routing](#audio-routing) opens the

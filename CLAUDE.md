@@ -3869,19 +3869,51 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   headings/links (233 / 110, no duplicate, none broken). Test %TEMP%\test_0993_gui.ps1 (compact, I. default onto
   "ASIO Fireface USB" beside the aggregate's Fireface endpoints -> both cards orange, the top bar button orange; the
   pedal's Divisions dialog with short octave, -12 and follows; the Editor scrolled to Pedal).
+  CI 17 Nov 2026 (v0.9.92 and v0.9.93): the macOS jobs were "cancelled" with NO runner and NO step, exactly 15 minutes
+  after they were queued (GitHub had no macOS runner; Windows and Linux passed, the release job was skipped) - not a
+  compile error. Read `jobs[].runner_name` and `steps`: empty = the runner never came. The cure is the dispatch of the
+  same tag (`POST .../actions/workflows/build.yml/dispatches {"ref":"vX"}`, HTTP 204); both times the second run got
+  its runners within 20 minutes and published the release.
+  0.9.94 (17 Nov 2026, the user's design in five rounds; REFUSED on the way: an "organ level" split from the route
+  volume ("žádné organ level z ODF nechceme ... nedělej to překombinované") and a layout that carries everything but
+  the volumes ("matoucí ... nesmysl")): THE ROUTING FILE. `routingToVar()` = {libreOrganRouting 1, organ
+  (currentConfigurationName), routes [{division, perspective, deviceType, deviceName, rate, buffer, channels, the
+  route's effects (volumeDb, channelSeparation, reverb*, eq) + linked*}], divisionVolumes [{division, db}],
+  perspectiveEffects [...]}; the card of a route = the open device, else the stored state XML. `applyRouting(data,
+  withEffects, sourceName)`: per route of the LOADED organ the file's entry by division + perspective, else (a guess,
+  named in the Messages) the same perspective of a lower / any division, then a route of the same kind (auxiliary or
+  not); the cables go through `beginRoutingAssign` with steps carrying their OWN card (`RoutingAssignStep::type/name/
+  rate/buffer/detach`; continueApplyAll uses the step's card when `step.type` is set) - only routes whose card or
+  channels differ; the effects (route values, linked flags, division volumes, perspectiveEffects, then applyRouteEffect
+  x 4 per route) ONLY when asked. Audio routing buttons on the titles' line spanning the header block (rowsLeft ..
+  stripRight): "Save routing..." (always everything; folder Documents/LibreOrgan/LibreRouting, lastdir.json
+  "lastRoutingDir"), "Load routing..." -> `askRoutingLoad(file)` = ONE AlertWindow with a custom `Note` component
+  (AttributedString: "Saved from: <organ>", then a plain note for the same organ or an ORANGE bold WARNING for another
+  one) and the buttons Load cables only (Enter) / Load cables and effects / Cancel; "Use as default for new organs" ->
+  `saveDefaultRouting` -> `DefaultRouting.json` beside settings.json. `defaultRoutingPending` is set in the portable
+  branch of applyPortableConfiguration (published configurations AND Hauptwerk imports go through it; cleared for a
+  file of this computer) and in `loadChosenIntoDivision` on an empty console; `applyDefaultRoutingIfDue` (the 25 ms
+  timer) waits for stops, no loader, 2 s of quiet, then applyRouting(file, false) - CABLES ONLY, never the effects.
+  Hooks: `ORGAN_TEST_ROUTING="<s>|state^<s>|save|<file>^<s>|load|<file>[|effects]^<s>|loadbox|<file>^<s>|default"`,
+  `ORGAN_TEST_MIDI="<s>|<division>|<note>^..."` (a note-on through `handleMidiFrom(identifier, message)` = the body of
+  handleIncomingMidiMessage, as if from that division's keyboard; with ORGAN_LOG_NOTE_LIGHTS=1 the log names the keys
+  every listening division plays). Test %TEMP%\test_0994.ps1 -Step save|load|default|midi (Rural; B.json = A with
+  I. default on the pedal's outputs, -6 dB, division volume -3 dB, organ renamed): cables only moved 7+8 -> 1+2 and
+  left the volumes, with effects -6 / -3 dB arrived, the portable Rural got the default's cables by itself.
+  MIDI TRANSPOSITION "REGRESSION" (the user: "klávesy to hraje furt stejné ... regres"): NOT one - MEASURED through the
+  MIDI path with his own settings: pedal, I. and II. all listen to the microKEY on channel 1 with transposition
+  0 / 0 / -12; key 48 gives "Key 48 of division 0", "Key 48 of division 1" and "Key 36 of division 2" - II. is
+  transposed, the other two play the untransposed key beside it. The keyboards (device, channel) are this computer's
+  settings: a test file's "deviceIdentifier"/"midiChannel" are overridden by them (the midi2 step could not isolate
+  II.). `git log -S` shows the routing lines changed only in 0.9.93 (routedNoteFor, equal to the old two lines).
+  MAC CI: of the last 12 Build runs 3 lost a macOS job to GitHub ("The job was not acquired by Runner of type hosted
+  even after multiple attempts" + "Due to capacity constraints, jobs targeting macOS arm64 runners may experience
+  longer queue times" - the check run's annotations, `GET /check-runs/<id>/annotations`) and 4 failed on OUR compile
+  error (jmax<size_t>, 0.9.84-0.9.88). Both mac jobs run on `macos-latest` (arm64, the Intel build cross-compiled).
+  `.github/workflows/build-retry.yml` (workflow_run of Build, not success, attempt < 3): when a job was cancelled with
+  NO step and no required job ran and failed -> `gh run rerun <id> --failed` (the release job follows in the same
+  run). A workflow_run workflow takes effect only from the default branch.
 ## Pending for the next session (delete when done)
-- DEFAULT AUDIO LAYOUT (17 Nov 2026, the user's question during 0.9.93, PROPOSED, not coded - wait for his word):
-  "it is annoying having each new organ loaded with the silly default WASAPI card ... the division and perspective
-  volumes are taken from Hauptwerk ODF and they make the use of loaded audio configurations impossible". Proposal
-  given: (a) split the ORGAN's balance from the user's audio: the import's route levels (0.8.126 medians per division
-  x perspective, today in `perspectiveAudio[key].volumeDb`) go into a separate per-route `organLevelDb` saved with
-  the organ and summed into the route gain (engine.setPerspectiveVolumeDb(volume + organLevel)), shown as a line in
-  the Volume module, never touched by a layout or LINKED; (b) an AUDIO LAYOUT = what the Audio routing shows (card,
-  channels, rate/buffer, the user's effects and LINKED) per perspective NAME and division number, kept as this
-  computer's default (a file beside settings.json) with "Use this layout for new organs" in the Audio routing and
-  Save layout... / Load layout... for alternatives; an organ without devices of this computer (published/portable,
-  Hauptwerk import, dropped folders) takes the default at load, perspectives matched by name (unknown ones take the
-  layout's first perspective, noted in Messages); "load last at startup" is not needed (a saved organ keeps its own).
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
   division I, then AdlingtonHallVol0.CompPkg.Hauptwerk.rar onto division II with "Load the folders" (as if without

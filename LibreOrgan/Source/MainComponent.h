@@ -509,7 +509,26 @@ private:
     // 0.9.90: a drop of routes onto an Aggregated WASAPI card in the Audio routing goes through the "set for all"
     // queue and its progress window (the aggregate opens anew per route, up to a second each - "the user does not
     // know what is going on").
-    struct RoutingAssignStep { int manual; juce::String perspective; std::vector<int> channels; bool changeDevice; };
+    // 0.9.94: a step may name its own card (a routing file sets many cards in one run; type "" = the queue's card)
+    // or take the route's device away (detach).
+    struct RoutingAssignStep { int manual; juce::String perspective; std::vector<int> channels; bool changeDevice; juce::String type, name; double rate = 0.0; int buffer = 0; bool detach = false; };
+    // 0.9.94 (the user, after four rounds): the ROUTING FILE. Saved whole (the cables: card, outputs, rate, buffer of
+    // every route - and the effects: volumes, separation, EQ, IR, LINKED, the division volumes), loaded as "cables
+    // only" (the default) or "cables and effects" (a warning: the effects carry the volumes of the divisions and
+    // perspectives - another organ's balance). The default for new organs is this computer's own file beside
+    // settings.json and brings the CABLES alone, by itself, to an organ that carries no audio of this computer.
+    juce::var routingToVar();
+    void applyRouting(const juce::var& data, bool withEffects, const juce::String& sourceName);
+    juce::File defaultRoutingFile() const;
+    void saveRoutingToFile();
+    void loadRoutingFromFile();
+    void askRoutingLoad(const juce::File& file);   // the one box: cables only / cables and effects / cancel
+    void handleMidiFrom(const juce::String& sourceIdentifier, const juce::MidiMessage& message);   // the body of handleIncomingMidiMessage (the test hook enters here)
+    void saveDefaultRouting();
+    void applyDefaultRoutingIfDue();          // from the timer, once the load is over
+    bool defaultRoutingPending = false;       // set when an organ without this computer's audio was loaded
+    juce::File lastRoutingDirectory;
+    std::unique_ptr<juce::FileChooser> routingChooser;
     bool applyAllRoutingMode = false;
     std::vector<RoutingAssignStep> routingAssignQueue;
     juce::String routingAssignType, routingAssignName;

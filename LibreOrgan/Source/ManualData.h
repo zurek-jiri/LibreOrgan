@@ -998,6 +998,27 @@ static const char* const kManualText_part4 =
     "opened but gives no audio is reopened by itself; when that does not help, the\n"
     "DSP cell reads *no audio* and the Messages name it.\n"
     "\n"
+    "### Routing files\n"
+    "\n"
+    "Three buttons on the line of the titles keep a routing for later.\n"
+    "\n"
+    "- **Save routing...** writes the cables (sound cards, outputs, rate, buffer)\n"
+    "  and the effects of every route into one file.\n"
+    "- **Load routing...** asks once: **Load cables only** (the usual choice) or\n"
+    "  **Load cables and effects**. The effects carry the volumes of the divisions\n"
+    "  and perspectives - on another organ they overwrite its balance, and the box\n"
+    "  says so in a warning; it names the organ the file was saved from.\n"
+    "- **Use as default for new organs** makes these cables this computer's\n"
+    "  default. An organ that brings no audio of this computer - a published\n"
+    ;
+static const char* const kManualText_part5 =
+    "  configuration, a Hauptwerk import, folders dropped on an empty console -\n"
+    "  gets them by itself: the cables only, never the effects.\n"
+    "\n"
+    "A route is matched by its perspective's name and its division; a route the\n"
+    "file does not know takes the cables of its nearest one, and the\n"
+    "[Messages](#91-messages) name it.\n"
+    "\n"
     "## 5.3 Effects\n"
     "\n"
     "The **fx** button of a row in [Audio routing](#audio-routing) opens the\n"
@@ -1010,8 +1031,6 @@ static const char* const kManualText_part4 =
     "effects* at the top put things back: a route's module is LINKED to the\n"
     "perspective again, a perspective's module goes to its default and every route\n"
     "of it follows it again (the fx button turns grey).\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "### LINKED\n"
     "\n"
@@ -1193,6 +1212,8 @@ static const char* const kManualText_part5 =
     "large) sets the size of every coupler button; it travels with the organ.\n"
     "\n"
     "The coupler grid under the division header is a cell grid like the stop\n"
+    ;
+static const char* const kManualText_part6 =
     "grid: every button the same size, each keeps its cell, free cells stay free.\n"
     "Right-click the grid for its menu (*Enter arrange mode*, *Couplers...*, the\n"
     "manual), or hold a coupler three seconds: the free cells appear dashed (a\n"
@@ -1212,8 +1233,6 @@ static const char* const kManualText_part5 =
     "  recorded in. The program measures it from every rank's recorded pitches\n"
     "  and chooses it by itself when two thirds of the ranks agree (\"Base\n"
     "  temperament set from the samples\" in the activity log). When they\n"
-    ;
-static const char* const kManualText_part6 =
     "  disagree, or the set has no pitch data, **double-click** the temperament\n"
     "  (or *Samples' base temperament* in the Configuration Editor). Every\n"
     "  stop's voicing row reports what its own ranks were found to be in.\n"
@@ -1395,6 +1414,8 @@ static const char* const kManualText_part6 =
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
@@ -1414,8 +1435,6 @@ static const char* const kManualText_part6 =
     "Light when the reverbs would take more than 18 % of a render thread (35 %\n"
     "for a single route) or fall behind while playing. Routes with the same device,\n"
     "channels, IR and settings share one convolution (\"(shared)\" in the caption).\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "### IR reverbs now\n"
     "\n"
@@ -1597,6 +1616,8 @@ static const char* const kManualText_part7 =
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
+    ;
+static const char* const kManualText_part8 =
     "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
@@ -1616,8 +1637,6 @@ static const char* const kManualText_part7 =
     "\n"
     "### Treble per key: shelf start frequency\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
     "\n"
@@ -1799,6 +1818,8 @@ static const char* const kManualText_part8 =
     "On by default. The combinations file (all banks of pistons) last loaded or\n"
     "saved with this organ is read again once the organ is loaded, on top of the\n"
     "combinations the configuration carries. Off: the configuration's own\n"
+    ;
+static const char* const kManualText_part9 =
     "combinations only.\n"
     "\n"
     "### Glow: a pressed button and a dragged stop glow for a moment\n"
@@ -1818,8 +1839,6 @@ static const char* const kManualText_part8 =
     "Where *Record* writes its files (`LibreRecordings` beside the LibreOrgans\n"
     "folder by default). *Choose...* picks another.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Sample and IR locations\n"
     "\n"
     "The places the program looks for sample trees and impulse responses - every\n"
@@ -2001,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "How far the pitch sags with the wind at its lowest (0 to 150 cents, default\n"
     "15, the pedal 20); 0 switches the wind model off for this division. A stop\n"
     "draws air by the size of its pipes: a 16' twice an 8', a 32' three times, a\n"
@@ -2020,8 +2041,6 @@ static const char* const kManualText_part9 =
     "\n"
     "### Wind: oscillation strength\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "The impulse a key stroke gives the wind (0 to 100 %, default 40). A release\n"
     "kicks back with 75 % of it; a key struck or released while another is held\n"
     "kicks half; keys struck together are one stroke; the swing never exceeds the\n"
@@ -2203,6 +2222,8 @@ static const char* const kManualText_part10 =
     "spread over our steps when more than 60); the stops' places on the jamb page\n"
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
     "carries, else the stop playing it straight over the whole division, else the\n"
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
@@ -2222,8 +2243,6 @@ static const char* const kManualText_part10 =
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
     "caption's footage is the sounding one). A configuration whose rows an older\n"
     "import named with the prefix is renamed the same way when it loads, every\n"
-    ;
-static const char* const kManualText_part11 =
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
@@ -2405,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "## 10.12 RAR archives: how they are read\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
@@ -2424,8 +2445,6 @@ static const char* const kManualText_part11 =
     "computer: devices, MIDI, the editor's machine settings, the last\n"
     "configuration) with `settings-<date>.json` snapshots; `Locations.txt`;\n"
     "`Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);\n"
-    ;
-static const char* const kManualText_part12 =
     "`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;\n"
     "`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*\n"
     "without a file. In the LibreOrgans folder: `<organ>.json` and its\n"

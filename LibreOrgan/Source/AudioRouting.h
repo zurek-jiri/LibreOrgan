@@ -95,6 +95,35 @@ public:
         measureButton.getProperties().set("manualChapter", "Measure the maximum polyphony");
         measureButton.onClick = [this] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target] { if (target != nullptr) target->startPolyphonyMeasurement(); }); };
         addAndMakeVisible(measureButton);
+        // 0.9.94: the routing file. Save writes everything (cables and effects); Load asks once - cables only (the
+        // default) or the effects too; the default serves organs that bring no audio of this computer, cables only.
+        auto later = [this](void (MainComponent::*action)())
+        {
+            juce::Component::SafePointer<MainComponent> target(&owner);
+            juce::MessageManager::callAsync([target, action] { if (target != nullptr) (target.getComponent()->*action)(); });
+        };
+        saveRoutingButton.setButtonText("Save routing...");
+        saveRoutingButton.setTooltip("Saves the cables (sound cards, outputs, rate, buffer) and the effects of every route into a file.");
+        saveRoutingButton.onClick = [later] { later(&MainComponent::saveRoutingToFile); };
+        loadRoutingButton.setButtonText("Load routing...");
+        loadRoutingButton.setTooltip("Loads a routing file: the cables only, or the effects too - it asks. The effects carry the volumes of the divisions and perspectives.");
+        loadRoutingButton.onClick = [later] { later(&MainComponent::loadRoutingFromFile); };
+        defaultRoutingButton.setButtonText("Use as default for new organs");
+        defaultRoutingButton.setTooltip("These cables become this computer's default: an organ that brings no audio of this computer (a published configuration, "
+            "a Hauptwerk import, folders dropped on an empty console) gets them by itself - the cables only, never the effects. "
+            "To have no default, delete DefaultRouting.json in the settings folder.");
+        defaultRoutingButton.onClick = [this]
+        {
+            owner.saveDefaultRouting();
+            defaultRoutingButton.setButtonText("Saved as the default");
+            juce::Component::SafePointer<AudioRoutingContent> safeThis(this);
+            juce::Timer::callAfterDelay(2000, [safeThis] { if (safeThis != nullptr) safeThis->defaultRoutingButton.setButtonText("Use as default for new organs"); });
+        };
+        for (auto* b : { &saveRoutingButton, &loadRoutingButton, &defaultRoutingButton })
+        {
+            b->getProperties().set("manualChapter", "Routing files");
+            addAndMakeVisible(*b);
+        }
 #if JUCE_LINUX
         // The Linux switch of the audio tabs (0.8.228): every ALSA device listed, the unusable ones too.
         unusableButton.setButtonText("List unusable devices too");
@@ -941,6 +970,11 @@ private:
         unusableButton.setBounds(rowsLeft - 230, row2, 220, rowHeight2);
 #endif
         sourcesTop = 110;
+        // 0.9.94: the routing file's buttons on the line of the titles, ending at the header block's right edge.
+        // They span the block above them: the left edge of its rows, the right edge of Measure Polyphony.
+        saveRoutingButton.setBounds(rowsLeft, sourcesTop - 30, 150, 24);
+        loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, sourcesTop - 30, 150, 24);
+        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, sourcesTop - 30, stripRight - loadRoutingButton.getRight() - 6, 24);
         int y = sourcesTop;
         for (size_t ri = 0; ri < rows.size(); ++ri)
         {
@@ -1431,6 +1465,7 @@ private:
     LearnableSlider masterSlider;      // 0.9.89: the console's master volume (the same value)
     MasterMeter masterMeter;           // 0.9.89: the console's audio meter (the same state)
     juce::TextButton measureButton;    // 0.9.89: the polyphony measurement (was on the audio tabs)
+    juce::TextButton saveRoutingButton, loadRoutingButton, defaultRoutingButton;   // 0.9.94: the routing file
 #if JUCE_LINUX
     juce::ToggleButton unusableButton; // 0.9.89: the ALSA "list unusable devices" switch (was on the audio tabs)
 #endif

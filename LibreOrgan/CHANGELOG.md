@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.94] - 2026-11-17
+
+### Added
+- Audio routing: **Save routing...** writes the cables (sound cards, outputs,
+  rate, buffer) and the effects of every route into a file; **Load
+  routing...** asks once - *Load cables only* or *Load cables and effects* -
+  names the organ the file comes from and warns that the effects carry the
+  volumes of the divisions and perspectives.
+- Audio routing: **Use as default for new organs** - this computer's default
+  cables. An organ that brings no audio of this computer (a published
+  configuration, a Hauptwerk import, folders dropped on an empty console)
+  gets them by itself: the cables only, never the effects.
+- The builds on GitHub start again by themselves when GitHub gave a macOS job
+  no runner (the release stayed at the old version until a manual restart).
+
 ## [0.9.93] - 2026-11-17
 
 ### Added

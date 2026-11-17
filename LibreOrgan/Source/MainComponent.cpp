@@ -1798,6 +1798,8 @@ MainComponent::MainComponent()
             if (irDir.isNotEmpty()) lastIrDirectory = juce::File(irDir);
             const auto folderDir = parsed.getProperty("lastFolderDir", "").toString();
             if (folderDir.isNotEmpty()) lastSampleFolderDirectory = juce::File(folderDir);
+            const auto routingDir = parsed.getProperty("lastRoutingDir", "").toString();   // 0.9.94
+            if (routingDir.isNotEmpty()) lastRoutingDirectory = juce::File(routingDir);
         }
         else
         {
@@ -2656,6 +2658,72 @@ MainComponent::MainComponent()
             });
         }
     }
+    // 0.9.94: ORGAN_TEST_ROUTING="<seconds>|save|<file>^<seconds>|load|<file>[|effects]^<seconds>|default^<seconds>|state"
+    // - the routing file's actions without the dialogs; "state" logs every route (card, outputs, volume, separation).
+    if (const char* env = std::getenv("ORGAN_TEST_ROUTING"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 2) continue;
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                const auto& action = parts[1];
+                if (action == "save" && parts.size() >= 3)
+                    CrashHandler::note("ORGAN_TEST_ROUTING: saved " + parts[2] + (juce::File(parts[2]).replaceWithText(juce::JSON::toString(safeThis->routingToVar(), false)) ? "" : " FAILED"));
+                else if (action == "load" && parts.size() >= 3)
+                    safeThis->applyRouting(juce::JSON::parse(juce::File(parts[2]).loadFileAsString()), parts.size() >= 4 && parts[3] == "effects", juce::File(parts[2]).getFileName());
+                else if (action == "loadbox" && parts.size() >= 3) safeThis->askRoutingLoad(juce::File(parts[2]));
+                else if (action == "default") safeThis->saveDefaultRouting();
+                else if (action == "state")
+                {
+                    const auto data = safeThis->routingToVar();
+                    if (const auto* routes = data.getProperty("routes", juce::var()).getArray())
+                        for (const auto& r : *routes)
+                        {
+                            juce::StringArray outputs;
+                            if (const auto* list = r.getProperty("channels", juce::var()).getArray()) for (const auto& c : *list) outputs.add(juce::String((int)c + 1));
+                            CrashHandler::note("ORGAN_TEST_ROUTING state: division " + r.getProperty("division", -1).toString() + " " + r.getProperty("perspective", "").toString()
+                                + " -> " + r.getProperty("deviceType", "").toString() + " \"" + r.getProperty("deviceName", "").toString() + "\" outputs " + outputs.joinIntoString("+")
+                                + ", volume " + juce::String((double)r.getProperty("volumeDb", 0.0), 1) + " dB, separation " + juce::String((double)r.getProperty("channelSeparation", 1.0), 2)
+                                + ", division volume " + juce::String(safeThis->manualConfigs[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)r.getProperty("division", 0))].divisionVolumeDb, 1) + " dB");
+                        }
+                }
+            });
+        }
+    }
+    // 0.9.94: ORGAN_TEST_MIDI="<seconds>|<division>|<note>^..." - a MIDI note-on (released 1 s later) as if it came
+    // from the keyboard of that division (its device and channel), through the whole input path: every division
+    // listening to that device and channel takes it, each with its own transposition and bass layout. With
+    // ORGAN_LOG_NOTE_LIGHTS=1 the log names the keys that sounded.
+    if (const char* env = std::getenv("ORGAN_TEST_MIDI"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 3) continue;
+            const int division = juce::jlimit(0, SamplerEngine::maxManuals - 1, parts[1].getIntValue()), note = juce::jlimit(0, 127, parts[2].getIntValue());
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, division, note]
+            {
+                if (safeThis == nullptr) return;
+                const auto device = safeThis->manualConfigs[(size_t)division].deviceIdentifier;
+                const int channel = juce::jlimit(1, 16, safeThis->manualConfigs[(size_t)division].midiChannel);
+                juce::StringArray listeners;
+                for (int m = 0; m <= safeThis->manualCount; ++m)
+                {
+                    const auto& c = safeThis->manualConfigs[(size_t)m];
+                    if (c.deviceIdentifier == device && c.midiChannel == channel)
+                        listeners.add("division " + juce::String(m) + " (transposition " + juce::String(c.midiTranspose) + ", layout " + juce::String(c.bassOctaveLayout) + ")");
+                }
+                CrashHandler::note("ORGAN_TEST_MIDI: note " + juce::String(note) + " from \"" + device + "\" channel " + juce::String(channel) + " - listening: " + listeners.joinIntoString(", "));
+                safeThis->handleMidiFrom(device, juce::MidiMessage::noteOn(channel, note, (juce::uint8)100));
+                juce::Timer::callAfterDelay(1000, [safeThis, device, channel, note] { if (safeThis != nullptr) safeThis->handleMidiFrom(device, juce::MidiMessage::noteOff(channel, note)); });
+            });
+        }
+    }
     if (const char* env = std::getenv("ORGAN_TEST_CLICK"))
     {
         const auto names = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
@@ -3489,7 +3557,11 @@ void MainComponent::handleIncomingMidiMessage(juce::MidiInput* source,
     // (under its own lock) and the engine's lock-free queue are touched here;
     // everything that edits configuration is posted to the message thread.
     if (!applicationReady.load()) return;
-    const juce::String sourceIdentifier = source != nullptr ? source->getIdentifier() : juce::String();
+    handleMidiFrom(source != nullptr ? source->getIdentifier() : juce::String(), message);
+}
+
+void MainComponent::handleMidiFrom(const juce::String& sourceIdentifier, const juce::MidiMessage& message)
+{
     std::array<MidiRouting, SamplerEngine::maxManuals> routing;
     int routedManualCount = 0;
     {
@@ -7026,8 +7098,334 @@ void MainComponent::beginRoutingAssign(const juce::String& type, const juce::Str
     applyAllTotal = (int)routingAssignQueue.size();
     applyAllTickDivider = 0;
     applyAllRunning = true;
-    CrashHandler::note("Audio routing: " + juce::String(applyAllTotal) + " route(s) onto " + name + " (" + type + ") one at a time behind the progress window");
+    CrashHandler::note("Audio routing: " + juce::String(applyAllTotal) + " route(s) " + (type.isEmpty() ? "from " + name : "onto " + name + " (" + type + ")") + " one at a time behind the progress window");
     openApplyAllWindow("Audio routing: " + name);
+}
+
+//==============================================================================
+// 0.9.94: the routing file (see MainComponent.h). One JSON object: "routes" (one per division and perspective: the
+// card, its rate and buffer, the outputs, and the route's effects), "divisionVolumes", "perspectiveEffects".
+namespace
+{
+    void effectsIntoObject(juce::DynamicObject& o, float volumeDb, float separation, const juce::String& ir, float wet,
+        const SamplerEngine::ReverbTone& tone, const juce::var& eq)
+    {
+        o.setProperty("volumeDb", volumeDb);
+        o.setProperty("channelSeparation", separation);
+        o.setProperty("reverbIr", ir);
+        o.setProperty("reverbWet", wet);
+        o.setProperty("reverbHighCutHz", tone.highCutHz);
+        o.setProperty("reverbLowCutHz", tone.lowCutHz);
+        o.setProperty("reverbPreDelayMs", tone.preDelayMs);
+        o.setProperty("reverbWetDb", tone.wetDb);
+        o.setProperty("reverbDecayPercent", tone.decayPercent);
+        o.setProperty("reverbFadePercent", tone.fadePercent);
+        o.setProperty("eq", eq);
+    }
+    void effectsFromVar(const juce::var& v, float& volumeDb, float& separation, juce::String& ir, float& wet,
+        SamplerEngine::ReverbTone& tone)
+    {
+        volumeDb = (float)(double)v.getProperty("volumeDb", 0.0);
+        separation = juce::jlimit(0.0f, 1.0f, (float)(double)v.getProperty("channelSeparation", 1.0));
+        ir = v.getProperty("reverbIr", "").toString();
+        wet = juce::jlimit(0.0f, 1.0f, (float)(double)v.getProperty("reverbWet", 0.3));
+        tone.highCutHz = (float)(double)v.getProperty("reverbHighCutHz", 2000.0);
+        tone.lowCutHz = (float)(double)v.getProperty("reverbLowCutHz", 195.0);
+        tone.preDelayMs = (float)(double)v.getProperty("reverbPreDelayMs", 0.0);
+        tone.wetDb = (float)(double)v.getProperty("reverbWetDb", -4.0);
+        tone.decayPercent = (float)(double)v.getProperty("reverbDecayPercent", 100.0);
+        tone.fadePercent = (float)(double)v.getProperty("reverbFadePercent", 0.0);
+    }
+}
+
+juce::File MainComponent::defaultRoutingFile() const
+{
+    return settingsFile.getParentDirectory().getChildFile("DefaultRouting.json");
+}
+
+juce::var MainComponent::routingToVar()
+{
+    juce::DynamicObject::Ptr root = new juce::DynamicObject();
+    root->setProperty("libreOrganRouting", 1);
+    root->setProperty("organ", currentConfigurationName);
+    root->setProperty("savedWith", juce::String(ProjectInfo::versionString));
+    juce::Array<juce::var> routes, divisions;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+    {
+        const auto& config = manualConfigs[(size_t)manual];
+        {
+            juce::DynamicObject::Ptr d = new juce::DynamicObject();
+            d->setProperty("division", manual);
+            d->setProperty("db", config.divisionVolumeDb);
+            divisions.add(juce::var(d.get()));
+        }
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            juce::DynamicObject::Ptr item = new juce::DynamicObject();
+            item->setProperty("division", manual);
+            item->setProperty("perspective", perspective);
+            const bool isDefault = perspective.equalsIgnoreCase("default");
+            const auto found = config.perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+            // The card: the open device, else the device the route asks for (a card switched off keeps its route).
+            juce::String type, name; double rate = 0.0; int buffer = 0;
+            auto* manager = managerForRoute(manual, perspective);
+            if (auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr)
+            {
+                type = manager->getCurrentAudioDeviceType(); name = device->getName();
+                rate = device->getCurrentSampleRate(); buffer = device->getCurrentBufferSizeSamples();
+            }
+            else
+            {
+                const juce::String xmlText = isDefault ? config.audioDeviceStateXml : found != config.perspectiveAudio.end() ? found->second.audioDeviceStateXml : juce::String();
+                if (const auto state = xmlText.isNotEmpty() ? juce::parseXML(xmlText) : nullptr)
+                {
+                    name = state->getStringAttribute("audioOutputDeviceName");
+                    if (name.isNotEmpty()) type = state->getStringAttribute("deviceType");
+                    rate = state->getDoubleAttribute("audioDeviceRate", 0.0);
+                    buffer = state->getIntAttribute("audioDeviceBufferSize", 0);
+                }
+            }
+            item->setProperty("deviceType", type);
+            item->setProperty("deviceName", name);
+            item->setProperty("rate", rate);
+            item->setProperty("buffer", buffer);
+            juce::Array<juce::var> channels;
+            for (const int c : (isDefault ? config.outputChannels : found != config.perspectiveAudio.end() ? found->second.outputChannels : std::vector<int>{})) channels.add(c);
+            item->setProperty("channels", channels);
+            if (found != config.perspectiveAudio.end())
+            {
+                const auto& c = found->second;
+                effectsIntoObject(*item, c.volumeDb, c.channelSeparation, c.reverbIrPath, c.reverbWet, c.reverbTone, eqToVar(c.eq));
+                item->setProperty("linkedVolume", c.linkedVolume); item->setProperty("linkedSeparation", c.linkedSeparation);
+                item->setProperty("linkedEq", c.linkedEq); item->setProperty("linkedIr", c.linkedIr);
+            }
+            routes.add(juce::var(item.get()));
+        }
+    }
+    root->setProperty("routes", routes);
+    root->setProperty("divisionVolumes", divisions);
+    juce::Array<juce::var> block;
+    for (const auto& [lower, p] : perspectiveEffects)
+    {
+        juce::DynamicObject::Ptr item = new juce::DynamicObject();
+        item->setProperty("name", juce::String(lower));
+        effectsIntoObject(*item, p.volumeDb, p.channelSeparation, p.reverbIrPath, p.reverbWet, p.reverbTone, eqToVar(p.eq));
+        block.add(juce::var(item.get()));
+    }
+    root->setProperty("perspectiveEffects", block);
+    return juce::var(root.get());
+}
+
+void MainComponent::applyRouting(const juce::var& data, bool withEffects, const juce::String& sourceName)
+{
+    static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    const auto* routes = data.getProperty("routes", juce::var()).getArray();
+    if (routes == nullptr || routes->isEmpty() || applyAllRunning)
+    {
+        if (routes == nullptr || routes->isEmpty()) queueNotice(juce::MessageBoxIconType::WarningIcon, "Load routing", sourceName + " holds no routes.");
+        return;
+    }
+    // The file's entry for a route: the same division and perspective; else (a guess, named in the Messages) the same
+    // perspective of a lower division, of any division, then the first perspective of the same kind (auxiliary or
+    // not) of this division, of any division.
+    auto entryFor = [&](int manual, const juce::String& perspective, bool& guessed) -> const juce::var*
+    {
+        auto is = [](const juce::var& v, int m, const juce::String& p) { return (int)v.getProperty("division", -1) == m && v.getProperty("perspective", "").toString().equalsIgnoreCase(p); };
+        guessed = false;
+        for (const auto& v : *routes) if (is(v, manual, perspective)) return &v;
+        guessed = true;
+        for (int m = manual - 1; m >= 0; --m) for (const auto& v : *routes) if (is(v, m, perspective)) return &v;
+        for (const auto& v : *routes) if (v.getProperty("perspective", "").toString().equalsIgnoreCase(perspective)) return &v;
+        const bool aux = isAuxiliaryPerspective(perspective);
+        for (const auto& v : *routes) if ((int)v.getProperty("division", -1) == manual && isAuxiliaryPerspective(v.getProperty("perspective", "").toString()) == aux) return &v;
+        for (const auto& v : *routes) if (isAuxiliaryPerspective(v.getProperty("perspective", "").toString()) == aux) return &v;
+        return nullptr;
+    };
+    std::vector<RoutingAssignStep> steps;
+    juce::StringArray guesses, untouched;
+    int matched = 0;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            bool guessed = false;
+            const auto* entry = entryFor(manual, perspective, guessed);
+            const juce::String routeName = names[juce::jlimit(0, 7, manual)] + " " + perspective;
+            if (entry == nullptr) { untouched.add(routeName); continue; }
+            ++matched;
+            if (guessed) guesses.add(routeName + " as " + names[juce::jlimit(0, 7, (int)entry->getProperty("division", 0))] + " " + entry->getProperty("perspective", "").toString());
+            auto& config = manualConfigs[(size_t)manual];
+            const auto key = perspectiveRouteKey(manual, perspective);
+            // The cables.
+            const juce::String type = entry->getProperty("deviceType", "").toString(), name = entry->getProperty("deviceName", "").toString();
+            std::vector<int> channels;
+            if (const auto* list = entry->getProperty("channels", juce::var()).getArray()) for (const auto& c : *list) channels.push_back(juce::jmax(0, (int)c));
+            auto* manager = managerForRoute(manual, perspective);
+            auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
+            const bool isDefault = perspective.equalsIgnoreCase("default");
+            const auto& nowChannels = isDefault ? config.outputChannels : config.perspectiveAudio[key].outputChannels;
+            if (name.isEmpty())
+            {
+                if (device != nullptr) { RoutingAssignStep step{ manual, perspective, {}, false }; step.detach = true; steps.push_back(step); }
+            }
+            else
+            {
+                const bool sameCard = device != nullptr && manager->getCurrentAudioDeviceType() == type && device->getName() == name;
+                if (!sameCard || nowChannels != channels)
+                {
+                    RoutingAssignStep step{ manual, perspective, channels, !sameCard };
+                    step.type = type; step.name = name; step.rate = (double)entry->getProperty("rate", 0.0); step.buffer = (int)entry->getProperty("buffer", 0);
+                    steps.push_back(step);
+                }
+            }
+            // The effects of the route (asked for explicitly: they carry the volumes).
+            if (withEffects && entry->hasProperty("volumeDb"))
+            {
+                auto& c = config.perspectiveAudio[key];
+                effectsFromVar(*entry, c.volumeDb, c.channelSeparation, c.reverbIrPath, c.reverbWet, c.reverbTone);
+                c.eq = eqFromVar(entry->getProperty("eq", juce::var()));
+                c.linkedVolume = (bool)entry->getProperty("linkedVolume", true); c.linkedSeparation = (bool)entry->getProperty("linkedSeparation", true);
+                c.linkedEq = (bool)entry->getProperty("linkedEq", true); c.linkedIr = (bool)entry->getProperty("linkedIr", true);
+            }
+        }
+    if (withEffects)
+    {
+        if (const auto* list = data.getProperty("divisionVolumes", juce::var()).getArray())
+            for (const auto& d : *list)
+            {
+                const int manual = (int)d.getProperty("division", -1);
+                if (manual < 0 || manual > manualCount || manual >= SamplerEngine::maxManuals) continue;
+                manualConfigs[(size_t)manual].divisionVolumeDb = juce::jlimit(-60.0f, 12.0f, (float)(double)d.getProperty("db", 0.0));
+                engine.setManualDivisionGain(manual, juce::Decibels::decibelsToGain(manualConfigs[(size_t)manual].divisionVolumeDb));
+            }
+        if (const auto* block = data.getProperty("perspectiveEffects", juce::var()).getArray())
+            for (const auto& item : *block)
+            {
+                if (!item.isObject()) continue;
+                auto& p = effectsOfPerspective(item.getProperty("name", "default").toString());
+                effectsFromVar(item, p.volumeDb, p.channelSeparation, p.reverbIrPath, p.reverbWet, p.reverbTone);
+                p.eq = eqFromVar(item.getProperty("eq", juce::var()));
+            }
+        for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+            for (const auto& perspective : engine.getPerspectivesForManual(manual))
+                for (const auto module : { EffectModule::Volume, EffectModule::Separation, EffectModule::Eq, EffectModule::Ir })
+                    applyRouteEffect(manual, perspective, module);
+    }
+    const juce::String summary = sourceName + ": " + juce::String(matched) + " route(s), " + juce::String((int)steps.size()) + " cable(s) changed"
+        + (withEffects ? ", the effects loaded too (volumes, channel separation, equalizer, IR reverb)" : ", the effects left as they are")
+        + (guesses.isEmpty() ? juce::String() : ". Not in the file, taken from its nearest route: " + guesses.joinIntoString("; "))
+        + (untouched.isEmpty() ? juce::String() : ". Left as they were: " + untouched.joinIntoString(", ")) + ".";
+    CrashHandler::note("Routing loaded - " + summary);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto finished = [safeThis, summary] { if (safeThis != nullptr) { safeThis->noteMessage("Routing loaded", summary); safeThis->saveSettings(); } };
+    if (steps.empty()) { finished(); return; }
+    audioMuted.store(true);
+    engine.noteOffAll();
+    ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 8000.0 + 1500.0 * (double)steps.size());
+    beginRoutingAssign({}, sourceName, 0.0, 0, std::move(steps), finished);
+}
+
+void MainComponent::saveRoutingToFile()
+{
+    auto folder = lastRoutingDirectory.isDirectory() ? lastRoutingDirectory : configurationsDirectory().getParentDirectory().getChildFile("LibreRouting");
+    folder.createDirectory();
+    const auto suggested = folder.getChildFile((currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("Organ")).removeCharacters("\\/:*?\"<>|") + " routing.json");
+    routingChooser = std::make_unique<juce::FileChooser>("Save the audio routing (cables and effects)", suggested, "*.json");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    routingChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting,
+        [safeThis](const juce::FileChooser& chooser)
+        {
+            if (safeThis == nullptr) return;
+            auto file = chooser.getResult();
+            if (file == juce::File()) return;
+            if (!file.hasFileExtension("json")) file = file.withFileExtension("json");
+            const bool ok = file.replaceWithText(juce::JSON::toString(safeThis->routingToVar(), false));
+            safeThis->lastRoutingDirectory = file.getParentDirectory();
+            safeThis->saveLastDirectory();
+            CrashHandler::note(juce::String(ok ? "Routing saved: " : "Routing NOT saved: ") + file.getFullPathName());
+            if (ok) safeThis->noteMessage("Routing saved", file.getFullPathName() + " - the cables and the effects of every route. Load routing... brings the cables back, the effects only when asked for.");
+            else queueNotice(juce::MessageBoxIconType::WarningIcon, "Save routing", "The file could not be written:\n" + file.getFullPathName());
+        });
+}
+
+void MainComponent::loadRoutingFromFile()
+{
+    auto folder = lastRoutingDirectory.isDirectory() ? lastRoutingDirectory : configurationsDirectory().getParentDirectory().getChildFile("LibreRouting");
+    routingChooser = std::make_unique<juce::FileChooser>("Load an audio routing", folder, "*.json");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    routingChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [safeThis](const juce::FileChooser& chooser)
+        {
+            if (safeThis == nullptr) return;
+            const auto file = chooser.getResult();
+            if (!file.existsAsFile()) return;
+            safeThis->lastRoutingDirectory = file.getParentDirectory();
+            safeThis->saveLastDirectory();
+            safeThis->askRoutingLoad(file);
+        });
+}
+
+void MainComponent::askRoutingLoad(const juce::File& file)
+{
+    const auto data = juce::JSON::parse(file.loadFileAsString());
+    if (!data.isObject() || !data.hasProperty("libreOrganRouting"))
+    {
+        queueNotice(juce::MessageBoxIconType::WarningIcon, "Load routing", file.getFileName() + " is not a routing file of LibreOrgan Sampler.");
+        return;
+    }
+    // One question, where the harm could be: the cables alone (the first button) or the effects too.
+    const auto from = data.getProperty("organ", "").toString();
+    const bool sameOrgan = from.isNotEmpty() && from == currentConfigurationName;
+    auto* box = new juce::AlertWindow("Load routing", {}, sameOrgan ? juce::MessageBoxIconType::QuestionIcon : juce::MessageBoxIconType::WarningIcon, this);
+    // One text block: where the file comes from, then the note about the effects - plain for the same organ, an
+    // orange warning for another one.
+    struct Note final : public juce::Component
+    {
+        juce::AttributedString text;
+        void paint(juce::Graphics& g) override { juce::TextLayout layout; layout.createLayout(text, (float)getWidth()); layout.draw(g, getLocalBounds().toFloat()); }
+    };
+    auto note = std::make_shared<Note>();
+    note->text.setJustification(juce::Justification::topLeft);
+    note->text.append("Saved from: " + (from.isNotEmpty() ? from : juce::String("an organ without a name")) + "\n\n", juce::FontOptions(15.0f), juce::Colours::white);
+    if (sameOrgan) note->text.append("The effects are this organ's own: volumes, channel separation, equalizer and IR reverb as saved.", juce::FontOptions(15.0f), juce::Colours::lightgrey);
+    else note->text.append("WARNING: the effects carry the volumes of the divisions and perspectives of that organ. Loaded here they overwrite the balance of the organ loaded now.",
+        juce::FontOptions(15.0f, juce::Font::bold), juce::Colours::orange);
+    note->setSize(470, sameOrgan ? 76 : 96);
+    box->addCustomComponent(note.get());
+    box->addButton("Load cables only", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    box->addButton("Load cables and effects", 2);
+    box->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    box->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, data, file, note](int result)
+    {
+        if (safeThis == nullptr || result == 0) return;
+        safeThis->applyRouting(data, result == 2, file.getFileName());
+    }), true);
+}
+
+void MainComponent::saveDefaultRouting()
+{
+    const auto file = defaultRoutingFile();
+    const bool ok = file.replaceWithText(juce::JSON::toString(routingToVar(), false));
+    CrashHandler::note(juce::String(ok ? "Default routing saved: " : "Default routing NOT saved: ") + file.getFullPathName());
+    noteMessage("Default routing", ok ? "These cables are this computer's default now: an organ that brings no audio of this computer (a published configuration, a Hauptwerk import, "
+                                        "folders dropped on an empty console) gets them by itself - the cables only, never the effects."
+                                      : "The file could not be written: " + file.getFullPathName());
+}
+
+void MainComponent::applyDefaultRoutingIfDue()
+{
+    static double quietSinceMs = 0.0;
+    if (!defaultRoutingPending) return;
+    if (!applicationReady.load() || activeFolderLoader != nullptr || applyAllRunning || engine.getStops().isEmpty()) { quietSinceMs = 0.0; return; }
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (quietSinceMs <= 0.0) { quietSinceMs = now; return; }
+    if (now - quietSinceMs < 2000.0) return;   // the load's own device starts are over
+    defaultRoutingPending = false;
+    quietSinceMs = 0.0;
+    const auto file = defaultRoutingFile();
+    if (!file.existsAsFile()) return;
+    const auto data = juce::JSON::parse(file.loadFileAsString());
+    if (data.isObject()) applyRouting(data, false, "This computer's default routing");
 }
 
 void MainComponent::continueApplyAll()
@@ -7045,27 +7443,41 @@ void MainComponent::continueApplyAll()
             for (const auto c : step.channels) list.add(juce::String(c + 1));
             if (applyAllLabel != nullptr)
             {
-                applyAllLabel->setText((step.changeDevice ? "Opening " + routingAssignName + "\nfor " : "Setting the outputs " + list.joinIntoString("+") + " of " + routingAssignName + "\nfor ")
+                const juce::String shownName = step.type.isNotEmpty() ? step.name : routingAssignName;
+                applyAllLabel->setText((step.detach ? juce::String("Taking the sound card away\nfrom ") : step.changeDevice ? "Opening " + shownName + "\nfor " : "Setting the outputs " + list.joinIntoString("+") + " of " + shownName + "\nfor ")
                     + names[juce::jlimit(0, SamplerEngine::maxManuals - 1, step.manual)] + " / " + step.perspective + "   (" + juce::String(done + 1) + " of " + juce::String(applyAllTotal)
                     + ") - the device opens anew for its outputs", juce::dontSendNotification);
                 if (applyAllWindow != nullptr)
                     if (auto* peer = applyAllWindow->getPeer()) peer->performAnyPendingRepaintsNow();
             }
             routingAssignQueue.erase(routingAssignQueue.begin());
-            if (step.changeDevice)
+            // 0.9.94: the step's own card when it names one (a routing file), else the queue's.
+            const juce::String cardType = step.type.isNotEmpty() ? step.type : routingAssignType, cardName = step.type.isNotEmpty() ? step.name : routingAssignName;
+            const double cardRate = step.type.isNotEmpty() ? step.rate : routingAssignRate;
+            const int cardBuffer = step.type.isNotEmpty() ? step.buffer : routingAssignBuffer;
+            if (step.detach)
             {
-                auto state = std::make_unique<juce::XmlElement>("DEVICESETUP");
-                state->setAttribute("deviceType", routingAssignType);
-                state->setAttribute("audioOutputDeviceName", routingAssignName);
-                state->setAttribute("audioInputDeviceName", "");
-                if (routingAssignRate > 0.0) state->setAttribute("audioDeviceRate", routingAssignRate);
-                if (routingAssignBuffer > 0) state->setAttribute("audioDeviceBufferSize", routingAssignBuffer);
-                setRouteAudioType(step.manual, step.perspective, routingAssignType, state.get(), routingAssignName);
+                detachRouteAudioQuietly(step.manual, step.perspective);
+                CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> no sound card");
+                if (!routingAssignQueue.empty()) return;
             }
-            if (applyChannelsToDivision(step.manual, step.perspective, step.channels, routingAssignDone, routingAssignRefused))
-                CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + routingAssignName + " (" + routingAssignType + ") outputs " + list.joinIntoString("+"));
-            else CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + routingAssignName + " outputs " + list.joinIntoString("+") + " REFUSED (the card has no such output)");
-            if (!routingAssignQueue.empty()) return;
+            else
+            {
+                if (step.changeDevice)
+                {
+                    auto state = std::make_unique<juce::XmlElement>("DEVICESETUP");
+                    state->setAttribute("deviceType", cardType);
+                    state->setAttribute("audioOutputDeviceName", cardName);
+                    state->setAttribute("audioInputDeviceName", "");
+                    if (cardRate > 0.0) state->setAttribute("audioDeviceRate", cardRate);
+                    if (cardBuffer > 0) state->setAttribute("audioDeviceBufferSize", cardBuffer);
+                    setRouteAudioType(step.manual, step.perspective, cardType, state.get(), cardName);
+                }
+                if (applyChannelsToDivision(step.manual, step.perspective, step.channels, routingAssignDone, routingAssignRefused))
+                    CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + cardName + " (" + cardType + ") outputs " + list.joinIntoString("+"));
+                else CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + cardName + " outputs " + list.joinIntoString("+") + " REFUSED (the card has no such output)");
+                if (!routingAssignQueue.empty()) return;
+            }
         }
         if (applyAllWindow != nullptr) applyAllWindow->exitModalState(0);   // deletes itself
         applyAllWindow = nullptr;
@@ -11362,6 +11774,7 @@ void MainComponent::saveLastDirectory()
     obj->setProperty("lastDir", lastSettingsDirectory.getFullPathName());
     if (lastIrDirectory != juce::File()) obj->setProperty("lastIrDir", lastIrDirectory.getFullPathName());                  // 0.9.1
     if (lastSampleFolderDirectory != juce::File()) obj->setProperty("lastFolderDir", lastSampleFolderDirectory.getFullPathName());
+    if (lastRoutingDirectory != juce::File()) obj->setProperty("lastRoutingDir", lastRoutingDirectory.getFullPathName());   // 0.9.94
 
     juce::String json = juce::JSON::toString(juce::var(obj.get()), true);
     DBG("Saving lastDir: " << json);
@@ -15947,8 +16360,10 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         // and now (a Hauptwerk import), whose own report follows the load.
         portableNoticePending = !suppressPortableNotice;
         suppressPortableNotice = false;
+        defaultRoutingPending = true;   // 0.9.94: no audio of this computer in the file - this computer's default cables once it is loaded
         CrashHandler::note("Portable configuration loaded: this computer's own settings kept, audio on the default device");
     }
+    else defaultRoutingPending = false;   // a file of this computer brings its own cables
     auto manuals = root->getProperty("manualKeyboards");
     if (auto* array = manuals.getArray())
         for (int manual = 0; manual < array->size(); ++manual)
@@ -19836,6 +20251,7 @@ void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folder
     const juce::File& destination, int manual)
 {
     if (manual < 0 || manual > manualCount) return;
+    if (engine.getStops().isEmpty()) defaultRoutingPending = true;   // 0.9.94: folders onto an empty console - this computer's default cables once they are loaded
     const std::vector<juce::File> archives = SampleFiles::firstVolumes(archivesChosen);   // every multi-part set once, from its first part (0.8.176)
     if (!archives.empty() && unpackFirst)
     {
@@ -26934,6 +27350,7 @@ void MainComponent::timerCallback()
     showMissingAudioDevicesIfDue();
     showSafeStartNoticeIfDue();
     showPortableNoticeIfDue();
+    applyDefaultRoutingIfDue();
     updateEmptyHint();
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();

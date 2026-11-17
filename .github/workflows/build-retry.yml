@@ -1,0 +1,38 @@
+name: Build retry
+
+# GitHub now and then gives a macOS job no runner at all: the job is cancelled
+# 15 minutes after it was queued with "The job was not acquired by Runner of
+# type hosted even after multiple attempts" (capacity of the macOS arm64
+# runners), the release job is skipped and the release stays at the old
+# version. Such a run is started again here by itself - the jobs that did not
+# run only, twice at most. A job that ran and failed (a compile error) is never
+# retried: that needs a fix, not a second try.
+on:
+  workflow_run:
+    workflows: [ "Build" ]
+    types: [ completed ]
+
+permissions:
+  actions: write
+
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion != 'success' && github.event.workflow_run.run_attempt < 3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the jobs again that never got a runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")
+          lost=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "cancelled" and (.steps | length) == 0)] | length')
+          broken=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and (.steps | length) > 0 and (.name | test("test build") | not))] | length')
+          echo "jobs without a runner: $lost, jobs that ran and failed: $broken"
+          if [ "$lost" -gt 0 ] && [ "$broken" -eq 0 ]; then
+            gh run rerun "$RUN_ID" --repo "$REPO" --failed
+            echo "run $RUN_ID started again (its failed and cancelled jobs)"
+          else
+            echo "nothing to retry"
+          fi
