@@ -3723,6 +3723,52 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   minimum time (the wind's shortest breath), one pipe's share (sizes the strokes), number of oscillations (0 =
   none; in phase / antiphase). RULES: the wind reacts to the pipe, never to the key; a kick lands in the
   resonator's phase; never add damping beyond "Number of oscillations".
+  0.9.90 (17 Nov 2026, the user's batch after 0.9.89 - "Udělej všecko, ale nezlevňuj sinc!"): (1) SETTINGS WRITTEN AT MOST
+  ONCE A SECOND: `saveSettings()` only sets `settingsSavePending` (+ refreshMidiRouting at once); the 25 ms timer calls
+  `saveSettingsNow()` (the old body) when >= 1 s passed since the last write and no mouse button is down
+  (`ModifierKeys::currentModifiers`, cached - no system call); saveSettingsNow is called directly before anything READS
+  settings.json (savePortableConfiguration, applyPortableConfiguration, writeProblemReport's zip, "Show settings.json"),
+  before every `markConfigurationClean()` (the fingerprint is taken by the write), in askToKeepChanges/requestQuit,
+  globalResetFinish and the destructor. CAUSE of "every slider reacts extremely slowly": settings.json (678 KB) at every
+  mouse event. RULE: a new reader of settings.json or a new fingerprint comparison calls saveSettingsNow() first.
+  (2) CRESCENDO COMPACT: crescendoToVar writes one STRING per stop ("name\tdivision\tperspective\t1/0\tid:manual:1,...")
+  and per coupler ("id\t1/0"); crescendoFromVar expands strings and still reads the old objects; the in-memory steps
+  stay objects (registrationOnSet reads name/primaryManual/perspective/enabled/transmissions only - the OFF entries are
+  kept, as the user demanded). 524 KB -> ~100 KB. (3) AVX2 UNPACKER (`unpackBlockAvx2`, SamplerEngine.cpp after
+  unpackBlock; `unpackBlock16` dispatches; `gUnpackForceScalar` for the kernel test): 8 residuals per step from a
+  32-byte unaligned load (permutevar8x32 picks the dword pair per lane, srlv/sllv join them), order 1 = an in-register
+  scan with the carried last value, order 2 = scan of scans; the low 16 bits stored (the scalar's cast); the tail scalar;
+  packChannel pads 32 zero bytes after the data (was 8) for the last group's load. kerneltest: "AVX2: 600 windows as the
+  scalar decoder; scalar 1.53 ns per frame" vs 0.73 AVX2 - exactly the scalar's result. The sinc is UNTOUCHED (the
+  user's order). (4) THE REPORT = two parts: `text` + `advice` (what to do: routes, auxiliary, the heaviest IR, THE
+  LOADING OPTIONS AND THEIR PRICE - packing with the measured unpack ns, halved releases, Full kernel from N Hz as a
+  quality choice -, a hybrid CPU's preset, hyper-threads, buffers) and `details` ("Advanced analysis": the routes list,
+  render threads/CPU/memory/power, the kernel bench, the voice profile, the ceiling, the device thread, the fixed/per-voice
+  split) shown by `LongMessageComponent(body, details, onClose)` under a folded "Advanced analysis  >" button (a second
+  read-only editor, 55 % of the height when open); the log line carries "Advanced analysis: ...". (5) Audio routing:
+  the header strip = Master volume slider, the meter, "Measure Polyphony" (was Measure...) on one line, the switches
+  under it; the cable PALETTE = yellow, blue, red, green, magenta, cyan, orange, white in the perspectives' order, the
+  auxiliary after the ordinary ones (`colourIndex`), a division's row `base.darker(0.22 * di)`; `FxButton` (TextButton
+  with `onRightClick`: a menu "Reset the effects of X to the default" / "Open the effects..."); a drop onto an
+  AGGREGATED card goes through `MainComponent::beginRoutingAssign(type, name, rate, buffer, steps, finished)` =
+  `applyAllRoutingMode` of the "set for all" queue (continueApplyAll: setRouteAudioType when the route changes card,
+  then applyChannelsToDivision; the window "Audio routing: <card>"), the dialog rebuilt by `finished`. (6) Effects:
+  `MainComponent::resetEffectModule(perspective, manual, module)` (route = LINKED again; perspective = the defaults
+  + every route linked + perspectiveEffectChanged) and `resetEffects` (all four; the division volume is NOT an effect -
+  its own header Reset puts 0 dB); the Header has a Reset button (testName "Reset <module>"), the dialog "Reset all
+  effects" top right; `effectsDialogModule` (0 = Volume at first, -1 = division volume) remembered in `select` and
+  taken by the next dialog's constructor; the EQ rows are "1".."5" (kind in the tooltip, the graph's point numbers).
+  (7) Divisions dialog: the Window box on a row of its own (full column width, right edges aligned), the MIDI
+  transposition right under the channel note, the head 36 px and the velocity row 34 (the column must fit 366 px -
+  the first build squeezed "Allow Pipe Coupling" to a dot), width 1060/1240, Close under the keyboard's right end
+  (x = 12 + 700 - 110), placeDialog key "divisions3" (a remembered larger size would leave the window half empty -
+  bump the key at every size change). TEST LESSONS: ORGAN_TEST_CLICK finds a button by its TEXT, never by testName
+  ("Reset Equalizer" needs ORGAN_TEST_MOUSE); `triggerClick()` is a POSTED command message - a click in the same
+  second as a dialog's remake lands on a deleted button (the Equalizer click must precede the fx click by a second);
+  the perspective row's label reads "default (3 divisions, various)" once a division differs. Tests:
+  %TEMP%\test_0990_gui.ps1 (the queue, the remembered module, the resets, the Divisions dialog, the settings.json
+  write times >= 1 s apart), test_0990_report.ps1 (Rural measured through "Measure Polyphony", "Advanced analysis  >"
+  clicked, both states pictured), test_0989_measure.ps1 -Tag packed0990 (Frankfurt packed with the AVX2 unpacker).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

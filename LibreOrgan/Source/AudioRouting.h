@@ -89,7 +89,7 @@ public:
         masterMeter.setTooltip("The audio meter of the console: the highest sample of every route and device before the limiter (green to -12 dB, orange to -3 dB, red = the limiter at work); the CLIP dot stays lit until you click it.");
         masterMeter.getProperties().set("manualChapter", "The polyphony display");
         addAndMakeVisible(masterMeter);
-        measureButton.setButtonText("Measure...");
+        measureButton.setButtonText("Measure Polyphony");   // 0.9.90 (the user: "Measure..." said nothing)
         measureButton.setTooltip("Measures the most voices this organ renders cleanly with the devices, buffers and effects as set now, "
             "and proposes the LIMIT of the polyphony display (the Configuration Editor has the same button).");
         measureButton.getProperties().set("manualChapter", "Measure the maximum polyphony");
@@ -719,12 +719,20 @@ private:
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
                 if (std::find(perspectives.begin(), perspectives.end(), perspective) == perspectives.end()) perspectives.push_back(perspective);
         owner.engine.sortPerspectives(perspectives);   // 0.9.84: the order of the Perspective patterns (the user), as the tabs and the voicing
+        // 0.9.90 (the user: "the primary colours first - yellow, blue, red - then the mixtures; the auxiliary takes what is
+        // left"): a fixed palette in that order, the ordinary perspectives first in their order, the auxiliary after them.
+        static const juce::Colour palette[8]{ juce::Colour(0xffffd400), juce::Colour(0xff3d8bff), juce::Colour(0xffff3b30), juce::Colour(0xff3ddc5a),
+                                              juce::Colour(0xffff4fd8), juce::Colour(0xff2ee6e6), juce::Colour(0xffff8c1a), juce::Colour(0xffffffff) };
+        std::vector<size_t> colourIndex(perspectives.size(), 0);
+        {
+            size_t next = 0;
+            for (size_t pi = 0; pi < perspectives.size(); ++pi) if (!MainComponent::isAuxiliaryPerspective(perspectives[pi])) colourIndex[pi] = next++;
+            for (size_t pi = 0; pi < perspectives.size(); ++pi) if (MainComponent::isAuxiliaryPerspective(perspectives[pi])) colourIndex[pi] = next++;
+        }
         for (size_t pi = 0; pi < perspectives.size(); ++pi)
         {
             const auto& perspective = perspectives[pi];
-            // 0.9.84: the hues spread evenly over the circle by the number of perspectives (two cables = opposite colours),
-            // a division's row keeps its perspective's hue a step darker per division.
-            const float hue = std::fmod(0.08f + (float)pi / (float)std::max<size_t>(1, perspectives.size()), 1.0f);   // not jmax<size_t>: clang instantiates juce_dsp's SIMDRegister overload (the v0.9.87/v0.9.88 mac builds failed on it)
+            const juce::Colour base = palette[colourIndex[pi] % 8];
             std::vector<Route> routes;
             for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
                 for (const auto& p : owner.engine.getPerspectivesForManual(manual)) if (p == perspective) routes.push_back({ manual, p });
@@ -740,7 +748,7 @@ private:
             head.perspectiveRow = true; head.perspective = perspective; head.routes = routes;
             head.folded = uniform && unfolded.count(perspective) == 0;
             head.label = perspective + (routes.size() > 1 ? " (" + juce::String(routes.size()) + (uniform ? " divisions)" : " divisions, various)") : juce::String());
-            head.colour = juce::Colour::fromHSV(hue, 0.65f, 0.95f, 1.0f);
+            head.colour = base;
             head.silent = uniform ? firstKey.isEmpty() : false;
             head.whereText = uniform ? whereOf(routes.front()) : juce::String("the divisions differ - see them below");
             rows.push_back(head);
@@ -752,7 +760,7 @@ private:
                     row.perspective = perspective; row.routes = { route };
                     const auto& alias = owner.manualConfigs[(size_t)route.manual].alias;   // 0.9.86: the division's alias (0.9.80) belongs here too (the user)
                     row.label = divisionName(route.manual) + (alias.isNotEmpty() ? " " + alias : juce::String()) + "  " + perspective;
-                    row.colour = juce::Colour::fromHSV(hue, 0.5f + 0.15f * (float)(di % 3), 0.95f - 0.16f * (float)std::min<size_t>(3, di), 1.0f);
+                    row.colour = base.darker(0.22f * (float)std::min<size_t>(3, di));   // a division's row: its perspective's colour, a step darker per division
                     row.silent = cardKeyOf(route).isEmpty();
                     row.whereText = whereOf(route);
                     rows.push_back(row);
@@ -764,7 +772,7 @@ private:
         for (size_t ri = 0; ri < rows.size(); ++ri)
         {
             const auto& row = rows[ri];
-            auto* b = fxButtons.add(new juce::TextButton("fx"));
+            auto* b = fxButtons.add(new FxButton());
             const bool active = row.perspectiveRow ? owner.perspectiveEffectsActive(row.perspective)
                 : (!row.routes.empty() && owner.routeEffectsActive(row.routes.front().manual, row.routes.front().perspective));
             if (active)
@@ -774,12 +782,27 @@ private:
             }
             b->setTooltip((row.perspectiveRow ? "The effects of the perspective " + row.perspective + " - every linked route of it follows"
                 : "The effects of this route: volume, channel separation, equalizer, IR reverb - LINKED to the perspective, or its own")
-                + juce::String(active ? "\n(orange: something is set here)" : "\n(grey: everything default)"));
+                + juce::String(active ? "\n(orange: something is set here)" : "\n(grey: everything default)") + "\nRight-click: reset everything to the default.");
             b->getProperties().set("manualChapter", "Effects");
             b->getProperties().set("testName", "fx " + row.label);   // ORGAN_TEST_MOUSE finds it ("fx Front (3 divisions)", "fx I.  Front")
             const juce::String perspective = row.perspective;
             const int manual = row.perspectiveRow || row.routes.empty() ? -1 : row.routes.front().manual;
             b->onClick = [this, perspective, manual] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target, perspective, manual] { if (target != nullptr) target->showEffectsDialog(perspective, manual); }); };
+            // 0.9.90: the right click = a menu with the reset (the user: "all fx must be switchable off").
+            const juce::String label = row.label;
+            b->onRightClick = [this, perspective, manual, label]
+            {
+                juce::PopupMenu menu;
+                menu.addItem(1, "Reset the effects of " + label + " to the default" + (manual >= 0 ? " (every module LINKED to the perspective again)" : " (every route of it linked again)"));
+                menu.addItem(2, "Open the effects...");
+                juce::Component::SafePointer<MainComponent> target(&owner);
+                menu.showMenuAsync(juce::PopupMenu::Options(), [target, perspective, manual](int result)
+                {
+                    if (target == nullptr || result == 0) return;
+                    if (result == 1) target->resetEffects(perspective, manual);
+                    else juce::MessageManager::callAsync([target, perspective, manual] { if (target != nullptr) target->showEffectsDialog(perspective, manual); });
+                });
+            };
             addAndMakeVisible(b);
         }
         controls.clear();
@@ -851,17 +874,19 @@ private:
     void layout()
     {
         const int width = juce::jmax(760, getWidth());
-        help.setBounds(10, 6, width - 560, 72);
-        // The right block of the header: the switches on the first line, the master strip on the second, the meter beside.
-        masterMeter.setBounds(width - 56, 6, 46, 72);
-        showCables.setBounds(width - 540, 8, 110, 24);
-        sizeLabel.setBounds(width - 430, 8, 90, 24);
-        sizeBox.setBounds(width - 336, 8, 96, 24);
-        measureButton.setBounds(width - 170, 8, 104, 24);
-        masterLabel.setBounds(width - 540, 44, 110, 24);
-        masterSlider.setBounds(width - 426, 44, 260, 24);
+        help.setBounds(10, 6, width - 660, 72);
+        // 0.9.90: the right block of the header is ONE aligned strip - Master volume, the meter, Measure Polyphony -
+        // with the switches on the line under it (the user: "the top right corner looks untidy").
+        const int stripRight = width - 10;
+        measureButton.setBounds(stripRight - 150, 8, 150, 24);
+        masterMeter.setBounds(stripRight - 150 - 10 - 46, 6, 46, 72);
+        masterSlider.setBounds(stripRight - 150 - 10 - 46 - 10 - 270, 8, 270, 24);
+        masterLabel.setBounds(masterSlider.getX() - 112, 8, 108, 24);
+        showCables.setBounds(masterLabel.getX(), 44, 110, 24);
+        sizeLabel.setBounds(masterLabel.getX() + 114, 44, 90, 24);
+        sizeBox.setBounds(masterLabel.getX() + 208, 44, 96, 24);
 #if JUCE_LINUX
-        unusableButton.setBounds(width - 540, 76, 220, 22);
+        unusableButton.setBounds(masterLabel.getX() + 314, 44, 220, 24);
 #endif
         sourcesTop = 110;
         int y = sourcesTop;
@@ -1120,6 +1145,27 @@ private:
             for (const auto& route : routes) owner.detachRouteAudioQuietly(route.manual, route.perspective);
             CrashHandler::note("Audio routing: " + card.name + " was busy through another driver - its routes closed first");
         }
+        // 0.9.90: an aggregated card opens anew for every route's outputs (up to a second each): the routes go one at a
+        // time behind the "set for all" progress window, the dialog is rebuilt when the queue is done.
+        if (card.type.equalsIgnoreCase("Aggregated WASAPI"))
+        {
+            std::vector<MainComponent::RoutingAssignStep> steps;
+            for (const auto& route : routes)
+            {
+                const bool changeDevice = cardKeyOf(route) != card.key;
+                auto wanted = channels;
+                if (add && !changeDevice)
+                    for (const int c : channelsOf(route))
+                        if (std::find(wanted.begin(), wanted.end(), c) == wanted.end() && std::find(takeAway.begin(), takeAway.end(), c) == takeAway.end()) wanted.push_back(c);
+                std::sort(wanted.begin(), wanted.end());
+                steps.push_back({ route.manual, route.perspective, wanted, changeDevice });
+                if (changeDevice && !deviceChanged) { owner.audioMuted.store(true); owner.engine.noteOffAll(); owner.ignoreDeviceRestartsUntil.store(now + 8000.0 + 1500.0 * (double)routes.size()); deviceChanged = true; }
+            }
+            selectedCable = -1;
+            juce::Component::SafePointer<AudioRoutingContent> safeThis(this);
+            owner.beginRoutingAssign(card.type, card.name, card.rate, card.buffer, std::move(steps), [safeThis] { if (safeThis != nullptr) safeThis->rebuild(); });
+            return;
+        }
         for (const auto& route : routes)
         {
             juce::String type, name;
@@ -1320,7 +1366,15 @@ private:
 #if JUCE_LINUX
     juce::ToggleButton unusableButton; // 0.9.89: the ALSA "list unusable devices" switch (was on the audio tabs)
 #endif
-    juce::OwnedArray<juce::TextButton> fxButtons;   // 0.9.89: one per row
+    // 0.9.90: the fx button takes a right click (the reset menu) - a TextButton swallows it as a press otherwise.
+    struct FxButton final : public juce::TextButton
+    {
+        FxButton() : juce::TextButton("fx") {}
+        std::function<void()> onRightClick;
+        void mouseDown(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) { if (onRightClick) onRightClick(); return; } juce::TextButton::mouseDown(e); }
+        void mouseUp(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; juce::TextButton::mouseUp(e); }
+    };
+    juce::OwnedArray<FxButton> fxButtons;   // 0.9.89: one per row
     struct RowMeter { float db = -100.0f; double holdUntil = 0.0; };
     std::vector<RowMeter> rowMeters;
     int ticks = 0;

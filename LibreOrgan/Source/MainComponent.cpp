@@ -3043,8 +3043,8 @@ MainComponent::MainComponent()
 
 void MainComponent::requestQuit(std::function<void()> proceed)
 {
+    saveSettingsNow();   // 0.9.90: the dirty flag is decided by the write
     CrashHandler::note("Quit requested" + juce::String(configurationDirty ? " (the configuration has unsaved changes: asked)" : ""));   // 0.8.195: a save followed by the quit is not a crash
-    saveSettings();
     askToKeepChanges("Quit LibreOrgan Sampler", "quit", std::move(proceed));
 }
 
@@ -3071,6 +3071,7 @@ namespace
 
 void MainComponent::askToKeepChanges(const juce::String& title, const juce::String& continueVerb, std::function<void()> proceed)
 {
+    saveSettingsNow();   // 0.9.90: configurationDirty is set by the write
     juce::Component::SafePointer<MainComponent> safeThis(this);
     const juce::String continueCapitalised = continueVerb.substring(0, 1).toUpperCase() + continueVerb.substring(1);
     // "Open" means loaded or saved in this session: a name remembered from an
@@ -3148,7 +3149,7 @@ MainComponent::~MainComponent()
     if (voicer)
         voicer->saveState(voicerStateFile);
     saveMemories();
-    saveSettings();
+    saveSettingsNow();
 }
 
 void MainComponent::prepareToPlay(int /*samplesPerBlockExpected*/, double sampleRate)
@@ -4963,6 +4964,39 @@ void MainComponent::unlinkRouteEffect(int manual, const juce::String& perspectiv
     CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of " + effectsDivisionName(manual) + " " + perspective + " changed on the route itself - set apart from the perspective");
 }
 
+void MainComponent::resetEffectModule(const juce::String& perspective, int manual, EffectModule module)
+{
+    if (manual >= 0)
+    {
+        // The route's module follows the perspective again (its own values are dropped).
+        setRouteEffectLinked(manual, perspective, module, true);
+        return;
+    }
+    // The perspective's module to its defaults; every route of it takes them (linked again).
+    auto& p = effectsOfPerspective(perspective);
+    const PerspectiveEffects defaults;
+    switch (module)
+    {
+        case EffectModule::Volume: p.volumeDb = defaults.volumeDb; break;
+        case EffectModule::Separation: p.channelSeparation = defaults.channelSeparation; break;
+        case EffectModule::Eq: p.eq = defaults.eq; break;
+        default: p.reverbIrPath = defaults.reverbIrPath; p.reverbWet = defaults.reverbWet; p.reverbTone = defaults.reverbTone; break;
+    }
+    for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
+        for (const auto& name : engine.getPerspectivesForManual(m))
+            if (name.equalsIgnoreCase(perspective))
+                linkedFlagOf(manualConfigs[(size_t)m].perspectiveAudio[perspectiveRouteKey(m, name)], module) = true;
+    CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of the perspective " + perspective + " reset to the default, every route of it linked again");
+    perspectiveEffectChanged(perspective, module);
+}
+
+void MainComponent::resetEffects(const juce::String& perspective, int manual)
+{
+    for (const auto module : { EffectModule::Volume, EffectModule::Separation, EffectModule::Eq, EffectModule::Ir })
+        resetEffectModule(perspective, manual, module);
+    CrashHandler::note("Effects: everything of " + (manual >= 0 ? effectsDivisionName(manual) + " " : juce::String("the perspective ")) + perspective + " reset");
+}
+
 namespace
 {
     bool effectsOffDefault(float volumeDb, float separation, const juce::String& ir, const SamplerEngine::EqSettings& eq)
@@ -6182,6 +6216,7 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
 
     // The zip: everything of CrashLogs, the settings, the last self-test, system.txt.
     const auto zipPath = folder.getChildFile("logs.zip");
+    saveSettingsNow();   // 0.9.90: the settings as they are now, not the deferred write's last state
     {
         juce::ZipFile::Builder builder;
         const auto logs = CrashHandler::detail::logDirectory();
@@ -6916,9 +6951,69 @@ void MainComponent::openApplyAllWindow(const juce::String& title)
     applyAllLabel = label;
 }
 
+void MainComponent::beginRoutingAssign(const juce::String& type, const juce::String& name, double rate, int buffer, std::vector<RoutingAssignStep> steps, std::function<void()> finished)
+{
+    if (applyAllRunning || steps.empty()) { if (finished) finished(); return; }
+    applyAllRoutingMode = true;
+    routingAssignType = type; routingAssignName = name; routingAssignRate = rate; routingAssignBuffer = buffer;
+    routingAssignQueue = std::move(steps);
+    routingAssignDone.clear(); routingAssignRefused.clear();
+    routingAssignFinished = std::move(finished);
+    applyAllTotal = (int)routingAssignQueue.size();
+    applyAllTickDivider = 0;
+    applyAllRunning = true;
+    CrashHandler::note("Audio routing: " + juce::String(applyAllTotal) + " route(s) onto " + name + " (" + type + ") one at a time behind the progress window");
+    openApplyAllWindow("Audio routing: " + name);
+}
+
 void MainComponent::continueApplyAll()
 {
     static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    if (applyAllRoutingMode)
+    {
+        // 0.9.90: the Audio routing's drop onto an aggregated card, one route per call: the device opened for
+        // the route when it comes from another card, then its outputs (the aggregate opens anew for them).
+        if (!routingAssignQueue.empty())
+        {
+            const auto step = routingAssignQueue.front();
+            const int done = applyAllTotal - (int)routingAssignQueue.size();
+            juce::StringArray list;
+            for (const auto c : step.channels) list.add(juce::String(c + 1));
+            if (applyAllLabel != nullptr)
+            {
+                applyAllLabel->setText((step.changeDevice ? "Opening " + routingAssignName + "\nfor " : "Setting the outputs " + list.joinIntoString("+") + " of " + routingAssignName + "\nfor ")
+                    + names[juce::jlimit(0, SamplerEngine::maxManuals - 1, step.manual)] + " / " + step.perspective + "   (" + juce::String(done + 1) + " of " + juce::String(applyAllTotal)
+                    + ") - the device opens anew for its outputs", juce::dontSendNotification);
+                if (applyAllWindow != nullptr)
+                    if (auto* peer = applyAllWindow->getPeer()) peer->performAnyPendingRepaintsNow();
+            }
+            routingAssignQueue.erase(routingAssignQueue.begin());
+            if (step.changeDevice)
+            {
+                auto state = std::make_unique<juce::XmlElement>("DEVICESETUP");
+                state->setAttribute("deviceType", routingAssignType);
+                state->setAttribute("audioOutputDeviceName", routingAssignName);
+                state->setAttribute("audioInputDeviceName", "");
+                if (routingAssignRate > 0.0) state->setAttribute("audioDeviceRate", routingAssignRate);
+                if (routingAssignBuffer > 0) state->setAttribute("audioDeviceBufferSize", routingAssignBuffer);
+                setRouteAudioType(step.manual, step.perspective, routingAssignType, state.get(), routingAssignName);
+            }
+            if (applyChannelsToDivision(step.manual, step.perspective, step.channels, routingAssignDone, routingAssignRefused))
+                CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + routingAssignName + " (" + routingAssignType + ") outputs " + list.joinIntoString("+"));
+            else CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + routingAssignName + " outputs " + list.joinIntoString("+") + " REFUSED (the card has no such output)");
+            if (!routingAssignQueue.empty()) return;
+        }
+        if (applyAllWindow != nullptr) applyAllWindow->exitModalState(0);   // deletes itself
+        applyAllWindow = nullptr;
+        applyAllLabel = nullptr;
+        applyAllRunning = false;
+        applyAllRoutingMode = false;
+        if (!routingAssignRefused.isEmpty()) noteMessage("Audio routing", "Not set: " + routingAssignRefused.joinIntoString("; "));
+        saveSettings();
+        audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1500.0;
+        if (routingAssignFinished) { auto finished = std::move(routingAssignFinished); routingAssignFinished = nullptr; finished(); }
+        return;
+    }
     if (applyAllChannelsMode)
     {
         // 0.9.47: the output channels of one route copied to the same perspective of the other divisions, one
@@ -9243,7 +9338,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             auto area = getLocalBounds().reduced(12);
             auto audioArea = area.removeFromBottom(48);   // 0.9.89: the audio tabs are gone - the Audio routing button and Close
             auto buttonRow = audioArea.removeFromBottom(38);
-            closeButton.setBounds(buttonRow.removeFromRight(110).reduced(4));
+            // 0.9.90: Close under the keyboard's right end (the user: the dialog narrower, Close moved left under the keyboard).
+            closeButton.setBounds(juce::Rectangle<int>(area.getX() + 700 - 110, buttonRow.getY(), 110, buttonRow.getHeight()).reduced(4));
             audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4));
             // No banner line: the division label sits above the MIDI column, the
             // settings, wind and stop-pool columns start right at the top.
@@ -9338,9 +9434,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 auto midiArea = row.removeFromLeft(232).reduced(8);   // narrow: leaves room for the stop pool
                 {
                     // Division label ("I.") above the MIDI column; learn messages (small) beside it.
-                    auto head = midiArea.removeFromTop(40);
+                    auto head = midiArea.removeFromTop(36);   // 0.9.90: 40 -> 36 (the Window box took a row of its own: the column must stay within 366 px)
                     labels[(size_t)manual].setBounds(head.removeFromLeft(60));
-                    windowBoxes[(size_t)manual].setBounds(head.removeFromLeft(118).reduced(2, 7));
                     status.setBounds(head);
                     // Done / Clear of a learn in progress (hidden otherwise): over the
                     // foot of the MIDI column, which keeps its full height for the checkboxes.
@@ -9348,23 +9443,25 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     doneButton.setBounds(foot.removeFromLeft(foot.getWidth() / 2).reduced(2));
                     clearButton.setBounds(foot.reduced(2));
                 }
+                // 0.9.90 (the user): the Window box as wide as the boxes under it, the right edges aligned.
+                windowBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(30).reduced(0, 3));
                 aliasBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(28).reduced(0, 2));   // 0.9.80: the division's alias
                 deviceLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
                 deviceBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 channelLabels[(size_t)manual].setBounds(midiArea.removeFromTop(22));
                 channelBoxes[(size_t)manual].setBounds(midiArea.removeFromTop(38));
                 channelNotes[(size_t)manual].setBounds(midiArea.removeFromTop(16));
-                velocityButtons[(size_t)manual].setBounds(midiArea.removeFromTop(42));
+                // The MIDI transposition of the keyboard: right under the MIDI channel (0.9.90, the user).
+                {
+                    auto line = midiArea.removeFromTop(32).reduced(0, 3);
+                    transposeLabels[(size_t)manual].setBounds(line.removeFromLeft(128));
+                    transposeBoxes[(size_t)manual].setBounds(line);
+                }
+                velocityButtons[(size_t)manual].setBounds(midiArea.removeFromTop(34).reduced(0, 2));   // 0.9.90: 42 -> 34 like the two under it
                 randomTuningButtons[(size_t)manual].setBounds(
                     midiArea.removeFromTop(34).reduced(0, 2));
                 pipeCouplingButtons[(size_t)manual].setBounds(
                     midiArea.removeFromTop(34).reduced(0, 2));
-                // The MIDI transposition of the keyboard: the last line of the MIDI column.
-                {
-                    auto line = midiArea.removeFromTop(32).reduced(0, 3);
-                    transposeLabels[(size_t)manual].setBounds(line.removeFromLeft(128));
-                    transposeBoxes[(size_t)manual].setBounds(line.removeFromLeft(84));
-                }
                 row.removeFromLeft(28);
                 auto settingsArea = row.removeFromLeft(260).reduced(8);
                 auto placeSetting = [](juce::Rectangle<int>& settingArea,
@@ -9771,7 +9868,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     };
 
     auto* content = new KeyboardsDialog(*this, onlyManual);
-    const int dialogWidth = onlyManual >= 0 ? 1140 : 1320;
+    const int dialogWidth = onlyManual >= 0 ? 1060 : 1240;   // 0.9.90: 80 px narrower (the user)
     const int dialogHeight = onlyManual >= 0 ? 522 : 562;   // 0.9.89: the division row (460) + the button row + margins (the audio tabs are gone)
     content->setSize(dialogWidth, dialogHeight);
     keyboardsWindow = std::make_unique<ModelessKeyboardWindow>([this]
@@ -9784,7 +9881,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
     keyboardsWindow->setUsingNativeTitleBar(true);
     keyboardsWindow->setResizable(true, true);
     keyboardsWindow->setContentOwned(new ScrollableContent(content), true);   // scrollbars when the window is smaller
-    placeDialog(*keyboardsWindow, "divisions2", dialogWidth, dialogHeight);   // one position for all divisions; a new key since 0.9.89 (the remembered 926 px of the old dialog with the audio tabs would leave half the window empty)
+    placeDialog(*keyboardsWindow, "divisions3", dialogWidth, dialogHeight);   // one position for all divisions; a new key at every size change (0.9.89, 0.9.90: a remembered larger size would leave the window half empty)
     keyboardsWindow->setVisible(true);
     keyboardsWindow->toFront(true);
     // 0.8.250 (the user: he opens the dialog to see whether the card came back): a
@@ -10547,6 +10644,80 @@ namespace
         if (t.id > 0) return stop->transmissionIndexOfId(t.id);
         return stop->transmissionIndex(t.manual, t.ordinal);
     }
+
+    // 0.9.90: the crescendo steps in the file. A step is read through registrationOnSet alone (name, division,
+    // perspective, on/off, the transmissions' id / division / on-off, the couplers' id / on-off), so that is
+    // what is written - one string per stop and per coupler instead of an object with every voicing figure:
+    // 52 stops x 40 steps x 60 couplers were 524 KB of the settings written at every slider move. The OFF
+    // entries stay (every stop of the organ is listed in every taught step, as before). An object entry of
+    // an older file is still read as it is.
+    juce::String compactRegistrationStop(const juce::var& stopObj)
+    {
+        juce::String line = stopObj.getProperty("name", "").toString() + "\t" + juce::String((int)stopObj.getProperty("primaryManual", 0))
+            + "\t" + stopObj.getProperty("perspective", "").toString() + "\t" + ((bool)stopObj.getProperty("enabled", false) ? "1" : "0");
+        if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
+        {
+            line += "\t";
+            bool first = true;
+            for (const auto& item : *list)
+            {
+                if (!first) line += ",";
+                first = false;
+                line += juce::String((int)item.getProperty("id", 0)) + ":" + juce::String((int)item.getProperty("manual", 0))
+                    + ":" + ((bool)item.getProperty("enabled", false) ? "1" : "0");
+            }
+        }
+        else if (stopObj.hasProperty("transmissionEnabledMask"))   // the oldest memories: a bit mask of the divisions switched on
+            line += "\tm" + juce::String((int)stopObj.getProperty("transmissionEnabledMask", 0));
+        return line;
+    }
+    juce::var expandRegistrationStop(const juce::String& line)
+    {
+        juce::StringArray fields;
+        fields.addTokens(line, "\t", "");
+        if (fields.size() < 4) return {};
+        juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+        obj->setProperty("name", fields[0]);
+        obj->setProperty("primaryManual", fields[1].getIntValue());
+        obj->setProperty("perspective", fields[2]);
+        obj->setProperty("enabled", fields[3] == "1");
+        if (fields.size() >= 5)
+        {
+            if (fields[4].startsWith("m")) obj->setProperty("transmissionEnabledMask", fields[4].substring(1).getIntValue());
+            else
+            {
+                juce::Array<juce::var> list;
+                juce::StringArray items;
+                items.addTokens(fields[4], ",", "");
+                for (const auto& item : items)
+                {
+                    juce::StringArray parts;
+                    parts.addTokens(item, ":", "");
+                    if (parts.size() < 3) continue;
+                    juce::DynamicObject::Ptr t = new juce::DynamicObject();
+                    if (parts[0].getIntValue() > 0) t->setProperty("id", parts[0].getIntValue());
+                    t->setProperty("manual", parts[1].getIntValue());
+                    t->setProperty("enabled", parts[2] == "1");
+                    list.add(juce::var(t.get()));
+                }
+                obj->setProperty("transmissions", list);
+            }
+        }
+        return juce::var(obj.get());
+    }
+    juce::String compactRegistrationCoupler(const juce::var& state)
+    {
+        return state.getProperty("id", "").toString() + "\t" + ((bool)state.getProperty("enabled", false) ? "1" : "0");
+    }
+    juce::var expandRegistrationCoupler(const juce::String& line)
+    {
+        const int tab = line.indexOfChar('\t');
+        if (tab < 0) return {};
+        juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+        obj->setProperty("id", line.substring(0, tab));
+        obj->setProperty("enabled", line.substring(tab + 1) == "1");
+        return juce::var(obj.get());
+    }
 }
 
 // Registration item keys: "stop|manual|perspective|name", "trans|manual|perspective|name|target[|ordinal]", "coupler|id".
@@ -10734,8 +10905,11 @@ juce::var MainComponent::crescendoToVar() const
         const auto& slot = crescendoSteps[(size_t)step - 1];
         juce::DynamicObject::Ptr item = new juce::DynamicObject();
         item->setProperty("step", step);
-        item->setProperty("stops", slot.stopData);
-        item->setProperty("couplers", slot.couplerData);
+        juce::Array<juce::var> stops, couplerStates;   // 0.9.90: the compact lines
+        for (const auto& stopObj : slot.stopData) if (stopObj.isObject()) stops.add(compactRegistrationStop(stopObj));
+        for (const auto& state : slot.couplerData) if (state.isObject()) couplerStates.add(compactRegistrationCoupler(state));
+        item->setProperty("stops", stops);
+        item->setProperty("couplers", couplerStates);
         steps.add(juce::var(item.get()));
     }
     root->setProperty("steps", steps);
@@ -10760,9 +10934,17 @@ void MainComponent::crescendoFromVar(const juce::var& data)
             if (step < 1 || step > crescendoStepCount) continue;
             auto& slot = crescendoSteps[(size_t)step - 1];
             if (auto* stops = item.getProperty("stops", juce::var()).getArray())
-                for (const auto& stop : *stops) if (stop.isObject()) slot.stopData.add(stop);
+                for (const auto& stop : *stops)
+                {
+                    if (stop.isObject()) slot.stopData.add(stop);
+                    else if (stop.isString()) { const auto expanded = expandRegistrationStop(stop.toString()); if (expanded.isObject()) slot.stopData.add(expanded); }   // 0.9.90
+                }
             if (auto* couplerStates = item.getProperty("couplers", juce::var()).getArray())
-                for (const auto& state : *couplerStates) if (state.isObject()) slot.couplerData.add(state);
+                for (const auto& state : *couplerStates)
+                {
+                    if (state.isObject()) slot.couplerData.add(state);
+                    else if (state.isString()) { const auto expanded = expandRegistrationCoupler(state.toString()); if (expanded.isObject()) slot.couplerData.add(expanded); }
+                }
         }
     if (crescendoDisplay != nullptr) crescendoDisplay->repaint();
     if (crescendoDialogRefresh) crescendoDialogRefresh();
@@ -12816,7 +12998,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         juce::MessageBoxIconType::QuestionIcon);
     window->addComboBox("storage", { "32-bit float (less polyphony, full fidelity)",
         "16-bit integer (more polyphony, more hiss)",
-        "16-bit integer, releases at half the rate (a quarter of their RAM; bright pipes keep the full rate)" }, "Sample storage in RAM");
+        "16-bit integer, releases at half the rate (a quarter of their RAM; bright releases keep the full rate; some polyphony: a halved release plays through the sinc kernel)" }, "Sample storage in RAM");
     window->getComboBoxComponent("storage")->setSelectedItemIndex(asFloat ? 0 : halfRate ? 2 : 1, juce::dontSendNotification);
     window->addComboBox("packing", { "Off  [default]", "On: a third less RAM, half the polyphony gone (up to two thirds on a big organ)" }, "Compress samples in RAM (lossless)");
     window->getComboBoxComponent("packing")->setSelectedItemIndex(packed ? 1 : 0, juce::dontSendNotification);
@@ -13095,7 +13277,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         });
         return;
     }
-    saveSettings();
+    saveSettingsNow();
     auto configuration = juce::JSON::parse(settingsFile.loadFileAsString());
     auto* root = configuration.getDynamicObject();
     if (root == nullptr) return;
@@ -13587,7 +13769,7 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         setCurrentConfigurationName(file.getFileNameWithoutExtension());
         currentConfigurationFile = file;
         configurationUsedThisSession = true;
-        saveSettings();
+        saveSettingsNow();
         markConfigurationClean();   // the configuration now matches the settings
     }
 }
@@ -15560,7 +15742,7 @@ juce::StringArray MainComponent::renameRowsWithoutPerspectivePrefixes(juce::var 
 void MainComponent::applyPortableConfiguration(juce::var configuration,
     const juce::File& configurationFile, const juce::File& libraryRoot)
 {
-    saveSettings();
+    saveSettingsNow();
     // A Stop List left open from the organ before would be shown again as it
     // was - the old perspectives and pool - at its next opening (0.8.135).
     if (stopBuildWindow != nullptr) stopBuildWindow.reset();
@@ -15940,7 +16122,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     refreshArchiveSearchFolders(configurationFile);   // the archive folders remembered beside it (0.8.158)
     configurationUsedThisSession = true;
     learnPrefixesFromTables();   // 0.8.223: the prefixes the tables reveal, on every load
-    saveSettings();
+    saveSettingsNow();
     markConfigurationClean();
     {
         // Will the samples fit? A warning when the free memory is short (#16,
@@ -16387,7 +16569,7 @@ void MainComponent::beginStartupFolderLoading()
                 // that is what the configuration means, not a change to ask about.
                 if (currentConfigurationName.isNotEmpty())
                 {
-                    saveSettings();
+                    saveSettingsNow();
                     markConfigurationClean();
                 }
                 // ORGAN_RELOAD_AFTER_START=<division> (tests): that division is loaded
@@ -25099,6 +25281,16 @@ void MainComponent::mergeApplicationPatterns()
 
 void MainComponent::saveSettings()
 {
+    // 0.9.90: the write is deferred (timerCallback -> saveSettingsNow, at most once a second, never while
+    // a mouse button is down); the MIDI routing snapshot follows a change at once as it always did.
+    settingsSavePending = true;
+    refreshMidiRouting();
+}
+
+void MainComponent::saveSettingsNow()
+{
+    settingsSavePending = false;
+    settingsLastWrittenMs = juce::Time::getMillisecondCounterHiRes();
     // Every user change arrives here. Whether the open configuration is
     // "changed" is decided by comparing the settings (without window geometry
     // and dialog positions) with their state at the configuration's load or save.
@@ -26518,6 +26710,9 @@ void MainComponent::timerCallback()
 {
     updateExpressionInertia();
     updateHeldBankNavigation();
+    if (settingsSavePending && !juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown()   // 0.9.90: the deferred write
+        && juce::Time::getMillisecondCounterHiRes() - settingsLastWrittenMs >= 1000.0)
+        saveSettingsNow();
     if (++lostModalDivider >= 20) { lostModalDivider = 0; bringLostModalsToFront(); }   // 0.9.29: every half second
     if (editorMeasureButton != nullptr)   // 0.9.48: the Editor's Measure... follows the loader like the Divisions dialog's (setEnabled with the same value is a no-op)
     {
@@ -28069,7 +28264,7 @@ void MainComponent::globalResetFinish(const GlobalResetOptions& o)
     }
 
     saveMemories();
-    saveSettings();
+    saveSettingsNow();
     if (o.unloadEverything)
     {
         const bool haveStops = !engine.getStops().isEmpty();
@@ -29141,19 +29336,40 @@ void MainComponent::cancelPolyphonyMeasurement()
 // import's summary are longer than a screen).
 struct LongMessageComponent final : public juce::Component
 {
-    LongMessageComponent(const juce::String& body, std::function<void()> onClose) : closeAction(std::move(onClose))
+    // 0.9.90: an optional second text, "Advanced analysis", folded under a button (the measurement's figures).
+    LongMessageComponent(const juce::String& body, const juce::String& details, std::function<void()> onClose) : closeAction(std::move(onClose))
     {
-        editor.setMultiLine(true, true);
-        editor.setReadOnly(true);
-        editor.setScrollbarsShown(true);
-        editor.setCaretVisible(false);
-        editor.setFont(juce::FontOptions(16.0f));
-        editor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff2b2b2b));
-        editor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555555));
-        editor.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xff555555));
-        editor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+        for (auto* e : { &editor, &detailsEditor })
+        {
+            e->setMultiLine(true, true);
+            e->setReadOnly(true);
+            e->setScrollbarsShown(true);
+            e->setCaretVisible(false);
+            e->setFont(juce::FontOptions(16.0f));
+            e->setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff2b2b2b));
+            e->setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff555555));
+            e->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xff555555));
+            e->setColour(juce::TextEditor::textColourId, juce::Colours::white);
+        }
         editor.setText(body, false);
         addAndMakeVisible(editor);
+        hasDetails = details.isNotEmpty();
+        if (hasDetails)
+        {
+            detailsEditor.setText(details, false);
+            detailsEditor.setColour(juce::TextEditor::textColourId, juce::Colour(0xffd0d0d0));
+            addChildComponent(detailsEditor);
+            detailsButton.setButtonText("Advanced analysis  >");
+            detailsButton.setTooltip("The figures of the run: routes, CPU, memory, the kernel's cost per voice, the device thread");
+            detailsButton.onClick = [this]
+            {
+                detailsShown = !detailsShown;
+                detailsButton.setButtonText(detailsShown ? "Advanced analysis  v" : "Advanced analysis  >");
+                detailsEditor.setVisible(detailsShown);
+                resized();
+            };
+            addAndMakeVisible(detailsButton);
+        }
         ok.setButtonText("OK");
         ok.onClick = [this]
         {
@@ -29168,10 +29384,21 @@ struct LongMessageComponent final : public juce::Component
         auto area = getLocalBounds().reduced(12);
         ok.setBounds(area.removeFromBottom(30).withSizeKeepingCentre(110, 30));
         area.removeFromBottom(10);
+        if (hasDetails)
+        {
+            if (detailsShown)
+            {
+                detailsEditor.setBounds(area.removeFromBottom(area.getHeight() * 55 / 100));
+                area.removeFromBottom(6);
+            }
+            detailsButton.setBounds(area.removeFromBottom(26).removeFromLeft(200));
+            area.removeFromBottom(6);
+        }
         editor.setBounds(area);
     }
-    juce::TextEditor editor;
-    juce::TextButton ok;
+    juce::TextEditor editor, detailsEditor;
+    juce::TextButton ok, detailsButton;
+    bool hasDetails = false, detailsShown = false;
     std::function<void()> closeAction;
 };
 
@@ -29180,7 +29407,7 @@ void MainComponent::showLongMessage(const juce::String& title, const juce::Strin
     juce::DialogWindow::LaunchOptions options;
     options.dialogTitle = title;
     options.dialogBackgroundColour = juce::Colours::darkgrey;
-    options.content.setOwned(new LongMessageComponent(body, nullptr));
+    options.content.setOwned(new LongMessageComponent(body, {}, nullptr));
     options.componentToCentreAround = this;
     options.useNativeTitleBar = true;
     options.resizable = true;
@@ -29311,6 +29538,10 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         text << ": every target up to " << state->highestCleanPeak << " voices stayed clean.";
     text << " The slider is yours: lower it for more headroom (couplers, long releases, other programs running), raise it if you dare."
             "\n\nSave the configuration: the value belongs to this organ (its routes, IRs, drivers and buffers), not to the computer alone.";
+    // 0.9.90: the report is two parts - what to do (text + advice, shown) and the measured figures
+    // (details: "Advanced analysis", folded by default; the user: "a million figures that mean nothing
+    // to the user - the advice is what matters").
+    juce::String advice, details;
     // Every route with its device, buffer size and sample rate: where the time
     // went, and the odd one out (a route at another buffer or rate) in plain view.
     {
@@ -29334,15 +29565,14 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         }
         if (routes.isNotEmpty())
         {
-            text << "\n\nThe audio routes as they ran:" << routes;
+            details << "The audio routes as they ran:" << routes;
             if (buffers.size() > 1 || rates.size() > 1)
-                text << "\n  The routes differ in " << (buffers.size() > 1 ? "buffer size" : "") << (buffers.size() > 1 && rates.size() > 1 ? " and " : "")
-                     << (rates.size() > 1 ? "sample rate" : "") << ": give every device the same buffer and 48 kHz (see the manual, \"Audio drivers\").";
+                advice << "\n\nThe routes differ in " << (buffers.size() > 1 ? "buffer size" : "") << (buffers.size() > 1 && rates.size() > 1 ? " and " : "")
+                       << (rates.size() > 1 ? "sample rate" : "") << ": give every device the same buffer and 48 kHz (see the manual, \"Audio drivers\").";
         }
     }
     // Advice: where the time goes. Routes on Windows Audio (one thread each),
     // auxiliary routes (every pipe once more), and the ASIO buffer size.
-    juce::String advice;
     auto loadOf = [&state](int manual, const juce::String& perspective)
     {
         float load = 0.0f;
@@ -29403,6 +29633,32 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         else advice << ".";
     }
     {
+        // 0.9.90: the loading options of this organ and what they cost in voices - the user took a packed,
+        // half-rate organ for a polyphony regression (Frankfurt: 25 000 packed, 49 700 unpacked on the
+        // same computer). The figures of the run say which option was in force; the sinc kernel is a
+        // quality choice and is named as one, never cheapened here.
+        juce::String options;
+        const double voices = state->profVoicesSum;
+        const double unpackNs = voices > 0.0 ? state->profUnpackSum / voices : 0.0;
+        const double totalNs = voices > 0.0 ? (state->profHeaderSum + state->profSpansSum + state->profKernelSum + state->profPostSum + state->profUnpackSum) / voices : 0.0;
+        if (compressSamples || unpackNs > 0.5)
+            options << "\n  - Compress samples in RAM (lossless) is on: unpacking the samples took " << juce::roundToInt(unpackNs) << " ns of the "
+                    << juce::roundToInt(totalNs) << " ns a voice cost per block, and the kernel reads the unpacked pieces slower than a plain sample. "
+                       "Load the organ again with the packing off when it fits the RAM: roughly twice the polyphony.";
+        if (releaseHalfRate && !sampleStorageFloat)
+            options << "\n  - Releases at half the rate: a bright release plays through the sinc kernel (about three times the work of a plain one). "
+                       "Full releases cost RAM instead of voices.";
+        if (sincKernelFromHz < 19999.0f)
+            options << "\n  - Full kernel from " << juce::roundToInt(sincKernelFromHz) << " Hz: every pipe sounding from there up plays through the sinc kernel "
+                       "(three to five times the work of the linear one) - a quality choice (no foreign tone under a retuned high pipe); "
+                    << (sincKernelFromHz < 2500.0f ? "a higher value (3000 Hz is the default) gives voices back" : "raise it only if you need the voices more than the sound of the top octaves") << ".";
+        if (options.isNotEmpty())
+            advice << "\n\nThe loading options of this organ (the load box, Configuration Editor > Engine) and their price in voices:" << options;
+        if (const auto& hybrid = CpuInfo::hybrid(); hybrid.hybrid() && !(renderThreadPreset == "performance" && renderThreads == 0))
+            advice << "\n\nThis processor has " << hybrid.performanceCores << " performance and " << hybrid.efficiencyCores
+                   << " efficiency cores - a render worker on an efficiency core holds the others up: try Render threads: Performance cores only (Configuration Editor > Engine) and measure again.";
+    }
+    {
         // Where the time went - measured, not guessed:
         //  1. the CPU of the cores the program renders on (the render threads;
         //     16 threads busy on a 32-thread processor are 100 % here, 50 % in a
@@ -29415,10 +29671,10 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         const int cpus = juce::jmax(1, juce::SystemStats::getNumCpus());
         const int physical = juce::jmax(1, juce::SystemStats::getNumPhysicalCpus());
         const int renderCores = juce::jmax(1, engine.getRenderWorkerCount() + 1);
-        advice << "\n\nRender threads: " << renderCores << " on " << physical << " physical " << (physical == 1 ? "core" : "cores")
+        details << (details.isEmpty() ? "" : "\n\n") << "Render threads: " << renderCores << " on " << physical << " physical " << (physical == 1 ? "core" : "cores")
                << ", kernel " << engine.currentKernelName() << ".";
         if (const auto& hybrid = CpuInfo::hybrid(); hybrid.hybrid())
-            advice << " This processor has " << hybrid.performanceCores << " performance and " << hybrid.efficiencyCores << " efficiency cores"
+            details << " This processor has " << hybrid.performanceCores << " performance and " << hybrid.efficiencyCores << " efficiency cores"
                    << (renderThreadPreset == "performance" && renderThreads == 0 ? ": the render workers ran on the performance cores only."
                        : " - a render worker on an efficiency core holds the others up; try Render threads: Performance cores only.");
         if (state->cpuSamples > 0)
@@ -29428,14 +29684,14 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             // threads, the computer figure counted the hyper-threads).
             const double processAvg = state->cpuProcessSum / state->cpuSamples;
             const double coreAvg = juce::jlimit(0.0, 1.0, processAvg * cpus / renderCores);
-            advice << " Processor: the " << renderCores << " render " << (renderCores == 1 ? "core was" : "cores were") << " busy "
+            details << " Processor: the " << renderCores << " render " << (renderCores == 1 ? "core was" : "cores were") << " busy "
                    << juce::roundToInt(coreAvg * 100.0) << " % on average over the run.";
             if (state->firstFailingPeak > 0 && coreAvg < 0.6 && renderCores > 1)
-                advice << " The sound broke with the render cores under 60 %: the time went into the device thread (bookkeeping, hand-over, waiting for the slowest lane), not into the rendering.";
+                details << " The sound broke with the render cores under 60 %: the time went into the device thread (bookkeeping, hand-over, waiting for the slowest lane), not into the rendering.";
         }
-        else advice << " CPU during the run: not readable on this system.";
+        else details << " CPU during the run: not readable on this system.";
         if (state->poolSamples > 0)
-            advice << " While a route was being rendered, its lanes were busy " << juce::roundToInt(100.0 * state->poolUtilisationSum / state->poolSamples) << " % of the time.";
+            details << " While a route was being rendered, its lanes were busy " << juce::roundToInt(100.0 * state->poolUtilisationSum / state->poolSamples) << " % of the time.";
         {
             // Memory: a big organ on a small computer pages samples out, and a
             // block then stalls on reading them back (one stroke of many stops
@@ -29446,23 +29702,23 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             if (used > 0 && installed > 0)
             {
                 auto gb = [](juce::int64 b) { return juce::String((double)b / 1073741824.0, 1); };
-                advice << " Memory: the program holds " << gb(used) << " GB of the " << gb(installed) << " GB installed";
+                details << " Memory: the program holds " << gb(used) << " GB of the " << gb(installed) << " GB installed";
                 // Never "the system pages" when the program itself stopped loading to
                 // keep it from paging (#25, #26): that is the loading's doing, said so.
                 if (engine.lastLoadWasMemoryLimited())
-                    advice << " - the loading stopped there on purpose, at the share the system keeps for itself, so nothing is paged out; the stops left out are in the Stop List's pool. More RAM gives more stops, not more polyphony.";
+                    details << " - the loading stopped there on purpose, at the share the system keeps for itself, so nothing is paged out; the stops left out are in the Stop List's pool. More RAM gives more stops, not more polyphony.";
                #if JUCE_MAC
                 else if (MemoryInfo::pressureLevel() >= 2)
-                    advice << ", and macOS reports memory pressure: a block stalls when a stroke touches samples the system has compressed - fewer stops, 16-bit storage, or more RAM.";
+                    details << ", and macOS reports memory pressure: a block stalls when a stroke touches samples the system has compressed - fewer stops, 16-bit storage, or more RAM.";
                #else
                 else if (MemoryInfo::swappedBytes() > (juce::int64)256 * 1024 * 1024)
-                    advice << ", and " << gb(MemoryInfo::swappedBytes()) << " GB of it is swapped out: a block stalls when a stroke touches those samples - fewer stops, 16-bit storage, or more RAM.";
+                    details << ", and " << gb(MemoryInfo::swappedBytes()) << " GB of it is swapped out: a block stalls when a stroke touches those samples - fewer stops, 16-bit storage, or more RAM.";
                #endif
-                else advice << ", " << gb(free) << " GB free.";
+                else details << ", " << gb(free) << " GB free.";
             }
         }
         const juce::String power = MainComponent::powerSettingDescription();
-        if (power.isNotEmpty()) advice << " " << power;
+        if (power.isNotEmpty()) details << " " << power;
 
         // The kernel of this computer, measured now (about a second).
         int blockFrames = 0; double blockRate = 48000.0;
@@ -29474,7 +29730,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         if (blockFrames <= 0) blockFrames = 512;
         const juce::int64 ramBytes = juce::jlimit((juce::int64)(64 << 20), (juce::int64)(512 << 20), MainComponent::availablePhysicalMemoryBytes() / 8);
         state->kernelBench = SamplerEngine::benchmarkKernel(blockFrames, ramBytes);
-        advice << "\n\n" << state->kernelBench.describe();
+        details << "\n\n" << state->kernelBench.describe();
         if (state->profVoicesSum > 0.0)
         {
             // The voice profile of the run: what one voice costs a lane per block, in its parts.
@@ -29482,7 +29738,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             const double kernel = state->profKernelSum / state->profVoicesSum, post = state->profPostSum / state->profVoicesSum;
             const double unpack = state->profUnpackSum / state->profVoicesSum;
             const double total = header + spans + kernel + post + unpack;
-            advice << " A voice cost a lane " << juce::roundToInt(total) << " ns per block in this run: bookkeeping " << juce::roundToInt(header)
+            details << " A voice cost a lane " << juce::roundToInt(total) << " ns per block in this run: bookkeeping " << juce::roundToInt(header)
                    << ", span logic " << juce::roundToInt(spans) << ", kernel " << juce::roundToInt(kernel)
                    << (post > 0.5 ? ", per-key tone " + juce::String(juce::roundToInt(post)) : juce::String())
                    << (unpack > 0.5 ? ", unpacking the packed samples " + juce::String(juce::roundToInt(unpack)) + " (Compress samples in RAM is on: that is its price)" : juce::String()) << ".";
@@ -29493,7 +29749,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         {
             // The ceiling: every render core rendering voices for 85 % of the block, nothing else.
             const double ceiling = (double)renderCores * 0.85 * blockMs * 1.0e6 / ((double)blockFrames * nsBest);
-            advice << " The kernel alone would reach about " << juce::String(juce::roundToInt(ceiling / 100.0) * 100) << " voices at this buffer; the limit of "
+            details << " The kernel alone would reach about " << juce::String(juce::roundToInt(ceiling / 100.0) * 100) << " voices at this buffer; the limit of "
                    << newLimit << " is " << juce::roundToInt(100.0 * newLimit / juce::jmax(1.0, ceiling)) << " % of that - the rest is bookkeeping, hand-over and the device thread's own work.";
         }
         if (state->devCalls > 0.0)
@@ -29506,7 +29762,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             const double total = state->devTake + state->devOwn + state->devWait + state->devMix + state->devCompact + state->devSeparation
                 + state->devReverb + state->devClip + state->devRecord + state->devStats;
             const double busy = state->devBusySamples > 0 ? state->devBusySum / state->devBusySamples : 0.0;
-            advice << "\n\nThe device thread, per route callback (a period is " << juce::roundToInt(blockMs * 1000.0) << " us): " << us(total) << " us in all - its own rendering of voices "
+            details << "\n\nThe device thread, per route callback (a period is " << juce::roundToInt(blockMs * 1000.0) << " us): " << us(total) << " us in all - its own rendering of voices "
                    << us(state->devOwn) << ", waiting for the other lanes and merging their output " << us(state->devWait)
                    << ", mixing (block context, harmonic shelf, channel separation, safety clip) " << us(state->devMix + state->devSeparation + state->devClip)
                    << ", IR hand-over " << us(state->devReverb) << " (of it waiting for the convolution " << us(state->devReverbWait) << ")"
@@ -29529,7 +29785,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             {
                 const double perVoiceMs = (double)(highShare - low.callbackShare) * blockMs / (double)(highPeak - low.peak);
                 const double fixedMs = juce::jmax(0.0, (double)low.callbackShare * blockMs - perVoiceMs * low.peak);
-                advice << " Of a " << juce::String(blockMs, 1) << " ms block about " << juce::String(fixedMs, 2) << " ms went to the fixed part (hand-over, IR heads, bookkeeping) and "
+                details << " Of a " << juce::String(blockMs, 1) << " ms block about " << juce::String(fixedMs, 2) << " ms went to the fixed part (hand-over, IR heads, bookkeeping) and "
                        << juce::String(perVoiceMs * 1000.0, 2) << " us to every voice.";
             }
         }
@@ -29634,8 +29890,8 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
     options.dialogBackgroundColour = juce::Colours::darkgrey;
     // The whole report into the activity log as well: a bug report carries it.
     engine.setVoiceProfiling(false);
-    CrashHandler::note("Polyphony measurement report: " + (text + advice).replace("\n", " | "));
-    options.content.setOwned(new Report(text + advice, [safeThis] { if (safeThis != nullptr) safeThis->outputGainTarget.store(1.0f); }));
+    CrashHandler::note("Polyphony measurement report: " + (text + advice + "\n\nAdvanced analysis: " + details).replace("\n", " | "));
+    options.content.setOwned(new Report(text + advice, details, [safeThis] { if (safeThis != nullptr) safeThis->outputGainTarget.store(1.0f); }));
     options.componentToCentreAround = this;
     options.useNativeTitleBar = true;
     options.resizable = true;
@@ -30497,7 +30753,7 @@ void MainComponent::showConfigurationEditor()
             viewport.setScrollBarsShown(true, false);
             addAndMakeVisible(viewport);
             openFolder.setButtonText("Show settings.json");
-            openFolder.onClick = [this] { this->owner.settingsFile.revealToUser(); };
+            openFolder.onClick = [this] { this->owner.saveSettingsNow(); this->owner.settingsFile.revealToUser(); };
             addAndMakeVisible(openFolder);
             reloadAll.setButtonText("Refresh values");
             reloadAll.onClick = [this] { rows.clear(); content.removeAllChildren(); build(); resized(); };
@@ -31035,7 +31291,8 @@ void MainComponent::showConfigurationEditor()
                 o.saveSettings();
             }, "The releases are a large part of a set and a decaying tail: stored at half the rate (24 kHz at the 48 kHz base) "
                "they lose what lies above 12 kHz and take a quarter of the RAM they would; nothing is requantised, the room noise "
-               "of the tail stays as recorded. Takes effect the next time a division folder is loaded.");
+               "of the tail stays as recorded. The price in voices: a bright halved release plays through the sinc kernel, about three "
+               "times the work of a plain one. Takes effect the next time a division folder is loaded.");
             addToggle("Compress samples in RAM (lossless)", o.compressSamples, [&o](bool state)
             {
                 o.compressSamples = state;

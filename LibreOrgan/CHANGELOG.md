@@ -12,6 +12,45 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.90] - 2026-11-17
+
+### Fixed
+- Every slider of the program reacted slowly to the mouse: settings.json
+  (hundreds of KB - the crescendo alone was 524 KB of it) was written at
+  every mouse event. The settings are now written at most once a second and
+  never while a mouse button is held; the crescendo steps are stored as one
+  short line per stop and coupler (the off entries stay; an old file is read
+  as it is).
+- Polyphony with *Compress samples in RAM*: the samples are unpacked with
+  AVX2 (eight residuals a step) where the processor has it, bit for bit the
+  scalar decoder's result (the kernel test compares them). The sinc kernel is
+  untouched.
+- The Effects dialog retargeted to another route opens on the module looked
+  at last, not on Division volume.
+- Audio routing: a drop onto an Aggregated WASAPI card goes route by route
+  behind a progress window (the aggregate opened anew per route with nothing
+  on the screen for seconds).
+
+### Changed
+- The polyphony report leads with what to do (the routes, the buffer, the
+  loading options of the organ and their price in voices - packing, halved
+  releases, the full kernel); the figures are under "Advanced analysis",
+  folded by default.
+- Audio routing: the header is one aligned strip - Master volume, the audio
+  meter, *Measure Polyphony* (was "Measure...") - with the switches under it;
+  the cables take the primary colours first (yellow, blue, red, then green,
+  magenta, cyan, orange, white), the auxiliary the next one; a right-click on
+  fx resets the row's effects to the default.
+- Effects: *Reset* in every module's header and *Reset all effects* (a
+  route's module LINKED again, a perspective's module to its default with
+  every route following); the equalizer rows are numbered 1-5 like the
+  points of the graph.
+- Divisions dialog: the Window box as wide as the boxes under it, the MIDI
+  transposition right under the MIDI channel, the dialog 80 px narrower,
+  Close under the keyboard.
+- The load box and the Editor name the price in voices of the halved
+  releases.
+
 ## [0.9.89] - 2026-11-17
 
 ### Added

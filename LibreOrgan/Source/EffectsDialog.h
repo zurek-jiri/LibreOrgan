@@ -165,8 +165,20 @@ public:
             b->onClick = [this, i] { select((int)i); };
             addAndMakeVisible(b);
         }
+        // 0.9.90: everything of this row to the default (the user: "a reset button for all the effects in the dialog").
+        resetAll.setButtonText("Reset all effects");
+        resetAll.setTooltip(manual >= 0 ? "Every module of this route LINKED to the perspective again (the route's own values are dropped)"
+            : "Every module of the perspective to its default, every route of it linked again");
+        resetAll.getProperties().set("manualChapter", "Effects");
+        resetAll.onClick = [this] { owner.resetEffects(perspective, manual); refresh(); };
+        addAndMakeVisible(resetAll);
         buildPanels();
-        select(manual >= 0 ? 1 : 0);
+        // 0.9.90: the module shown last is shown again when the dialog is retargeted (the user: "not Division volume every time").
+        int wanted = manual >= 0 ? 1 : 0;
+        for (size_t i = 0; i < chain.size(); ++i)
+            if ((owner.effectsDialogModule < 0 && chain[i].divisionVolume) || (owner.effectsDialogModule >= 0 && !chain[i].divisionVolume && (int)chain[i].module == owner.effectsDialogModule))
+                wanted = (int)i;
+        select(wanted);
         refresh();
         startTimer(100);
     }
@@ -174,7 +186,9 @@ public:
     void resized() override
     {
         auto area = getLocalBounds().reduced(12);
-        title.setBounds(area.removeFromTop(26));
+        auto titleLine = area.removeFromTop(26);
+        resetAll.setBounds(titleLine.removeFromRight(150).reduced(0, 1));
+        title.setBounds(titleLine);
         note.setBounds(area.removeFromTop(44));
         area.removeFromTop(6);
         auto list = area.removeFromLeft(190);
@@ -190,6 +204,7 @@ private:
     const int manual;   // -1 = the perspective's dialog
     juce::String routeName;
     juce::Label title, note;
+    juce::TextButton resetAll;   // 0.9.90
     std::vector<ChainItem> chain;
     juce::OwnedArray<juce::TextButton> chainButtons;
     juce::OwnedArray<juce::Component> panels;
@@ -233,11 +248,14 @@ private:
         juce::Label name, info;
         juce::TextButton linkedButton{ "LINKED" };
         juce::TextButton openButton{ "Open a route set apart..." };
+        juce::TextButton resetButton{ "Reset" };   // 0.9.90: this module to the default
         void resized() override
         {
             auto r = getLocalBounds();
             name.setBounds(r.removeFromLeft(220));
             if (linkedButton.isVisible()) linkedButton.setBounds(r.removeFromLeft(90).reduced(0, 3));
+            resetButton.setBounds(r.removeFromRight(70).reduced(0, 3));
+            r.removeFromRight(8);
             if (openButton.isVisible()) openButton.setBounds(r.removeFromRight(200).reduced(0, 3));
             info.setBounds(r.reduced(8, 0));
         }
@@ -288,6 +306,24 @@ private:
             });
         };
         h->addChildComponent(h->openButton);
+        // 0.9.90: Reset - a route's module LINKED again (the division volume: 0 dB), a perspective's module to its default.
+        h->resetButton.setTooltip(divisionVolume ? "The division volume back to 0 dB"
+            : manual >= 0 ? "This module LINKED to the perspective again (the route's own values are dropped)" : "This module to its default; every route of the perspective follows it again");
+        h->resetButton.getProperties().set("manualChapter", "Effects");
+        h->resetButton.getProperties().set("testName", "Reset " + moduleName);
+        h->resetButton.onClick = [this, m, divisionVolume]
+        {
+            if (divisionVolume)
+            {
+                auto& config = owner.manualConfigs[(size_t)juce::jmax(0, manual)];
+                config.divisionVolumeDb = 0.0f;
+                owner.engine.setManualDivisionGain(manual, 1.0f);
+                owner.saveSettings();
+            }
+            else owner.resetEffectModule(perspective, manual, m);
+            refresh();
+        };
+        h->addAndMakeVisible(h->resetButton);
         headers.push_back(h);
         return h;
     }
@@ -347,7 +383,7 @@ private:
             {
                 auto line = r.removeFromTop(34).reduced(0, 4);
                 row.on.setBounds(line.removeFromLeft(26));
-                row.name.setBounds(line.removeFromLeft(84));
+                row.name.setBounds(line.removeFromLeft(30));   // 0.9.90: "1".."5"
                 const int w = (line.getWidth() - 16) / 3;
                 row.hz.setBounds(line.removeFromLeft(w)); line.removeFromLeft(8);
                 row.gain.setBounds(line.removeFromLeft(w)); line.removeFromLeft(8);
@@ -457,15 +493,19 @@ private:
             p->graph.setTooltip("The response of the five bands. Drag a point: its frequency and gain; the wheel over a point: its Q (width).");
             p->graph.getProperties().set("manualChapter", "Equalizer");
             p->addAndMakeVisible(p->graph);
-            static const char* const bandNames[5]{ "Low shelf", "Peak 1", "Peak 2", "Peak 3", "High shelf" };
+            // 0.9.90: the rows are numbered 1-5 like the points of the graph (the user: "the numbers on the thumbs did not
+            // match the rows"); the band's kind is in the tooltip.
+            static const char* const bandKinds[5]{ "Low shelf", "Peak", "Peak", "Peak", "High shelf" };
             for (int b = 0; b < 5; ++b)
             {
                 auto& row = p->rows[b];
-                row.on.setTooltip("This band on or off");
+                row.on.setTooltip("Band " + juce::String(b + 1) + " (" + bandKinds[b] + ") on or off");
                 row.on.getProperties().set("manualChapter", "Equalizer");
                 row.on.onClick = [this, b] { auto e = eq(); e.bands[b].on = eqPanel->rows[b].on.getToggleState(); storeEq(e); };
                 p->addAndMakeVisible(row.on);
-                row.name.setText(bandNames[b], juce::dontSendNotification);
+                row.name.setText(juce::String(b + 1), juce::dontSendNotification);
+                row.name.setTooltip(juce::String(bandKinds[b]) + " - point " + juce::String(b + 1) + " of the graph");
+                row.name.setJustificationType(juce::Justification::centred);
                 p->addAndMakeVisible(row.name);
                 setupSlider(row.hz, owner, 20.0, 20000.0, 1.0, " Hz", (double)SamplerEngine::EqSettings().bands[b].hz, midiTarget(juce::String(b) + ":hz"), "Equalizer");
                 row.hz.setSkewFactorFromMidPoint(630.0);
@@ -569,6 +609,7 @@ private:
     void select(int index)
     {
         selected = juce::jlimit(0, (int)panels.size() - 1, index);
+        if ((size_t)selected < chain.size()) owner.effectsDialogModule = chain[(size_t)selected].divisionVolume ? -1 : (int)chain[(size_t)selected].module;   // 0.9.90: remembered for the next target
         for (int i = 0; i < panels.size(); ++i) panels[i]->setVisible(i == selected);
         for (int i = 0; i < chainButtons.size(); ++i) chainButtons[i]->setToggleState(i == selected, juce::dontSendNotification);
         refresh();

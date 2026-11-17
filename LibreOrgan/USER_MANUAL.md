@@ -959,10 +959,15 @@ sample to one channel in turn, a stereo sample to a pair).
 **Every row** of *Organ out* ends with a small **meter** (what that row plays
 now: green to -12 dB, orange to -3 dB, red above) and the **fx** button -
 grey while everything of it is default, orange when an effect is set or a
-module set apart; it opens the row's [Effects](#53-effects). The header of
+module set apart; it opens the row's [Effects](#53-effects), a right-click
+on it resets them to the default. The cables take the primary colours first
+(yellow, blue, red, then green, magenta, cyan, orange, white) in the order of
+the perspectives; the auxiliary takes the next one. The header of
 the dialog carries the **Master volume** (the console's slider itself - one
 value, two places), the console's **audio meter** with its CLIP dot, and
-**Measure...**, the [polyphony measurement](#measure-the-maximum-polyphony).
+**Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).
+A drop onto an Aggregated WASAPI card goes route by route behind a progress
+window (the aggregate opens anew for every route's outputs).
 
 **A device that is not there** (switched off, unplugged, taken by another
 program): the route keeps it and its channels, the card says so, the program
@@ -977,7 +982,11 @@ effects of that **route** (a division row: "Effects: I. Front") or of the
 whole **perspective** ("Effects: Front"). On the left stands the chain in the
 order the engine applies it - *Division volume* (a route's only), *Volume*,
 *Channel separation*, *Equalizer*, *IR reverb* - on the right the module you
-chose. Every slider has MIDI learn (right-click) and F1.
+chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on
+the module you looked at last. *Reset* in a module's header and *Reset all
+effects* at the top put things back: a route's module is LINKED to the
+perspective again, a perspective's module goes to its default and every route
+of it follows it again (the fx button turns grey).
 
 ### LINKED
 
@@ -1005,10 +1014,11 @@ channels carry the same sum.
 
 ### Equalizer
 
-Five bands - a low shelf, three peaks, a high shelf - each with its
-frequency, gain (+-18 dB), Q (the width of a peak, the slope of a shelf) and
-an on/off box. The graph shows the response: drag a point for frequency and
-gain, the wheel over it for Q; the boxes beside it do the same in numbers. A
+Five bands, numbered 1 to 5 - a low shelf, three peaks, a high shelf - each
+with its frequency, gain (+-18 dB), Q (the width of a peak, the slope of a
+shelf) and an on/off box. The graph shows the response: drag a point (its
+number is the row's) for frequency and gain, the wheel over it for Q; the
+rows under it do the same in numbers. A
 band at 0 dB costs nothing. The EQ sits after the separation and before the
 IR, so the room hears the equalized sound.
 
@@ -1402,15 +1412,19 @@ up on the first callback that runs a little longer.
 
 ### Measure the maximum polyphony
 
-*Measure...* runs the procedure above with the loaded organ and its audio
+*Measure Polyphony* runs the procedure above with the loaded organ and its audio
 routes as they are: the sound turned down to -52 dB, every stop engaged, keys
 struck on every division faster and wider until the voices stop rising, the
 target raised in steps and held four seconds each, the first breakup
 narrowed down by keys, rate and stops. *Maximum polyphony* is set to the
 most that stayed clean, the registration restored, the level returns within
-seconds. The report says where the time went (the render cores, the pool,
-the kernel, the cost per voice) and what to change; it never forecasts other
-buffer sizes. One to two minutes; *Cancel* restores everything. Pressed while
+seconds. The report says what to change - the routes, the buffer, the loading
+options of the organ and what each costs in voices (the packing roughly half,
+the halved releases and the full kernel their share through the sinc) - and
+keeps the figures (where the time went: the render cores, the pool, the
+kernel, the cost per voice, the device thread) under *Advanced analysis*,
+folded; it never forecasts other buffer sizes. One to two minutes; *Cancel*
+restores everything. Pressed while
 the filled pipes are still being built, the window waits for them and the run
 starts by itself. Save the
 configuration afterwards; measure again after a change of routes, IRs,
@@ -2257,7 +2271,8 @@ keys at the fastest rate produce no more voices and the sound stays clean,
 the organ itself is the limit. Afterwards the level glides up at 26 dB/s
 after a short hold and the new limit takes effect once the tails are gone.
 
-The report: the CPU of the render cores (16 threads busy on a 32-thread
+The report's *Advanced analysis*: the audio routes as they ran, the CPU of
+the render cores (16 threads busy on a 32-thread
 processor are 100 %), the lane utilisation of the pool, the kernel's
 nanoseconds per voice and frame from cache and from RAM with the ceiling
 that gives at this buffer, the cost of one voice per block in its parts
@@ -2272,7 +2287,9 @@ What moves the figure: the buffer size first (two cores: 1000 voices at
 74 000 - compare runs at one buffer only); the device path (Linux: measure
 on the card's direct ALSA device or JACK, not on PipeWire's default output;
 Windows: ASIO or one Windows Audio device for all routes); *Compress samples
-in RAM* halves the figure; *Full kernel from* on a processor without AVX2
+in RAM* halves the figure (the unpacking runs with AVX2 where the processor
+has it, and the kernel still reads the unpacked pieces slower than a plain
+sample); *Full kernel from* on a processor without AVX2
 divides it by two to five; two-core laptops scatter by a third between runs
 (take the median of three); Aggregated WASAPI renders every route on its own
 thread (a big organ over fifteen routes measures like ASIO, the whole organ

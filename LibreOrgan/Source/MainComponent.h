@@ -499,6 +499,23 @@ private:
     static const char* effectModuleName(EffectModule m);
     void showEffectsDialog(const juce::String& perspective, int manual);                        // manual -1 = the perspective's own dialog
     std::unique_ptr<juce::DialogWindow> effectsWindow;                                         // one at a time (modeless)
+    // 0.9.90 (the user: "all fx must be switchable off = everything default; right-click reset, and a reset button in the
+    // dialog"): a route's module reset = LINKED to the perspective again; a perspective's module reset = the defaults,
+    // copied into every route of it (every route linked again). manual -1 = the perspective.
+    void resetEffectModule(const juce::String& perspective, int manual, EffectModule module);
+    void resetEffects(const juce::String& perspective, int manual);                           // every module
+    int effectsDialogModule = 0;                                                               // the module shown last (the dialog opens on it again when retargeted); -1 = division volume, 0 = Volume at first
+    // 0.9.90: a drop of routes onto an Aggregated WASAPI card in the Audio routing goes through the "set for all"
+    // queue and its progress window (the aggregate opens anew per route, up to a second each - "the user does not
+    // know what is going on").
+    struct RoutingAssignStep { int manual; juce::String perspective; std::vector<int> channels; bool changeDevice; };
+    bool applyAllRoutingMode = false;
+    std::vector<RoutingAssignStep> routingAssignQueue;
+    juce::String routingAssignType, routingAssignName;
+    double routingAssignRate = 0.0; int routingAssignBuffer = 0;
+    juce::StringArray routingAssignDone, routingAssignRefused;
+    std::function<void()> routingAssignFinished;
+    void beginRoutingAssign(const juce::String& type, const juce::String& name, double rate, int buffer, std::vector<RoutingAssignStep> steps, std::function<void()> finished);
     // 0.9.89: the audio meter's painting and state, shared by the console display and the Audio routing dialog.
     static void paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> area, float meterDb, bool clipNow, bool clipLatched);
     void outputMeterState(float& meterDb, bool& clipNow, bool& clipLatched) const;
@@ -1583,7 +1600,14 @@ private:
     void saveLastDirectory();
     void mergeStops();
     void loadSettings();
+    // 0.9.90: saveSettings() only marks the settings for writing - the file (hundreds of KB: the voicing,
+    // the crescendo) is written by the timer at most once a second and never while a mouse button is held
+    // (every slider mouse event wrote it before: "all the sliders react extremely slowly"). saveSettingsNow()
+    // writes at once - before anything reads settings.json, before a fingerprint is taken, at the quit.
     void saveSettings();
+    void saveSettingsNow();
+    bool settingsSavePending = false;
+    double settingsLastWrittenMs = 0.0;
     // 0.8.213: the application's own lists of folder-name patterns (Patterns.json beside settings.json).
     juce::File applicationPatternsFile() const;
     void rememberPatterns(bool exact);        // the engine's lists into the file: merged (a load/unload) or as they are (the user's edit)

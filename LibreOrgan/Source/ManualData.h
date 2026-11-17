@@ -971,10 +971,15 @@ static const char* const kManualText_part4 =
     "**Every row** of *Organ out* ends with a small **meter** (what that row plays\n"
     "now: green to -12 dB, orange to -3 dB, red above) and the **fx** button -\n"
     "grey while everything of it is default, orange when an effect is set or a\n"
-    "module set apart; it opens the row's [Effects](#53-effects). The header of\n"
+    "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
+    "on it resets them to the default. The cables take the primary colours first\n"
+    "(yellow, blue, red, then green, magenta, cyan, orange, white) in the order of\n"
+    "the perspectives; the auxiliary takes the next one. The header of\n"
     "the dialog carries the **Master volume** (the console's slider itself - one\n"
     "value, two places), the console's **audio meter** with its CLIP dot, and\n"
-    "**Measure...**, the [polyphony measurement](#measure-the-maximum-polyphony).\n"
+    "**Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).\n"
+    "A drop onto an Aggregated WASAPI card goes route by route behind a progress\n"
+    "window (the aggregate opens anew for every route's outputs).\n"
     "\n"
     "**A device that is not there** (switched off, unplugged, taken by another\n"
     "program): the route keeps it and its channels, the card says so, the program\n"
@@ -989,7 +994,11 @@ static const char* const kManualText_part4 =
     "whole **perspective** (\"Effects: Front\"). On the left stands the chain in the\n"
     "order the engine applies it - *Division volume* (a route's only), *Volume*,\n"
     "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
-    "chose. Every slider has MIDI learn (right-click) and F1.\n"
+    "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
+    "the module you looked at last. *Reset* in a module's header and *Reset all\n"
+    "effects* at the top put things back: a route's module is LINKED to the\n"
+    "perspective again, a perspective's module goes to its default and every route\n"
+    "of it follows it again (the fx button turns grey).\n"
     "\n"
     "### LINKED\n"
     "\n"
@@ -1001,6 +1010,8 @@ static const char* const kManualText_part4 =
     "says how many routes follow each module and opens any route set apart. Nothing\n"
     "is summed and nothing is a second path: a perspective's effect is the same\n"
     "effect on each of its routes, each rendered alone - with four divisions, four\n"
+    ;
+static const char* const kManualText_part5 =
     "times the DSP of one.\n"
     "\n"
     "### Volume\n"
@@ -1010,8 +1021,6 @@ static const char* const kManualText_part4 =
     "division, every perspective of it - a division's own, never a perspective's.\n"
     "\n"
     "### Channel separation\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "At 100 % every pipe sounds only on its own channel pair; lower, every channel\n"
     "also carries that share of the others - the stereo width narrows; at 0 % all\n"
@@ -1019,10 +1028,11 @@ static const char* const kManualText_part5 =
     "\n"
     "### Equalizer\n"
     "\n"
-    "Five bands - a low shelf, three peaks, a high shelf - each with its\n"
-    "frequency, gain (+-18 dB), Q (the width of a peak, the slope of a shelf) and\n"
-    "an on/off box. The graph shows the response: drag a point for frequency and\n"
-    "gain, the wheel over it for Q; the boxes beside it do the same in numbers. A\n"
+    "Five bands, numbered 1 to 5 - a low shelf, three peaks, a high shelf - each\n"
+    "with its frequency, gain (+-18 dB), Q (the width of a peak, the slope of a\n"
+    "shelf) and an on/off box. The graph shows the response: drag a point (its\n"
+    "number is the row's) for frequency and gain, the wheel over it for Q; the\n"
+    "rows under it do the same in numbers. A\n"
     "band at 0 dB costs nothing. The EQ sits after the separation and before the\n"
     "IR, so the room hears the equalized sound.\n"
     "\n"
@@ -1202,6 +1212,8 @@ static const char* const kManualText_part5 =
     "  The retune works rank by rank - every rank's own recorded deviations are\n"
     "  taken out and the target's put in - so both organs play the target\n"
     "  temperament in tune with each other. The base temperament shown is the one\n"
+    ;
+static const char* const kManualText_part6 =
     "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
     "\n"
@@ -1212,8 +1224,6 @@ static const char* const kManualText_part5 =
     "merge switches it on. A large retune is applied to the mixed output of every\n"
     "route with a proper resampler, so the pipes keep their recorded speed\n"
     "([Retune buses and the full kernel](#109-retune-buses-and-the-full-kernel)).\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "## 6.4 MIDI learn\n"
     "\n"
@@ -1404,6 +1414,8 @@ static const char* const kManualText_part6 =
     "are faded out beyond it. Set it below what the computer renders, so that an\n"
     "overload fades old voices rather than crackles. It belongs to the organ\n"
     "(routes, IRs, drivers, buffers all change it) and is saved with the\n"
+    ;
+static const char* const kManualText_part7 =
     "configuration; *Measure the maximum polyphony* finds it. By hand: full\n"
     "registration of a wet set, many quick staccato notes over many keys, watch\n"
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
@@ -1414,21 +1426,23 @@ static const char* const kManualText_part6 =
     "before the measurement counts a level as broken (60 to 100 %, default 85).\n"
     "85 leaves headroom for what the computer does besides; 100 counts a level\n"
     "as broken only when the driver really called late - the limit it finds breaks\n"
-    ;
-static const char* const kManualText_part7 =
     "up on the first callback that runs a little longer.\n"
     "\n"
     "### Measure the maximum polyphony\n"
     "\n"
-    "*Measure...* runs the procedure above with the loaded organ and its audio\n"
+    "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
     "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
     "struck on every division faster and wider until the voices stop rising, the\n"
     "target raised in steps and held four seconds each, the first breakup\n"
     "narrowed down by keys, rate and stops. *Maximum polyphony* is set to the\n"
     "most that stayed clean, the registration restored, the level returns within\n"
-    "seconds. The report says where the time went (the render cores, the pool,\n"
-    "the kernel, the cost per voice) and what to change; it never forecasts other\n"
-    "buffer sizes. One to two minutes; *Cancel* restores everything. Pressed while\n"
+    "seconds. The report says what to change - the routes, the buffer, the loading\n"
+    "options of the organ and what each costs in voices (the packing roughly half,\n"
+    "the halved releases and the full kernel their share through the sinc) - and\n"
+    "keeps the figures (where the time went: the render cores, the pool, the\n"
+    "kernel, the cost per voice, the device thread) under *Advanced analysis*,\n"
+    "folded; it never forecasts other buffer sizes. One to two minutes; *Cancel*\n"
+    "restores everything. Pressed while\n"
     "the filled pipes are still being built, the window waits for them and the run\n"
     "starts by itself. Save the\n"
     "configuration afterwards; measure again after a change of routes, IRs,\n"
@@ -1602,6 +1616,8 @@ static const char* const kManualText_part7 =
     "red in the voicing row and its tooltip says what happened (an orange name\n"
     "still means \"no loop\"; red wins when both). Off: the smpl chunk alone is\n"
     "believed, as before, and a file without one sounds at its file number. Takes\n"
+    ;
+static const char* const kManualText_part8 =
     "effect at the next load. Travels with the organ. The loading takes a second\n"
     "or two longer on a large organ.\n"
     "\n"
@@ -1616,8 +1632,6 @@ static const char* const kManualText_part7 =
     "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
     "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
     "and filled from its neighbours; its thumb turns green and the tooltip says\n"
-    ;
-static const char* const kManualText_part8 =
     "so. Travels with the organ.\n"
     "\n"
     "### Pipe coupling: detune left after the pull\n"
@@ -1804,6 +1818,8 @@ static const char* const kManualText_part8 =
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Sample and IR locations: forget the folders\n"
     "\n"
     "*Forget* drops the folder lines; the archives chosen stay.\n"
@@ -1818,8 +1834,6 @@ static const char* const kManualText_part8 =
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
@@ -2006,6 +2020,8 @@ static const char* const kManualText_part9 =
     "---\n"
     "\n"
     "# 9. Messages, the activity log, reporting a problem, licences\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "## 9.1 Messages\n"
     "\n"
@@ -2020,8 +2036,6 @@ static const char* const kManualText_part9 =
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
-    ;
-static const char* const kManualText_part10 =
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
@@ -2208,6 +2222,8 @@ static const char* const kManualText_part10 =
     "least. A foreign pipe never matches a fraction bit for bit; a producer's\n"
     "retouch of a few headers does not refuse a real perspective. A folder with a\n"
     "degenerate smpl (no chunk, few distinct values, every fraction 0) is compared\n"
+    ;
+static const char* const kManualText_part11 =
     "by its measured pitch instead (the four lowest files, within 2 cents). The\n"
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
@@ -2222,8 +2238,6 @@ static const char* const kManualText_part10 =
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
-    ;
-static const char* const kManualText_part11 =
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
     "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
@@ -2283,7 +2297,8 @@ static const char* const kManualText_part11 =
     "the organ itself is the limit. Afterwards the level glides up at 26 dB/s\n"
     "after a short hold and the new limit takes effect once the tails are gone.\n"
     "\n"
-    "The report: the CPU of the render cores (16 threads busy on a 32-thread\n"
+    "The report's *Advanced analysis*: the audio routes as they ran, the CPU of\n"
+    "the render cores (16 threads busy on a 32-thread\n"
     "processor are 100 %), the lane utilisation of the pool, the kernel's\n"
     "nanoseconds per voice and frame from cache and from RAM with the ceiling\n"
     "that gives at this buffer, the cost of one voice per block in its parts\n"
@@ -2298,7 +2313,9 @@ static const char* const kManualText_part11 =
     "74 000 - compare runs at one buffer only); the device path (Linux: measure\n"
     "on the card's direct ALSA device or JACK, not on PipeWire's default output;\n"
     "Windows: ASIO or one Windows Audio device for all routes); *Compress samples\n"
-    "in RAM* halves the figure; *Full kernel from* on a processor without AVX2\n"
+    "in RAM* halves the figure (the unpacking runs with AVX2 where the processor\n"
+    "has it, and the kernel still reads the unpacked pieces slower than a plain\n"
+    "sample); *Full kernel from* on a processor without AVX2\n"
     "divides it by two to five; two-core laptops scatter by a third between runs\n"
     "(take the median of three); Aggregated WASAPI renders every route on its own\n"
     "thread (a big organ over fifteen routes measures like ASIO, the whole organ\n"
