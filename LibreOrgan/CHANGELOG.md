@@ -24,6 +24,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 ### Fixed
 - The "Attack per key" row opened with the other per-key rows folded was
   cut at the bottom (the compact controls layout under a full-height row).
+- The macOS builds of 0.9.84 to 0.9.88 did not compile (the colour spread of
+  the Audio routing used `jmax<size_t>`, which clang resolves to juce_dsp's SIMD
+  overload); the tag v0.9.88 was moved onto the fix, no behaviour changed.
 
 ## [0.9.87] - 2026-11-16
 

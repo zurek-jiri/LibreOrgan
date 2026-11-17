@@ -636,7 +636,7 @@ private:
             const auto& perspective = perspectives[pi];
             // 0.9.84: the hues spread evenly over the circle by the number of perspectives (two cables = opposite colours),
             // a division's row keeps its perspective's hue a step darker per division.
-            const float hue = std::fmod(0.08f + (float)pi / (float)juce::jmax<size_t>(1, perspectives.size()), 1.0f);
+            const float hue = std::fmod(0.08f + (float)pi / (float)std::max<size_t>(1, perspectives.size()), 1.0f);   // not jmax<size_t>: clang instantiates juce_dsp's SIMDRegister overload (the v0.9.87/v0.9.88 mac builds failed on it)
             std::vector<Route> routes;
             for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
                 for (const auto& p : owner.engine.getPerspectivesForManual(manual)) if (p == perspective) routes.push_back({ manual, p });
@@ -664,7 +664,7 @@ private:
                     row.perspective = perspective; row.routes = { route };
                     const auto& alias = owner.manualConfigs[(size_t)route.manual].alias;   // 0.9.86: the division's alias (0.9.80) belongs here too (the user)
                     row.label = divisionName(route.manual) + (alias.isNotEmpty() ? " " + alias : juce::String()) + "  " + perspective;
-                    row.colour = juce::Colour::fromHSV(hue, 0.5f + 0.15f * (float)(di % 3), 0.95f - 0.16f * (float)juce::jmin<size_t>(3, di), 1.0f);
+                    row.colour = juce::Colour::fromHSV(hue, 0.5f + 0.15f * (float)(di % 3), 0.95f - 0.16f * (float)std::min<size_t>(3, di), 1.0f);
                     row.silent = cardKeyOf(route).isEmpty();
                     row.whereText = whereOf(route);
                     rows.push_back(row);

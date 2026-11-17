@@ -3645,6 +3645,20 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   attack row, while expandedHeightFor takes the full layout for it - the key area began lower than the height allowed;
   resized() now counts `attackRowShown()` (keyRowsFolded already did). RULE: the layout branch and the height formula
   must read the same three flags.
+  CI OF 0.9.84-0.9.88 FAILED ON BOTH MAC JOBS (17 Nov 2026, the user: "the new build did not went through on gitHub"):
+  `juce::jmax<size_t>` / `jmin<size_t>` in AudioRouting.h (0.9.84's hue spread) - the 0.8.151 lesson again: with
+  juce_dsp clang takes the explicit argument for the SIMDRegister overload (`SIMDNativeOps<unsigned long>` undefined;
+  int64_t passes, size_t = unsigned long does not). Five tags went to origin unwatched (the "push only the final
+  version" rule means ONE push a session - then WATCH that one: %TEMP%\ci_watch.ps1 with the full SHA); the release
+  stayed at v0.9.83 (the "macOS" job is required, the Intel one optional: a required job's failure skips the release
+  job). Fixed with std::max/std::min<size_t>, the tag v0.9.88 moved onto the fix commit, the dangling remote tags
+  v0.9.84-v0.9.87 deleted by hand (the release job deletes only tags WITH a release). RULE: before a tag, grep
+  `j(max|min|limit)<(size_t|unsigned)` over Source/ - never an explicit size_t/unsigned argument on jmax/jmin/jlimit.
+  RESTARTING A RUN: GitHub's run page has "Re-run jobs > Re-run failed jobs" (30 days) - it re-runs the SAME commit,
+  so it helps only for a runner glitch (the cancelled macOS job of v0.9.87), never for a compile error; the API
+  counterpart (`POST /actions/runs/<id>/rerun-failed-jobs`) is 403 for the local token. A compile fix = a new commit
+  + the tag moved (`git tag -d`, `git push origin :refs/tags/vX`, re-tag, push). A whole run on the same tag without
+  a new commit = `POST /actions/workflows/build.yml/dispatches {"ref":"vX"}` (0.8.153; a dispatched tag run publishes).
   only by the difference of the shares (50/50 = NOTHING - the user sets
   "two pipes share" 60 for a fifth), a chord struck together = one step. The steady sag: `windBaseAt` =
   exponential from baseStartSag at the event towards targetSag (tau = duration/3; the smoothstep restarted at
