@@ -980,9 +980,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             // that sounds here has no loop in its smpl chunk.
             else if (!stop->noteHasLoopInAnyRank(source))
             {
-                nameLabel->setColour(juce::Label::textColourId, juce::Colours::orange);
+                nameLabel->setColour(juce::Label::textColourId, onColour());
                 nameLabel->setTooltip("No loop in the smpl chunk of this sample");
-                toneNameLabel->setColour(juce::Label::textColourId, juce::Colours::orange);
+                toneNameLabel->setColour(juce::Label::textColourId, onColour());
                 toneNameLabel->setTooltip("No loop in the smpl chunk of this sample");
             }
         }
@@ -2406,7 +2406,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
 
         void paint(juce::Graphics& g) override
         {
-            g.setColour(isMouseOverOrDragging() ? juce::Colours::orange.withAlpha(0.85f)
+            g.setColour(isMouseOverOrDragging() ? onColour().withAlpha(0.85f)
                                                 : juce::Colours::grey.withAlpha(0.65f));
             g.fillRect(getLocalBounds().withSizeKeepingCentre(2, getHeight()));
         }
@@ -2562,8 +2562,8 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             title.onEditorShow = [this] { if (auto* editor = title.getCurrentTextEditor())
             {
                 // 0.9.81: an empty alias gave an invisible editor (dark on dark) - the name seemed to vanish.
-                editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::orange);
-                editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::orange);
+                editor->setColour(juce::TextEditor::outlineColourId, onColour());
+                editor->setColour(juce::TextEditor::focusedOutlineColourId, onColour());
                 editor->setColour(juce::TextEditor::backgroundColourId, juce::Colours::black.withAlpha(0.6f));
                 editor->setTextToShowWhenEmpty("alias of " + title.getText(), juce::Colours::grey);
                 editor->setText(aliasGetter ? aliasGetter(manual) : juce::String(), false); editor->selectAll();
@@ -2598,7 +2598,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             SwipeSwitch::add(&tremulant, [this](bool enabled) { applyTremulant(enabled); });
             addAndMakeVisible(tremulant);
             missing.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey);
-            missing.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+            missing.setColour(juce::TextButton::textColourOffId, onColour());
             missing.onClick = [this] { if (missingAction) missingAction(); else if (load.onClick) load.onClick(); };
             addChildComponent(missing);
             {

@@ -355,5 +355,5 @@ private:
     int highlightedBlock = -1;
     Selection selection;
     TextPos dragAnchor, dragEnd;   // the mouse selection (0.8.228)
-    juce::Colour highlightColour = juce::Colours::orange;
+    juce::Colour highlightColour = onColour();
 };

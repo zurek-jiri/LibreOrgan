@@ -156,7 +156,7 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        const auto glow = juce::Colours::orange;
+        const auto glow = onColour();
         g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
         // The source column.
         g.setColour(juce::Colours::black.withAlpha(0.2f));
@@ -192,12 +192,9 @@ public:
                 // large meter's eight segments (4 green, 3 orange, 1 red; the same thresholds), 2 px each = the
                 // height of the row's letters, no box and no gaps.
                 const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 8, meterWidth, 16);
-                static const float thresholds[7]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f };
-                for (int s = 0; s < 8; ++s)   // s = 0 the bottom segment
+                for (int s = 0; s < MeterStyle::kSegments; ++s)   // s = 0 the bottom segment; MeterStyle = the large meter's table
                 {
-                    const juce::Colour colour = s < 4 ? juce::Colours::lime : s < 7 ? juce::Colours::orange : juce::Colours::red;
-                    const bool lit = !row.silent && (s == 7 ? m.clipShown : m.db >= thresholds[s]);
-                    g.setColour(lit ? colour : colour.withAlpha(0.18f));
+                    g.setColour(row.silent ? MeterStyle::segmentColour(s).withAlpha(MeterStyle::kUnlitAlpha) : MeterStyle::segmentPaint(s, m.db, m.clipShown));
                     g.fillRect(meter.getX(), meter.getBottom() - (s + 1) * 2, meter.getWidth(), 2);
                 }
             }
@@ -345,12 +342,12 @@ public:
         // The ghost of a dragged card.
         if (dragCard >= 0 && draggingCard && dragCard < (int)cards.size())
         {
-            const auto& card = cards[(size_t)dragCard];
-            const juce::Rectangle<float> ghost(dragPoint.x - 90.0f, dragPoint.y - 14.0f, 180.0f, 28.0f);
-            g.setColour(juce::Colours::black.withAlpha(0.7f)); g.fillRoundedRectangle(ghost, 5.0f);
-            g.setColour(glow); g.drawRoundedRectangle(ghost, 5.0f, 1.5f);
-            g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-            g.drawFittedText(card.name, ghost.toNearestInt().reduced(6, 0), juce::Justification::centred, 1);
+            // 0.9.103 (the user: "mělo by to mít stejnou velikost jako karta, aby člověk viděl, co přesně přetahuje"): the
+            // card's own picture, dimmed, in the travelling white frame of every arrange mode - it was a small orange
+            // label with the name.
+            const auto frame = cardFrame();
+            if (cardImage.isValid()) { g.setOpacity(0.75f); g.drawImage(cardImage, frame); g.setOpacity(1.0f); }
+            ArrangeFrame::takeable(g, frame, ArrangeFrame::phase());
         }
     }
 
@@ -406,9 +403,29 @@ public:
             }
         // A card's title: the start of a card drag.
         for (int i = 0; i < (int)cards.size(); ++i)
-            if (!cards[(size_t)i].chip && cards[(size_t)i].bounds.withHeight(44).contains(e.getPosition())) { dragCard = i; draggingCard = false; return; }
+            if (!cards[(size_t)i].chip && cards[(size_t)i].bounds.withHeight(44).contains(e.getPosition()))
+            {
+                dragCard = i; draggingCard = false;
+                cardGrab = e.getPosition().toFloat() - cards[(size_t)i].bounds.getPosition().toFloat();
+                return;
+            }
         selectedCable = -1;
         repaint();
+    }
+    // The card taken: its picture as it stands (before the drag paints anything over it), the frame's dashes kept
+    // travelling while the mouse rests.
+    juce::Rectangle<float> cardFrame() const
+    {
+        if (dragCard < 0 || dragCard >= (int)cards.size()) return {};
+        return cards[(size_t)dragCard].bounds.toFloat().withPosition(dragPoint - cardGrab);
+    }
+    void beginCardDrag()
+    {
+        if (dragCard < 0 || dragCard >= (int)cards.size()) return;
+        cardImage = createComponentSnapshot(cards[(size_t)dragCard].bounds, true, 1.0f);
+        draggingCard = true;
+        cardTicker.tick = [this] { if (draggingCard) repaint(cardFrame().toNearestInt().expanded(4)); };
+        cardTicker.startTimerHz(25);
     }
     void mouseDrag(const juce::MouseEvent& e) override
     {
@@ -425,7 +442,7 @@ public:
         }
         else if (dragCard >= 0)
         {
-            if (!draggingCard && e.getDistanceFromDragStart() > 6) draggingCard = true;
+            if (!draggingCard && e.getDistanceFromDragStart() > 6) beginCardDrag();
             if (!draggingCard) return;
             dragPoint = e.getPosition().toFloat();
             findDropTarget(e.getPosition());   // over a pool button: every route of the card moves there (its ASIO version, for one)
@@ -458,6 +475,7 @@ public:
             later([this, routes, card] { assign(routes, card, { 0, 1 }, false); });
         }
         else if (dragCard >= 0 && draggingCard && dropCell.first >= 0) { const int index = dragCard; const Cell cell = dropCell; later([this, index, cell] { placeCard(index, cell); }); }
+        cardTicker.stopTimer(); cardImage = {};
         dragRow = -1; dragCard = -1; liftedCable = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropCell = { -1, -1 };
         repaint();   // a lifted cable let go elsewhere is drawn at its output again
     }
@@ -868,7 +886,7 @@ private:
                 : (!row.routes.empty() && owner.routeEffectsActive(row.routes.front().manual, row.routes.front().perspective));
             if (active)
             {
-                b->setColour(juce::TextButton::buttonColourId, juce::Colours::orange);
+                b->setColour(juce::TextButton::buttonColourId, onColour());
                 b->setColour(juce::TextButton::textColourOffId, juce::Colours::black);
             }
             b->setTooltip((row.perspectiveRow ? "The effects of the perspective " + row.perspective + " - every linked route of it follows"
@@ -1384,6 +1402,24 @@ private:
     void runTestSpec(const juce::String& spec)
     {
         const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+        // "dragcard|<card name part>|<dx>|<dy>": the card held in a drag that far from its place (for a picture; it is
+        // let go by the next mouse click in the dialog).
+        if (parts.size() >= 4 && parts[0].trim().equalsIgnoreCase("dragcard"))
+        {
+            for (int i = 0; i < (int)cards.size(); ++i)
+                if (!cards[(size_t)i].chip && cards[(size_t)i].name.containsIgnoreCase(parts[1].trim()))
+                {
+                    dragCard = i;
+                    cardGrab = { 60.0f, 14.0f };
+                    dragPoint = cards[(size_t)i].bounds.getPosition().toFloat() + cardGrab + juce::Point<float>((float)parts[2].getIntValue(), (float)parts[3].getIntValue());
+                    beginCardDrag();
+                    dropCell = cellAt(dragPoint.toInt());
+                    repaint();
+                    break;
+                }
+            CrashHandler::note("ORGAN_TEST_ROUTE: " + spec + (dragCard < 0 ? " - no such full card" : " - held"));
+            return;
+        }
         if (parts.size() >= 4 && parts[0].trim().equalsIgnoreCase("cell"))
         {
             int index = -1;
@@ -1534,5 +1570,9 @@ private:
     bool dragging = false, draggingCard = false, dropAdd = false, dropPairs = true;
     bool viaPipeWire = false;   // 0.9.96 (Linux): PipeWire carries the cards - set in rebuild()
     juce::Point<float> dragPoint;
+    juce::Point<float> cardGrab;     // where in the card the mouse took it
+    juce::Image cardImage;           // the dragged card's own picture
+    struct FrameTicker final : public juce::Timer { std::function<void()> tick; void timerCallback() override { if (tick) tick(); } };
+    FrameTicker cardTicker;
     juce::String lastSignature;
 };

@@ -67,7 +67,7 @@ public:
             const float y = yOf(juce::jlimit(-18.0f, 18.0f, db));
             if (px == 0) curve.startNewSubPath(1.0f + (float)px, y); else curve.lineTo(1.0f + (float)px, y);
         }
-        g.setColour(locked ? juce::Colours::lightgrey : juce::Colours::orange);
+        g.setColour(locked ? juce::Colours::lightgrey : onColour());
         g.strokePath(curve, juce::PathStrokeType(2.0f));
         // The bands' points.
         for (int b = 0; b < 5; ++b)
@@ -75,7 +75,7 @@ public:
             const auto& band = eq.bands[b];
             const juce::Point<float> p(xOf(band.hz), yOf(band.gainDb));
             const bool held = b == dragBand;
-            g.setColour(!band.on ? juce::Colours::grey.withAlpha(0.6f) : locked ? juce::Colours::lightgrey : held ? juce::Colours::white : juce::Colours::orange);
+            g.setColour(!band.on ? juce::Colours::grey.withAlpha(0.6f) : locked ? juce::Colours::lightgrey : held ? juce::Colours::white : onColour());
             g.fillEllipse(p.x - 7.0f, p.y - 7.0f, 14.0f, 14.0f);
             g.setColour(juce::Colours::black);
             g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
@@ -142,7 +142,7 @@ public:
         routeName = manual >= 0 ? names[juce::jlimit(0, 7, manual)] + " " + perspective : perspective;
         title.setText(manual >= 0 ? "Effects of the route " + routeName : "Effects of the perspective " + perspective + " - every linked route of it", juce::dontSendNotification);
         title.setFont(juce::FontOptions(18.0f, juce::Font::bold));
-        title.setColour(juce::Label::textColourId, juce::Colours::orange);
+        title.setColour(juce::Label::textColourId, onColour());
         addAndMakeVisible(title);
         note.setFont(juce::FontOptions(12.5f));
         note.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -245,7 +245,7 @@ private:
     juce::String switchTarget(Module m) const { return "fxon:" + juce::String(manual) + ":" + moduleKey(m) + ":" + perspective; }
     static void styleSwitch(juce::TextButton& b)
     {
-        b.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
+        b.setColour(juce::TextButton::buttonOnColourId, onColour());
         b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
         b.setColour(juce::TextButton::textColourOffId, juce::Colours::grey);
     }
@@ -278,7 +278,7 @@ private:
             auto* b = new RightClickButton(chain[i].name);
             chainButtons.add(b);
             b->setClickingTogglesState(false);
-            b->setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
+            b->setColour(juce::TextButton::buttonOnColourId, onColour());
             b->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
             b->setTooltip("The modules in the order the engine applies them. Click one to set it; right-click to arrange the order.");
             b->getProperties().set("manualChapter", chain[i].name == "Division volume" ? "Volume" : chain[i].name);
@@ -380,7 +380,6 @@ private:
         }
         void paint(juce::Graphics& g) override
         {
-            const auto orange = juce::Colours::orange;
             juce::Rectangle<int> all;
             for (int i = 0; i < content.chainButtons.size(); ++i)
             {
@@ -390,12 +389,8 @@ private:
                 ArrangeFrame::takeable(g, r.toFloat().expanded(2.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, i == dragIndex ? 0.25f : 0.8f);   // the frame of every arrange mode
             }
             const juce::Rectangle<int> note(all.getX(), all.getBottom() + 10, juce::jmax(all.getWidth(), 214), 88);
-            g.setColour(juce::Colours::black.withAlpha(0.85f));
-            g.fillRoundedRectangle(note.toFloat(), 5.0f);
-            g.setColour(orange);
-            g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-            g.drawFittedText("Drag a framed module to its place. Division volume stays first, the IR reverb last. The order is the perspective's - all its routes share it. Click anywhere else to finish.",
-                note.reduced(8, 4), juce::Justification::centredLeft, 6);
+            NoteBubble::paint(g, note, "Drag a framed module to its place. Division volume stays first, the IR reverb last. The order is the perspective's - all its routes share it. Click anywhere else to finish.",
+                juce::Justification::centredLeft, 6);
             if (dragIndex >= 0 && insertY >= 0) ArrangeFrame::landingLine(g, { all.getX() - 3, insertY - 1, all.getWidth() + 6, 3 });
         }
         void mouseDown(const juce::MouseEvent& e) override
@@ -525,7 +520,7 @@ private:
         h->info.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
         h->addAndMakeVisible(h->info);
         h->linkedButton.setClickingTogglesState(true);
-        h->linkedButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
+        h->linkedButton.setColour(juce::TextButton::buttonOnColourId, onColour());
         h->linkedButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
         h->linkedButton.getProperties().set("manualChapter", "LINKED");
         h->linkedButton.getProperties().set("testName", "LINKED " + moduleName);   // ORGAN_TEST_MOUSE ("LINKED Volume"); ORGAN_TEST_CLICK by text finds a hidden one first
@@ -893,7 +888,7 @@ private:
         p->name.setFont(juce::FontOptions(16.0f, juce::Font::bold));
         p->addAndMakeVisible(p->name);
         p->warning.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-        p->warning.setColour(juce::Label::textColourId, juce::Colours::orange);
+        p->warning.setColour(juce::Label::textColourId, onColour());
         p->warning.setJustificationType(juce::Justification::topLeft);
         p->warning.getProperties().set("testName", "plugin warning");
         p->addAndMakeVisible(p->warning);

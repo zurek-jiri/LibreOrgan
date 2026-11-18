@@ -20,6 +20,37 @@ inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.dark
 // 0.8.250 (20 % towards white) was far too light. The pistons keep the plain grey.
 inline juce::Colour emptyStepColour(juce::Colour base) { return base.withMultipliedSaturation(0.9f).contrasting(0.08f); }
 
+// The output meter's segments: the console's large meter and the miniature of the Audio routing's rows read this
+// one table (0.9.103; each had its own copy of the thresholds and the colours).
+namespace MeterStyle
+{
+    constexpr int kSegments = 8;   // four green, three orange, the last one red: the limiter works
+    constexpr float kThresholdsDb[kSegments]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f, 0.0f };
+    constexpr float kUnlitAlpha = 0.18f;
+    inline juce::Colour segmentColour(int segment) { return segment == kSegments - 1 ? juce::Colours::red : segment < 4 ? juce::Colours::lime : onColour(); }
+    inline bool segmentLit(int segment, float db, bool limiterWorks) { return segment == kSegments - 1 ? limiterWorks : db >= kThresholdsDb[segment]; }
+    inline juce::Colour segmentPaint(int segment, float db, bool limiterWorks)
+    {
+        const auto colour = segmentColour(segment);
+        return segmentLit(segment, db, limiterWorks) ? colour : colour.withAlpha(kUnlitAlpha);
+    }
+}
+
+// A note of the program over its own window - what an arrange mode expects, what is being loaded: black, the text
+// orange and bold, one look (0.9.103).
+namespace NoteBubble
+{
+    inline juce::Font font() { return juce::Font(juce::FontOptions(13.0f, juce::Font::bold)); }
+    inline void paint(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& text, juce::Justification justification, int lines)
+    {
+        g.setColour(juce::Colours::black.withAlpha(0.85f));
+        g.fillRoundedRectangle(area.toFloat(), 5.0f);
+        g.setColour(onColour());
+        g.setFont(font());
+        g.drawFittedText(text, area.reduced(8, 4), justification, lines);
+    }
+}
+
 // The frames of every arrange mode - stops, couplers, the top bar, the effects chain, the Stop List (0.9.103, the
 // user: "proc mas ... carky JINE v kazdem oddile?"): ONE look, drawn here and nowhere else. A thing that can be taken
 // = fine white dashes that travel; a free place = the same dashes standing still and fainter; where a dragged thing
@@ -89,7 +120,7 @@ public:
     SectionHeaderLabel()
     {
         setFont(juce::FontOptions(16.0f, juce::Font::bold));
-        setColour(juce::Label::textColourId, juce::Colours::orange);
+        setColour(juce::Label::textColourId, onColour());
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
         setTooltip("Click to show or hide this section");
     }

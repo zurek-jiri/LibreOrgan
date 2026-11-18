@@ -121,7 +121,7 @@ public:
         limitEditor.setText(juce::String(engine.getMaxPolyphony()), false);
         limitEditor.setJustification(juce::Justification::centred);
         limitEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colours::black);
-        limitEditor.setColour(juce::TextEditor::textColourId, juce::Colours::lightgreen);
+        limitEditor.setColour(juce::TextEditor::textColourId, juce::Colours::lime);
         limitEditor.setColour(juce::TextEditor::outlineColourId, juce::Colours::darkgrey);
         limitEditor.setFont(juce::FontOptions(17.0f, juce::Font::bold));
         auto apply = [this]
@@ -197,7 +197,7 @@ public:
             if (i < 4)
             {
                 const bool warn = (i == 2 && (loadPeak > 0.85f || glitches || silent)) || (i == 3 && ramTight);
-                g.setColour(warn ? juce::Colours::orange : juce::Colours::lime);
+                g.setColour(warn ? onColour() : juce::Colours::lime);
                 g.setFont(juce::FontOptions(valueFont, juce::Font::bold));
                 // Digits must always fit the column: shrink rather than clip.
                 g.drawFittedText(values[i], cell.withTrimmedTop(21).reduced(2, 0), juce::Justification::centred, 1, 0.5f);
@@ -456,7 +456,7 @@ public:
         const auto box = getLocalBounds().withWidth(width).toFloat();
         g.setColour(juce::Colours::black.withAlpha(0.8f));
         g.fillRoundedRectangle(box, 6.0f);
-        g.setColour(juce::Colours::orange);
+        g.setColour(onColour());
         g.drawRoundedRectangle(box.reduced(0.5f), 6.0f, 1.0f);
         g.drawFittedText(text, box.reduced(8.0f, 0.0f).toNearestInt(), juce::Justification::centredLeft, 1);
     }
@@ -1383,7 +1383,7 @@ MainComponent::MainComponent()
     // 0.9.39 (the user: no strip at the bottom, "zvoneček" in the top bar instead): a button that is there
     // while a message is unread, a click opens the Messages tab; nothing periodic behind it.
     addChildComponent(messagesButton);
-    messagesButton.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+    messagesButton.setColour(juce::TextButton::textColourOffId, onColour());
     messagesButton.setTooltip("Messages of the program not read yet (a tree found, what a merge did, what a load left out ...): opens the Messages tab of the manual window.");
     messagesButton.onClick = [this] { showAboutDialog("Messages"); };
     addAndMakeVisible(hintSheen);
@@ -1626,7 +1626,7 @@ MainComponent::MainComponent()
     combinationSetButton.setTooltip("While on, clicking a piston stores the current registration (stops, transmissions, couplers, tremulants) in it.");
     addAndMakeVisible(combinationSetButton);
     combinationSetButton.setClickingTogglesState(true);
-    combinationSetButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);   // 0.9.79 (#230): latched orange while on
+    combinationSetButton.setColour(juce::TextButton::buttonOnColourId, onColour());   // 0.9.79 (#230): latched orange while on
     combinationSetButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
 
     previousCombinationButton.setTooltip("The previous piston. Right-click: MIDI learn.");
@@ -1656,7 +1656,7 @@ MainComponent::MainComponent()
     // 0.9.81: a black display like the combination display (the file / "Bank N - note"); a click opens two
     // boxes inside it - the number left, the note right - Enter or a click elsewhere sets both; the small
     // "v" in its corner lists the annotated banks. No right-click (the user).
-    bankLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
+    bankLabel.setColour(juce::Label::textColourId, juce::Colours::lime);
     bankLabel.setTooltip("The combinations file in use (default = the combinations saved in the configuration) and the bank of pistons with its note. "
         "Click: type the bank number (left) and a note for it (right), Enter sets them. The buttons beside step through the banks; held down they scroll.");
     bankLabel.addMouseListener(this, false);
@@ -5421,12 +5421,8 @@ namespace
         }
         void paint(juce::Graphics& g) override
         {
-            g.fillAll(juce::Colour(0xff263238));
-            g.setColour(juce::Colours::orange);
-            g.drawRect(getLocalBounds(), 1);
-            g.setColour(juce::Colours::white);
-            g.setFont(juce::FontOptions(15.0f));
-            g.drawFittedText(text, getLocalBounds().reduced(12, 6), juce::Justification::centred, 2);
+            g.fillAll(juce::Colours::black);
+            NoteBubble::paint(g, getLocalBounds(), text, juce::Justification::centred, 2);   // the look of every note of the program
         }
     };
 }
@@ -6086,15 +6082,11 @@ void MainComponent::paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> are
     g.setColour(clipLatched ? juce::Colours::red : juce::Colours::darkred.withAlpha(0.5f));
     g.fillEllipse((float)(x + w) - 11.0f, (float)y + 7.0f, 7.0f, 7.0f);
     const int top = y + 21, bottom = area.getBottom() - 4;
-    constexpr int segments = 8;
+    constexpr int segments = MeterStyle::kSegments;   // the thresholds and the colours: MeterStyle (the rows' miniature reads the same)
     const float segmentHeight = (float)(bottom - top) / (float)segments;
-    static const float thresholdsDb[segments]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f, 0.0f };
     for (int s = 0; s < segments; ++s)
     {
-        const bool red = s == segments - 1;
-        const bool lit = red ? clipNow : meterDb >= thresholdsDb[s];
-        const juce::Colour colour = red ? juce::Colours::red : s < 4 ? juce::Colours::lime : juce::Colours::orange;
-        g.setColour(lit ? colour : colour.withAlpha(0.18f));
+        g.setColour(MeterStyle::segmentPaint(s, meterDb, clipNow));
         const float sy = (float)bottom - (float)(s + 1) * segmentHeight;
         g.fillRect(juce::Rectangle<float>((float)x + 8.0f, sy + 1.0f, (float)w - 16.0f, juce::jmax(1.0f, segmentHeight - 2.0f)));
     }
@@ -8410,7 +8402,7 @@ void MainComponent::askRoutingLoad(const juce::File& file)
     note->text.append("Saved from: " + (from.isNotEmpty() ? from : juce::String("an organ without a name")) + "\n\n", juce::FontOptions(15.0f), juce::Colours::white);
     if (sameOrgan) note->text.append("The effects are this organ's own: volumes, channel separation, equalizer and IR reverb as saved.", juce::FontOptions(15.0f), juce::Colours::lightgrey);
     else note->text.append("WARNING: the effects carry the volumes of the divisions and perspectives of that organ. Loaded here they overwrite the balance of the organ loaded now.",
-        juce::FontOptions(15.0f, juce::Font::bold), juce::Colours::orange);
+        juce::FontOptions(15.0f, juce::Font::bold), onColour());
     note->setSize(470, sameOrgan ? 76 : 96);
     box->addCustomComponent(note.get());
     box->addButton("Load cables only", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -9421,7 +9413,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     if (rect.isEmpty()) continue;
                     const bool black = juce::MidiMessage::isMidiNoteBlack(key);
                     const juce::Rectangle<float> box(rect.getCentreX() - 8.0f, black ? rect.getBottom() - 14.0f : rect.getBottom() - 15.0f, 16.0f, 12.0f);
-                    g.setColour(juce::Colours::orange);
+                    g.setColour(onColour());
                     g.drawText(juce::MidiMessage::getMidiNoteName(routed, true, false, 3), box.toNearestInt(), juce::Justification::centred, false);
                 }
             }
@@ -12622,7 +12614,7 @@ void MainComponent::showCrescendoDialog()
             addAndMakeVisible(stepsBox);
             setButton.setButtonText("Set");
             setButton.setClickingTogglesState(true);
-            setButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);   // 0.9.82: latched orange while on, as in the combination row
+            setButton.setColour(juce::TextButton::buttonOnColourId, onColour());   // 0.9.82: latched orange while on, as in the combination row
             setButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
             setButton.setTooltip("While on, clicking a step stores the current stops and couplers in it");
             addAndMakeVisible(setButton);
@@ -14144,9 +14136,9 @@ void MainComponent::paintOverChildren(juce::Graphics& g)
 {
     if (fileDropHighlight.isEmpty()) return;
     const auto frame = fileDropHighlight.toFloat().reduced(2.0f);
-    g.setColour(juce::Colours::orange.withAlpha(0.12f));
+    g.setColour(onColour().withAlpha(0.12f));
     g.fillRoundedRectangle(frame, 6.0f);
-    g.setColour(juce::Colours::orange.withAlpha(0.9f));
+    g.setColour(onColour().withAlpha(0.9f));
     g.drawRoundedRectangle(frame, 6.0f, 3.0f);   // the frame alone (0.9.20, the user: a caption covered the stops or the header - the orange says it)
 }
 
@@ -18558,7 +18550,6 @@ struct MainComponent::HeaderArranger final : public juce::Component, private juc
     {
         const auto list = shown();
         if (list.empty()) return;
-        const auto orange = juce::Colours::orange;
         juce::Rectangle<int> row;
         for (const auto& s : list)
         {
@@ -18567,14 +18558,9 @@ struct MainComponent::HeaderArranger final : public juce::Component, private juc
             ArrangeFrame::takeable(g, s.bounds.toFloat().expanded(1.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, s.key == dragKey ? 0.25f : 0.8f);
         }
         const juce::String text("Drag a button of the top bar to its place. Click anywhere else to finish.");
-        const juce::Font font(juce::FontOptions(15.0f, juce::Font::bold));
-        const int width = juce::roundToInt(juce::GlyphArrangement::getStringWidth(font, text)) + 24;
+        const int width = juce::roundToInt(juce::GlyphArrangement::getStringWidth(NoteBubble::font(), text)) + 24;
         const juce::Rectangle<int> note(juce::jlimit(8, juce::jmax(8, getWidth() - width - 8), row.getCentreX() - width / 2), row.getBottom() + 8, width, 26);
-        g.setColour(juce::Colours::black.withAlpha(0.85f));
-        g.fillRoundedRectangle(note.toFloat(), 5.0f);
-        g.setColour(orange);
-        g.setFont(font);
-        g.drawText(text, note, juce::Justification::centred);
+        NoteBubble::paint(g, note, text, juce::Justification::centred, 1);
         if (dragKey.isNotEmpty())
         {
             if (insertX >= 0)
@@ -23980,7 +23966,7 @@ void MainComponent::showStopBuildingDialog(int)
             addAndMakeVisible(intro);
             addAndMakeVisible(info);
             info.setFont(juce::FontOptions(14.0f));
-            info.setColour(juce::Label::textColourId, juce::Colours::orange);
+            info.setColour(juce::Label::textColourId, onColour());
             addAndMakeVisible(view);
             view.setViewedComponent(&grid, false);
             view.setScrollBarsShown(true, true);
@@ -24867,7 +24853,7 @@ void MainComponent::showStopBuildingDialog(int)
             // Orange only where the eye must go: a row just added, or a row about to be dropped.
             const bool highlighted = (recentlyAdded.first == manual && recentlyAdded.second == (int)index)
                 || dropCandidates.count({ manual, (int)index }) != 0;
-            row->name->setColour(juce::Label::textColourId, highlighted ? juce::Colours::orange : (transmission ? greyText : juce::Colours::white));
+            row->name->setColour(juce::Label::textColourId, highlighted ? onColour() : (transmission ? greyText : juce::Colours::white));
             if (transmission)
                 row->name->setTooltip("Transmission of \"" + entry.trSource + "\" (" + shortNames()[juce::jlimit(0, 7, entry.trSourceManual)] + ")"
                     + (entry.trShift != 0 ? ", transposed by " + juce::String(entry.trShift) + " semitones" : juce::String())
@@ -25058,7 +25044,7 @@ void MainComponent::showStopBuildingDialog(int)
                     cellPaths[cell.button.get()] = missing
                         ? "NOT FOUND on this computer: " + tailText(pool[(size_t)juce::jmax(0, ref.tree)]) + juce::File::getSeparatorString() + ref.relativePath.replaceCharacter('/', juce::File::getSeparatorChar())
                         : folder.getFullPathName();
-                    if (missing) cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+                    if (missing) cell.button->setColour(juce::TextButton::textColourOffId, onColour());
                     cell.button->addMouseListener(this, false);
                 }
                 else
@@ -28582,7 +28568,7 @@ void MainComponent::timerCallback()
             audioDriverConflictText = conflict;
             if (conflict.isNotEmpty())
             {
-                audioRoutingButton.setColour(juce::TextButton::textColourOffId, juce::Colours::orange);
+                audioRoutingButton.setColour(juce::TextButton::textColourOffId, onColour());
                 audioRoutingButton.setTooltip("One device plays through two drivers (" + conflict + "): less polyphony. Open the Audio routing and move its cables to one driver.");
                 CrashHandler::note("Audio routing: one device through two drivers - " + conflict);
                 noteMessage("One device through two drivers", conflict + ". It works, but two drivers on one device cost polyphony: in the Audio routing drag one of the two cards onto the other (ASIO where there is one).");
@@ -32392,8 +32378,8 @@ void MainComponent::prepareManual()
                     if (at >= 0) found = { i, at, at + needle.length() };
                 }
             }
-            findBox.setColour(juce::TextEditor::textColourId, found.isEmpty() ? juce::Colours::orange : juce::Colours::white);
-            findBox.applyColourToAllText(found.isEmpty() ? juce::Colours::orange : juce::Colours::white);
+            findBox.setColour(juce::TextEditor::textColourId, found.isEmpty() ? onColour() : juce::Colours::white);
+            findBox.applyColourToAllText(found.isEmpty() ? onColour() : juce::Colours::white);
             if (found.isEmpty()) return;
             view.setSelection(found);
             const auto rects = view.selectionRects();
@@ -32887,7 +32873,7 @@ void MainComponent::showConfigurationEditor()
             auto label = std::make_unique<HeaderLabel>();
             label->setText(title, juce::dontSendNotification);
             label->setFont(juce::FontOptions(level == 1 ? 18.0f : 15.0f, juce::Font::bold));
-            label->setColour(juce::Label::textColourId, level == 1 ? juce::Colours::orange : juce::Colours::orange.withAlpha(0.85f));
+            label->setColour(juce::Label::textColourId, level == 1 ? onColour() : onColour().withAlpha(0.85f));
             row.level = level;
             if (collapsible)
             {

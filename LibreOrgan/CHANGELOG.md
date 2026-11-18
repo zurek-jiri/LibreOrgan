@@ -23,6 +23,13 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   standing still; the place a dragged thing lands between others is an orange
   line of three pixels. In the Audio routing the cell under a dragged card
   stays orange and thick.
+- Audio routing: a dragged card is shown as the card itself (its picture, dimmed)
+  in that travelling frame - it was a small orange label.
+- One orange everywhere (texts, captions and meters used a second, slightly
+  different one); the bank display and LIMIT have the saturated green of the
+  other displays; the console's meter and the rows' miniature in the Audio
+  routing read one table of thresholds; the notes of the arrange modes and of a
+  plug-in being loaded have one look.
 
 ## [0.9.102] - 2026-11-18
 
