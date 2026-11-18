@@ -315,16 +315,8 @@ private:
     // The system's own driver type: the default output of this type is where a
     // route without a saved device plays - and every route of a portable
     // configuration (its states say deviceType="default", whatever the platform).
-    static juce::String defaultSharedTypeName()
-    {
-       #if JUCE_MAC
-        return "CoreAudio";
-       #elif JUCE_LINUX
-        return "ALSA";
-       #else
-        return "Windows Audio";
-       #endif
-    }
+    // Linux (0.9.97, #248): "JACK" - PipeWire's card of the system's output - when PipeWire carries the cards, else "ALSA".
+    static juce::String defaultSharedTypeName();
     juce::AudioDeviceManager* findSharedHost(const juce::String& typeName, const juce::String& deviceName) const;
     juce::AudioDeviceManager* sharedHostFor(const juce::String& typeName, const juce::String& deviceName, const juce::XmlElement* state = nullptr);
     juce::String defaultDeviceNameOfType(const juce::String& typeName);   // the system's default output of a type ("" when none)
@@ -542,6 +534,7 @@ private:
     void rememberWantedRouteDevice(int manualIndex, const juce::String& perspective, const juce::XmlElement& wanted);
     // The device lists of the Audio routing read again (Linux: ALSA and JACK; elsewhere nothing to do).
     void rescanAudioDeviceLists(const juce::String& why);
+    void refreshSoundCardsQuietly();   // Linux with PipeWire: the cards that came or went since the last look (the open Audio routing asks every 2 s)
     // 0.9.89: the audio meter's painting and state, shared by the console display and the Audio routing dialog.
     static void paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> area, float meterDb, bool clipNow, bool clipLatched);
     void outputMeterState(float& meterDb, bool& clipNow, bool& clipLatched) const;

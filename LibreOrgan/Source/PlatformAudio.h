@@ -598,6 +598,38 @@ inline juce::String pipeWireClientForAlsaCard(const juce::String& alsaName)
     return {};
 }
 
+// 0.9.97 (#248): the card the SYSTEM plays through (the desktop's chosen output), under the name PipeWire's JACK
+// side gives it - where a route without a card of its own plays when PipeWire carries the cards. Asked from
+// WirePlumber ("wpctl inspect @DEFAULT_AUDIO_SINK@": node.nick, node.description, node.name - the JACK client is
+// one of them); empty when PipeWire does not carry the cards, wpctl is missing or the output is no card of the
+// list (a network or Bluetooth sink without JACK ports). Kept for five seconds (it starts a process).
+inline juce::String pipeWireDefaultCard()
+{
+    static double askedAtMs = -1.0e12;
+    static juce::String answer;
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (now - askedAtMs < 5000.0) return answer;
+    askedAtMs = now;
+    answer.clear();
+    if (!pipeWireCarriesTheCards()) return answer;
+    const auto clients = FilteredJackDeviceType::audioClients(true);
+    juce::ChildProcess process;
+    juce::StringArray args;
+    args.add("wpctl"); args.add("inspect"); args.add("@DEFAULT_AUDIO_SINK@");
+    if (!process.start(args, juce::ChildProcess::wantStdOut)) return answer;
+    process.waitForProcessToFinish(2000);
+    juce::StringArray names;   // nick, description, name - in the order PipeWire's JACK side prefers them here
+    const auto lines = juce::StringArray::fromLines(process.readAllProcessOutput());
+    for (const char* key : { "node.nick", "node.description", "node.name" })
+        for (const auto& line : lines)
+            if (line.contains(juce::String(key) + " ="))
+                names.add(line.fromFirstOccurrenceOf("=", false, false).trim().unquoted());
+    for (const auto& name : names)
+        for (const auto& client : clients)
+            if (client == name) { answer = client; return answer; }
+    return answer;
+}
+
 inline void installFilteredJackType(juce::AudioDeviceManager& manager)
 {
     for (auto* type : manager.getAvailableDeviceTypes())

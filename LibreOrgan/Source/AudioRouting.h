@@ -1490,6 +1490,7 @@ private:
         }
         if (++ticks % 10 != 0) return;
         if (dragging || dragCard >= 0 || pressedCable >= 0) return;
+        if (ticks % 20 == 0 && isShowing()) owner.refreshSoundCardsQuietly();   // 0.9.97 (#249): a card switched on or off shows within 2 s
         const auto now = signature();
         if (now != lastSignature) { lastSignature = now; rebuild(); }
     }

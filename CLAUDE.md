@@ -4004,6 +4004,37 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the profile - needs a Linux session with the real output in front of me). NOTHING OF (2) WAS RUN: no Linux here;
   CI compiles, the user tests. (3) #241: the reply posted (issuecomment-6972702401) and, once v0.9.96 was out, a
   second comment: from 0.9.96 the folder holds the one zip - download it and report again.
+  0.9.97 (18 Nov 2026, LINUX session on the user's box; #244, #247-#249 + his report-dialog orders): (1) #248 DEFAULT
+  CARD: `MainComponent::defaultSharedTypeName()` is defined in the .cpp now; Linux = "JACK" when
+  `pipeWireDefaultCard()` (PlatformAudio.h after pipeWireClientForAlsaCard: `wpctl inspect @DEFAULT_AUDIO_SINK@` ->
+  node.nick / node.description / node.name matched EXACTLY against `FilteredJackDeviceType::audioClients(true)`; here
+  the client is the NICK "ALC1220 Analog"; 5 s cache; empty without PipeWire / wpctl / a match) gives a card, else
+  "ALSA"; `defaultDeviceNameOfType("JACK")` returns that card. sharedHostFor never copies a foreign state's rate or
+  buffer onto a JACK route (a portable file's 48000/512 would be forced on PipeWire's clock for the whole desktop).
+  A route saved explicitly on "Default ALSA Output" stays there. (2) #249 HOT PLUG: `refreshSoundCardsQuietly()`
+  (PipeWire mode only: the JACK type rescanned, log "Sound cards (PipeWire): came X; gone Y") from the Audio routing's
+  timer every 20 ticks (2 s) while showing; re-showing the hidden dialog rescans. Without PipeWire nothing is polled
+  (the ALSA scan probes every card: seconds on old laptops). Tested with `pactl load-module module-null-sink
+  sink_name=lo_test_card sink_properties=device.description=LoTestCard` / unload-module = a card that comes and goes.
+  (3) #247: startPolyphonyMeasurement refuses (WarningIcon notice "Measure Polyphony", log "Polyphony measurement
+  refused") when NO route has an open device, naming the cards waited for. (4) #244 (Windows, Realtek ASIO 3.5 s per
+  failed open x 4 divisions): `failedOpens` (static map type|name -> time, error) in sharedHostFor - a card whose
+  open failed is not tried again for 5 s ("... (not tried again: it failed a moment ago)"). (5) REPORT: pictures of
+  every visible desktop component, every HIDDEN juce::DialogWindow (kept dialogs, "<name> (closed)", the manual
+  window left out) and the Audio routing ALWAYS (a temporary AudioRoutingContent 1100 x 700 when the dialog was never
+  opened: "Audio routing (not opened)"); the label beside "Add screenshot files..." says "OPTIONAL - not needed
+  ...", "Steps to reproduce (optional):". #245/#246 (ReaRoute keeps 16 channels until Reaper itself runs and
+  reconfigures: the driver's doing) NOT touched - a Windows matter. LINUX WORKFLOW THAT WORKS: edit the NTFS
+  checkout (its sources are CRLF: patch with /tmp/patch.py-style python that normalises and restores CRLF), copy to
+  ~/LibreOrgan-linux with `tr -d '\r'`, `cmake --build build --parallel 24` there (3 min), run the binary from
+  build/LibreOrgan_artefacts/Release with a script that backs up and restores ~/.config/LibreOrgan/{settings,voicer,
+  memories,lastdir}.json + Locations.txt + Patterns.json; test organ ~/RuralOrgan-test/Rural Organ/Rural Organ.json
+  (portable). NO Projucer resave on Linux - Windows next. SESSIONS SHARED AGAIN (the user: "spojení se posralo"):
+  the session 10c94e83 IS shared - ~/.claude/projects/-mnt-pracovni-JUCE-PROJEKTY-LibreOrgan-LibreOrgan/10c94e83...
+  .jsonl is a symlink to the Windows file (C:\Users\doma\.claude\projects\F--JUCE-PROJEKTY-OrganSamplerC-OrganSampler);
+  a bare `claude` or /clear makes a NEW empty session - use `claude --resume 10c94e83-0c32-48a0-8afa-9042aac822b5`
+  on both systems. The Linux memory folder (-mnt-pracovni-JUCE-PROJEKTY-LibreOrgan/memory) and the session's
+  tool-results folder are symlinks to the Windows ones since 18 Nov 2026; /mnt/windows must be mounted rw.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -1134,10 +1134,14 @@ lists each card once, under *PipeWire*, with the outputs of its profile (all
 of them in Pro Audio); the program connects its outputs itself, and the
 buffer size and rate chosen on a card are handed to PipeWire for every
 program. A card is never "held" or "busy" there - the desktop and the organ
-share it. Beside the cards stands the system's default output (under ALSA),
-which is PipeWire too. A configuration saved on a card's direct ALSA device
-moves to the same card's PipeWire entry by itself. MIDI devices are never
-listed among the sound cards.
+share it. A card switched on or off appears in the open Audio routing, or
+leaves it, within two seconds. An organ without cables of its own (a
+published configuration, a new organ) plays into the card the system plays
+through - the output chosen in the desktop's sound settings. Beside the
+cards stands the system's default output (under ALSA), which is PipeWire
+too. A configuration saved on a card's direct ALSA device moves to the same
+card's PipeWire entry by itself. MIDI devices are never listed among the
+sound cards.
 
 **A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its
 own) keeps the ALSA list of the cards: a card another program holds is left
@@ -2071,9 +2075,11 @@ happened - a few words are enough. *Create the report and open GitHub*
 writes **one file, `logs.zip`**, into a folder of its own
 (`Reports\LibreOrgan-report-<date>` in the settings folder): the activity
 log, the crash reports, `settings.json`, the last self-test, `system.txt`
-with the computer and every audio route, and a picture of every open window
-of the program - no samples. Then it opens the GitHub form in your browser
-with its fields filled in and the folder beside it.
+with the computer and every audio route, and pictures of the program's
+windows and dialogs, taken by the program itself (the Audio routing always,
+open or not) - no samples. *Add screenshot files...* is optional: picture
+files of your own, if you have any. Then it opens the GitHub form in your
+browser with its fields filled in and the folder beside it.
 
 **Drag `logs.zip` into the field "Logs" and submit.** That drag is the one
 step no program can do for you (GitHub takes files only that way); without

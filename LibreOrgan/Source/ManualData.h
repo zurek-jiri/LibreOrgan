@@ -1148,10 +1148,14 @@ static const char* const kManualText_part5 =
     "of them in Pro Audio); the program connects its outputs itself, and the\n"
     "buffer size and rate chosen on a card are handed to PipeWire for every\n"
     "program. A card is never \"held\" or \"busy\" there - the desktop and the organ\n"
-    "share it. Beside the cards stands the system's default output (under ALSA),\n"
-    "which is PipeWire too. A configuration saved on a card's direct ALSA device\n"
-    "moves to the same card's PipeWire entry by itself. MIDI devices are never\n"
-    "listed among the sound cards.\n"
+    "share it. A card switched on or off appears in the open Audio routing, or\n"
+    "leaves it, within two seconds. An organ without cables of its own (a\n"
+    "published configuration, a new organ) plays into the card the system plays\n"
+    "through - the output chosen in the desktop's sound settings. Beside the\n"
+    "cards stands the system's default output (under ALSA), which is PipeWire\n"
+    "too. A configuration saved on a card's direct ALSA device moves to the same\n"
+    "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
+    "sound cards.\n"
     "\n"
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "## 6.1 Couplers\n"
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
+    ;
+static const char* const kManualText_part6 =
     "every coupler it can have - every division at unison, 16' and 4' (the\n"
     "division itself included: \"I/I 16'\" is an octave coupler), the melody and\n"
     "bass couplers and **Unison Off**. Ticked couplers appear on the division's\n"
     "coupler rail in the main window, shown like stops (\"II/I 16'\" = division II\n"
-    ;
-static const char* const kManualText_part6 =
     "pulled over keyboard I at 16'); they are registration (combinations,\n"
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "nothing above 12 kHz, and voices (they play through the sinc kernel).\n"
     "Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
+    ;
+static const char* const kManualText_part7 =
     "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
     "\n"
     "### Compress samples in RAM (lossless)\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
     "### Key velocity: full strike from velocity\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
     "settings below ramp from velocity 1 to here.\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "On: the melody coupler waits a moment when the highest key changes in legato,\n"
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "\n"
     "2 to 11 Hz (default 4.4).\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
     "60 and 100 % of it.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Tremulant phase drift between ranks\n"
     "\n"
@@ -2095,9 +2099,11 @@ static const char* const kManualText_part10 =
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
-    "with the computer and every audio route, and a picture of every open window\n"
-    "of the program - no samples. Then it opens the GitHub form in your browser\n"
-    "with its fields filled in and the folder beside it.\n"
+    "with the computer and every audio route, and pictures of the program's\n"
+    "windows and dialogs, taken by the program itself (the Audio routing always,\n"
+    "open or not) - no samples. *Add screenshot files...* is optional: picture\n"
+    "files of your own, if you have any. Then it opens the GitHub form in your\n"
+    "browser with its fields filled in and the folder beside it.\n"
     "\n"
     "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
     "step no program can do for you (GitHub takes files only that way); without\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "\n"
     "What the definition gives: the keyboards in their order (the pedal first)\n"
     "with their key ranges - a division of ours is a keyboard, and every Hauptwerk\n"
+    ;
+static const char* const kManualText_part11 =
     "division a keyboard's keys reach through the definition's switches joins it\n"
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
     "without a coupler is placed stop by stop where the name says); the stops\n"
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
-    ;
-static const char* const kManualText_part11 =
     "folder prefixes learned into the patterns); the compass of every stop from\n"
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
+    ;
+static const char* const kManualText_part12 =
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
-    ;
-static const char* const kManualText_part12 =
     "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"

@@ -4265,6 +4265,7 @@ void MainComponent::showAudioRoutingDialog()
 {
     if (audioRoutingWindow != nullptr)
     {
+        if (!audioRoutingWindow->isVisible()) rescanAudioDeviceLists("the Audio routing opened again");   // 0.9.97: a card switched on meanwhile
         audioRoutingWindow->setVisible(true);
         audioRoutingWindow->toFront(true);
         return;
@@ -5265,8 +5266,30 @@ juce::AudioDeviceManager* MainComponent::findSharedHost(const juce::String& type
     return nullptr;
 }
 
+juce::String MainComponent::defaultSharedTypeName()
+{
+   #if JUCE_MAC
+    return "CoreAudio";
+   #elif JUCE_LINUX
+    // 0.9.97 (#248, the user: "defaultní karta zůstává ALSA default ... to se mi nelíbí"): with PipeWire carrying
+    // the cards a route without a card of its own plays into the card the SYSTEM plays through, as PipeWire's
+    // (JACK) entry of it - the same card, every output of it, no "Default ALSA Output" detour through PipeWire's
+    // ALSA plug-in. Without PipeWire, or with a system output that is no card of the list: ALSA's default as before.
+    return pipeWireDefaultCard().isNotEmpty() ? "JACK" : "ALSA";
+   #else
+    return "Windows Audio";
+   #endif
+}
+
 juce::String MainComponent::defaultDeviceNameOfType(const juce::String& typeName)
 {
+   #if JUCE_LINUX
+    if (typeName.equalsIgnoreCase("JACK"))
+    {
+        const auto card = pipeWireDefaultCard();
+        if (card.isNotEmpty()) return card;
+    }
+   #endif
     for (auto* type : deviceManager.getAvailableDeviceTypes())
         if (type->getTypeName().equalsIgnoreCase(typeName))
         {
@@ -5688,10 +5711,13 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
             // A portable configuration's "default" state carries the organ's rate
             // and buffer; without them: the loading rate, 48 kHz, and 512 samples
             // (ASIO keeps its control panel's size, JACK the server's clock).
-            if (state != nullptr && state->hasAttribute("audioDeviceRate")) setup->setAttribute("audioDeviceRate", state->getStringAttribute("audioDeviceRate"));
-            else if (!typeName.equalsIgnoreCase("JACK")) setup->setAttribute("audioDeviceRate", 48000.0);
-            if (state != nullptr && state->hasAttribute("audioDeviceBufferSize")) setup->setAttribute("audioDeviceBufferSize", state->getStringAttribute("audioDeviceBufferSize"));
-            else if (!typeName.equalsIgnoreCase("JACK") && !typeName.equalsIgnoreCase("ASIO")) setup->setAttribute("audioDeviceBufferSize", 512);
+            // JACK (0.9.97): never the rate or buffer of another type's state - a JACK route takes the server's
+            // clock, and a portable file's figures would be forced on PipeWire for every program of the desktop.
+            const bool jack = typeName.equalsIgnoreCase("JACK");
+            if (!jack && state != nullptr && state->hasAttribute("audioDeviceRate")) setup->setAttribute("audioDeviceRate", state->getStringAttribute("audioDeviceRate"));
+            else if (!jack) setup->setAttribute("audioDeviceRate", 48000.0);
+            if (!jack && state != nullptr && state->hasAttribute("audioDeviceBufferSize")) setup->setAttribute("audioDeviceBufferSize", state->getStringAttribute("audioDeviceBufferSize"));
+            else if (!jack && !typeName.equalsIgnoreCase("ASIO")) setup->setAttribute("audioDeviceBufferSize", 512);
         }
         // A state written by the short-lived zero-output implementation contains
         // an explicit empty channel mask that prevents reliable ASIO startup.
@@ -5701,10 +5727,25 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
         // perspectives are the driver's physical outputs (extra bits are ignored).
         if (!setup->hasAttribute("audioDeviceOutChans"))
             setup->setAttribute("audioDeviceOutChans", juce::String::repeatedString("1", 64));
-        applySafeStart(*setup);
-        beginDeviceOpen(*setup);
-        error = host->initialise(0, 2, setup.get(), false);
-        endDeviceOpen();
+        // 0.9.97 (#244: four divisions dragged onto "Realtek ASIO", a driver that takes 3.5 s to say "Device didn't
+        // start correctly" - the window stood still for 14 s): a card whose open failed is not tried again for
+        // five seconds - the other routes of the same drop take the answer the first one got.
+        static std::map<juce::String, std::pair<double, juce::String>> failedOpens;   // type|name -> when, the error
+        const auto failKey = typeName + "|" + name;
+        const double openNowMs = juce::Time::getMillisecondCounterHiRes();
+        const auto failed = failedOpens.find(failKey);
+        if (failed != failedOpens.end() && openNowMs - failed->second.first < 5000.0)
+            error = failed->second.second + " (not tried again: it failed a moment ago)";
+        else
+        {
+            applySafeStart(*setup);
+            beginDeviceOpen(*setup);
+            error = host->initialise(0, 2, setup.get(), false);
+            endDeviceOpen();
+            if (host->getCurrentAudioDevice() == nullptr)
+                failedOpens[failKey] = { juce::Time::getMillisecondCounterHiRes(), error.isNotEmpty() ? error : juce::String("the device did not open") };
+            else failedOpens.erase(failKey);
+        }
     }
     else
         host->setCurrentAudioDeviceType(typeName, true);   // no host open yet: the type's default device
@@ -5914,6 +5955,31 @@ void MainComponent::rescanAudioDeviceLists(const juce::String& why)
         + counts.joinIntoString(", ") + (hiddenAlsaDevicesNote().isNotEmpty() ? " - " + hiddenAlsaDevicesNote() : juce::String()));
    #else
     juce::ignoreUnused(why);
+   #endif
+}
+
+// 0.9.97 (#249, the user: "zapnul jsem Komplete, a neobjevila se v seznamu ... po nějaké krátké době by se měla
+// objevit"): the lists were read when the Audio routing was BUILT and at a tick of its switch - a card switched on
+// (or off) afterwards changed nothing on the screen. With PipeWire carrying the cards the list is PipeWire's port
+// list (a few milliseconds, no card is touched): the open dialog asks every 2 s and a change is logged. Without
+// PipeWire the ALSA scan probes every card (seconds on an old laptop) - not polled; opening the dialog reads it.
+void MainComponent::refreshSoundCardsQuietly()
+{
+   #if JUCE_LINUX
+    if (!pipeWireCarriesTheCards()) return;
+    for (auto* type : deviceManager.getAvailableDeviceTypes())
+        if (type != nullptr && type->getTypeName() == "JACK")
+        {
+            const auto before = type->getDeviceNames(false);
+            type->scanForDevices();
+            const auto after = type->getDeviceNames(false);
+            juce::StringArray came, gone;
+            for (const auto& name : after) if (!before.contains(name)) came.add(name);
+            for (const auto& name : before) if (!after.contains(name)) gone.add(name);
+            if (!came.isEmpty() || !gone.isEmpty())
+                CrashHandler::note("Sound cards (PipeWire): " + juce::String(came.isEmpty() ? "" : "came " + came.joinIntoString(", "))
+                    + (came.isEmpty() || gone.isEmpty() ? "" : "; ") + (gone.isEmpty() ? juce::String() : "gone " + gone.joinIntoString(", ")));
+        }
    #endif
 }
 
@@ -6467,19 +6533,37 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
         const auto selfTest = settingsFile.getParentDirectory().getChildFile("selftest.txt");
         if (selfTest.existsAsFile()) builder.addFile(selfTest, 6, "selftest.txt");
         builder.addEntry(new juce::MemoryInputStream(system.toRawUTF8(), system.getNumBytesAsUTF8(), true), 6, "system.txt", now);
+        // 0.9.97 (the user: "automatické screenshoty dělej ze všeho, i z Audio Routing dialogu, a dalších dialogů"):
+        // every window that is open, every dialog that was open in this session and is closed now (kept hidden by
+        // the program: "... (closed)" - the manual left out), and the Audio routing ALWAYS - built for the picture
+        // when it was never opened ("Audio routing (not opened)").
+        auto addPicture = [&](juce::Component& component, juce::String name)
+        {
+            auto image = component.createComponentSnapshot(component.getLocalBounds());
+            if (!image.isValid()) return;
+            name = name.replaceCharacters("\\/:*?\"<>|", "_________").substring(0, 60);
+            juce::MemoryOutputStream png;
+            if (!juce::PNGImageFormat().writeImageToStream(image, png)) return;
+            builder.addEntry(new juce::MemoryInputStream(png.getData(), png.getDataSize(), true), 0, "Screenshots/window-" + juce::String(++shots) + "-" + name + ".png", now);
+        };
         auto& desk = juce::Desktop::getInstance();
+        bool routingPictured = false;
         for (int i = 0; i < desk.getNumComponents(); ++i)
         {
             auto* component = desk.getComponent(i);
-            if (component == nullptr || !component->isVisible() || component->getWidth() < 80 || component->getHeight() < 40) continue;
+            if (component == nullptr || component->getWidth() < 80 || component->getHeight() < 40) continue;
             if (component->getName().startsWithIgnoreCase("Report a problem")) continue;
-            auto image = component->createComponentSnapshot(component->getLocalBounds());
-            if (!image.isValid()) continue;
-            juce::String name = component->getName().isNotEmpty() ? component->getName() : juce::String("window");
-            name = name.replaceCharacters("\\/:*?\"<>|", "_________").substring(0, 60);
-            juce::MemoryOutputStream png;
-            if (!juce::PNGImageFormat().writeImageToStream(image, png)) continue;
-            builder.addEntry(new juce::MemoryInputStream(png.getData(), png.getDataSize(), true), 0, "Screenshots/window-" + juce::String(++shots) + "-" + name + ".png", now);
+            const bool open = component->isVisible();
+            if (!open && (dynamic_cast<juce::DialogWindow*>(component) == nullptr || component == aboutWindow.get())) continue;
+            if (component == audioRoutingWindow.get()) routingPictured = true;
+            const juce::String name = component->getName().isNotEmpty() ? component->getName() : juce::String("window");
+            addPicture(*component, open ? name : name + " (closed)");
+        }
+        if (!routingPictured)
+        {
+            AudioRoutingContent routing(*this);
+            routing.setSize(1100, 700);
+            addPicture(routing, "Audio routing (not opened)");
         }
         for (const auto& extra : extraShots)
             if (extra.existsAsFile()) builder.addFile(extra, 0, "Screenshots/" + extra.getFileName());
@@ -6826,7 +6910,7 @@ void MainComponent::showProblemReportDialog()
                 "form filled in: drag logs.zip into its field \"Logs\" - the one step no program can do for you. A free GitHub account is needed.");
             intro.setMinimumHorizontalScale(1.0f);
             label(whatLabel, "What happened:");
-            label(stepsLabel, "Steps to reproduce:");
+            label(stepsLabel, "Steps to reproduce (optional):");
             for (auto* editor : { &what, &steps })
             {
                 editor->setMultiLine(true, true);
@@ -6845,12 +6929,12 @@ void MainComponent::showProblemReportDialog()
                     for (const auto& file : c.getResults()) if (file.existsAsFile()) extra.addIfNotAlreadyThere(file);
                     juce::StringArray names;
                     for (const auto& file : extra) names.add(file.getFileName());
-                    filesLabel.setText(names.isEmpty() ? juce::String("No files added.") : names.joinIntoString(", "), juce::dontSendNotification);
+                    filesLabel.setText(names.isEmpty() ? juce::String("OPTIONAL - not needed: the program pictures all its windows by itself.") : names.joinIntoString(", "), juce::dontSendNotification);
                 });
             };
-            addFiles.setTooltip("Picture files of your own, packed into logs.zip with the rest. The program's own windows are pictured by themselves (keep the dialog in question open).");
+            addFiles.setTooltip("Optional. Picture files of your own, packed into logs.zip with the rest. The program's own windows and dialogs are pictured by themselves, the Audio routing always.");
             addAndMakeVisible(addFiles);
-            label(filesLabel, "No files added.");
+            label(filesLabel, "OPTIONAL - not needed: the program pictures all its windows by itself.");
             filesLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
             create.setButtonText("Create the report and open GitHub");
             create.onClick = [this]
@@ -29273,6 +29357,34 @@ int MainComponent::takeLateCallbacksOfAllRoutes()
 void MainComponent::startPolyphonyMeasurement()
 {
     if (!canMeasurePolyphony()) return;
+    // 0.9.97 (#247: every route on a card that was switched off - the run "measured" seconds without one driver
+    // callback): without an open sound card on any route there is nothing to measure - said, not run.
+    {
+        int open = 0;
+        juce::StringArray waiting;
+        for (int manual = 0; manual <= manualCount; ++manual)
+            for (const auto& perspective : engine.getPerspectivesForManual(manual))
+            {
+                auto* manager = managerForRoute(manual, perspective);
+                if (manager != nullptr && manager->getCurrentAudioDevice() != nullptr) { ++open; continue; }
+                const auto key = perspectiveRouteKey(manual, perspective);
+                const auto& xmlText = perspective.equalsIgnoreCase("default") ? manualConfigs[(size_t)manual].audioDeviceStateXml
+                    : manualConfigs[(size_t)manual].perspectiveAudio[key].audioDeviceStateXml;
+                if (auto xml = juce::parseXML(xmlText))
+                    if (xml->getStringAttribute("audioOutputDeviceName").isNotEmpty())
+                        waiting.addIfNotAlreadyThere(xml->getStringAttribute("audioOutputDeviceName"));
+            }
+        if (open == 0)
+        {
+            CrashHandler::note("Polyphony measurement refused: no route plays through an open sound card"
+                + (waiting.isEmpty() ? juce::String() : " (waiting for: " + waiting.joinIntoString(", ") + ")"));
+            queueNotice(juce::AlertWindow::WarningIcon, "Measure Polyphony",
+                "No sound card is open: the polyphony is measured on the cards the organ plays through, and no route has one now."
+                + (waiting.isEmpty() ? juce::String() : "\n\nNot there now (switched off or unplugged): " + waiting.joinIntoString(", ") + ".")
+                + "\n\nSwitch the card on, or drag the perspectives onto a card in Audio routing, and measure again.");
+            return;
+        }
+    }
     // The filled pipes still being built (0.8.139, #32: a run right after the load broke at 328 voices with the
     // cores busy building) are WAITED for inside the measurement window ("Waiting for the filled pipes ...",
     // the `begin` step below) - 0.9.48 (the user: a silent notice instead did nothing; "to dělalo v dávných

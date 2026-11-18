@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.97] - 2026-11-18
+
+### Changed
+- Linux with PipeWire: an organ without cables of its own (a published
+  configuration, a new organ, Global Reset) plays into the card the system
+  plays through, as PipeWire's entry of that card - no longer "Default ALSA
+  Output" (#248). A Linux without PipeWire keeps ALSA's default.
+- Linux with PipeWire: a card switched on or off appears in the open Audio
+  routing, or leaves it, within two seconds (#249); opening the dialog again
+  reads the lists anew.
+- Measure Polyphony says so and does not run when no route plays through an
+  open sound card (#247: it "measured" a card that was switched off).
+- Report a problem: the pictures in `logs.zip` show every open window, every
+  dialog opened in the session and closed since, and the Audio routing always.
+  *Add screenshot files...* and "Steps to reproduce" are marked optional.
+
+### Fixed
+- A cable of several divisions dropped on a card that does not open asked
+  the driver once per division - a slow driver (Realtek ASIO: 3.5 s per
+  answer) stopped the window for a quarter of a minute (#244). A card whose
+  open failed is not tried again for five seconds.
+
 ## [0.9.96] - 2026-11-18
 
 ### Changed
