@@ -4152,6 +4152,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   multi-line field "Plug-in folders (one per line)" + "Plug-in folders: add one"; `showPluginSettings()` opens the
   Editor AT the section (`editorSectionWanted`, the section unfolded). (4) The plug-in's window is centred on the
   program's window and made its transient on Wayland (it came up on the primary display).
+  0.9.101 ON WINDOWS (18 Nov 2026 afternoon; the release itself was built by CI from the Linux session): the checkout
+  `git reset --mixed origin/main` (the files were equal - nothing to commit but the resave), Projucer resave
+  ("Finished saving", JUCE_PLUGINHOST_VST3=1 in the vcxproj, versionString 0.9.101), the .ico copied, commit 0158bc8
+  pushed to main WITHOUT a tag (a push to main builds nothing); the local MSBuild Release of the VS2026 solution
+  builds with the plug-in hosting (exit 0); the CI exe deployed as C:\LibreOrgan\LibreOrgan_0.9.101.exe (system DLLs
+  only), the shortcut retargeted. PLUG-INS VERIFIED ON WINDOWS with the CI exe: the scan of
+  C:\Program Files\Common Files\VST3 (53 files: iZotope RX 7/10/11, Waves' WaveShell, Melda, LiquidSonics, Sound
+  Radix) took 37 s - 123 ms to 8 s per file, 56 effect types found, the WAVESHELL GIVES ITS PLUG-INS (Z-Noise,
+  SoundShifter) by the general way, ONE refused: Equator2.vst3 "did not answer within 8 s" (the "refused once more"
+  button gives it 60 s). In Rural's chain under a held note: MDynamicsMini 17 us per block and route, Waves Z-Noise
+  Stereo 142 us with a latency of 34 702 samples, MAutoEqualizerLinearPhaseMini 30 us with 32 768 - "the routes are
+  made 67470 sample(s) late together" (the latency compensation at work), no output discontinuity, the quit in order
+  left no marker. Test recipe: settings.json backed up, `loadLastConfigurationAtStartup` false in the copy,
+  ORGAN_TEST_PLUGINSCAN=5 (the log polled for "file(s) scanned"), then ORGAN_LOAD_CONFIGURATION=<Rural> +
+  ORGAN_DUMP_STOPLIST + ORGAN_TEST_NOTE + ORGAN_TEST_PLUGIN + ORGAN_TEST_QUIT=40. NOT tried: the plug-ins' own editor
+  windows on Windows, the trip, the safe start on Windows, macOS/AU.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
