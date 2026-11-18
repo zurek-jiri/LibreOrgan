@@ -4259,6 +4259,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   values) - my advice: no wholesale change, the pictures show no fault. NOT pictured yet: the crescendo dialog (the
   run's last snapshot missed it), Report a problem, the load box, the measurement windows, the Tremulant / Swell /
   Wind settings, IR reverb settings, the manual window.
+  0.9.104 (18 Nov 2026 evening; the user: "jednou dialog Audio Routing spadl!!! ... u nějaké nepřístupné karty na
+  kterou jsem přetahoval kabel"): NOT a crash (the process ran on, no crash file) - the log: 19:05:54 a cable onto
+  "UMC ASIO Driver" ("No device is connected to the PC."), 19:06:01 "Audio devices still missing after the wait",
+  19:06:02 'Modal dialog "Audio devices not available" made an owned window of the main window'. The 0.9.29 owner
+  trick again (the 0.9.52 case was the native chooser's placeholder): Windows activates a box's OWNER when the box
+  closes, the main window rose over the modeless Audio routing dialog - buried, not closed (the top-bar button
+  brought it back). FIX in `bringLostModalsToFront` (Windows): while no modal box is up, the topmost TopLevelWindow
+  of ours in front of the main window is remembered every half second (`dialogInFront`, by the Z order: GW_HWNDPREV
+  from the main window); `gModalBoxesSeen` (file static) is set while a box is up; when the last box has gone the
+  timer calls the function at once and, 250 ms later (the box's window is destroyed after its modal state ends),
+  the remembered dialog is `toFront(true)` if it is showing and BEHIND the main window - log 'Dialog "X" put back in
+  front of the main window'. The owner stays the main window (an owned window is destroyed with its owner: never make
+  a dialog the owner). %TEMP%\test_0104_box.ps1 reproduces it by hooks (ORGAN_TEST_ROUTE "all|default|UMC|1", the
+  box six seconds later, "OK" clicked, the process's windows listed in their Z order): the line came and the order
+  ended "Audio routing > main". RULE: every box over a modeless dialog goes through this - when a user says a dialog
+  "fell", read the log for "made an owned window" right before. THE SECOND LIST, items 1-3 done (the user:
+  "Souhlasím se zbytkem"): the patterns dialogs have darkgrey and [?] left / [OK][Cancel] right, 100 x 32, 8 px under
+  the field; Close is 100 x 32 in Couplers, Divisions, the Editor (its row 32 high), the Stop List (oneRowWidth
+  + 10) and the feature dialog; Temperaments got a Close (callAsync -> the DialogWindow's closeButtonPressed: the
+  window may delete the button); GLOBAL RESET's two long texts are "Unload everything: stops and sample folders too
+  (not the pattern lists)" and "Also reset the Perspective, Ignored and One-shot pattern lists to their defaults"
+  (test scripts that click the old text must follow). Item 4 (the sliders' value boxes, 14 sizes) NOT done - on its
+  own, with pictures before and after; items 5-6 (AlertWindow look, fonts, radii) left by agreement. The crescendo
+  dialog's Close (90 wide, its row's height) not touched - not pictured yet. NOT pushed (the user: "zatím na
+  gitHub nedávej"): local commits 0.9.103 x 3 + 0.9.104.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

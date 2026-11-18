@@ -4431,7 +4431,7 @@ void MainComponent::showCouplersDialog()
                 sizeLabel.setBounds(row.removeFromLeft(100));
                 sizeBox.setBounds(row.removeFromLeft(140).reduced(0, 3));
             }
-            close.setBounds(area.removeFromBottom(38).removeFromRight(90).reduced(2));
+            close.setBounds(area.removeFromBottom(36).removeFromRight(100).reduced(0, 2));   // 100 x 32, as every dialog's Close (0.9.104)
             viewport.setBounds(area);
             const int columns = owner.manualCount + 1;
             const int cellWidth = 190;
@@ -10901,8 +10901,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             auto buttonRow = audioArea.removeFromBottom(38);
             // 0.9.93: the right edge of the wind column's boxes - the keyboard and Close end there too.
             const int dialogRightEdge = 232 + 28 + 260 + 28 + 260 - 6;   // from the left edge of the content: the three columns less the wind column's margin
-            closeButton.setBounds(juce::Rectangle<int>(area.getX() + dialogRightEdge + 4 - 110, buttonRow.getY(), 110, buttonRow.getHeight()).reduced(4));
-            audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4));
+            closeButton.setBounds(area.getX() + dialogRightEdge - 100, buttonRow.getCentreY() - 16, 100, 32);   // 100 x 32, as every dialog's Close (0.9.104)
+            audioRoutingButton.setBounds(buttonRow.removeFromLeft(150).reduced(4, 0).withSizeKeepingCentre(142, 32));
             // 0.9.91: the learn messages between the two buttons (the alias took their place beside the numeral).
             status.setBounds(audioRoutingButton.getRight() + 12, buttonRow.getY(), juce::jmax(10, closeButton.getX() - audioRoutingButton.getRight() - 24), buttonRow.getHeight());
             // No banner line: the division label sits above the MIDI column, the
@@ -11960,6 +11960,14 @@ void MainComponent::showTemperamentsDialog()
             };
             hideDetailsButton.setTooltip("Folds the cent tables of every temperament.");
             addAndMakeVisible(hideDetailsButton);
+            // 0.9.104: a Close at the bottom right, as every other dialog has (the window's own x was the only way).
+            closeButton.setTooltip("Closes the window; the temperaments stay as set.");
+            closeButton.onClick = [this]
+            {
+                juce::Component::SafePointer<juce::DialogWindow> window(findParentComponentOfClass<juce::DialogWindow>());
+                juce::MessageManager::callAsync([window] { if (window != nullptr) window->closeButtonPressed(); });   // after the click: the window may delete this button
+            };
+            addAndMakeVisible(closeButton);
             // Global normalisation of every stop from its recorded smpl pitches.
             equalButton.setButtonText("Set diapason a1 = 440 Hz (all stops)");
             equalButton.setTooltip("Retunes every pipe of every stop from its recorded smpl pitch to a1 = 440 Hz; the "
@@ -11989,6 +11997,7 @@ void MainComponent::showTemperamentsDialog()
             hideDetailsButton.setBounds(buttonRow.removeFromLeft(160).reduced(2));
             buttonRow.removeFromLeft(24);
             equalButton.setBounds(buttonRow.removeFromLeft(360).reduced(2));
+            closeButton.setBounds(area.removeFromBottom(36).removeFromRight(100).reduced(0, 2));
             area.removeFromTop(6);
             viewport.setBounds(area);
             layoutRows();
@@ -12071,6 +12080,7 @@ void MainComponent::showTemperamentsDialog()
         juce::Label legend;
         juce::TextButton addButton;
         juce::TextButton hideDetailsButton;
+        juce::TextButton closeButton{ "Close" };
         juce::ToggleButton equalButton;
         juce::Viewport viewport;
         juce::Component list;
@@ -24113,11 +24123,11 @@ void MainComponent::showStopBuildingDialog(int)
             intro.setBounds(area.removeFromTop(80));
             // 0.9.6: the buttons need about 1 525 px in one row; in a narrower window the folder buttons
             // and Show Trsm. go on a second row (Show Trsm. was the last in line and the first to vanish).
-            const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 190 + 150 + 170 + 90;
+            const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 190 + 150 + 170 + 100;
             const bool twoRows = area.getWidth() < oneRowWidth;
             auto buttons = area.removeFromBottom(twoRows ? 72 : 36);
             auto second = twoRows ? buttons.removeFromBottom(36) : juce::Rectangle<int>();
-            closeButton.setBounds(buttons.removeFromRight(90).reduced(2));
+            closeButton.setBounds(buttons.removeFromRight(100).reduced(2));
             applyButton.setBounds(buttons.removeFromRight(170).reduced(2));
             resetButton.setBounds(buttons.removeFromRight(150).reduced(2));
             addStopButton.setBounds(buttons.removeFromLeft(96).reduced(2));
@@ -28482,6 +28492,9 @@ void MainComponent::updateExpressionInertia()
     }
 }
 
+// A modal box of ours has been seen (Windows): when it goes, the dialog that stood in front before it is put back.
+static bool gModalBoxesSeen = false;
+
 void MainComponent::bringLostModalsToFront()
 {
     // 0.9.29: a modal box (Save Configuration, a question, the load box ...) that fell behind the main window -
@@ -28495,8 +28508,51 @@ void MainComponent::bringLostModalsToFront()
     // message thread fell silent for 3 s and the callbacks went to 130 % at 135 voices. On macOS and Linux the
     // window system keeps a modal box reachable; the fault was a Windows Z-order one.
     auto& manager = *juce::ModalComponentManager::getInstance();
-    if (manager.getNumModalComponents() == 0) return;
     auto* anchor = dynamic_cast<juce::TopLevelWindow*>(UIScale::dialogAnchor.getComponent());
+    // 0.9.104 (the user: "dialog Audio Routing spadl" - a cable dropped on a card that is not there, six seconds
+    // later the box "Audio devices not available", and after its OK the dialog was gone): the box is an owned window
+    // of the MAIN window (below), so Windows activates the main window when the box closes - and the main window
+    // rose over the modeless dialog the user worked in. The dialog was never closed, only buried (it has no entry
+    // in the task switcher). Now the dialog of ours that stands in front of the main window is remembered while no
+    // box is up, and put back in front when the last box has gone.
+    static juce::Component::SafePointer<juce::Component> dialogInFront;
+    auto behindMain = [](juce::Component* window, juce::Component* mainWindow)
+    {
+        auto* peer = window != nullptr ? window->getPeer() : nullptr;
+        auto* mainPeer = mainWindow != nullptr ? mainWindow->getPeer() : nullptr;
+        if (peer == nullptr || mainPeer == nullptr) return false;
+        const HWND handle = (HWND)peer->getNativeHandle();
+        for (HWND h = ::GetWindow((HWND)mainPeer->getNativeHandle(), GW_HWNDPREV); h != nullptr; h = ::GetWindow(h, GW_HWNDPREV)) if (h == handle) return false;
+        return true;
+    };
+    if (manager.getNumModalComponents() == 0)
+    {
+        if (gModalBoxesSeen)
+        {
+            gModalBoxesSeen = false;
+            // A moment later: the box's window is destroyed after its modal state ends, and that is when Windows
+            // raises the main window.
+            juce::Component::SafePointer<juce::Component> dialog(dialogInFront.getComponent()), mainWindow(anchor);
+            juce::Timer::callAfterDelay(250, [dialog, mainWindow, behindMain]
+            {
+                if (dialog == nullptr || mainWindow == nullptr || !dialog->isShowing()) return;
+                if (juce::ModalComponentManager::getInstance()->getNumModalComponents() != 0 || !behindMain(dialog.getComponent(), mainWindow.getComponent())) return;
+                dialog->toFront(true);
+                CrashHandler::note("Dialog \"" + dialog->getName() + "\" put back in front of the main window (a box closed and Windows raised the main window over it)");
+            });
+            return;
+        }
+        // The topmost window of ours in front of the main window, if any.
+        juce::Component* front = nullptr;
+        if (auto* mainPeer = anchor != nullptr ? anchor->getPeer() : nullptr)
+            for (HWND h = ::GetWindow((HWND)mainPeer->getNativeHandle(), GW_HWNDPREV); h != nullptr; h = ::GetWindow(h, GW_HWNDPREV))
+                for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+                    if (auto* window = juce::TopLevelWindow::getTopLevelWindow(i); window != nullptr && window != anchor && window->isShowing())
+                        if (auto* peer = window->getPeer(); peer != nullptr && (HWND)peer->getNativeHandle() == h) front = window;
+        dialogInFront = front;
+        return;
+    }
+    gModalBoxesSeen = true;
     // Every modal box becomes an OWNED window of the main window (JUCE creates it without an owner): Windows keeps
     // an owned window above its owner, so Alt+Tab to the main window (the box is a tool window, not in the task
     // switcher) shows the box over it instead of burying it. Set once per box, at the first tick after its birth.
@@ -28581,7 +28637,8 @@ void MainComponent::timerCallback()
             }
         }
     }
-    if (++lostModalDivider >= 20) { lostModalDivider = 0; bringLostModalsToFront(); }   // 0.9.29: every half second
+    // 0.9.29: every half second; 0.9.104: and at once when the last box has gone (the dialog behind it comes back).
+    if (++lostModalDivider >= 20 || (gModalBoxesSeen && juce::ModalComponentManager::getInstance()->getNumModalComponents() == 0)) { lostModalDivider = 0; bringLostModalsToFront(); }
     if (editorMeasureButton != nullptr)   // 0.9.48: the Editor's Measure... follows the loader like the Divisions dialog's (setEnabled with the same value is a no-op)
     {
         const bool can = canMeasurePolyphony();
@@ -29823,15 +29880,14 @@ void MainComponent::performGlobalReset()
         "Reset all controls, voicing, combinations, stops and couplers to their default values.",
         juce::MessageBoxIconType::QuestionIcon, this);
     auto* unloadAll = new juce::ToggleButton(
-        "Unload everything: all stops and sample folders too - a clean, empty instrument (the pattern lists only when ticked below)");
+        "Unload everything: stops and sample folders too (not the pattern lists)");
     auto* resetAudio = new juce::ToggleButton(
         "Also reset all audio output devices and channels to the system defaults");
     auto* resetMidi = new juce::ToggleButton("Also clear all learned MIDI assignments");
     auto* resetTransmissions = new juce::ToggleButton(
         "Also remove all configured transmissions");
     auto* resetPatterns = new juce::ToggleButton(
-        "Also reset the Perspective, Ignored and One-shot pattern lists to their defaults "
-        "(Direct, Diffuse, Rear / trem / Chiff)");
+        "Also reset the Perspective, Ignored and One-shot pattern lists to their defaults");
     auto* resetCouplers = new juce::ToggleButton(
         "Also reset couplers and coupler options to defaults");
     auto* resetGrid = new juce::ToggleButton(
@@ -31947,10 +32003,14 @@ void MainComponent::editOneShotPatterns()
             instructionLabel.setBounds(area.removeFromTop(35));
             textEditor.setBounds(area.removeFromTop(260));
 
-            auto buttons = area.removeFromTop(40);
-            okButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
-            cancelButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
-            helpButton.setBounds(buttons.removeFromRight(32).withHeight(32));
+            // 0.9.104: OK / Cancel at the bottom right with a gap under the field, as every dialog's closing buttons
+            // (they stood at the left, touching the field).
+            area.removeFromTop(8);
+            auto buttons = area.removeFromTop(32);
+            cancelButton.setBounds(buttons.removeFromRight(100));
+            buttons.removeFromRight(8);
+            okButton.setBounds(buttons.removeFromRight(100));
+            helpButton.setBounds(buttons.removeFromLeft(32));
         }
 
         void buttonClicked(juce::Button* button) override
@@ -32020,7 +32080,7 @@ void MainComponent::editOneShotPatterns()
     content->setSize(600, 400);
     options.content.setOwned(new ScrollableContent(content));   // DialogWindow takes ownership
     options.dialogTitle = "One-shot Patterns";
-    options.dialogBackgroundColour = juce::Colours::grey;
+    options.dialogBackgroundColour = juce::Colours::darkgrey;   // the grey of every dialog (0.9.104: these three had a lighter one)
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = true;
@@ -32274,7 +32334,7 @@ void MainComponent::prepareManual()
         void resized() override
         {
             auto area = getLocalBounds().reduced(8);
-            close.setBounds(area.removeFromBottom(36).removeFromRight(100).reduced(3));
+            close.setBounds(area.removeFromBottom(36).removeFromRight(100).reduced(0, 2));
             list.setBounds(area.removeFromLeft(330).reduced(3));
             area.removeFromLeft(8);
             {
@@ -32789,11 +32849,11 @@ void MainComponent::showConfigurationEditor()
             report.setBounds(about.removeFromRight(170).reduced(3));
             aboutLabel.setBounds(about.reduced(3));
             auto buttons = area.removeFromBottom(36);
-            close.setBounds(buttons.removeFromRight(100).reduced(3));
-            reloadAll.setBounds(buttons.removeFromRight(130).reduced(3));
-            openFolder.setBounds(buttons.removeFromLeft(160).reduced(3));
+            close.setBounds(buttons.removeFromRight(100).reduced(0, 2));
+            reloadAll.setBounds(buttons.removeFromRight(130).reduced(3, 2));
+            openFolder.setBounds(buttons.removeFromLeft(160).reduced(3, 2));
            #if JUCE_LINUX
-            desktopEntry.setBounds(buttons.removeFromLeft(220).reduced(3));
+            desktopEntry.setBounds(buttons.removeFromLeft(220).reduced(3, 2));
            #endif
             viewport.setBounds(area);
             const int width = juce::jmax(700, viewport.getWidth() - viewport.getScrollBarThickness() - 4);
@@ -34360,10 +34420,14 @@ void MainComponent::editFolderPatterns(bool perspectives)
             instructionLabel.setBounds(area.removeFromTop(instructionHeight));
             textEditor.setBounds(area.removeFromTop(juce::jmax(80, area.getHeight() - 50)));
 
-            auto buttons = area.removeFromTop(40);
-            okButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
-            cancelButton.setBounds(buttons.removeFromLeft(90).withHeight(32));
-            helpButton.setBounds(buttons.removeFromRight(32).withHeight(32));
+            // 0.9.104: OK / Cancel at the bottom right with a gap under the field, as every dialog's closing buttons
+            // (they stood at the left, touching the field).
+            area.removeFromTop(8);
+            auto buttons = area.removeFromTop(32);
+            cancelButton.setBounds(buttons.removeFromRight(100));
+            buttons.removeFromRight(8);
+            okButton.setBounds(buttons.removeFromRight(100));
+            helpButton.setBounds(buttons.removeFromLeft(32));
         }
 
         void buttonClicked(juce::Button* button) override
@@ -34435,7 +34499,7 @@ void MainComponent::editFolderPatterns(bool perspectives)
     content->setSize(600, 400);
     options.content.setOwned(new ScrollableContent(content));   // DialogWindow takes ownership
     options.dialogTitle = perspectives ? "Perspective Patterns" : "Ignored Patterns";
-    options.dialogBackgroundColour = juce::Colours::grey;
+    options.dialogBackgroundColour = juce::Colours::darkgrey;   // the grey of every dialog (0.9.104: these three had a lighter one)
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = true;

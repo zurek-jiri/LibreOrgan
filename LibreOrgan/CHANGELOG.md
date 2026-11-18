@@ -12,6 +12,23 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.104] - 2026-11-18
+
+### Fixed
+- A dialog (the Audio routing, for one) vanished behind the main window when a
+  message box closed - a cable dropped on a card that is not there brings the
+  box "Audio devices not available", and after its OK the dialog was gone. The
+  dialog that stood in front is put back in front when the box closes.
+
+### Changed
+- One orange, the saturated green on every display, one table for both meters,
+  one look of the program's notes; a card dragged in the Audio routing is shown
+  as the card itself in the travelling frame.
+- The three patterns dialogs have the grey of every other dialog and OK /
+  Cancel at the bottom right; Close is 100 x 32 in every dialog and
+  Temperaments has one too; two texts of the Global Reset box no longer
+  overflow it.
+
 ## [0.9.103] - 2026-11-18
 
 ### Changed
