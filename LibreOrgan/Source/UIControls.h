@@ -20,6 +20,27 @@ inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.dark
 // 0.8.250 (20 % towards white) was far too light. The pistons keep the plain grey.
 inline juce::Colour emptyStepColour(juce::Colour base) { return base.withMultipliedSaturation(0.9f).contrasting(0.08f); }
 
+// The Close of a dialog's content: 100 x 32 at the bottom right, as every dialog has it (0.9.105). It closes the
+// window it sits in - after the click, for the window may delete the button. `place` takes its row out of the
+// content's area (call it first in resized()) and adds the button to the content at the first call.
+struct DialogCloseButton final : public juce::TextButton
+{
+    DialogCloseButton() : juce::TextButton("Close")
+    {
+        setTooltip("Closes the window; everything stays as set.");
+        onClick = [this]
+        {
+            juce::Component::SafePointer<juce::DialogWindow> window(findParentComponentOfClass<juce::DialogWindow>());
+            juce::MessageManager::callAsync([window] { if (window != nullptr) window->closeButtonPressed(); });
+        };
+    }
+    void place(juce::Component& content, juce::Rectangle<int>& area)
+    {
+        if (getParentComponent() != &content) content.addAndMakeVisible(*this);
+        setBounds(area.removeFromBottom(36).removeFromRight(100).reduced(0, 2));
+    }
+};
+
 // The output meter's segments: the console's large meter and the miniature of the Audio routing's rows read this
 // one table (0.9.103; each had its own copy of the thresholds and the colours).
 namespace MeterStyle

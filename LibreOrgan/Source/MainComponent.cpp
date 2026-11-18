@@ -2831,6 +2831,25 @@ MainComponent::MainComponent()
             if (parts.size() >= 2) safeThis->moveHeaderButton(parts[1], parts.size() >= 3 ? parts[2] : juce::String());
         });
     }
+    // 0.9.105: ORGAN_TEST_OPEN="<seconds>|<dialog>[|<division>]^..." opens the dialogs that only a right-click menu
+    // reaches (no button for ORGAN_TEST_CLICK): crescendo, tremulant, swell, wind, reverb - for the pictures of
+    // every dialog (the first sheet had no crescendo: the user asked why).
+    if (const char* env = std::getenv("ORGAN_TEST_OPEN"))
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 2) continue;
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                const int manual = parts.size() >= 3 ? parts[2].getIntValue() : 1;
+                CrashHandler::note("ORGAN_TEST_OPEN: " + parts[1]);
+                if (parts[1] == "crescendo") safeThis->showCrescendoDialog();
+                else if (parts[1] == "reverb") safeThis->showReverbToneDialog(manual, "default");
+                else safeThis->showFeatureSettings(manual, parts[1]);
+            });
+        }
     // 0.9.103: ORGAN_TEST_ARRANGE="<seconds>|<division of the stops>|<division of the couplers>": the stops' arrange
     // mode of one division and, two seconds later, the couplers' of another are entered and left on (for a picture;
     // with ORGAN_TEST_HEADER the top bar's too).
@@ -3720,6 +3739,7 @@ void MainComponent::reopenMidiInputs()
 
 void MainComponent::midiDevicesChanged()
 {
+    askUnavailableCardsSoon();   // 0.9.105: a device came or went - a card that was not there may be there now
     // The devices that came are opened, the ones that went are let go; the
     // rest keep playing (nothing is closed and reopened under the player's
     // hands). Devices are known by their identifiers.
@@ -4473,6 +4493,7 @@ void MainComponent::showCouplersDialog()
 // 0.9.79 (#236): the Audio routing dialog (AudioRouting.h), modeless like the Couplers dialog; kept while hidden.
 void MainComponent::showAudioRoutingDialog()
 {
+    askUnavailableCardsSoon();   // 0.9.105: the cards that were not there are asked again as the dialog comes
     if (audioRoutingWindow != nullptr)
     {
         if (!audioRoutingWindow->isVisible()) rescanAudioDeviceLists("the Audio routing opened again");   // 0.9.97: a card switched on meanwhile
@@ -4974,6 +4995,7 @@ void MainComponent::showReverbToneDialog(int manualIndex, const juce::String& pe
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
+            closeButton.place(*this, area);   // 0.9.105
             note.setBounds(area.removeFromTop(90));
             auto place = [&](juce::Label& label, juce::Slider& slider)
             {
@@ -4988,6 +5010,7 @@ void MainComponent::showReverbToneDialog(int manualIndex, const juce::String& pe
             place(decayLabel, decay);
             place(fadeLabel, fade);
         }
+        DialogCloseButton closeButton;
     private:
         void add(juce::Slider& slider, juce::Label& label, const juce::String& text, double minimum, double maximum,
             double step, const juce::String& suffix, float value, double defaultValue)
@@ -6265,6 +6288,69 @@ bool MainComponent::isAudioDeviceAvailableNow(const juce::String& typeName, cons
     probe.reset();
     if (error != nullptr) *error = result;
     return opened;
+}
+
+// Does the card open now? Asked when a cable is dropped on a card that is not open (before any route is touched),
+// when the user clicks a grey card, and by watchUnavailableCards. Only ASIO lists drivers whose device may be
+// absent; every other type answers "yes" here (its absent devices are not listed at all).
+bool MainComponent::probeCard(const juce::String& typeName, const juce::String& deviceName)
+{
+    if (!typeName.equalsIgnoreCase("ASIO") || findSharedHost(typeName, deviceName) != nullptr) return true;
+    const auto key = typeName + "|" + deviceName;
+    const double startMs = juce::Time::getMillisecondCounterHiRes();
+    juce::String error;
+    // ORGAN_TEST_CARD_ABSENT="<name part>|<seconds>" (tests): the card is taken for absent for that many seconds from
+    // the first time it is asked - a card "connected later" without anybody touching the hardware.
+    bool pretendAbsent = false;
+    if (const char* env = std::getenv("ORGAN_TEST_CARD_ABSENT"))
+    {
+        static const double firstAskedMs = startMs;
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        pretendAbsent = parts.size() >= 2 && deviceName.containsIgnoreCase(parts[0]) && startMs - firstAskedMs < 1000.0 * parts[1].getIntValue();
+        if (pretendAbsent) error = "No device is connected to the PC. (pretended by ORGAN_TEST_CARD_ABSENT)";
+    }
+    const bool opens = !pretendAbsent && isAudioDeviceAvailableNow(typeName, deviceName, &error);
+    const double nowMs = juce::Time::getMillisecondCounterHiRes(), tookMs = nowMs - startMs;
+    if (opens)
+    {
+        if (unavailableCards.erase(key) > 0)
+        {
+            ++unavailableCardsVersion;
+            CrashHandler::note("Sound card " + deviceName + " (" + typeName + ") answers again: active in the Audio routing");
+            queueNotice(juce::AlertWindow::InfoIcon, "Sound card", deviceName + " (" + typeName + ") answers again - it takes cables in the Audio routing.");
+        }
+        return true;
+    }
+    auto& card = unavailableCards[key];
+    const bool fresh = card.reason.isEmpty();
+    const auto reason = error.trim().isNotEmpty() ? error.trim() : juce::String("its driver did not open");
+    if (card.reason != reason) ++unavailableCardsVersion;
+    card.reason = reason;
+    // Asked again in a few seconds; a driver that is slow to say no is asked less often (twenty times its answer's
+    // time, two minutes at most) - the question runs on the window thread.
+    card.nextCheckMs = nowMs + juce::jlimit(3000.0, 120000.0, tookMs * 20.0);
+    if (fresh)
+        CrashHandler::note("Sound card " + deviceName + " (" + typeName + ") is not there: " + reason + " (answered in " + juce::String(juce::roundToInt(tookMs))
+            + " ms) - grey in the Audio routing, asked again every " + juce::String(juce::roundToInt((card.nextCheckMs - nowMs) / 1000.0)) + " s while the dialog is open");
+    return false;
+}
+
+// Once a second: a card that was not there is asked again - one card a second at most, only while the Audio routing
+// is on the screen (nothing shows the grey otherwise; the dialog's opening asks them all at once), the organ is
+// silent and nothing loads.
+void MainComponent::watchUnavailableCards()
+{
+    if (unavailableCards.empty() || audioRoutingWindow == nullptr || !audioRoutingWindow->isShowing()) return;
+    if (activeFolderLoader != nullptr || applyAllWindow != nullptr || engine.getCurrentPolyphony() > 0) return;
+    if (juce::Component::getCurrentlyModalComponent() != nullptr) return;
+    const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    for (const auto& [key, card] : unavailableCards)
+        if (nowMs >= card.nextCheckMs)
+        {
+            const auto type = juce::String(key).upToFirstOccurrenceOf("|", false, false), name = juce::String(key).fromFirstOccurrenceOf("|", false, false);
+            probeCard(type, name);   // may erase the entry: nothing of the map is touched after it
+            return;
+        }
 }
 
 juce::File MainComponent::deviceOpenMarker() const
@@ -10649,7 +10735,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     const juce::String& suffix, const juce::String& target, double defaultValue)
                 {
                     slider.setSliderStyle(juce::Slider::LinearHorizontal);
-                    slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 62, 20);
+                    slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 66, 22);   // one size with the dialog's other value boxes (0.9.105)
                     slider.setRange(0.0, maximum, 0.1);
                     slider.setTextValueSuffix(suffix);
                     slider.setScrollWheelEnabled(true);
@@ -10737,7 +10823,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 attenuation.setTextBoxStyle(juce::Slider::TextBoxRight, false, 75, 22);
                 attenuation.setRange(0.0, 60.0, 0.1);
                 attenuation.setTextValueSuffix(" dB");
-                attenuation.setTextBoxStyle(juce::Slider::TextBoxRight, false, 65, 22);
+                attenuation.setTextBoxStyle(juce::Slider::TextBoxRight, false, 66, 22);
                 attenuation.setScrollWheelEnabled(true);
                 attenuation.setDoubleClickReturnValue(true, 13.0);
                 attenuation.getProperties().set("midiTarget",
@@ -12598,8 +12684,7 @@ void MainComponent::showCrescendoDialog()
                 juce::dontSendNotification);
             legend.setJustificationType(juce::Justification::topLeft);
             addAndMakeVisible(legend);
-            cancelBox.setButtonText("Crescendo may switch off hand-registered stops and couplers (off: the steps only add, "
-                "and only what the crescendo switched on goes off again)");
+            cancelBox.setButtonText("Crescendo may switch off hand-registered stops and couplers (off: the steps only add)");   // 0.9.105: the longer text did not fit the dialog
             cancelBox.setToggleState(owner.crescendoCancelsHandStops, juce::dontSendNotification);
             cancelBox.onClick = [this]
             {
@@ -12710,13 +12795,15 @@ void MainComponent::showCrescendoDialog()
             stepsLabel.setBounds(row.removeFromLeft(54));
             stepsBox.setBounds(row.removeFromLeft(70).reduced(0, 3));
             row.removeFromLeft(16);
-            setButton.setBounds(row.removeFromLeft(64));
-            closeButton.setBounds(row.removeFromRight(90).reduced(0, 3));
+            // 0.9.105: the row's buttons 32 high, Close 100 x 32 as in every dialog, a gap between Save and Load.
+            setButton.setBounds(row.removeFromLeft(64).reduced(0, 1));
+            closeButton.setBounds(row.removeFromRight(100).reduced(0, 1));
             row.removeFromRight(16);
-            voidButton.setBounds(row.removeFromRight(130).reduced(0, 3));
+            voidButton.setBounds(row.removeFromRight(130).reduced(0, 1));
             row.removeFromRight(16);
-            loadButton.setBounds(row.removeFromRight(80).reduced(0, 3));
-            saveButton.setBounds(row.removeFromRight(80).reduced(0, 3));
+            loadButton.setBounds(row.removeFromRight(80).reduced(0, 1));
+            row.removeFromRight(8);
+            saveButton.setBounds(row.removeFromRight(80).reduced(0, 1));
             area.removeFromTop(10);
             const int perRow = 10;
             const int rows = (stepButtons.size() + perRow - 1) / perRow;
@@ -28675,6 +28762,7 @@ void MainComponent::timerCallback()
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
     watchPlugins();   // 0.9.102
+    watchUnavailableCards();   // 0.9.105
     // Every 2 s (every second during the start-up wait): a route whose saved
     // device is missing gets it back as soon as it appears.
     if (applicationReady.load() && ++missingDeviceWatchDivider >= (missingAudioDevicesReportPending ? 40 : 80))
@@ -29229,10 +29317,11 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 addChildComponent(button);
             }
         }
-        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36 + (hasBoxes ? 36 : 0); }
+        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36 + (hasBoxes ? 36 : 0) + 40; }   // + the Close row (0.9.105)
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
+            closeButton.place(*this, area);
             note.setBounds(area.removeFromTop(70));
             for (size_t i = 0; i < sliders.size(); ++i)
             {
@@ -29256,6 +29345,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         bool hasBoxes = false;
         juce::Label boxesLabel;
         std::array<juce::ToggleButton, SamplerEngine::maxManuals> boxes;
+        DialogCloseButton closeButton;
     };
 
     const int m = manualIndex;

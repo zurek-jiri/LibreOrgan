@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.105] - 2026-11-18
+
+### Changed
+- Audio routing: an ASIO card whose device is not connected is asked before a
+  cable moves - the cable goes back, the card turns grey with the driver's
+  reason, without six seconds of waiting and without a message box. A grey
+  card takes no cable; it is asked again every few seconds while the dialog is
+  open and at once when Windows reports a device, so a card connected later
+  becomes active by itself (a click on it asks at once).
+- The crescendo dialog: the tick box's text fits, Save and Load stand apart,
+  Close is 100 x 32; the IR reverb, Swell, Tremulant and Wind settings have a
+  Close; the Divisions dialog's value boxes are one size.
+
 ## [0.9.104] - 2026-11-18
 
 ### Fixed

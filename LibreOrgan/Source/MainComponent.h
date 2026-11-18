@@ -1174,6 +1174,17 @@ private:
     std::unique_ptr<juce::DialogWindow> configurationWindow;
     std::unique_ptr<juce::DialogWindow> patternsWindow;   // 0.8.238: the patterns dialogs are modeless (one at a time)
     std::unique_ptr<juce::DialogWindow> couplersWindow, reverbToneWindow, featureWindow;   // 0.8.239: modeless too (their settings act at once)
+    // 0.9.105 (the user: "proc karta, ktera neni pripojena k PC, neni sediva a nepristupna?"): Windows lists an ASIO
+    // driver whether its device is plugged in or not - only the driver itself can tell. A card asked in vain is
+    // remembered here with the driver's reason: grey in the Audio routing, it takes no cable. It is asked again by
+    // itself while the dialog is open (and at once when Windows reports a device coming), so a card connected later
+    // becomes active without a click.
+    struct UnavailableCard { juce::String reason; double nextCheckMs = 0.0; };
+    std::map<juce::String, UnavailableCard> unavailableCards;   // "type|name"
+    int unavailableCardsVersion = 0;                            // the Audio routing's signature follows it
+    bool probeCard(const juce::String& typeName, const juce::String& deviceName);   // true: it opens now
+    void watchUnavailableCards();
+    void askUnavailableCardsSoon() { for (auto& entry : unavailableCards) entry.second.nextCheckMs = 0.0; }
     std::unique_ptr<juce::DialogWindow> audioRoutingWindow;   // 0.9.79 (#236): "Audio routing" - the sound cards as blocks, the routes as chips in their channel cells
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.

@@ -226,7 +226,7 @@ public:
         {
             if (!card.chip || card.bounds.isEmpty()) continue;
             const bool target = (dragging || draggingCard) && dropCard == &card - cards.data();
-            const bool grey = card.busy && !((dragging || draggingCard) && freedByDrag(card));   // a drag that frees its hardware lights it again
+            const bool grey = card.unavailable || (card.busy && !((dragging || draggingCard) && freedByDrag(card)));   // a drag that frees its hardware lights it again; a card that is not there stays grey
             const auto base = getLookAndFeel().findColour(juce::TextButton::buttonColourId);
             g.setColour(grey ? base.withAlpha(0.35f) : target ? glow : base);
             g.fillRoundedRectangle(card.bounds.toFloat(), 4.0f);
@@ -394,6 +394,19 @@ public:
                 return;
             }
         }
+        // A grey card (its device is not there): a click asks its driver again, at once.
+        for (const auto& card : cards)
+            if (card.unavailable && card.bounds.contains(e.getPosition()))
+            {
+                const auto type = card.type, name = card.name;
+                later([this, type, name]
+                {
+                    const bool there = owner.probeCard(type, name);
+                    CrashHandler::note("Audio routing: " + name + " asked again by a click - " + (there ? "it answers" : "still not there"));
+                    rebuild(); repaint();
+                });
+                return;
+            }
         // A source row: the start of a drag.
         for (int i = 0; i < (int)rows.size(); ++i)
             if (rows[(size_t)i].bounds.contains(e.getPosition()))
@@ -526,6 +539,7 @@ private:
         juce::String key, type, name, status, busyReason, busyBecauseOf;   // busyBecauseOf = the key of the open card of another driver on the same hardware
         juce::String sharedNote, sharedWith;                              // 0.9.93: "Also open through ASIO ..." - the orange line of a card that shares its device with another driver (sharedWith = that card's name, for the tooltip)
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
+        bool unavailable = false;                        // 0.9.105: its driver is listed, its device is not there (asked in vain) - grey, takes no cable
         juce::String unusableWhy;                        // 0.9.95 (Linux): listed although it cannot be opened now ("list unusable devices too") - why
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
@@ -738,6 +752,12 @@ private:
                         card.status = "cannot be opened now (" + card.unusableWhy + ") - a cable dropped here waits until the card is free";
                     }
                #endif
+                if (const auto gone = owner.unavailableCards.find(card.key); gone != owner.unavailableCards.end())
+                {
+                    card.unavailable = true;
+                    card.unusableWhy = gone->second.reason;
+                    card.status = "not there now: " + card.unusableWhy + " It takes no cable; the program asks it again every few seconds, a click on it asks at once.";
+                }
                 fresh.push_back(card);
             }
         }
@@ -1239,7 +1259,7 @@ private:
         for (int i = 0; i < (int)cards.size(); ++i)
         {
             const auto& card = cards[(size_t)i];
-            if (card.bounds.isEmpty() || !card.bounds.expanded(6).contains(p) || (card.busy && !freedByDrag(card))) continue;
+            if (card.bounds.isEmpty() || !card.bounds.expanded(6).contains(p) || card.unavailable || (card.busy && !freedByDrag(card))) continue;
             if (dragCard >= 0 && (!card.chip || i == dragCard)) continue;   // a dragged card lands on a pool button only (its routes move there)
             dropCard = i;
             if (card.chip || card.jacks.empty()) { dropChannel = 0; return; }
@@ -1258,6 +1278,15 @@ private:
     // ---- the actions ----
     void assign(const std::vector<Route>& routes, const Card& card, std::vector<int> channels, bool add, const std::vector<int>& takeAway = {})
     {
+        // 0.9.105: a card that is not open is ASKED before any route is touched. Its device is not there: nothing
+        // moves (the cable is back where it was), the card turns grey with the driver's reason - no six seconds of
+        // waiting, no message box (the user dropped a cable on "UMC ASIO Driver" with the interface unplugged).
+        if (!card.open && !card.busy && !owner.probeCard(card.type, card.name))
+        {
+            CrashHandler::note("Audio routing: " + card.name + " (" + shownType(card.type) + ") is not there - the cable stays where it was");
+            rebuild(); repaint();
+            return;
+        }
         juce::StringArray done, refused;
         const double now = juce::Time::getMillisecondCounterHiRes();
         bool deviceChanged = false;
@@ -1467,6 +1496,7 @@ private:
     juce::String signature() const
     {
         juce::String s;
+        s << owner.unavailableCardsVersion << ";";   // a card that went grey or answers again
         for (int manual = 0; manual <= owner.manualCount && manual < SamplerEngine::maxManuals; ++manual)
             for (const auto& perspective : owner.engine.getPerspectivesForManual(manual))
             {

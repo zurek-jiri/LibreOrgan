@@ -950,7 +950,12 @@ device may play through two drivers at once (ASIO and Windows Audio): both
 cards then say so in an orange line and the *Audio routing* button of the top
 bar turns orange - it works, but costs polyphony; drag one of the two cards by
 its title onto the other and every cable plays through one driver. Only an
-exclusive-mode driver keeps a card to itself there. On Linux a card open
+exclusive-mode driver keeps a card to itself there. An ASIO card whose
+device is not connected is listed all the same (Windows lists the driver):
+a cable dropped on it goes back and the card turns **grey** with the
+driver's reason in its tooltip; the program asks it again every few seconds
+while the dialog is open - connect the device and the card becomes active by
+itself (a click on it asks at once). On Linux a card open
 through another driver is grey; it takes a drop only when the drop moves
 every route off that other card. The cards in use sit on a grid of cells like the
 stops: drag a card by its title onto a free cell (dashed while you drag,

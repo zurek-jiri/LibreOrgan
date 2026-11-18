@@ -962,7 +962,12 @@ static const char* const kManualText_part4 =
     "cards then say so in an orange line and the *Audio routing* button of the top\n"
     "bar turns orange - it works, but costs polyphony; drag one of the two cards by\n"
     "its title onto the other and every cable plays through one driver. Only an\n"
-    "exclusive-mode driver keeps a card to itself there. On Linux a card open\n"
+    "exclusive-mode driver keeps a card to itself there. An ASIO card whose\n"
+    "device is not connected is listed all the same (Windows lists the driver):\n"
+    "a cable dropped on it goes back and the card turns **grey** with the\n"
+    "driver's reason in its tooltip; the program asks it again every few seconds\n"
+    "while the dialog is open - connect the device and the card becomes active by\n"
+    "itself (a click on it asks at once). On Linux a card open\n"
     "through another driver is grey; it takes a drop only when the drop moves\n"
     "every route off that other card. The cards in use sit on a grid of cells like the\n"
     "stops: drag a card by its title onto a free cell (dashed while you drag,\n"
@@ -1005,13 +1010,13 @@ static const char* const kManualText_part4 =
     "DSP cell reads *no audio* and the Messages name it.\n"
     "\n"
     "### Routing files\n"
+    ;
+static const char* const kManualText_part5 =
     "\n"
     "Three buttons on the line of the titles keep a routing for later.\n"
     "\n"
     "- **Save routing...** writes the cables (sound cards, outputs, rate, buffer)\n"
     "  and the effects of every route into one file.\n"
-    ;
-static const char* const kManualText_part5 =
     "- **Load routing...** asks once: **Load cables only** (the usual choice) or\n"
     "  **Load cables and effects**. The effects carry the volumes of the divisions\n"
     "  and perspectives - on another organ they overwrite its balance, and the box\n"
@@ -1207,13 +1212,13 @@ static const char* const kManualText_part5 =
     "leaves it, within two seconds. An organ without cables of its own (a\n"
     "published configuration, a new organ) plays into the card the system plays\n"
     "through - the output chosen in the desktop's sound settings. Beside the\n"
+    ;
+static const char* const kManualText_part6 =
     "cards stands the system's default output (under ALSA), which is PipeWire\n"
     "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
     "sound cards.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
     "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
@@ -1409,13 +1414,13 @@ static const char* const kManualText_part6 =
     "folding is remembered. Every change applies and saves at once; double-click\n"
     "a slider for its default. The \"?\" beside an option opens this manual at the\n"
     "option's chapter. At the top: *About & licences...* (this manual, the\n"
+    ;
+static const char* const kManualText_part7 =
     "messages, the licences), *Report a problem...*, *Show settings.json*,\n"
     "*Refresh values* (reads every control again, after a MIDI-learned change for\n"
     "example) and, on Linux, *Install menu entry and icon*.\n"
     "\n"
     "## 8.1 Engine\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "Settings of this computer: a portable configuration carries none of them.\n"
     "\n"
@@ -1611,13 +1616,13 @@ static const char* const kManualText_part7 =
     "\n"
     "## 8.3 Advanced global audio\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Swell: harmonic filter\n"
     "\n"
     "A closed swell box also takes the brilliance: a high shelf above about 3 kHz\n"
     "following the shutters, this much loss with the box closed (0 to 12 dB,\n"
     "default 8). The three harmonic filters (swell, wind, tremulant) add up,\n"
-    ;
-static const char* const kManualText_part8 =
     "capped at 12 dB; at 0 dB they cost nothing.\n"
     "\n"
     "### Wind: harmonic filter\n"
@@ -1813,13 +1818,13 @@ static const char* const kManualText_part8 =
     "\n"
     "The splice of the copies' loops as a share of each loop (0 to 100 %, default\n"
     "40): a longer blend hides a seam that is not quite periodic. Raise it when a\n"
+    ;
+static const char* const kManualText_part9 =
     "held extension pipe bumps at every repeat.\n"
     "\n"
     "### Filled pipes: release level matched to the source\n"
     "\n"
     "On: a release copy plays at the level relation the source's release has to\n"
-    ;
-static const char* const kManualText_part9 =
     "its sustain. Off (default): at its own level.\n"
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
@@ -2015,13 +2020,13 @@ static const char* const kManualText_part9 =
     "cut, always the top velocity layer. Off for a stop with velocity layers you\n"
     "want to play by touch.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Bass octave layout\n"
     "\n"
     "*Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E\n"
     "...* for historic bass octaves.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Bass octave layout follows MIDI transposition\n"
     "\n"
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
@@ -2217,13 +2222,13 @@ static const char* const kManualText_part10 =
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
+    ;
+static const char* const kManualText_part11 =
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
     "cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's\n"
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
     "and fraction give the exact recorded pitch, from which the tuning, the\n"
     "temperament, the footage and the celeste detection follow. Files without the\n"
-    ;
-static const char* const kManualText_part11 =
     "chunk play as they are: no retuning, no temperament, the footage from the\n"
     "folder name only.\n"
     "\n"
@@ -2419,13 +2424,13 @@ static const char* const kManualText_part11 =
     "## 10.8 The polyphony measurement\n"
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
+    ;
+static const char* const kManualText_part12 =
     "minimum time and delay off, two seconds of idle listening; every stop\n"
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"
     "second at first, more keys and a faster rate whenever the voices stop rising\n"
     "(up to every key, 16 strikes a second); the target raised in steps of 2000\n"
-    ;
-static const char* const kManualText_part12 =
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"
     "*Measurement limit of DSP power* and the driver never called late; the first\n"

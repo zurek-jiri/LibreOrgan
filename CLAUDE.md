@@ -4284,6 +4284,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   own, with pictures before and after; items 5-6 (AlertWindow look, fonts, radii) left by agreement. The crescendo
   dialog's Close (90 wide, its row's height) not touched - not pictured yet. NOT pushed (the user: "zatím na
   gitHub nedávej"): local commits 0.9.103 x 3 + 0.9.104.
+  0.9.105 (18 Nov 2026 evening; the user: "proč kurva teda karta, která není připojená k PC není šedivá a
+  nepřístupná???? ... Nejde to odchytat?" - plan A chosen, "Hlavně, když se karta později připojí, tak to musí program
+  zjistit a udělat ji aktivní. To je velmi důležité"): CARDS THAT ARE LISTED BUT NOT THERE. Windows lists an ASIO
+  driver from the registry, device or no device; only the driver tells. `MainComponent::unavailableCards` ("type|name"
+  -> {reason, nextCheckMs}) + `unavailableCardsVersion` (in the Audio routing's signature) + `probeCard(type, name)`
+  (ASIO only - every other type answers true: its absent devices are not listed; a card open in a shared host = true;
+  else `isAudioDeviceAvailableNow` = the watcher's throw-away-manager open; a no -> the entry with the driver's
+  words, next check in max(3 s, 20 x the answer's time, <= 2 min); a yes -> the entry erased, log "Sound card X
+  answers again", a Messages note) + `watchUnavailableCards()` (the 1 s timer: one card a second at most, ONLY while
+  the Audio routing is showing, no loader / apply-all / modal box, polyphony 0) + `askUnavailableCardsSoon()` (every
+  entry's nextCheckMs = 0: from midiDevicesChanged = Windows reported a device, and from showAudioRoutingDialog).
+  AudioRouting: `assign()` asks the card FIRST when it is not open and not busy - a no: nothing moves (the cable is
+  where it was), rebuild; `Card::unavailable` (set in rebuild from the map, status = "not there now: <reason> ...")
+  paints the chip grey, `findDropTarget` skips it, a mouseDown on it asks again at once (through `later`). No six
+  seconds of waiting and no "Audio devices not available" box on that path (the start-up path of a configuration
+  saved on an absent card keeps its watcher and its box). TESTED by hooks: UMC ASIO Driver (really unplugged here):
+  "is not there: No device is connected to the PC. (answered in 179 ms)", the chip grey in the picture, the cables
+  unchanged, no box; `ORGAN_TEST_CARD_ABSENT="<name part>|<seconds>"` (probeCard pretends the card absent for that
+  long from its first question) with Komplete Audio 6: refused at 24 s, "answers again" 13 s later by the WATCHER, a
+  second drop then moved the three routes onto it (%TEMP%\test_0104_box.ps1 -Tag later -Absent "Komplete|10" -Route
+  "all|default|Komplete|1^x^x^x^x^all|default|Komplete|1"). NOT tested: a real device plugged in while the dialog is
+  open; a click on the grey chip by a real mouse. Scope: ASIO alone - an endpoint of the aggregate that refuses, or a
+  Windows Audio device that fails to open, still goes the old way. The user refused nothing of plan B (a helper
+  process asking every ASIO driver ahead of time) - it was simply not chosen. `DialogCloseButton` (UIControls.h:
+  "Close", closes its DialogWindow by callAsync; `place(content, area)` takes 36 px at the bottom, 100 x 32 at the
+  right, and adds itself at the first call) gives the IR reverb settings (ToneContent) and the Swell / Tremulant /
+  Wind settings (FeatureContent, neededHeight + 40) their Close; the crescendo's row is 32 high with Close 100 wide
+  and a gap between Save... and Load..., its tick text "Crescendo may switch off hand-registered stops and couplers
+  (off: the steps only add)"; the Divisions dialog's value boxes are all 66 x 22. The empty crescendo steps STAY a
+  tone lighter (the user, again); the sliders' value boxes elsewhere are NOT unified (their widths follow the
+  longest value with its unit, their heights the place - the user's own guess, confirmed in the code). Hook
+  `ORGAN_TEST_OPEN="<seconds>|crescendo^<seconds>|tremulant|1^...|swell|1^...|wind|1^...|reverb|1"` opens the dialogs
+  only a right-click menu reaches (test_0103_arr.ps1 -Mode menus). The user dragged a cable in MY test instance
+  again (19:45:52, "cable 11+12 of II. default moved to Komplete Audio 6") - the settings were restored by the
+  script; a test window is his to touch while it stands, say so.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
