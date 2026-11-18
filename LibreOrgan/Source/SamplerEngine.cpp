@@ -4606,6 +4606,22 @@ struct SamplerEngine::Impl
                         gain *= juce::jmax(0.0f, 1.0f - (float)(frame - fadeOutStart) / (float)fadeFrames);
                     for (int c = 0; c < 2; ++c) rec->flushBuffer.getWritePointer(c)[k] *= gain;
                 }
+            // 0.9.99: the file holds the SUM of the routes - limited softly like the cards' sums (the writer cut
+            // it flat at full scale before: the user's clippedRecording_Caen.wav, 2 300 samples at 1.0).
+            for (int c = 0; c < 2; ++c)
+            {
+                float* out = rec->flushBuffer.getWritePointer(c);
+                for (int k = 0; k < chunk; ++k)
+                {
+                    const float a = std::abs(out[k]);
+                    if (a > 0.98f)
+                    {
+                        const float over = a - 0.98f;
+                        const float y = juce::jmin(1.0f, 0.98f + over / (1.0f + over * 50.0f));
+                        out[k] = out[k] < 0.0f ? -y : y;
+                    }
+                }
+            }
             rec->writer->writeFromAudioSampleBuffer(rec->flushBuffer, 0, chunk);
             flushed += chunk;
             rec->flushed.store(flushed, std::memory_order_release);
@@ -8028,6 +8044,16 @@ void SamplerEngine::setKernelOverride(int kind) noexcept
         CrashHandler::note(juce::String("Render kernel: ") + (applied < 0 ? juce::String("automatic (") + kernelName(envKernel()) + ")" : juce::String(kernelName((KernelKind)applied))));
 }
 int SamplerEngine::getKernelOverride() noexcept { return gKernelOverride.load(); }
+
+void SamplerEngine::reportOutputPeak(float peak, bool clipped) noexcept
+{
+    if (impl == nullptr || !(peak > 0.0f) || !std::isfinite(peak)) return;
+    uint32_t bits;
+    std::memcpy(&bits, &peak, sizeof(bits));
+    uint32_t known = impl->statOutputPeakBits.load(std::memory_order_relaxed);
+    while (bits > known && !impl->statOutputPeakBits.compare_exchange_weak(known, bits, std::memory_order_relaxed)) {}
+    if (clipped) impl->statOutputClipped.store(true, std::memory_order_relaxed);
+}
 
 float SamplerEngine::takeOutputPeak(bool& clipped) noexcept
 {

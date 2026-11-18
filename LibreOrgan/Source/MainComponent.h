@@ -811,6 +811,13 @@ private:
         // the period: the true load of the device thread.
         std::atomic<float> maxCallbackShare{ 0.0f };
         std::atomic<double> periodMs{ 0.0 };
+        // 0.9.99: the running SUM of the routes of this device within one driver callback, per output channel
+        // (the device thread alone touches it). The driver adds the routes' buffers together; each route limits
+        // its own, nobody limited the sum - eight routes at -4 dB into the same two outputs clipped at the card
+        // with the meters in the orange. A new cycle begins when a route comes that has already added to this one.
+        static constexpr int mixChannels = 64, mixFrames = 4096;
+        float mix[mixChannels][mixFrames]{};
+        uint32_t mixCycle = 0;
     };
     static constexpr int maxDeviceClocks = 16;
     DeviceClock deviceClocks[maxDeviceClocks];

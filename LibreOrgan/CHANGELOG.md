@@ -12,6 +12,20 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.99] - 2026-11-18
+
+### Fixed
+- Clipping that nothing stopped and no meter showed: the limiter and the
+  audio meter worked on every route alone, while the routes playing into the
+  same outputs of a card are added together after them - eight routes at
+  -4 dB each clipped at the card with the meter in the orange. The sum of a
+  card's routes is now limited (the card never gets more than full scale),
+  and the audio meter and its CLIP show that sum. A recording (the sum of all
+  routes) is limited the same way instead of being cut flat.
+
+### Changed
+- Top bar: *Audio routing* stands right before *Load Configuration*.
+
 ## [0.9.98] - 2026-11-18
 
 ### Changed

@@ -4040,6 +4040,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   -3 + red only while the row clips, 4 lime / 3 orange / 1 red, unlit alpha 0.18, NO black box, NO gaps; a full
   card's title is grey when `!card.open` too (a card that is not there, its cables waiting). RULE: a small copy of
   an element is the element itself scaled (same parts, same colours), never a redesign.
+  0.9.99 (18 Nov 2026, Linux, the user: "do sluchátek už slyším clipping, ale audio metery ho neukazují" + his
+  clippedRecording_Caen.wav: 2 300 samples flat at 1.0): THE LIMITER AND THE METER WERE PER ROUTE (renderRoute's
+  soft clip above 0.98 and statOutputPeakBits = the max over routes, 0.9.79) while the routes of one device are
+  ADDED by JUCE's AudioDeviceManager after them - Caen's 8 routes all on "ALC1220 Analog" 1+2, each at -3..-5 dB,
+  clipped at the card with the meter in the orange. Now `DeviceClock::mix[64][4096]` + `mixCycle` (device thread
+  only; a route's `mixCycleSeen` equal to the cycle = a new driver callback -> the cycle advances and the channels
+  are cleared; never the 0.2 ms "first route" heuristic): in DivisionAudioCallback, per masked channel, the route's
+  output is added to the running sum and CUT BACK where the sum would pass 0.98 (out = limited - before), the sum's
+  peak before the limit goes to `SamplerEngine::reportOutputPeak(peak, clipped)` = the large meter and CLIP. The
+  recorder's flush limits its two-channel sum of all routes with the same curve (the writer cut it flat).
+  MEASURED at the card: `pw-record --target <sink node.name> -P stream.capture.sink=true --format f32` (the capture
+  is BEFORE the sink volume: `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.02` for the test, back to 1.0 after) with a
+  copy of Rural at registrationMasterDb +6 and ORGAN_TEST_NOTE: 0.9.98 peak 3.04, 0.9.99 peak 0.9996. Cards mixed
+  OUTSIDE the program (two cards' routes summed by the OS, Aggregated WASAPI routes on one endpoint) are beyond it.
+  RULE: a limiter and a meter belong where the signal LEAVES the program, after every sum. Top bar: Audio routing
+  moved right before Load Configuration. PROPOSED, not coded (the user asked "možná gridem?"): a user-set order
+  of the top-bar buttons. PipeWire names: the desktop's sound settings show node.description ("Starship/Matisse
+  HD Audio Controller Pro"), PipeWire's JACK side the node.nick ("ALC1220 Analog") - the same card.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

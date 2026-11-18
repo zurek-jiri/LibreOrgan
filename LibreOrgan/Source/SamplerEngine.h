@@ -1137,6 +1137,9 @@ public:
     // 0.9.79 (#229): the audio meter - the highest sample (absolute, before the safety clip) over every route
     // and device since the last call, and whether the clip worked meanwhile; both reset by the call.
     float takeOutputPeak(bool& clipped) noexcept;
+    // 0.9.99: the SUM of the routes playing into the same outputs of a card (measured by the device callbacks,
+    // before the sum's limiter) joins the meter: the routes alone may each stay far below the clip while their sum is over it.
+    void reportOutputPeak(float peak, bool clipped) noexcept;
     void setMaxPolyphony(int voices) noexcept { maxPolyphony.store(juce::jlimit(64, maxVoices, voices)); }
     int getMaxPolyphony() const noexcept { return maxPolyphony.load(); }
     // Fraction of the audio period spent rendering (0..1+), smoothed peak.

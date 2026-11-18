@@ -841,6 +841,8 @@ public:
         outputGain = gainEnd;
         const bool unity = gainStart >= 1.0f && gainEnd >= 1.0f;
         int jumps = 0;
+        float sumPeak = 0.0f;      // 0.9.99: the peak of the device's SUM on this route's outputs, before its limit
+        bool mixJoined = false;
         const bool detect = owner.outputDiscontinuityDetector.load(std::memory_order_relaxed);   // 0.8.227: switchable
         if (!detect) resetEdgeDetector();   // off: nothing stale when it is switched on again
         // Only the route's own channels carry sound: the peak and the detector look at
@@ -862,11 +864,47 @@ public:
                 if (channel >= 64 || ((mask >> channel) & 1ull) == 0) continue;
                 const auto range = juce::FloatVectorOperations::findMinAndMax(data, numSamples);
                 peak = juce::jmax(peak, std::abs(range.getStart()), std::abs(range.getEnd()));
+                // 0.9.99: the SUM of the device's routes on this output. What this route adds is cut back where
+                // the sum would pass 0.98 (the routes' own soft curve), so the card never gets more than full
+                // scale; the sum's peak before that goes to the meter and its CLIP.
+                if (deviceClock != nullptr && numSamples <= MainComponent::DeviceClock::mixFrames)
+                {
+                    if (!mixJoined)
+                    {
+                        mixJoined = true;
+                        if (mixCycleSeen == deviceClock->mixCycle)
+                        {
+                            ++deviceClock->mixCycle;
+                            for (int c = 0; c < juce::jmin(numOutputs, (int)MainComponent::DeviceClock::mixChannels); ++c)
+                                juce::FloatVectorOperations::clear(deviceClock->mix[c], numSamples);
+                        }
+                        mixCycleSeen = deviceClock->mixCycle;
+                    }
+                    float* acc = deviceClock->mix[channel];
+                    float* out = outputs[channel];
+                    for (int i = 0; i < numSamples; ++i)
+                    {
+                        const float before = acc[i];
+                        float sum = before + out[i];
+                        const float a = std::abs(sum);
+                        if (a > sumPeak) sumPeak = a;
+                        if (a > 0.98f)
+                        {
+                            const float over = a - 0.98f;
+                            const float y = juce::jmin(1.0f, 0.98f + over / (1.0f + over * 50.0f));
+                            sum = sum < 0.0f ? -y : y;
+                            out[i] = sum - before;
+                        }
+                        else if (!std::isfinite(sum)) { sum = before; out[i] = 0.0f; }
+                        acc[i] = sum;
+                    }
+                }
                 // The discontinuity detector on the driver's buffer (0.8.226): a click
                 // that reaches the card is counted here whatever made it.
                 if (detect && SamplerEngine::outputEdgeJump(outputs[channel], numSamples, edge[channel])) ++jumps;
             }
         if (jumps > 0) edgeJumps.fetch_add(jumps, std::memory_order_relaxed);
+        if (sumPeak > 0.0f) owner.engine.reportOutputPeak(sumPeak, sumPeak > 0.98f);
         // Level evidence for the activity log: which device really carries audio.
         float known = statPeak.load(std::memory_order_relaxed);
         while (peak > known && !statPeak.compare_exchange_weak(known, peak, std::memory_order_relaxed)) {}
@@ -1042,6 +1080,7 @@ private:
     bool countedAggregated = false;   // this route counts in owner.aggregatedRoutesRunning (0.8.148)
     juce::AudioIODevice* lastDevice = nullptr;   // identity only, never dereferenced
     MainComponent::DeviceClock* deviceClock = nullptr;   // the clock of the device this route plays through
+    uint32_t mixCycleSeen = 0;                           // 0.9.99: the device's mix cycle this route last added to (device thread)
     juce::AudioBuffer<float> scratch;
     float outputGain = 1.0f;   // audio thread only: the level gliding towards owner.outputGainTarget
     // Output discontinuity detector on what goes to the driver (0.8.226,
@@ -17672,7 +17711,6 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
         { &stopListButton, 120, "stopList", "Stop List", true },
         { &guidedTourButton, 115, "guidedTour", "Guided tour", true },   // shown on a teaching organ only (0.8.206; isHeaderButtonShown)
-        { &audioRoutingButton, 130, "audioRouting", "Audio routing", true },   // 0.9.79 (#236)
         { &messagesButton, 130, "messages", "Messages", true },   // shown while messages are unread (0.9.39; isHeaderButtonShown)
         { &couplersButton, 125, "couplers", "Couplers", true }, { &temperamentsButton, 145, "temperaments", "Temperaments", true },
         { &toggleAllVoicingButton, 145, "voicing", "Hide/Show all voicing", true },
@@ -17682,6 +17720,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
         { &mergeStopsButton, 140, "stopMerging", "Stop-Merging", false },
         { &loadStopSettingsButton, 140, "loadVoicing", "Load Voicing", false },
         { &saveStopSettingsButton, 140, "saveVoicing", "Save Voicing", false },
+        { &audioRoutingButton, 130, "audioRouting", "Audio routing", true },   // 0.9.79 (#236); 0.9.99: right before Load Configuration (the user)
         { &loadConfigurationButton, 170, "loadConfiguration", "Load Configuration", true },
         { &saveConfigurationButton, 170, "saveConfiguration", "Save Configuration", true },
         { &configurationEditorButton, 175, "configurationEditor", "Configuration Editor", true },

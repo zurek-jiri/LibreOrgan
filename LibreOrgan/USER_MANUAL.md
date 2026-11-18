@@ -469,11 +469,12 @@ difference: a chord held through the crescendo never restarts.
 The sliders of *Configuration Editor > Global sound* can each be shown on the
 main panel (the checkbox beside them in the editor); all are MIDI-learnable.
 The polyphony display begins with the **audio meter**: a vertical bargraph of
-the highest sample of every audio route and device, measured before the
-limiter (green to -12 dB, orange to -3 dB, red while the limiter works), and
+the highest sample that goes to a sound card - the sum of all routes playing
+into the same output - measured before the limiter (green to -12 dB, orange
+to -3 dB, red while the limiter works), and
 the *CLIP* dot above it, which stays lit after a clip until you click it. The
-limiter (the safety clip of every route) softens everything above -0.2 dBFS,
-so the driver never gets more than 0 dBFS - when the dot lights, lower the
+limiter (on every route and on the sum of the routes of a card's output)
+softens everything above -0.2 dBFS, so the card never gets more than 0 dBFS - when the dot lights, lower the
 master or the division volumes. Then the voices sounding now (*NOW*), the most at once
 over the last seconds (*PEAK*), the *DSP* load (the time the busiest audio
 thread needed for its last block, as a share of the block; above 100 % the
