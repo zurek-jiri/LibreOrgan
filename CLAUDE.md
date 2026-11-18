@@ -4132,6 +4132,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   switched ON it loads. NOT TESTED: Windows, macOS/AU, Waves, a plug-in that really hangs its scan, a plug-in with
   latency (none of the Zam set reports any), the trip. Reaper's own plug-ins on this box are VST2 (.vst.so) - not
   hosted. Design left open: a search field in the "+" list (a menu by maker for now), per-route plug-ins.
+  0.9.101, THE USER'S FIRST TRY OF THE PLUG-INS (18 Nov 2026, "Kurva? co děláš?"): (1) THE ARRANGE MODES COULD NOT
+  BE ENTERED by him (no "Menu:" line in his whole session) - I had driven them by hooks alone, and Wayland has no
+  tool to send a real mouse event (no xdotool/ydotool): SAY SO when a gesture is untested. Now: a top-bar button
+  held 2 s (`headerPressed` watched by the 25 ms timer, `LeftOnlyTextButton::swallowRelease` makes the release no
+  click) or a right-click in the bar's FREE space (`showHeaderMenu`, MainComponent::mouseDown with eventComponent
+  == this and y < 62) enters the bar's arrange mode; in the Effects dialog a chain row held 2 s
+  (`RightClickButton::downSinceMs` watched by the dialog's 100 ms timer) or a right-click anywhere in the chain
+  column (EffectsContent::mouseDown) opens it; both menus log "Menu: the top bar" / "Menu: the effects chain".
+  STILL NOT TRIED BY A REAL MOUSE. (2) "!3" WHILE ADDING PLUG-INS = Output discontinuities (not DSP dropouts), three
+  causes: the chain's first block rendered the voices at unity while their gain GLIDES inside the block (now the
+  voices keep master x volume and the chain divides it off: `scaleRoute(1 / outputGain)`); a plug-in switched in
+  or out at once (now `RoutePluginStage::wet` glides 60 ms against the dry sound after 100 ms of unheard warm-up,
+  `warmSamples`; removePlugin sets the stages off and rebuilds 250 ms later); setStateInformation on the sister
+  instances at every knob turn (now `syncPluginState(..., withState)` copies the PARAMETERS ten times a second
+  while the editor is open, the whole state only for a plug-in without parameters). Measured: add / off / on /
+  remove under a held note = 0 discontinuities (2 each before). ZamTube costs 650 us per block and route.
+  (3) Editor: the section "Plug-ins (VST3)" stands after Advanced global audio (before Console); the folders are a
+  multi-line field "Plug-in folders (one per line)" + "Plug-in folders: add one"; `showPluginSettings()` opens the
+  Editor AT the section (`editorSectionWanted`, the section unfolded). (4) The plug-in's window is centred on the
+  program's window and made its transient on Wayland (it came up on the primary display).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

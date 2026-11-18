@@ -404,9 +404,10 @@ the top bar when the program has something to say ([Messages](#91-messages)).
 
 Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and
 fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned
-button fires even when hidden). The order is yours: right-click a button,
-*Arrange the top bar*, drag the buttons to their places and click anywhere
-else to finish; *Top bar: back to the built-in order* undoes it.
+button fires even when hidden). The order is yours: hold a button down for
+two seconds - or right-click a button or the bar's free space and choose
+*Arrange the top bar* - then drag the buttons to their places and click
+anywhere else to finish; *Top bar: back to the built-in order* undoes it.
 
 - **PANIC** silences every sounding pipe.
 - **Record** records the stereo mix to a WAV file; click again to stop
@@ -1025,8 +1026,9 @@ switch is in the module's header): OFF, the sound passes untouched and every
 setting is kept. Right-click the switch to learn a MIDI control for it. A
 route's linked module shows the perspective's switch and is locked like its
 sliders. The order of *Volume*, *Channel separation* and *Equalizer* is
-yours: right-click the chain, *Arrange the chain*, drag a framed module to
-its place and click anywhere else to finish. *Division volume* stays first
+yours: hold a module down for two seconds - or right-click the chain and
+choose *Arrange the chain* - then drag a framed module to its place and
+click anywhere else to finish. *Division volume* stays first
 and the *IR reverb* last; the order belongs to the perspective and all its
 routes share it. *Reset* in a module's header and *Reset all
 effects* at the top put things back: a route's module is LINKED to the
@@ -1108,6 +1110,8 @@ organ against a faulty one is this:
   crashes there or does not answer is refused and never loaded;
 - a plug-in with latency delays every other route by the same amount, so the
   perspectives stay together;
+- a plug-in switched on or off, added or removed glides in and out (it works
+  unheard for a tenth of a second first), so the switch is no click;
 - a plug-in that needs more time than the audio buffer allows, block after
   block, is switched OFF and a message says so;
 - after a start that follows a crash with plug-ins loaded - or with **Shift**
@@ -2117,10 +2121,11 @@ Scans the refused files again and gives each 60 seconds - for a plug-in that
 is merely slow at its first start (a licence check, a large collection in
 one file).
 
-### Plug-in folders
+### Plug-in folders (one per line)
 
-The system's own plug-in folders are always searched. *Add folder...* adds
-one of yours; *Forget* removes the added ones. Press *Scan* afterwards.
+The system's own plug-in folders are always searched. Folders of your own go
+into this list, one per line - type them, or use *Add folder...* below it.
+Press *Scan* afterwards.
 
 # 9. Messages, the activity log, reporting a problem, licences
 

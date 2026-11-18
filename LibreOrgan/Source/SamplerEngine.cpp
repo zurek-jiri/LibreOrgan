@@ -7503,8 +7503,10 @@ struct SamplerEngine::Impl
         // 0.9.102: with a chain of plug-ins the voices are rendered at unity - the Volume is a stage of the chain
         // and the master volume follows the last stage.
         SamplerEngine::RouteChain* const chain = route.chain.load(std::memory_order_acquire);
-        const float outputGain = chain != nullptr ? 1.0f
-            : masterGain * (route.volumeOff.load(std::memory_order_relaxed) ? 1.0f : route.volumeGain.load(std::memory_order_relaxed));
+        // The voices are rendered with the master and the route volume as ever (their gain glides inside the block:
+        // rendering them at unity from one block to the next was a click when the first plug-in came). The chain
+        // below takes that gain off again, works at unity and puts the volume and the master where they belong.
+        const float outputGain = masterGain * (route.volumeOff.load(std::memory_order_relaxed) ? 1.0f : route.volumeGain.load(std::memory_order_relaxed));
 
         static thread_local BlockContext ctx;
         alignas(16) static thread_local float sink[RenderPool::kFrames];
@@ -7674,9 +7676,10 @@ struct SamplerEngine::Impl
                 if (ch >= 0 && ch < numOuts) juce::FloatVectorOperations::multiply(buffer.getWritePointer(ch), gain, totalSamples);
             }
         };
-        if (chain == nullptr) { applySeparation(); applyEq(); }
+        if (chain == nullptr || outputGain < 1.0e-6f) { applySeparation(); applyEq(); }   // (a route muted by its volume or the master: nothing for a plug-in to work on)
         else
         {
+            scaleRoute(1.0f / outputGain);
             // 0.9.102: the chain in the perspective's order. A plug-in works on each stereo pair of the route with an
             // instance of its own; its time is measured, and one that needs more than 80 % of the period twenty
             // blocks in a row is switched off (tripped) before it takes the sound of the whole organ down.
@@ -7689,7 +7692,22 @@ struct SamplerEngine::Impl
                 else if (stage.kind == 2) applyEq();
                 else if (auto* plugin = stage.plugin.get())
                 {
-                    if (plugin->off.load(std::memory_order_relaxed) || plugin->tripped.load(std::memory_order_relaxed)) continue;
+                    // Switched on or off (added, removed): the plug-in's sound glides in or out over this block against
+                    // the dry sound - a hard switch of a compressor or a saturator is a click (the user's "!3").
+                    const bool wantOn = !plugin->off.load(std::memory_order_relaxed) && !plugin->tripped.load(std::memory_order_relaxed);
+                    if (!wantOn && plugin->wet <= 0.0f) { plugin->warmSamples = 0; continue; }
+                    const float wetTarget = wantOn ? 1.0f : 0.0f;
+                    const double stageRate = juce::jmax(1000.0, route.sampleRate.load(std::memory_order_relaxed));
+                    const bool warming = wantOn && plugin->wet <= 0.0f && plugin->warmSamples < (int)(0.1 * stageRate);
+                    const bool glide = plugin->wet != wetTarget;
+                    constexpr int kDryChannels = 8;
+                    alignas(16) static thread_local float dry[kDryChannels][4096];
+                    const int dryCount = glide && totalSamples <= 4096 ? juce::jmin(kDryChannels, ctx.outCount) : 0;
+                    for (int ci = 0; ci < dryCount; ++ci)
+                    {
+                        const int ch = ctx.outChannels[ci];
+                        if (ch >= 0 && ch < numOuts) std::memcpy(dry[ci], buffer.getReadPointer(ch), sizeof(float) * (size_t)totalSamples);
+                    }
                     const int64_t startTicks = juce::Time::getHighResolutionTicks();
                     if (plugin->mono)
                         for (int ci = 0; ci < plugin->count && ci < ctx.outCount; ++ci)
@@ -7715,6 +7733,29 @@ struct SamplerEngine::Impl
                         noMidi.clear();
                         const juce::ScopedNoDenormals noDenormals;
                         plugin->processors[pair]->processBlock(view, noMidi);
+                    }
+                    if (glide)
+                    {
+                        // 60 ms from one to the other; while the plug-in warms up (its first 100 ms) the dry sound alone.
+                        const float from = plugin->wet;
+                        const float step = warming ? 0.0f : (wetTarget > from ? 1.0f : -1.0f) / (float)(0.06 * stageRate);
+                        float last = from;
+                        for (int ci = 0; ci < dryCount; ++ci)
+                        {
+                            const int ch = ctx.outChannels[ci];
+                            if (ch < 0 || ch >= numOuts) continue;
+                            float* data = buffer.getWritePointer(ch);
+                            float g = from;
+                            for (int i = 0; i < totalSamples; ++i)
+                            {
+                                data[i] = dry[ci][i] + (data[i] - dry[ci][i]) * g;
+                                g = juce::jlimit(0.0f, 1.0f, g + step);
+                            }
+                            last = g;
+                        }
+                        if (dryCount == 0) last = wetTarget;   // a block too long for the glide's buffer: switched at once
+                        plugin->wet = last;
+                        if (warming) plugin->warmSamples += totalSamples;
                     }
                     const int64_t ns = (int64_t)(1.0e9 * (double)(juce::Time::getHighResolutionTicks() - startTicks) / (double)juce::Time::getHighResolutionTicksPerSecond());
                     plugin->nsSum.fetch_add(ns, std::memory_order_relaxed);

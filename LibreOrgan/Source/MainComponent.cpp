@@ -5254,7 +5254,12 @@ void MainComponent::removePlugin(const juce::String& perspective, const juce::St
     if (p.plugins.size() == before) return;
     p.chain.removeString("vst:" + id);
     CrashHandler::note("Effects: a plug-in removed from the perspective " + perspective);
-    rebuildPluginChains();
+    // Its sound glides out first (the engine does that over one block when a stage goes off); the chains without
+    // it follow a moment later - taken out at once, a compressor or a saturator leaves with a click.
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr && live->stage != nullptr) live->stage->off.store(true);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(250, [safeThis] { if (safeThis != nullptr) safeThis->rebuildPluginChains(); });
     configurationDirty = true;
     saveSettings();
 }
@@ -5415,7 +5420,7 @@ void MainComponent::capturePluginStates()
 
 // The state of the instance whose editor the user works in (the first of the slot) to every sister instance - the
 // other pairs of its route and the other routes of the perspective: a perspective's plug-in is ONE setting.
-void MainComponent::syncPluginState(const juce::String& perspective, const juce::String& id)
+void MainComponent::syncPluginState(const juce::String& perspective, const juce::String& id, bool withState)
 {
     auto* slot = pluginSlot(perspective, id);
     if (slot == nullptr) return;
@@ -5423,18 +5428,35 @@ void MainComponent::syncPluginState(const juce::String& perspective, const juce:
     for (const auto& [key, live] : livePlugins)
         if (juce::String(key).startsWith(id + "|") && live != nullptr && !live->instances.empty()) { source = live->instances.front().get(); break; }
     if (source == nullptr) return;
+    // The PARAMETERS first, one by one: a plug-in glides a parameter that moves, while a whole state set anew
+    // jumps - on the sister instances that was a click at every turn of a knob (the user's "!3").
+    const auto& from = source->getParameters();
+    int moved = 0;
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr)
+            for (const auto& instance : live->instances)
+            {
+                if (instance.get() == source) continue;
+                const auto& to = instance->getParameters();
+                if (to.size() != from.size()) continue;
+                for (int i = 0; i < from.size(); ++i)
+                    if (std::abs(to[i]->getValue() - from[i]->getValue()) > 1.0e-6f) { to[i]->setValue(from[i]->getValue()); ++moved; }
+            }
+    if (!withState) return;
     juce::MemoryBlock state;
     source->getStateInformation(state);
     if (state.getSize() == 0 || state == slot->state) return;
     slot->state = state;
+    // The whole state only to instances of a plug-in that shows no parameters (nothing else can carry its setting).
     int copies = 0;
-    for (const auto& [key, live] : livePlugins)
-        if (juce::String(key).startsWith(id + "|") && live != nullptr)
-            for (const auto& instance : live->instances)
-                if (instance.get() != source) { instance->setStateInformation(state.getData(), (int)state.getSize()); ++copies; }
+    if (from.isEmpty())
+        for (const auto& [key, live] : livePlugins)
+            if (juce::String(key).startsWith(id + "|") && live != nullptr)
+                for (const auto& instance : live->instances)
+                    if (instance.get() != source) { instance->setStateInformation(state.getData(), (int)state.getSize()); ++copies; }
     configurationDirty = true;
     saveSettings();
-    if (copies > 0) CrashHandler::note("Effects: the plug-in " + slot->description.name + " of " + perspective + " - its setting copied to " + juce::String(copies) + " more instance(s)");
+    juce::ignoreUnused(moved, copies);
 }
 
 namespace
@@ -5481,7 +5503,23 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
         });
     });
     window->getProperties().set("pluginPerspective", perspective);
+    // On the display of the program's window, centred over it (the user: it came up on the primary display).
+    if (auto* top = getTopLevelComponent())
+        window->setCentrePosition(top->getScreenBounds().getCentre());
     window->setVisible(true);
+   #if JUCE_LINUX
+    // A Wayland desktop places the window itself: as a transient of the main window it is mapped centred on it
+    // (the peer alone is unmapped and mapped again - see placeDialog).
+    if (LinuxWindowPlacement::waylandSession())
+        if (auto* top = getTopLevelComponent(); top != nullptr && top->getPeer() != nullptr && window->getPeer() != nullptr)
+        {
+            auto* peer = window->getPeer();
+            peer->setVisible(false);
+            LinuxWindowPlacement::setTransientFor((unsigned long)(juce::pointer_sized_uint)peer->getNativeHandle(),
+                                                  (unsigned long)(juce::pointer_sized_uint)top->getPeer()->getNativeHandle());
+            peer->setVisible(true);
+        }
+   #endif
     window->toFront(true);
     pluginWindows[id] = std::move(window);
     CrashHandler::note("Effects: the editor of " + slot->description.name + " opened");
@@ -18384,6 +18422,14 @@ void MainComponent::startPluginScan(bool everything, int secondsPerFile, bool re
     refreshConfigurationEditor();
 }
 
+// The Configuration Editor opened at its plug-in section (unfolded).
+void MainComponent::showPluginSettings()
+{
+    configEditorCollapsed["Plug-ins (VST3)"] = false;
+    editorSectionWanted = "Plug-ins (VST3)";
+    showConfigurationEditor();
+}
+
 void MainComponent::showPluginList()
 {
     juce::String text;
@@ -18401,6 +18447,22 @@ void MainComponent::showPluginList()
     text << "\nSearched: " << PluginHost::defaultFolders().joinIntoString("; ");
     if (!pluginFolders.isEmpty()) text << "; added: " << pluginFolders.joinIntoString("; ");
     showLongMessage("Plug-ins", text);
+}
+
+void MainComponent::showHeaderMenu()
+{
+    CrashHandler::note("Menu: the top bar");
+    juce::PopupMenu menu;
+    menu.addItem(1, "Arrange the top bar (drag the buttons to their places)...");
+    menu.addItem(2, "Top bar: back to the built-in order", !headerButtonOrder.isEmpty());
+    menu.addSeparator();
+    menu.addItem(3, "Manual: Top bar buttons");
+    menu.showMenuAsync(menuOptionsAtMouse(this), [this](int result)
+    {
+        if (result == 1) beginHeaderArranging();
+        else if (result == 2) { headerButtonOrder.clear(); saveSettings(); resized(); CrashHandler::note("Top bar: the built-in order again"); }
+        else if (result == 3) showManualSection("Top bar buttons");
+    });
 }
 
 void MainComponent::beginHeaderArranging()
@@ -28452,6 +28514,24 @@ void MainComponent::timerCallback()
         audioHealthDivider = 0;
         checkAudioCallbackHealth();
     }
+    // 0.9.102: while a plug-in's editor is open its knobs reach the sister instances ten times a second.
+    if (!pluginWindows.empty() && ++pluginSyncDivider >= 4)
+    {
+        pluginSyncDivider = 0;
+        for (const auto& [id, window] : pluginWindows)
+            if (window != nullptr) syncPluginState(window->getProperties()["pluginPerspective"].toString(), id, false);
+    }
+    // 0.9.102: a top-bar button held down for two seconds = the arrange mode of the bar; its release is no click.
+    if (headerPressed != nullptr)
+    {
+        if (!headerPressed->isDown()) headerPressed = nullptr;
+        else if (juce::Time::getMillisecondCounterHiRes() - headerPressedAtMs >= 2000.0)
+        {
+            if (auto* button = dynamic_cast<LeftOnlyTextButton*>(headerPressed.getComponent())) button->swallowRelease = true;
+            headerPressed = nullptr;
+            beginHeaderArranging();
+        }
+    }
     if (++dialogBoundsDivider >= 10)
     {
         dialogBoundsDivider = 0;
@@ -28521,7 +28601,16 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
             break;
         }
     if (event.eventComponent == &bankLabel) { if (!event.mods.isPopupMenu()) beginBankEdit(); return; }   // 0.9.81: a click opens the number + note boxes
-    if (!event.mods.isPopupMenu()) return;
+    // 0.9.102 (the user: "mělo by to fungovat na 2 s stisk jako rejstříky, i při pravém tlačítku myši někde v
+    // prostoru horního řádku"): a top-bar button held for two seconds enters the arrange mode of the bar (the
+    // timer watches it), and a right-click in the bar's free space opens its menu.
+    if (!event.mods.isPopupMenu())
+    {
+        for (const auto& item : headerButtons())
+            if (item.button == event.eventComponent) { headerPressed = item.button; headerPressedAtMs = juce::Time::getMillisecondCounterHiRes(); }
+        return;
+    }
+    if (event.eventComponent == this && event.y < 16 + 40 + 6) { showHeaderMenu(); return; }
     const auto target = targetForComponent(event.eventComponent);
     if (target.isNotEmpty()) showMidiLearnMenu(target);
 }
@@ -32448,10 +32537,14 @@ void MainComponent::showConfigurationEditor()
             addAndMakeVisible(viewport);
             // ORGAN_TEST_EDITOR_SECTION=<section title> (tests, 0.9.93): the editor scrolls to that section's header
             // (the dialog snapshot pictures the window, and a division's section lies far below the first page).
-            if (const char* env = std::getenv("ORGAN_TEST_EDITOR_SECTION"))
+            // 0.9.102: owner.editorSectionWanted - the Editor asked for from elsewhere at one of its sections.
+            const char* env = std::getenv("ORGAN_TEST_EDITOR_SECTION");
+            const juce::String sectionWanted = owner.editorSectionWanted.isNotEmpty() ? owner.editorSectionWanted : env != nullptr ? juce::String::fromUTF8(env) : juce::String();
+            owner.editorSectionWanted.clear();
+            if (sectionWanted.isNotEmpty())
             {
                 juce::Component::SafePointer<Editor> safeThis(this);
-                juce::Timer::callAfterDelay(400, [safeThis, title = juce::String::fromUTF8(env)]
+                juce::Timer::callAfterDelay(400, [safeThis, title = sectionWanted]
                 {
                     if (safeThis == nullptr) return;
                     for (const auto& row : safeThis->rows)
@@ -33485,7 +33578,48 @@ void MainComponent::showConfigurationEditor()
                    "files already built there, so a cache on a big drive beside the samples costs nothing in time.",
                 "Filled pipes cache folder");
 
-            //---------------------------------------------------------------- Console
+            //---------------------------------------------------------------- Plug-ins (0.9.102), then the Console
+            addSection("Plug-ins (VST3)", true, true);
+            {
+                const auto found = PluginHost::effects().size();
+                const auto refused = PluginHost::refusedLines().size();
+                const bool scanning = PluginHost::scanner().running();
+                addButtonWithNote("Plug-ins", scanning ? "Scanning..." : "Scan", scanning ? PluginHost::scanner().progress()
+                        : juce::String(found) + " effect plug-in(s) found, " + juce::String(refused) + " file(s) refused", [&o] { o.startPluginScan(false, 8, false); },
+                    "Looks for VST3 plug-ins (Audio Units too on macOS) in the system's folders and the ones added below, behind the playing - nothing waits for it. "
+                    "Each plug-in file is tried in a process of its own: one that crashes there, or does not answer within 8 seconds, is refused and never loaded into the program. "
+                    "A file is scanned again only when it changed. The effects found are offered by the + of an Effects chain.",
+                    "Plug-ins");
+                addButton("Plug-ins: the list", "Show", [&o] { o.showPluginList(); },
+                    "Every effect plug-in found, by maker, and every plug-in file refused with the reason.", "Plug-ins: the list");
+                addButton("Plug-ins: the refused once more", "Try again", [&o] { o.startPluginScan(false, 60, true); },
+                    "Scans the refused plug-in files again and gives each of them 60 seconds - for a plug-in that is merely slow at its first start (a licence check, a large collection in one file).",
+                    "Plug-ins: the refused once more");
+                addText("Plug-in folders (one per line)", o.pluginFolders.joinIntoString("\n"), true,
+                    [&o](const juce::String& text)
+                    {
+                        juce::StringArray folders;
+                        folders.addLines(text);
+                        folders.trim(); folders.removeEmptyStrings(); folders.removeDuplicates(true);
+                        o.pluginFolders = folders;
+                        o.saveSettings();
+                    }, "Folders of your own with plug-ins, one per line - searched beside the system's own, which are always searched: "
+                       + PluginHost::defaultFolders().joinIntoString("; ") + ". Press Scan afterwards.", "Plug-in folders (one per line)");
+                addButton("Plug-in folders: add one", "Add folder...", [&o]
+                    {
+                        o.pluginFolderChooser = std::make_unique<juce::FileChooser>("A folder with VST3 plug-ins", juce::File());
+                        juce::Component::SafePointer<MainComponent> safeThis(&o);
+                        o.pluginFolderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                            [safeThis](const juce::FileChooser& chooser)
+                            {
+                                if (safeThis == nullptr || !chooser.getResult().isDirectory()) return;
+                                safeThis->pluginFolders.addIfNotAlreadyThere(chooser.getResult().getFullPathName());
+                                safeThis->saveSettings();
+                                safeThis->refreshConfigurationEditor();
+                            });
+                    }, "Adds a folder to the list above through the folder dialog.", "Plug-in folders (one per line)");
+            }
+
             addSection("Console");
             {
                 {
@@ -33666,41 +33800,6 @@ void MainComponent::showConfigurationEditor()
                         "Shows or hides this button in the top bar of the main window; the button beside the switch does the same "
                         "as the one in the top bar - without having to show it there.", "Top bar");
                 }
-            }
-
-            //---------------------------------------------------------------- Plug-ins (0.9.102)
-            addSection("Plug-ins (VST3)", true, true);
-            {
-                const auto found = PluginHost::effects().size();
-                const auto refused = PluginHost::refusedLines().size();
-                const bool scanning = PluginHost::scanner().running();
-                addButtonWithNote("Plug-ins", scanning ? "Scanning..." : "Scan", scanning ? PluginHost::scanner().progress()
-                        : juce::String(found) + " effect plug-in(s) found, " + juce::String(refused) + " file(s) refused", [&o] { o.startPluginScan(false, 8, false); },
-                    "Looks for VST3 plug-ins (Audio Units too on macOS) in the system's folders and the ones added below, behind the playing - nothing waits for it. "
-                    "Each plug-in file is tried in a process of its own: one that crashes there, or does not answer within 8 seconds, is refused and never loaded into the program. "
-                    "A file is scanned again only when it changed. The effects found are offered by the + of an Effects chain.",
-                    "Plug-ins");
-                addButton("Plug-ins: the list", "Show", [&o] { o.showPluginList(); },
-                    "Every effect plug-in found, by maker, and every plug-in file refused with the reason.", "Plug-ins: the list");
-                addButton("Plug-ins: the refused once more", "Try again", [&o] { o.startPluginScan(false, 60, true); },
-                    "Scans the refused plug-in files again and gives each of them 60 seconds - for a plug-in that is merely slow at its first start (a licence check, a large collection in one file).",
-                    "Plug-ins: the refused once more");
-                addButtonWithNote("Plug-in folders", "Add folder...", o.pluginFolders.isEmpty() ? juce::String("the system's folders alone") : o.pluginFolders.joinIntoString("; "), [&o]
-                    {
-                        o.pluginFolderChooser = std::make_unique<juce::FileChooser>("A folder with VST3 plug-ins", juce::File());
-                        juce::Component::SafePointer<MainComponent> safeThis(&o);
-                        o.pluginFolderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
-                            [safeThis](const juce::FileChooser& chooser)
-                            {
-                                if (safeThis == nullptr || !chooser.getResult().isDirectory()) return;
-                                safeThis->pluginFolders.addIfNotAlreadyThere(chooser.getResult().getFullPathName());
-                                safeThis->saveSettings();
-                                safeThis->refreshConfigurationEditor();
-                            });
-                    }, "The system's own plug-in folders are always searched: " + PluginHost::defaultFolders().joinIntoString("; ")
-                       + ". Add a folder when plug-ins live elsewhere; then press Scan.", "Plug-in folders");
-                addButton("Plug-in folders: forget the added ones", "Forget", [&o] { o.pluginFolders.clear(); o.saveSettings(); o.refreshConfigurationEditor(); },
-                    "Removes the folders you added; the system's folders stay.", "Plug-in folders");
             }
 
             //---------------------------------------------------------------- Patterns

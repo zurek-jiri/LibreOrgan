@@ -1147,6 +1147,8 @@ public:
         std::atomic<bool> tripped{ false };           // switched off by the engine: it took too long, block after block
         std::atomic<int64_t> nsSum{ 0 }, blocks{ 0 }, nsMax{ 0 };   // its time per block, for the display
         int slowRun = 0;                              // audio thread: blocks in a row beyond 80 % of the period
+        float wet = 0.0f;                             // audio thread: 0 = the dry sound, 1 = the plug-in's - glides over 60 ms when it is switched (no click)
+        int warmSamples = 0;                          // audio thread: a plug-in switched on works unheard for 100 ms first (its own start is a transient)
     };
     // The whole chain of a route in its order: 0 = Volume, 1 = Channel separation, 2 = Equalizer, 3 = a plug-in.
     // With a chain the route's voices are rendered at unity, the Volume stands where the chain puts it and the

@@ -198,6 +198,9 @@ private:
     std::unique_ptr<juce::Component> headerArranger;
     std::vector<HeaderButtonInfo> builtInHeaderButtons();
     void beginHeaderArranging();
+    void showHeaderMenu();                                   // the right-click menu of the top bar's free space
+    juce::Component::SafePointer<juce::Button> headerPressed;   // a top-bar button held down (2 s = the arrange mode)
+    double headerPressedAtMs = 0.0;
     void moveHeaderButton(const juce::String& key, const juce::String& beforeKey);   // beforeKey empty = to the end
 
     static constexpr double kDefaultMasterDb = -18.0;   // the master level a fresh start, a reset and a configuration without one get (0.8.128; -20 before)
@@ -505,6 +508,7 @@ private:
     std::map<juce::String, std::unique_ptr<juce::DocumentWindow>> pluginWindows;   // by slot id; the editor shown belongs to the slot's first instance
     std::set<std::string> routesWithChain;
     bool pluginSafeStartSaid = false;
+    int pluginSyncDivider = 0;
     PluginSlot* pluginSlot(const juce::String& perspective, const juce::String& id);
     juce::String addPlugin(const juce::String& perspective, const juce::PluginDescription& description);   // returns the slot's id
     void removePlugin(const juce::String& perspective, const juce::String& id);
@@ -514,7 +518,7 @@ private:
     juce::String pluginStatus(const juce::String& perspective, const juce::String& id);   // loaded on N routes, latency, time per block - or why not
     void rebuildPluginChains();           // the instances and every route's chain, from the model
     void capturePluginStates();           // the instances' states into the slots (before a save)
-    void syncPluginState(const juce::String& perspective, const juce::String& id);   // the edited instance's state to its sisters on the other routes
+    void syncPluginState(const juce::String& perspective, const juce::String& id, bool withState = true);   // withState false: the parameters alone (ten times a second while its editor is open)   // the edited instance's state to its sisters on the other routes
     void watchPlugins();                  // once a second: a plug-in the engine switched off, a route whose rate changed, open editors
     static juce::var pluginsToVar(const std::vector<PluginSlot>& plugins);
     static void pluginsFromVar(const juce::var& v, std::vector<PluginSlot>& plugins);
@@ -664,6 +668,8 @@ private:
     std::unique_ptr<juce::FileChooser> pluginFolderChooser;
     void startPluginScan(bool everything, int secondsPerFile, bool refusedOnly);
     void showPluginList();
+    void showPluginSettings();
+    juce::String editorSectionWanted;   // the section the Configuration Editor scrolls to when it opens next
     void showLongMessage(const juce::String& title, const juce::String& body);   // a message that may not fit an alert box: read-only text with scrollbars and OK
     juce::File writeProblemReport(const juce::String& what, const juce::String& steps,
         const juce::Array<juce::File>& extraShots, juce::URL& issueUrl);   // 0.9.96: ONE file in the folder, logs.zip - the window pictures (always taken) inside it

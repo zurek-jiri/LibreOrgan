@@ -412,9 +412,10 @@ static const char* const kManualText_part2 =
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
-    "button fires even when hidden). The order is yours: right-click a button,\n"
-    "*Arrange the top bar*, drag the buttons to their places and click anywhere\n"
-    "else to finish; *Top bar: back to the built-in order* undoes it.\n"
+    "button fires even when hidden). The order is yours: hold a button down for\n"
+    "two seconds - or right-click a button or the bar's free space and choose\n"
+    "*Arrange the top bar* - then drag the buttons to their places and click\n"
+    "anywhere else to finish; *Top bar: back to the built-in order* undoes it.\n"
     "\n"
     "- **PANIC** silences every sounding pipe.\n"
     "- **Record** records the stereo mix to a WAV file; click again to stop\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "### Alias\n"
     "\n"
     "The caption of the button. *Automatic* shows the folder name; type any text\n"
-    "to show that instead (an alias without a footage gets the stop's footage\n"
     ;
 static const char* const kManualText_part3 =
+    "to show that instead (an alias without a footage gets the stop's footage\n"
     "appended; a footage typed into the alias is kept as typed, on a transmission\n"
     "too). The alias is only a caption: saved states, combinations and MIDI\n"
     "bindings use the stop's real name.\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "  folder; a cell dragged onto another takes or swaps. The path shows in a\n"
     "  tip; an orange cell is a folder not on this computer.\n"
     "- **Transmissions:** the cell shows where the stop's transmissions go; click\n"
-    "  it to add one into any division or to remove one. They act at once, no\n"
     ;
 static const char* const kManualText_part4 =
+    "  it to add one into any division or to remove one. They act at once, no\n"
     "  Apply needed. *Show Trsm.* lists every transmission as a grey row of the\n"
     "  division it plays in.\n"
     "- **Add stop...** adds an empty stop folder or one of the ready-made stops no\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "\n"
     "- **Save routing...** writes the cables (sound cards, outputs, rate, buffer)\n"
     "  and the effects of every route into one file.\n"
-    "- **Load routing...** asks once: **Load cables only** (the usual choice) or\n"
     ;
 static const char* const kManualText_part5 =
+    "- **Load routing...** asks once: **Load cables only** (the usual choice) or\n"
     "  **Load cables and effects**. The effects carry the volumes of the divisions\n"
     "  and perspectives - on another organ they overwrite its balance, and the box\n"
     "  says so in a warning; it names the organ the file was saved from.\n"
@@ -1039,8 +1040,9 @@ static const char* const kManualText_part5 =
     "setting is kept. Right-click the switch to learn a MIDI control for it. A\n"
     "route's linked module shows the perspective's switch and is locked like its\n"
     "sliders. The order of *Volume*, *Channel separation* and *Equalizer* is\n"
-    "yours: right-click the chain, *Arrange the chain*, drag a framed module to\n"
-    "its place and click anywhere else to finish. *Division volume* stays first\n"
+    "yours: hold a module down for two seconds - or right-click the chain and\n"
+    "choose *Arrange the chain* - then drag a framed module to its place and\n"
+    "click anywhere else to finish. *Division volume* stays first\n"
     "and the *IR reverb* last; the order belongs to the perspective and all its\n"
     "routes share it. *Reset* in a module's header and *Reset all\n"
     "effects* at the top put things back: a route's module is LINKED to the\n"
@@ -1122,6 +1124,8 @@ static const char* const kManualText_part5 =
     "  crashes there or does not answer is refused and never loaded;\n"
     "- a plug-in with latency delays every other route by the same amount, so the\n"
     "  perspectives stay together;\n"
+    "- a plug-in switched on or off, added or removed glides in and out (it works\n"
+    "  unheard for a tenth of a second first), so the switch is no click;\n"
     "- a plug-in that needs more time than the audio buffer allows, block after\n"
     "  block, is switched OFF and a message says so;\n"
     "- after a start that follows a crash with plug-ins loaded - or with **Shift**\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
     "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
+    ;
+static const char* const kManualText_part6 =
     "dropped on it waits until the card is free.\n"
     "\n"
     "### Audio on macOS\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "One driver, CoreAudio. Every audio device of the system is listed; several\n"
     "cards are joined into one with *Audio MIDI Setup* (Utilities), which the\n"
     "program then plays through like any other device. The audio threads are\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "\n"
     "Settings of this computer: a portable configuration carries none of them.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "### This computer\n"
     "\n"
     "The processor, its physical cores and logical CPUs, the RAM. Information.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Render threads\n"
     "\n"
     "How many threads render pipes for ASIO and Windows Audio routes, the driver's\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "capped at 12 dB; at 0 dB they cost nothing.\n"
     "\n"
     "### Wind: harmonic filter\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "The same shelf following the wind sag: this much loss at the full sag\n"
     "(default 4 dB).\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Wind: volume change per cent of sag\n"
     "\n"
     "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "its sustain. Off (default): at its own level.\n"
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "On (default): every shifted copy is brought to the loudness of its source.\n"
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "On by default: the copies are written to files and read back at the next\n"
     "load - seconds instead of minutes. [The cache](#73-the-cache).\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "### Bass octave layout follows MIDI transposition\n"
     "\n"
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
+    ;
+static const char* const kManualText_part10 =
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### MIDI transposition\n"
     "\n"
@@ -2141,10 +2145,11 @@ static const char* const kManualText_part10 =
     "is merely slow at its first start (a licence check, a large collection in\n"
     "one file).\n"
     "\n"
-    "### Plug-in folders\n"
+    "### Plug-in folders (one per line)\n"
     "\n"
-    "The system's own plug-in folders are always searched. *Add folder...* adds\n"
-    "one of yours; *Forget* removes the added ones. Press *Scan* afterwards.\n"
+    "The system's own plug-in folders are always searched. Folders of your own go\n"
+    "into this list, one per line - type them, or use *Add folder...* below it.\n"
+    "Press *Scan* afterwards.\n"
     "\n"
     "# 9. Messages, the activity log, reporting a problem, licences\n"
     "\n"
@@ -2217,13 +2222,13 @@ static const char* const kManualText_part10 =
     "chunk play as they are: no retuning, no temperament, the footage from the\n"
     "folder name only.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "File names: the MIDI key number first, optionally a note name (036.wav,\n"
     "036-C.wav, 059-B3.wav). Several files of one key are round-robin variants\n"
     "played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);\n"
     "a two- or three-digit suffix after an underscore at the very end is a\n"
     "velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release\n"
-    ;
-static const char* const kManualText_part11 =
     "folders: `rel500` (also `rel_0500`, `rel-500`, `release 500ms`) for keys held\n"
     "up to 500 ms, `rel1500` up to 1.5 s, plain `rel` (= `rel99999`) for the rest,\n"
     "files named like the attacks.\n"
@@ -2419,13 +2424,13 @@ static const char* const kManualText_part11 =
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"
     "*Measurement limit of DSP power* and the driver never called late; the first\n"
+    ;
+static const char* const kManualText_part12 =
     "breakup narrowed down by keys, by rate and finally by the share of stops\n"
     "engaged, so that the result is what the computer renders, not the last\n"
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"
     "keys at the fastest rate produce no more voices and the sound stays clean,\n"
     "the organ itself is the limit. Afterwards the level glides up at 26 dB/s\n"
-    ;
-static const char* const kManualText_part12 =
     "after a short hold and the new limit takes effect once the tails are gone.\n"
     "\n"
     "The report's *Advanced analysis*: the audio routes as they ran, the CPU of\n"

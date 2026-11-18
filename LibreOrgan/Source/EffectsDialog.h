@@ -223,8 +223,23 @@ private:
     {
         using juce::TextButton::TextButton;
         std::function<void()> onRightClick;
-        void mouseDown(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) { if (onRightClick) onRightClick(); return; } juce::TextButton::mouseDown(e); }
-        void mouseUp(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; juce::TextButton::mouseUp(e); }
+        double downSinceMs = 0.0;      // a left press began then (the dialog's timer makes two seconds of it the arrange mode)
+        bool swallowRelease = false;   // ... and its release is then no click
+        bool rightPress = false;
+        void mouseDown(const juce::MouseEvent& e) override
+        {
+            rightPress = e.mods.isPopupMenu() || e.mods.isRightButtonDown();
+            if (rightPress) { if (onRightClick) onRightClick(); return; }
+            downSinceMs = juce::Time::getMillisecondCounterHiRes();
+            juce::TextButton::mouseDown(e);
+        }
+        void mouseUp(const juce::MouseEvent& e) override
+        {
+            downSinceMs = 0.0;
+            if (rightPress) { rightPress = false; return; }
+            if (swallowRelease) { swallowRelease = false; setState(juce::Button::buttonNormal); return; }
+            juce::TextButton::mouseUp(e);
+        }
     };
     static const char* moduleKey(Module m) { return m == Module::Volume ? "volume" : m == Module::Separation ? "separation" : m == Module::Eq ? "eq" : "ir"; }
     juce::String switchTarget(Module m) const { return "fxon:" + juce::String(manual) + ":" + moduleKey(m) + ":" + perspective; }
@@ -316,7 +331,7 @@ private:
         {
             if (safeThis == nullptr) return;
             if (result == 2) safeThis->owner.startPluginScan(false, 8, false);
-            else if (result == 3) safeThis->owner.configurationEditorButton.triggerClick();
+            else if (result == 3) safeThis->owner.showPluginSettings();
             else if (result == 4) safeThis->owner.showManualSection("Plug-ins in the chain");
             else if (result >= 1000 && result - 1000 < effects.size())
             {
@@ -329,6 +344,7 @@ private:
     }
     void chainMenu()
     {
+        CrashHandler::note("Menu: the effects chain of " + perspective);
         juce::PopupMenu menu;
         menu.addItem(1, "Arrange the chain (drag the modules and plug-ins to their places)...");
         menu.addSeparator();
@@ -1051,5 +1067,23 @@ private:
             lockFor(Module::Ir, irPanel->header, { &irPanel->load, &irPanel->clear, &irPanel->wet, &irPanel->tones[0], &irPanel->tones[1], &irPanel->tones[2], &irPanel->tones[3], &irPanel->tones[4], &irPanel->tones[5] });
         }
     }
-    void timerCallback() override { refresh(); }
+    void timerCallback() override
+    {
+        refresh();
+        // 0.9.102 (the user: as the stops - "2 s stisk"): a chain row held down for two seconds enters the arrange mode.
+        if (!arranger.isVisible())
+            for (auto* b : chainButtons)
+                if (b->downSinceMs > 0.0 && b->isDown() && juce::Time::getMillisecondCounterHiRes() - b->downSinceMs >= 2000.0)
+                {
+                    b->swallowRelease = true;
+                    b->downSinceMs = 0.0;
+                    beginArranging();
+                    break;
+                }
+    }
+    // A right-click anywhere in the chain's column (beside the buttons too) opens the chain's menu.
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        if ((e.mods.isPopupMenu() || e.mods.isRightButtonDown()) && e.x < 12 + 214 + 8) chainMenu();
+    }
 };

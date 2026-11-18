@@ -187,9 +187,12 @@ public:
     }
     void mouseUp(const juce::MouseEvent& event) override
     {
+        // 0.9.102: a long press that started something else (the arrange mode of the top bar) is no click.
+        if (swallowRelease) { swallowRelease = false; acceptedLeftPress = false; setState(juce::Button::buttonNormal); return; }
         if (acceptedLeftPress) juce::TextButton::mouseUp(event);
         acceptedLeftPress = false;
     }
+    bool swallowRelease = false;
 private:
     bool acceptedLeftPress = false;
 };
