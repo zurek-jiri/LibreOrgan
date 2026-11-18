@@ -826,7 +826,8 @@ reload*. "default" is the route of folders without a perspective prefix.
 
 **The order of the perspectives** - the columns here, the boxes of every
 voicing row, the rows of Audio routing - is the order of the
-lines in *Perspective prefixes*, "default" first. **Drag a column header
+lines in *Perspective prefixes*, "default" first, the auxiliary route always
+last; every perspective has a line there. **Drag a column header
 left or right** to change it: the lines take the new order, saved with the
 configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.
@@ -967,8 +968,9 @@ channels of a route may be any number: the pipes are spread over them by key,
 so a chord spreads across the speakers like pipes across a windchest (a mono
 sample to one channel in turn, a stereo sample to a pair).
 
-**Every row** of *Organ out* ends with a small **meter** (one box, three
-parts: green = it sounds, yellow from -12 dB, red from -3 dB) and the **fx** button -
+**Every row** of *Organ out* ends with a small **meter** (one box, five
+parts on the large meter's scale: three green, orange from -9 dB, red only
+at a clip) and the **fx** button -
 grey while everything of it is default, orange when an effect is set or a
 module set apart; it opens the row's [Effects](#53-effects), a right-click
 on it resets them to the default. The cables take the primary colours first
@@ -1132,9 +1134,11 @@ in the Pro Audio profile appears with all its channels, the program connects
 its outputs itself, the buffer size and rate chosen in any JACK route are
 handed to PipeWire for every program) and **ALSA** (the plain driver; the
 desktop's stereo output or a card nothing else holds; *List unusable
-devices* in the tab lists everything regardless). A card the desktop uses
-as its system output is never released to ALSA: pick another one as the
-system output first.
+devices too*, beside the list of the other cards in the Audio routing, lists
+the held ones as well, dimmed - a cable dropped on one waits until the card
+is free). A card the desktop uses as its system output is never released to
+ALSA: pick another one as the system output first. MIDI devices are never
+listed among the sound cards.
 
 ### Audio on macOS
 

@@ -838,7 +838,8 @@ static const char* const kManualText_part4 =
     "\n"
     "**The order of the perspectives** - the columns here, the boxes of every\n"
     "voicing row, the rows of Audio routing - is the order of the\n"
-    "lines in *Perspective prefixes*, \"default\" first. **Drag a column header\n"
+    "lines in *Perspective prefixes*, \"default\" first, the auxiliary route always\n"
+    "last; every perspective has a line there. **Drag a column header\n"
     "left or right** to change it: the lines take the new order, saved with the\n"
     "configuration, and the voicing boxes and the routing rows follow at once;\n"
     "nothing is reloaded.\n"
@@ -979,8 +980,9 @@ static const char* const kManualText_part4 =
     "so a chord spreads across the speakers like pipes across a windchest (a mono\n"
     "sample to one channel in turn, a stereo sample to a pair).\n"
     "\n"
-    "**Every row** of *Organ out* ends with a small **meter** (one box, three\n"
-    "parts: green = it sounds, yellow from -12 dB, red from -3 dB) and the **fx** button -\n"
+    "**Every row** of *Organ out* ends with a small **meter** (one box, five\n"
+    "parts on the large meter's scale: three green, orange from -9 dB, red only\n"
+    "at a clip) and the **fx** button -\n"
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
     "on it resets them to the default. The cables take the primary colours first\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "  **Load cables and effects**. The effects carry the volumes of the divisions\n"
     "  and perspectives - on another organ they overwrite its balance, and the box\n"
     "  says so in a warning; it names the organ the file was saved from.\n"
-    "- **Use as default for new organs** makes these cables this computer's\n"
-    "  default. An organ that brings no audio of this computer - a published\n"
     ;
 static const char* const kManualText_part5 =
+    "- **Use as default for new organs** makes these cables this computer's\n"
+    "  default. An organ that brings no audio of this computer - a published\n"
     "  configuration, a Hauptwerk import, folders dropped on an empty console -\n"
     "  gets them by itself: the cables only, never the effects.\n"
     "\n"
@@ -1146,9 +1148,11 @@ static const char* const kManualText_part5 =
     "its outputs itself, the buffer size and rate chosen in any JACK route are\n"
     "handed to PipeWire for every program) and **ALSA** (the plain driver; the\n"
     "desktop's stereo output or a card nothing else holds; *List unusable\n"
-    "devices* in the tab lists everything regardless). A card the desktop uses\n"
-    "as its system output is never released to ALSA: pick another one as the\n"
-    "system output first.\n"
+    "devices too*, beside the list of the other cards in the Audio routing, lists\n"
+    "the held ones as well, dimmed - a cable dropped on one waits until the card\n"
+    "is free). A card the desktop uses as its system output is never released to\n"
+    "ALSA: pick another one as the system output first. MIDI devices are never\n"
+    "listed among the sound cards.\n"
     "\n"
     "### Audio on macOS\n"
     "\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
     "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
+    ;
+static const char* const kManualText_part6 =
     "only*, *Melody couplers: legato grace time*). *Button size* (small, normal,\n"
     "large) sets the size of every coupler button; it travels with the organ.\n"
     "\n"
     "The coupler grid under the division header is a cell grid like the stop\n"
-    ;
-static const char* const kManualText_part6 =
     "grid: every button the same size, each keeps its cell, free cells stay free.\n"
     "Right-click the grid for its menu (*Enter arrange mode*, *Couplers...*, the\n"
     "manual), or hold a coupler three seconds: the free cells appear dashed (a\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
+    ;
+static const char* const kManualText_part7 =
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
     "settings below ramp from velocity 1 to here.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Key velocity: fade-in at the lowest velocity\n"
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
-    ;
-static const char* const kManualText_part8 =
     "strike. [Velocity layers](#35-velocity-layers).\n"
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
     "### Load the last combinations file with the organ\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "On by default. The combinations file (all banks of pistons) last loaded or\n"
     "saved with this organ is read again once the organ is loaded, on top of the\n"
     "combinations the configuration carries. Off: the configuration's own\n"
-    ;
-static const char* const kManualText_part9 =
     "combinations only.\n"
     "\n"
     "### Glow: a pressed button and a dragged stop glow for a moment\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "### Tremulant phase drift between ranks\n"
     "\n"
     "0 to 360 degrees (default 260): with 0 every stop dips at once, with a large\n"
+    ;
+static const char* const kManualText_part10 =
     "value a full registration shimmers.\n"
     "\n"
     "### Wind: depth (maximum pitch sag)\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "How far the pitch sags with the wind at its lowest (0 to 150 cents, default\n"
     "15, the pedal 20); 0 switches the wind model off for this division. A stop\n"
     "draws air by the size of its pipes: a 16' twice an 8', a 32' three times, a\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "becomes the route volume, the median of the rest the stop volume, the\n"
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
+    ;
+static const char* const kManualText_part11 =
     "shown; the general crescendo (one stage per Hauptwerk combination \"Cresc...\",\n"
     "spread over our steps when more than 60); the stops' places on the jamb page\n"
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
     "carries, else the stop playing it straight over the whole division, else the\n"
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "two cores the device thread yields while it waits and the lanes take small\n"
     "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
+    ;
+static const char* const kManualText_part12 =
     "prints its speed.\n"
     "\n"
     "## 10.12 RAR archives: how they are read\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"

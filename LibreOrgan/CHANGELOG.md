@@ -12,6 +12,31 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.95] - 2026-11-18
+
+### Fixed
+- Linux (#242): the program froze for half a minute when cables were dragged
+  onto an ALSA card PipeWire still held (the same card had been playing
+  through JACK). The open waited up to seven seconds per division on the
+  window's thread; now it never waits - the route keeps the card and plays as
+  soon as the card is free (checked every 2 s). The route is no longer put
+  back on its old card behind the user's back.
+- Linux (#242): MIDI devices are never listed among the JACK sound cards
+  (*List unusable devices too* used to list the MIDI bridge as well).
+- Linux (#242): *List unusable devices too* works at once (the lists are read
+  again; it did nothing until the next start), the held cards it adds are
+  dimmed with the reason in their tooltip, and the switch stands beside the
+  list of the other cards (it lay over the help text). The lists are also
+  read again whenever the Audio routing opens - a card held at the start of
+  the program was missing until then.
+- The auxiliary route is always the last row of the Audio routing; every
+  perspective of an organ gets a line in *Perspective prefixes* (the name
+  alone when its folders carry no prefix), so its place in the order can be
+  set - "Front" of an organ whose perspectives are packages had none.
+- Audio routing (#243): the row meter has five parts on the large meter's
+  scale - three green, orange from -9 dB, red only at a clip (it went yellow
+  at -12 dB and red at -3 dB).
+
 ## [0.9.94] - 2026-11-17
 
 ### Added

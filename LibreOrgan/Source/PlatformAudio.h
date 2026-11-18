@@ -86,32 +86,24 @@ inline std::multiset<juce::String>& heldJackDeviceNames() { static std::multiset
 // the last client left): their ALSA entries stay listed for that long, so that a
 // route can move from JACK to ALSA on the same card.
 inline std::map<juce::String, double>& recentlyHeldJackNames() { static std::map<juce::String, double> names; return names; }
+// The ALSA devices listed although they cannot be opened now ("list unusable devices too"), with the reason - the
+// Audio routing dims them and says why (0.9.95). Filled by the scan; message thread only.
+inline std::map<juce::String, juce::String>& unusableAlsaDeviceReasons() { static std::map<juce::String, juce::String> reasons; return reasons; }
 class TrackedAlsaDevice final : public ForwardingAudioIODevice
 {
 public:
     explicit TrackedAlsaDevice(std::unique_ptr<juce::AudioIODevice> device) : ForwardingAudioIODevice(std::move(device), "ALSA")
     { heldAlsaDeviceNames().insert(getName()); }
-    // A card PipeWire still holds (a route just left it through JACK, or the
-    // desktop used it a moment ago) is released a few seconds later: a failed
-    // open of a card device is tried again for up to seven seconds.
+    // ONE attempt, never a wait (0.9.95, #242): the open runs on the window's thread, and the wait of up to seven
+    // seconds that stood here (for a card PipeWire still holds) froze the program - four divisions dragged from
+    // JACK onto the same card's ALSA device waited 4 x 7 s, and in vain: the card was held for the divisions not
+    // moved yet. A card that does not open stays the route's device and the watcher of missing devices opens it
+    // as soon as it answers (every 2 s, without holding anything up).
     juce::String open(const juce::BigInteger& inputChannels, const juce::BigInteger& outputChannels, double sampleRate, int bufferSizeSamples) override
     {
-        juce::String error = inner->open(inputChannels, outputChannels, sampleRate, bufferSizeSamples);
-        const bool card = !(getName().containsIgnoreCase("PipeWire") || getName().containsIgnoreCase("Pulseaudio") || getName().startsWithIgnoreCase("Default ALSA"));
-        if (error.isEmpty() || !card) return error;
-        const double start = juce::Time::getMillisecondCounterHiRes();
-        CrashHandler::note("ALSA: " + getName() + " could not be opened (" + error + "): waiting for the card to be released");
-        while (juce::Time::getMillisecondCounterHiRes() - start < 7000.0)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            error = inner->open(inputChannels, outputChannels, sampleRate, bufferSizeSamples);
-            if (error.isEmpty())
-            {
-                CrashHandler::note("ALSA: " + getName() + " opened after " + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - start)) + " ms");
-                return error;
-            }
-        }
-        CrashHandler::note("ALSA: " + getName() + " still not available after 7 s: " + error);
+        const juce::String error = inner->open(inputChannels, outputChannels, sampleRate, bufferSizeSamples);
+        if (error.isNotEmpty())
+            CrashHandler::note("ALSA: " + getName() + " could not be opened now (" + error + ") - no waiting; it is tried again when the card answers");
         return error;
     }
     ~TrackedAlsaDevice() override
@@ -192,13 +184,16 @@ public:
         // server or another program holds it) is left out, unless asked for. A
         // card's second PCM (S/PDIF, HDMI) often opens while its first is held,
         // with every channel of the card - it stays.
+        // 0.9.95: every card is tried in both cases - listed all the same when asked for, but known as unusable
+        // (unusableAlsaDeviceReasons), so the Audio routing can dim it and say why.
         const bool showAll = unusableAudioDevicesShown().load();
-        const auto ids = showAll ? std::map<juce::String, juce::String>() : outputIdsByName();
+        const auto ids = outputIdsByName();
+        unusableAlsaDeviceReasons().clear();
         juce::StringArray hidden, hiddenNames;
         for (const auto& name : allOutputs)
         {
             if (isTemplate(name)) continue;
-            if (!showAll && !isSoundServerDevice(name) && heldAlsaDeviceNames().count(name) == 0)
+            if (!isSoundServerDevice(name) && heldAlsaDeviceNames().count(name) == 0)
                 if (auto it = ids.find(name); it != ids.end())
                     if (const auto why = probeOutput(it->second); why.isNotEmpty())
                     {
@@ -213,8 +208,8 @@ public:
                         if (!ours)
                         {
                             hidden.add(name + " (" + why + ")");
-                            hiddenNames.add(name);
-                            continue;
+                            if (showAll) unusableAlsaDeviceReasons()[name] = why;   // listed, and known as unusable
+                            else { hiddenNames.add(name); continue; }
                         }
                     }
             outputs.add(name);
@@ -222,7 +217,8 @@ public:
         for (const auto& name : allInputs)
             if (!isTemplate(name) && !hiddenNames.contains(name)) inputs.add(name);
         hiddenAlsaDevicesNote() = hidden.isEmpty() ? juce::String()
-            : "ALSA: " + juce::String(hidden.size()) + " device(s) that cannot be opened not listed (the settings editor can list them): "
+            : "ALSA: " + juce::String(hidden.size()) + " device(s) that cannot be opened now, "
+              + (showAll ? juce::String("listed all the same (dimmed in the Audio routing): ") : juce::String("not listed (\"List unusable devices too\" in the Audio routing lists them): "))
               + hidden.joinIntoString("; ");
     }
     juce::StringArray getDeviceNames(bool wantInputNames = false) const override { return wantInputNames ? inputs : outputs; }
@@ -253,6 +249,20 @@ private:
     std::unique_ptr<juce::AudioIODeviceType> inner;
     juce::StringArray outputs, inputs;
 };
+
+// Does this ALSA device open right now? (0.9.95: the watcher of missing devices asks before it moves a route - with
+// "list unusable devices too" a busy card is LISTED, and "listed" alone made the watcher try, mute and fail every
+// two seconds.) The sound server's own entries and the devices this program holds count as open.
+inline bool alsaDeviceOpensNow(const juce::String& name, juce::String* why = nullptr)
+{
+    if (FilteredAlsaDeviceType::isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0) return true;
+    const auto ids = FilteredAlsaDeviceType::outputIdsByName();
+    const auto it = ids.find(name);
+    if (it == ids.end()) { if (why != nullptr) *why = "not there"; return false; }
+    const juce::String reason = FilteredAlsaDeviceType::probeOutput(it->second);
+    if (why != nullptr) *why = reason;
+    return reason.isEmpty();
+}
 
 inline void installFilteredAlsaType(juce::AudioDeviceManager& manager)
 {
@@ -477,9 +487,10 @@ public:
         const auto audioOutputs = audioClients(true);    // clients with audio INPUT ports: where we can play
         const auto audioInputs = audioClients(false);
         outputs.clear(); inputs.clear();
-        const bool all = unusableAudioDevicesShown().load();   // the "list unusable devices" switch: every client
-        for (const auto& name : inner->getDeviceNames(false)) if (all || audioOutputs.contains(name)) outputs.add(name);
-        for (const auto& name : inner->getDeviceNames(true)) if (all || audioInputs.contains(name)) inputs.add(name);
+        // 0.9.95 (#242): ALWAYS the clients with audio ports alone. "List unusable devices too" used to list every
+        // client here - the MIDI bridge and the MIDI devices among the sound cards; a MIDI client is no sound card.
+        for (const auto& name : inner->getDeviceNames(false)) if (audioOutputs.contains(name)) outputs.add(name);
+        for (const auto& name : inner->getDeviceNames(true)) if (audioInputs.contains(name)) inputs.add(name);
     }
     juce::StringArray getDeviceNames(bool wantInputNames = false) const override { return wantInputNames ? inputs : outputs; }
     int getDefaultDeviceIndex(bool forInput) const override { return (forInput ? inputs : outputs).isEmpty() ? -1 : 0; }

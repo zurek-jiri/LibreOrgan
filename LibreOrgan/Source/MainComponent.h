@@ -536,6 +536,12 @@ private:
     juce::StringArray routingAssignDone, routingAssignRefused;
     std::function<void()> routingAssignFinished;
     void beginRoutingAssign(const juce::String& type, const juce::String& name, double rate, int buffer, std::vector<RoutingAssignStep> steps, std::function<void()> finished);
+    // 0.9.95 (#242): a route sent to a card that did not open keeps THAT card as its remembered device (the watcher
+    // of missing devices then opens it when it answers) - before, the old device stayed remembered and the watcher
+    // put the route back on it: the user's move was undone behind his back.
+    void rememberWantedRouteDevice(int manualIndex, const juce::String& perspective, const juce::XmlElement& wanted);
+    // The device lists of the Audio routing read again (Linux: ALSA and JACK; elsewhere nothing to do).
+    void rescanAudioDeviceLists(const juce::String& why);
     // 0.9.89: the audio meter's painting and state, shared by the console display and the Audio routing dialog.
     static void paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> area, float meterDb, bool clipNow, bool clipLatched);
     void outputMeterState(float& meterDb, bool& clipNow, bool& clipLatched) const;

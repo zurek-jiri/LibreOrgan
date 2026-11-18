@@ -11656,6 +11656,9 @@ void SamplerEngine::setManualTremulantTargets(int manualIndex, int targetMask)
 int SamplerEngine::perspectiveOrderIndex(const juce::String& name) const
 {
     if (name.equalsIgnoreCase("default")) return -1;
+    // 0.9.95 (#242, the user: "always!"): the auxiliary route is the LAST one everywhere, whatever the lines say -
+    // it stood before "Front" in the Audio routing (no line for either: the alphabet decided).
+    if (name.equalsIgnoreCase(auxiliaryPerspectiveName())) return std::numeric_limits<int>::max();
     for (size_t i = 0; i < perspectivePatterns.size(); ++i)
         if (perspectivePatterns[i].upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(name.trim())) return (int)i;
     return (int)perspectivePatterns.size() + 1;

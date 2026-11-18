@@ -4256,6 +4256,9 @@ void MainComponent::showAudioRoutingDialog()
         audioRoutingWindow->toFront(true);
         return;
     }
+    // 0.9.95 (#242): the lists as they are NOW (Linux) - they were read at the start alone, and a card PipeWire held
+    // at that moment (the Komplete) was missing from the dialog until some later scan happened to bring it.
+    rescanAudioDeviceLists("the Audio routing opened");
     auto* content = new AudioRoutingContent(*this);
     content->setSize(1100, 700);
     audioRoutingWindow = std::make_unique<ModelessDialog>("Audio routing", new ScrollableContent(content), true);
@@ -5350,6 +5353,17 @@ bool MainComponent::isAudioDeviceAvailableNow(const juce::String& typeName, cons
             listed = type->getDeviceNames().contains(deviceName);
         }
     if (!listed) return false;
+   #if JUCE_LINUX
+    // 0.9.95: an ALSA card is asked whether it opens NOW - with "list unusable devices too" a busy card is listed
+    // as well, and a route waiting for it would be moved, muted and failed every two seconds.
+    if (typeName.equalsIgnoreCase("ALSA") && findSharedHost(typeName, deviceName) == nullptr)
+    {
+        juce::String why;
+        const bool opens = alsaDeviceOpensNow(deviceName, &why);
+        if (!opens && error != nullptr) *error = why;
+        return opens;
+    }
+   #endif
     if (!typeName.equalsIgnoreCase("ASIO") || findSharedHost(typeName, deviceName) != nullptr) return true;
     auto probe = std::make_unique<juce::AudioDeviceManager>();
     probe->getAvailableDeviceTypes();
@@ -5815,6 +5829,40 @@ void MainComponent::moveRouteToSharedDevice(int manualIndex, const juce::String&
     if (keyboardsDialogSelectorHook) keyboardsDialogSelectorHook(false);
     saveSettings();
     audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1200.0;
+}
+
+void MainComponent::rememberWantedRouteDevice(int manualIndex, const juce::String& perspective, const juce::XmlElement& wanted)
+{
+    if (manualIndex < 0 || manualIndex >= SamplerEngine::maxManuals) return;
+    const auto name = wanted.getStringAttribute("audioOutputDeviceName");
+    if (name.isEmpty()) return;
+    auto* manager = managerForRoute(manualIndex, perspective);
+    auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
+    if (device != nullptr && device->getName() == name) return;   // it opened: saveSettings takes the manager's state
+    auto& xmlText = perspective.equalsIgnoreCase("default") ? manualConfigs[(size_t)manualIndex].audioDeviceStateXml
+        : manualConfigs[(size_t)manualIndex].perspectiveAudio[perspectiveRouteKey(manualIndex, perspective)].audioDeviceStateXml;
+    xmlText = wanted.toString();
+    missingDeviceNextTryMs.erase(name);   // looked for at the next check
+    CrashHandler::note("Manual " + juce::String(manualIndex) + " perspective " + perspective + ": " + wanted.getStringAttribute("deviceType") + " '" + name
+        + "' did not open - it stays this route's card and is opened when it answers (checked every 2 s)");
+}
+
+void MainComponent::rescanAudioDeviceLists(const juce::String& why)
+{
+   #if JUCE_LINUX
+    const double start = juce::Time::getMillisecondCounterHiRes();
+    juce::StringArray counts;
+    for (auto* type : deviceManager.getAvailableDeviceTypes())
+        if (type != nullptr && (type->getTypeName() == "ALSA" || type->getTypeName() == "JACK"))
+        {
+            type->scanForDevices();
+            counts.add(type->getTypeName() + " " + juce::String(type->getDeviceNames(false).size()));
+        }
+    CrashHandler::note("Audio lists read again (" + why + ") in " + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - start)) + " ms: "
+        + counts.joinIntoString(", ") + (hiddenAlsaDevicesNote().isNotEmpty() ? " - " + hiddenAlsaDevicesNote() : juce::String()));
+   #else
+    juce::ignoreUnused(why);
+   #endif
 }
 
 void MainComponent::detachRouteAudio(int manualIndex, const juce::String& perspective)
@@ -7472,6 +7520,9 @@ void MainComponent::continueApplyAll()
                     if (cardRate > 0.0) state->setAttribute("audioDeviceRate", cardRate);
                     if (cardBuffer > 0) state->setAttribute("audioDeviceBufferSize", cardBuffer);
                     setRouteAudioType(step.manual, step.perspective, cardType, state.get(), cardName);
+                   #if JUCE_LINUX
+                    rememberWantedRouteDevice(step.manual, step.perspective, *state);   // 0.9.95: see AudioRouting.h assign()
+                   #endif
                 }
                 if (applyChannelsToDivision(step.manual, step.perspective, step.channels, routingAssignDone, routingAssignRefused))
                     CrashHandler::note("Audio routing: " + names[juce::jlimit(0, 7, step.manual)] + " " + step.perspective + " -> " + cardName + " (" + cardType + ") outputs " + list.joinIntoString("+"));
@@ -20628,6 +20679,25 @@ void MainComponent::learnPrefixesFromTables()
         if (known) continue;
         patterns = patternsWithHead(patterns, label, head);
         learned.addIfNotAlreadyThere(label + ";" + head);
+    }
+    // 0.9.95 (#242): EVERY perspective of the tables has its line - the label alone when its folders carry no prefix
+    // (Caen: the perspectives are packages). The order of the lines is the order of the perspectives everywhere
+    // (Audio routing, voicing, Stop List), and a perspective without a line could not be given a place: "Front"
+    // of Caen had none.
+    for (const auto& entry : allEntries)
+    {
+        if (entry.isTransmission()) continue;
+        for (const auto& [label, ref] : entry.folders)
+        {
+            if (label.isEmpty() || label.equalsIgnoreCase("default") || isAuxiliaryPerspective(label)) continue;
+            if (ref.relativePath.isEmpty() && ref.morePaths.isEmpty()) continue;
+            bool hasLine = false;
+            for (const auto& line : patterns)
+                if (line.upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(label)) { hasLine = true; break; }
+            if (hasLine) continue;
+            patterns.push_back(label);
+            learned.addIfNotAlreadyThere(label + " (a line without a prefix, for its place in the order)");
+        }
     }
     if (patterns == before) return;
     engine.setPerspectivePatterns(patterns);

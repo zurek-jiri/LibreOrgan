@@ -3912,7 +3912,52 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   error (jmax<size_t>, 0.9.84-0.9.88). Both mac jobs run on `macos-latest` (arm64, the Intel build cross-compiled).
   `.github/workflows/build-retry.yml` (workflow_run of Build, not success, attempt < 3): when a job was cancelled with
   NO step and no required job ran and failed -> `gh run rerun <id> --failed` (the release job follows in the same
-  run). A workflow_run workflow takes effect only from the default branch.
+  run). A workflow_run workflow takes effect only from the default branch. FIRST USE (v0.9.94 itself, run
+  44148537092): the Intel job got no runner in attempts 1 and 2 (15 min each), the retry workflow restarted the run
+  both times, attempt 3 built it and published the release with all five archives - 46 minutes after the tag, nobody
+  touched it. The local watch (%TEMP%\ci_watch.ps1) ends at the first "completed": read `run_attempt` and poll on
+  when the run is at attempt 1 or 2 without success.
+  0.9.95 (18 Nov 2026, the user: "přečti si issues na gitHub a oprav všecko - zejména linux. A vysvětli, proč error
+  vznikl než začneš kódovat" - THE EXPLANATION COMES FIRST, as text, then the code): #242/#243 from his Linux box
+  (Ubuntu 26.04, PipeWire; logs.zip of an issue = `https://github.com/user-attachments/files/<id>/logs.zip`, public).
+  (1) THE FREEZE (activity log 17 Nov 21:10:47, "answered nothing for about 28 s", the stack: nanosleep <-
+  TrackedAlsaDevice::open <- AudioDeviceManager::setAudioDeviceSetup <- sharedHostFor <- setRouteAudioType <-
+  AudioRoutingContent::mouseUp lambda): `TrackedAlsaDevice::open` (PlatformAudio.h) retried a failed open for up to
+  7 s with 500 ms sleeps ON THE MESSAGE THREAD, once per route: Front's four divisions dragged from JACK "ALC1220
+  Digital" onto ALSA "HD-Audio Generic, ALC1220 Digital; Direct hardware ..." = 4 x 7 s, in vain (PipeWire held the
+  card for the divisions not moved yet). Now ONE attempt, never a wait. (2) THE MOVE WAS UNDONE: after a failed open
+  the route's remembered state (`audioDeviceStateXml`) stayed the OLD device (saveSettings takes a manager's state only
+  with a device open) and `watchMissingAudioDevices` "restored" it ("'ALC1220 Digital' (JACK) is available again:
+  reopening") - `rememberWantedRouteDevice(manual, perspective, wanted)` writes the WANTED card when it did not open
+  (called after setRouteAudioType in AudioRouting's assign() and in continueApplyAll; JUCE_LINUX only - on Windows the
+  fall-back to the old card stays as it was, not asked). The watcher then opens the card when it answers. (3)
+  `isAudioDeviceAvailableNow` took "listed" for "available" (non-ASIO): with "list unusable devices too" a busy card
+  IS listed, so a waiting route was moved, muted and failed every 2 s - Linux ALSA now asks `alsaDeviceOpensNow(name,
+  &why)` (the id of `outputIdsByName` probed with snd_pcm_open NONBLOCK; sound-server entries and devices we hold
+  count as open). NOTE: isAudioDeviceAvailableNow SCANS the deviceManager's type at every check - that is how
+  "Midi-Bridge" got into the Audio routing after the tick (the dialog itself never scanned). (4) MIDI among JACK:
+  `FilteredJackDeviceType::scanForDevices` listed EVERY client when the unusable switch was on - now always the
+  clients with audio ports alone. (5) THE SWITCH DID NOTHING: the Audio routing's toggle set the flag and rebuilt
+  from lists read at the start (the old Divisions tab called type->scanForDevices(); lost in the 0.9.89 move) -
+  `MainComponent::rescanAudioDeviceLists(why)` (Linux: ALSA + JACK of deviceManager, logged "Audio lists read again
+  (...) in N ms: ALSA n, JACK m") from the toggle AND from showAudioRoutingDialog (the Komplete, held by PipeWire at
+  the start, was missing until some later scan). The scan probes every card in both modes; with the switch on a held
+  card is listed and remembered in `unusableAlsaDeviceReasons()` -> `Card::unusableWhy`: the chip's name dimmed
+  (alpha 0.45), the reason in its status/tooltip, a drop allowed (it waits). The dialog's signature hashes the
+  NAMES of the lists (the count alone missed a swap). (6) THE SWITCH OVER THE HELP TEXT: it stood at rowsLeft - 230
+  in the header (Windows has no such switch - never pictured); now right after the caption of the list it rules
+  (`otherCardsCaption()`, chipsTop - 6). (7) ORDER: `SamplerEngine::perspectiveOrderIndex` returns INT_MAX for the
+  auxiliary (always last - the union of the divisions' lists was sorted and "auxiliary" < "Front" by the alphabet,
+  neither having a line); `learnPrefixesFromTables` adds a BARE line (the label alone) for every perspective of the
+  tables without one (Caen: the perspectives are packages, no prefix -> no line -> no place in the order).
+  (8) #243 ROW METER: five parts in a 12 x 22 box on the large meter's scale - green -36 / -24 / -12, orange -9,
+  red only while the route's peak > 0.98 (`RowMeter::clipUntil/clipShown`, 1 s) - the 0.9.91 three parts were MY
+  thresholds (-12 yellow, -3 red), never matched to paintOutputMeter's (orange from -9, red = the limiter).
+  Windows test %TEMP%\test_0995.ps1 (Rural with II.'s folders under "Front": the line learned, rows default / Front /
+  auxiliary, the meters pictured under a held key). THE LINUX PART IS NOT RUN (no Linux toolchain or WSL on the
+  Windows box): CI compiles it, the user's box proves it - say so. #241 (pasztor63, Ultra 9 285K, ReaRoute ASIO 256,
+  30 routes, float + packed, limit 616): only a screenshot of the Editor, no logs.zip and no report text - nothing to
+  fix blind; a reply was drafted for the user (%TEMP%\issue241_reply.md), not posted. #234 still without a log.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

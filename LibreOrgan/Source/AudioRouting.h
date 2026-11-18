@@ -127,16 +127,16 @@ public:
 #if JUCE_LINUX
         // The Linux switch of the audio tabs (0.8.228): every ALSA device listed, the unusable ones too.
         unusableButton.setButtonText("List unusable devices too");
-        unusableButton.setTooltip("Every ALSA device is tried when the list is made; one that cannot be opened now (held by PipeWire or another program) "
-            "is left out, with the reason in the activity log, and JACK lists only clients with audio ports. Ticked: everything is listed.");
+        unusableButton.setTooltip("An ALSA card that cannot be opened now (PipeWire or another program holds it) is left out of the list. "
+            "Ticked: it is listed too, dimmed, with the reason in its tooltip - a cable dropped on it waits until the card is free.");
         unusableButton.setToggleState(owner.showUnusableAudioDevices, juce::dontSendNotification);
         unusableButton.onClick = [this]
         {
             owner.showUnusableAudioDevices = unusableButton.getToggleState();
             unusableAudioDevicesShown().store(owner.showUnusableAudioDevices);
             owner.saveSettings();
-            CrashHandler::note(juce::String("Audio lists: unusable devices ") + (owner.showUnusableAudioDevices ? "listed" : "left out")
-                + (hiddenAlsaDevicesNote().isNotEmpty() ? " - " + hiddenAlsaDevicesNote() : juce::String()));
+            // 0.9.95 (#242): the lists are READ AGAIN at once - the tick did nothing until the next start.
+            owner.rescanAudioDeviceLists(owner.showUnusableAudioDevices ? "unusable devices listed too" : "unusable devices left out");
             rebuild();
         };
         addAndMakeVisible(unusableButton);
@@ -184,22 +184,23 @@ public:
             area.removeFromRight(20 + fxWidth + 6 + meterWidth + 6);   // the meter, the fx button and the dot sit at the right
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
             g.drawFittedText(row.label, area, juce::Justification::centredLeft, 1);
-            // The row's mini meter (0.9.91, the user): ONE box the size of a letter, three parts one above the other -
-            // green at the bottom (sound), yellow (from -12 dB), red on top (from -3 dB: clip near); 1 s hold.
+            // The row's mini meter: ONE box, five parts one above the other, on the scale of the large meter (0.9.95,
+            // #243 - the three parts of 0.9.91 went yellow at -12 dB and red at -3 dB, far earlier than the large
+            // one): three green (-36, -24, -12 dB), one orange (-9 dB, where the large meter turns orange), one red
+            // ONLY while the limiter works on this row's sound (the clip); 1 s hold.
             if (ri < rowMeters.size())
             {
                 const auto m = rowMeters[ri];
-                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 8, meterWidth, 16);
+                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 11, meterWidth, 22);
                 g.setColour(juce::Colours::black);
                 g.fillRect(meter);
-                const float db = m.db;
-                static const float thresholds[3]{ -36.0f, -12.0f, -3.0f };
-                for (int s = 0; s < 3; ++s)   // s = 0 the bottom part
+                static const float thresholds[4]{ -36.0f, -24.0f, -12.0f, -9.0f };
+                for (int s = 0; s < 5; ++s)   // s = 0 the bottom part
                 {
-                    const juce::Colour colour = s == 0 ? juce::Colours::lime : s == 1 ? juce::Colours::yellow : juce::Colours::red;
-                    const bool lit = db >= thresholds[s] && !row.silent;
+                    const juce::Colour colour = s < 3 ? juce::Colours::lime : s == 3 ? juce::Colours::orange : juce::Colours::red;
+                    const bool lit = !row.silent && (s == 4 ? m.clipShown : m.db >= thresholds[s]);
                     g.setColour(lit ? colour : colour.withAlpha(0.22f));
-                    g.fillRect(meter.getX() + 1, meter.getBottom() - 1 - (s + 1) * 5 + 1, meter.getWidth() - 2, 4);
+                    g.fillRect(meter.getX() + 1, meter.getBottom() - 1 - (s + 1) * 4 + 1, meter.getWidth() - 2, 3);
                 }
             }
         }
@@ -220,7 +221,7 @@ public:
         {
             g.setColour(juce::Colours::white);
             g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-            g.drawText("Other sound cards - drop a perspective onto one to open it", 14, chipsTop - 4, 600, 20, juce::Justification::centredLeft);
+            g.drawText(otherCardsCaption(), 14, chipsTop - 4, 600, 20, juce::Justification::centredLeft);
             for (const auto& section : typeSections)
             {
                 g.setColour(section.collapsed ? glow.withAlpha(0.85f) : glow);
@@ -238,7 +239,8 @@ public:
             g.fillRoundedRectangle(card.bounds.toFloat(), 4.0f);
             g.setColour(juce::Colours::black.withAlpha(0.5f));
             g.drawRoundedRectangle(card.bounds.toFloat().reduced(0.5f), 4.0f, 1.0f);
-            g.setColour(grey ? juce::Colours::grey : target ? juce::Colours::black : juce::Colours::white);
+            // 0.9.95: a card listed although it cannot be opened now is dimmed (its tooltip says why); it takes a drop.
+            g.setColour(grey ? juce::Colours::grey : target ? juce::Colours::black : card.unusableWhy.isNotEmpty() ? juce::Colours::white.withAlpha(0.45f) : juce::Colours::white);
             g.setFont(juce::FontOptions(14.0f * scale()));
             g.drawFittedText(card.name, card.bounds.reduced(8, 2), juce::Justification::centred, 2);
         }
@@ -493,6 +495,7 @@ public:
     }
 
 private:
+    static const char* otherCardsCaption() { return "Other sound cards - drop a perspective onto one to open it"; }
     struct Route { int manual = 0; juce::String perspective; };
     struct Row
     {
@@ -508,6 +511,7 @@ private:
         juce::String key, type, name, status, busyReason, busyBecauseOf;   // busyBecauseOf = the key of the open card of another driver on the same hardware
         juce::String sharedNote, sharedWith;                              // 0.9.93: "Also open through ASIO ..." - the orange line of a card that shares its device with another driver (sharedWith = that card's name, for the tooltip)
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
+        juce::String unusableWhy;                        // 0.9.95 (Linux): listed although it cannot be opened now ("list unusable devices too") - why
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
         juce::StringArray jackNames;               // the driver's channel names, drawn vertically above the jacks
@@ -705,6 +709,14 @@ private:
                 Card card;
                 card.type = type->getTypeName(); card.name = name; card.key = card.type + "|" + name;
                 card.status = "not open";
+               #if JUCE_LINUX
+                if (card.type == "ALSA")
+                    if (const auto found = unusableAlsaDeviceReasons().find(name); found != unusableAlsaDeviceReasons().end())
+                    {
+                        card.unusableWhy = found->second;
+                        card.status = "cannot be opened now (" + card.unusableWhy + ") - a cable dropped here waits until the card is free";
+                    }
+               #endif
                 fresh.push_back(card);
             }
         }
@@ -966,9 +978,6 @@ private:
         showCables.setBounds(rowsLeft, row2, 120, rowHeight2);
         sizeBox.setBounds(rowsRight - 110, row2, 110, rowHeight2);
         sizeLabel.setBounds(sizeBox.getX() - 96, row2, 92, rowHeight2);
-#if JUCE_LINUX
-        unusableButton.setBounds(rowsLeft - 230, row2, 220, rowHeight2);
-#endif
         sourcesTop = 110;
         // 0.9.94: the routing file's buttons on the line of the titles, ending at the header block's right edge.
         // They span the block above them: the left edge of its rows, the right edge of Measure Polyphony.
@@ -1069,6 +1078,12 @@ private:
         fullCardsBottom = (maxRow >= 0 ? gridBottom : sourcesTop - 2) + cardBase() + 10;   // the spare row stays free below the grid
         // The other cards as buttons, a collapsible section per driver (ASIO first ...), below the grid and the sources.
         chipsTop = juce::jmax(fullCardsBottom + 10, sourcesBottom + 24);
+#if JUCE_LINUX
+        // 0.9.95 (#242): the switch decides which cards THIS list shows - it stands right after the list's caption.
+        // In the header it lay over the help text (seen on no picture: Windows has no such switch).
+        unusableButton.setBounds(14 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)), otherCardsCaption())) + 24,
+            chipsTop - 6, 230, 24);
+#endif
         int cy = chipsTop + 24, cx = 12;
         juce::String lastType;
         typeSections.clear();
@@ -1270,6 +1285,11 @@ private:
                 if (card.rate > 0.0) state->setAttribute("audioDeviceRate", card.rate);
                 if (card.buffer > 0) state->setAttribute("audioDeviceBufferSize", card.buffer);
                 owner.setRouteAudioType(route.manual, route.perspective, card.type, state.get(), card.name);
+               #if JUCE_LINUX
+                // 0.9.95 (#242): a card PipeWire still holds does not open at once - the route keeps it and the
+                // watcher opens it when it answers (never a wait here; before, the route fell back to its old card).
+                owner.rememberWantedRouteDevice(route.manual, route.perspective, *state);
+               #endif
                 add = false;   // a route moved to another card starts with the dropped pair alone
             }
             auto wanted = channels;
@@ -1416,7 +1436,11 @@ private:
                     if (auto* device = manager->getCurrentAudioDevice())
                         s << juce::roundToInt(device->getCurrentSampleRate()) << "/" << device->getCurrentBufferSizeSamples() << "/" << device->getOutputLatencyInSamples() << ";";
             }
-        for (auto* type : owner.deviceManager.getAvailableDeviceTypes()) if (type != nullptr) s << type->getDeviceNames(false).size() << ",";
+        // The lists by their NAMES (0.9.95: the count alone missed a card that came while another went).
+        for (auto* type : owner.deviceManager.getAvailableDeviceTypes()) if (type != nullptr) s << type->getDeviceNames(false).joinIntoString("|").hashCode64() << ",";
+       #if JUCE_LINUX
+        for (const auto& item : unusableAlsaDeviceReasons()) s << item.first.hashCode() << "!";
+       #endif
         return s;
     }
     void timerCallback() override
@@ -1444,6 +1468,10 @@ private:
                 const float db = peak > 1.0e-6f ? juce::Decibels::gainToDecibels(peak) : -100.0f;
                 auto& m = rowMeters[ri];
                 if (db >= m.db || now >= m.holdUntil) { if (std::abs(db - m.db) > 0.5f) changed = true; m.db = db; m.holdUntil = now + 1000.0; }
+                // The red part: the limiter worked on a sample of this row (the engine's own clip rule: above 0.98).
+                if (peak > 0.98f) m.clipUntil = now + 1000.0;
+                const bool clipNow = now < m.clipUntil;
+                if (clipNow != m.clipShown) { m.clipShown = clipNow; changed = true; }
             }
             if (changed) repaint(juce::Rectangle<int>(12, sourcesTop, leftWidth, juce::jmax(0, sourcesBottom - sourcesTop)));
             masterMeter.repaint();
@@ -1478,7 +1506,7 @@ private:
         void mouseUp(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; juce::TextButton::mouseUp(e); }
     };
     juce::OwnedArray<FxButton> fxButtons;   // 0.9.89: one per row
-    struct RowMeter { float db = -100.0f; double holdUntil = 0.0; };
+    struct RowMeter { float db = -100.0f; double holdUntil = 0.0, clipUntil = 0.0; bool clipShown = false; };
     std::vector<RowMeter> rowMeters;
     int ticks = 0;
     std::vector<Row> rows;
