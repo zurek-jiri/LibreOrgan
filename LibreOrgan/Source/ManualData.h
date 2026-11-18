@@ -964,10 +964,12 @@ static const char* const kManualText_part4 =
     "its title onto the other and every cable plays through one driver. Only an\n"
     "exclusive-mode driver keeps a card to itself there. An ASIO card whose\n"
     "device is not connected is listed all the same (Windows lists the driver):\n"
-    "a cable dropped on it goes back and the card turns **grey** with the\n"
-    "driver's reason in its tooltip; the program asks it again every few seconds\n"
-    "while the dialog is open - connect the device and the card becomes active by\n"
-    "itself (a click on it asks at once). On Linux a card open\n"
+    "it is **grey**, with the driver's reason in its tooltip, and takes no\n"
+    "cable. The program asks the cards itself - when the dialog first opens and\n"
+    "whenever Windows reports a device coming or going: connect the device and\n"
+    "the card becomes active, unplug a card in use and it turns grey within a\n"
+    "few seconds, its cables waiting until it is back (a click on a grey card\n"
+    "asks at once). On Linux a card open\n"
     "through another driver is grey; it takes a drop only when the drop moves\n"
     "every route off that other card. The cards in use sit on a grid of cells like the\n"
     "stops: drag a card by its title onto a free cell (dashed while you drag,\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "tries it every 2 seconds and plays again the moment it answers. A device that\n"
     "opened but gives no audio is reopened by itself; when that does not help, the\n"
     "DSP cell reads *no audio* and the Messages name it.\n"
-    "\n"
-    "### Routing files\n"
     ;
 static const char* const kManualText_part5 =
+    "\n"
+    "### Routing files\n"
     "\n"
     "Three buttons on the line of the titles keep a routing for later.\n"
     "\n"
@@ -1141,6 +1143,13 @@ static const char* const kManualText_part5 =
     "  unheard for a tenth of a second first), so the switch is no click;\n"
     "- a plug-in that needs more time than the audio buffer allows, block after\n"
     "  block, is switched OFF and a message says so;\n"
+    "- a plug-in's **window** is tried in a process of its own before it is first\n"
+    "  opened (once for each plug-in; a slow one takes a while): one whose window\n"
+    "  crashes or hangs there is not opened in the program - the plug-in keeps\n"
+    "  working on the sound with the setting it has;\n"
+    "- on Windows a plug-in that fails inside its own code while it is loaded or\n"
+    "  while it works on the sound is caught: it is switched OFF, the organ plays\n"
+    "  on, and a message asks you to start the program again before using it;\n"
     "- after a start that follows a crash with plug-ins loaded - or with **Shift**\n"
     "  held at the start - every plug-in is OFF and not loaded; switch them ON one\n"
     "  by one, and the one that brings the program down is the one to remove.\n"
@@ -1203,6 +1212,8 @@ static const char* const kManualText_part5 =
     "   ```\n"
     "   sudo usermod -aG audio $USER\n"
     "   sudo sh -c 'printf \"@audio - rtprio 95\\n@audio - memlock unlimited\\n\" > /etc/security/limits.d/audio.conf'\n"
+    ;
+static const char* const kManualText_part6 =
     "   ```\n"
     "   then log out and in again. Without it the desktop pushes the audio thread\n"
     "   aside and the sound breaks long before the processor is busy. The activity\n"
@@ -1212,8 +1223,6 @@ static const char* const kManualText_part5 =
     "lists each card once, under *PipeWire*, with the outputs of its profile (all\n"
     "of them in Pro Audio); the program connects its outputs itself, and the\n"
     "buffer size and rate chosen on a card are handed to PipeWire for every\n"
-    ;
-static const char* const kManualText_part6 =
     "program. A card is never \"held\" or \"busy\" there - the desktop and the organ\n"
     "share it. A card switched on or off appears in the open Audio routing, or\n"
     "leaves it, within two seconds. An organ without cables of its own (a\n"
@@ -1405,6 +1414,8 @@ static const char* const kManualText_part6 =
     "same settings reads them instead of building them: seconds instead of\n"
     "minutes. One file per rank and tree; a file built with other settings is\n"
     "replaced. *Empty the cache*, *Remove them* (the files of stops not loaded\n"
+    ;
+static const char* const kManualText_part7 =
     "now) and *Choose...* (another folder, the files moved there) are in the same\n"
     "section.\n"
     "\n"
@@ -1414,8 +1425,6 @@ static const char* const kManualText_part6 =
     "\n"
     "*Configuration Editor* (top bar) holds every setting in one scrolling dialog:\n"
     "Engine, Global sound, Advanced global audio (with its Filled pipes\n"
-    ;
-static const char* const kManualText_part7 =
     "subsection), Console (with Top bar), Folder name patterns, and one section\n"
     "per division. Collapsed sections open with a click on their title; the\n"
     "folding is remembered. Every change applies and saves at once; double-click\n"
@@ -1607,6 +1616,8 @@ static const char* const kManualText_part7 =
     "alone. Heard at once.\n"
     "\n"
     "### Attack minimum time\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "The shortest time a pipe sounds once started (0 to 500 ms, default 80): even\n"
     "the briefest touch lets the chiff be heard. It is also the shortest breath the\n"
@@ -1616,8 +1627,6 @@ static const char* const kManualText_part7 =
     "### Attack minimum delay\n"
     "\n"
     "A small pause between the key press and the pipe's start (0 to 500 ms,\n"
-    ;
-static const char* const kManualText_part8 =
     "default 2), varied at random so that a chord's pipes do not all speak in the\n"
     "same instant; fast repetitions stay crisp.\n"
     "\n"
@@ -1809,6 +1818,8 @@ static const char* const kManualText_part8 =
     "Higher values fray the attack; lower it for a stop whose speaking turns rough.\n"
     "\n"
     "### Filled pipes: time stretch of the release\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "The same for the release, both directions (default 55). Phase vocoder: a\n"
     "release shifted upwards is stretched towards the resampled length.\n"
@@ -1818,8 +1829,6 @@ static const char* const kManualText_part8 =
     "A filled pipe's release copy is played from this many milliseconds in (0 to\n"
     "300, default 140), skipping the start where the methods leave their worst.\n"
     "Heard at once.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: loop crossfade\n"
     "\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "dialog, and a double-click on the name in the division header edits it.\n"
     "\n"
     "### MIDI keyboard device\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "The MIDI input that plays this division; several divisions may listen to the\n"
     "same device.\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "1 to 16 on that device.\n"
     "\n"
     "### Ignore MIDI velocity (organ keys)\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "On by default: every key is a full stroke - no velocity fade-in or treble\n"
     "cut, always the top velocity layer. Off for a stop with velocity layers you\n"
@@ -2213,6 +2222,8 @@ static const char* const kManualText_part10 =
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
+    ;
+static const char* const kManualText_part11 =
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
     "---\n"
@@ -2222,8 +2233,6 @@ static const char* const kManualText_part10 =
     "The chapters above link here. Nothing in this part is needed to play.\n"
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
@@ -2415,6 +2424,8 @@ static const char* const kManualText_part11 =
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
+    ;
+static const char* const kManualText_part12 =
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"
@@ -2424,8 +2435,6 @@ static const char* const kManualText_part11 =
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"
     "SATA SSD), a load from the page cache many times faster - never compare the\n"
-    ;
-static const char* const kManualText_part12 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"

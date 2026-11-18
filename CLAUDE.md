@@ -4352,6 +4352,66 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   was compiled there (no push since v0.9.102) - the CI of the next push is the check; the changes are Windows-only
   (#if JUCE_WINDOWS: the dialog put back, the MIDI probe) or platform-neutral drawing and dialogs; probeCard answers
   true for every type but ASIO.
+  0.9.107 (18 Nov 2026 night; the user: an idle ASIO card unplugged did not turn grey, an active one only after a
+  while with the window frozen, "na Linuxu zešedla a ztratily se porty"; a MeldaProduction plug-in's window ended
+  the program - "musíme umět vadné VST zvládnout, aby program nespadl!!!"; he took the risk that asking a driver may
+  disturb the audio of the same card): (1) THE CARD QUESTION IN A HELPER PROCESS: `Source/CardCheck.h` (header-only):
+  the program started with `--cardcheck "<request>"` (result file / type / name) opens the device with a throw-away
+  AudioDeviceManager and writes "ok" or "no<TAB>reason"; `CardCheck::Checker` (a 100 ms Timer, one helper at a time,
+  8 s limit, `ask(type, name)` deduped, `onResult` on the message thread) is `MainComponent::cardChecker`.
+  `askCards(everyAsioCard)` (every ASIO name of deviceManager's lists without a shared host of ours, or the grey ones)
+  runs at the FIRST opening of the Audio routing and 1.5 s after the LAST system report; `cardAnswered` erases or
+  fills `unavailableCards` (+ version, log, Messages; `missingDeviceNextTryMs.erase` so the watcher opens the routes
+  at once). `systemDevicesChanged()` = Windows reported a device (from `midiDevicesChanged` and from a
+  juce::AudioIODeviceType::Listener registered on deviceManager's types lazily in `watchUnavailableCards`, WINDOWS
+  ONLY - on Linux our own rescans would fire it): `systemDevicesChangedAtMs` + `fastSilenceCheckUntilMs` = now +
+  15 s, within which `checkAudioCallbackHealth` reopens a silent device after ONE second (4 otherwise) and, when it
+  does not open, calls `cardWentAway(type, name, reason)` (ASIO only: the entry with `wanted = true`).
+  `watchMissingAudioDevices` skips an ASIO card that is in `unavailableCards` (marks it wanted) - no more in-process
+  probing every 2 s; `watchUnavailableCards` asks the wanted cards every 5 s ALWAYS and the other grey ones while
+  the dialog shows. A click on a grey card asks the helper; the drop on a card that is not open still asks
+  in-process (`probeCard`: the user's own act, the same cost as the open). TESTED: at the dialog's opening "7 ASIO
+  card(s) ... asked (in a helper process)", UMC grey; the watcher path with the pretended-absent Komplete (0.9.105
+  test). NOT tested: a real unplug of an open card (fast grey), a real plug-in. (2) THE 6.6 s FREEZE at every
+  unplug (twice in the log, at the second of "MIDI devices changed: gone Komplete Audio 6 In"): the gone MidiInput
+  is released on a detached std::thread (`going->stop()` first; "MIDI input X closed in N ms (off the window
+  thread)"), `getAvailableDevices()` is timed (> 300 ms logged) - WHICH call blocks was not measured (no hardware to
+  unplug); the next log tells. (3) PLUG-INS THAT FAIL. THE HUNT (seven test builds): two Melda editors
+  (MAutoEqualizerMini, MDynamicsMini; MAutoEqualizerLinearPhaseMini too) crash AT RANDOM as their view is attached,
+  or come up as an empty 128 x 128 window - reproduced by the hook (test_0102.ps1 -Plugin MAutoEqualizerMini), with
+  the plug-in off as well; NOT the side-chain (one stereo bus), NOT Direct2D (ComponentPeer::setCurrentRenderingEngine
+  (0) changed nothing), NOT JUCE's hasEditor() (which makes a view and drops it - still never call it before
+  createEditorIfNeeded: the line stays out); the view object is dead early (garbage vtable in JUCE's own later
+  calls: VST3PluginWindow::resizeToFit from the scale notifier's callAsync, componentMovedOrResized). The user: Melda
+  has trouble in Reaper too - the cause is left. WHAT GUARDS NOW: (a) THE WINDOW TRIAL IN A HELPER PROCESS
+  (PluginHost.h): `--plugineditor "<request>"` (result file on line 1, the description's XML after it) -
+  `EditorTrial` loads, prepares, createEditorIfNeeded, a DocumentWindow in the screen's bottom right corner,
+  1.5 s of message loop, "ok<TAB>W x H" (a window under 40 px = "came up without a size"), `_Exit`; started from
+  Main.cpp's initialise (`startEditorTrial`, returns: the loop runs it). `EditorTrialRunner` (two trials in a row,
+  30 s limit each - Waves' shell takes ~10 s to load in a fresh process, 8 s refused it; no result = "its window
+  crashed") is started by `showPluginEditor` for a plug-in without a verdict, with a PluginLoadNote "Trying the
+  window of X in a process of its own (once for each plug-in) ..."; verdicts in `PluginHost::editorVerdicts()`
+  keyed by `editorTrialKey` (identifier + the file's modification time), KEPT in PluginWindows.txt beside the
+  settings; a refused window = a WarningIcon box, the plug-in keeps working on the sound. Results: both Meldas
+  "REFUSED - its window crashed" with the program alive, Reverberate "it opens (980 x 675)" 11 s after the click
+  the first time, Z-Noise 24 s the first time and at once the second. (b) SEH GUARDS (Windows; `__try/__except`
+  in functions without C++ objects): `guardedPluginProcess` (SamplerEngine.cpp) around every processBlock - a fault
+  sets `RoutePluginStage::faulted`, the block's dry copy is put back (the dry copy is taken for EVERY block now),
+  the stage is never called again; `guardedCall(function, context)` (MainComponent.cpp) around PluginHost::create,
+  the prepare / state calls and the two steps of the window's opening (made hidden first, shown 80 ms later:
+  `pluginEditorsOpening`). `pluginFaulted(perspective, id, where)`: `faultedPluginSlots`, the watch off, the window
+  hidden with ::ShowWindow and RELEASED (never deleted), every LivePlugin of the slot moved to a leaked vector
+  (never called, never deleted - what stood between our call and the fault was not unwound; a lock inside JUCE's
+  wrapper may be held), slot OFF, a box asking for a restart; `setPluginOn` refuses a faulted slot. LESSON: a caught
+  fault at the window is NOT the end - JUCE's later messages reach into the dead view (the first guard build died
+  there twice); only the helper trial keeps such a plug-in's window out. What a plug-in does later in its own
+  window procedure cannot be caught. (c) `PluginHost::helperDiesQuietly()` in all three helpers (scan, card, window:
+  SetErrorMode + an unhandled filter that TerminateProcess(3)s + no abort message) - the user saw Windows' "LibreOrgan
+  stopped working" twice while the program went on: the helpers trying Melda. A helper is a process named
+  LibreOrgan too: `Get-Process LibreOrgan*` right after a test may still see one - wait a moment before the next
+  test. THE USER CLOSED A TEST WINDOW mid-run (the quit question, Don't Save) and two tests did not run - tell him
+  the windows are tests and close by themselves. Bank display: the dot at +4 / -22 (two pixels of black inside
+  the frame line).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -5,6 +5,8 @@
 #include "voicer.h"
 #include "HauptwerkOdf.h"
 #include "UIControls.h"
+#include "CardCheck.h"
+#include <thread>
 #include <array>
 #include <atomic>
 #include <set>
@@ -1179,12 +1181,31 @@ private:
     // remembered here with the driver's reason: grey in the Audio routing, it takes no cable. It is asked again by
     // itself while the dialog is open (and at once when Windows reports a device coming), so a card connected later
     // becomes active without a click.
-    struct UnavailableCard { juce::String reason; double nextCheckMs = 0.0; };
+    struct UnavailableCard { juce::String reason; double nextCheckMs = 0.0; bool wanted = false; };   // wanted: a route is set to it - asked again whether the dialog shows or not
     std::map<juce::String, UnavailableCard> unavailableCards;   // "type|name"
     int unavailableCardsVersion = 0;                            // the Audio routing's signature follows it
     bool probeCard(const juce::String& typeName, const juce::String& deviceName);   // true: it opens now
     void watchUnavailableCards();
-    void askUnavailableCardsSoon() { for (auto& entry : unavailableCards) entry.second.nextCheckMs = 0.0; }
+    void askUnavailableCardsSoon() { lastGreyCheckMs = 0.0; }
+    // 0.9.107 (the user: an ASIO card unplugged while it is not in use did not turn grey; an open one only after a
+    // while, with the window frozen meanwhile; "na Linuxu zesedla a ztratily se porty"): the question is asked in a
+    // HELPER PROCESS (CardCheck.h) - never on the window thread, a dead driver cannot hang or end the program -,
+    // and Windows' own report of a device coming or going (the MIDI list, the audio endpoints) is what starts it.
+    CardCheck::Checker cardChecker;
+    void cardAnswered(const CardCheck::Result& result);
+    void askCards(bool everyAsioCard);               // every ASIO card that is not open, or the grey ones alone
+    void systemDevicesChanged();                     // Windows reported a device coming or going
+    void cardWentAway(const juce::String& typeName, const juce::String& deviceName, const juce::String& reason);
+    std::atomic<double> systemDevicesChangedAtMs{ 0.0 };
+    double fastSilenceCheckUntilMs = 0.0, lastGreyCheckMs = 0.0;
+    bool cardsAskedOnce = false;
+    std::unique_ptr<juce::AudioIODeviceType::Listener> deviceListListener;   // the audio device types' lists
+    // Plug-ins that failed inside their own code and were caught (Windows): off until the program starts again.
+    std::set<juce::String> faultedPluginSlots;
+    std::set<juce::String> pluginEditorsOpening;   // between the two steps of showPluginEditor
+    std::shared_ptr<void> pluginEditorTrial;        // the running trial of a plug-in's window (PluginHost::EditorTrialRunner)
+    std::unique_ptr<juce::Component> pluginTrialNote;
+    void pluginFaulted(const juce::String& perspective, const juce::String& id, const juce::String& where);
     std::unique_ptr<juce::DialogWindow> audioRoutingWindow;   // 0.9.79 (#236): "Audio routing" - the sound cards as blocks, the routes as chips in their channel cells
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.

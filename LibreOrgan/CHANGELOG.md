@@ -12,6 +12,29 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.107] - 2026-11-18
+
+### Fixed
+- **A faulty plug-in no longer ends the program (Windows).** A fault inside a
+  plug-in's own code - while it is loaded, as its window opens, while it works
+  on the sound - is caught: the plug-in is switched OFF and left alone, the
+  organ plays on, and a message says so (two of MeldaProduction's plug-ins
+  fail at random when their window opens). What a plug-in does later in its
+  own window cannot be caught.
+- The window froze for some six seconds each time a sound card with MIDI
+  ports was unplugged: the port of the vanished device is closed off the
+  window thread now.
+
+### Changed
+- **Sound cards that come and go (Windows, ASIO).** Windows' own report of a
+  device coming or going starts the look: a card in use that stops answering
+  turns grey within about two seconds, its cables wait and play again when
+  the card is back; the ASIO cards that are not in use are asked - in a
+  helper process, so nothing freezes and a dead driver cannot harm the
+  program - and turn grey or active by themselves. The same question is asked
+  the first time the Audio routing opens.
+- The dot in the bank display sits two pixels inside the display's frame.
+
 ## [0.9.106] - 2026-11-18
 
 ### Fixed

@@ -399,12 +399,8 @@ public:
             if (card.unavailable && card.bounds.contains(e.getPosition()))
             {
                 const auto type = card.type, name = card.name;
-                later([this, type, name]
-                {
-                    const bool there = owner.probeCard(type, name);
-                    CrashHandler::note("Audio routing: " + name + " asked again by a click - " + (there ? "it answers" : "still not there"));
-                    rebuild(); repaint();
-                });
+                CrashHandler::note("Audio routing: " + name + " asked again by a click (in the helper process)");
+                owner.cardChecker.ask(type, name);   // the answer comes through cardAnswered; the dialog follows its version
                 return;
             }
         // A source row: the start of a drag.

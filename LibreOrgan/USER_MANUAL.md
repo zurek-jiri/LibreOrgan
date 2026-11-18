@@ -952,10 +952,12 @@ bar turns orange - it works, but costs polyphony; drag one of the two cards by
 its title onto the other and every cable plays through one driver. Only an
 exclusive-mode driver keeps a card to itself there. An ASIO card whose
 device is not connected is listed all the same (Windows lists the driver):
-a cable dropped on it goes back and the card turns **grey** with the
-driver's reason in its tooltip; the program asks it again every few seconds
-while the dialog is open - connect the device and the card becomes active by
-itself (a click on it asks at once). On Linux a card open
+it is **grey**, with the driver's reason in its tooltip, and takes no
+cable. The program asks the cards itself - when the dialog first opens and
+whenever Windows reports a device coming or going: connect the device and
+the card becomes active, unplug a card in use and it turns grey within a
+few seconds, its cables waiting until it is back (a click on a grey card
+asks at once). On Linux a card open
 through another driver is grey; it takes a drop only when the drop moves
 every route off that other card. The cards in use sit on a grid of cells like the
 stops: drag a card by its title onto a free cell (dashed while you drag,
@@ -1127,6 +1129,13 @@ organ against a faulty one is this:
   unheard for a tenth of a second first), so the switch is no click;
 - a plug-in that needs more time than the audio buffer allows, block after
   block, is switched OFF and a message says so;
+- a plug-in's **window** is tried in a process of its own before it is first
+  opened (once for each plug-in; a slow one takes a while): one whose window
+  crashes or hangs there is not opened in the program - the plug-in keeps
+  working on the sound with the setting it has;
+- on Windows a plug-in that fails inside its own code while it is loaded or
+  while it works on the sound is caught: it is switched OFF, the organ plays
+  on, and a message asks you to start the program again before using it;
 - after a start that follows a crash with plug-ins loaded - or with **Shift**
   held at the start - every plug-in is OFF and not loaded; switch them ON one
   by one, and the one that brings the program down is the one to remove.

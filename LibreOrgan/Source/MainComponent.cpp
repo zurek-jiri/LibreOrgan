@@ -3418,6 +3418,8 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
 
 MainComponent::~MainComponent()
 {
+    if (deviceListListener != nullptr)
+        for (auto* type : deviceManager.getAvailableDeviceTypes()) if (type != nullptr) type->removeListener(deviceListListener.get());
     PluginHost::scanner().cancel();
     // 0.9.102: the plug-ins' windows first (their editors before their instances), the chains out of the engine,
     // and the session marked as ended in order - the next start is no safe start.
@@ -3643,9 +3645,11 @@ void MainComponent::resized()
     couplerViewport.setBounds({});
     {   // 0.9.81: the bank display's editors (shown while editing: the number left, the note right) and the list button in its corner
         const auto b = bankLabel.getBounds();
-        bankListButton.setBounds(b.getX() + 2, b.getBottom() - 20, 18, 18);   // 0.9.83: the stop buttons' dot, bottom-left
+        // 0.9.83: the stop buttons' dot, bottom-left. 0.9.107 (the user: "jako pest na oko"): two pixels inside the
+        // display's frame line on both sides (the frame is drawn one pixel in and one pixel wide) - it sat ON the line.
+        bankListButton.setBounds(b.getX() + 4, b.getBottom() - 22, 18, 18);
         auto edit = b.reduced(3);
-        edit.removeFromLeft(20);   // the dot's column stays clear of the editors
+        edit.removeFromLeft(22);   // the dot's column stays clear of the editors
         bankNumberEditor.setBounds(edit.removeFromLeft(44));
         edit.removeFromLeft(3);
         bankNoteEditor.setBounds(edit);
@@ -3739,18 +3743,36 @@ void MainComponent::reopenMidiInputs()
 
 void MainComponent::midiDevicesChanged()
 {
-    askUnavailableCardsSoon();   // 0.9.105: a device came or went - a card that was not there may be there now
+    systemDevicesChanged();   // 0.9.107: a device came or went - the sound cards are looked at too
     // The devices that came are opened, the ones that went are let go; the
     // rest keep playing (nothing is closed and reopened under the player's
     // hands). Devices are known by their identifiers.
+    const double listStartMs = juce::Time::getMillisecondCounterHiRes();
     const auto devices = juce::MidiInput::getAvailableDevices();
+    if (const double tookMs = juce::Time::getMillisecondCounterHiRes() - listStartMs; tookMs > 300.0)
+        CrashHandler::note("MIDI devices: the system took " + juce::String(juce::roundToInt(tookMs)) + " ms to list them");
     juce::StringArray present;
     for (const auto& device : devices) present.add(device.identifier);
     juce::StringArray gone;
     for (size_t i = midiInputs.size(); i-- > 0;)
     {
         if (present.contains(midiInputIdentifiers[i])) continue;
-        gone.add(midiInputs[i] != nullptr ? midiInputs[i]->getName() : midiInputIdentifiers[i]);
+        const auto goneName = midiInputs[i] != nullptr ? midiInputs[i]->getName() : midiInputIdentifiers[i];
+        gone.add(goneName);
+        // 0.9.107 (the window froze 6.6 s each time the Komplete was unplugged): the port of a device that is no
+        // longer there is closed OFF the window thread - Windows makes the closing of a vanished MIDI port wait
+        // for its time-outs. The time it took is logged.
+        if (auto going = std::move(midiInputs[i]))
+        {
+            going->stop();
+            std::thread([going = std::move(going), goneName]() mutable
+            {
+                const double startMs = juce::Time::getMillisecondCounterHiRes();
+                going.reset();
+                const int tookMs = juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - startMs);
+                juce::MessageManager::callAsync([goneName, tookMs] { CrashHandler::note("MIDI input " + goneName + " closed in " + juce::String(tookMs) + " ms (off the window thread)"); });
+            }).detach();
+        }
         midiInputs.erase(midiInputs.begin() + (long)i);
         midiInputIdentifiers.erase(midiInputIdentifiers.begin() + (long)i);
     }
@@ -4509,7 +4531,10 @@ void MainComponent::showCouplersDialog()
 // 0.9.79 (#236): the Audio routing dialog (AudioRouting.h), modeless like the Couplers dialog; kept while hidden.
 void MainComponent::showAudioRoutingDialog()
 {
-    askUnavailableCardsSoon();   // 0.9.105: the cards that were not there are asked again as the dialog comes
+    // 0.9.107: every ASIO card that is not open is asked (in the helper process) the first time the dialog comes -
+    // a card that is not connected is grey before a cable is dropped on it; later openings ask the grey ones.
+    askCards(!cardsAskedOnce);
+    cardsAskedOnce = true;
     if (audioRoutingWindow != nullptr)
     {
         if (!audioRoutingWindow->isVisible()) rescanAudioDeviceLists("the Audio routing opened again");   // 0.9.97: a card switched on meanwhile
@@ -5413,6 +5438,11 @@ void MainComponent::setPluginOn(const juce::String& perspective, const juce::Str
 {
     auto* slot = pluginSlot(perspective, id);
     if (slot == nullptr || slot->on == on) return;
+    if (on && faultedPluginSlots.count(id) != 0)
+    {
+        queueNotice(juce::AlertWindow::WarningIcon, "Plug-in", "The plug-in " + slot->description.name + " failed inside its own code in this session and was switched OFF.\n\nStart the program again before you use it once more.");
+        return;
+    }
     slot->on = on;
     // Switched on again: a plug-in that failed to load before is tried anew.
     if (on)
@@ -5436,6 +5466,22 @@ namespace
         if (layout.outputBuses.isEmpty()) return false;
         if (!instance.setBusesLayout(layout) && instance.getBusesLayout().getMainOutputChannelSet() != set) return false;   // a side-chain it will not drop is accepted as long as the main bus fits
         return instance.getTotalNumOutputChannels() == channels && instance.getTotalNumInputChannels() <= channels;
+    }
+
+    // 0.9.107: a call into a plug-in's own code from the window thread (its loading, its window). On Windows a fault
+    // inside the plug-in is caught - false - instead of ending the program; what the call had made is then LEFT
+    // ALONE for good (never deleted: the objects between the call and the fault were not unwound, a lock may still
+    // be held inside JUCE's wrapper). (No C++ object may live in a function that holds __try: hence the plain
+    // function and its context pointer.)
+    static bool guardedCall(void (*function)(void*), void* context) noexcept
+    {
+       #if JUCE_WINDOWS
+        __try { function(context); return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+       #else
+        function(context);
+        return true;
+       #endif
     }
 
     // What is being loaded, painted at once: a plug-in is made on the window thread, inside its own code (Waves'
@@ -5506,7 +5552,7 @@ void MainComponent::rebuildPluginChains()
                 auto& live = livePlugins[key];
                 const int expected = live != nullptr && live->stage != nullptr && live->stage->mono ? juce::jlimit(1, 8, (int)channels.size()) : pairs;
                 const bool stale = live != nullptr && !live->instances.empty() && ((int)live->instances.size() != expected || std::abs(live->rate - rate) > 0.5);
-                if (slot->on && (live == nullptr || stale))
+                if (slot->on && (live == nullptr || stale) && faultedPluginSlots.count(slot->id) == 0)
                 {
                     // The state as it is now, before the old instances go (a route's rate or channels changed).
                     if (stale) { juce::MemoryBlock state; live->instances.front()->getStateInformation(state); if (state.getSize() > 0) slot->state = state; }
@@ -5515,6 +5561,7 @@ void MainComponent::rebuildPluginChains()
                     fresh->stage = std::make_shared<SamplerEngine::RoutePluginStage>();
                     // A stereo plug-in: an instance per stereo pair. A mono plug-in: an instance per channel.
                     int wanted = pairs;
+                    bool faultWhileLoading = false;
                     for (int index = 0; index < wanted; ++index)
                     {
                         juce::String error;
@@ -5524,7 +5571,16 @@ void MainComponent::rebuildPluginChains()
                             "Loading the plug-in " + slot->description.name + " for " + juce::String(numerals[juce::jlimit(0, 8, manual)]) + " / " + perspective
                             + (wanted > 1 ? " (" + juce::String(index + 1) + " of " + juce::String(wanted) + ")" : juce::String()) + " ...");
                         const double createStartMs = juce::Time::getMillisecondCounterHiRes();
-                        auto instance = PluginHost::create(slot->description, rate, 4096, error);
+                        std::unique_ptr<juce::AudioPluginInstance> instance;
+                        struct LoadCall { const juce::PluginDescription* description; double rate; juce::String* error; std::unique_ptr<juce::AudioPluginInstance>* instance; };
+                        LoadCall loadCall{ &slot->description, rate, &error, &instance };
+                        if (!guardedCall([](void* p) { auto& c = *static_cast<LoadCall*>(p); *c.instance = PluginHost::create(*c.description, c.rate, 4096, *c.error); }, &loadCall))
+                        {
+                            (void)instance.release();   // left alone, never deleted
+                            fresh->error = "it failed inside its own code while it was loaded";
+                            faultWhileLoading = true;
+                            break;
+                        }
                         if (const double tookMs = juce::Time::getMillisecondCounterHiRes() - createStartMs; tookMs > 1000.0)
                             CrashHandler::note("Effects: the plug-in " + slot->description.name + " took " + juce::String(juce::roundToInt(tookMs)) + " ms to load one instance");
                         if (instance == nullptr) { fresh->error = error.isNotEmpty() ? error : juce::String("not installed on this computer"); break; }
@@ -5535,10 +5591,29 @@ void MainComponent::rebuildPluginChains()
                             wanted = juce::jlimit(1, 8, (int)channels.size());
                         }
                         else if (index > 0 && !makePlainEffect(*instance, fresh->stage->mono ? 1 : 2)) { fresh->error = "its buses could not be set"; break; }
-                        instance->setRateAndBufferSizeDetails(rate, 4096);
-                        instance->prepareToPlay(rate, 4096);
-                        if (slot->state.getSize() > 0) instance->setStateInformation(slot->state.getData(), (int)slot->state.getSize());
+                        struct PrepareCall { juce::AudioPluginInstance* instance; double rate; const juce::MemoryBlock* state; };
+                        PrepareCall prepareCall{ instance.get(), rate, &slot->state };
+                        if (!guardedCall([](void* p)
+                            {
+                                auto& c = *static_cast<PrepareCall*>(p);
+                                c.instance->setRateAndBufferSizeDetails(c.rate, 4096);
+                                c.instance->prepareToPlay(c.rate, 4096);
+                                if (c.state->getSize() > 0) c.instance->setStateInformation(c.state->getData(), (int)c.state->getSize());
+                            }, &prepareCall))
+                        {
+                            (void)instance.release();
+                            fresh->error = "it failed inside its own code while it was prepared";
+                            faultWhileLoading = true;
+                            break;
+                        }
                         fresh->instances.push_back(std::move(instance));
+                    }
+                    if (faultWhileLoading)
+                    {
+                        for (auto& made : fresh->instances) (void)made.release();   // its sisters made before the fault: left alone as well
+                        juce::Component::SafePointer<MainComponent> safeThis(this);
+                        juce::MessageManager::callAsync([safeThis, faultedPerspective = juce::String(perspective), faultedId = slot->id]
+                            { if (safeThis != nullptr) safeThis->pluginFaulted(faultedPerspective, faultedId, "while it was loaded"); });
                     }
                     if (fresh->error.isNotEmpty())
                     {
@@ -5727,11 +5802,65 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
         queueNotice(juce::AlertWindow::WarningIcon, "Effects", slot->description.name + " is not loaded: " + pluginStatus(perspective, id) + "\n\nSwitch it ON first.");
         return;
     }
-    const double editorStartMs = juce::Time::getMillisecondCounterHiRes();
-    juce::AudioProcessorEditor* editor = instance->hasEditor() ? instance->createEditorIfNeeded() : nullptr;
-    if (editor == nullptr) editor = new juce::GenericAudioProcessorEditor(*instance);   // a plug-in without a window of its own: its parameters as sliders
+    if (faultedPluginSlots.count(id) != 0 || pluginEditorsOpening.count(id) != 0) return;
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    auto window = std::make_unique<PluginEditorWindow>(slot->description.name + " - " + perspective, editor, [safeThis, perspective, id]
+    // 0.9.107: the plug-in's window is tried in a process of its own before it is ever opened here (PluginHost.h).
+    {
+        const auto pluginName = slot->description.name;
+        const auto trialKey = PluginHost::editorTrialKey(slot->description);
+        const auto known = PluginHost::editorVerdicts()[trialKey];
+        if (!known.known)
+        {
+            if (pluginEditorTrial != nullptr) return;   // a trial is running: one at a time
+            auto runner = std::make_shared<PluginHost::EditorTrialRunner>();
+            pluginEditorTrial = runner;
+            pluginTrialNote = std::make_unique<PluginLoadNote>(getTopLevelComponent() != nullptr ? getTopLevelComponent()->getScreenBounds().getCentre() : juce::Point<int>(400, 300),
+                "Trying the window of " + pluginName + " in a process of its own (once for each plug-in) ...");
+            runner->onDone = [safeThis, perspective, id, trialKey, pluginName](bool ok, const juce::String& why)
+            {
+                juce::MessageManager::callAsync([safeThis, perspective, id, trialKey, pluginName, ok, why]   // (the runner is not deleted inside its own callback)
+                {
+                    auto& verdict = PluginHost::editorVerdicts()[trialKey];
+                    verdict.known = true; verdict.ok = ok; verdict.why = why;
+                    PluginHost::saveEditorVerdicts();
+                    CrashHandler::note("Effects: the window of " + pluginName + " tried in a process of its own: " + (ok ? "it opens (" + why + ")" : "REFUSED - " + why));
+                    if (safeThis == nullptr) return;
+                    safeThis->pluginTrialNote.reset();
+                    safeThis->pluginEditorTrial.reset();
+                    safeThis->showPluginEditor(perspective, id);
+                });
+            };
+            runner->run(slot->description, 2);
+            return;
+        }
+        if (!known.ok)
+        {
+            queueNotice(juce::AlertWindow::WarningIcon, "Plug-in", "The window of " + pluginName + " cannot be opened in this program: tried in a process of its own, " + known.why + ".\n\n"
+                "The plug-in itself keeps working on the sound with the setting it has. Set it in another program, or remove it from the chain.");
+            return;
+        }
+    }
+    const double editorStartMs = juce::Time::getMillisecondCounterHiRes();
+    // 0.9.107: the plug-in makes its window inside its own code - and that is where a faulty one fails (two of
+    // MeldaProduction's did, at random, when their view was attached). Every call of the opening runs through
+    // guardedCall: a fault is caught, the half-made window is hidden and left alone, the plug-in is switched off
+    // (pluginFaulted). TWO STEPS with the message loop between them: the window is made hidden first, and only a
+    // moment later shown (the plug-in attaches its view then) - JUCE posts itself a message when the editor gets its
+    // window (the scale of the screen: it asks the view for its size), and that message must have run BEFORE the
+    // attach: run after a failed attach it reached into the dead view and ended the program all the same.
+    struct OpenCall
+    {
+        juce::AudioPluginInstance* instance = nullptr;
+        juce::String title;
+        juce::Point<int> centre;
+        bool hasCentre = false;
+        std::function<void()> onClose;
+        PluginEditorWindow* window = nullptr;
+    };
+    auto openCall = std::make_shared<OpenCall>();
+    openCall->instance = instance;
+    openCall->title = slot->description.name + " - " + perspective;
+    openCall->onClose = [safeThis, perspective, id]
     {
         juce::MessageManager::callAsync([safeThis, perspective, id]
         {
@@ -5739,36 +5868,131 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
             safeThis->syncPluginState(perspective, id, true);
             safeThis->closePluginEditor(id);
         });
-    });
-    window->getProperties().set("pluginPerspective", perspective);
+    };
     // On the display of the program's window, centred over it (the user: it came up on the primary display).
-    if (auto* top = getTopLevelComponent())
-        window->setCentrePosition(top->getScreenBounds().getCentre());
-    window->setVisible(true);
-   #if JUCE_LINUX
-    // A Wayland desktop places the window itself: as a transient of the main window it is mapped centred on it
-    // (the peer alone is unmapped and mapped again - see placeDialog).
-    if (LinuxWindowPlacement::waylandSession())
-        if (auto* top = getTopLevelComponent(); top != nullptr && top->getPeer() != nullptr && window->getPeer() != nullptr)
-        {
-            auto* peer = window->getPeer();
-            peer->setVisible(false);
-            LinuxWindowPlacement::setTransientFor((unsigned long)(juce::pointer_sized_uint)peer->getNativeHandle(),
-                                                  (unsigned long)(juce::pointer_sized_uint)top->getPeer()->getNativeHandle());
-            peer->setVisible(true);
-        }
-   #endif
-    window->toFront(true);
-    pluginWindows[id] = std::move(window);
+    if (auto* top = getTopLevelComponent()) { openCall->centre = top->getScreenBounds().getCentre(); openCall->hasCentre = true; }
+    auto hideAndLeave = [](PluginEditorWindow* window)
     {
-        auto watch = std::make_shared<PluginSourceWatch>();
-        watch->source = instance;
-        watch->perspective = perspective;
-        instance->addListener(watch.get());
-        pluginWatches[id] = watch;
+        juce::ignoreUnused(window);
+       #if JUCE_WINDOWS
+        if (window != nullptr)
+            if (auto* peer = window->getPeer()) ::ShowWindow((HWND)peer->getNativeHandle(), SW_HIDE);   // hidden without a word to JUCE or the plug-in; never deleted
+       #endif
+    };
+    if (!guardedCall([](void* p)
+        {
+            auto& c = *static_cast<OpenCall*>(p);
+            // NEVER hasEditor() first: JUCE's VST3 wrapper answers it by making the plug-in's view and letting it go
+            // again ("that crashes some plugins", its own comment says) - MeldaProduction's plug-ins then hand out
+            // the same, already destroyed view for the real window, and every later call into it reads garbage:
+            // a crash at random, or an empty window of 128 x 128 (18 Nov 2026). The view is made ONCE, here.
+            juce::AudioProcessorEditor* editor = c.instance->createEditorIfNeeded();
+            if (editor == nullptr) editor = new juce::GenericAudioProcessorEditor(*c.instance);   // a plug-in without a window of its own: its parameters as sliders
+            c.window = new PluginEditorWindow(c.title, editor, c.onClose);   // not shown yet
+            if (c.hasCentre) c.window->setCentrePosition(c.centre);
+        }, openCall.get()))
+    {
+        hideAndLeave(openCall->window);
+        pluginFaulted(perspective, id, "as its window was made");
+        return;
     }
-    CrashHandler::note("Effects: the editor of " + slot->description.name + " opened in "
-        + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - editorStartMs)) + " ms");
+    pluginEditorsOpening.insert(id);
+    const auto pluginName = slot->description.name;
+    juce::Timer::callAfterDelay(80, [safeThis, openCall, perspective, id, pluginName, editorStartMs, hideAndLeave]
+    {
+        if (safeThis == nullptr) return;
+        auto& self = *safeThis;
+        self.pluginEditorsOpening.erase(id);
+        // Is the instance still the slot's? (The chains may have been built anew in between.)
+        bool alive = false;
+        for (const auto& [key, live] : self.livePlugins)
+            if (juce::String(key).startsWith(id + "|") && live != nullptr)
+                for (const auto& made : live->instances) if (made.get() == openCall->instance) alive = true;
+        if (!alive || self.pluginSlot(perspective, id) == nullptr)
+        {
+            if (alive) guardedCall([](void* p) { delete static_cast<PluginEditorWindow*>(p); }, openCall->window); else hideAndLeave(openCall->window);
+            return;
+        }
+        if (!guardedCall([](void* p) { static_cast<OpenCall*>(p)->window->setVisible(true); }, openCall.get()))
+        {
+            hideAndLeave(openCall->window);
+            self.pluginFaulted(perspective, id, "as its window opened");
+            return;
+        }
+        std::unique_ptr<PluginEditorWindow> window(openCall->window);
+        window->getProperties().set("pluginPerspective", perspective);
+       #if JUCE_LINUX
+        // A Wayland desktop places the window itself: as a transient of the main window it is mapped centred on it
+        // (the peer alone is unmapped and mapped again - see placeDialog).
+        if (LinuxWindowPlacement::waylandSession())
+            if (auto* top = self.getTopLevelComponent(); top != nullptr && top->getPeer() != nullptr && window->getPeer() != nullptr)
+            {
+                auto* peer = window->getPeer();
+                peer->setVisible(false);
+                LinuxWindowPlacement::setTransientFor((unsigned long)(juce::pointer_sized_uint)peer->getNativeHandle(),
+                                                      (unsigned long)(juce::pointer_sized_uint)top->getPeer()->getNativeHandle());
+                peer->setVisible(true);
+            }
+       #endif
+        window->toFront(true);
+        self.pluginWindows[id] = std::move(window);
+        {
+            auto watch = std::make_shared<PluginSourceWatch>();
+            watch->source = openCall->instance;
+            watch->perspective = perspective;
+            openCall->instance->addListener(watch.get());
+            self.pluginWatches[id] = watch;
+        }
+        CrashHandler::note("Effects: the editor of " + pluginName + " opened in "
+            + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - editorStartMs)) + " ms");
+    });
+}
+
+// A plug-in failed inside its own code and was caught (Windows: its processing in the engine, its loading, its
+// window). It is switched OFF and left alone for the rest of the session: no call into it, nothing of it deleted -
+// what stood between our call and its fault was not unwound, so a lock may be held and a destructor might hang the
+// program. The program goes on; the user is told to restart before using it again.
+void MainComponent::pluginFaulted(const juce::String& perspective, const juce::String& id, const juce::String& where)
+{
+    if (!faultedPluginSlots.insert(id).second) return;   // said already
+    auto* slot = pluginSlot(perspective, id);
+    const auto name = slot != nullptr ? slot->description.name : juce::String("A plug-in");
+    CrashHandler::note("Effects: the plug-in " + name + " FAILED inside its own code (" + where + ") - caught; it is switched OFF and left alone until the program is started again");
+    if (const auto watch = pluginWatches.find(id); watch != pluginWatches.end())
+    {
+        if (watch->second != nullptr && watch->second->source != nullptr) watch->second->source->removeListener(watch->second.get());   // JUCE's own list: no call into the plug-in
+        pluginWatches.erase(watch);
+    }
+    if (const auto window = pluginWindows.find(id); window != pluginWindows.end())
+    {
+        if (window->second != nullptr)
+        {
+           #if JUCE_WINDOWS
+            if (auto* peer = window->second->getPeer()) ::ShowWindow((HWND)peer->getNativeHandle(), SW_HIDE);
+           #endif
+            (void)window->second.release();   // never deleted: its destructor calls into the plug-in
+        }
+        pluginWindows.erase(window);
+    }
+    static auto* leftAlone = new std::vector<std::shared_ptr<LivePlugin>>();   // never freed, not even at the program's end
+    for (auto it = livePlugins.begin(); it != livePlugins.end();)
+    {
+        if (!juce::String(it->first).startsWith(id + "|")) { ++it; continue; }
+        if (it->second != nullptr)
+        {
+            if (it->second->stage != nullptr) { it->second->stage->faulted.store(true); it->second->stage->off.store(true); }
+            leftAlone->push_back(it->second);
+        }
+        it = livePlugins.erase(it);
+    }
+    if (slot != nullptr) slot->on = false;
+    pluginStateDirty.erase(id);
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(250, [safeThis] { if (safeThis != nullptr) safeThis->rebuildPluginChains(); });
+    saveSettings();
+    queueNotice(juce::AlertWindow::WarningIcon, "Plug-in", "The plug-in " + name + " failed inside its own code (" + where + ").\n\n"
+        "The program caught it and switched the plug-in OFF; the organ plays on without it. Save your work and start the program again before you use this "
+        "plug-in once more - and if it fails every time, it does not work in this program.");
 }
 
 void MainComponent::closePluginEditor(const juce::String& id)
@@ -5832,6 +6056,17 @@ juce::String MainComponent::pluginStatus(const juce::String& perspective, const 
 void MainComponent::watchPlugins()
 {
     if (perspectiveEffects.empty()) return;
+    // 0.9.107: a plug-in whose processing failed inside its own code (the engine caught it and never calls it again).
+    {
+        std::vector<std::pair<juce::String, juce::String>> failed;
+        for (auto& [name, effects] : perspectiveEffects)
+            for (auto& slot : effects.plugins)
+                for (const auto& [key, live] : livePlugins)
+                    if (juce::String(key).startsWith(slot.id + "|") && live != nullptr && live->stage != nullptr && live->stage->faulted.load() && faultedPluginSlots.count(slot.id) == 0)
+                    { failed.push_back({ juce::String(name), slot.id }); break; }
+        for (const auto& f : failed) pluginFaulted(f.first, f.second, "while it worked on the sound");
+        if (!failed.empty()) return;
+    }
     bool rebuild = false;
     for (auto& [name, effects] : perspectiveEffects)
         for (auto& slot : effects.plugins)
@@ -6356,17 +6591,106 @@ bool MainComponent::probeCard(const juce::String& typeName, const juce::String& 
 // silent and nothing loads.
 void MainComponent::watchUnavailableCards()
 {
-    if (unavailableCards.empty() || audioRoutingWindow == nullptr || !audioRoutingWindow->isShowing()) return;
-    if (activeFolderLoader != nullptr || applyAllWindow != nullptr || engine.getCurrentPolyphony() > 0) return;
-    if (juce::Component::getCurrentlyModalComponent() != nullptr) return;
-    const double nowMs = juce::Time::getMillisecondCounterHiRes();
-    for (const auto& [key, card] : unavailableCards)
-        if (nowMs >= card.nextCheckMs)
+    // The audio device types tell when the system's devices change (their lists exist by now: never asked for at
+    // the start, where it would read every type's devices).
+    if (deviceListListener == nullptr)
+    {
+        struct ListListener final : public juce::AudioIODeviceType::Listener
         {
-            const auto type = juce::String(key).upToFirstOccurrenceOf("|", false, false), name = juce::String(key).fromFirstOccurrenceOf("|", false, false);
-            probeCard(type, name);   // may erase the entry: nothing of the map is touched after it
-            return;
-        }
+            explicit ListListener(MainComponent& o) : owner(o) {}
+            void audioDeviceListChanged() override { owner.systemDevicesChanged(); }
+            MainComponent& owner;
+        };
+        deviceListListener = std::make_unique<ListListener>(*this);
+       #if JUCE_WINDOWS   // (only ASIO lists cards that may not be there; elsewhere the lists are read again by the dialog itself)
+        for (auto* type : deviceManager.getAvailableDeviceTypes()) if (type != nullptr) type->addListener(deviceListListener.get());
+       #endif
+        cardChecker.onResult = [this](const CardCheck::Result& result) { cardAnswered(result); };
+    }
+    const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    if (const double changedAt = systemDevicesChangedAtMs.load(); changedAt > 0.0 && nowMs - changedAt >= 1500.0)
+    {
+        // A second and a half after the LAST report (a card going changes the lists several times in a row).
+        systemDevicesChangedAtMs.store(0.0);
+        askCards(true);
+        return;
+    }
+    if (unavailableCards.empty() || activeFolderLoader != nullptr || nowMs - lastGreyCheckMs < 5000.0) return;
+    // Every five seconds: the cards a route waits for, always; the other grey ones while the Audio routing shows.
+    const bool dialogShowing = audioRoutingWindow != nullptr && audioRoutingWindow->isShowing();
+    for (const auto& [key, card] : unavailableCards)
+        if (card.wanted || dialogShowing)
+            cardChecker.ask(juce::String(key).upToFirstOccurrenceOf("|", false, false), juce::String(key).fromFirstOccurrenceOf("|", false, false));
+    lastGreyCheckMs = nowMs;
+}
+
+// Windows reported a device coming or going. Open cards that stop calling back are looked at within a second for
+// the next quarter of a minute (checkAudioCallbackHealth), and the cards that are not open are asked once the
+// reports have ended (watchUnavailableCards).
+void MainComponent::systemDevicesChanged()
+{
+    const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    systemDevicesChangedAtMs.store(nowMs);
+    fastSilenceCheckUntilMs = nowMs + 15000.0;
+}
+
+void MainComponent::askCards(bool everyAsioCard)
+{
+    int asked = 0;
+    if (everyAsioCard)
+        for (auto* type : deviceManager.getAvailableDeviceTypes())
+            if (type != nullptr && type->getTypeName().equalsIgnoreCase("ASIO"))
+                for (const auto& name : type->getDeviceNames(false))
+                    if (findSharedHost("ASIO", name) == nullptr) { cardChecker.ask("ASIO", name); ++asked; }
+    if (asked > 0) CrashHandler::note("Sound cards: " + juce::String(asked) + " ASIO card(s) that are not open are asked whether they are there (in a helper process)");
+    for (const auto& [key, card] : unavailableCards)
+        cardChecker.ask(juce::String(key).upToFirstOccurrenceOf("|", false, false), juce::String(key).fromFirstOccurrenceOf("|", false, false));
+    lastGreyCheckMs = juce::Time::getMillisecondCounterHiRes();
+}
+
+// The helper's answer about one card.
+void MainComponent::cardAnswered(const CardCheck::Result& result)
+{
+    const auto key = result.type + "|" + result.name;
+    if (findSharedHost(result.type, result.name) != nullptr)   // a route opened it meanwhile: it is there
+    {
+        if (unavailableCards.erase(key) > 0) ++unavailableCardsVersion;
+        return;
+    }
+    if (result.ok)
+    {
+        const auto found = unavailableCards.find(key);
+        if (found == unavailableCards.end()) return;
+        const bool wanted = found->second.wanted;
+        unavailableCards.erase(found);
+        ++unavailableCardsVersion;
+        missingDeviceNextTryMs.erase(result.name);   // the routes set to it are reopened at the next look
+        CrashHandler::note("Sound card " + result.name + " (" + result.type + ") answers again (asked in " + juce::String(result.tookMs) + " ms): active in the Audio routing"
+            + (wanted ? ", its routes are opened again" : ""));
+        queueNotice(juce::AlertWindow::InfoIcon, "Sound card", result.name + " (" + result.type + ") answers again"
+            + (wanted ? juce::String(" - its cables play again.") : juce::String(" - it takes cables in the Audio routing.")));
+        return;
+    }
+    auto& card = unavailableCards[key];
+    const bool fresh = card.reason.isEmpty();
+    if (card.reason != result.reason) ++unavailableCardsVersion;
+    card.reason = result.reason;
+    if (fresh)
+        CrashHandler::note("Sound card " + result.name + " (" + result.type + ") is not there: " + result.reason + " (asked in a helper process, " + juce::String(result.tookMs)
+            + " ms) - grey in the Audio routing");
+}
+
+// An open card stopped answering, or a route's card was asked in vain: grey with its cables waiting, asked again
+// every few seconds until it is back.
+void MainComponent::cardWentAway(const juce::String& typeName, const juce::String& deviceName, const juce::String& reason)
+{
+    if (!typeName.equalsIgnoreCase("ASIO") || deviceName.isEmpty()) return;   // other types drop a device that went from their lists themselves
+    auto& card = unavailableCards[typeName + "|" + deviceName];
+    const bool fresh = card.reason.isEmpty();
+    card.wanted = true;
+    if (fresh || card.reason != reason) ++unavailableCardsVersion;
+    if (fresh) CrashHandler::note("Sound card " + deviceName + " (" + typeName + ") went away: " + reason + " - grey in the Audio routing, its cables wait; asked again every 5 s");
+    card.reason = reason;
 }
 
 juce::File MainComponent::deviceOpenMarker() const
@@ -6534,9 +6858,14 @@ void MainComponent::watchMissingAudioDevices()
         // fails silently and is repeated at the next check (while the organ is
         // silent), so a device switched on plays again within seconds.
         if (auto next = missingDeviceNextTryMs.find(wanted); next != missingDeviceNextTryMs.end() && nowMs < next->second) continue;
+        // 0.9.107: an ASIO card known to be away is asked by the helper process (watchUnavailableCards), not here on
+        // the window thread every two seconds; when it answers its entry goes and this pass opens the routes.
+        if (typeName.equalsIgnoreCase("ASIO"))
+            if (const auto away = unavailableCards.find(typeName + "|" + wanted); away != unavailableCards.end()) { away->second.wanted = true; continue; }
         juce::String error;
         if (!isAudioDeviceAvailableNow(typeName, wanted, &error))
         {
+            cardWentAway(typeName, wanted, error.trim().isNotEmpty() ? error.trim() : juce::String("its driver did not open"));
             if (error.isNotEmpty() && missingDeviceNextTryMs.count(wanted) == 0)
                 CrashHandler::note("Audio device '" + wanted + "' is listed but cannot be opened yet (" + error
                     + "); checking every " + (retryMs < 1000.0 ? "second" : "2 s"));
@@ -9212,11 +9541,18 @@ void MainComponent::checkAudioCallbackHealth()
             {
                 if (state == silentDevices.end()) state = silentDevices.insert({ label, {} }).first;
                 ++state->second.seconds;
-                if (state->second.seconds >= 4 && manager != nullptr && (state->second.reopenedMs < 0.0 || nowMs - state->second.reopenedMs > 60000.0))
+                // 0.9.107: right after Windows reported a device going, one second without a callback is enough (four
+                // otherwise: a driver may pause that long on its own); a card that does not open again is marked as
+                // gone at once - grey in the Audio routing, its cables waiting, as on Linux.
+                const bool afterDeviceChange = nowMs < fastSilenceCheckUntilMs;
+                if (state->second.seconds >= (afterDeviceChange ? 1 : 4) && manager != nullptr && (state->second.reopenedMs < 0.0 || nowMs - state->second.reopenedMs > 60000.0))
                 {
                     state->second.reopenedMs = nowMs;
                     state->second.seconds = 0;
-                    reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + " for 4 s - recovery");
+                    const auto typeBefore = manager->getCurrentAudioDeviceType();
+                    const auto nameBefore = manager->getCurrentAudioDevice() != nullptr ? manager->getCurrentAudioDevice()->getName() : juce::String();
+                    reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + (afterDeviceChange ? " right after the system's devices changed" : " for 4 s") + " - recovery");
+                    if (manager->getCurrentAudioDevice() == nullptr) cardWentAway(typeBefore, nameBefore, "it stopped answering (switched off or unplugged)");
                 }
                 else if (state->second.reopenedMs >= 0.0 && nowMs - state->second.reopenedMs > 8000.0 && !state->second.noticed)
                 {

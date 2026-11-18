@@ -13,6 +13,25 @@
  #pragma warning(pop)
 #endif
 #include "SampleFiles.h"
+#if JUCE_WINDOWS
+ #include <excpt.h>
+#endif
+
+// 0.9.107 (the user: "musime umet vadne VST zvladnout, aby program nespadl"): a plug-in's processing is called
+// through this. On Windows a fault inside the plug-in's own code (an access violation, a division by zero, an
+// exception it throws) is CAUGHT here instead of ending the program: the stage is marked, the plug-in is never
+// called again, the dry sound goes on. (No C++ object may live in a function that holds __try.) Elsewhere the
+// call is plain - a signal cannot be recovered from.
+static bool guardedPluginProcess(juce::AudioProcessor* processor, juce::AudioBuffer<float>* buffer, juce::MidiBuffer* midi) noexcept
+{
+   #if JUCE_WINDOWS
+    __try { processor->processBlock(*buffer, *midi); return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+   #else
+    processor->processBlock(*buffer, *midi);
+    return true;
+   #endif
+}
 #include <chrono>
 #include <cmath>
 #include <complex>
@@ -7694,6 +7713,7 @@ struct SamplerEngine::Impl
                 {
                     // Switched on or off (added, removed): the plug-in's sound glides in or out over this block against
                     // the dry sound - a hard switch of a compressor or a saturator is a click (the user's "!3").
+                    if (plugin->faulted.load(std::memory_order_relaxed)) continue;   // it failed inside its own code: left alone for good
                     const bool wantOn = !plugin->off.load(std::memory_order_relaxed) && !plugin->tripped.load(std::memory_order_relaxed);
                     if (!wantOn && plugin->wet <= 0.0f) { plugin->warmSamples = 0; continue; }
                     const float wetTarget = wantOn ? 1.0f : 0.0f;
@@ -7702,7 +7722,8 @@ struct SamplerEngine::Impl
                     const bool glide = plugin->wet != wetTarget;
                     constexpr int kDryChannels = 8;
                     alignas(16) static thread_local float dry[kDryChannels][4096];
-                    const int dryCount = glide && totalSamples <= 4096 ? juce::jmin(kDryChannels, ctx.outCount) : 0;
+                    const int dryCount = totalSamples <= 4096 ? juce::jmin(kDryChannels, ctx.outCount) : 0;   // always: the sound to put back when the plug-in fails
+                    bool pluginFault = false;
                     for (int ci = 0; ci < dryCount; ++ci)
                     {
                         const int ch = ctx.outChannels[ci];
@@ -7718,7 +7739,7 @@ struct SamplerEngine::Impl
                             juce::AudioBuffer<float> view(channels, 1, totalSamples);
                             noMidi.clear();
                             const juce::ScopedNoDenormals noDenormals;
-                            plugin->processors[ci]->processBlock(view, noMidi);
+                            if (!guardedPluginProcess(plugin->processors[ci], &view, &noMidi)) { pluginFault = true; break; }
                         }
                     else
                     for (int pair = 0; pair < plugin->count && pair * 2 < ctx.outCount; ++pair)
@@ -7732,9 +7753,21 @@ struct SamplerEngine::Impl
                         juce::AudioBuffer<float> view(channels, 2, totalSamples);
                         noMidi.clear();
                         const juce::ScopedNoDenormals noDenormals;
-                        plugin->processors[pair]->processBlock(view, noMidi);
+                        if (!guardedPluginProcess(plugin->processors[pair], &view, &noMidi)) { pluginFault = true; break; }
                     }
-                    if (glide)
+                    if (pluginFault)
+                    {
+                        // Caught: the block goes on dry, the plug-in is never called again (MainComponent switches it off and says so).
+                        plugin->faulted.store(true, std::memory_order_relaxed);
+                        plugin->wet = 0.0f;
+                        for (int ci = 0; ci < dryCount; ++ci)
+                        {
+                            const int ch = ctx.outChannels[ci];
+                            if (ch >= 0 && ch < numOuts) std::memcpy(buffer.getWritePointer(ch), dry[ci], sizeof(float) * (size_t)totalSamples);
+                        }
+                        continue;
+                    }
+                    if (glide && dryCount > 0)
                     {
                         // 60 ms from one to the other; while the plug-in warms up (its first 100 ms) the dry sound alone.
                         const float from = plugin->wet;
@@ -7753,10 +7786,10 @@ struct SamplerEngine::Impl
                             }
                             last = g;
                         }
-                        if (dryCount == 0) last = wetTarget;   // a block too long for the glide's buffer: switched at once
                         plugin->wet = last;
                         if (warming) plugin->warmSamples += totalSamples;
                     }
+                    else if (glide) plugin->wet = wetTarget;   // a block too long for the glide's buffer: switched at once
                     const int64_t ns = (int64_t)(1.0e9 * (double)(juce::Time::getHighResolutionTicks() - startTicks) / (double)juce::Time::getHighResolutionTicksPerSecond());
                     plugin->nsSum.fetch_add(ns, std::memory_order_relaxed);
                     plugin->blocks.fetch_add(1, std::memory_order_relaxed);

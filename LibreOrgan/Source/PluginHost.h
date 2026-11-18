@@ -49,12 +49,23 @@ namespace PluginHost
     // The scan worker: the program started with --pluginscan "<request file>". The request holds three lines: the
     // format's name, the plug-in file (or identifier), the result file. The result is the XML of every plug-in type
     // of the file; no result file = the scan died. Never returns to the caller's normal start.
+    // A helper process (the scan of a plug-in, the trial of its window, the question to a sound card) that fails must
+    // die WITHOUT A WORD: no dialog of Windows ("LibreOrgan has stopped working" - the user saw it twice while the
+    // program itself went on: the helpers trying MeldaProduction's windows), no report, no abort message.
+    inline void helperDiesQuietly()
+    {
+       #if JUCE_WINDOWS
+        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+        SetUnhandledExceptionFilter([](EXCEPTION_POINTERS*) -> LONG { TerminateProcess(GetCurrentProcess(), 3); return EXCEPTION_EXECUTE_HANDLER; });
+        _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+       #endif
+        std::set_terminate([] { std::_Exit(3); });
+    }
+
     inline bool isScanWorker(const juce::String& commandLine) { return commandLine.contains("--pluginscan"); }
     [[noreturn]] inline void runScanWorker(const juce::String& commandLine)
     {
-       #if JUCE_WINDOWS
-        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);   // a crashing plug-in must not raise a system dialog
-       #endif
+        helperDiesQuietly();   // a crashing plug-in must raise no system dialog
         const juce::File request(commandLine.fromFirstOccurrenceOf("--pluginscan", false, false).trim().unquoted().trim());
         juce::StringArray lines;
         lines.addLines(request.loadFileAsString());
@@ -71,6 +82,154 @@ namespace PluginHost
         std::fflush(nullptr);
         std::_Exit(0);   // no destructors: a plug-in's left-over threads and statics must not hold the exit
     }
+
+    //==========================================================================
+    // The TRIAL of a plug-in's window in a process of its own (0.9.107, the user: "musime umet vadne VST zvladnout,
+    // aby program nespadl"). A plug-in makes its window inside its own code, and a faulty one fails there - or
+    // hands out a view that is already dead, so that the program ends a moment later in a place nobody can guard
+    // (two of MeldaProduction's did, at random). So the window is opened FIRST in a helper: this program started
+    // with --plugineditor "<request file>" (the request: the result file on the first line, then the plug-in's
+    // description as XML). The helper loads the plug-in, prepares it, shows its window in the screen's corner for a
+    // second and a half with the message loop running and writes "ok<TAB>size"; no result = it crashed, thirty
+    // seconds without an end = it hangs. Only a plug-in that passed (twice: the faults are random) gets its window
+    // in the program itself.
+    inline bool isEditorTrial(const juce::String& commandLine) { return commandLine.contains("--plugineditor"); }
+
+    struct EditorTrial final : private juce::Timer
+    {
+        std::unique_ptr<juce::AudioPluginInstance> instance;
+        std::unique_ptr<juce::DocumentWindow> window;
+        juce::File result;
+
+        [[noreturn]] void finish(const juce::String& verdict)
+        {
+            result.replaceWithText(verdict);
+            std::fflush(nullptr);
+            std::_Exit(0);   // no destructors: the plug-in's own threads and statics must not hold the exit
+        }
+        void start(const juce::String& commandLine)
+        {
+            helperDiesQuietly();   // a crashing plug-in must raise no system dialog
+            const juce::File request(commandLine.fromFirstOccurrenceOf("--plugineditor", false, false).trim().unquoted().trim());
+            const auto text = request.loadFileAsString();
+            result = juce::File(text.upToFirstOccurrenceOf("\n", false, false).trim());
+            juce::PluginDescription description;
+            if (auto xml = juce::parseXML(text.fromFirstOccurrenceOf("\n", false, false))) description.loadFromXml(*xml);
+            juce::String error;
+            instance = formats().createPluginInstance(description, 48000.0, 4096, error);
+            if (instance == nullptr) finish("no\tit could not be loaded (" + error + ")");
+            instance->setRateAndBufferSizeDetails(48000.0, 4096);
+            instance->prepareToPlay(48000.0, 4096);
+            auto* editor = instance->createEditorIfNeeded();
+            if (editor == nullptr) finish("ok\tno window of its own");
+            window = std::make_unique<juce::DocumentWindow>(description.name, juce::Colours::darkgrey, juce::DocumentWindow::closeButton);
+            window->setUsingNativeTitleBar(true);
+            window->setContentNonOwned(editor, true);
+            // Nearly off the screen (its top left corner in the screen's bottom right one): nothing to look at.
+            if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+                window->setTopLeftPosition(display->userArea.getRight() - 3, display->userArea.getBottom() - 3);
+            window->setVisible(true);
+            startTimer(1500);
+        }
+        void timerCallback() override
+        {
+            auto* editor = instance != nullptr ? instance->getActiveEditor() : nullptr;
+            const int w = editor != nullptr ? editor->getWidth() : 0, h = editor != nullptr ? editor->getHeight() : 0;
+            if (w >= 40 && h >= 40) finish("ok\t" + juce::String(w) + " x " + juce::String(h));
+            finish("no\tits window came up without a size (" + juce::String(w) + " x " + juce::String(h) + ")");
+        }
+    };
+    // Called in the helper's initialise: the window is up when it returns, the message loop runs it, the timer ends it.
+    inline void startEditorTrial(const juce::String& commandLine)
+    {
+        static auto* trial = new EditorTrial();   // never deleted (the helper ends by _Exit)
+        trial->start(commandLine);
+    }
+
+    // The verdicts are kept (PluginWindows.txt beside the settings: "ok or no <TAB> key <TAB> why" a line) - a
+    // plug-in's window is tried ONCE, not at every start; the key holds the plug-in file's time, so a new version
+    // of the plug-in is tried anew.
+    struct EditorVerdict { bool known = false, ok = false; juce::String why; };
+    inline juce::String editorTrialKey(const juce::PluginDescription& d)
+    {
+        return d.createIdentifierString() + "|" + juce::String(juce::File(d.fileOrIdentifier).getLastModificationTime().toMilliseconds());
+    }
+    inline std::map<juce::String, EditorVerdict>& editorVerdicts()
+    {
+        static std::map<juce::String, EditorVerdict> verdicts;
+        static bool loaded = false;
+        if (!loaded)
+        {
+            loaded = true;
+            juce::StringArray lines;
+            lines.addLines(settingsFolder().getChildFile("PluginWindows.txt").loadFileAsString());
+            for (const auto& line : lines)
+            {
+                const auto parts = juce::StringArray::fromTokens(line, "\t", "");
+                if (parts.size() < 2) continue;
+                auto& v = verdicts[parts[1]];
+                v.known = true; v.ok = parts[0] == "ok"; v.why = parts.size() > 2 ? parts[2] : juce::String();
+            }
+        }
+        return verdicts;
+    }
+    inline void saveEditorVerdicts()
+    {
+        juce::String text;
+        for (const auto& [key, v] : editorVerdicts())
+            if (v.known) text << (v.ok ? "ok" : "no") << "\t" << key << "\t" << v.why.replaceCharacters("\t\r\n", "   ") << "\n";
+        settingsFolder().getChildFile("PluginWindows.txt").replaceWithText(text);
+    }
+
+    // The program's side: the helper started `trials` times in a row, looked at ten times a second; the first that
+    // fails ends it. onDone comes on the message thread (from the timer: delete the runner later, not inside it).
+    class EditorTrialRunner final : private juce::Timer
+    {
+    public:
+        std::function<void(bool ok, const juce::String& why)> onDone;
+        void run(const juce::PluginDescription& d, int trials) { description = d; left = trials; next(); }
+        ~EditorTrialRunner() override { stopTimer(); if (process.isRunning()) process.kill(); request.deleteFile(); result.deleteFile(); }
+    private:
+        void next()
+        {
+            const auto stamp = juce::String::toHexString(juce::Random::getSystemRandom().nextInt64());
+            const auto temp = juce::File::getSpecialLocation(juce::File::tempDirectory);
+            request = temp.getChildFile("LibreOrgan-plugineditor-" + stamp + ".request.txt");
+            result = temp.getChildFile("LibreOrgan-plugineditor-" + stamp + ".result.txt");
+            juce::String xml;
+            if (auto x = description.createXml()) xml = x->toString();
+            request.replaceWithText(result.getFullPathName() + "\n" + xml);
+            juce::StringArray args;
+            args.add(juce::File::getSpecialLocation(juce::File::currentExecutableFile).getFullPathName());
+            args.add("--plugineditor"); args.add(request.getFullPathName());
+            startedMs = juce::Time::getMillisecondCounterHiRes();
+            if (!process.start(args, 0)) { request.deleteFile(); if (onDone) onDone(false, "the trial could not be started"); return; }
+            startTimer(100);
+        }
+        void timerCallback() override
+        {
+            const bool finished = !process.isRunning();
+            if (!finished && juce::Time::getMillisecondCounterHiRes() - startedMs < 30000.0) return;   // (Waves' shell alone takes ten seconds to load in a fresh process)
+            stopTimer();
+            juce::String verdict;
+            if (!finished) { process.kill(); verdict = "no\tits window did not answer for 30 s"; }
+            else
+            {
+                verdict = result.loadFileAsString().trim();
+                if (verdict.isEmpty()) verdict = "no\tits window crashed";
+            }
+            request.deleteFile(); result.deleteFile();
+            const auto detail = verdict.fromFirstOccurrenceOf("\t", false, false).trim();
+            if (!verdict.startsWith("ok")) { if (onDone) onDone(false, detail); return; }
+            if (--left > 0) { next(); return; }
+            if (onDone) onDone(true, detail);
+        }
+        juce::PluginDescription description;
+        juce::ChildProcess process;
+        juce::File request, result;
+        double startedMs = 0.0;
+        int left = 0;
+    };
 
     //==========================================================================
     // What is known: the plug-in types found (JUCE's list, Plugins.xml) and, per plug-in file, when it was scanned
