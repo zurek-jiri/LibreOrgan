@@ -604,8 +604,8 @@ private:
     // folder on the Desktop and opens the GitHub bug report with the fields filled in.
     void showProblemReportDialog();
     void showLongMessage(const juce::String& title, const juce::String& body);   // a message that may not fit an alert box: read-only text with scrollbars and OK
-    juce::File writeProblemReport(const juce::String& what, const juce::String& steps, bool windowShots,
-        const juce::Array<juce::File>& extraShots, juce::URL& issueUrl);
+    juce::File writeProblemReport(const juce::String& what, const juce::String& steps,
+        const juce::Array<juce::File>& extraShots, juce::URL& issueUrl);   // 0.9.96: ONE file in the folder, logs.zip - the window pictures (always taken) inside it
     // After the report: the message with "Open the GitHub form" (again) and "Open the report folder".
     static void showAfterReport(const juce::URL& url, const juce::File& folder, const juce::String& title = "Report a problem",
         const juce::String& message = {}, const juce::String& formButton = "Open the GitHub form", const juce::String& folderButton = "Open the report folder");

@@ -1129,16 +1129,20 @@ stereo pair for the desktop. An organ needs every output, so:
    aside and the sound breaks long before the processor is busy. The activity
    log says whether the thread was raised to realtime.
 
-The two drivers: **JACK** (use this one - it is PipeWire itself; every card
-in the Pro Audio profile appears with all its channels, the program connects
-its outputs itself, the buffer size and rate chosen in any JACK route are
-handed to PipeWire for every program) and **ALSA** (the plain driver; the
-desktop's stereo output or a card nothing else holds; *List unusable
-devices too*, beside the list of the other cards in the Audio routing, lists
-the held ones as well, dimmed - a cable dropped on one waits until the card
-is free). A card the desktop uses as its system output is never released to
-ALSA: pick another one as the system output first. MIDI devices are never
+**With PipeWire every card is played through PipeWire.** The Audio routing
+lists each card once, under *PipeWire*, with the outputs of its profile (all
+of them in Pro Audio); the program connects its outputs itself, and the
+buffer size and rate chosen on a card are handed to PipeWire for every
+program. A card is never "held" or "busy" there - the desktop and the organ
+share it. Beside the cards stands the system's default output (under ALSA),
+which is PipeWire too. A configuration saved on a card's direct ALSA device
+moves to the same card's PipeWire entry by itself. MIDI devices are never
 listed among the sound cards.
+
+**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its
+own) keeps the ALSA list of the cards: a card another program holds is left
+out, *List unusable devices too* beside the list shows it dimmed, and a cable
+dropped on it waits until the card is free.
 
 ### Audio on macOS
 
@@ -2063,17 +2067,19 @@ start, move `settings.json` away and it starts clean.
 ## 9.3 Report a problem
 
 *Report a problem...* at the top of the Configuration Editor asks what
-happened and how to reproduce it. *Create the report and open GitHub* writes
-a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder
-with `logs.zip` (the activity log, the crash reports, `settings.json`, the
-last self-test, `system.txt` with the computer and every audio route - no
-samples, no voicing) and screenshots of every open window, then opens the
-GitHub form in your browser with its fields filled in and the folder beside
-it: drag `logs.zip` into "Logs" and the pictures into "Screenshots", submit.
-A free GitHub account is needed; the report is public. If GitHub lands
-elsewhere after the sign-in, *Open the GitHub form* in the program's message
-opens the form again, and `Report on GitHub.html` in the folder does the same
-days later.
+happened - a few words are enough. *Create the report and open GitHub*
+writes **one file, `logs.zip`**, into a folder of its own
+(`Reports\LibreOrgan-report-<date>` in the settings folder): the activity
+log, the crash reports, `settings.json`, the last self-test, `system.txt`
+with the computer and every audio route, and a picture of every open window
+of the program - no samples. Then it opens the GitHub form in your browser
+with its fields filled in and the folder beside it.
+
+**Drag `logs.zip` into the field "Logs" and submit.** That drag is the one
+step no program can do for you (GitHub takes files only that way); without
+the zip a report gives nothing to work from. A free GitHub account is
+needed; the report is public. If GitHub lands elsewhere after the sign-in,
+*Open the GitHub form* in the program's message opens the form again.
 
 ## 9.4 Free software, licences, platforms
 

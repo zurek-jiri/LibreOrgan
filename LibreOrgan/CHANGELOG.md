@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.96] - 2026-11-18
+
+### Changed
+- Report a problem: the report folder holds **one file, `logs.zip`** - the
+  pictures of the program's windows are always taken and lie inside the zip
+  with the logs, the settings and `system.txt`; no switch for them, no other
+  file beside the zip. The GitHub form asks for that one file; "Steps to
+  reproduce" is optional (a few words are enough).
+- Linux with PipeWire: every sound card is played through PipeWire. The Audio
+  routing lists each card once, under *PipeWire*; the cards' direct ALSA
+  devices - held by PipeWire most of the time - are no longer listed, and
+  nothing is "unusable" there. A configuration saved on a direct ALSA device
+  moves to the same card's PipeWire entry by itself. A Linux without PipeWire
+  keeps the ALSA list as before.
+
 ## [0.9.95] - 2026-11-18
 
 ### Fixed

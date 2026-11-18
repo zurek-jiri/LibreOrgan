@@ -2694,6 +2694,19 @@ MainComponent::MainComponent()
             });
         }
     }
+    // 0.9.96: ORGAN_TEST_REPORT=<seconds> writes a problem report as "Create the report and open GitHub" does (the
+    // folder with its ONE file, logs.zip), opens nothing and logs the folder.
+    if (const char* env = std::getenv("ORGAN_TEST_REPORT"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(1000 * juce::jmax(1, juce::String(env).getIntValue()), [safeThis]
+        {
+            if (safeThis == nullptr) return;
+            juce::URL url;
+            const auto folder = safeThis->writeProblemReport("A test report of the hook.", {}, {}, url);
+            CrashHandler::note("ORGAN_TEST_REPORT: " + folder.getFullPathName());
+        });
+    }
     // 0.9.94: ORGAN_TEST_MIDI="<seconds>|<division>|<note>^..." - a MIDI note-on (released 1 s later) as if it came
     // from the keyboard of that division (its device and channel), through the whole input path: every division
     // listening to that device and channel takes it, each with its own transposition and bass layout. With
@@ -5352,6 +5365,17 @@ bool MainComponent::isAudioDeviceAvailableNow(const juce::String& typeName, cons
             type->scanForDevices();
             listed = type->getDeviceNames().contains(deviceName);
         }
+   #if JUCE_LINUX
+    // 0.9.96: PipeWire carries the cards and the route names a card's direct ALSA device (not listed any more):
+    // it is "there" when PipeWire shows that card - the route then moves to PipeWire's entry (sharedHostFor).
+    if (typeName.equalsIgnoreCase("ALSA") && !FilteredAlsaDeviceType::isSoundServerDevice(deviceName)
+        && findSharedHost(typeName, deviceName) == nullptr && pipeWireCarriesTheCards())
+    {
+        const bool there = pipeWireClientForAlsaCard(deviceName).isNotEmpty();
+        if (!there && error != nullptr) *error = "PipeWire shows no such card now";
+        return there;
+    }
+   #endif
     if (!listed) return false;
    #if JUCE_LINUX
     // 0.9.95: an ALSA card is asked whether it opens NOW - with "list unusable devices too" a busy card is listed
@@ -5503,6 +5527,16 @@ void MainComponent::watchMissingAudioDevices()
             if (manager == nullptr) continue;
             auto* device = manager->getCurrentAudioDevice();
             if (device != nullptr && device->getName() == wanted) continue;   // the saved device is open
+           #if JUCE_LINUX
+            // 0.9.96: the route named a card's direct ALSA device and plays through PipeWire's entry of that card
+            // now (sharedHostFor): that IS its device - remembered so, never "restored".
+            if (device != nullptr && state->getStringAttribute("deviceType").equalsIgnoreCase("ALSA")
+                && manager->getCurrentAudioDeviceType().equalsIgnoreCase("JACK") && pipeWireClientForAlsaCard(wanted) == device->getName())
+            {
+                if (auto xml = manager->createStateXml()) xmlText = xml->toString();
+                continue;
+            }
+           #endif
             // A substitute opened because the saved device was missing at start-up
             // is not the user's choice: the saved device stays wanted until the
             // user touches a selector.
@@ -5583,11 +5617,29 @@ void MainComponent::watchMissingAudioDevices()
     }
 }
 
-juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeName, const juce::String& requestedName, const juce::XmlElement* state)
+juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeNameAsked, const juce::String& requestedName, const juce::XmlElement* stateAsked)
 {
+    juce::String typeName = typeNameAsked;
+    const juce::XmlElement* state = stateAsked;
     juce::String name = requestedName;
     if (name.isEmpty() && state != nullptr && state->getStringAttribute("deviceType").equalsIgnoreCase(typeName))
         name = state->getStringAttribute("audioOutputDeviceName");
+   #if JUCE_LINUX
+    // 0.9.96 (the user: "na Linuxu chceme jen přes PipeWire"): a route that names a card's DIRECT ALSA device (an
+    // older configuration) plays through PipeWire's entry of the same card instead - the direct device is held by
+    // PipeWire most of the time and is no longer listed. Its rate and buffer are not carried over (a JACK route
+    // takes PipeWire's clock). No such card in PipeWire: the direct device is tried as before.
+    if (typeName.equalsIgnoreCase("ALSA") && name.isNotEmpty() && !FilteredAlsaDeviceType::isSoundServerDevice(name)
+        && findSharedHost(typeName, name) == nullptr && pipeWireCarriesTheCards())
+    {
+        const auto client = pipeWireClientForAlsaCard(name);
+        if (client.isNotEmpty())
+        {
+            CrashHandler::note("ALSA card device '" + name + "' is played through PipeWire: the route goes to '" + client + "' (JACK)");
+            typeName = "JACK"; name = client; state = nullptr;
+        }
+    }
+   #endif
     // Windows Audio without a name means the system's default output: resolved
     // to its name so that every "default" route shares that one stream.
     const bool asio = typeName.equalsIgnoreCase("ASIO");
@@ -6319,14 +6371,17 @@ int MainComponent::fillAliasesFromFolders()
     return filled;
 }
 
-juce::File MainComponent::writeProblemReport(const juce::String& what, const juce::String& steps, bool windowShots,
+juce::File MainComponent::writeProblemReport(const juce::String& what, const juce::String& steps,
     const juce::Array<juce::File>& extraShots, juce::URL& issueUrl)
 {
     // The report folder: Reports\LibreOrgan-report-<date> in the application-data
     // folder (0.8.188, the user: nothing is written onto the Desktop; the folder is
-    // opened for the drag) with logs.zip (activity log, crash reports, settings,
-    // self-test report, system.txt) and the screenshots as PNG files, so each goes
-    // into its field of the GitHub form by drag and drop.
+    // opened for the drag) with ONE file, logs.zip, and nothing else (0.9.96, the user:
+    // "jen ten jeden jediný .zip file, nic jiného v tom reportovacím adresáři nebude" -
+    // a tester facing the zip among PNG pictures, system.txt and an HTML file dragged a
+    // picture into "Logs", #241): the activity log, the crash reports, the settings, the
+    // self-test report, system.txt AND the pictures of the program's windows, always
+    // taken, all inside the zip.
     const auto stamp = juce::Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M");
     const auto reports = settingsFile.getParentDirectory().getChildFile("Reports");
     reports.createDirectory();
@@ -6395,29 +6450,23 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
         }
     const juce::String systemBlock = system;   // for the form's "System" field (the description goes to its own fields)
     system << "\nwhat happened:\n" << what << "\n\nsteps:\n" << steps << "\n";
-    const auto systemFile = folder.getChildFile("system.txt");
-    systemFile.replaceWithText(system);
 
-    // The zip: everything of CrashLogs, the settings, the last self-test, system.txt.
+    // The zip, the ONE file of the folder: everything of CrashLogs, the settings, the last self-test, system.txt
+    // (from memory - no file of it beside the zip) and, under Screenshots/, a picture of every window of the
+    // program (always; the report dialog left out) with the user's own picture files.
     const auto zipPath = folder.getChildFile("logs.zip");
     saveSettingsNow();   // 0.9.90: the settings as they are now, not the deferred write's last state
+    int shots = 0;
     {
         juce::ZipFile::Builder builder;
+        const auto now = juce::Time::getCurrentTime();
         const auto logs = CrashHandler::detail::logDirectory();
         for (const auto& entry : juce::RangedDirectoryIterator(logs, false, "*", juce::File::findFiles))
             builder.addFile(entry.getFile(), 6, "CrashLogs/" + entry.getFile().getFileName());
         if (settingsFile.existsAsFile()) builder.addFile(settingsFile, 6, "settings.json");
         const auto selfTest = settingsFile.getParentDirectory().getChildFile("selftest.txt");
         if (selfTest.existsAsFile()) builder.addFile(selfTest, 6, "selftest.txt");
-        builder.addFile(systemFile, 6, "system.txt");
-        juce::FileOutputStream out(zipPath);
-        if (out.openedOk()) builder.writeToStream(out, nullptr);
-    }
-
-    // Screenshots: every window of the program (the report dialog left out), and the user's own files.
-    int shots = 0;
-    if (windowShots)
-    {
+        builder.addEntry(new juce::MemoryInputStream(system.toRawUTF8(), system.getNumBytesAsUTF8(), true), 6, "system.txt", now);
         auto& desk = juce::Desktop::getInstance();
         for (int i = 0; i < desk.getNumComponents(); ++i)
         {
@@ -6428,12 +6477,15 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
             if (!image.isValid()) continue;
             juce::String name = component->getName().isNotEmpty() ? component->getName() : juce::String("window");
             name = name.replaceCharacters("\\/:*?\"<>|", "_________").substring(0, 60);
-            juce::FileOutputStream png(folder.getChildFile("window-" + juce::String(++shots) + "-" + name + ".png"));
-            if (png.openedOk()) juce::PNGImageFormat().writeImageToStream(image, png);
+            juce::MemoryOutputStream png;
+            if (!juce::PNGImageFormat().writeImageToStream(image, png)) continue;
+            builder.addEntry(new juce::MemoryInputStream(png.getData(), png.getDataSize(), true), 0, "Screenshots/window-" + juce::String(++shots) + "-" + name + ".png", now);
         }
+        for (const auto& extra : extraShots)
+            if (extra.existsAsFile()) builder.addFile(extra, 0, "Screenshots/" + extra.getFileName());
+        juce::FileOutputStream out(zipPath);
+        if (out.openedOk()) { out.setPosition(0); out.truncate(); builder.writeToStream(out, nullptr); }
     }
-    for (const auto& extra : extraShots)
-        if (extra.existsAsFile()) extra.copyFileTo(folder.getChildFile(extra.getFileName()));
 
     // The GitHub form with its fields filled in. The operating system is a text
     // field: GitHub takes text from the link, a dropdown's value it did not
@@ -6469,24 +6521,10 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
     }
     if (issueUrl.toString(true).length() > 6000) issueUrl = makeUrl("See system.txt in logs.zip.");
     CrashHandler::note("Problem report link: " + juce::String(issueUrl.toString(true).length()) + " characters");
-    // The link to the filled-in form as a file in the folder: a double-click opens
-    // it again - after a sign-in, a password reset or a new account, when GitHub
-    // forgot where the user was going.
-    {
-        const auto link = issueUrl.toString(true);
-        juce::String page;
-        page << "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>LibreOrgan Sampler - report on GitHub</title>\n"
-             << "<meta http-equiv=\"refresh\" content=\"0;url=" << link.replace("\"", "&quot;") << "\"></head>\n"
-             << "<body style=\"font-family:sans-serif;max-width:40em;margin:3em auto\"><h1>LibreOrgan Sampler - report on GitHub</h1>\n"
-             << "<p>The GitHub form with your report filled in opens now. If it does not, or if GitHub asked you to sign in and "
-             << "then showed another page, click here (signed in):</p>\n"
-             << "<p><a href=\"" << link.replace("\"", "&quot;") << "\">Open the report form</a></p>\n"
-             << "<p>Then drag <b>logs.zip</b> into the \"Logs\" field and the PNG pictures into \"Screenshots\", and press "
-             << "\"Submit new issue\".</p></body></html>\n";
-        folder.getChildFile("Report on GitHub.html").replaceWithText(page);
-    }
-    CrashHandler::note("Problem report written to " + folder.getFullPathName() + " (" + juce::String(shots) + " window shot(s), "
-        + juce::String(extraShots.size()) + " file(s) added)");
+    // No link file in the folder any more (0.9.96: logs.zip alone lies there) - after a sign-in "Open the GitHub
+    // form" of the program's message opens the filled-in form again.
+    CrashHandler::note("Problem report written to " + zipPath.getFullPathName() + " (" + juce::String(zipPath.getSize() / 1024) + " KB: the logs, the settings, "
+        + juce::String(shots) + " window picture(s), " + juce::String(extraShots.size()) + " file(s) added) - the one file of its folder");
     return folder;
 }
 
@@ -6543,8 +6581,8 @@ namespace
         {
             auto* content = new juce::Component();
             text.setText(message.isNotEmpty() ? message
-                : "The report folder " + folder.getFileName() + " (Reports in the application-data folder) opens in the file manager, the GitHub form in the browser - "
-                  "put them side by side.\nDrag logs.zip into \"Logs\" and the pictures into \"Screenshots\", then \"Submit new issue\".\n"
+                : "The report folder opens in the file manager with ONE file in it, logs.zip; the GitHub form opens in the browser - "
+                  "put them side by side.\nDrag logs.zip into the field \"Logs\", then press \"Submit new issue\". That is all.\n"
                   "Asked to sign in first? Press \"Open the GitHub form\" again afterwards.", juce::dontSendNotification);
             text.setJustificationType(juce::Justification::topLeft);
             text.setFont(juce::FontOptions(15.0f));
@@ -6784,8 +6822,8 @@ void MainComponent::showProblemReportDialog()
                 l.setFont(juce::FontOptions(15.0f));
                 addAndMakeVisible(l);
             };
-            label(intro, "The program packs its logs and settings (no samples) and opens the GitHub form with the fields filled in; "
-                "drag logs.zip and the pictures from the report folder into it. A free GitHub account is needed.");
+            label(intro, "A few words are enough. The program packs everything else into ONE file, logs.zip (no samples), and opens the GitHub "
+                "form filled in: drag logs.zip into its field \"Logs\" - the one step no program can do for you. A free GitHub account is needed.");
             intro.setMinimumHorizontalScale(1.0f);
             label(whatLabel, "What happened:");
             label(stepsLabel, "Steps to reproduce:");
@@ -6796,10 +6834,7 @@ void MainComponent::showProblemReportDialog()
                 editor->setFont(juce::FontOptions(15.0f));
                 addAndMakeVisible(editor);
             }
-            windowShots.setButtonText("Screenshots of the program's windows (keep the dialog in question open)");
-            windowShots.setToggleState(true, juce::dontSendNotification);
-            windowShots.setTooltip("Pictures of every open window of the program go into the report.");
-            addAndMakeVisible(windowShots);
+            // 0.9.96: no switch for the window pictures - they are always taken and lie inside logs.zip.
             addFiles.setButtonText("Add screenshot files...");
             addFiles.onClick = [this]
             {
@@ -6813,7 +6848,7 @@ void MainComponent::showProblemReportDialog()
                     filesLabel.setText(names.isEmpty() ? juce::String("No files added.") : names.joinIntoString(", "), juce::dontSendNotification);
                 });
             };
-            addFiles.setTooltip("Adds screenshot files of your own to the report.");
+            addFiles.setTooltip("Picture files of your own, packed into logs.zip with the rest. The program's own windows are pictured by themselves (keep the dialog in question open).");
             addAndMakeVisible(addFiles);
             label(filesLabel, "No files added.");
             filesLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -6828,7 +6863,7 @@ void MainComponent::showProblemReportDialog()
                     return;
                 }
                 juce::URL url;
-                const auto folder = owner.writeProblemReport(whatText, steps.getText().trim(), windowShots.getToggleState(), extra, url);
+                const auto folder = owner.writeProblemReport(whatText, steps.getText().trim(), extra, url);
                 if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->exitModalState(0);
                 // Our own message first (it takes the focus when it appears), then the
                 // two programs, so they end up on top: the folder itself in the file
@@ -6843,7 +6878,7 @@ void MainComponent::showProblemReportDialog()
                 juce::Timer::callAfterDelay(9000, [folder] { MainComponent::arrangeReportWindows(folder); });    // a browser starting cold (0.8.185: it came up maximised, untouched, after the 4.5 s try)
                 juce::Timer::callAfterDelay(15000, [folder] { MainComponent::arrangeReportWindows(folder); });
             };
-            create.setTooltip("Writes the report folder (logs.zip, screenshots) and opens the GitHub form filled in.");
+            create.setTooltip("Writes logs.zip (the logs, the settings, pictures of the program's windows) into a report folder of its own and opens the GitHub form filled in.");
             addAndMakeVisible(create);
             cancel.setButtonText("Cancel");
             cancel.onClick = [this] { if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->exitModalState(0); };
@@ -6873,7 +6908,6 @@ void MainComponent::showProblemReportDialog()
             addFiles.setBounds(files.removeFromLeft(190).reduced(0, 2));
             files.removeFromLeft(10);
             filesLabel.setBounds(files);
-            windowShots.setBounds(area.removeFromBottom(26));
             area.removeFromBottom(6);
             intro.setBounds(area.removeFromTop(44));
             area.removeFromTop(6);
@@ -6887,7 +6921,6 @@ void MainComponent::showProblemReportDialog()
         MainComponent& owner;
         juce::Label intro, whatLabel, stepsLabel, filesLabel;
         juce::TextEditor what, steps;
-        juce::ToggleButton windowShots;
         juce::TextButton addFiles, create, cancel;
         juce::Array<juce::File> extra;
         std::unique_ptr<juce::FileChooser> chooser;
@@ -31487,8 +31520,8 @@ void MainComponent::showConfigurationEditor()
             licences.onClick = [this] { this->owner.showAboutDialog(); };
             addAndMakeVisible(licences);
             report.setButtonText("Report a problem...");
-            report.setTooltip("Bundles the activity log, crash reports, settings and screenshots into a report folder (Reports in the "
-                "application-data folder, opened for you) and opens the GitHub bug report with the fields filled in.");
+            report.setTooltip("Packs the activity log, the crash reports, the settings and pictures of the program's windows into ONE file, logs.zip "
+                "(in a report folder opened for you), and opens the GitHub bug report with the fields filled in - you drag the zip into it.");
             report.onClick = [this] { this->owner.showProblemReportDialog(); };
             addAndMakeVisible(report);
            #if JUCE_LINUX

@@ -89,6 +89,12 @@ inline std::map<juce::String, double>& recentlyHeldJackNames() { static std::map
 // The ALSA devices listed although they cannot be opened now ("list unusable devices too"), with the reason - the
 // Audio routing dims them and says why (0.9.95). Filled by the scan; message thread only.
 inline std::map<juce::String, juce::String>& unusableAlsaDeviceReasons() { static std::map<juce::String, juce::String> reasons; return reasons; }
+// 0.9.96 (the user: "na Linuxu chceme jen přes PipeWire"): does PipeWire carry the sound cards of this computer?
+// (Its JACK library is loaded, its server answers and offers at least one card to play into.) Then every card is
+// played THROUGH PipeWire - one entry per card, never held, never "unusable" - and the direct ALSA devices of the
+// cards are not listed at all. A Linux without PipeWire (plain ALSA, PulseAudio, a jackd of its own) keeps the ALSA
+// list as it was. Defined below, after the JACK type.
+inline bool pipeWireCarriesTheCards();
 class TrackedAlsaDevice final : public ForwardingAudioIODevice
 {
 public:
@@ -187,8 +193,25 @@ public:
         // 0.9.95: every card is tried in both cases - listed all the same when asked for, but known as unusable
         // (unusableAlsaDeviceReasons), so the Audio routing can dim it and say why.
         const bool showAll = unusableAudioDevicesShown().load();
-        const auto ids = outputIdsByName();
         unusableAlsaDeviceReasons().clear();
+        // 0.9.96: PipeWire carries the cards - only its own entries stay here (the default output, the PipeWire
+        // device); the cards themselves are listed once, by the JACK type, and played through PipeWire. A card
+        // device this program still holds open (an old route) stays listed.
+        if (pipeWireCarriesTheCards())
+        {
+            int direct = 0;
+            for (const auto& name : allOutputs)
+            {
+                if (isTemplate(name)) continue;
+                if (isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0) outputs.add(name); else ++direct;
+            }
+            for (const auto& name : allInputs)
+                if (!isTemplate(name) && (isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0)) inputs.add(name);
+            hiddenAlsaDevicesNote() = direct == 0 ? juce::String()
+                : "ALSA: PipeWire carries the sound cards - " + juce::String(direct) + " direct card device(s) not listed (every card is listed once and played through PipeWire)";
+            return;
+        }
+        const auto ids = outputIdsByName();
         juce::StringArray hidden, hiddenNames;
         for (const auto& name : allOutputs)
         {
@@ -289,6 +312,8 @@ inline void installFilteredAlsaType(juce::AudioDeviceManager& manager)
 // PipeWire and shows every channel of every card. Returns what was loaded.
 #include <dlfcn.h>
 inline void*& jackLibraryHandle() { static void* handle = nullptr; return handle; }
+// True when the library loaded is PipeWire's own (not a jackd client library): see pipeWireCarriesTheCards().
+inline bool& pipeWireJackLibraryLoaded() { static bool loaded = false; return loaded; }
 inline juce::String preloadPipeWireJack()
 {
     static const char* const candidates[]{
@@ -299,7 +324,7 @@ inline juce::String preloadPipeWireJack()
         "/usr/local/lib/pipewire-0.3/jack/libjack.so.0" };
     for (const char* path : candidates)
         if (juce::File(path).existsAsFile())
-            if (void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL)) { jackLibraryHandle() = handle; return path; }
+            if (void* handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL)) { jackLibraryHandle() = handle; pipeWireJackLibraryLoaded() = true; return path; }
     jackLibraryHandle() = dlopen("libjack.so.0", RTLD_NOW | RTLD_GLOBAL);
     return {};
 }
@@ -504,7 +529,6 @@ public:
         auto* device = inner != nullptr ? inner->createDevice(outputDeviceName, inputDeviceName) : nullptr;
         return device != nullptr ? new PipeWireJackDevice(std::unique_ptr<juce::AudioIODevice>(device)) : nullptr;
     }
-private:
     // The clients owning audio ports of one direction, by the JACK API itself
     // (only the handful of functions needed, taken from the loaded library).
     static juce::StringArray audioClients(bool playbackPorts)
@@ -537,9 +561,42 @@ private:
         close(client);
         return clients;
     }
+private:
     std::unique_ptr<juce::AudioIODeviceType> inner;
     juce::StringArray outputs, inputs;
 };
+
+inline bool pipeWireCarriesTheCards()
+{
+    // Asked at every scan; the answer is kept for three seconds (it opens a JACK client).
+    static double checkedAtMs = -1.0e12;
+    static bool carries = false;
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (now - checkedAtMs < 3000.0) return carries;
+    checkedAtMs = now;
+    // PipeWire's own library, and at least one card to play into: a PipeWire that runs beside PulseAudio (for the
+    // screen sharing alone) answers too, but owns no card - the ALSA list stays the way to the cards there.
+    carries = pipeWireJackLibraryLoaded() && !FilteredJackDeviceType::audioClients(true).isEmpty();
+    return carries;
+}
+
+// The PipeWire (JACK) card of a direct ALSA card device: "Komplete Audio 6" for "Komplete Audio 6, USB Audio; Direct
+// hardware device without any conversions", "ALC1220 Digital" for "HD-Audio Generic, ALC1220 Digital; ...", or - in
+// the Pro Audio profile - "Komplete Audio 6 Pro" for the same card (the card's name before the comma is in the
+// client's name). Empty when PipeWire shows no such card. A route saved on the direct device moves to it (0.9.96).
+inline juce::String pipeWireClientForAlsaCard(const juce::String& alsaName)
+{
+    const auto clients = FilteredJackDeviceType::audioClients(true);
+    juce::String best;
+    for (const auto& client : clients)
+        if (client.isNotEmpty() && alsaName.containsIgnoreCase(client) && client.length() > best.length()) best = client;
+    if (best.isNotEmpty()) return best;
+    const auto card = alsaName.upToFirstOccurrenceOf(",", false, false).upToFirstOccurrenceOf(";", false, false).trim();
+    if (card.length() >= 4)
+        for (const auto& client : clients)
+            if (client.containsIgnoreCase(card)) return client;
+    return {};
+}
 
 inline void installFilteredJackType(juce::AudioDeviceManager& manager)
 {

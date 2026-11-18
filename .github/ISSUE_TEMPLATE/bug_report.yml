@@ -7,8 +7,8 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Drag logs.zip from the report folder the program opened (Reports in its application-data folder) here first (it holds activity.log, crash logs, settings.json, selftest.txt and system.txt - no sample data). GitHub takes files only this way - no program can attach them for you. Or zip the CrashLogs folder of the application-data folder by hand.
-      placeholder: Drag the zip file into this field.
+      description: Drag logs.zip here - the one file in the report folder the program opened ("Report a problem..." in the Configuration Editor). It holds the activity log, the crash logs, settings.json, system.txt and pictures of the program's windows - no sample data. This drag is the one step no program can do for you (GitHub takes files only this way), and without the zip a report cannot be worked on. A picture is not a log.
+      placeholder: Drag logs.zip into this field.
     validations:
       required: true
   - type: input
@@ -31,7 +31,7 @@ body:
     id: audio
     attributes:
       label: Audio driver and device
-      description: The driver type and device of the routes involved (Divisions dialog > audio tabs).
+      description: Filled in by "Report a problem" (the driver and device of the routes; see them in the Audio routing).
       placeholder: "ASIO, RME Fireface UCX, buffer 256 at 48 kHz"
     validations:
       required: true
@@ -52,13 +52,11 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: Step by step, from the start of the program. Say whether it happens every time.
+      description: Optional - a few words are enough when the log is attached.
       placeholder: |
         1. Load the configuration ...
-        2. Open the Divisions dialog of manual I, audio tab "Direct" ...
-        3. Untick every channel ...
-    validations:
-      required: true
+        2. Open the Audio routing ...
+        3. Drag the cable of Front onto ...
   - type: textarea
     id: system
     attributes:
@@ -69,7 +67,7 @@ body:
     id: screenshots
     attributes:
       label: Screenshots
-      description: Drag images here - the pictures from the report folder (the program's windows at the time) and any of your own.
+      description: Optional. The pictures of the program's windows are inside logs.zip already - drag an image here only when you want it shown in the issue itself.
   - type: textarea
     id: hardware
     attributes:

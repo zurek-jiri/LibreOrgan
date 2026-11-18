@@ -1143,16 +1143,20 @@ static const char* const kManualText_part5 =
     "   aside and the sound breaks long before the processor is busy. The activity\n"
     "   log says whether the thread was raised to realtime.\n"
     "\n"
-    "The two drivers: **JACK** (use this one - it is PipeWire itself; every card\n"
-    "in the Pro Audio profile appears with all its channels, the program connects\n"
-    "its outputs itself, the buffer size and rate chosen in any JACK route are\n"
-    "handed to PipeWire for every program) and **ALSA** (the plain driver; the\n"
-    "desktop's stereo output or a card nothing else holds; *List unusable\n"
-    "devices too*, beside the list of the other cards in the Audio routing, lists\n"
-    "the held ones as well, dimmed - a cable dropped on one waits until the card\n"
-    "is free). A card the desktop uses as its system output is never released to\n"
-    "ALSA: pick another one as the system output first. MIDI devices are never\n"
+    "**With PipeWire every card is played through PipeWire.** The Audio routing\n"
+    "lists each card once, under *PipeWire*, with the outputs of its profile (all\n"
+    "of them in Pro Audio); the program connects its outputs itself, and the\n"
+    "buffer size and rate chosen on a card are handed to PipeWire for every\n"
+    "program. A card is never \"held\" or \"busy\" there - the desktop and the organ\n"
+    "share it. Beside the cards stands the system's default output (under ALSA),\n"
+    "which is PipeWire too. A configuration saved on a card's direct ALSA device\n"
+    "moves to the same card's PipeWire entry by itself. MIDI devices are never\n"
     "listed among the sound cards.\n"
+    "\n"
+    "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
+    "own) keeps the ALSA list of the cards: a card another program holds is left\n"
+    "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
+    "dropped on it waits until the card is free.\n"
     "\n"
     "### Audio on macOS\n"
     "\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "division itself included: \"I/I 16'\" is an octave coupler), the melody and\n"
     "bass couplers and **Unison Off**. Ticked couplers appear on the division's\n"
     "coupler rail in the main window, shown like stops (\"II/I 16'\" = division II\n"
+    ;
+static const char* const kManualText_part6 =
     "pulled over keyboard I at 16'); they are registration (combinations,\n"
     "crescendo, MIDI). **Unison Off** silences the division's own pitch; its\n"
     "couplers still work. A **melody coupler** couples only the highest key held,\n"
     "a **bass coupler** only the lowest (*Melody/bass couplers: new extreme key\n"
-    ;
-static const char* const kManualText_part6 =
     "only*, *Melody couplers: legato grace time*). *Button size* (small, normal,\n"
     "large) sets the size of every coupler button; it travels with the organ.\n"
     "\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "\n"
     "### Compress samples in RAM (lossless)\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
-    ;
-static const char* const kManualText_part7 =
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
     "### Key velocity: full strike from velocity\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
     "settings below ramp from velocity 1 to here.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Key velocity: fade-in at the lowest velocity\n"
     "\n"
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
     "### Load the last combinations file with the organ\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "On by default. The combinations file (all banks of pistons) last loaded or\n"
     "saved with this organ is read again once the organ is loaded, on top of the\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
     "60 and 100 % of it.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Tremulant phase drift between ranks\n"
     "\n"
     "0 to 360 degrees (default 260): with 0 every stop dips at once, with a large\n"
-    ;
-static const char* const kManualText_part10 =
     "value a full registration shimmers.\n"
     "\n"
     "### Wind: depth (maximum pitch sag)\n"
@@ -2087,17 +2091,19 @@ static const char* const kManualText_part10 =
     "## 9.3 Report a problem\n"
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
-    "happened and how to reproduce it. *Create the report and open GitHub* writes\n"
-    "a folder `LibreOrgan-report-<date>` into `Reports` in the settings folder\n"
-    "with `logs.zip` (the activity log, the crash reports, `settings.json`, the\n"
-    "last self-test, `system.txt` with the computer and every audio route - no\n"
-    "samples, no voicing) and screenshots of every open window, then opens the\n"
-    "GitHub form in your browser with its fields filled in and the folder beside\n"
-    "it: drag `logs.zip` into \"Logs\" and the pictures into \"Screenshots\", submit.\n"
-    "A free GitHub account is needed; the report is public. If GitHub lands\n"
-    "elsewhere after the sign-in, *Open the GitHub form* in the program's message\n"
-    "opens the form again, and `Report on GitHub.html` in the folder does the same\n"
-    "days later.\n"
+    "happened - a few words are enough. *Create the report and open GitHub*\n"
+    "writes **one file, `logs.zip`**, into a folder of its own\n"
+    "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
+    "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
+    "with the computer and every audio route, and a picture of every open window\n"
+    "of the program - no samples. Then it opens the GitHub form in your browser\n"
+    "with its fields filled in and the folder beside it.\n"
+    "\n"
+    "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
+    "step no program can do for you (GitHub takes files only that way); without\n"
+    "the zip a report gives nothing to work from. A free GitHub account is\n"
+    "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
+    "*Open the GitHub form* in the program's message opens the form again.\n"
     "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "without a coupler is placed stop by stop where the name says); the stops\n"
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
+    ;
+static const char* const kManualText_part11 =
     "folder prefixes learned into the patterns); the compass of every stop from\n"
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
-    ;
-static const char* const kManualText_part11 =
     "shown; the general crescendo (one stage per Hauptwerk combination \"Cresc...\",\n"
     "spread over our steps when more than 60); the stops' places on the jamb page\n"
     "with the most drawknobs (columns and rows copied).\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
     "Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed\n"
+    ;
+static const char* const kManualText_part12 =
     "(the log says \"Render worker: SCHED_FIFO\" or \"REFUSED\" with what to allow),\n"
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
     "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
-    ;
-static const char* const kManualText_part12 =
     "prints its speed.\n"
     "\n"
     "## 10.12 RAR archives: how they are read\n"

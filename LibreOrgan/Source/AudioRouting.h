@@ -226,7 +226,7 @@ public:
             {
                 g.setColour(section.collapsed ? glow.withAlpha(0.85f) : glow);
                 g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-                g.drawText((section.collapsed ? "+ " : "- ") + section.type + (section.collapsed ? " (" + juce::String(section.count) + ")" : juce::String()), section.bounds, juce::Justification::centredLeft);
+                g.drawText((section.collapsed ? "+ " : "- ") + shownType(section.type) + (section.collapsed ? " (" + juce::String(section.count) + ")" : juce::String()), section.bounds, juce::Justification::centredLeft);
             }
         }
         for (const auto& card : cards)
@@ -264,7 +264,7 @@ public:
             // figures of the status are in the card's tooltip then).
             g.setColour(card.sharedNote.isNotEmpty() ? glow : card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
             g.setFont(juce::FontOptions(11.5f));
-            g.drawFittedText(card.sharedNote.isNotEmpty() ? card.sharedNote : card.type + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 24, card.bounds.getWidth() - 20, 16, juce::Justification::centredLeft, 1);
+            g.drawFittedText(card.sharedNote.isNotEmpty() ? card.sharedNote : shownType(card.type) + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 24, card.bounds.getWidth() - 20, 16, juce::Justification::centredLeft, 1);
             // The channel names, vertical, above the jacks (read from the bottom up). Compact: the first ten letters.
             if (card.nameBand > 0)
             {
@@ -486,7 +486,8 @@ public:
                     if (juce::Rectangle<int>(jack.getX(), jack.getY() - card.nameBand, jack.getWidth(), jack.getHeight() + card.nameBand).contains(p))
                         return "Output " + juce::String(ch + 1) + ": " + card.jackNames[ch];
                 }
-                return card.name + " (" + card.type + "): " + card.status + (card.busy ? "\n" + card.busyReason : juce::String())
+                return card.name + " (" + shownType(card.type) + "): " + card.status + (card.busy ? "\n" + card.busyReason : juce::String())
+                    + (viaPipeWire && card.type == "JACK" ? juce::String("\nPlayed through PipeWire: the outputs are those of the card's profile - the Pro Audio profile (the system's sound settings) shows every channel.") : juce::String())
                     + (card.sharedNote.isNotEmpty() ? "\nThis device also plays through " + card.sharedWith + ": one device, two drivers. It works; for the most polyphony drag one of the two cards by its title onto the other - every cable then plays through one driver." : juce::String());
             }
         for (const auto& section : typeSections)
@@ -628,9 +629,12 @@ private:
     static int typeRank(const juce::String& type)
     {
         if (type.containsIgnoreCase("ASIO")) return 0;
+        if (type == "JACK") return 0;   // 0.9.96: Linux - the cards as PipeWire has them come first (and unfolded)
         if (type.containsIgnoreCase("Aggregated")) return 1;
         return 2;
     }
+    // What a driver is called on the screen (0.9.96): the JACK entries of a PipeWire system ARE PipeWire's cards.
+    juce::String shownType(const juce::String& type) const { return viaPipeWire && type == "JACK" ? juce::String("PipeWire") : type; }
 
     const std::vector<int>& channelsOf(const Route& route) const
     {
@@ -700,6 +704,9 @@ private:
     // ---- the model -> rows, cards, cables ----
     void rebuild()
     {
+       #if JUCE_LINUX
+        viaPipeWire = pipeWireCarriesTheCards();   // asked here alone (it opens a JACK client), never from paint
+       #endif
         std::vector<Card> fresh;
         for (auto* type : owner.deviceManager.getAvailableDeviceTypes())
         {
@@ -1083,6 +1090,7 @@ private:
         // In the header it lay over the help text (seen on no picture: Windows has no such switch).
         unusableButton.setBounds(14 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)), otherCardsCaption())) + 24,
             chipsTop - 6, 230, 24);
+        unusableButton.setVisible(!viaPipeWire);   // 0.9.96: PipeWire carries the cards - nothing is "unusable" there
 #endif
         int cy = chipsTop + 24, cx = 12;
         juce::String lastType;
@@ -1521,6 +1529,7 @@ private:
     int dragRow = -1, dragCard = -1, liftedCable = -1, pressedCable = -1, dropCard = -1, dropChannel = -1, selectedCable = -1;
     Cell dropCell{ -1, -1 };
     bool dragging = false, draggingCard = false, dropAdd = false, dropPairs = true;
+    bool viaPipeWire = false;   // 0.9.96 (Linux): PipeWire carries the cards - set in rebuild()
     juce::Point<float> dragPoint;
     juce::String lastSignature;
 };

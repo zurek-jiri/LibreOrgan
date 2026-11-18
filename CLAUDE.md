@@ -25,6 +25,17 @@ The user writes Czech; answer in Czech; append a closing report to `LibreOrgan/C
   "todo:" messages are collected (CLAUDE.md pending list); when he says to do them, ALL of them go into one build and
   one version. 0.8.213 was first built from one to-do alone because a message ended with "go" - wrong.
 
+## Replies to reporters (GitHub issues, testers)
+- THE USER'S RULE (18 Nov 2026, #241, "nepiš kraviny, na které uživatel fakt není zvědavej, to opravdu vynech
+  navždycky"): a reply NEVER carries trivial or generic advice ("30 routes cost time, use fewer if you do not need
+  them", "try another buffer", "switch the packing off") - a user with 30 routes wants 30 routes and the program must
+  work with them. A report WITHOUT logs.zip gets this and nothing else: without the log nothing certain can be said; we
+  would like to deal with the case seriously; fields typed by hand and pasted screenshots are WASTED WORK; the way is
+  Configuration Editor > "Report a problem..." > a few words > "Create the report and open GitHub" > drag logs.zip
+  into the field "Logs" > Submit - the drag is the ONE step only the reporter can do (GitHub lets no program attach
+  a file), everything else the program fills in. Polite and firm, never an insult. A reply is a DRAFT for the user
+  until he says to post it.
+
 ## Never change what you need not change
 - The user's rule (23 Oct 2026, "Nikdy neměň něco, co nemusíš!"): a fix touches the lines of the fault and nothing
   else - no renaming, no "while I am here" rewrites, no new defaults, no changed texts or separators. When a change
@@ -3958,6 +3969,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Windows box): CI compiles it, the user's box proves it - say so. #241 (pasztor63, Ultra 9 285K, ReaRoute ASIO 256,
   30 routes, float + packed, limit 616): only a screenshot of the Editor, no logs.zip and no report text - nothing to
   fix blind; a reply was drafted for the user (%TEMP%\issue241_reply.md), not posted. #234 still without a log.
+  0.9.96 (18 Nov 2026, the user's three orders in one build): (1) THE REPORT FOLDER HOLDS ONE FILE ("VŠECKO dohromady
+  zavřeš v jediném .zip file ... nic jiného v tom reportovacím adresáři nebude" - #241's reporter dragged a PICTURE
+  into "Logs": the folder showed logs.zip among window-*.png, system.txt and "Report on GitHub.html"):
+  `writeProblemReport(what, steps, extraShots, url)` (no windowShots flag: the pictures are ALWAYS taken) writes
+  logs.zip alone - CrashLogs/*, settings.json, selftest.txt, system.txt (`builder.addEntry(new MemoryInputStream...)`,
+  no file beside the zip), `Screenshots/window-N-<name>.png` (createComponentSnapshot -> MemoryOutputStream ->
+  addEntry, level 0) and the user's own picture files under Screenshots/; the html link file is gone ("Open the
+  GitHub form" of the after-report box reopens the form); the FileOutputStream is truncated first (it appends -
+  a second report in the same minute corrupted the zip). The dialog has no "Screenshots of the program's windows"
+  switch; the texts (intro, after-report box, Editor tooltip, manual 9.3) say "ONE file, logs.zip - drag it into
+  Logs"; `.github/ISSUE_TEMPLATE/bug_report.yml`: Logs = "the one file ... a picture is not a log", "Steps to
+  reproduce" NOT required (the dialog asks for "What happened" alone - an empty required field blocked Submit),
+  Screenshots optional. Hook `ORGAN_TEST_REPORT=<seconds>` writes a report without opening anything; test
+  %TEMP%\test_0996_report.ps1 (the folder: logs.zip alone; the zip: 6 files + Screenshots/window-1/2; the test's
+  folder deleted). TEST SCRIPT LESSON: the restore line must copy BACKUP -> APP (`Copy-Item "$bak\$f" "$app\$f"`);
+  I wrote it reversed once (caught before the run) - it would have deleted the user's settings.json.
+  (2) LINUX: EVERY CARD THROUGH PIPEWIRE (the user: "Ano, na linuxu chceme jen přes pipewire. Ale co starší linuxy"):
+  `pipeWireCarriesTheCards()` (PlatformAudio.h; 3 s cache; = PipeWire's OWN libjack loaded -
+  `pipeWireJackLibraryLoaded()` set in preloadPipeWireJack - AND `FilteredJackDeviceType::audioClients(true)` not
+  empty: a PipeWire running beside PulseAudio for screen sharing owns no card). When true:
+  `FilteredAlsaDeviceType::scanForDevices` lists the sound server's entries alone (Default ALSA Output, PipeWire
+  Sound Server; a card device we still hold stays) - the cards are listed ONCE, by the JACK type, shown as
+  "PipeWire" in the Audio routing (`shownType`, `viaPipeWire` set in rebuild() only - never ask from paint, it opens
+  a JACK client), first and unfolded (`typeRank` JACK 0), the "List unusable devices too" switch hidden. A route
+  saved on a card's direct ALSA device MOVES to the card's PipeWire entry: `sharedHostFor` (params renamed
+  typeNameAsked/stateAsked, locals typeName/state) maps ALSA + card name through `pipeWireClientForAlsaCard(name)`
+  (the JACK client contained in the ALSA name, longest; else the ALSA card name before the comma contained in a
+  client = the Pro Audio names "Komplete Audio 6 Pro") to JACK with state nullptr (PipeWire's clock, not the ALSA
+  rate/buffer); `isAudioDeviceAvailableNow` answers "there" for such a route when PipeWire shows the card; the
+  watcher takes a route playing through the mapped client as satisfied (remembers the manager's state). When false
+  (plain ALSA, PulseAudio, a jackd of its own - the old laptops): everything as in 0.9.95. NOT DONE, said to the
+  user: switching a card to the Pro Audio profile from the program (pactl/wpctl; the names of the nodes change with
+  the profile - needs a Linux session with the real output in front of me). NOTHING OF (2) WAS RUN: no Linux here;
+  CI compiles, the user tests. (3) #241: the reply posted (issuecomment-6972702401) and, once v0.9.96 was out, a
+  second comment: from 0.9.96 the folder holds the one zip - download it and report again.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
