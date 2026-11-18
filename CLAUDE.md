@@ -4234,6 +4234,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   an Image must be DESTROYED before the image is written (the first swatch was black) and the image made with
   juce::SoftwareImageType(). NOT pictured: the Stop List's folder drag and a card dragged in the Audio routing (no
   hook holds a drag); the motion itself (stills only) - the user judges the speed.
+  0.9.103 STEP B + THE CARD DRAG (the same day; the user: 1.5 px "je fajn", the speed "akorát", the Stop List's
+  folder drag OK; "přetahování karty by taky mělo mít bílý rámeček běžící, a ... stejnou velikost jako karta"):
+  the dragged card of the Audio routing = `cardImage` (createComponentSnapshot of the card's bounds, taken in
+  `beginCardDrag()` BEFORE draggingCard is set) drawn at 0.75 opacity at `cardFrame()` (the card's bounds moved by
+  dragPoint - `cardGrab`) inside ArrangeFrame::takeable; `cardTicker` (a 25 Hz FrameTicker) repaints the frame while
+  the mouse rests; the cell under it stays orange and thick. Hook ORGAN_TEST_ROUTE "dragcard|<card name part>|<dx>|
+  <dy>" holds a card in a drag for a picture (test_0103_arr.ps1 -Mode card). `MeterStyle` (kSegments 8,
+  kThresholdsDb, segmentColour / segmentLit / segmentPaint, kUnlitAlpha) serves paintOutputMeter and the rows'
+  miniature; `NoteBubble::paint(g, area, text, justification, lines)` (black 0.85, radius 5, orange bold 13) serves
+  the HeaderArranger's and the Effects Arranger's notes and PluginLoadNote; every `juce::Colours::orange` (34 uses
+  in six files) is `onColour()` - never write juce::Colours::orange again (darkorange of the "apply" buttons and the
+  cable palette's 0xffff8c1a stay: they mean something else); bankLabel and limitEditor are lime (the Divisions
+  dialog's status text and the sounding key's slider track keep lightgreen: no displays). THE DIALOG SHEET:
+  test_0103_arr.ps1 -Mode sheet opens GLOBAL RESET, Save Configuration, Stop List, Couplers, Temperaments, the three
+  patterns dialogs, the Editor, Audio routing and Divisions in ONE run (ORGAN_TEST_CLICK + ORGAN_TEST_DIALOG_SNAPSHOT;
+  the modal boxes first, each closed by "Cancel" before a dialog with a Cancel of its own is open) - pictures in
+  F:\temp\dialogs_0.9.103. THE SECOND LIST (shown to the user, NOTHING of it done): (1) the three patterns dialogs
+  have a LIGHTER grey background than every other dialog and OK / Cancel at the bottom LEFT, 30 px, touching the
+  editor; (2) the bottom button rows differ - Close 86 x 34 (Couplers), 100 x 30 (Divisions), 110 x 30 (Editor),
+  32 px in the Stop List, none in Temperaments; (3) GLOBAL RESET: two tick-box texts are squeezed (too long for the
+  box); (4) slider value boxes: 14 sizes in the code; (5) the AlertWindow boxes (blue-grey, large outlined buttons)
+  look unlike the dialogs (darkgrey, filled buttons) - my advice: leave; (6) fonts (18 sizes) and corner radii (10
+  values) - my advice: no wholesale change, the pictures show no fault. NOT pictured yet: the crescendo dialog (the
+  run's last snapshot missed it), Report a problem, the load box, the measurement windows, the Tremulant / Swell /
+  Wind settings, IR reverb settings, the manual window.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
