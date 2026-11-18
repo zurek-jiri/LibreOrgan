@@ -1210,38 +1210,6 @@ void StopRow::timerCallback()
     if (arrange.begin) arrange.begin(this);
 }
 
-namespace
-{
-    // Dashed border whose dashes travel around the rectangle ("marching ants").
-    void drawMarchingBorder(juce::Graphics& g, juce::Rectangle<float> r, float phase, juce::Colour colour)
-    {
-        const float dash = 9.0f, gap = 6.0f, period = dash + gap;
-        const float w = r.getWidth(), h = r.getHeight(), perimeter = 2.0f * (w + h);
-        if (perimeter < 4.0f) return;
-        auto pointAt = [&](float d)
-        {
-            d = std::fmod(std::fmod(d, perimeter) + perimeter, perimeter);
-            if (d < w) return juce::Point<float>(r.getX() + d, r.getY());
-            d -= w;
-            if (d < h) return juce::Point<float>(r.getRight(), r.getY() + d);
-            d -= h;
-            if (d < w) return juce::Point<float>(r.getRight() - d, r.getBottom());
-            d -= w;
-            return juce::Point<float>(r.getX(), r.getBottom() - d);
-        };
-        juce::Path path;
-        for (float start = std::fmod(phase, period) - period; start < perimeter; start += period)
-        {
-            const float end = start + dash;
-            path.startNewSubPath(pointAt(start));
-            for (float d = start + 2.0f; d < end; d += 2.0f) path.lineTo(pointAt(d));
-            path.lineTo(pointAt(end));
-        }
-        g.setColour(colour);
-        g.strokePath(path, juce::PathStrokeType(2.0f));
-    }
-}
-
 void StopRow::paint(juce::Graphics& g)
 {
     // An expanded row: the whole field of this stop's voicing - the button line and
@@ -1278,8 +1246,7 @@ void StopRow::paintOverChildren(juce::Graphics& g)
         // Inside the button's own edge, so every stop shows its own frame; the
         // per-stop phase offset keeps neighbouring frames from merging visually.
         const float offset = (float)(std::abs((stop->name + juce::String(transmissionIndex)).hashCode()) % 15);
-        drawMarchingBorder(g, stopButton.getBounds().toFloat().reduced(2.5f),
-            (arrange.phase ? arrange.phase() : 0.0f) + offset, juce::Colours::white.withAlpha(0.9f));
+        ArrangeFrame::takeable(g, stopButton.getBounds().toFloat().reduced(2.5f), (arrange.phase ? arrange.phase() : 0.0f) + offset);
     }
 }
 
@@ -2127,6 +2094,12 @@ StopRow* Voicer::findRow(const std::function<bool(const StopRow&)>& test) const
     return nullptr;
 }
 
+void Voicer::scriptCouplerArrange(int manual)
+{
+    testCouplerArrangeManual = manual;   // taken by that division's header at the next layout
+    if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
+}
+
 juce::Component* Voicer::headerButton(int manual, const juce::String& text) const
 {
     if (manual < 0 || manual >= SamplerEngine::maxManuals) return nullptr;
@@ -2813,8 +2786,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         {
             if (!couplerArrange) return;
             for (auto* button : couplerButtons)
-                drawMarchingBorder(g, button->getBounds().toFloat().expanded(2.0f), dashPhase,
-                    juce::Colours::white.withAlpha(0.85f));
+                ArrangeFrame::takeable(g, button->getBounds().toFloat().expanded(2.0f), ArrangeFrame::phase());
             // 0.9.79 (#233): every free cell of the grid (one spare row included) dashed, as the stop grid shows them.
             const int cellW = couplerCellWidth(), cellH = couplerCellHeight();
             const int columns = couplerColumns(getWidth()), rows = couplerRows(getWidth());
@@ -2824,13 +2796,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 {
                     if (std::find(cells.begin(), cells.end(), std::make_pair(column, row)) != cells.end()) continue;
                     const juce::Rectangle<int> cell(5 + column * (cellW + 5), 40 + row * (cellH + 5), cellW, cellH);
-                    juce::Path outline;
-                    outline.addRoundedRectangle(cell.toFloat().reduced(3.0f), 4.0f);
-                    juce::Path dashed;
-                    const float dashes[]{ 4.0f, 4.0f };
-                    juce::PathStrokeType(1.0f).createDashedStroke(dashed, outline, dashes, 2);
-                    g.setColour(juce::Colours::white.withAlpha(0.35f));
-                    g.fillPath(dashed);
+                    ArrangeFrame::freeCell(g, cell.toFloat().reduced(3.0f));
                 }
         }
         void resized() override
@@ -3113,7 +3079,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         StopRow::ArrangeHooks hooks;
         hooks.active = [this](const juce::Component*) { return arrangeMode; };   // every division arranges at once
         juce::ignoreUnused(manual);
-        hooks.phase = [this] { return arrangeDashPhase; };
+        hooks.phase = [] { return ArrangeFrame::phase(); };   // one clock for every arrange mode (0.9.103)
         hooks.begin = [this, manual](juce::Component*) { enterArrangeMode(manual); };
         hooks.drop = [this, manual, key](juce::Component* row, juce::Point<int> screenPosition, bool duplicate)
         {
@@ -3293,6 +3259,12 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 else if (result == 3 && manualRequest) manualRequest("Couplers");
             });
         };
+        if (testCouplerArrangeManual == manual)
+        {
+            testCouplerArrangeManual = -1;
+            juce::Component::SafePointer<SectionHeader> testHeader(header.get());
+            juce::MessageManager::callAsync([testHeader] { if (testHeader != nullptr && !testHeader->isArranging()) testHeader->beginArranging(); });
+        }
         header->aliasGetter = divisionAliasGetter;   // 0.9.80: "I. Hauptwerk"
         header->aliasSetter = divisionAliasSetter;
         header->refreshTitle();
@@ -3634,16 +3606,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 juce::Point<int> pressedAt;
                 void paint(juce::Graphics& g) override
                 {
-                    g.setColour(juce::Colours::white.withAlpha(0.18f));
-                    for (const auto& cell : cells)
-                    {
-                        juce::Path outline;
-                        outline.addRoundedRectangle(cell.toFloat().reduced(6.0f), 4.0f);
-                        juce::Path dashed;
-                        const float dashes[]{ 4.0f, 4.0f };
-                        juce::PathStrokeType(1.0f).createDashedStroke(dashed, outline, dashes, 2);
-                        g.fillPath(dashed);
-                    }
+                    for (const auto& cell : cells) ArrangeFrame::freeCell(g, cell.toFloat().reduced(6.0f));
                 }
                 bool hitTest(int px, int py) override
                 {

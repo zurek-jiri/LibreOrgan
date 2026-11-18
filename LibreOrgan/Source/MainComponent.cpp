@@ -2623,6 +2623,85 @@ MainComponent::MainComponent()
             juce::Timer::callAfterDelay(10000, [listed] { listed("after"); });
         });
     }
+    // ORGAN_TEST_FRAME_SWATCH=<png> (0.9.103): the arrange frame in three thicknesses on a stop (off and on), a coupler
+    // and a button of the top bar, beside what each place draws today - the user chooses from the picture. Drawn with
+    // the program's own buttons at the interface's scale.
+    if (const char* env = std::getenv("ORGAN_TEST_FRAME_SWATCH"))
+    {
+        const juce::File target(juce::String::fromUTF8(env));
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(2500, [safeThis, target]
+        {
+            if (safeThis == nullptr) return;
+            const float scale = juce::jmax(0.5f, UIScale::factor());
+            const int width = 1010, rowHeight = 62, top = 40, rows = 5;
+            juce::Image image(juce::Image::RGB, juce::roundToInt(width * scale), juce::roundToInt((top + rows * rowHeight + 14) * scale), true, juce::SoftwareImageType());
+            auto context = std::make_unique<juce::Graphics>(image);   // (gone before the image is written: its drawing reaches the pixels then)
+            auto& g = *context;
+            g.addTransform(juce::AffineTransform::scale(scale));
+            g.fillAll(safeThis->getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+            const float thickness[3]{ 1.0f, 1.5f, 2.0f };
+            const char* const heads[4]{ "new: 1 px", "new: 1.5 px", "new: 2 px", "before 0.9.103" };
+            auto columnX = [](int column) { return 190 + column * 205; };
+            g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+            g.setColour(juce::Colours::white);
+            for (int c = 0; c < 4; ++c) g.drawText(heads[c], columnX(c), 8, 180, 22, juce::Justification::centredLeft);
+            auto drawButton = [&](juce::Rectangle<int> r, const juce::String& text, bool on)
+            {
+                juce::TextButton b(text);
+                b.setLookAndFeel(&safeThis->getLookAndFeel());
+                b.setColour(juce::TextButton::buttonOnColourId, onColour());
+                b.setToggleState(on, juce::dontSendNotification);
+                b.setBounds(0, 0, r.getWidth(), r.getHeight());
+                juce::Graphics::ScopedSaveState state(g);
+                g.setOrigin(r.getPosition());
+                b.paintEntireComponent(g, false);
+                b.setLookAndFeel(nullptr);
+            };
+            auto oldMarching = [&](juce::Rectangle<float> r, float alpha)
+            {
+                juce::Path frame; frame.addRectangle(r);
+                g.setColour(juce::Colours::white.withAlpha(alpha));
+                ArrangeFrame::strokeDashes(g, frame, 9.0f, 6.0f, 0.0f, 2.0f);
+            };
+            struct Row { const char* label; const char* text; int w, h; bool on; float grow; };   // grow: the frame outside (+) or inside (-) the button
+            const Row list[4]{ { "Stop, off", "Principal 8'", 160, 38, false, -2.5f }, { "Stop, on", "Principal 8'", 160, 38, true, -2.5f },
+                               { "Coupler", "II/I 8'", 92, 28, false, 2.0f }, { "Top bar button", "Stop List", 130, 30, false, 1.0f } };
+            for (int row = 0; row < 4; ++row)
+            {
+                const int y = top + row * rowHeight;
+                g.setFont(juce::FontOptions(13.0f));
+                g.setColour(juce::Colours::lightgrey);
+                g.drawText(list[row].label, 12, y, 170, list[row].h + 8, juce::Justification::centredLeft);
+                for (int c = 0; c < 4; ++c)
+                {
+                    const juce::Rectangle<int> r(columnX(c), y + 4, list[row].w, list[row].h);
+                    drawButton(r, list[row].text, list[row].on);
+                    const auto frame = r.toFloat().expanded(list[row].grow);
+                    if (c < 3) ArrangeFrame::takeable(g, frame, 0.0f, thickness[c]);
+                    else if (row < 2) oldMarching(frame, 0.9f);
+                    else if (row == 2) oldMarching(frame, 0.85f);
+                    else { juce::Path p; p.addRoundedRectangle(frame, 4.0f); g.setColour(juce::Colours::white.withAlpha(0.6f)); ArrangeFrame::strokeDashes(g, p, 4.0f, 4.0f, 0.0f, 1.0f); }
+                }
+            }
+            {
+                const int y = top + 4 * rowHeight;
+                g.setFont(juce::FontOptions(13.0f));
+                g.setColour(juce::Colours::lightgrey);
+                g.drawText("Free place (stands still)", 12, y, 170, 46, juce::Justification::centredLeft);
+                ArrangeFrame::freeCell(g, juce::Rectangle<float>((float)columnX(0), (float)y + 4.0f, 160.0f, 38.0f).reduced(3.0f));
+                g.drawText("everywhere", columnX(0) + 170, y, 150, 46, juce::Justification::centredLeft);
+                juce::Path cell; cell.addRoundedRectangle(juce::Rectangle<float>((float)columnX(3), (float)y + 4.0f, 160.0f, 38.0f).reduced(6.0f), 4.0f);
+                g.setColour(juce::Colours::white.withAlpha(0.18f));
+                ArrangeFrame::strokeDashes(g, cell, 4.0f, 4.0f, 0.0f, 1.0f);
+            }
+            context.reset();
+            target.deleteFile();
+            juce::FileOutputStream out(target);
+            if (out.openedOk()) juce::PNGImageFormat().writeImageToStream(image, out);
+            CrashHandler::note("ORGAN_TEST_FRAME_SWATCH: written to " + target.getFullPathName() + " at the scale " + juce::String(scale, 2));
+        });
+    }
     // ORGAN_TEST_CLICK="<button text>|<button text>..." (tests, 0.8.173): the named buttons
     // of the console clicked 3 s after start, one every 2 s - a dialog opened without a
     // mouse (the Wayland desktop has no xdotool; the 0.8.172 regression of the launchAsync
@@ -2751,6 +2830,29 @@ MainComponent::MainComponent()
             safeThis->beginHeaderArranging();
             if (parts.size() >= 2) safeThis->moveHeaderButton(parts[1], parts.size() >= 3 ? parts[2] : juce::String());
         });
+    }
+    // 0.9.103: ORGAN_TEST_ARRANGE="<seconds>|<division of the stops>|<division of the couplers>": the stops' arrange
+    // mode of one division and, two seconds later, the couplers' of another are entered and left on (for a picture;
+    // with ORGAN_TEST_HEADER the top bar's too).
+    if (const char* env = std::getenv("ORGAN_TEST_ARRANGE"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        const int atMs = 1000 * juce::jmax(1, parts[0].getIntValue());
+        if (parts.size() >= 2)
+            juce::Timer::callAfterDelay(atMs, [safeThis, manual = parts[1].getIntValue()]
+            {
+                if (safeThis == nullptr || safeThis->voicer == nullptr) return;
+                safeThis->voicer->scriptArrange(manual, true);
+                CrashHandler::note("ORGAN_TEST_ARRANGE: the stops of division " + juce::String(manual) + " in arrange mode");
+            });
+        if (parts.size() >= 3)
+            juce::Timer::callAfterDelay(atMs + 2000, [safeThis, manual = parts[2].getIntValue()]
+            {
+                if (safeThis == nullptr || safeThis->voicer == nullptr) return;
+                safeThis->voicer->scriptCouplerArrange(manual);
+                CrashHandler::note("ORGAN_TEST_ARRANGE: the couplers of division " + juce::String(manual) + " in arrange mode");
+            });
     }
     // 0.9.102: ORGAN_TEST_PLUGIN="<seconds>|<perspective>|<plug-in name part>[|editor][|off][|remove]^..." adds the
     // first effect plug-in whose name holds the part to the perspective (as the + of its chain does).
@@ -18434,9 +18536,16 @@ juce::String MainComponent::uniqueStopBuildName(const std::vector<ManualConfig::
 // the top bar arranged by dragging. A layer over the whole window while the mode is on: the buttons are framed,
 // a press on one takes it, the orange line shows where it lands (the buttons keep sharing the row by their
 // widths - nothing has a fixed cell), a click anywhere else ends the mode.
-struct MainComponent::HeaderArranger final : public juce::Component
+struct MainComponent::HeaderArranger final : public juce::Component, private juce::Timer
 {
-    explicit HeaderArranger(MainComponent& o) : owner(o) { setInterceptsMouseClicks(true, false); setWantsKeyboardFocus(true); }
+    explicit HeaderArranger(MainComponent& o) : owner(o) { setInterceptsMouseClicks(true, false); setWantsKeyboardFocus(true); startTimerHz(25); }
+    // The dashes travel: the bar's strip alone is painted anew (the layer lies over the whole window).
+    void timerCallback() override
+    {
+        juce::Rectangle<int> row;
+        for (const auto& s : shown()) row = row.isEmpty() ? s.bounds : row.getUnion(s.bounds);
+        if (!row.isEmpty()) repaint(row.expanded(6));
+    }
     struct Shown { juce::String key; juce::Rectangle<int> bounds; juce::Button* button; };
     std::vector<Shown> shown() const
     {
@@ -18454,12 +18563,8 @@ struct MainComponent::HeaderArranger final : public juce::Component
         for (const auto& s : list)
         {
             row = row.isEmpty() ? s.bounds : row.getUnion(s.bounds);
-            // White dashes, as the grid's and the couplers' arrange modes draw their cells (the user; orange is the landing line alone).
-            g.setColour(juce::Colours::white.withAlpha(s.key == dragKey ? 0.2f : 0.6f));
-            const float dashes[2]{ 4.0f, 4.0f };
-            juce::Path frame; frame.addRoundedRectangle(s.bounds.toFloat().expanded(1.0f), 4.0f);
-            juce::Path dashed; juce::PathStrokeType(1.0f).createDashedStroke(dashed, frame, dashes, 2);
-            g.fillPath(dashed);
+            // The frame of every arrange mode (the button being dragged: fainter).
+            ArrangeFrame::takeable(g, s.bounds.toFloat().expanded(1.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, s.key == dragKey ? 0.25f : 0.8f);
         }
         const juce::String text("Drag a button of the top bar to its place. Click anywhere else to finish.");
         const juce::Font font(juce::FontOptions(15.0f, juce::Font::bold));
@@ -18474,8 +18579,7 @@ struct MainComponent::HeaderArranger final : public juce::Component
         {
             if (insertX >= 0)
             {
-                g.setColour(orange);
-                g.fillRect(insertX - 2, row.getY() - 3, 4, row.getHeight() + 6);
+                ArrangeFrame::landingLine(g, { insertX - 1, row.getY() - 3, 3, row.getHeight() + 6 });
             }
             if (dragImage.isValid())
             {
@@ -24112,49 +24216,15 @@ void MainComponent::showStopBuildingDialog(int)
             juce::Rectangle<int> dragSource;       // the cell the dragged folder leaves (empty = none)
             float phase = 0.0f;                    // marching border animation
             std::function<int(int)> markerYFor;
-            // A dashed border whose dashes walk around the rectangle (the arrange
-            // mode of the stop grid uses the same).
-            static void drawMarchingBorder(juce::Graphics& g, juce::Rectangle<float> r, float phase, juce::Colour colour)
-            {
-                const float dash = 9.0f, gap = 6.0f, period = dash + gap;
-                const float w = r.getWidth(), h = r.getHeight(), perimeter = 2.0f * (w + h);
-                if (perimeter < 4.0f) return;
-                auto pointAt = [&](float d)
-                {
-                    d = std::fmod(std::fmod(d, perimeter) + perimeter, perimeter);
-                    if (d < w) return juce::Point<float>(r.getX() + d, r.getY());
-                    d -= w;
-                    if (d < h) return juce::Point<float>(r.getRight(), r.getY() + d);
-                    d -= h;
-                    if (d < w) return juce::Point<float>(r.getRight() - d, r.getBottom());
-                    d -= w;
-                    return juce::Point<float>(r.getX(), r.getBottom() - d);
-                };
-                g.setColour(colour);
-                for (float d = std::fmod(phase, period) - period; d < perimeter; d += period)
-                {
-                    juce::Path segment;
-                    segment.startNewSubPath(pointAt(d));
-                    for (float s = 1.0f; s <= dash; s += 1.0f) segment.lineTo(pointAt(d + s));
-                    g.strokePath(segment, juce::PathStrokeType(2.0f));
-                }
-            }
             void paint(juce::Graphics& g) override
             {
-                if (columnMarkerX >= 0)
-                {
-                    g.setColour(onColour());
-                    g.fillRect(columnMarkerX - 1, 0, 3, getHeight());
-                }
-                if (insertMarker >= 0 && markerYFor)
-                {
-                    g.setColour(onColour());
-                    g.fillRect(0, markerYFor(insertMarker) - 2, getWidth(), 3);
-                }
+                if (columnMarkerX >= 0) ArrangeFrame::landingLine(g, { columnMarkerX - 1, 0, 3, getHeight() });
+                if (insertMarker >= 0 && markerYFor) ArrangeFrame::landingLine(g, { 0, markerYFor(insertMarker) - 2, getWidth(), 3 });
+                // The cell a folder leaves (fainter) and the cell it would land in: the frame of every arrange mode.
                 if (!dragSource.isEmpty())
-                    drawMarchingBorder(g, dragSource.toFloat().expanded(2.0f), phase, juce::Colours::white.withAlpha(0.6f));
+                    ArrangeFrame::takeable(g, dragSource.toFloat().expanded(2.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, 0.45f);
                 if (!dropTarget.isEmpty())
-                    drawMarchingBorder(g, dropTarget.toFloat().expanded(2.0f), phase, juce::Colours::white.withAlpha(0.95f));
+                    ArrangeFrame::takeable(g, dropTarget.toFloat().expanded(2.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, 1.0f);
             }
         };
         struct TreeInfo

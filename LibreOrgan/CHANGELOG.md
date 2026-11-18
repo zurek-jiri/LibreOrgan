@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.103] - 2026-11-18
+
+### Changed
+- **One frame for every arrange mode** - the stops, the couplers, the top bar,
+  the effects chain and the Stop List's folder drag drew their dashed frames
+  each in its own way (thick or thin, travelling or standing, three speeds).
+  Now a thing that can be taken has fine white dashes that travel, everywhere
+  the same and at one speed; a free place of a grid has the same dashes
+  standing still; the place a dragged thing lands between others is an orange
+  line of three pixels. In the Audio routing the cell under a dragged card
+  stays orange and thick.
+
 ## [0.9.102] - 2026-11-18
 
 ### Fixed

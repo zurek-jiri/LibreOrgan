@@ -469,6 +469,8 @@ public:
     // The video script (0.8.206): the arrange mode entered/left, an item dropped on a
     // cell of a division as the mouse would drop it (column < 0: the first free cell).
     void scriptArrange(int manual, bool on) { if (on) enterArrangeMode(manual); else exitArrangeMode(); }
+    void scriptCouplerArrange(int manual);   // tests: the couplers' arrange mode of that division's header (for a picture)
+    int testCouplerArrangeManual = -1;
     bool scriptDrop(int manual, const juce::String& name, int targetManual, int column, int row, bool duplicate);
     bool scriptCellCentre(int targetManual, int column, int row, juce::Point<int>& screen) const;       // the centre of a cell (column -1: the first free cell)
     bool scriptIndentPoint(int masterManual, const juce::String& masterName, juce::Point<int>& screen) const;   // a point on the open voicing of a stop folder (a drop there indents)

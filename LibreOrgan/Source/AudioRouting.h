@@ -207,12 +207,10 @@ public:
         if (dragCard >= 0 && draggingCard)
             for (const auto& cell : freeCells)
             {
-                const bool under = dropCell == cell.first;
-                g.setColour(under ? glow : juce::Colours::lightgrey.withAlpha(0.5f));
-                const float dashes[]{ 6.0f, 4.0f };
+                if (dropCell != cell.first) { ArrangeFrame::freeCell(g, cell.second.toFloat().reduced(1.0f)); continue; }
                 juce::Path p; p.addRoundedRectangle(cell.second.toFloat().reduced(1.0f), 6.0f);
-                juce::Path dashed; juce::PathStrokeType(under ? 2.5f : 1.5f).createDashedStroke(dashed, p, dashes, 2);
-                g.fillPath(dashed);
+                g.setColour(glow);
+                ArrangeFrame::strokeDashes(g, p, ArrangeFrame::kDash, ArrangeFrame::kGap, 0.0f, 2.5f);
             }
         // The other cards: buttons per driver under a collapsible caption.
         if (!typeSections.empty())

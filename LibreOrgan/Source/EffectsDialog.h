@@ -362,9 +362,15 @@ private:
     // The arrange mode of the chain (as on the top bar): a layer over the dialog - the movable modules framed, a
     // press takes one, the orange line shows where it lands, a click anywhere else ends the mode. The order is the
     // PERSPECTIVE's: every route of it shares it. Division volume stays first, the IR reverb last.
-    struct Arranger final : public juce::Component
+    struct Arranger final : public juce::Component, private juce::Timer
     {
-        explicit Arranger(EffectsContent& c) : content(c) {}
+        explicit Arranger(EffectsContent& c) : content(c) { startTimerHz(25); }
+        void timerCallback() override   // the dashes travel: the chain's column alone is painted anew
+        {
+            juce::Rectangle<int> all;
+            for (int i = 0; i < content.chainButtons.size(); ++i) { const auto r = rowOf(i); all = all.isEmpty() ? r : all.getUnion(r); }
+            if (!all.isEmpty()) repaint(all.expanded(8));
+        }
         bool movable(int i) const { const auto& id = content.chain[(size_t)i].id; return id != "division" && id != "ir"; }
         juce::Rectangle<int> rowOf(int i) const
         {
@@ -381,11 +387,7 @@ private:
                 const auto r = rowOf(i);
                 all = all.isEmpty() ? r : all.getUnion(r);
                 if (!movable(i)) continue;
-                g.setColour(juce::Colours::white.withAlpha(i == dragIndex ? 0.2f : 0.6f));   // white dashes, as every arrange mode of the program
-                const float dashes[2]{ 4.0f, 4.0f };
-                juce::Path frame; frame.addRoundedRectangle(r.toFloat().expanded(2.0f), 4.0f);
-                juce::Path dashed; juce::PathStrokeType(1.0f).createDashedStroke(dashed, frame, dashes, 2);
-                g.fillPath(dashed);
+                ArrangeFrame::takeable(g, r.toFloat().expanded(2.0f), ArrangeFrame::phase(), ArrangeFrame::kThickness, i == dragIndex ? 0.25f : 0.8f);   // the frame of every arrange mode
             }
             const juce::Rectangle<int> note(all.getX(), all.getBottom() + 10, juce::jmax(all.getWidth(), 214), 88);
             g.setColour(juce::Colours::black.withAlpha(0.85f));
@@ -394,7 +396,7 @@ private:
             g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
             g.drawFittedText("Drag a framed module to its place. Division volume stays first, the IR reverb last. The order is the perspective's - all its routes share it. Click anywhere else to finish.",
                 note.reduced(8, 4), juce::Justification::centredLeft, 6);
-            if (dragIndex >= 0 && insertY >= 0) { g.setColour(orange); g.fillRect(all.getX() - 3, insertY - 2, all.getWidth() + 6, 4); }
+            if (dragIndex >= 0 && insertY >= 0) ArrangeFrame::landingLine(g, { all.getX() - 3, insertY - 1, all.getWidth() + 6, 3 });
         }
         void mouseDown(const juce::MouseEvent& e) override
         {

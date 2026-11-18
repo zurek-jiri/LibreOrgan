@@ -20,6 +20,66 @@ inline juce::Colour sameRegistrationColour(juce::Colour base) { return base.dark
 // 0.8.250 (20 % towards white) was far too light. The pistons keep the plain grey.
 inline juce::Colour emptyStepColour(juce::Colour base) { return base.withMultipliedSaturation(0.9f).contrasting(0.08f); }
 
+// The frames of every arrange mode - stops, couplers, the top bar, the effects chain, the Stop List (0.9.103, the
+// user: "proc mas ... carky JINE v kazdem oddile?"): ONE look, drawn here and nowhere else. A thing that can be taken
+// = fine white dashes that travel; a free place = the same dashes standing still and fainter; where a dragged thing
+// lands between others = an orange line.
+namespace ArrangeFrame
+{
+    // Dashes along any path, shifted `phase` pixels along it (they travel as the phase grows).
+    inline void strokeDashes(juce::Graphics& g, const juce::Path& path, float dash, float gap, float phase, float thickness)
+    {
+        const float period = dash + gap;
+        if (period < 1.0f) return;
+        const float shift = period - std::fmod(std::fmod(phase, period) + period, period);
+        juce::Path out;
+        juce::PathFlatteningIterator it(path, {}, 0.3f);
+        float along = 0.0f;
+        while (it.next())
+        {
+            const juce::Point<float> a(it.x1, it.y1), b(it.x2, it.y2);
+            const float length = a.getDistanceFrom(b);
+            if (length <= 0.0f) continue;
+            float done = 0.0f;
+            while (done < length)
+            {
+                const float inPattern = std::fmod(along + done + shift, period);
+                const bool drawn = inPattern < dash;
+                const float step = juce::jmax(0.01f, juce::jmin(length - done, (drawn ? dash : period) - inPattern));
+                if (drawn) { out.startNewSubPath(a + (b - a) * (done / length)); out.lineTo(a + (b - a) * ((done + step) / length)); }
+                done += step;
+            }
+            along += length;
+        }
+        g.strokePath(out, juce::PathStrokeType(thickness));
+    }
+    constexpr float kDash = 4.0f, kGap = 4.0f, kCorner = 4.0f;
+    constexpr float kThickness = 1.5f;   // the user chooses from F:\temp\arrange_frames.png (ORGAN_TEST_FRAME_SWATCH): this one number
+    // Where the dashes stand now: one clock for every arrange mode, two dash periods a second (each place had a
+    // counter of its own - three speeds).
+    inline float phase() { return (float)std::fmod(juce::Time::getMillisecondCounterHiRes() * 0.016, 8000.0); }
+    // A thing that can be taken (a stop, a coupler, a button of the top bar, a module of the chain).
+    inline void takeable(juce::Graphics& g, juce::Rectangle<float> r, float phase, float thickness = kThickness, float alpha = 0.8f)
+    {
+        juce::Path frame; frame.addRoundedRectangle(r, kCorner);
+        g.setColour(juce::Colours::white.withAlpha(alpha));
+        strokeDashes(g, frame, kDash, kGap, phase, thickness);
+    }
+    // A free place of a grid: the same dashes, standing and fainter.
+    inline void freeCell(juce::Graphics& g, juce::Rectangle<float> r)
+    {
+        juce::Path frame; frame.addRoundedRectangle(r, kCorner);
+        g.setColour(juce::Colours::white.withAlpha(0.35f));
+        strokeDashes(g, frame, kDash, kGap, 0.0f, 1.0f);
+    }
+    // Where a dragged thing lands between others: an orange line, three pixels (`line` is the line itself).
+    inline void landingLine(juce::Graphics& g, juce::Rectangle<int> line)
+    {
+        g.setColour(onColour());
+        g.fillRect(line);
+    }
+}
+
 // Section header that folds its section when clicked (the Configuration Editor
 // style: orange bold caption with a "+ " / "- " prefix). Shared by the dialogs.
 class SectionHeaderLabel : public juce::Label

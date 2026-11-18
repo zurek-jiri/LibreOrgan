@@ -4203,6 +4203,37 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   -46 dB before and after - the user's "+50 dB" was the plug-in's own gain knob). NOT run: a knob turned in the
   editor by a real mouse (the sisters following), the CPU warning (no plug-in here reaches 25 %). RULE: never poll
   or set a foreign plug-in's parameters or state periodically - listen, and pass on what changed.
+  0.9.103 (18 Nov 2026, Windows; the user: "proč máš běžící (či neběžící) bílé přerušované čáry v arrange módu JINÉ v
+  každém oddíle? ... projdi celý kód a sjednoť"): THE UI STYLE UNIFICATION, STEP A. `namespace ArrangeFrame`
+  (UIControls.h) is the ONE place that draws arrange frames: `strokeDashes(g, path, dash, gap, phase, thickness)` (a
+  flattened path walked by length - any shape, the dashes travel with the phase), `phase()` = ONE clock (16 px a
+  second = two periods; the stops, the couplers and the Stop List each had a counter of its own: three speeds),
+  `takeable(g, rect, phase, thickness = kThickness, alpha = 0.8)` = a thing that can be taken (fine white 4/4 dashes,
+  rounded 4, travelling), `freeCell(g, rect)` = a free place (the same dashes standing, alpha 0.35 - the user: "volná
+  políčka jako u spojek"), `landingLine(g, rect)` = the orange 3 px line where a dragged thing lands. Used by:
+  StopRow::paintOverChildren (inside the button, reduced 2.5, per-stop phase offset), the SectionHeader's couplers,
+  the stop grid's and the couplers' free cells, the Stop List's GridArea (source alpha 0.45, target 1.0), the
+  HeaderArranger and the Effects Arranger (both got a 25 Hz juce::Timer that repaints THEIR STRIP alone - the layer
+  lies over the whole window), the Audio routing's free cells (the cell under a dragged card stays ORANGE and
+  thick, 2.5 px - the user). Both copies of drawMarchingBorder are gone. THE USER'S DECISIONS: the thick 9/6 2 px
+  dashes of the stops were "moc řvavé" - the fine line of the top bar, but travelling, everywhere; `kThickness` 1.5
+  is MY pick from F:\temp\arrange_frames.png (ORGAN_TEST_FRAME_SWATCH=<png>: 1 / 1.5 / 2 px on a stop off and on, a
+  coupler, a top-bar button, beside the old look; drawn by the program's own buttons) - his choice changes that one
+  number; displays' green = the saturated one (lime) - NOT done yet (step B); greys: NOTHING is changed (every dialog
+  has darkgrey, the main window and the Audio routing the look-and-feel's blue-grey; the pistons' and crescendo
+  steps' greys carry meaning) - only a single outlier, shown with a picture, may ever be proposed; THE CLASSES OF
+  WINDOWS, SLIDERS AND BUTTONS ARE NOT MERGED (each exists for a behaviour: hide or delete at close, modal or not,
+  the native save dialogs' focus) - the unification is of the LOOK, never of the behaviour. Step B (not done): one
+  orange (`onColour()` for the 39 juce::Colours::orange), lime on every display, one threshold table for both
+  meters, one note bubble; then a contact sheet of every dialog (the report's pictures) for the second list (button
+  heights, gaps, fonts - 18 sizes -, corner radii - 10 values -, slider text boxes - 14 sizes), shown to the user
+  BEFORE any change. Hooks: `ORGAN_TEST_ARRANGE="<seconds>|<division of the stops>|<division of the couplers>"`
+  (`Voicer::scriptCouplerArrange` -> `testCouplerArrangeManual`, taken by that division's header at the next
+  layout), with ORGAN_TEST_HEADER="<seconds>" the top bar too; %TEMP%\test_0103_arr.ps1 -Mode main|fx pictures them
+  (0-main.png, "2-Effects default.png"); %TEMP%\test_0103_swatch.ps1 the design picture. LESSON: a juce::Graphics on
+  an Image must be DESTROYED before the image is written (the first swatch was black) and the image made with
+  juce::SoftwareImageType(). NOT pictured: the Stop List's folder drag and a card dragged in the Audio routing (no
+  hook holds a drag); the motion itself (stills only) - the user judges the speed.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
