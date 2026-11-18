@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.98] - 2026-11-18
+
+### Changed
+- Audio routing: the meter of a row is a miniature of the large meter - the
+  same eight segments (four green, three orange, one red), 2 px each, without
+  a box or gaps.
+- Audio routing: the name of a card that is not there now (its cables wait
+  for it) is grey like the rest of the card.
+
 ## [0.9.97] - 2026-11-18
 
 ### Changed

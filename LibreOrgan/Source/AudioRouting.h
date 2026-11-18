@@ -184,23 +184,21 @@ public:
             area.removeFromRight(20 + fxWidth + 6 + meterWidth + 6);   // the meter, the fx button and the dot sit at the right
             g.setColour(dragged ? glow : row.silent ? juce::Colours::grey : juce::Colours::white);
             g.drawFittedText(row.label, area, juce::Justification::centredLeft, 1);
-            // The row's mini meter: ONE box, five parts one above the other, on the scale of the large meter (0.9.95,
-            // #243 - the three parts of 0.9.91 went yellow at -12 dB and red at -3 dB, far earlier than the large
-            // one): three green (-36, -24, -12 dB), one orange (-9 dB, where the large meter turns orange), one red
-            // ONLY while the limiter works on this row's sound (the clip); 1 s hold.
+            // The row's mini meter (red ONLY while the limiter works on this row's sound; 1 s hold).
             if (ri < rowMeters.size())
             {
                 const auto m = rowMeters[ri];
-                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 11, meterWidth, 22);
-                g.setColour(juce::Colours::black);
-                g.fillRect(meter);
-                static const float thresholds[4]{ -36.0f, -24.0f, -12.0f, -9.0f };
-                for (int s = 0; s < 5; ++s)   // s = 0 the bottom part
+                // 0.9.98 (the user: "udělej to úplně stejně jako velký metr, ale miniaturní ... bez ohraničení"): the
+                // large meter's eight segments (4 green, 3 orange, 1 red; the same thresholds), 2 px each = the
+                // height of the row's letters, no box and no gaps.
+                const juce::Rectangle<int> meter(row.bounds.getRight() - 20 - fxWidth - 6 - meterWidth, row.bounds.getCentreY() - 8, meterWidth, 16);
+                static const float thresholds[7]{ -36.0f, -27.0f, -18.0f, -12.0f, -9.0f, -6.0f, -3.0f };
+                for (int s = 0; s < 8; ++s)   // s = 0 the bottom segment
                 {
-                    const juce::Colour colour = s < 3 ? juce::Colours::lime : s == 3 ? juce::Colours::orange : juce::Colours::red;
-                    const bool lit = !row.silent && (s == 4 ? m.clipShown : m.db >= thresholds[s]);
-                    g.setColour(lit ? colour : colour.withAlpha(0.22f));
-                    g.fillRect(meter.getX() + 1, meter.getBottom() - 1 - (s + 1) * 4 + 1, meter.getWidth() - 2, 3);
+                    const juce::Colour colour = s < 4 ? juce::Colours::lime : s < 7 ? juce::Colours::orange : juce::Colours::red;
+                    const bool lit = !row.silent && (s == 7 ? m.clipShown : m.db >= thresholds[s]);
+                    g.setColour(lit ? colour : colour.withAlpha(0.18f));
+                    g.fillRect(meter.getX(), meter.getBottom() - (s + 1) * 2, meter.getWidth(), 2);
                 }
             }
         }
@@ -257,7 +255,7 @@ public:
                 g.setColour(glow.withAlpha(0.6f));
                 g.drawRoundedRectangle(b.reduced(1.0f), 6.0f, 2.0f);
             }
-            g.setColour(card.busy ? juce::Colours::grey : juce::Colours::white);
+            g.setColour(card.busy || !card.open ? juce::Colours::grey : juce::Colours::white);   // 0.9.98: a card that is not there now (its cables wait) is grey too
             g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
             g.drawFittedText(card.name, card.bounds.getX() + 10, card.bounds.getY() + 4, card.bounds.getWidth() - 20, 20, juce::Justification::centredLeft, 1);
             // The status line; orange with the note when the device also plays through another driver (0.9.93 - the

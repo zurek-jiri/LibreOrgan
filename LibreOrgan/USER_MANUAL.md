@@ -968,9 +968,8 @@ channels of a route may be any number: the pipes are spread over them by key,
 so a chord spreads across the speakers like pipes across a windchest (a mono
 sample to one channel in turn, a stereo sample to a pair).
 
-**Every row** of *Organ out* ends with a small **meter** (one box, five
-parts on the large meter's scale: three green, orange from -9 dB, red only
-at a clip) and the **fx** button -
+**Every row** of *Organ out* ends with a small **meter** (the large meter
+in miniature: four green segments, three orange, red only at a clip) and the **fx** button -
 grey while everything of it is default, orange when an effect is set or a
 module set apart; it opens the row's [Effects](#53-effects), a right-click
 on it resets them to the default. The cables take the primary colours first

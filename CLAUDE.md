@@ -4035,6 +4035,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   a bare `claude` or /clear makes a NEW empty session - use `claude --resume 10c94e83-0c32-48a0-8afa-9042aac822b5`
   on both systems. The Linux memory folder (-mnt-pracovni-JUCE-PROJEKTY-LibreOrgan/memory) and the session's
   tool-results folder are symlinks to the Windows ones since 18 Nov 2026; /mnt/windows must be mounted rw.
+  0.9.98 (18 Nov 2026, Linux, the user: the 0.9.95 five-part row meter "humpolácký"): the row meter of Audio routing
+  = the LARGE meter in miniature - 8 segments of 2 px (16 px = the row's letters), thresholds -36 -27 -18 -12 -9 -6
+  -3 + red only while the row clips, 4 lime / 3 orange / 1 red, unlit alpha 0.18, NO black box, NO gaps; a full
+  card's title is grey when `!card.open` too (a card that is not there, its cables waiting). RULE: a small copy of
+  an element is the element itself scaled (same parts, same colours), never a redesign.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
