@@ -1099,6 +1099,41 @@ static const char* const kManualText_part5 =
     "gets its pipes resampled on the way, at a small cost and a step below the\n"
     "quality of the resampling on load.\n"
     "\n"
+    "### Plug-ins in the chain\n"
+    "\n"
+    "The **+** under a perspective's chain adds a plug-in - VST3 on every system,\n"
+    "Audio Units too on macOS - from the list the scan found\n"
+    "([Plug-ins (VST3)](#87-plug-ins-vst3)). It lands right before the *IR\n"
+    "reverb*; *Arrange the chain* moves it among *Volume*, *Channel separation*\n"
+    "and *Equalizer*. A plug-in belongs to the **perspective**: it works on every\n"
+    "route of it, an instance for each, all with the one setting you make.\n"
+    "\n"
+    "Its card has the **ON / OFF** switch (OFF, the sound passes untouched and the\n"
+    "setting is kept), *Open editor* - the plug-in's own window, always a window\n"
+    "of its own - and *Remove*; the line under them says on how many routes it\n"
+    "works, its latency and the time it takes per block. Stereo and mono plug-ins\n"
+    "are taken (a mono one works on each channel separately); instruments are not\n"
+    "offered.\n"
+    "\n"
+    "A plug-in is somebody else's program inside this one, and what guards the\n"
+    "organ against a faulty one is this:\n"
+    "\n"
+    "- a plug-in file is tried by the scan in a process of its own; one that\n"
+    "  crashes there or does not answer is refused and never loaded;\n"
+    "- a plug-in with latency delays every other route by the same amount, so the\n"
+    "  perspectives stay together;\n"
+    "- a plug-in that needs more time than the audio buffer allows, block after\n"
+    "  block, is switched OFF and a message says so;\n"
+    "- after a start that follows a crash with plug-ins loaded - or with **Shift**\n"
+    "  held at the start - every plug-in is OFF and not loaded; switch them ON one\n"
+    "  by one, and the one that brings the program down is the one to remove.\n"
+    "\n"
+    "With plug-ins in a chain the master volume acts after them (a compressor does\n"
+    "not move with the master). A configuration carries its plug-ins' names and\n"
+    "settings, never the plug-ins: on a computer without one the row is grey, the\n"
+    "organ plays without that effect and the setting is kept for the day the\n"
+    "plug-in is there.\n"
+    "\n"
     "## 5.4 The auxiliary route\n"
     "\n"
     "One more route per division: a mix of everything the division plays, every\n"
@@ -1177,6 +1212,8 @@ static const char* const kManualText_part5 =
     "\n"
     "### Audio on macOS\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "One driver, CoreAudio. Every audio device of the system is listed; several\n"
     "cards are joined into one with *Audio MIDI Setup* (Utilities), which the\n"
     "program then plays through like any other device. The audio threads are\n"
@@ -1212,8 +1249,6 @@ static const char* const kManualText_part5 =
     "  measure more than on one - at the price of different latencies.\n"
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
     "  cost render time; the report names what was in force.\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "The *DSP* value is the whole callback of the busiest device as a share of\n"
     "its period; several hundred per cent means the audio thread was kept waiting\n"
@@ -1379,6 +1414,8 @@ static const char* const kManualText_part6 =
     "\n"
     "The processor, its physical cores and logical CPUs, the RAM. Information.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "### Render threads\n"
     "\n"
     "How many threads render pipes for ASIO and Windows Audio routes, the driver's\n"
@@ -1414,8 +1451,6 @@ static const char* const kManualText_part6 =
     "### Render threads for Aggregated WASAPI\n"
     "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
-    ;
-static const char* const kManualText_part7 =
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
@@ -1581,6 +1616,8 @@ static const char* const kManualText_part7 =
     "The same shelf following the wind sag: this much loss at the full sag\n"
     "(default 4 dB).\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Wind: volume change per cent of sag\n"
     "\n"
     "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
@@ -1616,8 +1653,6 @@ static const char* const kManualText_part7 =
     "### Wind: maximum wind model effect\n"
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
-    ;
-static const char* const kManualText_part8 =
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
     "\n"
     "### Tremulant: harmonic filter\n"
@@ -1783,6 +1818,8 @@ static const char* const kManualText_part8 =
     "On (default): every shifted copy is brought to the loudness of its source.\n"
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "On by default: the copies are written to files and read back at the next\n"
     "load - seconds instead of minutes. [The cache](#73-the-cache).\n"
@@ -1818,8 +1855,6 @@ static const char* const kManualText_part8 =
     "\n"
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Program windows\n"
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
@@ -1985,6 +2020,8 @@ static const char* const kManualText_part9 =
     "division's lowest octave. No difference with the *Standard* layout or a\n"
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### MIDI transposition\n"
     "\n"
@@ -2020,8 +2057,6 @@ static const char* const kManualText_part9 =
     "routes (the division volume among them) are set there, nowhere in this editor.\n"
     "\n"
     "### Random tuning error of pipes\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "(The Divisions dialog says *Allow Random Tuning Error*.) On: the pipes get\n"
     "the small random detune set per stop (*Random pitch error*).\n"
@@ -2082,6 +2117,34 @@ static const char* const kManualText_part10 =
     "sag.\n"
     "\n"
     "---\n"
+    "\n"
+    "## 8.7 Plug-ins (VST3)\n"
+    "\n"
+    "### Plug-ins\n"
+    "\n"
+    "*Scan* looks for VST3 plug-ins (Audio Units too on macOS) in the system's\n"
+    "folders and the ones you added, behind the playing - nothing waits for it.\n"
+    "Each plug-in file is tried in a process of its own and given 8 seconds: one\n"
+    "that crashes there or does not answer is refused and never loaded into the\n"
+    "program. A file is scanned again only when it changed. What is found is\n"
+    "offered by the **+** of an effects chain\n"
+    "([Plug-ins in the chain](#plug-ins-in-the-chain)).\n"
+    "\n"
+    "### Plug-ins: the list\n"
+    "\n"
+    "Every effect plug-in found, by maker, and every plug-in file refused, with\n"
+    "the reason.\n"
+    "\n"
+    "### Plug-ins: the refused once more\n"
+    "\n"
+    "Scans the refused files again and gives each 60 seconds - for a plug-in that\n"
+    "is merely slow at its first start (a licence check, a large collection in\n"
+    "one file).\n"
+    "\n"
+    "### Plug-in folders\n"
+    "\n"
+    "The system's own plug-in folders are always searched. *Add folder...* adds\n"
+    "one of yours; *Forget* removes the added ones. Press *Scan* afterwards.\n"
     "\n"
     "# 9. Messages, the activity log, reporting a problem, licences\n"
     "\n"
@@ -2159,6 +2222,8 @@ static const char* const kManualText_part10 =
     "played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);\n"
     "a two- or three-digit suffix after an underscore at the very end is a\n"
     "velocity layer (`036-C_bis_070.wav`: a variant inside layer 070). The release\n"
+    ;
+static const char* const kManualText_part11 =
     "folders: `rel500` (also `rel_0500`, `rel-500`, `release 500ms`) for keys held\n"
     "up to 500 ms, `rel1500` up to 1.5 s, plain `rel` (= `rel99999`) for the rest,\n"
     "files named like the attacks.\n"
@@ -2222,8 +2287,6 @@ static const char* const kManualText_part10 =
     "\n"
     "## 10.4 Hauptwerk import rules\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "LibreOrgan Sampler does not load a Hauptwerk organ definition: nothing of it runs\n"
     "here, and the program would have no use for it - the organ is built from the\n"
     "sample folders, exactly as from a tree loaded by hand. A definition is read for\n"
@@ -2361,6 +2424,8 @@ static const char* const kManualText_part11 =
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"
     "keys at the fastest rate produce no more voices and the sound stays clean,\n"
     "the organ itself is the limit. Afterwards the level glides up at 26 dB/s\n"
+    ;
+static const char* const kManualText_part12 =
     "after a short hold and the new limit takes effect once the tails are gone.\n"
     "\n"
     "The report's *Advanced analysis*: the audio routes as they ran, the CPU of\n"
@@ -2424,8 +2489,6 @@ static const char* const kManualText_part11 =
     "starting on a silent route is not a click). Counted per route after the pool\n"
     "render (stage 0, the sharpest: with IR reverb on the route the wet masks a\n"
     "small dry step at stage 1), after separation, reverb and clip (stage 1), and\n"
-    ;
-static const char* const kManualText_part12 =
     "per device callback on the driver's buffer, on the route's own channels only.\n"
     "The log line names the route, the stage and the lanes that rendered without a\n"
     "scratch buffer; the counters reset after a render gap, a device start or a\n"

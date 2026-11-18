@@ -4089,6 +4089,49 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   layer, as the top bar's), panels stay in fixed order (ChainItem::panel). Hooks: ORGAN_TEST_MOUSE "ONOFF IR
   reverb|click", ORGAN_TEST_FX_ARRANGE="<id>|<before id>". build.yml release job: `keep="v0.9.100"` stays beside
   the current release until the user says to drop it (set keep="").
+  0.9.101 CONTINUED = STEPS 2-5 OF THE VST PLAN (18 Nov 2026, Linux; all in ONE version, 0.9.101, NOT pushed beyond
+  the first commit 8cebf27 - the user: "nic nevydávej na github!!! Až hotovou věc"; work stays in ~/LibreOrgan-linux
+  until he says). `Source/PluginHost.h` (header-only; CMake `JUCE_PLUGINHOST_VST3=1`, `JUCE_PLUGINHOST_AU=1` on
+  APPLE, the jucer's JUCEOPTIONS JUCE_PLUGINHOST_VST3 - RESAVE ON WINDOWS): `formats()` (JUCE 9:
+  `juce::addDefaultFormatsToManager`, AudioPluginFormatManager::addDefaultFormats is deleted), THE SCAN WORKER = the
+  program started with `--pluginscan "<request file>"` (3 lines: format, identifier, result file) handled FIRST in
+  initialise (before the crash handler; moreThanOneInstanceAllowed true for it; `std::_Exit(0)` after writing the
+  XML of the descriptions; Windows SetErrorMode so a crashing plug-in raises no system dialog); `Scanner` (a low
+  priority thread: formats' default folders + `pluginFolders`, `searchPathsForPlugins`, per file a juce::ChildProcess
+  with 8 s (60 s for "the refused once more"), no result XML = "its scan crashed or gave nothing", stamps by
+  "<format>|<identifier>" + modification time in PluginScan.json, the types in Plugins.xml (KnownPluginList), both
+  in the settings folder); `sessionBegan(shift)` / `sessionEndedInOrder()` / `create()` with the markers
+  PluginsActive.txt (a session that loaded a plug-in) and PluginLoading.txt (the one being loaded) -> SAFE START:
+  the slots are read with on = false and NOT instantiated until switched on, a WarningIcon notice names the plug-in.
+  ENGINE: `SamplerEngine::RoutePluginStage` (processors[8], count, mono, off, tripped, nsSum/blocks/nsMax) +
+  `RouteChain` (stages kind 0 volume / 1 separation / 2 eq / 3 plug-in, delaySamples + delayLines) +
+  `setPerspectiveChain` (Route::chain raw atomic pointer, chainOwner, retiredChains kept 2 s). renderRoute: with a
+  chain the voices render at unity (outputGain 1), the stages run in order (applySeparation / applyEq are lambdas
+  now, scaleRoute for the volume), then the delay, then `scaleRoute(masterGain)` - THE MASTER IS AFTER THE PLUG-INS;
+  a plug-in over 80 % of the period 20 blocks in a row trips itself. Without a chain the old path verbatim.
+  MODEL: `PluginSlot {id, description, state, on}` in `PerspectiveEffects::plugins` (PER PERSPECTIVE ONLY - no
+  per-route plug-ins, no LINKED for them), chain ids "vst:<id>", saved in the perspectiveEffects block as "plugins"
+  [{id, on, name, maker, description (XML), state (base64)}]; NOT in routing files. RUNTIME: `livePlugins`
+  ("<slot id>|<route key>" -> LivePlugin {instances, stage, rate, error}), `rebuildPluginChains()` (called at the
+  end of rebuildPerspectiveAudioRoutes and after every change: instances made for slots that are ON, a stereo
+  plug-in one per stereo pair, a MONO plug-in (ZamComp) one per channel - `makePlainEffect(instance, 2 or 1)`;
+  latency summed over the ON plug-ins, every chain delayed to the latest; instances no longer named are released
+  2 s later by a callAfterDelay holding the shared_ptr), `capturePluginStates()` at the top of saveSettingsNow,
+  `syncPluginState` (the first instance's state to its sisters while its editor is open, once a second, and at its
+  close), `watchPlugins()` in the 1 s timer (tripped -> slot off + notice; a route whose rate changed -> rebuild),
+  `showPluginEditor` = `PluginEditorWindow` (DocumentWindow, native title bar, the plug-in's editor or a
+  GenericAudioProcessorEditor; ALWAYS a window of its own - the user's decision), pluginWindows closed before any
+  instance goes. Our snapshot of a plug-in window is an empty grey (the plug-in paints its own X11 child): a real
+  screenshot (`spectacle -b -n -a -o`) showed ZamCompX2's editor fine under KDE Wayland. EffectsDialog: "+" under
+  the chain (a PopupMenu by maker, Scan, the Editor) - enabled in the PERSPECTIVE's dialog only, plug-in rows and
+  `PluginPanel` (panel index base + 4). Editor section "Plug-ins (VST3)". The README of a portable save names the
+  plug-ins; system.txt of a report lists them with their status. Hooks: ORGAN_TEST_PLUGINSCAN="<s>[|all]",
+  ORGAN_TEST_PLUGIN="<s>|<perspective>|<name part>[|editor|on|off|remove]^...", ORGAN_TEST_QUIT=<s> (a quit in
+  order: the destructor runs, the markers go). MEASURED here: the scan of 17 Zam VST3 files 1 s (47 ms each);
+  ZamCompX2 on 3 routes 4-6 us per block; killed with kill -9 -> the next start SAFE, the slot OFF and unloaded,
+  switched ON it loads. NOT TESTED: Windows, macOS/AU, Waves, a plug-in that really hangs its scan, a plug-in with
+  latency (none of the Zam set reports any), the trip. Reaper's own plug-ins on this box are VST2 (.vst.so) - not
+  hosted. Design left open: a search field in the "+" list (a menu by maker for now), per-route plug-ins.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

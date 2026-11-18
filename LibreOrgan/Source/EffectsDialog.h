@@ -158,6 +158,15 @@ public:
         resetAll.onClick = [this] { owner.resetEffects(perspective, manual); refresh(); };
         addAndMakeVisible(resetAll);
         buildPanels();
+        buildPluginPanel();
+        addPlugin.setButtonText("+");
+        addPlugin.setTooltip(manual >= 0 ? "Plug-ins belong to the perspective: add them in the perspective's effects (the fx button of the perspective's row)."
+            : "Add a plug-in (VST3; Audio Units too on macOS) to this perspective's chain - it works on every route of the perspective, right before the IR reverb unless you arrange it elsewhere.");
+        addPlugin.setEnabled(manual < 0);
+        addPlugin.getProperties().set("manualChapter", "Plug-ins in the chain");
+        addPlugin.getProperties().set("testName", "add plugin");
+        addPlugin.onClick = [this] { addPluginMenu(); };
+        addAndMakeVisible(addPlugin);
         addChildComponent(arranger);
         // 0.9.90: the module shown last is shown again when the dialog is retargeted (the user: "not Division volume every time").
         int wanted = manual >= 0 ? 1 : 0;
@@ -201,6 +210,7 @@ public:
             line.removeFromLeft(4);
             chainButtons[i]->setBounds(line);
         }
+        addPlugin.setBounds(list.removeFromTop(34).reduced(0, 3).removeFromLeft(44));
         area.removeFromLeft(14);
         for (auto* p : panels) p->setBounds(area);
         arranger.setBounds(getLocalBounds());
@@ -244,6 +254,8 @@ private:
             if (id == "volume") chain.push_back({ Module::Volume, "Volume", false, base, id });
             else if (id == "separation") chain.push_back({ Module::Separation, "Channel separation", false, base + 1, id });
             else if (id == "eq") chain.push_back({ Module::Eq, "Equalizer", false, base + 2, id });
+            else if (auto* slot = owner.pluginSlot(perspective, id.fromFirstOccurrenceOf("vst:", false, false)))
+                chain.push_back({ Module::Ir, slot->description.name, false, base + 4, id });   // 0.9.102: a plug-in (its panel is the last one)
         }
         chain.push_back({ Module::Ir, "IR reverb", false, base + 3, "ir" });
         for (size_t i = 0; i < chain.size(); ++i)
@@ -261,16 +273,64 @@ private:
             if (chain[i].divisionVolume) { switchButtons.add(nullptr); continue; }
             auto* s = new RightClickButton();
             switchButtons.add(s);
-            setupSwitch(*s, chain[i].module, chain[i].name);
+            if (isPlugin(i))
+            {
+                const auto slotId = pluginIdOf(i);
+                styleSwitch(*s);
+                s->getProperties().set("manualChapter", "Plug-ins in the chain");
+                s->getProperties().set("testName", "ONOFF plugin " + chain[i].name);
+                s->onClick = [this, slotId] { if (auto* slot = owner.pluginSlot(perspective, slotId)) owner.setPluginOn(perspective, slotId, !slot->on); refresh(); };
+                b->getProperties().set("manualChapter", "Plug-ins in the chain");
+            }
+            else setupSwitch(*s, chain[i].module, chain[i].name);
             addAndMakeVisible(s);
         }
         for (size_t i = 0; i < chain.size(); ++i) if (chain[i].id == selectedId) selected = (int)i;
         arranger.toFront(false);
     }
+    bool isPlugin(size_t i) const { return i < chain.size() && chain[i].id.startsWith("vst:"); }
+    juce::String pluginIdOf(size_t i) const { return i < chain.size() ? chain[i].id.fromFirstOccurrenceOf("vst:", false, false) : juce::String(); }
+    // The "+" under the chain: the effect plug-ins found by the scan, by maker.
+    void addPluginMenu()
+    {
+        juce::PopupMenu menu;
+        const auto effects = PluginHost::effects();
+        juce::String maker;
+        juce::PopupMenu sub;
+        int index = 0;
+        auto flush = [&] { if (sub.getNumItems() > 0) menu.addSubMenu(maker.isEmpty() ? juce::String("(no maker named)") : maker, sub); sub = juce::PopupMenu(); };
+        for (const auto& type : effects)
+        {
+            if (type.manufacturerName != maker) { flush(); maker = type.manufacturerName; }
+            sub.addItem(1000 + index, type.name + "   [" + type.pluginFormatName + "]");
+            ++index;
+        }
+        flush();
+        if (effects.isEmpty()) menu.addItem(1, "no plug-in found yet - scan first", false);
+        menu.addSeparator();
+        menu.addItem(2, PluginHost::scanner().running() ? "Scanning now: " + PluginHost::scanner().progress() : juce::String("Scan for plug-ins (new and changed files)"), !PluginHost::scanner().running());
+        menu.addItem(3, "Plug-in folders and the list (Configuration Editor)...");
+        menu.addItem(4, "Manual: Plug-ins in the chain");
+        juce::Component::SafePointer<EffectsContent> safeThis(this);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addPlugin), [safeThis, effects](int result)
+        {
+            if (safeThis == nullptr) return;
+            if (result == 2) safeThis->owner.startPluginScan(false, 8, false);
+            else if (result == 3) safeThis->owner.configurationEditorButton.triggerClick();
+            else if (result == 4) safeThis->owner.showManualSection("Plug-ins in the chain");
+            else if (result >= 1000 && result - 1000 < effects.size())
+            {
+                const auto id = safeThis->owner.addPlugin(safeThis->perspective, effects[result - 1000]);
+                if (id.isEmpty()) return;
+                safeThis->rebuildChain(); safeThis->resized();
+                for (size_t i = 0; i < safeThis->chain.size(); ++i) if (safeThis->chain[i].id == "vst:" + id) safeThis->select((int)i);
+            }
+        });
+    }
     void chainMenu()
     {
         juce::PopupMenu menu;
-        menu.addItem(1, "Arrange the chain (drag Volume, Channel separation and Equalizer to their places)...");
+        menu.addItem(1, "Arrange the chain (drag the modules and plug-ins to their places)...");
         menu.addSeparator();
         menu.addItem(2, "Manual: Effects");
         juce::Component::SafePointer<EffectsContent> safeThis(this);
@@ -305,10 +365,10 @@ private:
                 const auto r = rowOf(i);
                 all = all.isEmpty() ? r : all.getUnion(r);
                 if (!movable(i)) continue;
-                g.setColour(orange.withAlpha(i == dragIndex ? 0.25f : 0.9f));
-                const float dashes[2]{ 5.0f, 4.0f };
+                g.setColour(juce::Colours::white.withAlpha(i == dragIndex ? 0.2f : 0.6f));   // white dashes, as every arrange mode of the program
+                const float dashes[2]{ 4.0f, 4.0f };
                 juce::Path frame; frame.addRoundedRectangle(r.toFloat().expanded(2.0f), 4.0f);
-                juce::Path dashed; juce::PathStrokeType(1.5f).createDashedStroke(dashed, frame, dashes, 2);
+                juce::Path dashed; juce::PathStrokeType(1.0f).createDashedStroke(dashed, frame, dashes, 2);
                 g.fillPath(dashed);
             }
             const juce::Rectangle<int> note(all.getX(), all.getBottom() + 10, juce::jmax(all.getWidth(), 214), 88);
@@ -376,6 +436,9 @@ private:
     juce::TextButton resetAll;   // 0.9.90
     std::vector<ChainItem> chain;
     juce::OwnedArray<RightClickButton> chainButtons;
+    juce::TextButton addPlugin;        // 0.9.102: "+" under the chain
+    juce::String selectedPlugin;       // the slot id the plug-in panel shows
+    int statusTick = 0;
     juce::OwnedArray<juce::Component> panels;
     int selected = 0;
 
@@ -774,6 +837,75 @@ private:
             addChildComponent(p);
         }
     }
+    // 0.9.102: the card of a plug-in - its name and maker, the ON / OFF switch, its own editor (always a window of
+    // its own), Remove, and what it does right now.
+    struct PluginPanel final : public juce::Component
+    {
+        juce::Label name, maker, status, note;
+        RightClickButton onButton;
+        juce::TextButton open{ "Open editor" }, remove{ "Remove" };
+        void resized() override
+        {
+            auto r = getLocalBounds();
+            auto head = r.removeFromTop(30);
+            name.setBounds(head.removeFromLeft(juce::jmin(200, head.getWidth() / 3)));
+            onButton.setBounds(head.removeFromLeft(44).reduced(0, 3));
+            head.removeFromLeft(8);
+            remove.setBounds(head.removeFromRight(90).reduced(0, 3));
+            head.removeFromRight(8);
+            open.setBounds(head.removeFromRight(120).reduced(0, 3));
+            maker.setBounds(head.reduced(8, 0));
+            r.removeFromTop(10);
+            status.setBounds(r.removeFromTop(44));
+            r.removeFromTop(6);
+            note.setBounds(r.removeFromTop(90));
+        }
+    };
+    PluginPanel* pluginPanel = nullptr;
+    void buildPluginPanel()
+    {
+        auto* p = new PluginPanel();
+        panels.add(p); pluginPanel = p;
+        p->name.setFont(juce::FontOptions(16.0f, juce::Font::bold));
+        p->addAndMakeVisible(p->name);
+        for (auto* l : { &p->maker, &p->status, &p->note })
+        {
+            l->setFont(juce::FontOptions(12.5f));
+            l->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+            l->setJustificationType(juce::Justification::topLeft);
+            p->addAndMakeVisible(*l);
+        }
+        p->maker.setJustificationType(juce::Justification::centredLeft);
+        p->status.setColour(juce::Label::textColourId, juce::Colours::white);
+        p->note.setText(manual >= 0 ? "A plug-in belongs to the perspective: it works on every route of it with the same setting. Switch, set and remove it in the perspective's effects."
+            : "ON: the plug-in works on every route of this perspective (an instance for each route, all with this one setting). OFF: the sound passes untouched and the setting is kept. "
+              "Its place in the chain: right-click the chain, Arrange the chain. The plug-in is foreign code - one that takes too long is switched OFF by the program, "
+              "and after a crash the next start loads every plug-in switched OFF.", juce::dontSendNotification);
+        styleSwitch(p->onButton);
+        p->onButton.getProperties().set("testName", "ONOFF plugin (card)");
+        p->onButton.onClick = [this] { if (auto* slot = owner.pluginSlot(perspective, selectedPlugin)) owner.setPluginOn(perspective, selectedPlugin, !slot->on); refresh(); };
+        p->addAndMakeVisible(p->onButton);
+        p->open.setTooltip("The plug-in's own window (always a window of its own). What you set there goes to every route of the perspective.");
+        p->open.getProperties().set("testName", "plugin editor");
+        p->open.onClick = [this] { owner.showPluginEditor(perspective, selectedPlugin); };
+        p->addAndMakeVisible(p->open);
+        p->remove.setTooltip("Takes the plug-in out of this perspective's chain; its setting is dropped.");
+        p->remove.getProperties().set("testName", "plugin remove");
+        p->remove.onClick = [this]
+        {
+            const auto id = selectedPlugin;
+            juce::Component::SafePointer<EffectsContent> safeThis(this);
+            juce::MessageManager::callAsync([safeThis, id]   // after the click: the rows are rebuilt
+            {
+                if (safeThis == nullptr) return;
+                safeThis->owner.removePlugin(safeThis->perspective, id);
+                safeThis->rebuildChain(); safeThis->resized(); safeThis->select(juce::jmax(0, safeThis->selected - 1));
+            });
+        };
+        p->addAndMakeVisible(p->remove);
+        for (auto* c : std::initializer_list<juce::Component*>{ p, &p->open, &p->remove, &p->status }) c->getProperties().set("manualChapter", "Plug-ins in the chain");
+        addChildComponent(p);
+    }
     void storeEq(const SamplerEngine::EqSettings& e)
     {
         if (manual >= 0) routeConfig().eq = e; else perspectiveConfig().eq = e;
@@ -783,8 +915,9 @@ private:
     void select(int index)
     {
         selected = juce::jlimit(0, (int)chain.size() - 1, index);
-        if ((size_t)selected < chain.size()) owner.effectsDialogModule = chain[(size_t)selected].divisionVolume ? -1 : (int)chain[(size_t)selected].module;   // 0.9.90: remembered for the next target
+        if ((size_t)selected < chain.size() && !isPlugin((size_t)selected)) owner.effectsDialogModule = chain[(size_t)selected].divisionVolume ? -1 : (int)chain[(size_t)selected].module;   // 0.9.90: remembered for the next target
         const int shownPanel = (size_t)selected < chain.size() ? chain[(size_t)selected].panel : 0;
+        selectedPlugin = isPlugin((size_t)selected) ? pluginIdOf((size_t)selected) : juce::String();
         for (int i = 0; i < panels.size(); ++i) panels[i]->setVisible(i == shownPanel);
         for (int i = 0; i < chainButtons.size(); ++i) chainButtons[i]->setToggleState(i == selected, juce::dontSendNotification);
         refresh();
@@ -825,9 +958,39 @@ private:
             b.setTooltip(isLinked ? "Follows the perspective \"" + perspective + "\" - switch it there, or set this module apart (LINKED off) first."
                 : "ON: the module works. OFF: the sound passes untouched and every setting is kept. Right-click: learn a MIDI control for it.");
         };
+        // A plug-in's switch: the perspective's (a route's dialog shows it locked).
+        auto showPluginSwitch = [this](juce::TextButton& b, const juce::String& slotId)
+        {
+            auto* slot = owner.pluginSlot(perspective, slotId);
+            const bool on = slot != nullptr && slot->on;
+            if (b.getToggleState() != on) b.setToggleState(on, juce::dontSendNotification);
+            if (b.getButtonText() != (on ? "ON" : "OFF")) b.setButtonText(on ? "ON" : "OFF");
+            if (b.isEnabled() != (manual < 0)) b.setEnabled(manual < 0);
+            b.setTooltip(manual >= 0 ? "A plug-in is the perspective's - switch it in the effects of the perspective \"" + perspective + "\"."
+                : "ON: the plug-in works. OFF: the sound passes untouched and its setting is kept.");
+            return on;
+        };
+        if (pluginPanel != nullptr && selectedPlugin.isNotEmpty())
+        {
+            if (auto* slot = owner.pluginSlot(perspective, selectedPlugin))
+            {
+                pluginPanel->name.setText(slot->description.name, juce::dontSendNotification);
+                pluginPanel->maker.setText(slot->description.manufacturerName + "  -  " + slot->description.pluginFormatName, juce::dontSendNotification);
+                showPluginSwitch(pluginPanel->onButton, selectedPlugin);
+                if (++statusTick % 10 == 1) pluginPanel->status.setText(owner.pluginStatus(perspective, selectedPlugin), juce::dontSendNotification);   // once a second: it takes the engine's counters
+                pluginPanel->open.setEnabled(manual < 0);
+                pluginPanel->remove.setEnabled(manual < 0);
+            }
+        }
         for (int i = 0; i < chainButtons.size() && (size_t)i < chain.size(); ++i)
             if (auto* s = switchButtons[i])
             {
+                if (isPlugin((size_t)i))
+                {
+                    const auto colour = showPluginSwitch(*s, pluginIdOf((size_t)i)) ? juce::Colours::white : juce::Colours::grey;
+                    if (chainButtons[i]->findColour(juce::TextButton::textColourOffId) != colour) chainButtons[i]->setColour(juce::TextButton::textColourOffId, colour);
+                    continue;
+                }
                 showSwitch(*s, chain[(size_t)i].module);
                 const auto colour = owner.effectOn(perspective, manual, chain[(size_t)i].module) ? juce::Colours::white : juce::Colours::grey;
                 if (chainButtons[i]->findColour(juce::TextButton::textColourOffId) != colour) chainButtons[i]->setColour(juce::TextButton::textColourOffId, colour);

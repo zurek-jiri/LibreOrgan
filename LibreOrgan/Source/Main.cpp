@@ -13,6 +13,7 @@
 #include "UIScale.h"
 #include "EngineSelfTest.h"
 #include "StopNames.h"
+#include "PluginHost.h"
 
 #if JUCE_MSVC
  #pragma comment(lib, "dbghelp.lib")
@@ -76,12 +77,15 @@ public:
     bool moreThanOneInstanceAllowed() override
     {
         const auto commandLine = juce::JUCEApplicationBase::getCommandLineParameters();
-        return commandLine.contains("--selftest") || commandLine.contains("--asiotest");
+        return commandLine.contains("--selftest") || commandLine.contains("--asiotest") || PluginHost::isScanWorker(commandLine);
     }
 
     //==============================================================================
     void initialise([[maybe_unused]] const juce::String& commandLine) override
     {
+        // 0.9.102: the scan of ONE plug-in file in a process of its own (PluginHost.h) - before the crash handler
+        // and everything else: a plug-in that crashes its scan must leave no crash report of ours, no window.
+        if (PluginHost::isScanWorker(commandLine)) PluginHost::runScanWorker(commandLine);
         // Any fatal error writes <AppData>/LibreOrgan/CrashLogs/crash-<time>.txt (+ .dmp).
         CrashHandler::install(getApplicationName(), getApplicationVersion());
        #if JUCE_LINUX

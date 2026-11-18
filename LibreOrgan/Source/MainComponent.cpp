@@ -66,6 +66,7 @@ namespace
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
 #include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
 #include "AudioRouting.h"       // the Audio routing dialog: cards as blocks, routes as chips (0.9.79, #236)
+#include "PluginHost.h"         // plug-ins (VST3, AU on macOS): the scan in a process of its own, the safe start (0.9.102)
 #include "EffectsDialog.h"      // the Effects dialog of a route / a perspective: Volume, Separation, EQ, IR, LINKED (0.9.89)
 #include "ManualView.h"         // the manual's text laid out block by block (0.8.213)
 #include "UIScale.h"
@@ -1856,6 +1857,9 @@ MainComponent::MainComponent()
         memoriesJsonFile.getParentDirectory().createDirectory();
 
     loadBuiltInTemperaments();
+    // 0.9.102: before anything of an organ is loaded - a session with plug-ins that did not end in order (or
+    // Shift held now) makes this a safe start: every plug-in stays off until it is switched on.
+    PluginHost::sessionBegan(juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown());
     loadSettings();
     refreshMidiRouting();
     rebuildCouplerCatalog();
@@ -2748,6 +2752,41 @@ MainComponent::MainComponent()
             if (parts.size() >= 2) safeThis->moveHeaderButton(parts[1], parts.size() >= 3 ? parts[2] : juce::String());
         });
     }
+    // 0.9.102: ORGAN_TEST_PLUGIN="<seconds>|<perspective>|<plug-in name part>[|editor][|off][|remove]^..." adds the
+    // first effect plug-in whose name holds the part to the perspective (as the + of its chain does).
+    if (const char* env = std::getenv("ORGAN_TEST_PLUGIN"))
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 3) continue;
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                // An existing slot of that name: the action is for it; else the plug-in is added.
+                juce::String id;
+                for (auto& slot : safeThis->effectsOfPerspective(parts[1]).plugins) if (slot.description.name.containsIgnoreCase(parts[2])) id = slot.id;
+                if (id.isEmpty())
+                    for (const auto& type : PluginHost::effects())
+                        if (type.name.containsIgnoreCase(parts[2])) { id = safeThis->addPlugin(parts[1], type); break; }
+                if (id.isEmpty()) { CrashHandler::note("ORGAN_TEST_PLUGIN: no effect plug-in named like " + parts[2]); return; }
+                if (parts.contains("off")) safeThis->setPluginOn(parts[1], id, false);
+                if (parts.contains("on")) safeThis->setPluginOn(parts[1], id, true);
+                if (parts.contains("editor")) safeThis->showPluginEditor(parts[1], id);
+                if (parts.contains("remove")) safeThis->removePlugin(parts[1], id);
+                CrashHandler::note("ORGAN_TEST_PLUGIN: " + parts[2] + " of " + parts[1] + " - " + safeThis->pluginStatus(parts[1], id));
+            });
+        }
+    // 0.9.102: ORGAN_TEST_QUIT=<seconds> ends the program in order (as a quit without questions).
+    if (const char* env = std::getenv("ORGAN_TEST_QUIT"))
+        juce::Timer::callAfterDelay(1000 * juce::jmax(1, juce::String(env).getIntValue()), [] { juce::JUCEApplicationBase::quit(); });
+    // 0.9.102: ORGAN_TEST_PLUGINSCAN="<seconds>[|all]" starts the plug-in scan (the Editor's Scan).
+    if (const char* env = std::getenv("ORGAN_TEST_PLUGINSCAN"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts] { if (safeThis != nullptr) safeThis->startPluginScan(parts.contains("all"), 8, false); });
+    }
     // 0.9.96: ORGAN_TEST_REPORT=<seconds> writes a problem report as "Create the report and open GitHub" does (the
     // folder with its ONE file, logs.zip), opens nothing and logs the folder.
     if (const char* env = std::getenv("ORGAN_TEST_REPORT"))
@@ -3258,6 +3297,15 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
 
 MainComponent::~MainComponent()
 {
+    PluginHost::scanner().cancel();
+    // 0.9.102: the plug-ins' windows first (their editors before their instances), the chains out of the engine,
+    // and the session marked as ended in order - the next start is no safe start.
+    capturePluginStates();
+    pluginWindows.clear();
+    for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+            if (routesWithChain.count(perspectiveRouteKey(manual, perspective)) != 0) engine.setPerspectiveChain(manual, perspective, nullptr);
+    PluginHost::sessionEndedInOrder();
     if (noticeOwner == this) noticeOwner = nullptr;
     engine.stopRecording();
     if (quietTestManager != nullptr)
@@ -4519,6 +4567,7 @@ void MainComponent::rebuildPerspectiveAudioRoutes()
                 else { linkedFlagOf(c, module) = false; apart.add(what); }
             }
         }
+    rebuildPluginChains();   // 0.9.102: every route of a perspective with plug-ins gets its instances and its chain
     if (!taken.isEmpty() || !apart.isEmpty())
         CrashHandler::note("Effects of the routes: " + (taken.isEmpty() ? juce::String() : "taken from the perspective (LINKED): " + taken.joinIntoString(", "))
             + (apart.isEmpty() ? juce::String() : juce::String(taken.isEmpty() ? "" : "; ") + "set apart (own values that differ): " + apart.joinIntoString(", ")));
@@ -5130,9 +5179,388 @@ void MainComponent::applyRouteSwitches(int manual, const juce::String& perspecti
 // The movable modules of a perspective in their order (Division volume stands before them, the IR reverb after).
 juce::StringArray MainComponent::effectChain(const juce::String& perspective)
 {
-    juce::StringArray chain = effectsOfPerspective(perspective).chain;
+    const auto& p = effectsOfPerspective(perspective);
+    juce::StringArray chain;
+    for (const auto& id : p.chain)   // a plug-in removed meanwhile leaves the chain
+    {
+        bool known = id == "volume" || id == "separation" || id == "eq";
+        for (const auto& slot : p.plugins) if (id == "vst:" + slot.id) known = true;
+        if (known) chain.addIfNotAlreadyThere(id);
+    }
     for (const char* id : { "volume", "separation", "eq" }) chain.addIfNotAlreadyThere(id);
+    for (const auto& slot : p.plugins) chain.addIfNotAlreadyThere("vst:" + slot.id);   // a new plug-in: last, right before the IR reverb
     return chain;
+}
+
+//==============================================================================
+// 0.9.102: plug-ins in the chain (the model: PerspectiveEffects::plugins; the instances: livePlugins).
+juce::var MainComponent::pluginsToVar(const std::vector<PluginSlot>& plugins)
+{
+    juce::Array<juce::var> list;
+    for (const auto& slot : plugins)
+    {
+        juce::DynamicObject::Ptr item = new juce::DynamicObject();
+        item->setProperty("id", slot.id);
+        item->setProperty("on", slot.on);
+        item->setProperty("name", slot.description.name);                  // for a reader of the file
+        item->setProperty("maker", slot.description.manufacturerName);
+        if (auto xml = slot.description.createXml()) item->setProperty("description", xml->toString(juce::XmlElement::TextFormat().singleLine()));
+        item->setProperty("state", slot.state.toBase64Encoding());
+        list.add(juce::var(item.get()));
+    }
+    return list;
+}
+void MainComponent::pluginsFromVar(const juce::var& v, std::vector<PluginSlot>& plugins)
+{
+    plugins.clear();
+    if (const auto* list = v.getArray())
+        for (const auto& item : *list)
+        {
+            PluginSlot slot;
+            slot.id = item.getProperty("id", "").toString();
+            slot.on = (bool)item.getProperty("on", true);
+            if (auto xml = juce::parseXML(item.getProperty("description", "").toString())) slot.description.loadFromXml(*xml);
+            if (slot.description.name.isEmpty()) slot.description.name = item.getProperty("name", "plug-in").toString();
+            slot.state.fromBase64Encoding(item.getProperty("state", "").toString());
+            if (slot.id.isNotEmpty()) plugins.push_back(std::move(slot));
+        }
+}
+MainComponent::PluginSlot* MainComponent::pluginSlot(const juce::String& perspective, const juce::String& id)
+{
+    for (auto& slot : effectsOfPerspective(perspective).plugins) if (slot.id == id) return &slot;
+    return nullptr;
+}
+juce::String MainComponent::addPlugin(const juce::String& perspective, const juce::PluginDescription& description)
+{
+    auto& p = effectsOfPerspective(perspective);
+    if (p.plugins.size() >= 8) { queueNotice(juce::AlertWindow::WarningIcon, "Effects", "A chain takes eight plug-ins at most."); return {}; }
+    PluginSlot slot;
+    slot.id = juce::String::toHexString(juce::Random::getSystemRandom().nextInt64()).substring(0, 10);
+    slot.description = description;
+    p.plugins.push_back(slot);
+    p.chain = effectChain(perspective);
+    CrashHandler::note("Effects: the plug-in " + description.name + " (" + description.manufacturerName + ") added to the perspective " + perspective);
+    rebuildPluginChains();
+    configurationDirty = true;
+    saveSettings();
+    return slot.id;
+}
+void MainComponent::removePlugin(const juce::String& perspective, const juce::String& id)
+{
+    auto& p = effectsOfPerspective(perspective);
+    closePluginEditor(id);
+    const auto before = p.plugins.size();
+    p.plugins.erase(std::remove_if(p.plugins.begin(), p.plugins.end(), [&id](const PluginSlot& s) { return s.id == id; }), p.plugins.end());
+    if (p.plugins.size() == before) return;
+    p.chain.removeString("vst:" + id);
+    CrashHandler::note("Effects: a plug-in removed from the perspective " + perspective);
+    rebuildPluginChains();
+    configurationDirty = true;
+    saveSettings();
+}
+void MainComponent::setPluginOn(const juce::String& perspective, const juce::String& id, bool on)
+{
+    auto* slot = pluginSlot(perspective, id);
+    if (slot == nullptr || slot->on == on) return;
+    slot->on = on;
+    // Switched on again: a plug-in that failed to load before is tried anew.
+    if (on)
+        for (auto it = livePlugins.begin(); it != livePlugins.end();)
+            if (juce::String(it->first).startsWith(id + "|") && it->second != nullptr && it->second->instances.empty()) it = livePlugins.erase(it); else ++it;
+    CrashHandler::note("Effects: the plug-in " + slot->description.name + " of the perspective " + perspective + (on ? " ON" : " OFF"));
+    rebuildPluginChains();
+    saveSettings();
+}
+
+namespace
+{
+    // A plug-in as a plain effect of `channels` channels (2 = stereo, 1 = mono): main in and out of that width,
+    // every other bus off. False when it cannot be that.
+    bool makePlainEffect(juce::AudioPluginInstance& instance, int channels)
+    {
+        const auto set = channels == 2 ? juce::AudioChannelSet::stereo() : juce::AudioChannelSet::mono();
+        auto layout = instance.getBusesLayout();
+        for (int i = 0; i < layout.inputBuses.size(); ++i) layout.inputBuses.getReference(i) = i == 0 ? set : juce::AudioChannelSet::disabled();
+        for (int i = 0; i < layout.outputBuses.size(); ++i) layout.outputBuses.getReference(i) = i == 0 ? set : juce::AudioChannelSet::disabled();
+        if (layout.outputBuses.isEmpty()) return false;
+        if (!instance.setBusesLayout(layout) && instance.getBusesLayout().getMainOutputChannelSet() != set) return false;   // a side-chain it will not drop is accepted as long as the main bus fits
+        return instance.getTotalNumOutputChannels() == channels && instance.getTotalNumInputChannels() <= channels;
+    }
+}
+
+// The instances and the chains of every route, from the model. An instance exists once its slot has been ON in this
+// session (a safe start loads nothing until then); the chains are handed to the engine with the delay that makes
+// every route as late as the latest one. Instances no slot or route needs any more are released two seconds later,
+// when no audio block can still be inside them.
+void MainComponent::rebuildPluginChains()
+{
+    struct Built { int manual; juce::String perspective; std::shared_ptr<SamplerEngine::RouteChain> chain; int latency; };
+    std::vector<Built> built;
+    std::set<std::string> alive;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            auto& p = effectsOfPerspective(perspective);
+            const auto routeKey = perspectiveRouteKey(manual, perspective);
+            if (p.plugins.empty())
+            {
+                if (routesWithChain.erase(routeKey) > 0) engine.setPerspectiveChain(manual, perspective, nullptr);
+                continue;
+            }
+            double rate = 48000.0;
+            if (auto* manager = managerForRoute(manual, perspective))
+                if (auto* device = manager->getCurrentAudioDevice()) rate = device->getCurrentSampleRate();
+            const auto& channels = perspective.equalsIgnoreCase("default") ? manualConfigs[(size_t)manual].outputChannels
+                : manualConfigs[(size_t)manual].perspectiveAudio[routeKey].outputChannels;
+            const int pairs = juce::jlimit(1, 4, ((int)channels.size() + 1) / 2);
+            auto chain = std::make_shared<SamplerEngine::RouteChain>();
+            int latency = 0;
+            for (const auto& id : effectChain(perspective))
+            {
+                if (id == "volume") { chain->stages.push_back({ 0, nullptr }); continue; }
+                if (id == "separation") { chain->stages.push_back({ 1, nullptr }); continue; }
+                if (id == "eq") { chain->stages.push_back({ 2, nullptr }); continue; }
+                auto* slot = pluginSlot(perspective, id.fromFirstOccurrenceOf("vst:", false, false));
+                if (slot == nullptr) continue;
+                const std::string key = (slot->id + "|").toStdString() + routeKey;
+                auto& live = livePlugins[key];
+                const int expected = live != nullptr && live->stage != nullptr && live->stage->mono ? juce::jlimit(1, 8, (int)channels.size()) : pairs;
+                const bool stale = live != nullptr && !live->instances.empty() && ((int)live->instances.size() != expected || std::abs(live->rate - rate) > 0.5);
+                if (slot->on && (live == nullptr || stale))
+                {
+                    // The state as it is now, before the old instances go (a route's rate or channels changed).
+                    if (stale) { juce::MemoryBlock state; live->instances.front()->getStateInformation(state); if (state.getSize() > 0) slot->state = state; }
+                    auto fresh = std::make_shared<LivePlugin>();
+                    fresh->rate = rate;
+                    fresh->stage = std::make_shared<SamplerEngine::RoutePluginStage>();
+                    // A stereo plug-in: an instance per stereo pair. A mono plug-in: an instance per channel.
+                    int wanted = pairs;
+                    for (int index = 0; index < wanted; ++index)
+                    {
+                        juce::String error;
+                        auto instance = PluginHost::create(slot->description, rate, 4096, error);
+                        if (instance == nullptr) { fresh->error = error.isNotEmpty() ? error : juce::String("not installed on this computer"); break; }
+                        if (index == 0 && !makePlainEffect(*instance, 2))
+                        {
+                            if (!makePlainEffect(*instance, 1)) { fresh->error = "neither a stereo nor a mono effect (its buses cannot be set so)"; break; }
+                            fresh->stage->mono = true;
+                            wanted = juce::jlimit(1, 8, (int)channels.size());
+                        }
+                        else if (index > 0 && !makePlainEffect(*instance, fresh->stage->mono ? 1 : 2)) { fresh->error = "its buses could not be set"; break; }
+                        instance->setRateAndBufferSizeDetails(rate, 4096);
+                        instance->prepareToPlay(rate, 4096);
+                        if (slot->state.getSize() > 0) instance->setStateInformation(slot->state.getData(), (int)slot->state.getSize());
+                        fresh->instances.push_back(std::move(instance));
+                    }
+                    if (fresh->error.isNotEmpty())
+                    {
+                        fresh->instances.clear();
+                        CrashHandler::note("Effects: the plug-in " + slot->description.name + " is NOT at work on " + juce::String(routeKey) + ": " + fresh->error);
+                    }
+                    for (size_t i = 0; i < fresh->instances.size() && i < 8; ++i) fresh->stage->processors[i] = fresh->instances[i].get();
+                    fresh->stage->count = (int)fresh->instances.size();
+                    if (stale) closePluginEditor(slot->id);   // its editor belongs to an instance that goes
+                    // The old instances may still be inside a block: released two seconds from now.
+                    if (auto old = live) juce::Timer::callAfterDelay(2000, [old] {});
+                    live = fresh;
+                }
+                alive.insert(key);
+                if (live == nullptr || live->instances.empty()) continue;
+                live->stage->off.store(!slot->on);
+                chain->stages.push_back({ 3, live->stage });
+                if (slot->on) latency += live->instances.front()->getLatencySamples();
+            }
+            built.push_back({ manual, perspective, chain, latency });
+        }
+    int latest = 0;
+    for (const auto& b : built) latest = juce::jmax(latest, b.latency);
+    for (auto& b : built)
+    {
+        b.chain->delaySamples = latest - b.latency;
+        engine.setPerspectiveChain(b.manual, b.perspective, b.chain);
+        routesWithChain.insert(perspectiveRouteKey(b.manual, b.perspective));
+    }
+    // What nothing needs any more: out of the map now (the chains above no longer name it), freed in two seconds.
+    for (auto it = livePlugins.begin(); it != livePlugins.end();)
+    {
+        if (alive.count(it->first) != 0) { ++it; continue; }
+        const auto slotId = juce::String(it->first).upToFirstOccurrenceOf("|", false, false);
+        bool slotStillThere = false;
+        for (const auto& [name, effects] : perspectiveEffects) for (const auto& slot : effects.plugins) if (slot.id == slotId) slotStillThere = true;
+        if (!slotStillThere) closePluginEditor(slotId);
+        else if (pluginWindows.count(slotId) != 0)
+        {
+            // The editor shown may belong to the instance that goes.
+            closePluginEditor(slotId);
+        }
+        if (auto old = it->second) juce::Timer::callAfterDelay(2000, [old] {});
+        it = livePlugins.erase(it);
+    }
+    if (latest > 0) CrashHandler::note("Effects: the routes are made " + juce::String(latest) + " sample(s) late together (the plug-ins' latency)");
+}
+
+void MainComponent::capturePluginStates()
+{
+    for (auto& [name, effects] : perspectiveEffects)
+        for (auto& slot : effects.plugins)
+            for (const auto& [key, live] : livePlugins)
+                if (juce::String(key).startsWith(slot.id + "|") && live != nullptr && !live->instances.empty())
+                {
+                    juce::MemoryBlock state;
+                    live->instances.front()->getStateInformation(state);
+                    if (state.getSize() > 0) slot.state = state;
+                    break;
+                }
+}
+
+// The state of the instance whose editor the user works in (the first of the slot) to every sister instance - the
+// other pairs of its route and the other routes of the perspective: a perspective's plug-in is ONE setting.
+void MainComponent::syncPluginState(const juce::String& perspective, const juce::String& id)
+{
+    auto* slot = pluginSlot(perspective, id);
+    if (slot == nullptr) return;
+    juce::AudioPluginInstance* source = nullptr;
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr && !live->instances.empty()) { source = live->instances.front().get(); break; }
+    if (source == nullptr) return;
+    juce::MemoryBlock state;
+    source->getStateInformation(state);
+    if (state.getSize() == 0 || state == slot->state) return;
+    slot->state = state;
+    int copies = 0;
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr)
+            for (const auto& instance : live->instances)
+                if (instance.get() != source) { instance->setStateInformation(state.getData(), (int)state.getSize()); ++copies; }
+    configurationDirty = true;
+    saveSettings();
+    if (copies > 0) CrashHandler::note("Effects: the plug-in " + slot->description.name + " of " + perspective + " - its setting copied to " + juce::String(copies) + " more instance(s)");
+}
+
+namespace
+{
+    // The window of a plug-in's own editor: always a window of its own (the plug-in sizes it), never inside a dialog of ours.
+    struct PluginEditorWindow final : public juce::DocumentWindow
+    {
+        PluginEditorWindow(const juce::String& title, juce::AudioProcessorEditor* editor, std::function<void()> onCloseIn)
+            : juce::DocumentWindow(title, juce::Colours::darkgrey, juce::DocumentWindow::closeButton), onClose(std::move(onCloseIn))
+        {
+            setUsingNativeTitleBar(true);
+            setContentOwned(editor, true);
+            setResizable(editor != nullptr && editor->isResizable(), false);
+            centreWithSize(getWidth(), getHeight());
+        }
+        void closeButtonPressed() override { if (onClose) onClose(); }
+        std::function<void()> onClose;
+    };
+}
+
+void MainComponent::showPluginEditor(const juce::String& perspective, const juce::String& id)
+{
+    if (const auto found = pluginWindows.find(id); found != pluginWindows.end() && found->second != nullptr) { found->second->setVisible(true); found->second->toFront(true); return; }
+    auto* slot = pluginSlot(perspective, id);
+    if (slot == nullptr) return;
+    juce::AudioPluginInstance* instance = nullptr;
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr && !live->instances.empty()) { instance = live->instances.front().get(); break; }
+    if (instance == nullptr)
+    {
+        queueNotice(juce::AlertWindow::WarningIcon, "Effects", slot->description.name + " is not loaded: " + pluginStatus(perspective, id) + "\n\nSwitch it ON first.");
+        return;
+    }
+    juce::AudioProcessorEditor* editor = instance->hasEditor() ? instance->createEditorIfNeeded() : nullptr;
+    if (editor == nullptr) editor = new juce::GenericAudioProcessorEditor(*instance);   // a plug-in without a window of its own: its parameters as sliders
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto window = std::make_unique<PluginEditorWindow>(slot->description.name + " - " + perspective, editor, [safeThis, perspective, id]
+    {
+        juce::MessageManager::callAsync([safeThis, perspective, id]
+        {
+            if (safeThis == nullptr) return;
+            safeThis->syncPluginState(perspective, id);
+            safeThis->closePluginEditor(id);
+        });
+    });
+    window->getProperties().set("pluginPerspective", perspective);
+    window->setVisible(true);
+    window->toFront(true);
+    pluginWindows[id] = std::move(window);
+    CrashHandler::note("Effects: the editor of " + slot->description.name + " opened");
+}
+
+void MainComponent::closePluginEditor(const juce::String& id)
+{
+    const auto found = pluginWindows.find(id);
+    if (found == pluginWindows.end()) return;
+    found->second.reset();   // deletes the editor with it, before any instance goes
+    pluginWindows.erase(found);
+}
+
+juce::String MainComponent::pluginStatus(const juce::String& perspective, const juce::String& id)
+{
+    auto* slot = pluginSlot(perspective, id);
+    if (slot == nullptr) return {};
+    int routes = 0, instances = 0, latency = 0;
+    juce::int64 ns = 0, blocks = 0, worst = 0;
+    juce::String error;
+    for (const auto& [key, live] : livePlugins)
+    {
+        if (!juce::String(key).startsWith(id + "|") || live == nullptr) continue;
+        if (live->instances.empty()) { if (live->error.isNotEmpty()) error = live->error; continue; }
+        ++routes; instances += (int)live->instances.size();
+        latency = live->instances.front()->getLatencySamples();
+        ns += live->stage->nsSum.exchange(0); blocks += live->stage->blocks.exchange(0);
+        worst = juce::jmax(worst, (juce::int64)live->stage->nsMax.exchange(0));
+    }
+    if (routes == 0)
+        return error.isNotEmpty() ? "NOT at work: " + error
+            : slot->on ? juce::String("not loaded") : juce::String(PluginHost::session().safeStart ? "OFF - not loaded yet (safe start): switch it ON to load it" : "OFF - not loaded yet: switch it ON to load it");
+    juce::String text = juce::String(slot->on ? "at work" : "OFF (loaded, the sound passes untouched)") + " on " + juce::String(routes) + " route(s), " + juce::String(instances) + " instance(s)";
+    if (latency > 0) text << "; latency " << latency << " samples (every other route is delayed to match)";
+    if (blocks > 0) text << "; " << juce::roundToInt((double)ns / (double)blocks / 1000.0) << " us per block and route, the longest " << juce::roundToInt((double)worst / 1000.0) << " us";
+    return text;
+}
+
+// Once a second.
+void MainComponent::watchPlugins()
+{
+    if (perspectiveEffects.empty()) return;
+    bool rebuild = false;
+    for (auto& [name, effects] : perspectiveEffects)
+        for (auto& slot : effects.plugins)
+        {
+            for (const auto& [key, live] : livePlugins)
+            {
+                if (!juce::String(key).startsWith(slot.id + "|") || live == nullptr || live->stage == nullptr) continue;
+                // The engine switched it off: it needed more than 80 % of the period, twenty blocks in a row.
+                if (live->stage->tripped.exchange(false) && slot.on)
+                {
+                    slot.on = false;
+                    rebuild = true;
+                    CrashHandler::note("Effects: the plug-in " + slot.description.name + " was switched OFF - it took too long, block after block");
+                    queueNotice(juce::AlertWindow::WarningIcon, "Effects", "The plug-in " + slot.description.name + " was switched OFF: it needed more time than the audio buffer allows, "
+                        "block after block, and the sound of the whole organ would break.\n\nSwitch it ON again in the Effects when you want to try it (a larger buffer in Audio routing gives it more time).");
+                }
+            }
+            if (pluginWindows.count(slot.id) != 0) syncPluginState(juce::String(name), slot.id);   // the user may be turning its knobs
+        }
+    // A route whose sample rate or channel count changed needs instances prepared anew.
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals && !rebuild; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            const auto& p = effectsOfPerspective(perspective);
+            if (p.plugins.empty()) continue;
+            const auto routeKey = perspectiveRouteKey(manual, perspective);
+            double rate = 0.0;
+            if (auto* manager = managerForRoute(manual, perspective))
+                if (auto* device = manager->getCurrentAudioDevice()) rate = device->getCurrentSampleRate();
+            if (routesWithChain.count(routeKey) == 0) { rebuild = true; break; }
+            for (const auto& slot : p.plugins)
+            {
+                const auto found = livePlugins.find((slot.id + "|").toStdString() + routeKey);
+                if (found != livePlugins.end() && found->second != nullptr && !found->second->instances.empty() && rate > 0.0 && std::abs(found->second->rate - rate) > 0.5) rebuild = true;
+            }
+        }
+    if (rebuild) { rebuildPluginChains(); saveSettings(); }
 }
 void MainComponent::moveEffectInChain(const juce::String& perspective, const juce::String& id, const juce::String& beforeId)
 {
@@ -6638,6 +7066,12 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
            << "polyphony limit: " << engine.getMaxPolyphony() << "\n"
            << "configuration: " << (currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("(none)")) << "\n"
            << "divisions: " << (manualCount + 1) << ", stops: " << engine.getStops().size() << ", folder trees: " << (int)sampleTrees.size() << "\n";
+    // 0.9.102: the plug-ins of the effects and what each does now - foreign code is the first suspect of a report.
+    for (auto& [name, effects] : perspectiveEffects)
+        for (const auto& slot : effects.plugins)
+            system << "plug-in of " << juce::String(name) << ": " << slot.description.name << " (" << slot.description.manufacturerName << ", " << slot.description.pluginFormatName
+                   << (slot.description.version.isNotEmpty() ? " " + slot.description.version : juce::String()) << ") " << (slot.on ? "ON" : "OFF") << " - " << pluginStatus(juce::String(name), slot.id) << "\n";
+    if (PluginHost::session().safeStart) system << "plug-ins: SAFE START this session" << (PluginHost::session().diedWhileLoading.isNotEmpty() ? " - died last time while loading " + PluginHost::session().diedWhileLoading : juce::String()) << "\n";
     for (const auto& tree : sampleTrees)
         system << "  tree: " << tree << (SampleFiles::isDirectory(juce::File(tree)) ? (SampleFiles::inArchive(juce::File(tree)) ? "  (in " + SampleFiles::archiveNameOf(juce::File(tree)) + ")" : juce::String()) : juce::String("  (not found)")) << "\n";
     juce::String audio;
@@ -13992,7 +14426,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -15673,6 +16107,15 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
             text << "- **RAM:**\n";
             for (const auto& line : lines) text << "  - **" << gbText(line.bytes) << " GB** - " << line.what << "\n";
         }
+    }
+    {
+        // 0.9.102: the plug-ins the effects name - what the reader may install, never a must.
+        juce::StringArray used;
+        for (const auto& [name, effects] : perspectiveEffects)
+            for (const auto& slot : effects.plugins)
+                used.addIfNotAlreadyThere(slot.description.name + (slot.description.manufacturerName.isNotEmpty() ? " (" + slot.description.manufacturerName + ")" : juce::String()));
+        if (!used.isEmpty())
+            text << "- **Plug-ins:** " << used.joinIntoString(", ") << " - optional: where one is not installed the organ plays without that effect.\n";
     }
     text << "- **Saved with:** LibreOrgan Sampler " << version << ".\n";
     text << "- **Author:** " << given(publicationAuthor, "(not named)") << ", " << date << ".\n\n";
@@ -17841,10 +18284,11 @@ struct MainComponent::HeaderArranger final : public juce::Component
         for (const auto& s : list)
         {
             row = row.isEmpty() ? s.bounds : row.getUnion(s.bounds);
-            g.setColour(orange.withAlpha(s.key == dragKey ? 0.25f : 0.9f));
-            const float dashes[2]{ 5.0f, 4.0f };
+            // White dashes, as the grid's and the couplers' arrange modes draw their cells (the user; orange is the landing line alone).
+            g.setColour(juce::Colours::white.withAlpha(s.key == dragKey ? 0.2f : 0.6f));
+            const float dashes[2]{ 4.0f, 4.0f };
             juce::Path frame; frame.addRoundedRectangle(s.bounds.toFloat().expanded(1.0f), 4.0f);
-            juce::Path dashed; juce::PathStrokeType(1.5f).createDashedStroke(dashed, frame, dashes, 2);
+            juce::Path dashed; juce::PathStrokeType(1.0f).createDashedStroke(dashed, frame, dashes, 2);
             g.fillPath(dashed);
         }
         const juce::String text("Drag a button of the top bar to its place. Click anywhere else to finish.");
@@ -17924,6 +18368,40 @@ struct MainComponent::HeaderArranger final : public juce::Component
     int insertX = -1;
     bool moved = false;
 };
+
+// 0.9.102: the plug-in scan (PluginHost.h) - behind the playing, each file in a process of its own.
+void MainComponent::startPluginScan(bool everything, int secondsPerFile, bool refusedOnly)
+{
+    if (PluginHost::scanner().running()) return;
+    CrashHandler::note("Plug-in scan started" + juce::String(everything ? " (every file again)" : refusedOnly ? " (the refused files again, " + juce::String(secondsPerFile) + " s each)" : ""));
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    PluginHost::scanner().start(pluginFolders, everything, secondsPerFile, refusedOnly, [safeThis](juce::String summary)
+    {
+        if (safeThis == nullptr) return;
+        safeThis->noteMessage("Plug-in scan", summary);
+        safeThis->refreshConfigurationEditor();
+    });
+    refreshConfigurationEditor();
+}
+
+void MainComponent::showPluginList()
+{
+    juce::String text;
+    const auto effects = PluginHost::effects();
+    text << effects.size() << " effect plug-in(s) found\n\n";
+    juce::String maker;
+    for (const auto& type : effects)
+    {
+        if (type.manufacturerName != maker) { maker = type.manufacturerName; text << (maker.isEmpty() ? juce::String("(no maker named)") : maker) << "\n"; }
+        text << "    " << type.name << "   [" << type.pluginFormatName << (type.version.isNotEmpty() ? ", " + type.version : juce::String()) << "]\n";
+    }
+    const auto refused = PluginHost::refusedLines();
+    text << "\n" << refused.size() << " plug-in file(s) refused\n\n";
+    for (const auto& line : refused) text << "    " << line << "\n";
+    text << "\nSearched: " << PluginHost::defaultFolders().joinIntoString("; ");
+    if (!pluginFolders.isEmpty()) text << "; added: " << pluginFolders.joinIntoString("; ");
+    showLongMessage("Plug-ins", text);
+}
 
 void MainComponent::beginHeaderArranging()
 {
@@ -25551,6 +26029,9 @@ void MainComponent::loadSettings()
     copyCacheFolder = parsed.getProperty("copyCacheFolder", "").toString();
     copyCacheEnabled = parsed.getProperty("copyCacheEnabled", true);   // on by default (0.8.124): a reload of a big organ computed every filled pipe again
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
+    pluginFolders.clear();
+    if (auto* folders = parsed.getProperty("pluginFolders", juce::var()).getArray())
+        for (const auto& folder : *folders) pluginFolders.addIfNotAlreadyThere(folder.toString());
     headerButtonOrder.clear();
     if (auto* order = parsed.getProperty("headerButtonOrder", juce::var()).getArray())
         for (const auto& key : *order) headerButtonOrder.addIfNotAlreadyThere(key.toString());
@@ -25981,6 +26462,22 @@ void MainComponent::loadSettings()
                 p.channelSeparation = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("channelSeparation", 1.0));
                 p.on = effectsOffFrom(item.getProperty("effectsOff", ""));   // 0.9.101
                 p.chain = juce::StringArray::fromTokens(item.getProperty("chain", "").toString(), ",", "");
+                // 0.9.102: the plug-ins. A safe start (the last session with plug-ins did not end in order, or Shift
+                // held) loads every one of them switched OFF - none is loaded into the program until it is switched on.
+                pluginsFromVar(item.getProperty("plugins", juce::var()), p.plugins);
+                if (PluginHost::session().safeStart && !p.plugins.empty())
+                {
+                    for (auto& slot : p.plugins) slot.on = false;
+                    if (!pluginSafeStartSaid)
+                    {
+                        pluginSafeStartSaid = true;
+                        queueNotice(juce::AlertWindow::WarningIcon, "Plug-ins switched off",
+                            "The program did not end in order last time while plug-ins were loaded" + (PluginHost::session().diedWhileLoading.isNotEmpty()
+                                ? ".\n\nIt ended while this plug-in was being loaded:\n" + PluginHost::session().diedWhileLoading : juce::String(" (or Shift was held at the start)."))
+                            + "\n\nEvery plug-in of the effects is switched OFF and not loaded. Switch them ON one by one in the Effects (the fx buttons of Audio routing) - "
+                              "the one that brings the program down is the one to leave off or remove.");
+                    }
+                }
                 p.reverbIrPath = item.getProperty("reverbIr", "").toString();
                 p.reverbWet = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("reverbWet", 0.3));
                 p.reverbTone.highCutHz = (float)(double)item.getProperty("reverbHighCutHz", 2000.0);
@@ -26370,6 +26867,7 @@ void MainComponent::saveSettings()
 
 void MainComponent::saveSettingsNow()
 {
+    capturePluginStates();   // 0.9.102: the plug-ins' settings as they are now
     settingsSavePending = false;
     settingsLastWrittenMs = juce::Time::getMillisecondCounterHiRes();
     // Every user change arrives here. Whether the open configuration is
@@ -26438,6 +26936,11 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
+    {
+        juce::Array<juce::var> folders;
+        for (const auto& folder : pluginFolders) folders.add(folder);
+        obj->setProperty("pluginFolders", folders);
+    }
     {
         juce::Array<juce::var> order;
         for (const auto& key : headerButtonOrder) order.add(key);
@@ -26758,6 +27261,7 @@ void MainComponent::saveSettingsNow()
             item->setProperty("name", juce::String(lower));
             if (!(p.on == ManualConfig::EffectSwitches())) item->setProperty("effectsOff", effectsOffText(p.on));   // 0.9.101
             if (!p.chain.isEmpty()) item->setProperty("chain", p.chain.joinIntoString(","));
+            if (!p.plugins.empty()) item->setProperty("plugins", pluginsToVar(p.plugins));   // 0.9.102
             item->setProperty("volumeDb", p.volumeDb);
             item->setProperty("channelSeparation", p.channelSeparation);
             item->setProperty("reverbIr", p.reverbIrPath);
@@ -27863,6 +28367,7 @@ void MainComponent::timerCallback()
     updateEmptyHint();
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
+    watchPlugins();   // 0.9.102
     // Every 2 s (every second during the start-up wait): a route whose saved
     // device is missing gets it back as soon as it appears.
     if (applicationReady.load() && ++missingDeviceWatchDivider >= (missingAudioDevicesReportPending ? 40 : 80))
@@ -33161,6 +33666,41 @@ void MainComponent::showConfigurationEditor()
                         "Shows or hides this button in the top bar of the main window; the button beside the switch does the same "
                         "as the one in the top bar - without having to show it there.", "Top bar");
                 }
+            }
+
+            //---------------------------------------------------------------- Plug-ins (0.9.102)
+            addSection("Plug-ins (VST3)", true, true);
+            {
+                const auto found = PluginHost::effects().size();
+                const auto refused = PluginHost::refusedLines().size();
+                const bool scanning = PluginHost::scanner().running();
+                addButtonWithNote("Plug-ins", scanning ? "Scanning..." : "Scan", scanning ? PluginHost::scanner().progress()
+                        : juce::String(found) + " effect plug-in(s) found, " + juce::String(refused) + " file(s) refused", [&o] { o.startPluginScan(false, 8, false); },
+                    "Looks for VST3 plug-ins (Audio Units too on macOS) in the system's folders and the ones added below, behind the playing - nothing waits for it. "
+                    "Each plug-in file is tried in a process of its own: one that crashes there, or does not answer within 8 seconds, is refused and never loaded into the program. "
+                    "A file is scanned again only when it changed. The effects found are offered by the + of an Effects chain.",
+                    "Plug-ins");
+                addButton("Plug-ins: the list", "Show", [&o] { o.showPluginList(); },
+                    "Every effect plug-in found, by maker, and every plug-in file refused with the reason.", "Plug-ins: the list");
+                addButton("Plug-ins: the refused once more", "Try again", [&o] { o.startPluginScan(false, 60, true); },
+                    "Scans the refused plug-in files again and gives each of them 60 seconds - for a plug-in that is merely slow at its first start (a licence check, a large collection in one file).",
+                    "Plug-ins: the refused once more");
+                addButtonWithNote("Plug-in folders", "Add folder...", o.pluginFolders.isEmpty() ? juce::String("the system's folders alone") : o.pluginFolders.joinIntoString("; "), [&o]
+                    {
+                        o.pluginFolderChooser = std::make_unique<juce::FileChooser>("A folder with VST3 plug-ins", juce::File());
+                        juce::Component::SafePointer<MainComponent> safeThis(&o);
+                        o.pluginFolderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                            [safeThis](const juce::FileChooser& chooser)
+                            {
+                                if (safeThis == nullptr || !chooser.getResult().isDirectory()) return;
+                                safeThis->pluginFolders.addIfNotAlreadyThere(chooser.getResult().getFullPathName());
+                                safeThis->saveSettings();
+                                safeThis->refreshConfigurationEditor();
+                            });
+                    }, "The system's own plug-in folders are always searched: " + PluginHost::defaultFolders().joinIntoString("; ")
+                       + ". Add a folder when plug-ins live elsewhere; then press Scan.", "Plug-in folders");
+                addButton("Plug-in folders: forget the added ones", "Forget", [&o] { o.pluginFolders.clear(); o.saveSettings(); o.refreshConfigurationEditor(); },
+                    "Removes the folders you added; the system's folders stay.", "Plug-in folders");
             }
 
             //---------------------------------------------------------------- Patterns

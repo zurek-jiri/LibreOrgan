@@ -1085,6 +1085,41 @@ give every device 48 kHz and the same buffer size; a device at another rate
 gets its pipes resampled on the way, at a small cost and a step below the
 quality of the resampling on load.
 
+### Plug-ins in the chain
+
+The **+** under a perspective's chain adds a plug-in - VST3 on every system,
+Audio Units too on macOS - from the list the scan found
+([Plug-ins (VST3)](#87-plug-ins-vst3)). It lands right before the *IR
+reverb*; *Arrange the chain* moves it among *Volume*, *Channel separation*
+and *Equalizer*. A plug-in belongs to the **perspective**: it works on every
+route of it, an instance for each, all with the one setting you make.
+
+Its card has the **ON / OFF** switch (OFF, the sound passes untouched and the
+setting is kept), *Open editor* - the plug-in's own window, always a window
+of its own - and *Remove*; the line under them says on how many routes it
+works, its latency and the time it takes per block. Stereo and mono plug-ins
+are taken (a mono one works on each channel separately); instruments are not
+offered.
+
+A plug-in is somebody else's program inside this one, and what guards the
+organ against a faulty one is this:
+
+- a plug-in file is tried by the scan in a process of its own; one that
+  crashes there or does not answer is refused and never loaded;
+- a plug-in with latency delays every other route by the same amount, so the
+  perspectives stay together;
+- a plug-in that needs more time than the audio buffer allows, block after
+  block, is switched OFF and a message says so;
+- after a start that follows a crash with plug-ins loaded - or with **Shift**
+  held at the start - every plug-in is OFF and not loaded; switch them ON one
+  by one, and the one that brings the program down is the one to remove.
+
+With plug-ins in a chain the master volume acts after them (a compressor does
+not move with the master). A configuration carries its plug-ins' names and
+settings, never the plug-ins: on a computer without one the row is grey, the
+organ plays without that effect and the setting is kept for the day the
+plug-in is there.
+
 ## 5.4 The auxiliary route
 
 One more route per division: a mix of everything the division plays, every
@@ -2058,6 +2093,34 @@ The other divisions fed from this wind: they receive half of this division's
 sag.
 
 ---
+
+## 8.7 Plug-ins (VST3)
+
+### Plug-ins
+
+*Scan* looks for VST3 plug-ins (Audio Units too on macOS) in the system's
+folders and the ones you added, behind the playing - nothing waits for it.
+Each plug-in file is tried in a process of its own and given 8 seconds: one
+that crashes there or does not answer is refused and never loaded into the
+program. A file is scanned again only when it changed. What is found is
+offered by the **+** of an effects chain
+([Plug-ins in the chain](#plug-ins-in-the-chain)).
+
+### Plug-ins: the list
+
+Every effect plug-in found, by maker, and every plug-in file refused, with
+the reason.
+
+### Plug-ins: the refused once more
+
+Scans the refused files again and gives each 60 seconds - for a plug-in that
+is merely slow at its first start (a licence check, a large collection in
+one file).
+
+### Plug-in folders
+
+The system's own plug-in folders are always searched. *Add folder...* adds
+one of yours; *Forget* removes the added ones. Press *Scan* afterwards.
 
 # 9. Messages, the activity log, reporting a problem, licences
 

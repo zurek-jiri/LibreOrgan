@@ -155,7 +155,12 @@ if(UNIX AND NOT APPLE)
     target_link_options(LibreOrgan PRIVATE -rdynamic)
 endif()
 
+# 0.9.102: plug-ins in the effects chain - VST3 on every system, Audio Units on macOS too (PluginHost.h).
+if(APPLE)
+    target_compile_definitions(LibreOrgan PRIVATE JUCE_PLUGINHOST_AU=1)
+endif()
 target_compile_definitions(LibreOrgan PRIVATE
+    JUCE_PLUGINHOST_VST3=1
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_STRICT_REFCOUNTEDPOINTER=1

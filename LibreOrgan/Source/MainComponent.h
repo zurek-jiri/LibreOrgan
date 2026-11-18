@@ -483,8 +483,44 @@ private:
     // it plays. Saved with the organ ("perspectiveEffects"); an old file without the block takes each
     // perspective's values from its first route, and a route stays linked only where its values agree.
     enum class EffectModule { Volume, Separation, Eq, Ir };
+    // 0.9.102: a plug-in of a perspective's chain ("vst:<id>" in PerspectiveEffects::chain). What travels with the
+    // organ is its description and its state - never the plug-in itself; where it is not installed the slot stays
+    // (grey, its state kept and written back).
+    struct PluginSlot
+    {
+        juce::String id;
+        juce::PluginDescription description;
+        juce::MemoryBlock state;
+        bool on = true;
+    };
+    // A plug-in of a slot at work on ONE route: an instance per stereo pair of the route, and the engine's stage.
+    struct LivePlugin
+    {
+        std::vector<std::unique_ptr<juce::AudioPluginInstance>> instances;
+        std::shared_ptr<SamplerEngine::RoutePluginStage> stage;
+        double rate = 0.0;
+        juce::String error;       // why it is not loaded (not installed here, refused the stereo layout ...)
+    };
+    std::map<std::string, std::shared_ptr<LivePlugin>> livePlugins;   // "<slot id>|<route key>"
+    std::map<juce::String, std::unique_ptr<juce::DocumentWindow>> pluginWindows;   // by slot id; the editor shown belongs to the slot's first instance
+    std::set<std::string> routesWithChain;
+    bool pluginSafeStartSaid = false;
+    PluginSlot* pluginSlot(const juce::String& perspective, const juce::String& id);
+    juce::String addPlugin(const juce::String& perspective, const juce::PluginDescription& description);   // returns the slot's id
+    void removePlugin(const juce::String& perspective, const juce::String& id);
+    void setPluginOn(const juce::String& perspective, const juce::String& id, bool on);
+    void showPluginEditor(const juce::String& perspective, const juce::String& id);
+    void closePluginEditor(const juce::String& id);
+    juce::String pluginStatus(const juce::String& perspective, const juce::String& id);   // loaded on N routes, latency, time per block - or why not
+    void rebuildPluginChains();           // the instances and every route's chain, from the model
+    void capturePluginStates();           // the instances' states into the slots (before a save)
+    void syncPluginState(const juce::String& perspective, const juce::String& id);   // the edited instance's state to its sisters on the other routes
+    void watchPlugins();                  // once a second: a plug-in the engine switched off, a route whose rate changed, open editors
+    static juce::var pluginsToVar(const std::vector<PluginSlot>& plugins);
+    static void pluginsFromVar(const juce::var& v, std::vector<PluginSlot>& plugins);
     struct PerspectiveEffects
     {
+        std::vector<PluginSlot> plugins;   // 0.9.102
         float volumeDb = 0.0f, channelSeparation = 1.0f;
         juce::String reverbIrPath; float reverbWet = 0.3f; SamplerEngine::ReverbTone reverbTone;
         SamplerEngine::EqSettings eq;
@@ -623,6 +659,11 @@ private:
     // description of the computer and the audio devices and screenshots into a
     // folder on the Desktop and opens the GitHub bug report with the fields filled in.
     void showProblemReportDialog();
+    // 0.9.102: plug-ins. The folders the user added to the systems' own (this computer's setting "pluginFolders").
+    juce::StringArray pluginFolders;
+    std::unique_ptr<juce::FileChooser> pluginFolderChooser;
+    void startPluginScan(bool everything, int secondsPerFile, bool refusedOnly);
+    void showPluginList();
     void showLongMessage(const juce::String& title, const juce::String& body);   // a message that may not fit an alert box: read-only text with scrollbars and OK
     juce::File writeProblemReport(const juce::String& what, const juce::String& steps,
         const juce::Array<juce::File>& extraShots, juce::URL& issueUrl);   // 0.9.96: ONE file in the folder, logs.zip - the window pictures (always taken) inside it

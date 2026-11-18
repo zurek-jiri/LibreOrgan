@@ -1533,6 +1533,11 @@ namespace
         std::atomic<int> blockSize{ 256 };          // the device's buffer size (reverb partitioning)
         std::atomic<float> volumeGain{ 1.0f };
         std::atomic<bool> volumeOff{ false }, separationOff{ false }, eqOff{ false };   // 0.9.101: the modules' ON / OFF
+        // 0.9.102: the chain with plug-ins (nullptr = none). The audio thread reads the raw pointer; the owner and
+        // the chains replaced lately are kept by the control side until no block can still be inside them.
+        std::atomic<SamplerEngine::RouteChain*> chain{ nullptr };
+        std::shared_ptr<SamplerEngine::RouteChain> chainOwner;
+        std::vector<std::pair<double, std::shared_ptr<SamplerEngine::RouteChain>>> retiredChains;
         // Channel separation 0..1: 1 = every pipe only on its own channel pair, 0 =
         // every channel carries the sum of all (mono to everywhere); in between the
         // other channels leak (1 - separation) of each pipe.
@@ -7495,7 +7500,11 @@ struct SamplerEngine::Impl
         route.lastRenderMs.store(now, std::memory_order_relaxed);
         lastBlockMs.store(1000.0 * totalSamples / juce::jmax(1000.0, route.sampleRate.load(std::memory_order_relaxed)),
             std::memory_order_relaxed);
-        const float outputGain = masterGain * (route.volumeOff.load(std::memory_order_relaxed) ? 1.0f : route.volumeGain.load(std::memory_order_relaxed));
+        // 0.9.102: with a chain of plug-ins the voices are rendered at unity - the Volume is a stage of the chain
+        // and the master volume follows the last stage.
+        SamplerEngine::RouteChain* const chain = route.chain.load(std::memory_order_acquire);
+        const float outputGain = chain != nullptr ? 1.0f
+            : masterGain * (route.volumeOff.load(std::memory_order_relaxed) ? 1.0f : route.volumeGain.load(std::memory_order_relaxed));
 
         static thread_local BlockContext ctx;
         alignas(16) static thread_local float sink[RenderPool::kFrames];
@@ -7595,6 +7604,7 @@ struct SamplerEngine::Impl
         // Channel separation: with less than 100 % each route channel receives
         // (1 - separation) of every other channel's signal (mono pipes spread over
         // several channels leak into the others; at 0 % all channels carry the sum).
+        auto applySeparation = [&]
         {
             const float separation = route.separationOff.load(std::memory_order_relaxed) ? 1.0f : juce::jlimit(0.0f, 1.0f, route.separation.load(std::memory_order_relaxed));
             if (separation < 0.999f && ctx.outCount > 1)
@@ -7622,12 +7632,13 @@ struct SamplerEngine::Impl
                     }
                 }
             }
-        }
+        };
 
         // 0.9.89: the route's parametric EQ (five biquads per channel at most), after the separation and before the
         // IR, so the room hears the equalized sound. A flat EQ is skipped as a whole (eqAny), a band at 0 dB per band.
-        if (route.eqAny.load(std::memory_order_relaxed) && !route.eqOff.load(std::memory_order_relaxed))
+        auto applyEq = [&]
         {
+            if (!(route.eqAny.load(std::memory_order_relaxed) && !route.eqOff.load(std::memory_order_relaxed))) return;
             Route::EqCoefs coefs[5];
             const int set = route.eqIndex.load(std::memory_order_acquire);
             for (int b = 0; b < 5; ++b) coefs[b] = route.eqSets[set][b];
@@ -7653,6 +7664,86 @@ struct SamplerEngine::Impl
                     route.eqState[ci][b][0] = s1; route.eqState[ci][b][1] = s2;
                 }
             }
+        };
+        auto scaleRoute = [&](float gain)
+        {
+            if (gain == 1.0f) return;
+            for (int ci = 0; ci < ctx.outCount; ++ci)
+            {
+                const int ch = ctx.outChannels[ci];
+                if (ch >= 0 && ch < numOuts) juce::FloatVectorOperations::multiply(buffer.getWritePointer(ch), gain, totalSamples);
+            }
+        };
+        if (chain == nullptr) { applySeparation(); applyEq(); }
+        else
+        {
+            // 0.9.102: the chain in the perspective's order. A plug-in works on each stereo pair of the route with an
+            // instance of its own; its time is measured, and one that needs more than 80 % of the period twenty
+            // blocks in a row is switched off (tripped) before it takes the sound of the whole organ down.
+            static thread_local juce::MidiBuffer noMidi;
+            const double periodNs = 1.0e9 * totalSamples / juce::jmax(1000.0, route.sampleRate.load(std::memory_order_relaxed));
+            for (auto& stage : chain->stages)
+            {
+                if (stage.kind == 0) { if (!route.volumeOff.load(std::memory_order_relaxed)) scaleRoute(route.volumeGain.load(std::memory_order_relaxed)); }
+                else if (stage.kind == 1) applySeparation();
+                else if (stage.kind == 2) applyEq();
+                else if (auto* plugin = stage.plugin.get())
+                {
+                    if (plugin->off.load(std::memory_order_relaxed) || plugin->tripped.load(std::memory_order_relaxed)) continue;
+                    const int64_t startTicks = juce::Time::getHighResolutionTicks();
+                    if (plugin->mono)
+                        for (int ci = 0; ci < plugin->count && ci < ctx.outCount; ++ci)
+                        {
+                            const int ch = ctx.outChannels[ci];
+                            if (ch < 0 || ch >= numOuts || plugin->processors[ci] == nullptr) continue;
+                            float* channels[1]{ buffer.getWritePointer(ch) };
+                            juce::AudioBuffer<float> view(channels, 1, totalSamples);
+                            noMidi.clear();
+                            const juce::ScopedNoDenormals noDenormals;
+                            plugin->processors[ci]->processBlock(view, noMidi);
+                        }
+                    else
+                    for (int pair = 0; pair < plugin->count && pair * 2 < ctx.outCount; ++pair)
+                    {
+                        const int left = ctx.outChannels[pair * 2];
+                        const int right = pair * 2 + 1 < ctx.outCount ? ctx.outChannels[pair * 2 + 1] : -1;
+                        if (left < 0 || left >= numOuts || plugin->processors[pair] == nullptr) continue;
+                        alignas(16) static thread_local float mono[4096];
+                        float* channels[2]{ buffer.getWritePointer(left), right >= 0 && right < numOuts ? buffer.getWritePointer(right) : mono };
+                        if (channels[1] == mono) std::memcpy(mono, channels[0], sizeof(float) * (size_t)juce::jmin(totalSamples, 4096));
+                        juce::AudioBuffer<float> view(channels, 2, totalSamples);
+                        noMidi.clear();
+                        const juce::ScopedNoDenormals noDenormals;
+                        plugin->processors[pair]->processBlock(view, noMidi);
+                    }
+                    const int64_t ns = (int64_t)(1.0e9 * (double)(juce::Time::getHighResolutionTicks() - startTicks) / (double)juce::Time::getHighResolutionTicksPerSecond());
+                    plugin->nsSum.fetch_add(ns, std::memory_order_relaxed);
+                    plugin->blocks.fetch_add(1, std::memory_order_relaxed);
+                    int64_t known = plugin->nsMax.load(std::memory_order_relaxed);
+                    while (ns > known && !plugin->nsMax.compare_exchange_weak(known, ns, std::memory_order_relaxed)) {}
+                    if ((double)ns > 0.8 * periodNs) { if (++plugin->slowRun >= 20) plugin->tripped.store(true, std::memory_order_relaxed); }
+                    else plugin->slowRun = 0;
+                }
+            }
+            // As late as the latest route (the plug-ins' latency), then the master volume.
+            if (chain->delaySamples > 0)
+                for (int ci = 0; ci < ctx.outCount && (size_t)ci < chain->delayLines.size(); ++ci)
+                {
+                    const int ch = ctx.outChannels[ci];
+                    auto& line = chain->delayLines[(size_t)ci];
+                    if (ch < 0 || ch >= numOuts || (int)line.size() < chain->delaySamples) continue;
+                    float* data = buffer.getWritePointer(ch);
+                    int position = chain->delayPosition;
+                    for (int i = 0; i < totalSamples; ++i)
+                    {
+                        const float in = data[i];
+                        data[i] = line[(size_t)position];
+                        line[(size_t)position] = in;
+                        if (++position >= chain->delaySamples) position = 0;
+                    }
+                }
+            if (chain->delaySamples > 0) chain->delayPosition = (chain->delayPosition + totalSamples) % chain->delaySamples;
+            scaleRoute(masterGain);
         }
         lap(statRouteSeparation);
         // IR reverb of this route (its output pairs), before the safety clip and
@@ -9150,6 +9241,27 @@ void SamplerEngine::setPerspectiveVolumeDb(int manualIndex, const juce::String& 
     const juce::ScopedLock sl(controlLock);
     if (Route* r = impl->ensureRoute(manualIndex, perspective))
         r->volumeGain.store(db < -30.5f ? 0.0f : juce::Decibels::decibelsToGain(juce::jlimit(-30.0f, 6.0f, db)));
+}
+
+void SamplerEngine::setPerspectiveChain(int manualIndex, const juce::String& perspective, std::shared_ptr<RouteChain> chain)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals || perspective.isEmpty()) return;
+    const juce::ScopedLock sl(controlLock);
+    Route* r = impl->ensureRoute(manualIndex, perspective);
+    if (r == nullptr) return;
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (chain != nullptr)
+    {
+        chain->delaySamples = juce::jlimit(0, 1 << 17, chain->delaySamples);
+        chain->delayLines.assign(chain->delaySamples > 0 ? 64 : 0, std::vector<float>((size_t)chain->delaySamples, 0.0f));
+        chain->delayPosition = 0;
+    }
+    r->chain.store(chain.get(), std::memory_order_release);
+    // The chain replaced may still be inside the block being rendered: kept for two seconds.
+    if (r->chainOwner != nullptr) r->retiredChains.push_back({ now, r->chainOwner });
+    r->chainOwner = std::move(chain);
+    r->retiredChains.erase(std::remove_if(r->retiredChains.begin(), r->retiredChains.end(),
+        [now](const auto& entry) { return now - entry.first > 2000.0; }), r->retiredChains.end());
 }
 
 void SamplerEngine::setPerspectiveEffectsOff(int manualIndex, const juce::String& perspective, bool volumeOff, bool separationOff, bool eqOff)

@@ -1136,6 +1136,32 @@ public:
     int takeMeasuredPeakPolyphony() noexcept { return peakPolyphonyMeasured.exchange(currentPolyphony.load(std::memory_order_relaxed), std::memory_order_relaxed); }
     // 0.9.79 (#229): the audio meter - the highest sample (absolute, before the safety clip) over every route
     // and device since the last call, and whether the clip worked meanwhile; both reset by the call.
+    // 0.9.102: plug-ins in a route's chain. A stage is one plug-in of the chain: an instance per stereo pair of the
+    // route (owned by the caller, alive as long as a chain names them), its switch, and what the engine measures.
+    struct RoutePluginStage
+    {
+        juce::AudioProcessor* processors[8]{};        // stereo plug-in: one per stereo pair of the route; mono plug-in: one per channel
+        int count = 0;
+        bool mono = false;                            // a mono plug-in works on each channel with an instance of its own
+        std::atomic<bool> off{ false };               // the plug-in's ON / OFF (off: the sound passes untouched)
+        std::atomic<bool> tripped{ false };           // switched off by the engine: it took too long, block after block
+        std::atomic<int64_t> nsSum{ 0 }, blocks{ 0 }, nsMax{ 0 };   // its time per block, for the display
+        int slowRun = 0;                              // audio thread: blocks in a row beyond 80 % of the period
+    };
+    // The whole chain of a route in its order: 0 = Volume, 1 = Channel separation, 2 = Equalizer, 3 = a plug-in.
+    // With a chain the route's voices are rendered at unity, the Volume stands where the chain puts it and the
+    // master volume comes after the last stage (a compressor must not move with the master). delaySamples makes
+    // the route as late as the latest route (plug-ins with latency), so the perspectives stay together.
+    struct RouteChain
+    {
+        struct Stage { int kind = 0; std::shared_ptr<RoutePluginStage> plugin; };
+        std::vector<Stage> stages;
+        int delaySamples = 0;
+        std::vector<std::vector<float>> delayLines;   // audio thread
+        int delayPosition = 0;
+    };
+    // nullptr = no plug-in: the built-in modules in the engine's own (fastest) way.
+    void setPerspectiveChain(int manualIndex, const juce::String& perspective, std::shared_ptr<RouteChain> chain);
     // 0.9.101: the ON / OFF switches of a route's Volume, Channel separation and Equalizer - off, the module lets
     // the sound through untouched and keeps its values (the IR reverb is switched by its file, in MainComponent).
     void setPerspectiveEffectsOff(int manualIndex, const juce::String& perspective, bool volumeOff, bool separationOff, bool eqOff);

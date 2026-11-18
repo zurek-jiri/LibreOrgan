@@ -25,7 +25,27 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   volume stays first, the IR reverb last. The order is the perspective's.
   (The first step towards plug-ins in the chain.)
 
+- **Plug-ins in the effects chain**: VST3 on every system, Audio Units too
+  on macOS. The **+** under a perspective's chain adds one from the scanned
+  list; it works on every route of the perspective (stereo and mono
+  plug-ins), has its ON / OFF switch, its own editor window and its place in
+  the chain. Its setting travels with the organ; where the plug-in is not
+  installed the organ plays without it and the setting is kept.
+- Configuration Editor > *Plug-ins (VST3)*: Scan (behind the playing, every
+  plug-in file in a process of its own, 8 s each), the list, the refused
+  files once more with 60 s, the folders.
+- Safeguards against faulty plug-ins: a file that crashes or hangs its scan
+  is refused; a plug-in's latency is made up on every other route; a plug-in
+  that takes longer than the audio buffer allows is switched off; after a
+  crash with plug-ins loaded (or with Shift held at the start) every plug-in
+  starts switched off and unloaded, and the one being loaded when the
+  program died is named.
+- The problem report lists the plug-ins and what each was doing.
+
 ### Changed
+- With plug-ins in a chain the master volume acts after them.
+- The frames of the arrange modes of the top bar and the effects chain are
+  white dashes, as in the grid.
 - GitHub keeps the release 0.9.100 beside the current one for the time being.
 
 ## [0.9.100] - 2026-11-18
