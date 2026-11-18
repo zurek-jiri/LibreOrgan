@@ -404,7 +404,9 @@ the top bar when the program has something to say ([Messages](#91-messages)).
 
 Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and
 fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned
-button fires even when hidden).
+button fires even when hidden). The order is yours: right-click a button,
+*Arrange the top bar*, drag the buttons to their places and click anywhere
+else to finish; *Top bar: back to the built-in order* undoes it.
 
 - **PANIC** silences every sounding pipe.
 - **Record** records the stereo mix to a WAV file; click again to stop
@@ -970,7 +972,8 @@ so a chord spreads across the speakers like pipes across a windchest (a mono
 sample to one channel in turn, a stereo sample to a pair).
 
 **Every row** of *Organ out* ends with a small **meter** (the large meter
-in miniature: four green segments, three orange, red only at a clip) and the **fx** button -
+in miniature: four green segments, three orange, red for three seconds
+after a clip of the row or of its card's sum) and the **fx** button -
 grey while everything of it is default, orange when an effect is set or a
 module set apart; it opens the row's [Effects](#53-effects), a right-click
 on it resets them to the default. The cables take the primary colours first

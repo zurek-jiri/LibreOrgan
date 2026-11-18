@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.100] - 2026-11-18
+
+### Added
+- The order of the top-bar buttons is the user's: right-click a button >
+  *Arrange the top bar*, drag the buttons to their places, click anywhere
+  else to finish. *Top bar: back to the built-in order* undoes it. The order
+  is kept for this computer.
+
+### Changed
+- Audio routing: the red segment of a row's meter stays lit for three seconds
+  after a clip, and lights also when the sum on the row's card passed the
+  limiter while the row sounded.
+
 ## [0.9.99] - 2026-11-18
 
 ### Fixed

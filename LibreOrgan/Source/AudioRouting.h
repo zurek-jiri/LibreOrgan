@@ -1475,7 +1475,13 @@ private:
                 auto& m = rowMeters[ri];
                 if (db >= m.db || now >= m.holdUntil) { if (std::abs(db - m.db) > 0.5f) changed = true; m.db = db; m.holdUntil = now + 1000.0; }
                 // The red part: the limiter worked on a sample of this row (the engine's own clip rule: above 0.98).
-                if (peak > 0.98f) m.clipUntil = now + 1000.0;
+                // 0.9.100 (the user: "červený peak hold 3 s"): red stays three seconds; and it lights when the SUM on
+                // the row's card passed the limiter while the row sounded (the row alone may be far below it).
+                bool clipped = peak > 0.98f;
+                if (!clipped && db > -40.0f)
+                    for (const auto& route : rows[ri].routes)
+                        if (owner.routeCardClippedSince(route.manual, route.perspective, now - 150.0)) { clipped = true; break; }
+                if (clipped) m.clipUntil = now + 3000.0;
                 const bool clipNow = now < m.clipUntil;
                 if (clipNow != m.clipShown) { m.clipShown = clipNow; changed = true; }
             }

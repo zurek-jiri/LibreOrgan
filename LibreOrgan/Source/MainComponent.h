@@ -191,6 +191,14 @@ private:
     bool isHeaderButtonShown(const juce::String& key) const;
     struct HeaderButtonInfo { juce::Button* button; int weight; const char* key; const char* label; bool defaultShown; };
     std::vector<HeaderButtonInfo> headerButtons();
+    // 0.9.100: the user's own order of the top-bar buttons (keys; this computer's setting "headerButtonOrder";
+    // empty = the built-in order). Arranged by dragging: right-click a top-bar button > "Arrange the top bar".
+    juce::StringArray headerButtonOrder;
+    struct HeaderArranger;
+    std::unique_ptr<juce::Component> headerArranger;
+    std::vector<HeaderButtonInfo> builtInHeaderButtons();
+    void beginHeaderArranging();
+    void moveHeaderButton(const juce::String& key, const juce::String& beforeKey);   // beforeKey empty = to the end
 
     static constexpr double kDefaultMasterDb = -18.0;   // the master level a fresh start, a reset and a configuration without one get (0.8.128; -20 before)
     static constexpr double kDefaultFadeMs = 110.0;     // sustain fade-out and release fade-in (0.8.215; 70 before) - ONE constant for the sliders' start values, the loadSettings fallbacks, the reset and the double-click defaults (0.9.14: the double-click still returned 70)
@@ -483,6 +491,7 @@ private:
     void setRouteEffectLinked(int manual, const juce::String& perspective, EffectModule module, bool linked);   // on = the perspective's values taken
     bool routeEffectLinked(int manual, const juce::String& perspective, EffectModule module) const;
     void unlinkRouteEffect(int manual, const juce::String& perspective, EffectModule module);   // a change of the route's own control (MIDI) ends the link
+    bool routeCardClippedSince(int manual, const juce::String& perspective, double sinceMs) const;   // 0.9.100: the SUM on this route's card passed the limiter since then
     bool routeEffectsActive(int manual, const juce::String& perspective) const;                // the fx button is orange: something set apart or off default
     bool perspectiveEffectsActive(const juce::String& perspective) const;
     int routesLinked(const juce::String& perspective, EffectModule module, juce::StringArray* apart = nullptr) const;   // how many of its routes follow (the others named)
@@ -818,6 +827,7 @@ private:
         static constexpr int mixChannels = 64, mixFrames = 4096;
         float mix[mixChannels][mixFrames]{};
         uint32_t mixCycle = 0;
+        std::atomic<double> sumClipAtMs{ 0.0 };   // 0.9.100: when the sum last passed the limiter (the rows' red part)
     };
     static constexpr int maxDeviceClocks = 16;
     DeviceClock deviceClocks[maxDeviceClocks];

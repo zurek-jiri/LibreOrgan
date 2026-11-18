@@ -622,6 +622,7 @@ public:
         bool useConfiguredOutputs = true)
         : owner(owner), manual(manual), perspective(std::move(perspective)),
           useConfiguredOutputs(useConfiguredOutputs) {}
+    double deviceSumClipAtMs() const noexcept { return deviceClock != nullptr ? deviceClock->sumClipAtMs.load(std::memory_order_relaxed) : 0.0; }
     void audioDeviceIOCallbackWithContext(const float* const*, int, float* const* outputs,
         int numOutputs, int numSamples, const juce::AudioIODeviceCallbackContext&) override
     {
@@ -905,6 +906,7 @@ public:
             }
         if (jumps > 0) edgeJumps.fetch_add(jumps, std::memory_order_relaxed);
         if (sumPeak > 0.0f) owner.engine.reportOutputPeak(sumPeak, sumPeak > 0.98f);
+        if (sumPeak > 0.98f && deviceClock != nullptr) deviceClock->sumClipAtMs.store(juce::Time::getMillisecondCounterHiRes(), std::memory_order_relaxed);
         // Level evidence for the activity log: which device really carries audio.
         float known = statPeak.load(std::memory_order_relaxed);
         while (peak > known && !statPeak.compare_exchange_weak(known, peak, std::memory_order_relaxed)) {}
@@ -2733,6 +2735,19 @@ MainComponent::MainComponent()
             });
         }
     }
+    // 0.9.100: ORGAN_TEST_HEADER="<seconds>|<key>|<before key or empty>" moves a top-bar button as a drag does and
+    // leaves the arranging mode on (for a picture).
+    if (const char* env = std::getenv("ORGAN_TEST_HEADER"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+        {
+            if (safeThis == nullptr) return;
+            safeThis->beginHeaderArranging();
+            if (parts.size() >= 2) safeThis->moveHeaderButton(parts[1], parts.size() >= 3 ? parts[2] : juce::String());
+        });
+    }
     // 0.9.96: ORGAN_TEST_REPORT=<seconds> writes a problem report as "Create the report and open GitHub" does (the
     // folder with its ONE file, logs.zip), opens nothing and logs the folder.
     if (const char* env = std::getenv("ORGAN_TEST_REPORT"))
@@ -3299,6 +3314,7 @@ void MainComponent::resized()
 {
     glowLayer.setBounds(getLocalBounds());
     glowLayer.toFront(false);
+    if (headerArranger != nullptr) { headerArranger->setBounds(getLocalBounds()); headerArranger->toFront(false); headerArranger->repaint(); }
     if (messageStrip != nullptr)
     {
         messageStrip->setBounds(6, getHeight() - 30, juce::jmin(560, getWidth() - 12), 24);
@@ -4319,6 +4335,16 @@ void MainComponent::showAudioRoutingDialog()
     audioRoutingWindow->setVisible(true);
     audioRoutingWindow->toFront(true);
     CrashHandler::note("Audio routing dialog opened");
+}
+
+bool MainComponent::routeCardClippedSince(int manual, const juce::String& perspective, double sinceMs) const
+{
+    const DivisionAudioCallback* callback = nullptr;
+    const auto found = perspectiveAudioRoutes.find(perspectiveRouteKey(manual, perspective));
+    if (found != perspectiveAudioRoutes.end() && found->second != nullptr) callback = found->second->callback.get();
+    else if (manual == 0) callback = primaryAudioCallback.get();
+    else if (manual > 0 && manual - 1 < (int)extraAudioCallbacks.size()) callback = extraAudioCallbacks[(size_t)manual - 1].get();
+    return callback != nullptr && callback->deviceSumClipAtMs() >= sinceMs && sinceMs > 0.0;
 }
 
 void MainComponent::startRouteTestTone(int manual, const juce::String& perspective)
@@ -13880,7 +13906,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -17705,7 +17731,162 @@ juce::String MainComponent::uniqueStopBuildName(const std::vector<ManualConfig::
     }
 }
 
+// 0.9.100 (the user: "bylo by nejlepší, kdyby šlo nastavit pořadí buttonů na hlavní liště podle přání uživatele"):
+// the top bar arranged by dragging. A layer over the whole window while the mode is on: the buttons are framed,
+// a press on one takes it, the orange line shows where it lands (the buttons keep sharing the row by their
+// widths - nothing has a fixed cell), a click anywhere else ends the mode.
+struct MainComponent::HeaderArranger final : public juce::Component
+{
+    explicit HeaderArranger(MainComponent& o) : owner(o) { setInterceptsMouseClicks(true, false); setWantsKeyboardFocus(true); }
+    struct Shown { juce::String key; juce::Rectangle<int> bounds; juce::Button* button; };
+    std::vector<Shown> shown() const
+    {
+        std::vector<Shown> list;
+        for (const auto& item : owner.headerButtons())
+            if (item.button->isVisible() && !item.button->getBounds().isEmpty()) list.push_back({ item.key, item.button->getBounds(), item.button });
+        return list;
+    }
+    void paint(juce::Graphics& g) override
+    {
+        const auto list = shown();
+        if (list.empty()) return;
+        const auto orange = juce::Colours::orange;
+        juce::Rectangle<int> row;
+        for (const auto& s : list)
+        {
+            row = row.isEmpty() ? s.bounds : row.getUnion(s.bounds);
+            g.setColour(orange.withAlpha(s.key == dragKey ? 0.25f : 0.9f));
+            const float dashes[2]{ 5.0f, 4.0f };
+            juce::Path frame; frame.addRoundedRectangle(s.bounds.toFloat().expanded(1.0f), 4.0f);
+            juce::Path dashed; juce::PathStrokeType(1.5f).createDashedStroke(dashed, frame, dashes, 2);
+            g.fillPath(dashed);
+        }
+        const juce::String text("Drag a button of the top bar to its place. Click anywhere else to finish.");
+        const juce::Font font(juce::FontOptions(15.0f, juce::Font::bold));
+        const int width = juce::roundToInt(juce::GlyphArrangement::getStringWidth(font, text)) + 24;
+        const juce::Rectangle<int> note(juce::jlimit(8, juce::jmax(8, getWidth() - width - 8), row.getCentreX() - width / 2), row.getBottom() + 8, width, 26);
+        g.setColour(juce::Colours::black.withAlpha(0.85f));
+        g.fillRoundedRectangle(note.toFloat(), 5.0f);
+        g.setColour(orange);
+        g.setFont(font);
+        g.drawText(text, note, juce::Justification::centred);
+        if (dragKey.isNotEmpty())
+        {
+            if (insertX >= 0)
+            {
+                g.setColour(orange);
+                g.fillRect(insertX - 2, row.getY() - 3, 4, row.getHeight() + 6);
+            }
+            if (dragImage.isValid())
+            {
+                g.setOpacity(0.8f);
+                g.drawImageAt(dragImage, mouseAt.x - grab.x, mouseAt.y - grab.y);
+            }
+        }
+    }
+    void mouseDown(const juce::MouseEvent& event) override
+    {
+        dragKey.clear(); insertX = -1;
+        for (const auto& s : shown())
+            if (s.bounds.contains(event.getPosition()))
+            {
+                dragKey = s.key;
+                grab = event.getPosition() - s.bounds.getPosition();
+                mouseAt = event.getPosition();
+                dragImage = s.button->createComponentSnapshot(s.button->getLocalBounds(), false, 1.0f);
+                repaint();
+                return;
+            }
+        // A click beside the buttons ends the mode (after this event: the layer deletes itself).
+        juce::Component::SafePointer<MainComponent> safeOwner(&owner);
+        juce::MessageManager::callAsync([safeOwner] { if (safeOwner != nullptr) { safeOwner->headerArranger.reset(); CrashHandler::note("Top bar: arranging ended"); } });
+    }
+    void mouseDrag(const juce::MouseEvent& event) override
+    {
+        if (dragKey.isEmpty()) return;
+        mouseAt = event.getPosition();
+        // Where it lands: before the first other button whose centre lies right of the mouse, else at the end.
+        beforeKey.clear(); insertX = -1;
+        int lastRight = -1;
+        for (const auto& s : shown())
+        {
+            if (s.key == dragKey) continue;
+            if (beforeKey.isEmpty() && mouseAt.x < s.bounds.getCentreX()) { beforeKey = s.key; insertX = s.bounds.getX() - 3; }
+            lastRight = s.bounds.getRight() + 3;
+        }
+        if (beforeKey.isEmpty()) insertX = lastRight;
+        moved = moved || event.getDistanceFromDragStart() > 5;
+        repaint();
+    }
+    void mouseUp(const juce::MouseEvent&) override
+    {
+        if (dragKey.isNotEmpty() && moved) owner.moveHeaderButton(dragKey, beforeKey);
+        dragKey.clear(); beforeKey.clear(); insertX = -1; moved = false; dragImage = {};
+        repaint();
+    }
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        if (key != juce::KeyPress::escapeKey) return false;
+        juce::Component::SafePointer<MainComponent> safeOwner(&owner);
+        juce::MessageManager::callAsync([safeOwner] { if (safeOwner != nullptr) safeOwner->headerArranger.reset(); });
+        return true;
+    }
+    MainComponent& owner;
+    juce::String dragKey, beforeKey;
+    juce::Point<int> grab, mouseAt;
+    juce::Image dragImage;
+    int insertX = -1;
+    bool moved = false;
+};
+
+void MainComponent::beginHeaderArranging()
+{
+    if (headerArranger != nullptr) return;
+    headerArranger = std::make_unique<HeaderArranger>(*this);
+    addAndMakeVisible(*headerArranger);
+    headerArranger->setBounds(getLocalBounds());
+    headerArranger->toFront(true);
+    CrashHandler::note("Top bar: arranging begun");
+}
+
+void MainComponent::moveHeaderButton(const juce::String& key, const juce::String& beforeKey)
+{
+    juce::StringArray order;
+    for (const auto& item : headerButtons()) order.add(item.key);   // every button, the hidden ones too, as they stand now
+    if (!order.contains(key) || key == beforeKey) return;
+    order.removeString(key);
+    const int at = beforeKey.isEmpty() ? -1 : order.indexOf(beforeKey);
+    order.insert(at < 0 ? order.size() : at, key);
+    headerButtonOrder = order;
+    CrashHandler::note("Top bar: " + key + (beforeKey.isEmpty() ? juce::String(" moved to the end") : " moved before " + beforeKey));
+    saveSettings();
+    resized();
+    if (headerArranger != nullptr) headerArranger->toFront(false);
+}
+
 std::vector<MainComponent::HeaderButtonInfo> MainComponent::headerButtons()
+{
+    std::vector<HeaderButtonInfo> all = builtInHeaderButtons();
+    if (headerButtonOrder.isEmpty()) return all;
+    // The user's order first; a button the saved order does not know (a newer version's) goes after the button
+    // that precedes it in the built-in order.
+    std::vector<HeaderButtonInfo> result;
+    for (const auto& key : headerButtonOrder)
+        for (const auto& item : all)
+            if (key == item.key) { result.push_back(item); break; }
+    for (size_t i = 0; i < all.size(); ++i)
+    {
+        if (headerButtonOrder.contains(all[i].key)) continue;
+        size_t at = 0;
+        if (i > 0)
+            for (size_t k = 0; k < result.size(); ++k)
+                if (juce::String(result[k].key) == all[i - 1].key) { at = k + 1; break; }
+        result.insert(result.begin() + (std::ptrdiff_t)at, all[i]);
+    }
+    return result;
+}
+
+std::vector<MainComponent::HeaderButtonInfo> MainComponent::builtInHeaderButtons()
 {
     return {
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
@@ -25284,6 +25465,9 @@ void MainComponent::loadSettings()
     copyCacheFolder = parsed.getProperty("copyCacheFolder", "").toString();
     copyCacheEnabled = parsed.getProperty("copyCacheEnabled", true);   // on by default (0.8.124): a reload of a big organ computed every filled pipe again
     engine.setCopyCache(copyCacheEnabled, copyCacheDirectory());
+    headerButtonOrder.clear();
+    if (auto* order = parsed.getProperty("headerButtonOrder", juce::var()).getArray())
+        for (const auto& key : *order) headerButtonOrder.addIfNotAlreadyThere(key.toString());
     consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
     // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file -> file) and
@@ -26163,6 +26347,11 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
+    {
+        juce::Array<juce::var> order;
+        for (const auto& key : headerButtonOrder) order.add(key);
+        obj->setProperty("headerButtonOrder", order);
+    }
     obj->setProperty("outputDiscontinuityDetector", outputDiscontinuityDetector.load());
     obj->setProperty("loadLastCombinationsFile", loadLastCombinationsFile);   // 0.9.79 (#232)
     {
@@ -27892,6 +28081,12 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
         menu.addSeparator();
         menu.addItem(5, "Merge another configuration into this organ (LibreOrgan Sampler .json, or a Hauptwerk organ definition)...");
     }
+    if (target.startsWith("header:"))
+    {
+        menu.addSeparator();
+        menu.addItem(7, "Arrange the top bar (drag the buttons to their places)...");
+        menu.addItem(8, "Top bar: back to the built-in order", !headerButtonOrder.isEmpty());
+    }
     const auto chapter = manualChapterForTarget(target);
     menu.addSeparator();
     menu.addItem(6, "Manual: " + chapter);   // 0.8.232: every menu ends with its chapter of the manual
@@ -27902,6 +28097,8 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
         else if (result == 4) showFeatureSettings(featureManual, feature);
         else if (result == 5) mergeConfigurationDialog();
         else if (result == 6) showManualSection(chapter);
+        else if (result == 7) beginHeaderArranging();
+        else if (result == 8) { headerButtonOrder.clear(); saveSettings(); resized(); CrashHandler::note("Top bar: the built-in order again"); }
     });
 }
 

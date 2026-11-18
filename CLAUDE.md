@@ -4058,6 +4058,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   moved right before Load Configuration. PROPOSED, not coded (the user asked "možná gridem?"): a user-set order
   of the top-bar buttons. PipeWire names: the desktop's sound settings show node.description ("Starship/Matisse
   HD Audio Controller Pro"), PipeWire's JACK side the node.nick ("ALC1220 Analog") - the same card.
+  0.9.100 (18 Nov 2026, Linux): (1) TOP BAR ORDER: `headerButtonOrder` (machine key, keys in order; empty = built
+  in) applied by `headerButtons()` over `builtInHeaderButtons()` (a key the saved order lacks goes after its
+  built-in predecessor); `MainComponent::HeaderArranger` (a layer over the whole window, child of MainComponent,
+  kept in `headerArranger`, bounds/toFront in resized): dashed orange frames, a press takes a button (its snapshot
+  follows the mouse), the orange line = before the first other button whose centre is right of the mouse,
+  `moveHeaderButton(key, beforeKey)` saves + resized(); a click beside the buttons or Escape ends (the layer is
+  deleted by callAsync). Entered by showMidiLearnMenu items 7 "Arrange the top bar ..." / 8 "back to the built-in
+  order" (header: targets). The bar is ONE row sharing the width by weights - no cells. Hook
+  `ORGAN_TEST_HEADER="<seconds>|<key>|<before key>"`. (2) Row meters: `clipUntil = now + 3000`; red also when
+  `routeCardClippedSince(manual, perspective, now - 150)` (DeviceClock::sumClipAtMs, set where the sum passes 0.98)
+  while the row sounds above -40 dB. A member function of DivisionAudioCallback that MainComponent calls goes in
+  its PUBLIC part (the data members at its end are private).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

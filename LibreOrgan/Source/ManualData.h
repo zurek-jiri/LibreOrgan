@@ -412,7 +412,9 @@ static const char* const kManualText_part2 =
     "\n"
     "Every button can be hidden (Configuration Editor > Console > [Top bar](#top-bar)) and\n"
     "fired from a MIDI control (right-click it, *Learn MIDI On trigger*; a learned\n"
-    "button fires even when hidden).\n"
+    "button fires even when hidden). The order is yours: right-click a button,\n"
+    "*Arrange the top bar*, drag the buttons to their places and click anywhere\n"
+    "else to finish; *Top bar: back to the built-in order* undoes it.\n"
     "\n"
     "- **PANIC** silences every sounding pipe.\n"
     "- **Record** records the stereo mix to a WAV file; click again to stop\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "\n"
     "The caption of the button. *Automatic* shows the folder name; type any text\n"
     "to show that instead (an alias without a footage gets the stop's footage\n"
-    "appended; a footage typed into the alias is kept as typed, on a transmission\n"
-    "too). The alias is only a caption: saved states, combinations and MIDI\n"
     ;
 static const char* const kManualText_part3 =
+    "appended; a footage typed into the alias is kept as typed, on a transmission\n"
+    "too). The alias is only a caption: saved states, combinations and MIDI\n"
     "bindings use the stop's real name.\n"
     "\n"
     "### One-shot\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "  tip; an orange cell is a folder not on this computer.\n"
     "- **Transmissions:** the cell shows where the stop's transmissions go; click\n"
     "  it to add one into any division or to remove one. They act at once, no\n"
-    "  Apply needed. *Show Trsm.* lists every transmission as a grey row of the\n"
-    "  division it plays in.\n"
     ;
 static const char* const kManualText_part4 =
+    "  Apply needed. *Show Trsm.* lists every transmission as a grey row of the\n"
+    "  division it plays in.\n"
     "- **Add stop...** adds an empty stop folder or one of the ready-made stops no\n"
     "  division uses yet. The x at a row's start removes the stop (its folders\n"
     "  become free). **Remove empty stops** removes every row without folders and\n"
@@ -982,7 +984,8 @@ static const char* const kManualText_part4 =
     "sample to one channel in turn, a stereo sample to a pair).\n"
     "\n"
     "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
-    "in miniature: four green segments, three orange, red only at a clip) and the **fx** button -\n"
+    "in miniature: four green segments, three orange, red for three seconds\n"
+    "after a clip of the row or of its card's sum) and the **fx** button -\n"
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
     "on it resets them to the default. The cables take the primary colours first\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "- **Save routing...** writes the cables (sound cards, outputs, rate, buffer)\n"
     "  and the effects of every route into one file.\n"
     "- **Load routing...** asks once: **Load cables only** (the usual choice) or\n"
+    ;
+static const char* const kManualText_part5 =
     "  **Load cables and effects**. The effects carry the volumes of the divisions\n"
     "  and perspectives - on another organ they overwrite its balance, and the box\n"
     "  says so in a warning; it names the organ the file was saved from.\n"
-    ;
-static const char* const kManualText_part5 =
     "- **Use as default for new organs** makes these cables this computer's\n"
     "  default. An organ that brings no audio of this computer - a published\n"
     "  configuration, a Hauptwerk import, folders dropped on an empty console -\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "\n"
     "# 6. Playing\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "## 6.1 Couplers\n"
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
-    ;
-static const char* const kManualText_part6 =
     "every coupler it can have - every division at unison, 16' and 4' (the\n"
     "division itself included: \"I/I 16'\" is an octave coupler), the melody and\n"
     "bass couplers and **Unison Off**. Ticked couplers appear on the division's\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "*32-bit float* keeps the samples as read; *16-bit* halves the RAM\n"
     "with a little hiss; *16-bit, releases at half the rate* stores the\n"
     "releases - a large part of a set - at half the rate: a quarter of their RAM,\n"
+    ;
+static const char* const kManualText_part7 =
     "nothing above 12 kHz, and voices (they play through the sinc kernel).\n"
     "Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
-    ;
-static const char* const kManualText_part7 =
     "[RAM: the storage options measured](#107-ram-the-storage-options-measured).\n"
     "\n"
     "### Compress samples in RAM (lossless)\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "### Tremulant: harmonic filter phase\n"
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
+    ;
+static const char* const kManualText_part8 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "On: the melody coupler waits a moment when the highest key changes in legato,\n"
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "pitch sounding together pull each other into tune a little, as on one chest.\n"
     "\n"
     "### Tremulant rate\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "2 to 11 Hz (default 4.4).\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "nor relative volumes, it has absolute pipe levels and \"stop-ranks\" only. The\n"
     "pipes, their pitch, footage, tuning and loops come from the folders. What\n"
     "follows is how that arrangement is read.\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "What the definition gives: the keyboards in their order (the pedal first)\n"
     "with their key ranges - a division of ours is a keyboard, and every Hauptwerk\n"
-    ;
-static const char* const kManualText_part11 =
     "division a keyboard's keys reach through the definition's switches joins it\n"
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "\n"
     "The routes of one device are one stream: the driver's callback calls every\n"
     "route in turn, each route's voices become one job of the render pool, the\n"
+    ;
+static const char* const kManualText_part12 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
-    ;
-static const char* const kManualText_part12 =
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
