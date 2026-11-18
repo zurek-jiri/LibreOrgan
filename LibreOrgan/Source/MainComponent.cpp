@@ -5302,8 +5302,11 @@ namespace
     // still with nothing said.
     struct PluginLoadNote final : public juce::Component
     {
+        // The text is there BEFORE the window is: the window is painted once as it appears, and a second paint right
+        // after it does not get through (the user saw the frame without a word) - so a note is made anew for
+        // every text.
         juce::String text;
-        explicit PluginLoadNote(juce::Point<int> centre)
+        PluginLoadNote(juce::Point<int> centre, const juce::String& textToShow) : text(textToShow)
         {
             setOpaque(true);
             setAlwaysOnTop(true);
@@ -5311,10 +5314,6 @@ namespace
             setCentrePosition(centre);
             addToDesktop(juce::ComponentPeer::windowIsTemporary);
             setVisible(true);
-        }
-        void say(const juce::String& newText)
-        {
-            text = newText;
             repaint();
             if (auto* peer = getPeer()) peer->performAnyPendingRepaintsNow();
         }
@@ -5382,10 +5381,10 @@ void MainComponent::rebuildPluginChains()
                     for (int index = 0; index < wanted; ++index)
                     {
                         juce::String error;
-                        if (loadNote == nullptr)
-                            loadNote = std::make_unique<PluginLoadNote>(getTopLevelComponent() != nullptr ? getTopLevelComponent()->getScreenBounds().getCentre() : juce::Point<int>(400, 300));
                         static const char* const numerals[] = { "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII." };
-                        loadNote->say("Loading the plug-in " + slot->description.name + " for " + juce::String(numerals[juce::jlimit(0, 8, manual)]) + " / " + perspective
+                        loadNote.reset();
+                        loadNote = std::make_unique<PluginLoadNote>(getTopLevelComponent() != nullptr ? getTopLevelComponent()->getScreenBounds().getCentre() : juce::Point<int>(400, 300),
+                            "Loading the plug-in " + slot->description.name + " for " + juce::String(numerals[juce::jlimit(0, 8, manual)]) + " / " + perspective
                             + (wanted > 1 ? " (" + juce::String(index + 1) + " of " + juce::String(wanted) + ")" : juce::String()) + " ...");
                         const double createStartMs = juce::Time::getMillisecondCounterHiRes();
                         auto instance = PluginHost::create(slot->description, rate, 4096, error);

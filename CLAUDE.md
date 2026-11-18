@@ -4194,7 +4194,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (PrintWindow: 0 % white), no stall line in 40 s with it open; Z-Noise's card "delays the sound by 723 ms".
   %TEMP%\test_0102.ps1 [-Plugin -Button -NoEditor -Tag]: Rural + ORGAN_TEST_PLUGIN (add at 24 s, editor at 30 s), the
   editor's window pictured through PrintWindow(hwnd, dc, 2) by process id + title (the window's own content, not the
-  screen; our snapshot of a plug-in window is empty), the white share printed. NOT run: a knob turned in the
+  screen; our snapshot of a plug-in window is empty), the white share printed. NOTE LESSON (the user: "prázdný šedý
+  obdelník s oranžovým okrajem - to je hloupé"): a window made, shown and then given its text + repaint +
+  performAnyPendingRepaintsNow in the same breath shows the FIRST paint (no text) - the second does not get through
+  while the thread stays busy; the note takes its text in the constructor and is made anew for every text
+  (%TEMP%\test_0102b.ps1 pictures the process's small windows around the add: "Loading the plug-in Reverberate for
+  I. / default ..." readable; the same run records a key: Reverberate's default preset leaves the level as it was,
+  -46 dB before and after - the user's "+50 dB" was the plug-in's own gain knob). NOT run: a knob turned in the
   editor by a real mouse (the sisters following), the CPU warning (no plug-in here reaches 25 %). RULE: never poll
   or set a foreign plug-in's parameters or state periodically - listen, and pass on what changed.
 ## Pending for the next session (delete when done)
