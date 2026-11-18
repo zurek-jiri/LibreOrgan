@@ -1136,6 +1136,9 @@ public:
     int takeMeasuredPeakPolyphony() noexcept { return peakPolyphonyMeasured.exchange(currentPolyphony.load(std::memory_order_relaxed), std::memory_order_relaxed); }
     // 0.9.79 (#229): the audio meter - the highest sample (absolute, before the safety clip) over every route
     // and device since the last call, and whether the clip worked meanwhile; both reset by the call.
+    // 0.9.101: the ON / OFF switches of a route's Volume, Channel separation and Equalizer - off, the module lets
+    // the sound through untouched and keeps its values (the IR reverb is switched by its file, in MainComponent).
+    void setPerspectiveEffectsOff(int manualIndex, const juce::String& perspective, bool volumeOff, bool separationOff, bool eqOff);
     float takeOutputPeak(bool& clipped) noexcept;
     // 0.9.99: the SUM of the routes playing into the same outputs of a card (measured by the device callbacks,
     // before the sum's limiter) joins the meter: the routes alone may each stay far below the clip while their sum is over it.

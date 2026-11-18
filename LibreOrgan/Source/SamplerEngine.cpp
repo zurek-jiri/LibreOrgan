@@ -1532,6 +1532,7 @@ namespace
         std::atomic<bool> rateExplicit{ false };
         std::atomic<int> blockSize{ 256 };          // the device's buffer size (reverb partitioning)
         std::atomic<float> volumeGain{ 1.0f };
+        std::atomic<bool> volumeOff{ false }, separationOff{ false }, eqOff{ false };   // 0.9.101: the modules' ON / OFF
         // Channel separation 0..1: 1 = every pipe only on its own channel pair, 0 =
         // every channel carries the sum of all (mono to everywhere); in between the
         // other channels leak (1 - separation) of each pipe.
@@ -7494,7 +7495,7 @@ struct SamplerEngine::Impl
         route.lastRenderMs.store(now, std::memory_order_relaxed);
         lastBlockMs.store(1000.0 * totalSamples / juce::jmax(1000.0, route.sampleRate.load(std::memory_order_relaxed)),
             std::memory_order_relaxed);
-        const float outputGain = masterGain * route.volumeGain.load(std::memory_order_relaxed);
+        const float outputGain = masterGain * (route.volumeOff.load(std::memory_order_relaxed) ? 1.0f : route.volumeGain.load(std::memory_order_relaxed));
 
         static thread_local BlockContext ctx;
         alignas(16) static thread_local float sink[RenderPool::kFrames];
@@ -7595,7 +7596,7 @@ struct SamplerEngine::Impl
         // (1 - separation) of every other channel's signal (mono pipes spread over
         // several channels leak into the others; at 0 % all channels carry the sum).
         {
-            const float separation = juce::jlimit(0.0f, 1.0f, route.separation.load(std::memory_order_relaxed));
+            const float separation = route.separationOff.load(std::memory_order_relaxed) ? 1.0f : juce::jlimit(0.0f, 1.0f, route.separation.load(std::memory_order_relaxed));
             if (separation < 0.999f && ctx.outCount > 1)
             {
                 alignas(16) static thread_local float sum[8192];
@@ -7625,7 +7626,7 @@ struct SamplerEngine::Impl
 
         // 0.9.89: the route's parametric EQ (five biquads per channel at most), after the separation and before the
         // IR, so the room hears the equalized sound. A flat EQ is skipped as a whole (eqAny), a band at 0 dB per band.
-        if (route.eqAny.load(std::memory_order_relaxed))
+        if (route.eqAny.load(std::memory_order_relaxed) && !route.eqOff.load(std::memory_order_relaxed))
         {
             Route::EqCoefs coefs[5];
             const int set = route.eqIndex.load(std::memory_order_acquire);
@@ -9149,6 +9150,18 @@ void SamplerEngine::setPerspectiveVolumeDb(int manualIndex, const juce::String& 
     const juce::ScopedLock sl(controlLock);
     if (Route* r = impl->ensureRoute(manualIndex, perspective))
         r->volumeGain.store(db < -30.5f ? 0.0f : juce::Decibels::decibelsToGain(juce::jlimit(-30.0f, 6.0f, db)));
+}
+
+void SamplerEngine::setPerspectiveEffectsOff(int manualIndex, const juce::String& perspective, bool volumeOff, bool separationOff, bool eqOff)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals || perspective.isEmpty()) return;
+    const juce::ScopedLock sl(controlLock);
+    if (Route* r = impl->ensureRoute(manualIndex, perspective))
+    {
+        r->volumeOff.store(volumeOff, std::memory_order_relaxed);
+        r->separationOff.store(separationOff, std::memory_order_relaxed);
+        r->eqOff.store(eqOff, std::memory_order_relaxed);
+    }
 }
 
 void SamplerEngine::setPerspectiveChannelSeparation(int manualIndex, const juce::String& perspective, float separation)

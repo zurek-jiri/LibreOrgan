@@ -4070,6 +4070,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `routeCardClippedSince(manual, perspective, now - 150)` (DeviceClock::sumClipAtMs, set where the sum passes 0.98)
   while the row sounds above -40 dB. A member function of DivisionAudioCallback that MainComponent calls goes in
   its PUBLIC part (the data members at its end are private).
+  0.9.101 (18 Nov 2026, Linux) = STEP 1 OF THE VST PLAN (the agreed design: plug-ins IN our process with a scan in a
+  separate process, 8 s without progress = refused, safe start after a crash (all plug-ins OFF, the one being
+  loaded named), plug-in windows ALWAYS separate, portable files carry the plug-ins' description + state, a missing
+  one stays as a grey slot with its state kept, AU on macOS too, Waves through the general way; folders in the
+  Configuration Editor; "+" in the chain; latency made up between routes; IR reverb ALWAYS LAST, Division volume
+  first, everything between movable). Done now: `ManualConfig::EffectSwitches on` (volume/separation/eq/ir) in
+  PerspectiveAudioConfig AND PerspectiveEffects - part of the module's values (copyEffectModule /
+  effectModuleAgrees), saved as "effectsOff" ("volume,eq"; absent = all on) in the routes, the perspectiveEffects
+  block and the routing file; `effectOn / setEffectOn(perspective, manual (-1 = perspective), module, on)`,
+  `applyRouteSwitches` -> `SamplerEngine::setPerspectiveEffectsOff` (Route::volumeOff/separationOff/eqOff read in
+  renderRoute; the IR switched in applyPerspectiveReverb by passing no file); MIDI target
+  "fxon:<division or -1>:<volume|separation|eq|ir>:<perspective>"; `PerspectiveEffects::chain` (StringArray,
+  saved "chain") + `effectChain()` / `moveEffectInChain()` - ONE order per perspective. THE ORDER OF THE BUILT-IN
+  MODULES CHANGES NO SOUND (gain, the separation matrix and a per-channel EQ are linear and commute): the engine
+  ignores it until plug-ins exist - say so when asked. EffectsDialog.h: chain rows = `RightClickButton` switch
+  (44 px, "ON" orange / "OFF", testName "ONOFF <module>") + name button; `rebuildChain()`, `Arranger` (a child
+  layer, as the top bar's), panels stay in fixed order (ChainItem::panel). Hooks: ORGAN_TEST_MOUSE "ONOFF IR
+  reverb|click", ORGAN_TEST_FX_ARRANGE="<id>|<before id>". build.yml release job: `keep="v0.9.100"` stays beside
+  the current release until the user says to drop it (set keep="").
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.101] - 2026-11-18
+
+### Added
+- Effects: every module (Volume, Channel separation, Equalizer, IR reverb)
+  has an **ON / OFF** switch before its name in the chain and in its header -
+  OFF, the sound passes untouched and the settings stay. MIDI learn by a
+  right-click on the switch. Part of the module's values: a linked route
+  follows the perspective's switch.
+- Effects: the order of Volume, Channel separation and Equalizer can be
+  arranged (right-click the chain > *Arrange the chain*, drag); Division
+  volume stays first, the IR reverb last. The order is the perspective's.
+  (The first step towards plug-ins in the chain.)
+
+### Changed
+- GitHub keeps the release 0.9.100 beside the current one for the time being.
+
 ## [0.9.100] - 2026-11-18
 
 ### Added

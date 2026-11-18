@@ -384,8 +384,16 @@ private:
 
     struct ManualConfig
     {
+        // 0.9.101: a module's ON / OFF (off = the sound passes untouched, the values stay) - part of the module's
+        // values: copied with them to linked routes, saved as "effectsOff" ("volume,eq"; absent = all on).
+        struct EffectSwitches
+        {
+            bool volume = true, separation = true, eq = true, ir = true;
+            bool operator== (const EffectSwitches& o) const { return volume == o.volume && separation == o.separation && eq == o.eq && ir == o.ir; }
+        };
         struct PerspectiveAudioConfig
         {
+            EffectSwitches on;
             std::vector<int> outputChannels{ 0, 1 };
             juce::String audioDeviceStateXml;
             float volumeDb = 0.0f;
@@ -474,14 +482,24 @@ private:
     // 0.9.89: the effects of a PERSPECTIVE (organ-wide, keyed by the lower-case name): what every linked route of
     // it plays. Saved with the organ ("perspectiveEffects"); an old file without the block takes each
     // perspective's values from its first route, and a route stays linked only where its values agree.
+    enum class EffectModule { Volume, Separation, Eq, Ir };
     struct PerspectiveEffects
     {
         float volumeDb = 0.0f, channelSeparation = 1.0f;
         juce::String reverbIrPath; float reverbWet = 0.3f; SamplerEngine::ReverbTone reverbTone;
         SamplerEngine::EqSettings eq;
+        ManualConfig::EffectSwitches on;   // 0.9.101
+        juce::StringArray chain;           // 0.9.101: the order of the movable modules ("volume", "separation", "eq", later the plug-ins); empty = that order. One per perspective: its routes share it.
     };
+    static bool& effectSwitchOf(ManualConfig::EffectSwitches& s, EffectModule m);
+    static juce::String effectsOffText(const ManualConfig::EffectSwitches& s);
+    static ManualConfig::EffectSwitches effectsOffFrom(const juce::var& v);
+    bool effectOn(const juce::String& perspective, int manual, EffectModule module);                 // manual < 0: the perspective's
+    void setEffectOn(const juce::String& perspective, int manual, EffectModule module, bool on);
+    void applyRouteSwitches(int manual, const juce::String& perspective);                             // the route's ON / OFF into the engine
+    juce::StringArray effectChain(const juce::String& perspective);                                   // the movable modules in their order
+    void moveEffectInChain(const juce::String& perspective, const juce::String& id, const juce::String& beforeId);
     std::map<std::string, PerspectiveEffects> perspectiveEffects;
-    enum class EffectModule { Volume, Separation, Eq, Ir };
     PerspectiveEffects& effectsOfPerspective(const juce::String& perspective);
     void applyRouteEffect(int manual, const juce::String& perspective, EffectModule module);    // the stored values of that module of the route into the engine
     static juce::var eqToVar(const SamplerEngine::EqSettings& eq);

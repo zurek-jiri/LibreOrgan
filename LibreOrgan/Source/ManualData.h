@@ -1032,7 +1032,17 @@ static const char* const kManualText_part5 =
     "order the engine applies it - *Division volume* (a route's only), *Volume*,\n"
     "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
     "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
-    "the module you looked at last. *Reset* in a module's header and *Reset all\n"
+    "the module you looked at last.\n"
+    "\n"
+    "Before every module's name stands its switch, **ON** or **OFF** (the same\n"
+    "switch is in the module's header): OFF, the sound passes untouched and every\n"
+    "setting is kept. Right-click the switch to learn a MIDI control for it. A\n"
+    "route's linked module shows the perspective's switch and is locked like its\n"
+    "sliders. The order of *Volume*, *Channel separation* and *Equalizer* is\n"
+    "yours: right-click the chain, *Arrange the chain*, drag a framed module to\n"
+    "its place and click anywhere else to finish. *Division volume* stays first\n"
+    "and the *IR reverb* last; the order belongs to the perspective and all its\n"
+    "routes share it. *Reset* in a module's header and *Reset all\n"
     "effects* at the top put things back: a route's module is LINKED to the\n"
     "perspective again, a perspective's module goes to its default and every route\n"
     "of it follows it again (the fx button turns grey).\n"
@@ -1202,6 +1212,8 @@ static const char* const kManualText_part5 =
     "  measure more than on one - at the price of different latencies.\n"
     "- **Compress samples in RAM** and **Full kernel from** on an old processor\n"
     "  cost render time; the report names what was in force.\n"
+    ;
+static const char* const kManualText_part6 =
     "\n"
     "The *DSP* value is the whole callback of the busiest device as a share of\n"
     "its period; several hundred per cent means the audio thread was kept waiting\n"
@@ -1212,8 +1224,6 @@ static const char* const kManualText_part5 =
     "\n"
     "# 6. Playing\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "## 6.1 Couplers\n"
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
@@ -1404,6 +1414,8 @@ static const char* const kManualText_part6 =
     "### Render threads for Aggregated WASAPI\n"
     "\n"
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
+    ;
+static const char* const kManualText_part7 =
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
     "carry the whole organ. A route never gets more than cores / aggregated\n"
@@ -1414,8 +1426,6 @@ static const char* const kManualText_part6 =
     "*32-bit float* keeps the samples as read; *16-bit* halves the RAM\n"
     "with a little hiss; *16-bit, releases at half the rate* stores the\n"
     "releases - a large part of a set - at half the rate: a quarter of their RAM,\n"
-    ;
-static const char* const kManualText_part7 =
     "nothing above 12 kHz, and voices (they play through the sinc kernel).\n"
     "Effect at the next load; the load box asks it before every load and\n"
     "saves it with the organ. What each choice costs, measured:\n"
@@ -1606,6 +1616,8 @@ static const char* const kManualText_part7 =
     "### Wind: maximum wind model effect\n"
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
+    ;
+static const char* const kManualText_part8 =
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
     "\n"
     "### Tremulant: harmonic filter\n"
@@ -1616,8 +1628,6 @@ static const char* const kManualText_part7 =
     "### Tremulant: harmonic filter phase\n"
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
-    ;
-static const char* const kManualText_part8 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
@@ -1808,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Program windows\n"
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
@@ -1818,8 +1830,6 @@ static const char* const kManualText_part8 =
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
@@ -2010,6 +2020,8 @@ static const char* const kManualText_part9 =
     "routes (the division volume among them) are set there, nowhere in this editor.\n"
     "\n"
     "### Random tuning error of pipes\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "(The Divisions dialog says *Allow Random Tuning Error*.) On: the pipes get\n"
     "the small random detune set per stop (*Random pitch error*).\n"
@@ -2020,8 +2032,6 @@ static const char* const kManualText_part9 =
     "pitch sounding together pull each other into tune a little, as on one chest.\n"
     "\n"
     "### Tremulant rate\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "2 to 11 Hz (default 4.4).\n"
     "\n"
@@ -2212,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "## 10.4 Hauptwerk import rules\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "LibreOrgan Sampler does not load a Hauptwerk organ definition: nothing of it runs\n"
     "here, and the program would have no use for it - the organ is built from the\n"
     "sample folders, exactly as from a tree loaded by hand. A definition is read for\n"
@@ -2222,8 +2234,6 @@ static const char* const kManualText_part10 =
     "nor relative volumes, it has absolute pipe levels and \"stop-ranks\" only. The\n"
     "pipes, their pitch, footage, tuning and loops come from the folders. What\n"
     "follows is how that arrangement is read.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "What the definition gives: the keyboards in their order (the pedal first)\n"
     "with their key ranges - a division of ours is a keyboard, and every Hauptwerk\n"
@@ -2414,6 +2424,8 @@ static const char* const kManualText_part11 =
     "starting on a silent route is not a click). Counted per route after the pool\n"
     "render (stage 0, the sharpest: with IR reverb on the route the wet masks a\n"
     "small dry step at stage 1), after separation, reverb and clip (stage 1), and\n"
+    ;
+static const char* const kManualText_part12 =
     "per device callback on the driver's buffer, on the route's own channels only.\n"
     "The log line names the route, the stage and the lanes that rendered without a\n"
     "scratch buffer; the counters reset after a render gap, a device start or a\n"
@@ -2424,8 +2436,6 @@ static const char* const kManualText_part11 =
     "\n"
     "The routes of one device are one stream: the driver's callback calls every\n"
     "route in turn, each route's voices become one job of the render pool, the\n"
-    ;
-static const char* const kManualText_part12 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"

@@ -148,23 +148,8 @@ public:
         note.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
         note.setJustificationType(juce::Justification::topLeft);
         addAndMakeVisible(note);
-        // The chain.
-        if (manual >= 0) chain.push_back({ Module::Volume, "Division volume", true });
-        chain.push_back({ Module::Volume, "Volume", false });
-        chain.push_back({ Module::Separation, "Channel separation", false });
-        chain.push_back({ Module::Eq, "Equalizer", false });
-        chain.push_back({ Module::Ir, "IR reverb", false });
-        for (size_t i = 0; i < chain.size(); ++i)
-        {
-            auto* b = chainButtons.add(new juce::TextButton(chain[i].name));
-            b->setClickingTogglesState(false);
-            b->setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
-            b->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
-            b->setTooltip("The modules in the order the engine applies them. Click one to set it.");
-            b->getProperties().set("manualChapter", chain[i].name == "Division volume" ? "Volume" : chain[i].name);
-            b->onClick = [this, i] { select((int)i); };
-            addAndMakeVisible(b);
-        }
+        // The chain (0.9.101): built from the perspective's order - see rebuildChain().
+        rebuildChain();
         // 0.9.90: everything of this row to the default (the user: "a reset button for all the effects in the dialog").
         resetAll.setButtonText("Reset all effects");
         resetAll.setTooltip(manual >= 0 ? "Every module of this route LINKED to the perspective again (the route's own values are dropped)"
@@ -173,6 +158,7 @@ public:
         resetAll.onClick = [this] { owner.resetEffects(perspective, manual); refresh(); };
         addAndMakeVisible(resetAll);
         buildPanels();
+        addChildComponent(arranger);
         // 0.9.90: the module shown last is shown again when the dialog is retargeted (the user: "not Division volume every time").
         int wanted = manual >= 0 ? 1 : 0;
         for (size_t i = 0; i < chain.size(); ++i)
@@ -181,6 +167,20 @@ public:
         select(wanted);
         refresh();
         startTimer(100);
+        // ORGAN_TEST_FX_ARRANGE="<id>|<before id>": 1.5 s after the dialog opens the module is moved as a drag does
+        // and the arrange mode is left on (for a picture).
+        if (const char* env = std::getenv("ORGAN_TEST_FX_ARRANGE"))
+        {
+            const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+            juce::Component::SafePointer<EffectsContent> safeThis(this);
+            juce::Timer::callAfterDelay(1500, [safeThis, parts]
+            {
+                if (safeThis == nullptr || parts.size() < 1) return;
+                safeThis->owner.moveEffectInChain(safeThis->perspective, parts[0], parts.size() > 1 ? parts[1] : juce::String());
+                safeThis->rebuildChain(); safeThis->resized(); safeThis->select(safeThis->selected);
+                safeThis->beginArranging();
+            });
+        }
     }
 
     void resized() override
@@ -191,14 +191,183 @@ public:
         title.setBounds(titleLine);
         note.setBounds(area.removeFromTop(44));
         area.removeFromTop(6);
-        auto list = area.removeFromLeft(190);
-        for (auto* b : chainButtons) { b->setBounds(list.removeFromTop(34).reduced(0, 3)); }
+        auto list = area.removeFromLeft(214);
+        for (int i = 0; i < chainButtons.size(); ++i)
+        {
+            auto line = list.removeFromTop(34).reduced(0, 3);
+            // The ON / OFF switch before the name (the division volume has none: its place stays empty).
+            auto switchArea = line.removeFromLeft(44);
+            if (auto* s = switchButtons[i]) s->setBounds(switchArea);
+            line.removeFromLeft(4);
+            chainButtons[i]->setBounds(line);
+        }
         area.removeFromLeft(14);
         for (auto* p : panels) p->setBounds(area);
+        arranger.setBounds(getLocalBounds());
     }
 
 private:
-    struct ChainItem { Module module; juce::String name; bool divisionVolume; };
+    struct ChainItem { Module module; juce::String name; bool divisionVolume; int panel; juce::String id; };   // id: "volume" / "separation" / "eq" (movable), "division", "ir"
+    // A button that also answers the right mouse button (the MIDI learn menu of a switch, the chain's own menu).
+    struct RightClickButton final : public juce::TextButton
+    {
+        using juce::TextButton::TextButton;
+        std::function<void()> onRightClick;
+        void mouseDown(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) { if (onRightClick) onRightClick(); return; } juce::TextButton::mouseDown(e); }
+        void mouseUp(const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; juce::TextButton::mouseUp(e); }
+    };
+    static const char* moduleKey(Module m) { return m == Module::Volume ? "volume" : m == Module::Separation ? "separation" : m == Module::Eq ? "eq" : "ir"; }
+    juce::String switchTarget(Module m) const { return "fxon:" + juce::String(manual) + ":" + moduleKey(m) + ":" + perspective; }
+    static void styleSwitch(juce::TextButton& b)
+    {
+        b.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
+        b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
+        b.setColour(juce::TextButton::textColourOffId, juce::Colours::grey);
+    }
+    void setupSwitch(RightClickButton& b, Module m, const juce::String& moduleName)
+    {
+        styleSwitch(b);
+        b.getProperties().set("manualChapter", "Effects");
+        b.getProperties().set("testName", "ONOFF " + moduleName);
+        b.onClick = [this, m] { owner.setEffectOn(perspective, manual, m, !owner.effectOn(perspective, manual, m)); refresh(); };
+        b.onRightClick = [this, m] { owner.showMidiLearnMenu(switchTarget(m)); };
+    }
+    // The chain's rows in the perspective's order: Division volume (a route), the movable modules, the IR reverb.
+    void rebuildChain()
+    {
+        const juce::String selectedId = (size_t)selected < chain.size() ? chain[(size_t)selected].id : juce::String();
+        chain.clear(); chainButtons.clear(); switchButtons.clear();
+        const int base = manual >= 0 ? 1 : 0;   // the panels: [division], volume, separation, eq, ir
+        if (manual >= 0) chain.push_back({ Module::Volume, "Division volume", true, 0, "division" });
+        for (const auto& id : owner.effectChain(perspective))
+        {
+            if (id == "volume") chain.push_back({ Module::Volume, "Volume", false, base, id });
+            else if (id == "separation") chain.push_back({ Module::Separation, "Channel separation", false, base + 1, id });
+            else if (id == "eq") chain.push_back({ Module::Eq, "Equalizer", false, base + 2, id });
+        }
+        chain.push_back({ Module::Ir, "IR reverb", false, base + 3, "ir" });
+        for (size_t i = 0; i < chain.size(); ++i)
+        {
+            auto* b = new RightClickButton(chain[i].name);
+            chainButtons.add(b);
+            b->setClickingTogglesState(false);
+            b->setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange);
+            b->setColour(juce::TextButton::textColourOnId, juce::Colours::black);
+            b->setTooltip("The modules in the order the engine applies them. Click one to set it; right-click to arrange the order.");
+            b->getProperties().set("manualChapter", chain[i].name == "Division volume" ? "Volume" : chain[i].name);
+            b->onClick = [this, i] { select((int)i); };
+            b->onRightClick = [this] { chainMenu(); };
+            addAndMakeVisible(b);
+            if (chain[i].divisionVolume) { switchButtons.add(nullptr); continue; }
+            auto* s = new RightClickButton();
+            switchButtons.add(s);
+            setupSwitch(*s, chain[i].module, chain[i].name);
+            addAndMakeVisible(s);
+        }
+        for (size_t i = 0; i < chain.size(); ++i) if (chain[i].id == selectedId) selected = (int)i;
+        arranger.toFront(false);
+    }
+    void chainMenu()
+    {
+        juce::PopupMenu menu;
+        menu.addItem(1, "Arrange the chain (drag Volume, Channel separation and Equalizer to their places)...");
+        menu.addSeparator();
+        menu.addItem(2, "Manual: Effects");
+        juce::Component::SafePointer<EffectsContent> safeThis(this);
+        menu.showMenuAsync(juce::PopupMenu::Options().withMousePosition(), [safeThis](int result)
+        {
+            if (safeThis == nullptr) return;
+            if (result == 1) safeThis->beginArranging();
+            else if (result == 2) safeThis->owner.showManualSection("Effects");
+        });
+    }
+    void beginArranging() { arranger.setVisible(true); arranger.toFront(true); arranger.repaint(); CrashHandler::note("Effects: arranging the chain of " + perspective); }
+    void endArranging() { arranger.setVisible(false); }
+    // The arrange mode of the chain (as on the top bar): a layer over the dialog - the movable modules framed, a
+    // press takes one, the orange line shows where it lands, a click anywhere else ends the mode. The order is the
+    // PERSPECTIVE's: every route of it shares it. Division volume stays first, the IR reverb last.
+    struct Arranger final : public juce::Component
+    {
+        explicit Arranger(EffectsContent& c) : content(c) {}
+        bool movable(int i) const { const auto& id = content.chain[(size_t)i].id; return id != "division" && id != "ir"; }
+        juce::Rectangle<int> rowOf(int i) const
+        {
+            auto r = content.chainButtons[i]->getBounds();
+            if (auto* s = content.switchButtons[i]) r = r.getUnion(s->getBounds());
+            return r;
+        }
+        void paint(juce::Graphics& g) override
+        {
+            const auto orange = juce::Colours::orange;
+            juce::Rectangle<int> all;
+            for (int i = 0; i < content.chainButtons.size(); ++i)
+            {
+                const auto r = rowOf(i);
+                all = all.isEmpty() ? r : all.getUnion(r);
+                if (!movable(i)) continue;
+                g.setColour(orange.withAlpha(i == dragIndex ? 0.25f : 0.9f));
+                const float dashes[2]{ 5.0f, 4.0f };
+                juce::Path frame; frame.addRoundedRectangle(r.toFloat().expanded(2.0f), 4.0f);
+                juce::Path dashed; juce::PathStrokeType(1.5f).createDashedStroke(dashed, frame, dashes, 2);
+                g.fillPath(dashed);
+            }
+            const juce::Rectangle<int> note(all.getX(), all.getBottom() + 10, juce::jmax(all.getWidth(), 214), 88);
+            g.setColour(juce::Colours::black.withAlpha(0.85f));
+            g.fillRoundedRectangle(note.toFloat(), 5.0f);
+            g.setColour(orange);
+            g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
+            g.drawFittedText("Drag a framed module to its place. Division volume stays first, the IR reverb last. The order is the perspective's - all its routes share it. Click anywhere else to finish.",
+                note.reduced(8, 4), juce::Justification::centredLeft, 6);
+            if (dragIndex >= 0 && insertY >= 0) { g.setColour(orange); g.fillRect(all.getX() - 3, insertY - 2, all.getWidth() + 6, 4); }
+        }
+        void mouseDown(const juce::MouseEvent& e) override
+        {
+            dragIndex = -1; insertY = -1; moved = false;
+            for (int i = 0; i < content.chainButtons.size(); ++i)
+                if (movable(i) && rowOf(i).contains(e.getPosition())) { dragIndex = i; repaint(); return; }
+            juce::Component::SafePointer<EffectsContent> safe(&content);
+            juce::MessageManager::callAsync([safe] { if (safe != nullptr) safe->endArranging(); });
+        }
+        void mouseDrag(const juce::MouseEvent& e) override
+        {
+            if (dragIndex < 0) return;
+            beforeId.clear(); insertY = -1;
+            int lastBottom = -1;
+            for (int i = 0; i < content.chainButtons.size(); ++i)
+            {
+                if (!movable(i) || i == dragIndex) continue;
+                const auto r = rowOf(i);
+                if (beforeId.isEmpty() && e.y < r.getCentreY()) { beforeId = content.chain[(size_t)i].id; insertY = r.getY() - 3; }
+                lastBottom = r.getBottom() + 3;
+            }
+            if (beforeId.isEmpty()) insertY = lastBottom;
+            moved = moved || e.getDistanceFromDragStart() > 5;
+            repaint();
+        }
+        void mouseUp(const juce::MouseEvent&) override
+        {
+            if (dragIndex >= 0 && moved)
+            {
+                const auto id = content.chain[(size_t)dragIndex].id;
+                const auto before = beforeId;
+                juce::Component::SafePointer<EffectsContent> safe(&content);
+                juce::MessageManager::callAsync([safe, id, before]   // after the mouse event: the rows are rebuilt
+                {
+                    if (safe == nullptr) return;
+                    safe->owner.moveEffectInChain(safe->perspective, id, before);
+                    safe->rebuildChain(); safe->resized(); safe->select(safe->selected);
+                });
+            }
+            dragIndex = -1; insertY = -1; beforeId.clear(); moved = false;
+            repaint();
+        }
+        EffectsContent& content;
+        int dragIndex = -1, insertY = -1;
+        juce::String beforeId;
+        bool moved = false;
+    };
+    Arranger arranger{ *this };
+    juce::OwnedArray<RightClickButton> switchButtons;   // one per chain row (nullptr for the division volume)
     MainComponent& owner;
     const juce::String perspective;
     const int manual;   // -1 = the perspective's dialog
@@ -206,7 +375,7 @@ private:
     juce::Label title, note;
     juce::TextButton resetAll;   // 0.9.90
     std::vector<ChainItem> chain;
-    juce::OwnedArray<juce::TextButton> chainButtons;
+    juce::OwnedArray<RightClickButton> chainButtons;
     juce::OwnedArray<juce::Component> panels;
     int selected = 0;
 
@@ -249,10 +418,12 @@ private:
         juce::TextButton linkedButton{ "LINKED" };
         juce::TextButton openButton{ "Open a route set apart..." };
         juce::TextButton resetButton{ "Reset" };   // 0.9.90: this module to the default
+        RightClickButton onButton;                  // 0.9.101: ON / OFF of the module (the same switch as in the chain)
         void resized() override
         {
             auto r = getLocalBounds();
-            name.setBounds(r.removeFromLeft(220));
+            name.setBounds(r.removeFromLeft(onButton.isVisible() ? 172 : 220));
+            if (onButton.isVisible()) { onButton.setBounds(r.removeFromLeft(44).reduced(0, 3)); r.removeFromLeft(4); }
             if (linkedButton.isVisible()) linkedButton.setBounds(r.removeFromLeft(90).reduced(0, 3));
             resetButton.setBounds(r.removeFromRight(70).reduced(0, 3));
             r.removeFromRight(8);
@@ -285,6 +456,9 @@ private:
             };
         h->linkedButton.setVisible(manual >= 0 && !divisionVolume);
         h->addChildComponent(h->linkedButton);
+        h->onButton.setVisible(!divisionVolume);
+        if (!divisionVolume) setupSwitch(h->onButton, m, moduleName + " (card)");
+        h->addChildComponent(h->onButton);
         h->openButton.setVisible(manual < 0);
         h->openButton.getProperties().set("manualChapter", "LINKED");
         h->openButton.onClick = [this, m]
@@ -608,9 +782,10 @@ private:
     }
     void select(int index)
     {
-        selected = juce::jlimit(0, (int)panels.size() - 1, index);
+        selected = juce::jlimit(0, (int)chain.size() - 1, index);
         if ((size_t)selected < chain.size()) owner.effectsDialogModule = chain[(size_t)selected].divisionVolume ? -1 : (int)chain[(size_t)selected].module;   // 0.9.90: remembered for the next target
-        for (int i = 0; i < panels.size(); ++i) panels[i]->setVisible(i == selected);
+        const int shownPanel = (size_t)selected < chain.size() ? chain[(size_t)selected].panel : 0;
+        for (int i = 0; i < panels.size(); ++i) panels[i]->setVisible(i == shownPanel);
         for (int i = 0; i < chainButtons.size(); ++i) chainButtons[i]->setToggleState(i == selected, juce::dontSendNotification);
         refresh();
     }
@@ -639,9 +814,28 @@ private:
         }
         else note.setText("The effects of this route in the order the engine applies them. LINKED (orange) = the module follows the perspective \"" + perspective
             + "\" and its sliders are locked; press it to set the route apart and the sliders are yours; press it again and the perspective's values are back.", juce::dontSendNotification);
-        auto lockFor = [this](Module m, Header* h, std::initializer_list<juce::Component*> controls)
+        // 0.9.101: the ON / OFF switches (the chain's and the cards'): a linked route shows the perspective's and is locked.
+        auto showSwitch = [this](juce::TextButton& b, Module m)
+        {
+            const bool on = owner.effectOn(perspective, manual, m);
+            const bool isLinked = linked(m);
+            if (b.getToggleState() != on) b.setToggleState(on, juce::dontSendNotification);
+            if (b.getButtonText() != (on ? "ON" : "OFF")) b.setButtonText(on ? "ON" : "OFF");
+            if (b.isEnabled() == isLinked) b.setEnabled(!isLinked);
+            b.setTooltip(isLinked ? "Follows the perspective \"" + perspective + "\" - switch it there, or set this module apart (LINKED off) first."
+                : "ON: the module works. OFF: the sound passes untouched and every setting is kept. Right-click: learn a MIDI control for it.");
+        };
+        for (int i = 0; i < chainButtons.size() && (size_t)i < chain.size(); ++i)
+            if (auto* s = switchButtons[i])
+            {
+                showSwitch(*s, chain[(size_t)i].module);
+                const auto colour = owner.effectOn(perspective, manual, chain[(size_t)i].module) ? juce::Colours::white : juce::Colours::grey;
+                if (chainButtons[i]->findColour(juce::TextButton::textColourOffId) != colour) chainButtons[i]->setColour(juce::TextButton::textColourOffId, colour);
+            }
+        auto lockFor = [this, &showSwitch](Module m, Header* h, std::initializer_list<juce::Component*> controls)
         {
             const bool isLinked = linked(m);
+            if (h != nullptr) showSwitch(h->onButton, m);
             if (h != nullptr)
             {
                 if (manual >= 0)

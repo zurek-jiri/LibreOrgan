@@ -1018,7 +1018,17 @@ whole **perspective** ("Effects: Front"). On the left stands the chain in the
 order the engine applies it - *Division volume* (a route's only), *Volume*,
 *Channel separation*, *Equalizer*, *IR reverb* - on the right the module you
 chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on
-the module you looked at last. *Reset* in a module's header and *Reset all
+the module you looked at last.
+
+Before every module's name stands its switch, **ON** or **OFF** (the same
+switch is in the module's header): OFF, the sound passes untouched and every
+setting is kept. Right-click the switch to learn a MIDI control for it. A
+route's linked module shows the perspective's switch and is locked like its
+sliders. The order of *Volume*, *Channel separation* and *Equalizer* is
+yours: right-click the chain, *Arrange the chain*, drag a framed module to
+its place and click anywhere else to finish. *Division volume* stays first
+and the *IR reverb* last; the order belongs to the perspective and all its
+routes share it. *Reset* in a module's header and *Reset all
 effects* at the top put things back: a route's module is LINKED to the
 perspective again, a perspective's module goes to its default and every route
 of it follows it again (the fx button turns grey).

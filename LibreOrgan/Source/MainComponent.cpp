@@ -4744,9 +4744,10 @@ void MainComponent::applyPerspectiveReverb(int manualIndex, const juce::String& 
     if (found == manualConfigs[(size_t)manualIndex].perspectiveAudio.end()) return;
     const auto& config = found->second;
     engine.setPerspectiveReverbTone(manualIndex, perspective, config.reverbTone);   // before the IR: one build
+    // 0.9.101: the IR reverb switched OFF plays no impulse response (its file and settings stay).
     engine.setPerspectiveReverb(manualIndex, perspective,
-        config.reverbIrPath.isNotEmpty() ? juce::File(config.reverbIrPath) : juce::File(), config.reverbWet);
-    if (config.reverbIrPath.isNotEmpty())
+        config.reverbIrPath.isNotEmpty() && config.on.ir ? juce::File(config.reverbIrPath) : juce::File(), config.reverbWet);
+    if (config.reverbIrPath.isNotEmpty() && config.on.ir)
     {
         const auto info = engine.getPerspectiveReverbInfo(manualIndex, perspective);
         CrashHandler::note("IR reverb manual " + juce::String(manualIndex) + " perspective " + perspective + ": "
@@ -5067,8 +5068,86 @@ bool& MainComponent::linkedFlagOf(ManualConfig::PerspectiveAudioConfig& c, Effec
         default: return c.linkedIr;
     }
 }
+bool& MainComponent::effectSwitchOf(ManualConfig::EffectSwitches& s, EffectModule m)
+{
+    switch (m)
+    {
+        case EffectModule::Volume: return s.volume;
+        case EffectModule::Separation: return s.separation;
+        case EffectModule::Eq: return s.eq;
+        default: return s.ir;
+    }
+}
+juce::String MainComponent::effectsOffText(const ManualConfig::EffectSwitches& s)
+{
+    juce::StringArray off;
+    if (!s.volume) off.add("volume");
+    if (!s.separation) off.add("separation");
+    if (!s.eq) off.add("eq");
+    if (!s.ir) off.add("ir");
+    return off.joinIntoString(",");
+}
+MainComponent::ManualConfig::EffectSwitches MainComponent::effectsOffFrom(const juce::var& v)
+{
+    ManualConfig::EffectSwitches s;
+    const auto off = juce::StringArray::fromTokens(v.toString(), ",", "");
+    s.volume = !off.contains("volume"); s.separation = !off.contains("separation"); s.eq = !off.contains("eq"); s.ir = !off.contains("ir");
+    return s;
+}
+bool MainComponent::effectOn(const juce::String& perspective, int manual, EffectModule module)
+{
+    if (manual < 0) return effectSwitchOf(effectsOfPerspective(perspective).on, module);
+    if (manual >= SamplerEngine::maxManuals) return true;
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+    return found == manualConfigs[(size_t)manual].perspectiveAudio.end() || effectSwitchOf(found->second.on, module);
+}
+// A perspective's switch goes to every linked route (with the module's values); a route's own switch is its own
+// (the dialog offers it only while the module is set apart; MIDI on it sets the module apart, like its sliders).
+void MainComponent::setEffectOn(const juce::String& perspective, int manual, EffectModule module, bool on)
+{
+    if (manual < 0)
+    {
+        effectSwitchOf(effectsOfPerspective(perspective).on, module) = on;
+        CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of the perspective " + perspective + (on ? " ON" : " OFF"));
+        perspectiveEffectChanged(perspective, module);
+        return;
+    }
+    if (manual >= SamplerEngine::maxManuals) return;
+    unlinkRouteEffect(manual, perspective, module);
+    effectSwitchOf(manualConfigs[(size_t)manual].perspectiveAudio[perspectiveRouteKey(manual, perspective)].on, module) = on;
+    CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of division " + juce::String(manual) + " " + perspective + (on ? " ON" : " OFF"));
+    applyRouteEffect(manual, perspective, module);
+    saveSettings();
+}
+void MainComponent::applyRouteSwitches(int manual, const juce::String& perspective)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
+    if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return;
+    const auto& on = found->second.on;
+    engine.setPerspectiveEffectsOff(manual, perspective, !on.volume, !on.separation, !on.eq);
+}
+// The movable modules of a perspective in their order (Division volume stands before them, the IR reverb after).
+juce::StringArray MainComponent::effectChain(const juce::String& perspective)
+{
+    juce::StringArray chain = effectsOfPerspective(perspective).chain;
+    for (const char* id : { "volume", "separation", "eq" }) chain.addIfNotAlreadyThere(id);
+    return chain;
+}
+void MainComponent::moveEffectInChain(const juce::String& perspective, const juce::String& id, const juce::String& beforeId)
+{
+    auto chain = effectChain(perspective);
+    if (!chain.contains(id) || id == beforeId) return;
+    chain.removeString(id);
+    const int at = beforeId.isEmpty() ? -1 : chain.indexOf(beforeId);
+    chain.insert(at < 0 ? chain.size() : at, id);
+    effectsOfPerspective(perspective).chain = chain;
+    CrashHandler::note("Effects: the chain of the perspective " + perspective + " is now " + chain.joinIntoString(" > "));
+    saveSettings();
+}
 void MainComponent::copyEffectModule(const PerspectiveEffects& p, ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
 {
+    effectSwitchOf(c.on, m) = effectSwitchOf(const_cast<ManualConfig::EffectSwitches&>(p.on), m);
     switch (m)
     {
         case EffectModule::Volume: c.volumeDb = p.volumeDb; break;
@@ -5079,6 +5158,7 @@ void MainComponent::copyEffectModule(const PerspectiveEffects& p, ManualConfig::
 }
 bool MainComponent::effectModuleAgrees(const PerspectiveEffects& p, const ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
 {
+    if (effectSwitchOf(const_cast<ManualConfig::EffectSwitches&>(p.on), m) != effectSwitchOf(const_cast<ManualConfig::EffectSwitches&>(c.on), m)) return false;
     switch (m)
     {
         case EffectModule::Volume: return std::abs(p.volumeDb - c.volumeDb) < 0.01f;
@@ -5124,6 +5204,7 @@ void MainComponent::applyRouteEffect(int manual, const juce::String& perspective
         case EffectModule::Eq: engine.setPerspectiveEq(manual, perspective, c.eq); break;
         default: applyPerspectiveReverb(manual, perspective); break;
     }
+    applyRouteSwitches(manual, perspective);   // 0.9.101: the modules' ON / OFF
 }
 
 void MainComponent::perspectiveEffectChanged(const juce::String& perspective, EffectModule module)
@@ -5193,6 +5274,7 @@ void MainComponent::resetEffectModule(const juce::String& perspective, int manua
     // The perspective's module to its defaults; every route of it takes them (linked again).
     auto& p = effectsOfPerspective(perspective);
     const PerspectiveEffects defaults;
+    effectSwitchOf(p.on, module) = true;
     switch (module)
     {
         case EffectModule::Volume: p.volumeDb = defaults.volumeDb; break;
@@ -5229,7 +5311,9 @@ bool MainComponent::routeEffectsActive(int manual, const juce::String& perspecti
     const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective));
     if (found == manualConfigs[(size_t)manual].perspectiveAudio.end()) return false;
     const auto& c = found->second;
-    return !c.linkedVolume || !c.linkedSeparation || !c.linkedEq || !c.linkedIr || effectsOffDefault(c.volumeDb, c.channelSeparation, c.reverbIrPath, c.eq);
+    // 0.9.101: a module switched OFF does nothing - it does not light the fx button by its values.
+    return !c.linkedVolume || !c.linkedSeparation || !c.linkedEq || !c.linkedIr
+        || effectsOffDefault(c.on.volume ? c.volumeDb : 0.0f, c.on.separation ? c.channelSeparation : 1.0f, c.on.ir ? c.reverbIrPath : juce::String(), c.on.eq ? c.eq : SamplerEngine::EqSettings());
 }
 
 bool MainComponent::perspectiveEffectsActive(const juce::String& perspective) const
@@ -5237,7 +5321,7 @@ bool MainComponent::perspectiveEffectsActive(const juce::String& perspective) co
     const auto found = perspectiveEffects.find(perspective.toLowerCase().toStdString());
     if (found == perspectiveEffects.end()) return false;
     const auto& p = found->second;
-    return effectsOffDefault(p.volumeDb, p.channelSeparation, p.reverbIrPath, p.eq);
+    return effectsOffDefault(p.on.volume ? p.volumeDb : 0.0f, p.on.separation ? p.channelSeparation : 1.0f, p.on.ir ? p.reverbIrPath : juce::String(), p.on.eq ? p.eq : SamplerEngine::EqSettings());
 }
 
 int MainComponent::routesLinked(const juce::String& perspective, EffectModule module, juce::StringArray* apart) const
@@ -7428,6 +7512,7 @@ juce::var MainComponent::routingToVar()
                 effectsIntoObject(*item, c.volumeDb, c.channelSeparation, c.reverbIrPath, c.reverbWet, c.reverbTone, eqToVar(c.eq));
                 item->setProperty("linkedVolume", c.linkedVolume); item->setProperty("linkedSeparation", c.linkedSeparation);
                 item->setProperty("linkedEq", c.linkedEq); item->setProperty("linkedIr", c.linkedIr);
+                item->setProperty("effectsOff", effectsOffText(c.on));
             }
             routes.add(juce::var(item.get()));
         }
@@ -7515,6 +7600,7 @@ void MainComponent::applyRouting(const juce::var& data, bool withEffects, const 
                 c.eq = eqFromVar(entry->getProperty("eq", juce::var()));
                 c.linkedVolume = (bool)entry->getProperty("linkedVolume", true); c.linkedSeparation = (bool)entry->getProperty("linkedSeparation", true);
                 c.linkedEq = (bool)entry->getProperty("linkedEq", true); c.linkedIr = (bool)entry->getProperty("linkedIr", true);
+                c.on = effectsOffFrom(entry->getProperty("effectsOff", ""));
             }
         }
     if (withEffects)
@@ -25863,6 +25949,9 @@ void MainComponent::loadSettings()
                     config.linkedSeparation = (bool)route.getProperty("linkedSeparation", true);
                     config.linkedEq = (bool)route.getProperty("linkedEq", true);
                     config.linkedIr = (bool)route.getProperty("linkedIr", true);
+                    config.on = effectsOffFrom(route.getProperty("effectsOff", ""));   // 0.9.101
+                    applyRouteSwitches(i, name);
+                    if (!config.on.ir && config.reverbIrPath.isNotEmpty()) applyPerspectiveReverb(i, name);
                     const auto routeOutputs = route.getProperty("outputChannels", juce::var());
                     if (routeOutputs.isArray())
                     {
@@ -25890,6 +25979,8 @@ void MainComponent::loadSettings()
                 auto& p = effectsOfPerspective(item.getProperty("name", "default").toString());
                 p.volumeDb = (float)(double)item.getProperty("volumeDb", 0.0);
                 p.channelSeparation = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("channelSeparation", 1.0));
+                p.on = effectsOffFrom(item.getProperty("effectsOff", ""));   // 0.9.101
+                p.chain = juce::StringArray::fromTokens(item.getProperty("chain", "").toString(), ",", "");
                 p.reverbIrPath = item.getProperty("reverbIr", "").toString();
                 p.reverbWet = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("reverbWet", 0.3));
                 p.reverbTone.highCutHz = (float)(double)item.getProperty("reverbHighCutHz", 2000.0);
@@ -26648,6 +26739,7 @@ void MainComponent::saveSettingsNow()
             routeObject->setProperty("linkedSeparation", entry.second.linkedSeparation);
             routeObject->setProperty("linkedEq", entry.second.linkedEq);
             routeObject->setProperty("linkedIr", entry.second.linkedIr);
+            if (!(entry.second.on == ManualConfig::EffectSwitches())) routeObject->setProperty("effectsOff", effectsOffText(entry.second.on));   // 0.9.101
             juce::Array<juce::var> routeOutputs;
             for (int channel : entry.second.outputChannels) routeOutputs.add(channel);
             routeObject->setProperty("outputChannels", routeOutputs);
@@ -26664,6 +26756,8 @@ void MainComponent::saveSettingsNow()
         {
             juce::DynamicObject::Ptr item = new juce::DynamicObject();
             item->setProperty("name", juce::String(lower));
+            if (!(p.on == ManualConfig::EffectSwitches())) item->setProperty("effectsOff", effectsOffText(p.on));   // 0.9.101
+            if (!p.chain.isEmpty()) item->setProperty("chain", p.chain.joinIntoString(","));
             item->setProperty("volumeDb", p.volumeDb);
             item->setProperty("channelSeparation", p.channelSeparation);
             item->setProperty("reverbIr", p.reverbIrPath);
@@ -27933,6 +28027,7 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
     if (target.startsWith("transmission:")) return "Transmissions and extensions";
     if (target.startsWith("coupler")) return "Couplers";
     if (target.startsWith("tremulant:")) return "The tremulant";
+    if (target.startsWith("fxon:")) return "Effects";
     if (target.startsWith("temperament:")) return "Temperaments";
     if (target.startsWith("header:"))
     {
@@ -28855,6 +28950,17 @@ void MainComponent::activateMidiTarget(const juce::String& target, bool isOn, bo
     if (target == "crescendo")
     {
         setCrescendoEnabled(toggleBehaviour ? !crescendoEnabled : isOn);
+        return;
+    }
+    if (target.startsWith("fxon:"))   // 0.9.101: "fxon:<division or -1>:<volume|separation|eq|ir>:<perspective>" - a module's ON / OFF
+    {
+        const auto rest = target.fromFirstOccurrenceOf(":", false, false);
+        const int manual = rest.upToFirstOccurrenceOf(":", false, false).getIntValue();
+        const auto afterManual = rest.fromFirstOccurrenceOf(":", false, false);
+        const auto key = afterManual.upToFirstOccurrenceOf(":", false, false);
+        const auto perspective = afterManual.fromFirstOccurrenceOf(":", false, false);   // last: it may hold ":"
+        const auto module = key == "volume" ? EffectModule::Volume : key == "separation" ? EffectModule::Separation : key == "eq" ? EffectModule::Eq : EffectModule::Ir;
+        setEffectOn(perspective, manual, module, toggleBehaviour ? !effectOn(perspective, manual, module) : isOn);
         return;
     }
     if (target.startsWith("coupler:"))
