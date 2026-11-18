@@ -3300,6 +3300,11 @@ MainComponent::~MainComponent()
     PluginHost::scanner().cancel();
     // 0.9.102: the plug-ins' windows first (their editors before their instances), the chains out of the engine,
     // and the session marked as ended in order - the next start is no safe start.
+    {
+        std::vector<juce::String> open;
+        for (const auto& [id, window] : pluginWindows) open.push_back(id);
+        for (const auto& id : open) { pluginStateDirty.insert(id); closePluginEditor(id); }
+    }
     capturePluginStates();
     pluginWindows.clear();
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
@@ -5291,6 +5296,38 @@ namespace
         if (!instance.setBusesLayout(layout) && instance.getBusesLayout().getMainOutputChannelSet() != set) return false;   // a side-chain it will not drop is accepted as long as the main bus fits
         return instance.getTotalNumOutputChannels() == channels && instance.getTotalNumInputChannels() <= channels;
     }
+
+    // What is being loaded, painted at once: a plug-in is made on the window thread, inside its own code (Waves'
+    // shell takes ten seconds an instance), and no message loop runs meanwhile - without this the program stands
+    // still with nothing said.
+    struct PluginLoadNote final : public juce::Component
+    {
+        juce::String text;
+        explicit PluginLoadNote(juce::Point<int> centre)
+        {
+            setOpaque(true);
+            setAlwaysOnTop(true);
+            setSize(560, 66);
+            setCentrePosition(centre);
+            addToDesktop(juce::ComponentPeer::windowIsTemporary);
+            setVisible(true);
+        }
+        void say(const juce::String& newText)
+        {
+            text = newText;
+            repaint();
+            if (auto* peer = getPeer()) peer->performAnyPendingRepaintsNow();
+        }
+        void paint(juce::Graphics& g) override
+        {
+            g.fillAll(juce::Colour(0xff263238));
+            g.setColour(juce::Colours::orange);
+            g.drawRect(getLocalBounds(), 1);
+            g.setColour(juce::Colours::white);
+            g.setFont(juce::FontOptions(15.0f));
+            g.drawFittedText(text, getLocalBounds().reduced(12, 6), juce::Justification::centred, 2);
+        }
+    };
 }
 
 // The instances and the chains of every route, from the model. An instance exists once its slot has been ON in this
@@ -5302,6 +5339,8 @@ void MainComponent::rebuildPluginChains()
     struct Built { int manual; juce::String perspective; std::shared_ptr<SamplerEngine::RouteChain> chain; int latency; };
     std::vector<Built> built;
     std::set<std::string> alive;
+    capturePluginStates();   // a new instance starts from its slot's setting: the knobs turned since the last save first
+    std::unique_ptr<PluginLoadNote> loadNote;
     for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
         for (const auto& perspective : engine.getPerspectivesForManual(manual))
         {
@@ -5343,7 +5382,15 @@ void MainComponent::rebuildPluginChains()
                     for (int index = 0; index < wanted; ++index)
                     {
                         juce::String error;
+                        if (loadNote == nullptr)
+                            loadNote = std::make_unique<PluginLoadNote>(getTopLevelComponent() != nullptr ? getTopLevelComponent()->getScreenBounds().getCentre() : juce::Point<int>(400, 300));
+                        static const char* const numerals[] = { "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII." };
+                        loadNote->say("Loading the plug-in " + slot->description.name + " for " + juce::String(numerals[juce::jlimit(0, 8, manual)]) + " / " + perspective
+                            + (wanted > 1 ? " (" + juce::String(index + 1) + " of " + juce::String(wanted) + ")" : juce::String()) + " ...");
+                        const double createStartMs = juce::Time::getMillisecondCounterHiRes();
                         auto instance = PluginHost::create(slot->description, rate, 4096, error);
+                        if (const double tookMs = juce::Time::getMillisecondCounterHiRes() - createStartMs; tookMs > 1000.0)
+                            CrashHandler::note("Effects: the plug-in " + slot->description.name + " took " + juce::String(juce::roundToInt(tookMs)) + " ms to load one instance");
                         if (instance == nullptr) { fresh->error = error.isNotEmpty() ? error : juce::String("not installed on this computer"); break; }
                         if (index == 0 && !makePlainEffect(*instance, 2))
                         {
@@ -5404,10 +5451,16 @@ void MainComponent::rebuildPluginChains()
     if (latest > 0) CrashHandler::note("Effects: the routes are made " + juce::String(latest) + " sample(s) late together (the plug-ins' latency)");
 }
 
+// The settings of the plug-ins into their slots - of those alone whose setting changed since it was last taken
+// (0.9.102: every plug-in's whole state was asked for at every save of the settings, once a second while a knob
+// moved - a reverb with its impulse response inside answers in hundreds of milliseconds, on the window thread).
 void MainComponent::capturePluginStates()
 {
+    if (pluginStateDirty.empty()) return;
     for (auto& [name, effects] : perspectiveEffects)
         for (auto& slot : effects.plugins)
+        {
+            if (pluginStateDirty.count(slot.id) == 0) continue;
             for (const auto& [key, live] : livePlugins)
                 if (juce::String(key).startsWith(slot.id + "|") && live != nullptr && !live->instances.empty())
                 {
@@ -5416,47 +5469,95 @@ void MainComponent::capturePluginStates()
                     if (state.getSize() > 0) slot.state = state;
                     break;
                 }
+        }
+    pluginStateDirty.clear();
 }
 
-// The state of the instance whose editor the user works in (the first of the slot) to every sister instance - the
+// The setting of the instance whose editor the user works in (the first of the slot) to its sister instances - the
 // other pairs of its route and the other routes of the perspective: a perspective's plug-in is ONE setting.
-void MainComponent::syncPluginState(const juce::String& perspective, const juce::String& id, bool withState)
+// 0.9.102 (the user: "načítání GUI vst efektu trvá někdy příšerně dlouho ... jen bílé okno"): ten times a second
+// EVERY parameter of every sister was compared with the source's and set when it differed - a plug-in whose
+// parameters never come out equal (meters, values it rounds) was written to without end, and once a second the
+// whole state was asked for besides; the plug-in's own window starved. Now only what CHANGED on the source since
+// the last look is passed on (automatable parameters alone), and the whole state is copied only when the plug-in
+// itself reports a change that is no parameter (a file it loaded), a moment after it, or at the editor's close.
+void MainComponent::syncPluginState(const juce::String& perspective, const juce::String& id, bool closing)
+{
+    const auto found = pluginWatches.find(id);
+    if (found == pluginWatches.end() || found->second == nullptr || pluginSlot(perspective, id) == nullptr) return;
+    auto& watch = *found->second;
+    auto* source = watch.source;
+    bool sourceAlive = false;
+    for (const auto& [key, live] : livePlugins)
+        if (juce::String(key).startsWith(id + "|") && live != nullptr)
+            for (const auto& instance : live->instances) if (instance.get() == source) sourceAlive = true;
+    if (!sourceAlive) return;
+    const auto& from = source->getParameters();
+    if ((int)watch.last.size() != from.size())
+    {
+        watch.last.resize((size_t)from.size());
+        for (int i = 0; i < from.size(); ++i) watch.last[(size_t)i] = from[i]->getValue();   // the baseline: the sisters stand there too
+    }
+    else
+    {
+        int changed = 0;
+        for (int i = 0; i < from.size(); ++i)
+        {
+            const float value = from[i]->getValue();
+            if (std::abs(value - watch.last[(size_t)i]) <= 1.0e-6f) continue;
+            watch.last[(size_t)i] = value;
+            if (!from[i]->isAutomatable()) continue;   // a meter or a read-out is no setting
+            ++changed;
+            for (const auto& [key, live] : livePlugins)
+                if (juce::String(key).startsWith(id + "|") && live != nullptr)
+                    for (const auto& instance : live->instances)
+                        if (instance.get() != source && instance->getParameters().size() == from.size())
+                            instance->getParameters()[i]->setValue(value);
+        }
+        if (changed > 0) { pluginStateDirty.insert(id); configurationDirty = true; saveSettings(); }
+    }
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (watch.latencyChanged.exchange(false)) { juce::Component::SafePointer<MainComponent> safeThis(this); juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->rebuildPluginChains(); }); }
+    if (watch.stateChanged.exchange(false)) { watch.sawStateChange = true; watch.stateCopyDueMs = juce::jmax(now + 700.0, watch.lastStateCopyMs + 3000.0); }
+    const bool due = watch.stateCopyDueMs > 0.0 && now >= watch.stateCopyDueMs;
+    if (due || (closing && (watch.sawStateChange || from.isEmpty())))
+    {
+        watch.stateCopyDueMs = 0.0;
+        watch.lastStateCopyMs = now;
+        watch.sawStateChange = false;
+        copyPluginStateToSisters(perspective, id);
+    }
+    if (closing) pluginStateDirty.insert(id);   // its setting is taken into the slot at the next save
+}
+
+// The whole state of the slot's source instance to every sister whose own state differs (a file the plug-in
+// loaded travels no other way). Not for knob turns: a state set anew may jump.
+void MainComponent::copyPluginStateToSisters(const juce::String& perspective, const juce::String& id)
 {
     auto* slot = pluginSlot(perspective, id);
-    if (slot == nullptr) return;
-    juce::AudioPluginInstance* source = nullptr;
-    for (const auto& [key, live] : livePlugins)
-        if (juce::String(key).startsWith(id + "|") && live != nullptr && !live->instances.empty()) { source = live->instances.front().get(); break; }
-    if (source == nullptr) return;
-    // The PARAMETERS first, one by one: a plug-in glides a parameter that moves, while a whole state set anew
-    // jumps - on the sister instances that was a click at every turn of a knob (the user's "!3").
-    const auto& from = source->getParameters();
-    int moved = 0;
+    const auto found = pluginWatches.find(id);
+    if (slot == nullptr || found == pluginWatches.end() || found->second == nullptr) return;
+    auto* source = found->second->source;
+    juce::MemoryBlock state;
+    source->getStateInformation(state);
+    if (state.getSize() == 0) return;
+    slot->state = state;
+    int copies = 0;
     for (const auto& [key, live] : livePlugins)
         if (juce::String(key).startsWith(id + "|") && live != nullptr)
             for (const auto& instance : live->instances)
             {
                 if (instance.get() == source) continue;
-                const auto& to = instance->getParameters();
-                if (to.size() != from.size()) continue;
-                for (int i = 0; i < from.size(); ++i)
-                    if (std::abs(to[i]->getValue() - from[i]->getValue()) > 1.0e-6f) { to[i]->setValue(from[i]->getValue()); ++moved; }
+                juce::MemoryBlock own;
+                instance->getStateInformation(own);
+                if (own == state) continue;
+                instance->setStateInformation(state.getData(), (int)state.getSize());
+                ++copies;
             }
-    if (!withState) return;
-    juce::MemoryBlock state;
-    source->getStateInformation(state);
-    if (state.getSize() == 0 || state == slot->state) return;
-    slot->state = state;
-    // The whole state only to instances of a plug-in that shows no parameters (nothing else can carry its setting).
-    int copies = 0;
-    if (from.isEmpty())
-        for (const auto& [key, live] : livePlugins)
-            if (juce::String(key).startsWith(id + "|") && live != nullptr)
-                for (const auto& instance : live->instances)
-                    if (instance.get() != source) { instance->setStateInformation(state.getData(), (int)state.getSize()); ++copies; }
     configurationDirty = true;
     saveSettings();
-    juce::ignoreUnused(moved, copies);
+    if (copies > 0) CrashHandler::note("Effects: the plug-in " + slot->description.name + " of " + perspective + " - its whole setting (" + juce::String((int)state.getSize() / 1024)
+        + " KB) copied to " + juce::String(copies) + " more instance(s)");
 }
 
 namespace
@@ -5490,6 +5591,7 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
         queueNotice(juce::AlertWindow::WarningIcon, "Effects", slot->description.name + " is not loaded: " + pluginStatus(perspective, id) + "\n\nSwitch it ON first.");
         return;
     }
+    const double editorStartMs = juce::Time::getMillisecondCounterHiRes();
     juce::AudioProcessorEditor* editor = instance->hasEditor() ? instance->createEditorIfNeeded() : nullptr;
     if (editor == nullptr) editor = new juce::GenericAudioProcessorEditor(*instance);   // a plug-in without a window of its own: its parameters as sliders
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -5498,7 +5600,7 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
         juce::MessageManager::callAsync([safeThis, perspective, id]
         {
             if (safeThis == nullptr) return;
-            safeThis->syncPluginState(perspective, id);
+            safeThis->syncPluginState(perspective, id, true);
             safeThis->closePluginEditor(id);
         });
     });
@@ -5522,23 +5624,43 @@ void MainComponent::showPluginEditor(const juce::String& perspective, const juce
    #endif
     window->toFront(true);
     pluginWindows[id] = std::move(window);
-    CrashHandler::note("Effects: the editor of " + slot->description.name + " opened");
+    {
+        auto watch = std::make_shared<PluginSourceWatch>();
+        watch->source = instance;
+        watch->perspective = perspective;
+        instance->addListener(watch.get());
+        pluginWatches[id] = watch;
+    }
+    CrashHandler::note("Effects: the editor of " + slot->description.name + " opened in "
+        + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - editorStartMs)) + " ms");
 }
 
 void MainComponent::closePluginEditor(const juce::String& id)
 {
+    // The watch first (its instance is still alive: every caller closes the editor before an instance goes).
+    if (const auto watch = pluginWatches.find(id); watch != pluginWatches.end())
+    {
+        if (watch->second != nullptr && watch->second->source != nullptr) watch->second->source->removeListener(watch->second.get());
+        pluginWatches.erase(watch);
+    }
     const auto found = pluginWindows.find(id);
     if (found == pluginWindows.end()) return;
     found->second.reset();   // deletes the editor with it, before any instance goes
     pluginWindows.erase(found);
 }
 
-juce::String MainComponent::pluginStatus(const juce::String& perspective, const juce::String& id)
+// What the plug-in does now - and, in `warning`, why it does not suit playing (0.9.102, the user: bold and orange
+// under the status line). The limits are mine: a delay of 10 ms and more is felt under the fingers (and every other
+// route of the organ is made as late); and a plug-in that takes a quarter of the audio buffer's time on its routes
+// together leaves the pipes too little of it.
+juce::String MainComponent::pluginStatus(const juce::String& perspective, const juce::String& id, juce::String* warning)
 {
+    if (warning != nullptr) warning->clear();
     auto* slot = pluginSlot(perspective, id);
     if (slot == nullptr) return {};
     int routes = 0, instances = 0, latency = 0;
     juce::int64 ns = 0, blocks = 0, worst = 0;
+    double rate = 48000.0, shareOfBuffer = 0.0;
     juce::String error;
     for (const auto& [key, live] : livePlugins)
     {
@@ -5546,8 +5668,20 @@ juce::String MainComponent::pluginStatus(const juce::String& perspective, const 
         if (live->instances.empty()) { if (live->error.isNotEmpty()) error = live->error; continue; }
         ++routes; instances += (int)live->instances.size();
         latency = live->instances.front()->getLatencySamples();
-        ns += live->stage->nsSum.exchange(0); blocks += live->stage->blocks.exchange(0);
+        if (live->rate > 0.0) rate = live->rate;
+        const juce::int64 routeNs = live->stage->nsSum.exchange(0), routeBlocks = live->stage->blocks.exchange(0);
+        ns += routeNs; blocks += routeBlocks;
         worst = juce::jmax(worst, (juce::int64)live->stage->nsMax.exchange(0));
+        const int frames = live->stage->lastBlockFrames.load();
+        if (routeBlocks > 0 && frames > 0) shareOfBuffer += ((double)routeNs / (double)routeBlocks) / (1.0e9 * frames / rate);
+    }
+    if (warning != nullptr && routes > 0 && slot->on)
+    {
+        juce::StringArray lines;
+        const double latencyMs = 1000.0 * latency / rate;
+        if (latencyMs >= 10.0) lines.add("Not for real-time playing: it delays the sound by " + juce::String(juce::roundToInt(latencyMs)) + " ms.");
+        if (shareOfBuffer >= 0.25) lines.add("Heavy for real-time playing: it takes " + juce::String(juce::roundToInt(shareOfBuffer * 100.0)) + " % of the audio buffer's time.");
+        *warning = lines.joinIntoString("\n");
     }
     if (routes == 0)
         return error.isNotEmpty() ? "NOT at work: " + error
@@ -5579,7 +5713,6 @@ void MainComponent::watchPlugins()
                         "block after block, and the sound of the whole organ would break.\n\nSwitch it ON again in the Effects when you want to try it (a larger buffer in Audio routing gives it more time).");
                 }
             }
-            if (pluginWindows.count(slot.id) != 0) syncPluginState(juce::String(name), slot.id);   // the user may be turning its knobs
         }
     // A route whose sample rate or channel count changed needs instances prepared anew.
     for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals && !rebuild; ++manual)
@@ -28518,8 +28651,9 @@ void MainComponent::timerCallback()
     if (!pluginWindows.empty() && ++pluginSyncDivider >= 4)
     {
         pluginSyncDivider = 0;
-        for (const auto& [id, window] : pluginWindows)
-            if (window != nullptr) syncPluginState(window->getProperties()["pluginPerspective"].toString(), id, false);
+        std::vector<std::pair<juce::String, juce::String>> open;   // (a sync may rebuild the chains - no iterator held across it)
+        for (const auto& [id, watch] : pluginWatches) if (watch != nullptr) open.push_back({ watch->perspective, id });
+        for (const auto& [perspective, id] : open) syncPluginState(perspective, id, false);
     }
     // 0.9.102: a top-bar button held down for two seconds = the arrange mode of the bar; its release is no click.
     if (headerPressed != nullptr)

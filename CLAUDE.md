@@ -4168,6 +4168,35 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ORGAN_TEST_PLUGINSCAN=5 (the log polled for "file(s) scanned"), then ORGAN_LOAD_CONFIGURATION=<Rural> +
   ORGAN_DUMP_STOPLIST + ORGAN_TEST_NOTE + ORGAN_TEST_PLUGIN + ORGAN_TEST_QUIT=40. NOT tried: the plug-ins' own editor
   windows on Windows, the trip, the safe start on Windows, macOS/AU.
+  0.9.102 (18 Nov 2026, Windows; the user: Reverberate "jen bílé okno", "načítání GUI vst efektu trvá někdy příšerně
+  dlouho ... v reaperu běží úplně rychle" + a bold orange line on a heavy plug-in's card): THE CAUSE WAS OUR SYNC of
+  0.9.101 - ten times a second EVERY parameter of every sister instance was compared with the source's and written
+  when it differed (a plug-in whose values never come out equal - meters, rounded values - was written to for ever),
+  once a second `getStateInformation` of the edited instance (watchPlugins), and `capturePluginStates` asked EVERY
+  plug-in for its whole state at every saveSettingsNow (once a second while anything moved); the log showed "Message
+  thread was silent for 1-2.9 s" all the time an editor was open. Now `PluginSourceWatch` (MainComponent.h; a
+  juce::AudioProcessorListener on the instance whose editor is open, `pluginWatches` by slot id, made in
+  showPluginEditor, removed FIRST in closePluginEditor - its instance is still alive there): `syncPluginState(perspective,
+  id, closing)` reads the SOURCE's parameters alone and passes on only what changed since the last look (the first
+  look = the baseline; automatable parameters only), marks the slot in `pluginStateDirty`; the whole state goes to the
+  sisters (`copyPluginStateToSisters`, only where the sister's own state differs) when the plug-in itself reports
+  `nonParameterStateChanged`/`programChanged` (700 ms later, at most every 3 s) or at the editor's close after such a
+  report (or for a plug-in without parameters); `latencyChanged` -> rebuildPluginChains by callAsync;
+  `capturePluginStates` takes the DIRTY slots alone (the destructor marks every open editor's slot; rebuildPluginChains
+  calls it first so a new instance starts from the present setting). `PluginLoadNote` (anonymous namespace, a
+  temporary desktop component painted with performAnyPendingRepaintsNow) says "Loading the plug-in X for I. / default
+  (n of m) ..." while rebuildPluginChains creates instances (no message loop runs there; Waves SoundShifter 12 s an
+  instance); an instance over 1 s is logged. CARD WARNING: `pluginStatus(perspective, id, &warning)` - latency >= 10 ms
+  "Not for real-time playing: it delays the sound by N ms."; the plug-in's time on its routes together >= 25 % of the
+  buffer's period (`RoutePluginStage::lastBlockFrames`, set in renderRoute) "Heavy for real-time playing: it takes
+  N % of the audio buffer's time." - `PluginPanel::warning` (orange, bold 14) right under the status line (the status
+  20 px when it is one line and a warning shows). MEASURED: Reverberate's editor opened in 916 ms and painted
+  (PrintWindow: 0 % white), no stall line in 40 s with it open; Z-Noise's card "delays the sound by 723 ms".
+  %TEMP%\test_0102.ps1 [-Plugin -Button -NoEditor -Tag]: Rural + ORGAN_TEST_PLUGIN (add at 24 s, editor at 30 s), the
+  editor's window pictured through PrintWindow(hwnd, dc, 2) by process id + title (the window's own content, not the
+  screen; our snapshot of a plug-in window is empty), the white share printed. NOT run: a knob turned in the
+  editor by a real mouse (the sisters following), the CPU warning (no plug-in here reaches 25 %). RULE: never poll
+  or set a foreign plug-in's parameters or state periodically - listen, and pass on what changed.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

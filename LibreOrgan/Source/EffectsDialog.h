@@ -857,7 +857,7 @@ private:
     // its own), Remove, and what it does right now.
     struct PluginPanel final : public juce::Component
     {
-        juce::Label name, maker, status, note;
+        juce::Label name, maker, status, warning, note;
         RightClickButton onButton;
         juce::TextButton open{ "Open editor" }, remove{ "Remove" };
         void resized() override
@@ -872,7 +872,13 @@ private:
             open.setBounds(head.removeFromRight(120).reduced(0, 3));
             maker.setBounds(head.reduced(8, 0));
             r.removeFromTop(10);
-            status.setBounds(r.removeFromTop(44));
+            // One line or two: the warning stands right under the status, no empty line between them.
+            // (A label squeezes a text too wide down to 0.7 of its width before it wraps it - the line pictured was
+            // such a squeezed one.)
+            const bool twoLines = juce::GlyphArrangement::getStringWidth(status.getFont(), status.getText()) * 0.7f > (float)(r.getWidth() - 10);
+            status.setBounds(r.removeFromTop(warning.getText().isNotEmpty() && !twoLines ? 20 : 44));
+            if (warning.getText().isNotEmpty()) { r.removeFromTop(2); warning.setBounds(r.removeFromTop(warning.getText().containsChar('\n') ? 40 : 22)); }
+            else warning.setBounds({});
             r.removeFromTop(6);
             note.setBounds(r.removeFromTop(90));
         }
@@ -884,6 +890,11 @@ private:
         panels.add(p); pluginPanel = p;
         p->name.setFont(juce::FontOptions(16.0f, juce::Font::bold));
         p->addAndMakeVisible(p->name);
+        p->warning.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+        p->warning.setColour(juce::Label::textColourId, juce::Colours::orange);
+        p->warning.setJustificationType(juce::Justification::topLeft);
+        p->warning.getProperties().set("testName", "plugin warning");
+        p->addAndMakeVisible(p->warning);
         for (auto* l : { &p->maker, &p->status, &p->note })
         {
             l->setFont(juce::FontOptions(12.5f));
@@ -993,7 +1004,12 @@ private:
                 pluginPanel->name.setText(slot->description.name, juce::dontSendNotification);
                 pluginPanel->maker.setText(slot->description.manufacturerName + "  -  " + slot->description.pluginFormatName, juce::dontSendNotification);
                 showPluginSwitch(pluginPanel->onButton, selectedPlugin);
-                if (++statusTick % 10 == 1) pluginPanel->status.setText(owner.pluginStatus(perspective, selectedPlugin), juce::dontSendNotification);   // once a second: it takes the engine's counters
+                if (++statusTick % 10 == 1)   // once a second: it takes the engine's counters
+                {
+                    juce::String warning;
+                    pluginPanel->status.setText(owner.pluginStatus(perspective, selectedPlugin, &warning), juce::dontSendNotification);
+                    if (pluginPanel->warning.getText() != warning) { pluginPanel->warning.setText(warning, juce::dontSendNotification); pluginPanel->resized(); }
+                }
                 pluginPanel->open.setEnabled(manual < 0);
                 pluginPanel->remove.setEnabled(manual < 0);
             }

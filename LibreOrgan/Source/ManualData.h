@@ -1113,7 +1113,10 @@ static const char* const kManualText_part5 =
     "Its card has the **ON / OFF** switch (OFF, the sound passes untouched and the\n"
     "setting is kept), *Open editor* - the plug-in's own window, always a window\n"
     "of its own - and *Remove*; the line under them says on how many routes it\n"
-    "works, its latency and the time it takes per block. Stereo and mono plug-ins\n"
+    "works, its latency and the time it takes per block. An **orange line** under\n"
+    "it warns when the plug-in does not suit playing: it delays the sound by 10 ms\n"
+    "or more (every route of the organ waits for it), or it takes a quarter of the\n"
+    "audio buffer's time. Stereo and mono plug-ins\n"
     "are taken (a mono one works on each channel separately); instruments are not\n"
     "offered.\n"
     "\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
     "sound cards.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
     "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
-    ;
-static const char* const kManualText_part6 =
     "dropped on it waits until the card is free.\n"
     "\n"
     "### Audio on macOS\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "example) and, on Linux, *Install menu entry and icon*.\n"
     "\n"
     "## 8.1 Engine\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "Settings of this computer: a portable configuration carries none of them.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "### This computer\n"
     "\n"
     "The processor, its physical cores and logical CPUs, the RAM. Information.\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "A closed swell box also takes the brilliance: a high shelf above about 3 kHz\n"
     "following the shutters, this much loss with the box closed (0 to 12 dB,\n"
     "default 8). The three harmonic filters (swell, wind, tremulant) add up,\n"
+    ;
+static const char* const kManualText_part8 =
     "capped at 12 dB; at 0 dB they cost nothing.\n"
     "\n"
     "### Wind: harmonic filter\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "The same shelf following the wind sag: this much loss at the full sag\n"
     "(default 4 dB).\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "### Filled pipes: release level matched to the source\n"
     "\n"
     "On: a release copy plays at the level relation the source's release has to\n"
+    ;
+static const char* const kManualText_part9 =
     "its sustain. Off (default): at its own level.\n"
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "On (default): every shifted copy is brought to the loudness of its source.\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "*Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E\n"
     "...* for historic bass octaves.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Bass octave layout follows MIDI transposition\n"
     "\n"
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
-    ;
-static const char* const kManualText_part10 =
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
     "and fraction give the exact recorded pitch, from which the tuning, the\n"
     "temperament, the footage and the celeste detection follow. Files without the\n"
+    ;
+static const char* const kManualText_part11 =
     "chunk play as they are: no retuning, no temperament, the footage from the\n"
     "folder name only.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "File names: the MIDI key number first, optionally a note name (036.wav,\n"
     "036-C.wav, 059-B3.wav). Several files of one key are round-robin variants\n"
     "played in turn, whatever else the name carries (`036_1.wav`, `036-C_bis.wav`);\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "again and again on every division over its own compass, one key twice a\n"
     "second at first, more keys and a faster rate whenever the voices stop rising\n"
     "(up to every key, 16 strikes a second); the target raised in steps of 2000\n"
+    ;
+static const char* const kManualText_part12 =
     "(a tenth above 20 000), each reached target held four seconds and judged\n"
     "clean when every callback of the busiest device stayed within the\n"
     "*Measurement limit of DSP power* and the driver never called late; the first\n"
-    ;
-static const char* const kManualText_part12 =
     "breakup narrowed down by keys, by rate and finally by the share of stops\n"
     "engaged, so that the result is what the computer renders, not the last\n"
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"

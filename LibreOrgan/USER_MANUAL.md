@@ -1099,7 +1099,10 @@ route of it, an instance for each, all with the one setting you make.
 Its card has the **ON / OFF** switch (OFF, the sound passes untouched and the
 setting is kept), *Open editor* - the plug-in's own window, always a window
 of its own - and *Remove*; the line under them says on how many routes it
-works, its latency and the time it takes per block. Stereo and mono plug-ins
+works, its latency and the time it takes per block. An **orange line** under
+it warns when the plug-in does not suit playing: it delays the sound by 10 ms
+or more (every route of the organ waits for it), or it takes a quarter of the
+audio buffer's time. Stereo and mono plug-ins
 are taken (a mono one works on each channel separately); instruments are not
 offered.
 

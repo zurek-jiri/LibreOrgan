@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.102] - 2026-11-18
+
+### Fixed
+- A plug-in's own window was slow or stayed white (LiquidSonics Reverberate),
+  and the program stalled for seconds while it was open: ten times a second
+  every parameter of every instance of the plug-in was compared and written,
+  and once a second - and at every save of the settings - the plug-in's whole
+  state was asked for. Now only the parameters the user really changed go to
+  the other instances, and the whole state is taken when the plug-in reports a
+  change of its own (a file it loaded) or its window closes.
+
+### Added
+- A plug-in's card warns in bold orange under its status line when the plug-in
+  does not suit real-time playing: a delay of 10 ms or more, or a quarter of
+  the audio buffer's time taken.
+- While a plug-in is being loaded (some take ten seconds an instance) a note
+  says which one and for which route.
+
 ## [0.9.101] - 2026-11-18
 
 ### Added

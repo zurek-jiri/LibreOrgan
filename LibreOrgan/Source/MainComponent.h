@@ -509,16 +509,37 @@ private:
     std::set<std::string> routesWithChain;
     bool pluginSafeStartSaid = false;
     int pluginSyncDivider = 0;
+    // 0.9.102: the instance whose editor is open, watched: its parameter values at the last look (what changed
+    // since goes to the sister instances - never every parameter at every look) and what the plug-in itself
+    // reports (a state that is no parameter - a file it loaded -, a latency that changed).
+    struct PluginSourceWatch final : public juce::AudioProcessorListener
+    {
+        juce::AudioPluginInstance* source = nullptr;
+        juce::String perspective;
+        std::vector<float> last;
+        std::atomic<bool> stateChanged{ false }, latencyChanged{ false };
+        bool sawStateChange = false;
+        double stateCopyDueMs = 0.0, lastStateCopyMs = 0.0;
+        void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {}
+        void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& details) override
+        {
+            if (details.nonParameterStateChanged || details.programChanged) stateChanged.store(true);
+            if (details.latencyChanged) latencyChanged.store(true);
+        }
+    };
+    std::map<juce::String, std::shared_ptr<PluginSourceWatch>> pluginWatches;   // by slot id, while its editor is open
+    std::set<juce::String> pluginStateDirty;                                    // slots whose setting changed since it was last taken into the slot
+    void copyPluginStateToSisters(const juce::String& perspective, const juce::String& id);
     PluginSlot* pluginSlot(const juce::String& perspective, const juce::String& id);
     juce::String addPlugin(const juce::String& perspective, const juce::PluginDescription& description);   // returns the slot's id
     void removePlugin(const juce::String& perspective, const juce::String& id);
     void setPluginOn(const juce::String& perspective, const juce::String& id, bool on);
     void showPluginEditor(const juce::String& perspective, const juce::String& id);
     void closePluginEditor(const juce::String& id);
-    juce::String pluginStatus(const juce::String& perspective, const juce::String& id);   // loaded on N routes, latency, time per block - or why not
+    juce::String pluginStatus(const juce::String& perspective, const juce::String& id, juce::String* warning = nullptr);   // loaded on N routes, latency, time per block - or why not
     void rebuildPluginChains();           // the instances and every route's chain, from the model
     void capturePluginStates();           // the instances' states into the slots (before a save)
-    void syncPluginState(const juce::String& perspective, const juce::String& id, bool withState = true);   // withState false: the parameters alone (ten times a second while its editor is open)   // the edited instance's state to its sisters on the other routes
+    void syncPluginState(const juce::String& perspective, const juce::String& id, bool closing = false);   // withState false: the parameters alone (ten times a second while its editor is open)   // the edited instance's state to its sisters on the other routes
     void watchPlugins();                  // once a second: a plug-in the engine switched off, a route whose rate changed, open editors
     static juce::var pluginsToVar(const std::vector<PluginSlot>& plugins);
     static void pluginsFromVar(const juce::var& v, std::vector<PluginSlot>& plugins);

@@ -7760,6 +7760,7 @@ struct SamplerEngine::Impl
                     const int64_t ns = (int64_t)(1.0e9 * (double)(juce::Time::getHighResolutionTicks() - startTicks) / (double)juce::Time::getHighResolutionTicksPerSecond());
                     plugin->nsSum.fetch_add(ns, std::memory_order_relaxed);
                     plugin->blocks.fetch_add(1, std::memory_order_relaxed);
+                    plugin->lastBlockFrames.store(totalSamples, std::memory_order_relaxed);
                     int64_t known = plugin->nsMax.load(std::memory_order_relaxed);
                     while (ns > known && !plugin->nsMax.compare_exchange_weak(known, ns, std::memory_order_relaxed)) {}
                     if ((double)ns > 0.8 * periodNs) { if (++plugin->slowRun >= 20) plugin->tripped.store(true, std::memory_order_relaxed); }
