@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.106] - 2026-11-18
+
+### Fixed
+- **The program vanished when a sound card with MIDI ports was unplugged or
+  switched off while it ran.** Windows takes the card's MIDI port away, the
+  list of MIDI devices changes, and a port opened in the middle of that
+  change failed inside JUCE - whose Windows MIDI code then ends the program
+  (a thread joined that was never started). JUCE's line is corrected (at
+  configure time, for every build), and the ports that came are opened only
+  a second after the last change of the list.
+
+### Changed
+- Saved routings go to `Documents/LibreOrgan/LibreRoutings` by default.
+- The manual warns that plug-ins are not made for real-time playing.
+
 ## [0.9.105] - 2026-11-18
 
 ### Changed

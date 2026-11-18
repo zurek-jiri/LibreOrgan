@@ -1111,6 +1111,11 @@ audio buffer's time. Stereo and mono plug-ins
 are taken (a mono one works on each channel separately); instruments are not
 offered.
 
+**Use plug-ins sparingly and expect little.** Many of them were made for
+mixing recorded tracks, not for an instrument played in real time: they
+**delay the sound**, they **cost polyphony** (each works once per route), and
+a faulty one can **bring the program down**. The organ itself needs none.
+
 A plug-in is somebody else's program inside this one, and what guards the
 organ against a faulty one is this:
 

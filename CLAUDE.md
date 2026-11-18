@@ -4319,6 +4319,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   only a right-click menu reaches (test_0103_arr.ps1 -Mode menus). The user dragged a cable in MY test instance
   again (19:45:52, "cable 11+12 of II. default moved to Komplete Audio 6") - the settings were restored by the
   script; a test window is his to touch while it stands, say so.
+  0.9.106 (18 Nov 2026 evening; the user: "po připojení kabelů jsem odpojil Komplete, a program crashnul ... To už
+  jsme měli opravené ... Potřebujeme robustnost"): crash-20261118-195407.txt = THE 29 OCT CRASH AGAIN, line for line:
+  std::terminate (invalid argument) <- std::thread::join <- juce::WindowsMidiHelpers::Win32::InputDevice::~InputDevice
+  (juce_Midi_windows.cpp 2640) <- InputDevice::openInternal (2710: `return {}` after midiInOpen failed) <-
+  MidiInput::openDevice <- our lambda <- MidiDeviceListConnectionBroadcaster::endpointsChanged. NOT a regression of
+  code: `git log -S midiInputOpensNow` = the one commit of 0.8.226, the JUCE submodule pointer has not moved since
+  the first commit. The 0.8.226 "fix" was a DETOUR (a WinMM probe by NAME before the open) around JUCE's fault, never
+  a repair: it stops a port that refuses at the probe; a port that passes the probe and fails milliseconds later in
+  JUCE's own open (which numbers the devices by their POSITION in a list it builds anew, skipping any device whose
+  caps query fails - while a card vanishes that position is not the WinMM number) still ended the program. Which
+  port it was is not known (the crash is inside the open; nothing is logged before it). NOW THE ROOT: the line
+  `blockQueueThread.join();` of ~InputDevice becomes `if (blockQueueThread.joinable()) blockQueueThread.join();` -
+  (1) in CMakeLists.txt, before add_subdirectory(JUCE): file(READ) / string(REPLACE) / file(WRITE) at CONFIGURE time
+  (idempotent: skipped when "blockQueueThread.joinable()" is there; FATAL_ERROR when the line is not found - JUCE
+  changed, look at it), so the CI builds of every system carry it; tried with `cmake -P` on a copy of the original:
+  33 bytes more, nothing else touched, a second run changes nothing; (2) in the local JUCE by hand
+  (F:\JUCE_PROJEKTY\LibreOrgan\JUCE is a JUNCTION to C:\JUCE9, no git repository on Windows - the VS/Projucer build
+  reads it). THE RULE OF 0.8.226 "the submodule is upstream, never patched" IS REPLACED: a fault of JUCE that ends
+  the program is corrected at configure time in CMakeLists.txt, one exact line, with a FATAL_ERROR when the line is
+  gone. Besides: `midiDevicesChanged` lets the ports that WENT go at once and opens the ports that CAME one second
+  after the LAST change of the list (`changeNumber` static + callAfterDelay(1000) - a card going or coming changes
+  the list several times in a row); a port that does not open is logged "not opened (tried again at the next
+  change)". The probe stays. NOT reproduced by a test (the MIDI ports here open twice at once, so a held port does
+  not make JUCE's open fail; no way to unplug hardware) - the repair follows from the crash stack; the user's own
+  unplugging is the proof. The AUDIO side of an unplugged card was not in this crash (the log ends with the routes
+  playing): ASIO routes of a card that goes are caught by the callback-health recovery and the missing-device
+  watcher, the aggregate's endpoints are JUCE WASAPI devices (audioDeviceError -> lastError + xruns) - read, not
+  exercised. Also: saved routings go to Documents/LibreOrgan/LibreRoutings (was "LibreRouting"; a remembered folder
+  of the old name gives way); the manual's "Plug-ins in the chain" opens its safeguards with "Use plug-ins sparingly
+  and expect little" (delay, polyphony, a faulty one can bring the program down). LINUX: nothing of 0.9.103-0.9.106
+  was compiled there (no push since v0.9.102) - the CI of the next push is the check; the changes are Windows-only
+  (#if JUCE_WINDOWS: the dialog put back, the MIDI probe) or platform-neutral drawing and dialogs; probeCard answers
+  true for every type but ASIO.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

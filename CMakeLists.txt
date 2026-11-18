@@ -9,7 +9,7 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(LibreOrgan VERSION 0.9.105 LANGUAGES C CXX)
+project(LibreOrgan VERSION 0.9.106 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,24 @@ endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/CMakeLists.txt")
     message(FATAL_ERROR "JUCE not found in JUCE/. Clone with --recurse-submodules or run: git submodule update --init")
+endif()
+# 0.9.106: JUCE's Windows MIDI input (juce_Midi_windows.cpp, InputDevice) lets its half-built device die when a
+# port fails to open, and that destructor joins a thread that was never started: std::system_error out of a
+# destructor = std::terminate. The program vanished twice when a sound card with MIDI ports was switched off or
+# unplugged while it ran (29 Oct and 18 Nov 2026). One line of the submodule is corrected at configure time, on
+# every system (the file is compiled on Windows only), until JUCE carries the fix itself.
+set(_juce_midi_windows "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_audio_devices/native/juce_Midi_windows.cpp")
+if(EXISTS "${_juce_midi_windows}")
+    file(READ "${_juce_midi_windows}" _juce_midi_text)
+    string(FIND "${_juce_midi_text}" "blockQueueThread.joinable()" _juce_midi_fixed)
+    if(_juce_midi_fixed EQUAL -1)
+        string(REPLACE "blockQueueThread.join();" "if (blockQueueThread.joinable()) blockQueueThread.join();" _juce_midi_new "${_juce_midi_text}")
+        if(_juce_midi_new STREQUAL _juce_midi_text)
+            message(FATAL_ERROR "JUCE's juce_Midi_windows.cpp has no 'blockQueueThread.join();' any more: look whether JUCE fixed InputDevice's destructor, then drop or adapt this correction.")
+        endif()
+        file(WRITE "${_juce_midi_windows}" "${_juce_midi_new}")
+        message(STATUS "JUCE corrected: juce_Midi_windows.cpp joins its queue thread only when it runs")
+    endif()
 endif()
 add_subdirectory(JUCE)
 

@@ -3746,7 +3746,7 @@ void MainComponent::midiDevicesChanged()
     const auto devices = juce::MidiInput::getAvailableDevices();
     juce::StringArray present;
     for (const auto& device : devices) present.add(device.identifier);
-    juce::StringArray gone, added;
+    juce::StringArray gone;
     for (size_t i = midiInputs.size(); i-- > 0;)
     {
         if (present.contains(midiInputIdentifiers[i])) continue;
@@ -3754,21 +3754,37 @@ void MainComponent::midiDevicesChanged()
         midiInputs.erase(midiInputs.begin() + (long)i);
         midiInputIdentifiers.erase(midiInputIdentifiers.begin() + (long)i);
     }
-    for (const auto& device : devices)
+    if (!gone.isEmpty())
+        CrashHandler::note("MIDI devices changed: gone " + gone.joinIntoString(", ") + " - " + juce::String((int)midiInputs.size()) + " MIDI input(s) open");
+    // 0.9.106 (the user unplugged the Komplete Audio 6 with cables on it and the program was gone - a MIDI port
+    // opened in the middle of the change failed inside JUCE): the ports that CAME are opened a second after the
+    // LAST change of the list. A card going or coming changes the list several times in a row (its ports, a USB hub
+    // re-enumerating its other devices), and a port opened inside that storm may fail. JUCE's fault itself is
+    // corrected too (CMakeLists.txt), and the probe of 0.8.226 stays.
+    static int changeNumber = 0;
+    const int thisChange = ++changeNumber;
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::Timer::callAfterDelay(1000, [safeThis, thisChange]
     {
-        if (std::find(midiInputIdentifiers.begin(), midiInputIdentifiers.end(), device.identifier) != midiInputIdentifiers.end()) continue;
-        if (!midiInputOpensNow(device.name)) continue;   // 0.8.226: a port that will not open would end the program inside JUCE
-        auto input = juce::MidiInput::openDevice(device.identifier, this);
-        if (input == nullptr) continue;
-        input->start();
-        added.add(device.name);
-        midiInputIdentifiers.push_back(device.identifier);
-        midiInputs.push_back(std::move(input));
-    }
-    if (gone.isEmpty() && added.isEmpty()) return;
-    CrashHandler::note("MIDI devices changed: " + juce::String(added.isEmpty() ? "" : "opened " + added.joinIntoString(", "))
-        + (added.isEmpty() || gone.isEmpty() ? "" : "; ") + (gone.isEmpty() ? "" : "gone " + gone.joinIntoString(", "))
-        + " - " + juce::String((int)midiInputs.size()) + " MIDI input(s) open");
+        if (safeThis == nullptr || thisChange != changeNumber) return;   // the list changed again: that change's turn
+        juce::StringArray added, refused;
+        for (const auto& device : juce::MidiInput::getAvailableDevices())
+        {
+            auto& ids = safeThis->midiInputIdentifiers;
+            if (std::find(ids.begin(), ids.end(), device.identifier) != ids.end()) continue;
+            if (!midiInputOpensNow(device.name)) { refused.add(device.name); continue; }
+            auto input = juce::MidiInput::openDevice(device.identifier, safeThis.getComponent());
+            if (input == nullptr) { refused.add(device.name); continue; }
+            input->start();
+            added.add(device.name);
+            ids.push_back(device.identifier);
+            safeThis->midiInputs.push_back(std::move(input));
+        }
+        if (added.isEmpty() && refused.isEmpty()) return;
+        CrashHandler::note("MIDI devices changed: " + juce::String(added.isEmpty() ? "" : "opened " + added.joinIntoString(", "))
+            + (added.isEmpty() || refused.isEmpty() ? "" : "; ") + (refused.isEmpty() ? "" : "not opened (tried again at the next change) " + refused.joinIntoString(", "))
+            + " - " + juce::String((int)safeThis->midiInputs.size()) + " MIDI input(s) open");
+    });
 }
 
 void MainComponent::refreshMidiRouting()
@@ -8426,7 +8442,10 @@ void MainComponent::applyRouting(const juce::var& data, bool withEffects, const 
 
 void MainComponent::saveRoutingToFile()
 {
-    auto folder = lastRoutingDirectory.isDirectory() ? lastRoutingDirectory : configurationsDirectory().getParentDirectory().getChildFile("LibreRouting");
+    // 0.9.106 (the user): Documents/LibreOrgan/LibreRoutings by default - beside LibreOrgans, LibreRecordings and
+    // LibreCombinations (it was "LibreRouting"; a folder remembered under that old name gives way to the new one).
+    auto folder = lastRoutingDirectory.isDirectory() && lastRoutingDirectory.getFileName() != "LibreRouting" ? lastRoutingDirectory
+        : configurationsDirectory().getParentDirectory().getChildFile("LibreRoutings");
     folder.createDirectory();
     const auto suggested = folder.getChildFile((currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("Organ")).removeCharacters("\\/:*?\"<>|") + " routing.json");
     routingChooser = std::make_unique<juce::FileChooser>("Save the audio routing (cables and effects)", suggested, "*.json");
@@ -8449,7 +8468,10 @@ void MainComponent::saveRoutingToFile()
 
 void MainComponent::loadRoutingFromFile()
 {
-    auto folder = lastRoutingDirectory.isDirectory() ? lastRoutingDirectory : configurationsDirectory().getParentDirectory().getChildFile("LibreRouting");
+    // 0.9.106 (the user): Documents/LibreOrgan/LibreRoutings by default - beside LibreOrgans, LibreRecordings and
+    // LibreCombinations (it was "LibreRouting"; a folder remembered under that old name gives way to the new one).
+    auto folder = lastRoutingDirectory.isDirectory() && lastRoutingDirectory.getFileName() != "LibreRouting" ? lastRoutingDirectory
+        : configurationsDirectory().getParentDirectory().getChildFile("LibreRoutings");
     routingChooser = std::make_unique<juce::FileChooser>("Load an audio routing", folder, "*.json");
     juce::Component::SafePointer<MainComponent> safeThis(this);
     routingChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,

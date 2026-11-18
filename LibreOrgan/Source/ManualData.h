@@ -1125,6 +1125,11 @@ static const char* const kManualText_part5 =
     "are taken (a mono one works on each channel separately); instruments are not\n"
     "offered.\n"
     "\n"
+    "**Use plug-ins sparingly and expect little.** Many of them were made for\n"
+    "mixing recorded tracks, not for an instrument played in real time: they\n"
+    "**delay the sound**, they **cost polyphony** (each works once per route), and\n"
+    "a faulty one can **bring the program down**. The organ itself needs none.\n"
+    "\n"
     "A plug-in is somebody else's program inside this one, and what guards the\n"
     "organ against a faulty one is this:\n"
     "\n"
@@ -1207,13 +1212,13 @@ static const char* const kManualText_part5 =
     "lists each card once, under *PipeWire*, with the outputs of its profile (all\n"
     "of them in Pro Audio); the program connects its outputs itself, and the\n"
     "buffer size and rate chosen on a card are handed to PipeWire for every\n"
+    ;
+static const char* const kManualText_part6 =
     "program. A card is never \"held\" or \"busy\" there - the desktop and the organ\n"
     "share it. A card switched on or off appears in the open Audio routing, or\n"
     "leaves it, within two seconds. An organ without cables of its own (a\n"
     "published configuration, a new organ) plays into the card the system plays\n"
     "through - the output chosen in the desktop's sound settings. Beside the\n"
-    ;
-static const char* const kManualText_part6 =
     "cards stands the system's default output (under ALSA), which is PipeWire\n"
     "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
@@ -1409,13 +1414,13 @@ static const char* const kManualText_part6 =
     "\n"
     "*Configuration Editor* (top bar) holds every setting in one scrolling dialog:\n"
     "Engine, Global sound, Advanced global audio (with its Filled pipes\n"
+    ;
+static const char* const kManualText_part7 =
     "subsection), Console (with Top bar), Folder name patterns, and one section\n"
     "per division. Collapsed sections open with a click on their title; the\n"
     "folding is remembered. Every change applies and saves at once; double-click\n"
     "a slider for its default. The \"?\" beside an option opens this manual at the\n"
     "option's chapter. At the top: *About & licences...* (this manual, the\n"
-    ;
-static const char* const kManualText_part7 =
     "messages, the licences), *Report a problem...*, *Show settings.json*,\n"
     "*Refresh values* (reads every control again, after a MIDI-learned change for\n"
     "example) and, on Linux, *Install menu entry and icon*.\n"
@@ -1611,13 +1616,13 @@ static const char* const kManualText_part7 =
     "### Attack minimum delay\n"
     "\n"
     "A small pause between the key press and the pipe's start (0 to 500 ms,\n"
+    ;
+static const char* const kManualText_part8 =
     "default 2), varied at random so that a chord's pipes do not all speak in the\n"
     "same instant; fast repetitions stay crisp.\n"
     "\n"
     "## 8.3 Advanced global audio\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Swell: harmonic filter\n"
     "\n"
     "A closed swell box also takes the brilliance: a high shelf above about 3 kHz\n"
@@ -1813,13 +1818,13 @@ static const char* const kManualText_part8 =
     "A filled pipe's release copy is played from this many milliseconds in (0 to\n"
     "300, default 140), skipping the start where the methods leave their worst.\n"
     "Heard at once.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: loop crossfade\n"
     "\n"
     "The splice of the copies' loops as a share of each loop (0 to 100 %, default\n"
     "40): a longer blend hides a seam that is not quite periodic. Raise it when a\n"
-    ;
-static const char* const kManualText_part9 =
     "held extension pipe bumps at every repeat.\n"
     "\n"
     "### Filled pipes: release level matched to the source\n"
@@ -2015,13 +2020,13 @@ static const char* const kManualText_part9 =
     "1 to 16 on that device.\n"
     "\n"
     "### Ignore MIDI velocity (organ keys)\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "On by default: every key is a full stroke - no velocity fade-in or treble\n"
     "cut, always the top velocity layer. Off for a stop with velocity layers you\n"
     "want to play by touch.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Bass octave layout\n"
     "\n"
     "*Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E\n"
@@ -2217,13 +2222,13 @@ static const char* const kManualText_part10 =
     "The chapters above link here. Nothing in this part is needed to play.\n"
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "The smpl chunk is a small block inside a WAV file that samplers use; most\n"
     "audio editors can write it. LibreOrgan Sampler reads: *MIDI unity note*\n"
     "(dwMIDIUnityNote, the recorded pitch rounded DOWN to the nearest MIDI note),\n"
     "*MIDI pitch fraction* (dwMIDIPitchFraction, the offset above it as a fraction\n"
-    ;
-static const char* const kManualText_part11 =
     "of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four\n"
     "cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's\n"
     "start and end in frames; several loops allowed, the type ignored). Unity note\n"
@@ -2419,13 +2424,13 @@ static const char* const kManualText_part11 =
     "packing (about 2.5 times) and with half-rate releases (every release through\n"
     "the sinc filter); a cold load runs at the disk's speed (about 500 MB/s from a\n"
     "SATA SSD), a load from the page cache many times faster - never compare the\n"
+    ;
+static const char* const kManualText_part12 =
     "two.\n"
     "\n"
     "## 10.8 The polyphony measurement\n"
     "\n"
     "What it does: the level down to -52 dB, the limit out of the way, the attack\n"
-    ;
-static const char* const kManualText_part12 =
     "minimum time and delay off, two seconds of idle listening; every stop\n"
     "engaged (every button of the grid, transmissions included); keys struck\n"
     "again and again on every division over its own compass, one key twice a\n"
