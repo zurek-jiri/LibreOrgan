@@ -12,6 +12,30 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.114] - 2026-11-19
+
+### Changed
+- **One start picture on every system.** Windows and macOS showed a small
+  splash (smaller still with a small interface size) with the start's notes,
+  Linux the pipes over the whole window without a word. Now the pipes are
+  large everywhere - the splash is seven tenths of the screen's height - with
+  the name and the version under them, and the start's notes where the system
+  can show them (Windows, macOS).
+- **Audio routing: the help text is larger and shorter** and follows *Button
+  size*, as do the cards' status lines; Shift is told as what it is (a
+  multi-channel output of a division, C side / C# side), Alt as one channel
+  (mono). Where the header has no room for the text a "?" stands instead.
+  A line parts the header from *Organ out* and *Sound cards*.
+- **Linux with PipeWire: the cards' direct ALSA devices can be listed.** The
+  unfolded ALSA section has the tick box *Show the cards' direct ALSA
+  devices* - not recommended, and mutually exclusive with PipeWire: a card
+  opened directly plays nowhere else until every cable is removed from it.
+  Off by default; then nothing differs.
+
+### Fixed
+- **Audio routing: the Sample rate box was empty** when the driver ran at a
+  rate its own list does not name (Realtek ASIO after a change in its panel).
+
 ## [0.9.113] - 2026-11-19
 
 ### Fixed

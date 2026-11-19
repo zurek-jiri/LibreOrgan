@@ -4621,6 +4621,42 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   window: two changes 3 s apart left the Komplete at 256 beside 128): `reopenJackRoutesAfterClockChange` reopens a
   card whenever its buffer/rate differ from `jackServerClock` (the forced clock) and skips one that runs at it
   already; against a chain only a count stays (six reopenings of one card in five seconds).
+  0.9.114 (19 Nov 2026 evening, WINDOWS session after the Linux one; the checkout was `git reset --mixed origin/main`,
+  the Projucer resave for 0.9.113 pushed as a64fe4e, the CI exe of v0.9.113 deployed). The user's batch: (1) ONE START
+  PICTURE: `StartPicture::paint(g, area, picture, status)` (Main.cpp, before StartSplash) - the pipes as large as the
+  area allows, under them "LibreOrgan Sampler", "version N" and (when given) the status in two lines, every size
+  from the area's HEIGHT (name 4.5 %, 20-46 px; small 2.4 %, 13-24 px); an area under 300 px (the placeholder size a
+  Wayland compositor maps the window at) shows the picture alone, as the cover always did. Windows / macOS
+  `StartSplash`: 70 % of the work area's height (798 x 974 on 2560 x 1392), NO getDesktopScaleFactor override (the old
+  460 x 500 was "ostudně malé"; the interface is 100 % on his Windows, 75 % on his Linux). LINUX: ONLY
+  `StartCover::paint` changed (it calls StartPicture::paint with an empty status: name + version, no live notes - the
+  window is first painted after it is built) - the cover, its place, its first-paint timer and the whole 0.8.165-0.8.171
+  way the window comes up are untouched; the cover now fills its background (the console no longer shows beside the
+  picture for the 1.5 s). (2) AUDIO ROUTING TEXTS: the help text shorter and at max(13, 15 x scale()) px, its height
+  measured (`helpHeightFor`, a TextLayout) so the header grows with it; `helpButton` "?" (tooltip = the text, click =
+  the manual) instead when the width is under 380 px or the text over 132 px; Shift = "a multi-channel output of a
+  division ... (C side / C# side)", Alt = "one channel (mono)" (the user's words); the cards' status lines
+  max(11.5, 13 x scale()); `separatorY` = a thin line under the header (the lowest of help / block / buttons row),
+  sourcesTop = separatorY + 40 (was 110 / 138 fixed). (3) RATE BOX: the card's running rate is added to the list when
+  the driver's list lacks it (as the buffer since 0.9.82) - Realtek ASIO after its panel. (4) LINUX DIRECT ALSA
+  (written on Windows, NOT COMPILED OR RUN ON LINUX YET): `directAlsaDevicesShown()` (PlatformAudio.h atomic; member
+  `showDirectAlsaDevices`, machine key, read in loadSettings before any route opens), the PipeWire branch of
+  FilteredAlsaDeviceType::scanForDevices lists the direct devices too when set; `pipeWireTakesDirectAlsaRoutes()`
+  (= !flag && pipeWireCarriesTheCards()) replaces pipeWireCarriesTheCards() in sharedHostFor's 0.9.96 mapping and in
+  isAudioDeviceAvailableNow - with the flag a direct route STAYS direct; AudioRouting: `directAlsaButton` ("Show the
+  cards' direct ALSA devices - NOT recommended!") + the orange note `directAlsaNote` ("Mutually exclusive with
+  PipeWire! ...") laid out ONLY in the UNFOLDED ALSA section while viaPipeWire; a busy rule in rebuild() (Linux): a
+  card's direct ALSA device and its PipeWire (JACK) entry are one card (name containment as pipeWireClientForAlsaCard,
+  no JACK client opened) - while one is open here the other is busy and its cables are moved by dragging. The flag
+  OFF = exactly 0.9.113. The sound-server entries (Default ALSA Output, PipeWire Sound Server) stay listed (the
+  section needs chips to exist). NEXT LINUX SESSION: copy the NTFS sources to ~/LibreOrgan-linux, build, look at the
+  start cover (spectacle shots at start, as 0.8.165-0.8.171), tick the box, drop a cable on a direct device of a card
+  that is idle / plays through PipeWire here / plays in another program. Tests on Windows: %TEMP%\test_0114_splash.ps1
+  (PrintWindow of the process's windows at start; PrintWindow waits for the busy window thread, its picture comes at
+  ~4 s), %TEMP%\test_0108.ps1 -Tag t114 [-Bounds "44 88 1040 760"] (the header at 2210 and 1100 px: 2 and 7 lines).
+  NOT pushed: the Linux half is unverified. ASKED, NOT DONE: a random one of the website's six pipe pictures
+  (site/assets/pipes*.png, 1254 px, 1.5 MB each) on the start picture - feasible as JPEG at 1024 px (~1 MB in all)
+  through BinaryData in BOTH build systems (jucer + CMake juce_add_binary_data).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

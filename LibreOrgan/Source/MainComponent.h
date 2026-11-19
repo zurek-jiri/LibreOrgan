@@ -1107,6 +1107,7 @@ private:
     std::atomic<int> aggregatedRoutesRunning{ 0 };   // routes with an Aggregated WASAPI device started (0.8.148: the lanes cap cores / routes)
     int renderThreadsWasapi = 1;
     bool showUnusableAudioDevices = false;   // Linux: list also the ALSA devices of the cards the sound server holds
+    bool showDirectAlsaDevices = false;      // 0.9.114, Linux with PipeWire: the cards' direct ALSA devices listed too (not recommended)
     // Swell shutter curve: fast gain rise near closed, flattening when open.
     static float swellCurve(float position) noexcept;
     float expressionGainFor(const ManualConfig& config) const noexcept;

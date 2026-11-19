@@ -46,16 +46,25 @@ public:
     {
         getProperties().set("manualChapter", "Audio routing");
         setWantsKeyboardFocus(true);
-        help.setText("Drag a perspective (left) onto an output of a card: the output and its partner glow where the stereo pair will land; "
-            "Shift adds a second pair to the same source (the pipes alternate between the pairs by key, a C / C# split), Alt takes one channel. "
-            "Press a cable and it follows the mouse: let go on another output to plug it there; a click alone selects it, Delete (or its x) removes it. "
-            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title between two other cards or into a new row. "
-            "fx opens the effects of a row (volume, channel separation, equalizer, IR reverb); the meter beside it shows what the row plays.",
+        // 0.9.114 (the user: "ty texty okolo jsou malé, a nedají se číst. A s velikostí button size se nemění ...
+        // text musí být větší ... ale zase o to stručnější"; Shift explained - a multi-channel output of a division,
+        // the C / C# sides -, Alt = one channel, "mono"): short sentences at 15 px times Button size (layout()); when
+        // the header has no room for it a "?" stands there instead (the text in its tooltip, a click = the manual).
+        help.setText("Drag a perspective onto an output of a card: it plays through that stereo pair. "
+            "Shift + drag adds another pair for the same source - a multi-channel output of a division: its pipes alternate between the pairs by key (C side / C# side). "
+            "Alt + drag takes one channel (mono). "
+            "Press a cable to move it to another output; Delete removes the selected cable. Drag a card by its title. "
+            "fx = the effects of a row. F1 = the manual.",
             juce::dontSendNotification);
-        help.setFont(juce::FontOptions(12.5f));
+        help.setFont(juce::FontOptions(15.0f));
+        help.setMinimumHorizontalScale(1.0f);
         help.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
         help.setJustificationType(juce::Justification::topLeft);
         addAndMakeVisible(help);
+        helpButton.setButtonText("?");
+        helpButton.setTooltip(help.getText());
+        helpButton.onClick = [this] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target] { if (target != nullptr) target->showManualSection("Audio routing"); }); };
+        addChildComponent(helpButton);
         showCables.setButtonText("Show cables");
         showCables.setToggleState(true, juce::dontSendNotification);
         showCables.onClick = [this] { repaint(); };
@@ -140,6 +149,23 @@ public:
             rebuild();
         };
         addAndMakeVisible(unusableButton);
+        // 0.9.114: where PipeWire carries the cards, their direct ALSA devices behind a tick box that shows only in the
+        // UNFOLDED ALSA section, under its caption, with the warning beside it (painted: directAlsaNote).
+        directAlsaButton.setButtonText("Show the cards' direct ALSA devices - NOT recommended!");
+        directAlsaButton.setTooltip("Lists every card's direct ALSA device beside PipeWire's entries. NOT recommended, and mutually exclusive with PipeWire: "
+            "a card opened directly is taken whole - it plays nowhere else, not through PipeWire or JACK, in this program or any other, until every cable is removed from it. "
+            "A card that plays through PipeWire here cannot be opened directly before its PipeWire cables are removed (or moved over). "
+            "Unticked (the default): a route left on a direct device goes back to the card's PipeWire entry the next time it opens.");
+        directAlsaButton.setToggleState(owner.showDirectAlsaDevices, juce::dontSendNotification);
+        directAlsaButton.onClick = [this]
+        {
+            owner.showDirectAlsaDevices = directAlsaButton.getToggleState();
+            directAlsaDevicesShown().store(owner.showDirectAlsaDevices);
+            owner.saveSettings();
+            owner.rescanAudioDeviceLists(owner.showDirectAlsaDevices ? "the cards' direct ALSA devices listed too" : "the cards' direct ALSA devices left out");
+            rebuild();
+        };
+        addChildComponent(directAlsaButton);
 #endif
         rebuild();
         startTimer(100);   // the meters; the model's signature every 10th tick (1 s, as before)
@@ -158,6 +184,8 @@ public:
     {
         const auto glow = onColour();
         g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+        g.setColour(juce::Colours::white.withAlpha(0.14f));   // 0.9.114: the line between the header and the two columns
+        g.fillRect(10, separatorY, getWidth() - 20, 1);
         // The source column.
         g.setColour(juce::Colours::black.withAlpha(0.2f));
         g.fillRoundedRectangle(juce::Rectangle<float>(8.0f, (float)sourcesTop - 4.0f, (float)leftWidth - 8.0f, (float)juce::jmax(40, sourcesBottom - sourcesTop + 8)), 6.0f);
@@ -224,6 +252,15 @@ public:
                 g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
                 g.drawText((section.collapsed ? "+ " : "- ") + shownType(section.type) + (section.collapsed ? " (" + juce::String(section.count) + ")" : juce::String()), section.bounds, juce::Justification::centredLeft);
             }
+           #if JUCE_LINUX
+            if (!directAlsaNote.isEmpty())   // 0.9.114: the warning under the tick box of the unfolded ALSA section
+            {
+                g.setColour(glow);
+                g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
+                g.drawFittedText("Mutually exclusive with PipeWire! A card opened directly is taken whole: it plays nowhere else - not through PipeWire or JACK, "
+                    "in this program or any other - until every cable is removed from it.", directAlsaNote, juce::Justification::topLeft, 2);
+            }
+           #endif
         }
         for (const auto& card : cards)
         {
@@ -258,8 +295,8 @@ public:
             // The status line; orange with the note when the device also plays through another driver (0.9.93 - the
             // figures of the status are in the card's tooltip then).
             g.setColour(card.sharedNote.isNotEmpty() ? glow : card.busy ? juce::Colours::grey : juce::Colours::lightgrey);
-            g.setFont(juce::FontOptions(11.5f));
-            g.drawFittedText(card.sharedNote.isNotEmpty() ? card.sharedNote : shownType(card.type) + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 24, card.bounds.getWidth() - 20, 16, juce::Justification::centredLeft, 1);
+            g.setFont(juce::FontOptions(juce::jmax(11.5f, 13.0f * scale())));   // 0.9.114: larger, with Button size
+            g.drawFittedText(card.sharedNote.isNotEmpty() ? card.sharedNote : shownType(card.type) + "  -  " + card.status, card.bounds.getX() + 10, card.bounds.getY() + 23, card.bounds.getWidth() - 20, 19, juce::Justification::centredLeft, 1);
             // The channel names, vertical, above the jacks (read from the bottom up). Compact: the first ten letters.
             if (card.nameBand > 0)
             {
@@ -307,7 +344,7 @@ public:
             if (card.jacks.empty())
             {
                 g.setColour(juce::Colours::grey);
-                g.setFont(juce::FontOptions(11.0f));
+                g.setFont(juce::FontOptions(juce::jmax(11.0f, 13.0f * scale())));
                 g.drawText("outputs are known once the card is open - drop a perspective here to open it", card.bounds.withTrimmedTop(card.bounds.getHeight() - 30).reduced(10, 4), juce::Justification::centredLeft);
             }
         }
@@ -816,6 +853,24 @@ private:
             for (const auto& other : fresh)
             {
                 if (!other.open || other.type == card.type) continue;
+               #if JUCE_LINUX
+                // 0.9.114: a card's direct ALSA device and its PipeWire entry are ONE card (the word rule below misses
+                // "HD-Audio Generic, ALC1220 Analog; Direct hardware device ..." against "ALC1220 Analog"): while one of
+                // the two is open here the other is busy - its cables are moved over by dragging, never opened beside.
+                {
+                    const auto& alsa = card.type == "ALSA" ? card : other;
+                    const auto& jack = card.type == "ALSA" ? other : card;
+                    if (alsa.type == "ALSA" && jack.type == "JACK" && !FilteredAlsaDeviceType::isSoundServerDevice(alsa.name) && jack.name.isNotEmpty()
+                        && (alsa.name.containsIgnoreCase(jack.name) || jack.name.containsIgnoreCase(alsa.name.upToFirstOccurrenceOf(",", false, false).trim())))
+                    {
+                        card.busy = true; card.busyBecauseOf = other.key;
+                        card.busyReason = card.type == "ALSA"
+                            ? "busy: this card plays through PipeWire (" + other.name + ") - remove its PipeWire cables first, or drag that card (or its last cable) here to move everything over"
+                            : "busy: this card is open directly through ALSA (" + other.name + ") - remove its cables there first, or drag that card (or its last cable) here to move everything over";
+                        break;
+                    }
+                }
+               #endif
                 // 0.9.93 (the user): on Windows a card plays through ASIO and Windows Audio at once - only an
                 // exclusive-mode driver keeps the hardware to itself. Elsewhere (ALSA) the card is busy, as before.
                #if JUCE_WINDOWS
@@ -963,7 +1018,13 @@ private:
             auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
             if (device != nullptr)
             {
-                for (const double rate : device->getAvailableSampleRates()) c->rate.addItem(juce::String(juce::roundToInt(rate)) + " Hz", juce::roundToInt(rate));
+                // 0.9.114 (the user: Realtek ASIO's panel sets a rate its own list lacks - "Hz neukáže nic"): the rate
+                // the card runs at is listed whatever the driver's list says, as the buffer is.
+                auto rates = device->getAvailableSampleRates();
+                bool rateListed = false;
+                for (const double rate : rates) if (juce::roundToInt(rate) == juce::roundToInt(card.rate)) rateListed = true;
+                if (!rateListed && card.rate > 0.0) { rates.add(card.rate); rates.sort(); }
+                for (const double rate : rates) c->rate.addItem(juce::String(juce::roundToInt(rate)) + " Hz", juce::roundToInt(rate));
                 c->rate.setSelectedId(juce::roundToInt(card.rate), juce::dontSendNotification);
                 auto sizes = device->getAvailableBufferSizes();
                 if (!sizes.contains(card.buffer) && card.buffer > 0) sizes.add(card.buffer);
@@ -1022,7 +1083,17 @@ private:
     void layout()
     {
         const int width = juce::jmax(760, getWidth());
-        help.setBounds(10, 6, width - 660, 72);
+        // 0.9.114: the help text is as high as its words need at this width and size; the header grows with it
+        // (everything below starts under the header's line). Too narrow, or more than seven lines or so: the "?".
+        const float helpFont = juce::jmax(13.0f, 15.0f * scale());
+        help.setFont(juce::FontOptions(helpFont));
+        const int helpWidth = width - 644;
+        const int helpHeight = helpWidth >= 380 ? helpHeightFor(helpWidth, helpFont) : 9999;
+        const bool helpShown = helpHeight <= 132;
+        help.setVisible(helpShown);
+        helpButton.setVisible(!helpShown);
+        help.setBounds(10, 6, juce::jmax(10, helpWidth), helpShown ? helpHeight : 10);
+        helpButton.setBounds(10, 6, 30, 30);
         // 0.9.90: the right block of the header is ONE aligned strip - Master volume, the meter, Measure Polyphony -
         // with the switches on the line under it (the user: "the top right corner looks untidy").
         // 0.9.91: a block of two rows as high as the meter (72 px): Measure Polyphony and the meter stand over both
@@ -1049,7 +1120,11 @@ private:
         // left is too narrow for their texts.
         const int titleRight = gridLeft + 16 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(18.0f, juce::Font::bold)), "Sound cards"));
         const bool buttonsOnOwnLine = stripRight - juce::jmax(rowsLeft, titleRight) < 470;
-        sourcesTop = buttonsOnOwnLine ? 138 : 110;
+        // 0.9.114 (the user: "Sekce Organ Out a Sound Cards by mohla být trochu oddělena od hlavičky"): a thin line
+        // under the header - whichever of its parts reaches lowest -, the two titles a little under it.
+        const int headerBottom = juce::jmax(blockTop + blockHeight, helpShown ? 6 + helpHeight : 0, buttonsOnOwnLine ? blockTop + blockHeight + 4 + 24 : 0);
+        separatorY = headerBottom + 8;
+        sourcesTop = separatorY + 10 + 30;
         const int buttonsY = buttonsOnOwnLine ? blockTop + blockHeight + 4 : sourcesTop - 30;
         const int buttonsLeft = buttonsOnOwnLine ? juce::jmax(12, juce::jmin(rowsLeft, stripRight - 606)) : juce::jmax(rowsLeft, titleRight);
         const int fileButton = juce::jlimit(110, 150, (stripRight - buttonsLeft - 12) * 3 / 10);
@@ -1159,6 +1234,10 @@ private:
         unusableButton.setVisible(!viaPipeWire);   // 0.9.96: PipeWire carries the cards - nothing is "unusable" there
 #endif
         int cy = chipsTop + 24, cx = 12;
+       #if JUCE_LINUX
+        directAlsaButton.setVisible(false);
+        directAlsaNote = {};
+       #endif
         juce::String lastType;
         typeSections.clear();
         bool collapsed = false;
@@ -1183,6 +1262,17 @@ private:
                 int count = 0; for (const auto& other : cards) if (other.chip && other.type == card.type) ++count;
                 typeSections.push_back({ card.type, collapsed, count, { 12, cy, 400, 22 } });
                 lastType = card.type; cx = 12; cy += 26;
+               #if JUCE_LINUX
+                // 0.9.114: the unfolded ALSA section (PipeWire carries the cards) begins with the tick box of the
+                // direct devices and its warning; the folded section shows neither.
+                if (!collapsed && viaPipeWire && card.type == "ALSA")
+                {
+                    directAlsaButton.setBounds(12, cy, 470, 24);
+                    directAlsaButton.setVisible(true);
+                    directAlsaNote = { 16, cy + 26, juce::jmax(200, juce::jmin(right - 28, 980)), 36 };
+                    cy += 26 + 36 + 6;
+                }
+               #endif
             }
             if (collapsed) { card.bounds = {}; continue; }
             const int w = juce::jlimit(juce::roundToInt(120.0f * scale()), juce::roundToInt(320.0f * scale()),
@@ -1627,6 +1717,18 @@ private:
 
     MainComponent& owner;
     juce::Label help, sizeLabel, masterLabel;
+    juce::TextButton helpButton;       // 0.9.114: stands for the help text when the header has no room for it
+    int separatorY = 86;               // 0.9.114: the line under the header
+    // The height the help text needs at a width and a font (the Label's own margins counted).
+    int helpHeightFor(int width, float fontHeight) const
+    {
+        juce::AttributedString text;
+        text.append(help.getText(), juce::Font(juce::FontOptions(fontHeight)), juce::Colours::white);
+        text.setWordWrap(juce::AttributedString::byWord);
+        juce::TextLayout layoutOfText;
+        layoutOfText.createLayout(text, (float)juce::jmax(40, width - 14));
+        return juce::roundToInt(layoutOfText.getHeight() + fontHeight * 0.5f) + 6;
+    }
     juce::ToggleButton showCables;
     juce::ComboBox sizeBox;
     LearnableSlider masterSlider;      // 0.9.89: the console's master volume (the same value)
@@ -1635,6 +1737,8 @@ private:
     juce::TextButton saveRoutingButton, loadRoutingButton, defaultRoutingButton;   // 0.9.94: the routing file
 #if JUCE_LINUX
     juce::ToggleButton unusableButton; // 0.9.89: the ALSA "list unusable devices" switch (was on the audio tabs)
+    juce::ToggleButton directAlsaButton;       // 0.9.114: "Show the cards' direct ALSA devices" (PipeWire systems; in the unfolded ALSA section)
+    juce::Rectangle<int> directAlsaNote;       // where its warning is painted; empty = not shown
 #endif
     // 0.9.90: the fx button takes a right click (the reset menu) - a TextButton swallows it as a press otherwise.
     struct FxButton final : public juce::TextButton

@@ -27,38 +27,67 @@
 // the main window is built, so the splash paints itself synchronously (performAnyPendingRepaintsNow) at every
 // note. Not on Linux: a separate window never appeared on KDE Wayland (0.8.167); the StartCover inside the
 // window stays there.
+// 0.9.114 (the user: "stále je odlišná splash screen na windows a linux ... na linuxu jsou píšťaly krásně velké,
+// ale chybí jim texty; na windows jsou píšťaly ostudně malé, ale mají pod sebou užitečné texty"): ONE picture for
+// every system - the pipes large, under them the name, the version and (where the start can tell it) the status.
+// The Windows / macOS splash window and the Linux cover inside the main window both paint through this.
+// Everything is proportional to the area's height; an area too small for texts (the placeholder size a Wayland
+// compositor maps the window at for a moment) shows the picture alone, as the Linux cover always did.
+namespace StartPicture
+{
+    inline void paint(juce::Graphics& g, juce::Rectangle<int> area, const juce::Image& picture, const juce::String& status)
+    {
+        g.setColour(juce::Colour(0xff1c1f24));
+        g.fillRect(area);
+        const float h = (float)area.getHeight(), w = (float)area.getWidth();
+        if (h < 300.0f || w < 300.0f)
+        {
+            g.drawImage(picture, area.toFloat(), juce::RectanglePlacement::centred);
+            return;
+        }
+        const float nameFont = juce::jlimit(20.0f, 46.0f, h * 0.045f), smallFont = juce::jlimit(13.0f, 24.0f, h * 0.024f);
+        const float nameHeight = nameFont * 1.35f, versionHeight = smallFont * 1.5f, statusHeight = status.isNotEmpty() ? smallFont * 2.9f : 0.0f;
+        const float gap = h * 0.015f, margin = h * 0.025f;
+        const float texts = nameHeight + versionHeight + statusHeight;
+        const float side = juce::jmin(w - 2.0f * margin, h - 2.0f * margin - gap - texts);
+        float y = (float)area.getY() + (h - (side + gap + texts)) / 2.0f;
+        g.drawImage(picture, juce::Rectangle<float>((float)area.getX() + (w - side) / 2.0f, y, side, side), juce::RectanglePlacement::centred);
+        y += side + gap;
+        const auto line = [&](float height) { const juce::Rectangle<float> r((float)area.getX() + margin, y, w - 2.0f * margin, height); y += height; return r; };
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(nameFont, juce::Font::bold));
+        g.drawText("LibreOrgan Sampler", line(nameHeight), juce::Justification::centred);
+        g.setColour(juce::Colours::lightgrey);
+        g.setFont(juce::FontOptions(smallFont));
+        g.drawText(juce::String("version ") + ProjectInfo::versionString, line(versionHeight), juce::Justification::centred);
+        if (status.isNotEmpty())
+            g.drawFittedText(status, line(statusHeight).toNearestInt(), juce::Justification::centred, 2, 0.8f);
+    }
+}
+
 struct StartSplash final : public juce::TopLevelWindow
 {
     StartSplash() : juce::TopLevelWindow("LibreOrgan Sampler", true)
     {
         picture = juce::ImageCache::getFromMemory(BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize);
         setOpaque(true);
-        // 0.9.87: the same picture as the Linux splash - the pipes at 384 px (the user: "líbí se mi ty veliké píšťaly,
-        // které má linux"; every platform shows the one picture).
-        const int w = 460, h = 500;
+        // 0.9.114: seven tenths of the screen's height, whatever the interface size is (460 x 500 at the interface
+        // scale was 345 x 375 px at 75 % - "ostudně malé píšťaly").
         juce::Rectangle<int> area(0, 0, 1920, 1080);
         if (auto* display = UIScale::startDisplay()) area = display->userArea;
+        const int h = juce::jmax(420, area.getHeight() * 7 / 10), w = juce::jmin(area.getWidth() - 40, h * 82 / 100);
         setBounds(area.getCentreX() - w / 2, area.getCentreY() - h / 2, w, h);
         setVisible(true);
         toFront(false);
         paintNow();
     }
-    float getDesktopScaleFactor() const override { return UIScale::factor(); }
     void setStatus(const juce::String& text) { status = text; repaint(); paintNow(); }
     void paintNow() { if (auto* peer = getPeer()) peer->performAnyPendingRepaintsNow(); }
     void paint(juce::Graphics& g) override
     {
-        g.fillAll(juce::Colour(0xff1c1f24));
+        StartPicture::paint(g, getLocalBounds(), picture, status);
         g.setColour(juce::Colours::darkgrey);
         g.drawRect(getLocalBounds(), 1);
-        const float side = 384.0f;
-        g.drawImage(picture, juce::Rectangle<float>(((float)getWidth() - side) / 2.0f, 16.0f, side, side), juce::RectanglePlacement::centred);
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(22.0f, juce::Font::bold));
-        g.drawText("LibreOrgan Sampler", 0, 408, getWidth(), 30, juce::Justification::centred);
-        g.setColour(juce::Colours::lightgrey);
-        g.setFont(juce::FontOptions(13.0f));
-        g.drawFittedText(status, getLocalBounds().withTop(getHeight() - 60).reduced(16, 6), juce::Justification::centred, 2, 0.8f);
     }
     juce::Image picture;
     juce::String status{ "Starting ..." };
@@ -444,7 +473,10 @@ public:
             bool painted = false;
             void paint (juce::Graphics& g) override
             {
-                juce::ImageComponent::paint (g);
+                // 0.9.114: the one start picture of every system (StartPicture, above): the pipes, the name and the
+                // version. ONLY what is painted changed - the cover itself, its place in the window, its first-paint
+                // timer and the whole way the window comes up (0.8.165-0.8.171) are as they were.
+                StartPicture::paint (g, getLocalBounds(), getImage(), {});
                 if (painted) return;
                 painted = true;
                 CrashHandler::note("Start picture first painted at " + juce::String(getWidth()) + " x " + juce::String(getHeight()) + " px");

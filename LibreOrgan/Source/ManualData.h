@@ -988,9 +988,9 @@ static const char* const kManualText_part4 =
     "**Drag a perspective onto an output**: while the mouse is over a card its\n"
     "output and the pair partner glow orange and the label under the cursor says\n"
     "what will land there (\"7+8\"); let go and that stereo pair replaces the\n"
-    "route's channels, with **Shift** the pair is *added* (two pairs on one\n"
-    "source = the pipes alternate between them by key, a C / C# split), with\n"
-    "**Alt** a single channel is taken. Press a **cable** and it is yours: it\n"
+    "route's channels, with **Shift** the pair is *added* (a multi-channel output\n"
+    "of a division: the pipes alternate between the pairs by key, C side / C#\n"
+    "side), with **Alt** a single channel is taken (mono). Press a **cable** and it is yours: it\n"
     "leaves its output and follows the mouse - let go on another output (or\n"
     "card) to plug it there, anywhere else and it returns; a click alone selects\n"
     "it (the others dim), Delete or the x at its end removes it; the last cable\n"
@@ -1245,7 +1245,10 @@ static const char* const kManualText_part6 =
     "cards stands the system's default output (under ALSA), which is PipeWire\n"
     "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
-    "sound cards.\n"
+    "sound cards. The cards' direct ALSA devices stay hidden: the unfolded *ALSA*\n"
+    "section has the tick box *Show the cards' direct ALSA devices* for the rare\n"
+    "case - **not recommended**, and mutually exclusive with PipeWire: a card\n"
+    "opened directly plays nowhere else until every cable is removed from it.\n"
     "\n"
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "- **Pitch shift + time stretch**: the same copy, the attack (downwards) and\n"
     "  the release stretched back towards the source's duration. Large shifts\n"
     "  downwards can fray the attack: lower the attack stretch or use the plain\n"
+    ;
+static const char* const kManualText_part7 =
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
     "  octave, but it wobbles slightly upwards, loses body two octaves away and\n"
-    ;
-static const char* const kManualText_part7 =
     "  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).\n"
     "\n"
     "Until a pipe's copy is ready it plays by resampling; the stop buttons show\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "the fade-out. The two together shape the join between the note and its\n"
     "release.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Release sample volume\n"
     "\n"
     "All release samples, -20 to +10 dB (default 0); \"-inf\" silences them.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Release cutting\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
     "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
+    ;
+static const char* const kManualText_part9 =
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
     "that width.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: release length (pitch shift)\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "One collapsed section per division, the same settings as the Divisions\n"
     "dialog.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Stops and sample folders\n"
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
-    ;
-static const char* const kManualText_part10 =
     "Stop List.\n"
     "\n"
     "### Shown in window\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "with the computer and every audio route, and pictures of the program's\n"
     "windows and dialogs, taken by the program itself (the Audio routing always,\n"
     "open or not) - no samples. *Add screenshot files...* is optional: picture\n"
+    ;
+static const char* const kManualText_part11 =
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
     "step no program can do for you (GitHub takes files only that way); without\n"
     "the zip a report gives nothing to work from. A free GitHub account is\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "trees are estimated against the free memory and a warning is logged; the\n"
     "load is never refused.\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
-    ;
-static const char* const kManualText_part12 =
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
     "## 10.7 RAM: the storage options measured\n"

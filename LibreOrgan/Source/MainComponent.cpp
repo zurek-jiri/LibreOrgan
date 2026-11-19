@@ -6826,7 +6826,7 @@ bool MainComponent::isAudioDeviceAvailableNow(const juce::String& typeName, cons
     // 0.9.96: PipeWire carries the cards and the route names a card's direct ALSA device (not listed any more):
     // it is "there" when PipeWire shows that card - the route then moves to PipeWire's entry (sharedHostFor).
     if (typeName.equalsIgnoreCase("ALSA") && !FilteredAlsaDeviceType::isSoundServerDevice(deviceName)
-        && findSharedHost(typeName, deviceName) == nullptr && pipeWireCarriesTheCards())
+        && findSharedHost(typeName, deviceName) == nullptr && pipeWireTakesDirectAlsaRoutes())   // 0.9.114: not when the direct devices are asked for
     {
         const bool there = pipeWireClientForAlsaCard(deviceName).isNotEmpty();
         if (!there && error != nullptr) *error = "PipeWire shows no such card now";
@@ -7312,7 +7312,7 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
     // PipeWire most of the time and is no longer listed. Its rate and buffer are not carried over (a JACK route
     // takes PipeWire's clock). No such card in PipeWire: the direct device is tried as before.
     if (typeName.equalsIgnoreCase("ALSA") && name.isNotEmpty() && !FilteredAlsaDeviceType::isSoundServerDevice(name)
-        && findSharedHost(typeName, name) == nullptr && pipeWireCarriesTheCards())
+        && findSharedHost(typeName, name) == nullptr && pipeWireTakesDirectAlsaRoutes())   // 0.9.114: a direct device the user asked for stays direct
     {
         const auto client = pipeWireClientForAlsaCard(name);
         if (client.isNotEmpty())
@@ -15646,7 +15646,7 @@ namespace
     {
         static const juce::StringArray keys{ "windowX", "windowY", "windowWidth", "windowHeight", "windowMaximised", "twoWindows",
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
-            "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "configEditorCollapsed", "configurationFile",
+            "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
             "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
@@ -27363,8 +27363,10 @@ void MainComponent::loadSettings()
     SamplerEngine::setKernelOverride(SamplerEngine::kernelKindForName(renderKernel));
     renderThreadsWasapi = juce::jlimit(1, 63, (int)parsed.getProperty("renderThreadsWasapi", 1));
     showUnusableAudioDevices = (bool)parsed.getProperty("showUnusableAudioDevices", false);
+    showDirectAlsaDevices = (bool)parsed.getProperty("showDirectAlsaDevices", false);   // 0.9.114 (read before any route opens)
 #if JUCE_LINUX
     unusableAudioDevicesShown().store(showUnusableAudioDevices);
+    directAlsaDevicesShown().store(showDirectAlsaDevices);
 #endif
     wasapiRenderLanes.store(renderThreadsWasapi);
     ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
@@ -28250,6 +28252,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("renderThreadPreset", renderThreadPreset);
     obj->setProperty("renderThreadsWasapi", renderThreadsWasapi);
     obj->setProperty("showUnusableAudioDevices", showUnusableAudioDevices);
+    obj->setProperty("showDirectAlsaDevices", showDirectAlsaDevices);
     obj->setProperty("configurationName", currentConfigurationName);
     {
         // Where the main window is (and whether it is maximised): restored at the

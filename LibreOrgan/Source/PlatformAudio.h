@@ -21,6 +21,11 @@
 // server or another program) are listed too. Off by default: chosen on a route
 // they give no channels or 'none'. The settings editor switches it.
 inline std::atomic<bool>& unusableAudioDevicesShown() { static std::atomic<bool> flag{ false }; return flag; }
+// 0.9.114 (the user: "přímé přístupy ke kartám přes ALSA ... ve výjimečných případech by se mohly hodit"): where
+// PipeWire carries the cards, their direct ALSA devices are listed all the same when this is set (the tick box in
+// the ALSA section of the Audio routing; off by default - then nothing differs from 0.9.96-0.9.113). While it is
+// set, a route on a direct device STAYS direct (it is not moved to PipeWire's entry of the card).
+inline std::atomic<bool>& directAlsaDevicesShown() { static std::atomic<bool> flag{ false }; return flag; }
 // What the last ALSA scan left out, for the activity log.
 inline juce::String& hiddenAlsaDevicesNote() { static juce::String note; return note; }
 
@@ -203,7 +208,7 @@ public:
             for (const auto& name : allOutputs)
             {
                 if (isTemplate(name)) continue;
-                if (isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0) outputs.add(name); else ++direct;
+                if (isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0 || directAlsaDevicesShown().load()) outputs.add(name); else ++direct;   // 0.9.114: the direct devices too, when asked for
             }
             for (const auto& name : allInputs)
                 if (!isTemplate(name) && (isSoundServerDevice(name) || heldAlsaDeviceNames().count(name) > 0)) inputs.add(name);
@@ -714,6 +719,11 @@ private:
 };
 
 inline juce::StringArray jackPlaybackClients() { return FilteredJackDeviceType::audioClients(true); }
+
+// 0.9.114: a route that names a card's direct ALSA device goes to PipeWire's entry of the card (0.9.96) - unless the
+// user asked for the direct devices (directAlsaDevicesShown): then it stays where it was put.
+inline bool pipeWireCarriesTheCards();
+inline bool pipeWireTakesDirectAlsaRoutes() { return !directAlsaDevicesShown().load() && pipeWireCarriesTheCards(); }
 
 inline bool pipeWireCarriesTheCards()
 {

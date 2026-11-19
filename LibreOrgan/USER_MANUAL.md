@@ -976,9 +976,9 @@ aisles between the rows, never across a card.
 **Drag a perspective onto an output**: while the mouse is over a card its
 output and the pair partner glow orange and the label under the cursor says
 what will land there ("7+8"); let go and that stereo pair replaces the
-route's channels, with **Shift** the pair is *added* (two pairs on one
-source = the pipes alternate between them by key, a C / C# split), with
-**Alt** a single channel is taken. Press a **cable** and it is yours: it
+route's channels, with **Shift** the pair is *added* (a multi-channel output
+of a division: the pipes alternate between the pairs by key, C side / C#
+side), with **Alt** a single channel is taken (mono). Press a **cable** and it is yours: it
 leaves its output and follows the mouse - let go on another output (or
 card) to plug it there, anywhere else and it returns; a click alone selects
 it (the others dim), Delete or the x at its end removes it; the last cable
@@ -1229,7 +1229,10 @@ through - the output chosen in the desktop's sound settings. Beside the
 cards stands the system's default output (under ALSA), which is PipeWire
 too. A configuration saved on a card's direct ALSA device moves to the same
 card's PipeWire entry by itself. MIDI devices are never listed among the
-sound cards.
+sound cards. The cards' direct ALSA devices stay hidden: the unfolded *ALSA*
+section has the tick box *Show the cards' direct ALSA devices* for the rare
+case - **not recommended**, and mutually exclusive with PipeWire: a card
+opened directly plays nowhere else until every cable is removed from it.
 
 **A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its
 own) keeps the ALSA list of the cards: a card another program holds is left
