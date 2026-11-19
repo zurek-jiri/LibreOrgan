@@ -421,6 +421,18 @@ inline std::function<void(juce::AudioIODevice*)>& pipeWireClockChangedHook()
 // boxes: JUCE's own offers only the current values. A choice sets PipeWire's
 // clock (pw-metadata), waits until the server reports it, and opens the
 // client then - never during the change.
+juce::StringArray jackPlaybackClients();   // (FilteredJackDeviceType::audioClients(true), defined below)
+
+// 0.9.112: PipeWire's buffer is ONE value for this computer - the last one the user chose in a Buffer box, kept in
+// PipeWireBuffer.txt beside the settings; 512 until one is chosen. Never the size a route happens to remember
+// (PipeWire's default 1024 got into every route that way and came back at every start).
+inline juce::File pipeWireBufferFile() { return CrashHandler::detail::logDirectory().getParentDirectory().getChildFile("PipeWireBuffer.txt"); }
+inline int pipeWireChosenBuffer()
+{
+    const int frames = pipeWireBufferFile().loadFileAsString().trim().getIntValue();
+    return frames >= 16 && frames <= 8192 ? frames : 512;
+}
+
 class PipeWireJackDevice final : public ForwardingAudioIODevice
 {
 public:
@@ -458,8 +470,10 @@ public:
         int serverBuffer = 0, serverRate = 0;
         return jackServerClock(serverBuffer, serverRate) && serverRate > 0 ? (double)serverRate : 0.0;
     }
+    void close() override { clockBuffer = 0; inner->close(); }
     int getCurrentBufferSizeSamples() override
     {
+        if (clockBuffer > 0) return clockBuffer;   // 0.9.112: the buffer the program set for PipeWire
         const int size = inner->getCurrentBufferSizeSamples();
         if (size > 0) return size;
         int serverBuffer = 0, serverRate = 0;
@@ -468,34 +482,54 @@ public:
     int getDefaultBufferSize() override { return getCurrentBufferSizeSamples(); }
     juce::String open(const juce::BigInteger& inputChannels, const juce::BigInteger& outputChannels, double sampleRate, int bufferSizeSamples) override
     {
+        // 0.9.112: a card that is not there (unplugged) "opens" all the same - a client wired to nothing, run at
+        // PipeWire's default size beside the graph. Never: the route waits for the card instead.
+        if (pipeWireJackLibraryLoaded() && !jackPlaybackClients().contains(getName()))
+            return "PipeWire shows no card \"" + getName() + "\" now (unplugged or switched off)";
         int wantBuffer = bufferSizeSamples > 0 ? bufferSizeSamples : 0;
         int wantRate = sampleRate > 0.0 ? juce::roundToInt(sampleRate) : 0;
         int serverBuffer = 0, serverRate = 0;
         const bool known = jackServerClock(serverBuffer, serverRate);
         // 0.9.111: PipeWire has ONE clock for every card. A card opened while other cards of ours play takes the
         // clock in force, whatever buffer its route remembers - only the user's own choice in the Buffer / Sample
-        // rate boxes changes it for all. The first card takes its remembered buffer; with none remembered and
-        // nothing forced, 512 frames (PipeWire's own default of 1024 is slow under the fingers).
+        // rate boxes changes it for all. The first card takes its remembered buffer, else 512 frames.
+        // 0.9.112 (#250): the buffer is ALWAYS set by the program (clock.force-quantum) and the set value is what
+        // the device reports - what a JACK client says is not to be trusted (a client beside the graph: 1024 while
+        // 256 runs; an open card on Debian 13: 1024 while its callbacks carry 512, so "nothing could be changed").
+        const bool pipeWire = pipeWireJackLibraryLoaded();
+        int forcedBuffer = 0, forcedRate = 0;
+        if (pipeWire) pipeWireForcedClock(forcedBuffer, forcedRate);
+        const int inForce = forcedBuffer > 0 ? forcedBuffer : 0;
         const bool othersPlay = heldJackDeviceNames().size() > 1;
         if (othersPlay && pipeWireUserSetsClock() == 0)
         {
-            if (known && ((wantBuffer > 0 && wantBuffer != serverBuffer) || (wantRate > 0 && wantRate != serverRate)))
+            const int clockNow = inForce > 0 ? inForce : serverBuffer;
+            if (known && ((wantBuffer > 0 && wantBuffer != clockNow) || (wantRate > 0 && wantRate != serverRate)))
                 CrashHandler::note("JACK: " + getName() + " remembers " + juce::String(wantBuffer) + " frames / " + juce::String(wantRate)
-                    + " Hz - opened at the clock in force, " + juce::String(serverBuffer) + " / " + juce::String(serverRate) + " (other cards play)");
-            wantBuffer = 0; wantRate = 0;
+                    + " Hz - opened at the clock in force, " + juce::String(clockNow) + " / " + juce::String(serverRate) + " (other cards play)");
+            wantBuffer = clockNow; wantRate = 0;
         }
-        else if (!othersPlay && wantBuffer == 0 && known)
+        else if (known && pipeWire && pipeWireUserSetsClock() == 0)
         {
-            int forcedBuffer = 0, forcedRate = 0;
-            pipeWireForcedClock(forcedBuffer, forcedRate);
-            if (forcedBuffer == 0)
-            {
-                wantBuffer = 512;
-                CrashHandler::note("JACK: no buffer is remembered for " + getName() + " and PipeWire has none set - 512 frames asked for");
-            }
+            // The first card: this computer's buffer (the user's last choice, else 512).
+            const int chosen = pipeWireChosenBuffer();
+            if (wantBuffer != chosen)
+                CrashHandler::note("JACK: " + getName() + " opens at this computer's PipeWire buffer, " + juce::String(chosen) + " frames"
+                    + (wantBuffer > 0 ? " (the route remembered " + juce::String(wantBuffer) + ")" : juce::String()));
+            wantBuffer = chosen;
         }
-        const bool changeBuffer = known && wantBuffer > 0 && wantBuffer != serverBuffer;
+        clockBuffer = 0;
+        // The set value is compared, never a client's report; a size that only needs pinning (PipeWire runs at it
+        // by itself) is set quietly and tells nobody.
+        const bool changeBuffer = known && wantBuffer > 0 && (pipeWire ? wantBuffer != inForce && (inForce > 0 || wantBuffer != serverBuffer) : wantBuffer != serverBuffer);
         const bool changeRate = known && wantRate > 0 && wantRate != serverRate;
+        if (pipeWire && known && wantBuffer > 0 && inForce == 0 && !changeBuffer)
+        {
+            const auto pinError = pipeWireSetClock(wantBuffer, 0);
+            CrashHandler::note("JACK: PipeWire's buffer pinned at " + juce::String(wantBuffer) + " frames for " + getName()
+                + (pinError.isEmpty() ? juce::String() : " - NOT set: " + pinError));
+            if (pinError.isNotEmpty()) wantBuffer = 0;
+        }
         bool changed = false;
         if (changeBuffer || changeRate)
         {
@@ -527,8 +561,16 @@ public:
             const int gotRate = juce::roundToInt(inner->getCurrentSampleRate());
             const bool sane = got >= 16;
             const bool asked = (!changeBuffer || got == wantBuffer) && (!changeRate || gotRate == wantRate);
-            if (sane && (asked || attempt == 4))
+            if (sane && (asked || attempt >= 1))   // 0.9.112: one more try at most - the client's own report may stay wrong for good
             {
+                if (pipeWire && wantBuffer > 0)
+                {
+                    clockBuffer = wantBuffer;
+                    if (pipeWireUserSetsClock() > 0) pipeWireBufferFile().replaceWithText(juce::String(wantBuffer));   // the user's choice, for the next starts
+                    if (got != wantBuffer)
+                        CrashHandler::note("JACK: " + getName() + " reports " + juce::String(got) + " frames, PipeWire's buffer is set to "
+                            + juce::String(wantBuffer) + " - " + juce::String(wantBuffer) + " is shown and expected");
+                }
                 if (changed)
                     CrashHandler::note("JACK: " + getName() + " open with " + juce::String(got) + " frames / " + juce::String(gotRate) + " Hz"
                         + (asked ? juce::String() : juce::String(" (not what was asked for)")) + " after "
@@ -550,6 +592,8 @@ public:
         }
         return error;
     }
+private:
+    int clockBuffer = 0;   // the buffer set for PipeWire at the open (0.9.112); 0 = what the client reports
 };
 
 // JUCE's JACK type lists every client that owns a port, MIDI bridges and MIDI
@@ -622,6 +666,8 @@ private:
     std::unique_ptr<juce::AudioIODeviceType> inner;
     juce::StringArray outputs, inputs;
 };
+
+inline juce::StringArray jackPlaybackClients() { return FilteredJackDeviceType::audioClients(true); }
 
 inline bool pipeWireCarriesTheCards()
 {

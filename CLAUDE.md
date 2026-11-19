@@ -4573,6 +4573,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Audio 6 by ORGAN_TEST_ROUTE -> "remembers 1024 ... opened at ... 512", both cards at 512, no chain (the two-card
   case 0.9.110 could not test). The user's saved routes remember 1024: the first card of a start sets 1024 until he
   chooses 512 in the Buffer box once.
+  0.9.112 (19 Nov 2026, Linux; #250 from the Core 2 Duo laptop, Debian 13: "karty nejdou přepnout na žádný jiný
+  buffer, drží si furt 1024" + the user's unplugged Komplete: grey "1024", active again at 1024 beside the other
+  card's 256): BOTH = A JACK CLIENT'S OWN BUFFER REPORT IS NOT TO BE TRUSTED ON PIPEWIRE. #250's log: every callback
+  "frames 512..512, expected 1024" on both cards, four "buffer of X set to 512" with NO "JACK: PipeWire clock" line -
+  PipeWire ran at 512, the open device said 1024, the probe said 512 = "nothing to change". The Komplete: the silence
+  recovery reopened a card that was gone; JUCE's JACK device "opens" as a client wired to nothing, which PipeWire
+  runs at its default 1024 beside the graph, and nothing wired it again when the card came back. NOW
+  (PlatformAudio.h `PipeWireJackDevice::open`): the buffer is ALWAYS set by the program - compared with
+  clock.force-quantum (`pipeWireForcedClock`), never with a client's report; unforced and equal = "pinned" quietly
+  (no hook); `clockBuffer` (member) = the set value, returned by getCurrentBufferSizeSamples while open (log "X
+  reports N frames, PipeWire's buffer is set to M"); the open-wait loop takes a sane size after ONE more try (the
+  report may stay wrong for good); with real jackd (`!pipeWireJackLibraryLoaded()`) everything as before. A card
+  not among `jackPlaybackClients()` is REFUSED at open ("PipeWire shows no card ... now"). checkAudioCallbackHealth:
+  a silent JACK card that PipeWire no longer lists is not reopened - `closeAudioDevice()`, log "Sound card X
+  (PipeWire) went away ...", a Messages note; the routes keep the card in their state XML and
+  watchMissingAudioDevices opens them when the list has it again (it waits while voices sound). FOUND BY THE TEST:
+  the recovery was handed the division's OWN manager for default routes (extraAudioManagers[i], no device when the
+  route plays through a shared host) - it did nothing for them on any system; `managerOfDefault` =
+  managerForRoute(manual, "default"). This changes Windows too: a silent ASIO/WASAPI card of a default route is now
+  reopened by the recovery as the perspective routes' always was - NOT run on Windows. Test (local build): a null
+  sink as a card (`pactl load-module module-null-sink sink_name=lo_test_card sink_properties=device.description=
+  LoTestCard`, unload-module = unplugged): route moved to it, gone -> "went away" 6 s later, came -> "available
+  again: reopening", both clients at the forced buffer in pw-top. NOT run: the real Komplete, the Debian 13 laptop
+  (the user's). While the program plays PipeWire's buffer is forced for the whole desktop and stays so after it.
+  0.9.112 SECOND PART (the user, on my tests that all ended at 1024: "testoval jsi pouze debilních 1024 ... proč je
+  to zkurvený default"): 1024 = PipeWire's default, saved with every route as "its buffer" and brought back by the
+  first card of every start (the 0.9.111 rule "the first card takes its remembered buffer" is REPLACED). PipeWire's
+  buffer is ONE value per computer: `pipeWireChosenBuffer()` = PipeWireBuffer.txt beside settings.json (written in
+  open() when `pipeWireUserSetsClock() > 0`, i.e. the Buffer box), 512 without the file; the first card opens at
+  it whatever its route remembers (log "opens at this computer's PipeWire buffer, N frames (the route remembered
+  M)"), later cards at the clock in force. Tested: no file -> 512 (route remembered 1024), ORGAN_JACK_BUFFER=256 ->
+  256 + file "256", the second card "opened at the clock in force, 256", restart -> 256. RULE (the user): never
+  test with the value that was there before - a test of a setting must end at a value DIFFERENT from the old one.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

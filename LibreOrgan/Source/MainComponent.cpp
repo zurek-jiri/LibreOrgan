@@ -10017,8 +10017,25 @@ void MainComponent::checkAudioCallbackHealth()
                     state->second.seconds = 0;
                     const auto typeBefore = manager->getCurrentAudioDeviceType();
                     const auto nameBefore = manager->getCurrentAudioDevice() != nullptr ? manager->getCurrentAudioDevice()->getName() : juce::String();
-                    reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + (afterDeviceChange ? " right after the system's devices changed" : " for 4 s") + " - recovery");
-                    if (manager->getCurrentAudioDevice() == nullptr) cardWentAway(typeBefore, nameBefore, "it stopped answering (switched off or unplugged)");
+                    bool cardGone = false;
+                   #if JUCE_LINUX
+                    // 0.9.112: a card of PipeWire that is not in its list any more was unplugged or switched off -
+                    // nothing is reopened (it "opened" as a client wired to nothing, shown at 1024 frames and
+                    // never wired again when the card came back). Its device is closed, the routes keep the
+                    // card and wait: watchMissingAudioDevices opens them when PipeWire shows the card again.
+                    if (typeBefore.equalsIgnoreCase("JACK") && nameBefore.isNotEmpty() && pipeWireCarriesTheCards()
+                        && !FilteredJackDeviceType::audioClients(true).contains(nameBefore))
+                    {
+                        cardGone = true;
+                        manager->closeAudioDevice();
+                        refreshSoundCardsQuietly();
+                        ++unavailableCardsVersion;
+                        CrashHandler::note("Sound card " + nameBefore + " (PipeWire) went away: its device is closed, its cables wait - opened again when it comes back");
+                        noteMessage("Sound card", "\"" + nameBefore + "\" went away (unplugged or switched off). Its cables wait; it plays again by itself when it comes back.");
+                    }
+                   #endif
+                    if (!cardGone) reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + (afterDeviceChange ? " right after the system's devices changed" : " for 4 s") + " - recovery");
+                    if (!cardGone && manager->getCurrentAudioDevice() == nullptr) cardWentAway(typeBefore, nameBefore, "it stopped answering (switched off or unplugged)");
                 }
                 else if (state->second.reopenedMs >= 0.0 && nowMs - state->second.reopenedMs > 8000.0 && !state->second.noticed)
                 {
@@ -10069,8 +10086,15 @@ void MainComponent::checkAudioCallbackHealth()
             deviceJumpDetail << (deviceJumpDetail.isEmpty() ? "" : "; ") << callback->label() << ": " << jumps;
         }
     };
-    check(primaryAudioCallback.get(), &deviceManager);
-    for (size_t i = 0; i < extraAudioCallbacks.size(); ++i) check(extraAudioCallbacks[i].get(), extraAudioManagers[i].get());
+    // 0.9.112: the manager the route really plays through (a shared host of its card) - with the division's own
+    // manager, which holds no device then, the recovery of a default route did nothing at all.
+    auto managerOfDefault = [this](int manual, juce::AudioDeviceManager* own)
+    {
+        auto* inUse = managerForRoute(manual, "default");
+        return inUse != nullptr ? inUse : own;
+    };
+    check(primaryAudioCallback.get(), managerOfDefault(0, &deviceManager));
+    for (size_t i = 0; i < extraAudioCallbacks.size(); ++i) check(extraAudioCallbacks[i].get(), managerOfDefault((int)i + 1, extraAudioManagers[i].get()));
     for (auto& entry : perspectiveAudioRoutes)
         if (entry.second != nullptr) check(entry.second->callback.get(), entry.second->managerInUse);
     {

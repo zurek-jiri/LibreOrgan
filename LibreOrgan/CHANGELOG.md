@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.112] - 2026-11-19
+
+### Fixed
+- **Linux: the buffer of a card could not be changed (#250).** On some systems
+  an open card reported 1024 frames while PipeWire ran at 512: the program
+  showed 1024, found "512" in force already and changed nothing. The program
+  now always sets PipeWire's buffer itself and shows the value it set.
+- **Linux: 1024 frames came back at every start.** PipeWire's default size had
+  been remembered with every route. The buffer is now one value for the
+  computer: the last one chosen in a Buffer box of the Audio routing, 512
+  frames until one is chosen.
+- **Linux: a card unplugged while it plays.** It was "reopened" as a connection
+  to nothing, shown grey at 1024 frames, and stayed that way after the card
+  came back. Now its device is closed, its cables wait, and the routes open by
+  themselves, at the buffer in force, when the card is there again. A card
+  PipeWire does not show is never opened.
+- **A silent card on a default route was never reopened** by the automatic
+  recovery when it played through a card shared with other routes.
+
 ## [0.9.111] - 2026-11-19
 
 ### Changed
