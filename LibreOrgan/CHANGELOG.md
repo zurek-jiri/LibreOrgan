@@ -12,6 +12,57 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.108] - 2026-11-19
+
+### Fixed
+- **Realtek's on-board output never opened (Windows Audio).** Its driver lists
+  64 outputs and refuses to open with all of them - which is how the program
+  opens every card ("Couldn't open the output device!", every time, also as
+  Windows' default output: a fresh installation on such a computer was
+  silent). A Windows Audio output that refuses its whole list is opened with
+  its first pair, and the Audio routing shows the outputs that are open.
+- **A freshly loaded organ always plays (Windows).** An organ that brings no
+  audio of this computer (a published configuration, a Hauptwerk import,
+  folders on an empty console) tried Windows' default output alone; when that
+  did not open, every route stayed silent, nothing tried again and no message
+  came. Now the computer's default card is looked for - asked in the helper
+  process, never opened in vain on the window thread: the first ASIO card of a
+  real device that answers (software ASIO drivers - ReaRoute, ASIO4ALL,
+  FlexASIO, the on-board Realtek ASIO - are never taken by themselves), else
+  Windows' default output, else any Windows Audio output that opens. When none
+  opens a box says so and the search runs again when Windows reports a
+  device. A saved "Use as default for new organs" still comes first.
+- **The mouse showed the "starting an application" ring every few seconds**
+  while the Audio routing was open: a helper process was started for every
+  grey card every five seconds, and Windows shows that cursor whenever a
+  program starts (measured: 70 % of the time). The helpers start without it,
+  and a grey card without cables is asked when Windows reports a device, when
+  the dialog opens and by a click - no longer in rounds.
+- **A sound card's driver that fails no longer ends the program (Windows).**
+  Pulling the headphones out made the on-board card drop its output and the
+  thread of Realtek's ASIO driver failed inside the driver - the program went
+  with it. A fault on a driver's own thread now stops that thread alone: the
+  card is out of use until the next start (grey, its cables waiting), the
+  other cards play on, a box says what happened. No guarantee - a driver that
+  held a lock when it failed can still halt everything.
+- An ASIO card whose callbacks did not match its buffer (ReaRoute while Reaper
+  does not run) had EVERY ASIO card reopened with it, again after each device
+  change: only that card is reopened now, once.
+- Audio routing: the title "Sound cards" ran into the routing buttons when the
+  window was narrow or carried many cables; the buttons begin right of the
+  title and take a line of their own when there is no room.
+- Audio routing: a card left without any output (switched off while its cables
+  were on it - Linux) keeps its name white no longer: grey, like a card that
+  is not there.
+
+### Changed
+- **Audio routing: the cards stand in rows, not in cells.** The cells had one
+  width and a wide card took two or three of them; one let go where its cells
+  met a neighbour's jumped to the first free place. Now every card is as wide
+  as its outputs, the cards of a row stand side by side, and a dragged card
+  lands between two cards (an orange line, the others move aside) or in a new
+  row (the dashed strip under the last one).
+
 ## [0.9.107] - 2026-11-18
 
 ### Fixed

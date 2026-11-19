@@ -4412,6 +4412,81 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   test. THE USER CLOSED A TEST WINDOW mid-run (the quit question, Don't Save) and two tests did not run - tell him
   the windows are tests and close by themselves. Bank display: the dot at +4 / -22 (two pixels of black inside
   the frame line).
+  0.9.108 (19 Nov 2026, Windows; the user wiped every setting and imported a Hauptwerk ODF: "v Audio Routing to nedal
+  žádnou default kartu!!!! ... Vždy musí po loading něco někam hrát", "každé 4 sekundy se z myši stane čekací kolečko",
+  the card grid "by měl být fluidnější", the Mac's "Sound cards" title over the routing buttons, Linux: a switched-off
+  card's name stays white; then: "přednostně na windows bral ASIO ... fyzické karty, nikoli ASIO fake software
+  ovladače", "některé karty odpojí výstup, když vytáhnu sluchátka"): (1) THE REAL CAUSE OF THE SILENCE, found by the
+  helper: "Reproduktory (Realtek(R) Audio)" LISTS 64 OUTPUTS (JUCE's queryMaxNumChannels: the driver says yes to every
+  channel count) and refuses to open with all of them - and sharedHostFor opens every card with the mask of 64 ones
+  ("All output channels active from the start"): 65 attempts in two days, none worked; no mask or "11" opens at once
+  (the Fireface's and the monitor's endpoints list 2). sharedHostFor (Windows, non-ASIO): after a failed open with our
+  mask, once more with "11" -> `firstPairOnly` (the "enable them all" block skipped), log "... does not open with every
+  output it lists ...: opened with its first pair alone"; the Audio routing shows `getActiveOutputChannels()` for
+  Windows Audio cards (2 jacks, not 64). WHEN A WASAPI DEVICE "CANNOT BE OPENED", ASK IT THROUGH THE HELPER WITH AND
+  WITHOUT audioDeviceOutChans FIRST (%TEMP%\cardq recipe below). (2) THE DEFAULT CARD (Windows): `DefaultCardSearch`
+  (MainComponent.h), `startDefaultCardSearch(why, moveRoutes)` - candidates: every ASIO driver that is not software
+  (`isSoftwareAsioDriver`: asio4all, flexasio, rearoute, generic low latency, voicemeeter, vb-audio, cable, jackrouter,
+  asio link, synchronous audio router, fl studio asio, magix low latency, asio2wasapi, wasapi, asio bridge, dante via
+  AND "realtek asio" - the on-board chip's layer, 44.1 kHz/496, crashed) in the type's list order, then Windows'
+  default output, then the other Windows Audio outputs; each asked in the HELPER (`cardChecker`, the answer in
+  `cardAnswered` before its own handling), a card already open in a host = found at once; `defaultCardFound` sets the
+  statics `preferredDefaultType/Name` (what `defaultSharedTypeName()` / `defaultDeviceNameOfType()` give from then on;
+  sharedHostFor: ASIO without a name takes it BEFORE "whatever ASIO runs", and `asioByDefault` copies NO rate or buffer
+  of a foreign state onto the driver) and, with moveRoutes, `moveRoutesToDefaultCard` (beginRoutingAssign steps
+  {manual, perspective, {0,1}, true} for every route that is not auxiliary, not a remembered "no card" and not on the
+  card; its `finished` checks the card really opened in the program - else `defaultCardsRefused` + the next search);
+  nothing opens -> the box "No sound card" (6 reasons at most) + `lookAgainOnChange` (the search again 1.5 s after
+  Windows reports a device). TRIGGER: `applyDefaultRoutingIfDue` when no DefaultRouting.json exists (the saved default
+  still comes first) - NEVER at the program's start (the helper asking an ASIO driver while loadSettings opens the
+  user's own ASIO routes). So the first import of a session attaches to Windows' default and is then moved (the
+  progress window "Audio routing: <card>"); later loads attach to the found card directly. The user's old rule "ASIO
+  never automatic" (0.9.84) IS REPLACED by this one - possible because the helper asks, never the window thread.
+  (3) THE CURSOR: Windows shows IDC_APPSTARTING for up to 2 s after ANY CreateProcess of a GUI program; with the
+  dialog open a helper was started for every grey card every 5 s - MEASURED with %TEMP%\test_0108_cursor.ps1
+  (GetCursorInfo polled 20 s): 302 of 427 samples with 0.9.107, 0 with 0.9.108. `Source/QuietProcess.h` (CreateProcessW
+  with STARTF_FORCEOFFFEEDBACK + CREATE_NO_WINDOW on Windows, juce::ChildProcess elsewhere; start / isRunning / kill)
+  replaces juce::ChildProcess in CardCheck.h and PluginHost.h (scan, window trial). watchUnavailableCards: every 5 s
+  the WANTED cards only; the other grey ones at a system report, the dialog's opening, a click, and every 30 s while
+  the dialog shows (`lastIdleGreyCheckMs`). Side effect seen: the aggregate's "No audio callbacks ... recovery" every
+  7 s of the old runs (Realtek ASIO asked every 5 s, 3.6 s each) is gone. (4) A DRIVER'S OWN THREAD THAT FAULTS
+  (crash-20261119-112701: write of address 0 in rthdasio64.dll, the stack the driver + the thread's start; the user
+  had pulled the headphones out - the on-board card dropped its output): CrashHandler.h (Windows, in detail::)
+  `driverModules()` (the ASIO DLLs' file names, filled by `MainComponent::registerAsioDriverModules` from the registry:
+  SOFTWARE\ASIO\<name>\CLSID -> CLSID\{..}\InprocServer32; logged "ASIO driver modules ..."), `driverOfFault(info)` (not
+  the window thread (`windowThreadId()` set in install); the fault address in a driver DLL, or - outside our exe - on a
+  thread whose START address (NtQueryInformationThread 9) is in one), and `juceCrashHandler` then writes the report
+  ("A sound card's driver (x.dll) failed on a thread of its own ..."), clears alreadyHandling, sets `parkedDriver` and
+  NEVER RETURNS (`for (;;) Sleep(INFINITE)`). The 1 s timer takes it: `asioDriverFaulted(index)` - unavailableCards
+  entry `faulted` (never asked, never probed, never revived: watchUnavailableCards / askCards / cardAnswered / probeCard
+  / the click all skip it), the host RELEASED from asioHosts and leaked (never closed: closing calls the driver), its
+  routes `detachRouteAudioQuietly` + their state XML set back to the card (cables wait; after a restart they play),
+  the box "Sound card driver failed". Main.cpp shutdown ends with TerminateProcess when `driverWasParked()` (the
+  driver's DLL unload could wait for the stopped thread). Hook `ORGAN_TEST_DRIVER_FAULT="<seconds>|<ASIO name part>"`
+  (pretendedDriver + a std::thread that RaiseExceptions): verified - 1 crash file, the program alive, the card grey
+  with its cables, exit code 0. NOT verified with the real Realtek fault (the user's hands needed) and no guarantee
+  (a lock the driver held). (5) ASIO PERIOD RECOVERY: only the cards whose callbacks mismatch
+  (`mismatchingAsio` from the callback labels), once per card (`asioPeriodRecovered`, cleared for a card by any
+  reopenAudioDeviceFresh whose reason is not the two automatic ones) - before, every ASIO manager was reopened and
+  `asioRecoveriesSinceUserAction` was zeroed by each reopen, so it repeated after every device change (ReaRoute
+  without Reaper calls back twice as often as its buffer says: #245/#246). Verified: only ReaRoute reopened, once.
+  (6) AUDIO ROUTING ROWS: no cells - `Card::place` (order in its row, row; the old "<c>,<r>|<key>" lines read as that),
+  `Card::cell` = where it stands (index in the line, the line), layout(): cards sorted by (row, order), flowed left
+  to right with cellGap, a new line when the row changes or the card does not fit; `cardOrder`; `DropPlace` {line,
+  before, after, newRow} + `dropPlaceAt(p)` (nearest line in height, then nearest place); paint: ArrangeFrame::
+  landingLine for a place, the dashed strip under the last line for a new row (orange 2.5 px when targeted);
+  `placeCard(key, beforeKey, afterKey, newRow)` (keys: it runs through `later`) renumbers every card from the LINES on
+  the screen. Hooks: ORGAN_TEST_ROUTE "place|<card>|before|<other>", "...|after|<other>", "...|newrow|x" (the old
+  "cell|..." is gone). The title: `listCables()` first, then the buttons begin at max(rowsLeft, the title's right)
+  and go on a line of their own (sourcesTop 138) when less than 470 px are left. A card open with no outputs: grey
+  title, status "no outputs now". A card in unavailableCards keeps its reason as the status (the route loop
+  overwrote it with "tried again every 2 s"). (7) TESTS: %TEMP%\test_0108.ps1 [-Absent "part;part" | "*"] [-Route]
+  [-Fault "32|Fireface"] [-Bounds "x y w h"] [-Clicks] (Rural loaded with "portable": true, DefaultRouting.json moved
+  away; NOTE that copy keeps its aggregated routes - the move still runs), `ORGAN_TEST_HELPER_ABSENT` (the helper
+  answers "not there"); the helper's request takes a 4th line "name=value;name=value" of device-state attributes and
+  answers "ok<TAB>N outputs, M open, rate, buffer" - %TEMP%\cardq: write "<result>\n<type>\n<name>\n<attrs>\n" and
+  run `LibreOrgan.exe --cardcheck "<request>"` (only while no LibreOrgan runs). The dialog's minimum width is ~1000:
+  a narrower "dialogBounds" is not taken; more cables (ORGAN_TEST_ROUTE "...|add") make the gutter wide instead.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -971,10 +971,13 @@ static const char* const kManualText_part4 =
     "few seconds, its cables waiting until it is back (a click on a grey card\n"
     "asks at once). On Linux a card open\n"
     "through another driver is grey; it takes a drop only when the drop moves\n"
-    "every route off that other card. The cards in use sit on a grid of cells like the\n"
-    "stops: drag a card by its title onto a free cell (dashed while you drag,\n"
-    "orange under the mouse) or onto another card to swap their places; the\n"
-    "cables run in the aisles between the cards, never across one.\n"
+    "every route off that other card. A card whose driver fails while the program\n"
+    "runs (some do when their output goes away - headphones pulled out) is stopped\n"
+    "and stays grey until the next start; the other cards play on. The cards in\n"
+    "use stand in rows, each as wide as its outputs: drag a card by its title - the\n"
+    "orange line shows between which two cards it lands (the others move aside),\n"
+    "the dashed strip under the last row makes a new row; the cables run in the\n"
+    "aisles between the rows, never across a card.\n"
     "\n"
     "**Drag a perspective onto an output**: while the mouse is over a card its\n"
     "output and the pair partner glow orange and the label under the cursor says\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "\n"
     "**A device that is not there** (switched off, unplugged, taken by another\n"
     "program): the route keeps it and its channels, the card says so, the program\n"
+    ;
+static const char* const kManualText_part5 =
     "tries it every 2 seconds and plays again the moment it answers. A device that\n"
     "opened but gives no audio is reopened by itself; when that does not help, the\n"
     "DSP cell reads *no audio* and the Messages name it.\n"
-    ;
-static const char* const kManualText_part5 =
     "\n"
     "### Routing files\n"
     "\n"
@@ -1026,7 +1029,12 @@ static const char* const kManualText_part5 =
     "- **Use as default for new organs** makes these cables this computer's\n"
     "  default. An organ that brings no audio of this computer - a published\n"
     "  configuration, a Hauptwerk import, folders dropped on an empty console -\n"
-    "  gets them by itself: the cables only, never the effects.\n"
+    "  gets them by itself: the cables only, never the effects. Without a saved\n"
+    "  default such an organ plays through this computer's default card. On\n"
+    "  Windows that is the first ASIO card of a real device that answers\n"
+    "  (software ASIO drivers - ReaRoute, ASIO4ALL, FlexASIO and the like - are\n"
+    "  never taken by themselves), else Windows' default output, else any output\n"
+    "  that opens; elsewhere the system's default output.\n"
     "\n"
     "A route is matched by its perspective's name and its division; a route the\n"
     "file does not know takes the cables of its nearest one, and the\n"
@@ -1204,6 +1212,8 @@ static const char* const kManualText_part5 =
     "2. **Install PipeWire's JACK library**: `sudo apt install pipewire-jack\n"
     "   pipewire-bin pavucontrol` (Ubuntu, Debian, Mint), `sudo dnf install\n"
     "   pipewire-jack-audio-connection-kit pipewire-utils pavucontrol` (Fedora),\n"
+    ;
+static const char* const kManualText_part6 =
     "   `sudo pacman -S pipewire-jack pavucontrol` (Arch), `sudo zypper install\n"
     "   pipewire-libjack-0_3 pipewire-tools pavucontrol` (openSUSE). Log out and\n"
     "   in again.\n"
@@ -1212,8 +1222,6 @@ static const char* const kManualText_part5 =
     "   ```\n"
     "   sudo usermod -aG audio $USER\n"
     "   sudo sh -c 'printf \"@audio - rtprio 95\\n@audio - memlock unlimited\\n\" > /etc/security/limits.d/audio.conf'\n"
-    ;
-static const char* const kManualText_part6 =
     "   ```\n"
     "   then log out and in again. Without it the desktop pushes the audio thread\n"
     "   aside and the sound breaks long before the processor is busy. The activity\n"
@@ -1406,6 +1414,8 @@ static const char* const kManualText_part6 =
     "the build (a dark track filling orange). The settings of the methods are\n"
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "## 7.3 The cache\n"
     "\n"
@@ -1414,8 +1424,6 @@ static const char* const kManualText_part6 =
     "same settings reads them instead of building them: seconds instead of\n"
     "minutes. One file per rank and tree; a file built with other settings is\n"
     "replaced. *Empty the cache*, *Remove them* (the files of stops not loaded\n"
-    ;
-static const char* const kManualText_part7 =
     "now) and *Choose...* (another folder, the files moved there) are in the same\n"
     "section.\n"
     "\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "Releases are faded out over this share of their length and end there (5 to\n"
     "100 %, default 100). Shorter releases free polyphony sooner and dry a wet set.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Release played from\n"
     "\n"
     "Every release is played from this many milliseconds into its file (0 to 300,\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "alone. Heard at once.\n"
     "\n"
     "### Attack minimum time\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "The shortest time a pipe sounds once started (0 to 500 ms, default 80): even\n"
     "the briefest touch lets the chiff be heard. It is also the shortest breath the\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "Pitch shift method: the decay of a filled pipe's release as a share of its\n"
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: time stretch of the attack\n"
     "\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "Higher values fray the attack; lower it for a stop whose speaking turns rough.\n"
     "\n"
     "### Filled pipes: time stretch of the release\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "The same for the release, both directions (default 55). Phase vocoder: a\n"
     "release shifted upwards is stretched towards the resampled length.\n"
@@ -2012,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "Which program window shows this division; *Window 2* opens the second window\n"
     "when it is not open yet.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Division alias\n"
     "\n"
@@ -2020,8 +2030,6 @@ static const char* const kManualText_part9 =
     "dialog, and a double-click on the name in the division header edits it.\n"
     "\n"
     "### MIDI keyboard device\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "The MIDI input that plays this division; several divisions may listen to the\n"
     "same device.\n"
@@ -2214,6 +2222,8 @@ static const char* const kManualText_part10 =
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
     "*Open the GitHub form* in the program's message opens the form again.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "## 9.4 Free software, licences, platforms\n"
     "\n"
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
@@ -2222,8 +2232,6 @@ static const char* const kManualText_part10 =
     "ASIO SDK (GPLv3 option; ASIO is a trademark of Steinberg Media Technologies\n"
     "GmbH), Signalsmith Stretch and Signalsmith Linear (MIT), libarchive and\n"
     "unarr for the archives. Builds: Windows 10/11 64-bit; macOS 11+ (Apple\n"
-    ;
-static const char* const kManualText_part11 =
     "silicon) and 10.11+ (Intel); Linux x86-64 with glibc 2.38 or newer.\n"
     "\n"
     "---\n"
@@ -2416,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"
     "the filled pipes:\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "| Storage | Rate on loading | Releases | Packing in RAM | RAM |\n"
     "|---|---|---|---|---|\n"
@@ -2424,8 +2434,6 @@ static const char* const kManualText_part11 =
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
-    ;
-static const char* const kManualText_part12 =
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "QuietProcess.h"
 #include <deque>
 #include <functional>
 
@@ -26,6 +27,13 @@ namespace CardCheck
             const juce::File result(lines[0].trim());
             const auto type = lines[1].trim(), name = lines[2].trim();
             juce::String verdict("no\tits driver did not open");
+            // ORGAN_TEST_HELPER_ABSENT="part;part" (tests; "*" = every card): a card whose name holds a part is "not there".
+            bool pretendAbsent = false;
+            if (const char* env = std::getenv("ORGAN_TEST_HELPER_ABSENT"))
+                for (const auto& part : juce::StringArray::fromTokens(juce::String::fromUTF8(env), ";", ""))
+                    if (part.trim() == "*" || (part.trim().isNotEmpty() && name.containsIgnoreCase(part.trim()))) pretendAbsent = true;
+            if (pretendAbsent) verdict = "no\tnot there (pretended by ORGAN_TEST_HELPER_ABSENT)";
+            else
             {
                 juce::AudioDeviceManager probe;
                 probe.getAvailableDeviceTypes();
@@ -33,8 +41,15 @@ namespace CardCheck
                 setup.setAttribute("deviceType", type);
                 setup.setAttribute("audioOutputDeviceName", name);
                 setup.setAttribute("audioInputDeviceName", "");
+                // A fourth line of the request: further attributes of the device state, "name=value;name=value" (the
+                // rate, the buffer, the channels the program itself would open the card with).
+                if (lines.size() >= 4)
+                    for (const auto& pair : juce::StringArray::fromTokens(lines[3], ";", ""))
+                        if (pair.containsChar('=')) setup.setAttribute(pair.upToFirstOccurrenceOf("=", false, false).trim(), pair.fromFirstOccurrenceOf("=", false, false).trim());
                 const auto error = probe.initialise(0, 2, &setup, false);
-                if (auto* device = probe.getCurrentAudioDevice(); device != nullptr && device->getName() == name) verdict = "ok";
+                if (auto* device = probe.getCurrentAudioDevice(); device != nullptr && device->getName() == name)
+                    verdict = "ok\t" + juce::String(device->getOutputChannelNames().size()) + " outputs, " + juce::String(device->getActiveOutputChannels().countNumberOfSetBits()) + " open, "
+                        + juce::String(juce::roundToInt(device->getCurrentSampleRate())) + " Hz, buffer " + juce::String(device->getCurrentBufferSizeSamples());
                 else verdict = "no\t" + (error.trim().isNotEmpty() ? error.trim() : juce::String("its driver did not open"));
                 probe.closeAudioDevice();
             }
@@ -80,7 +95,7 @@ namespace CardCheck
                 else
                 {
                     const auto text = resultFile.loadFileAsString().trim();
-                    if (text == "ok") result.ok = true;
+                    if (text == "ok" || text.startsWith("ok\t")) result.ok = true;
                     else if (text.startsWith("no")) result.reason = text.fromFirstOccurrenceOf("\t", false, false).trim();
                     else result.reason = "its driver ended the question (it crashed while it was asked)";
                     if (!result.ok && result.reason.isEmpty()) result.reason = "its driver did not open";
@@ -114,7 +129,7 @@ namespace CardCheck
 
         std::deque<std::pair<juce::String, juce::String>> queue;
         Result current;
-        juce::ChildProcess process;
+        QuietProcess process;   // 0.9.108: started without the system's "starting an application" cursor
         juce::File requestFile, resultFile;
         double startedMs = 0.0;
         bool running = false;

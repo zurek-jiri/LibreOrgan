@@ -318,6 +318,11 @@ public:
         lookAndFeel.reset();
         juce::Logger::setCurrentLogger(nullptr);
         juceLog.reset();
+       #if JUCE_WINDOWS
+        // 0.9.108: a sound card's driver failed in this session and its thread was stopped - the driver's own
+        // unloading at the end of the process could wait for that thread for ever. Everything is saved by now.
+        if (CrashHandler::detail::driverWasParked().load()) TerminateProcess(GetCurrentProcess(), 0);
+       #endif
     }
 
     //==============================================================================

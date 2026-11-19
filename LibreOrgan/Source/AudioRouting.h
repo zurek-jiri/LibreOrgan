@@ -49,7 +49,7 @@ public:
         help.setText("Drag a perspective (left) onto an output of a card: the output and its partner glow where the stereo pair will land; "
             "Shift adds a second pair to the same source (the pipes alternate between the pairs by key, a C / C# split), Alt takes one channel. "
             "Press a cable and it follows the mouse: let go on another output to plug it there; a click alone selects it, Delete (or its x) removes it. "
-            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title onto a cell of the grid. "
+            "A grey card is busy through another driver; the arrow before a perspective splits it into its divisions; drag a card by its title between two other cards or into a new row. "
             "fx opens the effects of a row (volume, channel separation, equalizer, IR reverb); the meter beside it shows what the row plays.",
             juce::dontSendNotification);
         help.setFont(juce::FontOptions(12.5f));
@@ -200,12 +200,15 @@ public:
             }
         }
         // 0.9.89: the signature also follows the effects (the fx buttons' colour) - see signature().
-        // The free cells of the grid while a card is dragged.
+        // The drop places of a dragged card (0.9.108): the new row under the last one as a dashed strip (orange and
+        // thick when it is the target), the place between two cards as the orange landing line.
         if (dragCard >= 0 && draggingCard)
-            for (const auto& cell : freeCells)
+            for (int i = 0; i < (int)dropPlaces.size(); ++i)
             {
-                if (dropCell != cell.first) { ArrangeFrame::freeCell(g, cell.second.toFloat().reduced(1.0f)); continue; }
-                juce::Path p; p.addRoundedRectangle(cell.second.toFloat().reduced(1.0f), 6.0f);
+                const auto& place = dropPlaces[(size_t)i];
+                if (!place.newRow) { if (dropPlace == i) ArrangeFrame::landingLine(g, place.line); continue; }
+                if (dropPlace != i) { ArrangeFrame::freeCell(g, place.line.toFloat().reduced(1.0f)); continue; }
+                juce::Path p; p.addRoundedRectangle(place.line.toFloat().reduced(1.0f), 6.0f);
                 g.setColour(glow);
                 ArrangeFrame::strokeDashes(g, p, ArrangeFrame::kDash, ArrangeFrame::kGap, 0.0f, 2.5f);
             }
@@ -242,15 +245,14 @@ public:
         {
             if (card.chip) continue;
             const auto b = card.bounds.toFloat();
-            const bool swapTarget = dragCard >= 0 && draggingCard && dropCell.first >= 0 && cellOccupant(dropCell) == &card - cards.data() && dragCard != &card - cards.data();
             g.setColour(card.busy ? juce::Colours::black.withAlpha(0.12f) : juce::Colours::black.withAlpha(0.28f));
             g.fillRoundedRectangle(b, 6.0f);
-            if ((dragging && dropCard == &card - cards.data()) || swapTarget)
+            if (dragging && dropCard == &card - cards.data())
             {
                 g.setColour(glow.withAlpha(0.6f));
                 g.drawRoundedRectangle(b.reduced(1.0f), 6.0f, 2.0f);
             }
-            g.setColour(card.busy || !card.open ? juce::Colours::grey : juce::Colours::white);   // 0.9.98: a card that is not there now (its cables wait) is grey too
+            g.setColour(card.busy || !card.open || card.jacks.empty() ? juce::Colours::grey : juce::Colours::white);   // 0.9.98: a card that is not there now (its cables wait) is grey too; 0.9.108: one left without outputs as well
             g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
             g.drawFittedText(card.name, card.bounds.getX() + 10, card.bounds.getY() + 4, card.bounds.getWidth() - 20, 20, juce::Justification::centredLeft, 1);
             // The status line; orange with the note when the device also plays through another driver (0.9.93 - the
@@ -396,7 +398,7 @@ public:
         }
         // A grey card (its device is not there): a click asks its driver again, at once.
         for (const auto& card : cards)
-            if (card.unavailable && card.bounds.contains(e.getPosition()))
+            if (card.unavailable && !card.faulted && card.bounds.contains(e.getPosition()))
             {
                 const auto type = card.type, name = card.name;
                 CrashHandler::note("Audio routing: " + name + " asked again by a click (in the helper process)");
@@ -455,7 +457,7 @@ public:
             if (!draggingCard) return;
             dragPoint = e.getPosition().toFloat();
             findDropTarget(e.getPosition());   // over a pool button: every route of the card moves there (its ASIO version, for one)
-            dropCell = dropCard >= 0 ? Cell{ -1, -1 } : cellAt(e.getPosition());
+            dropPlace = dropCard >= 0 ? -1 : dropPlaceAt(e.getPosition());
             repaint();
         }
     }
@@ -483,9 +485,16 @@ public:
             CrashHandler::note("Audio routing: every route of " + cards[(size_t)dragCard].name + " dragged onto " + card.name);
             later([this, routes, card] { assign(routes, card, { 0, 1 }, false); });
         }
-        else if (dragCard >= 0 && draggingCard && dropCell.first >= 0) { const int index = dragCard; const Cell cell = dropCell; later([this, index, cell] { placeCard(index, cell); }); }
+        else if (dragCard >= 0 && draggingCard && dropPlace >= 0 && dropPlace < (int)dropPlaces.size())
+        {   // copies (keys): the action runs after this event, the cards may have been rebuilt by then
+            const auto place = dropPlaces[(size_t)dropPlace];
+            const auto key = cards[(size_t)dragCard].key;
+            const auto before = place.before >= 0 ? cards[(size_t)place.before].key : juce::String(), after = place.after >= 0 ? cards[(size_t)place.after].key : juce::String();
+            const bool newRow = place.newRow;
+            later([this, key, before, after, newRow] { placeCard(key, before, after, newRow); });
+        }
         cardTicker.stopTimer(); cardImage = {};
-        dragRow = -1; dragCard = -1; liftedCable = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropCell = { -1, -1 };
+        dragRow = -1; dragCard = -1; liftedCable = -1; pressedCable = -1; dragging = false; draggingCard = false; dropCard = -1; dropChannel = -1; dropPlace = -1;
         repaint();   // a lifted cable let go elsewhere is drawn at its output again
     }
     bool keyPressed(const juce::KeyPress& key) override
@@ -529,13 +538,14 @@ private:
         juce::Colour colour;
         juce::Rectangle<int> bounds;
     };
-    using Cell = std::pair<int, int>;   // column, row
+    using Cell = std::pair<int, int>;   // the order in the row, the row
     struct Card
     {
         juce::String key, type, name, status, busyReason, busyBecauseOf;   // busyBecauseOf = the key of the open card of another driver on the same hardware
         juce::String sharedNote, sharedWith;                              // 0.9.93: "Also open through ASIO ..." - the orange line of a card that shares its device with another driver (sharedWith = that card's name, for the tooltip)
         bool busy = false, open = false, chip = false;   // chip = a button among the unused cards
         bool unavailable = false;                        // 0.9.105: its driver is listed, its device is not there (asked in vain) - grey, takes no cable
+        bool faulted = false;                            // 0.9.108: its driver failed in this session - out of use until the next start, never asked
         juce::String unusableWhy;                        // 0.9.95 (Linux): listed although it cannot be opened now ("list unusable devices too") - why
         double rate = 0.0; int buffer = 0, latency = 0;
         std::vector<juce::Rectangle<int>> jacks;   // the outputs on the bottom edge
@@ -544,7 +554,8 @@ private:
         std::vector<Route> routes;                 // the routes playing on it
         juce::AudioDeviceManager* manager = nullptr;
         juce::Rectangle<int> bounds;
-        Cell cell{ -1, -1 }; int span = 1;         // the grid cell (full cards) and the cells it covers
+        Cell cell{ -1, -1 };                       // where it stands now: its order in the line, the line (set by layout())
+        Cell place{ -1, -1 };                      // its remembered place: the order in its row, the row (the machine's memory)
         int width = 0;
     };
     struct Cable
@@ -709,20 +720,22 @@ private:
         }
         return colours;
     }
-    int cellOccupant(Cell cell) const
+    // The drop place of a dragged card under the mouse: the line of cards (or the new row) nearest in height,
+    // then the nearest place of that line.
+    int dropPlaceAt(juce::Point<int> p) const
     {
-        for (int i = 0; i < (int)cards.size(); ++i)
+        auto above = [p](const juce::Rectangle<int>& r) { return p.y < r.getY() ? r.getY() - p.y : p.y >= r.getBottom() ? p.y - r.getBottom() + 1 : 0; };
+        int nearest = INT_MAX;
+        for (const auto& place : dropPlaces) nearest = juce::jmin(nearest, above(place.line));
+        int best = -1, bestDistance = INT_MAX;
+        for (int i = 0; i < (int)dropPlaces.size(); ++i)
         {
-            const auto& card = cards[(size_t)i];
-            if (card.chip || card.cell.second != cell.second) continue;
-            if (cell.first >= card.cell.first && cell.first < card.cell.first + card.span) return i;
+            const auto& place = dropPlaces[(size_t)i];
+            if (above(place.line) != nearest) continue;
+            const int distance = place.newRow ? 0 : std::abs(p.x - place.line.getCentreX());
+            if (distance < bestDistance) { bestDistance = distance; best = i; }
         }
-        return -1;
-    }
-    Cell cellAt(juce::Point<int> p) const
-    {
-        for (const auto& cell : allCells) if (cell.second.contains(p)) return cell.first;
-        return { -1, -1 };
+        return best;
     }
 
     // ---- the model -> rows, cards, cables ----
@@ -752,7 +765,9 @@ private:
                 {
                     card.unavailable = true;
                     card.unusableWhy = gone->second.reason;
-                    card.status = "not there now: " + card.unusableWhy + " It takes no cable; the program asks it again every few seconds, a click on it asks at once.";
+                    card.status = gone->second.faulted ? "out of use: " + card.unusableWhy
+                        : "not there now: " + card.unusableWhy + " It takes no cable; the program asks it again when Windows reports a device, a click on it asks at once.";
+                    card.faulted = gone->second.faulted;
                 }
                 fresh.push_back(card);
             }
@@ -771,19 +786,27 @@ private:
                 card.routes.push_back(route);
                 auto* manager = owner.managerForRoute(manual, perspective);
                 auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
-                if (device == nullptr) { if (!card.open) card.status = "not available now (switched off, unplugged or taken) - tried again every 2 s"; }
+                if (device == nullptr) { if (!card.open && !card.unavailable) card.status = "not available now (switched off, unplugged or taken) - tried again every 2 s"; }   // (a card known to be away keeps its reason)
                 else if (!card.open)
                 {
                     card.open = true; card.manager = manager;
                     card.rate = device->getCurrentSampleRate(); card.buffer = device->getCurrentBufferSizeSamples();
                     card.latency = device->getOutputLatencyInSamples();
                     card.jackNames = device->getOutputChannelNames();
+                    // 0.9.108: a Windows Audio output that lists more outputs than it opens with (Realtek's on-board
+                    // output lists 64 and opens with its first pair alone - MainComponent::sharedHostFor) shows the open ones.
+                    if (card.type.startsWithIgnoreCase("Windows Audio"))
+                        if (const int open = device->getActiveOutputChannels().getHighestBit() + 1; open > 0 && open < card.jackNames.size())
+                            card.jackNames.removeRange(open, card.jackNames.size() - open);
                     const int outputs = card.jackNames.size();
                     card.jacks.assign((size_t)juce::jmax(0, outputs), {});
                     for (const auto& jackName : card.jackNames)   // a band only for real names ("ADAT (7+8) ..."), not "3" or "Output channel 3"
                         if (jackName.trim().retainCharacters("0123456789").length() != jackName.trim().length() && !jackName.trim().startsWithIgnoreCase("output channel ")) { card.nameBand = compact() ? 74 : juce::roundToInt(180.0f * scale()); break; }
                     card.status = juce::String(outputs) + " outputs, " + juce::String(juce::roundToInt(card.rate)) + " Hz, buffer " + juce::String(card.buffer)
                         + " (" + juce::String(1000.0 * card.buffer / juce::jmax(1.0, card.rate), 1) + " ms), latency " + juce::String(card.latency) + " samples";
+                    // 0.9.108 (the user, Linux: a card with cables switched off - "ztratily se porty, kabel zůstal",
+                    // but its name stayed white): no output left = not there now.
+                    if (outputs == 0) card.status = "no outputs now (switched off or unplugged) - its cables wait";
                 }
             }
         for (auto& card : fresh)
@@ -834,7 +857,7 @@ private:
                 if (line.fromFirstOccurrenceOf("|", false, false) == card.key)
                 {
                     const auto place = line.upToFirstOccurrenceOf("|", false, false);
-                    card.cell = { place.upToFirstOccurrenceOf(",", false, false).getIntValue(), place.fromFirstOccurrenceOf(",", false, false).getIntValue() };
+                    card.place = { place.upToFirstOccurrenceOf(",", false, false).getIntValue(), place.fromFirstOccurrenceOf(",", false, false).getIntValue() };
                 }
         }
 
@@ -1015,12 +1038,24 @@ private:
         showCables.setBounds(rowsLeft, row2, 120, rowHeight2);
         sizeBox.setBounds(rowsRight - 110, row2, 110, rowHeight2);
         sizeLabel.setBounds(sizeBox.getX() - 96, row2, 92, rowHeight2);
-        sourcesTop = 110;
+        listCables();
+        gutterWidth = juce::jmax(44, 16 + laneGap * (int)cables.size());   // (the gutter widens with the cables it carries)
+        gridLeft = leftWidth + 20 + gutterWidth;
         // 0.9.94: the routing file's buttons on the line of the titles, ending at the header block's right edge.
         // They span the block above them: the left edge of its rows, the right edge of Measure Polyphony.
-        saveRoutingButton.setBounds(rowsLeft, sourcesTop - 30, 150, 24);
-        loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, sourcesTop - 30, 150, 24);
-        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, sourcesTop - 30, stripRight - loadRoutingButton.getRight() - 6, 24);
+        // 0.9.108 (the user: "nápis Sound cards koliduje s řadou buttonů" - the title stands where the cards begin,
+        // which moves right with every cable, while the buttons kept their place): the buttons begin right of the
+        // title when it reaches under them, and take a line of their own (the titles a line lower) when what is
+        // left is too narrow for their texts.
+        const int titleRight = gridLeft + 16 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(18.0f, juce::Font::bold)), "Sound cards"));
+        const bool buttonsOnOwnLine = stripRight - juce::jmax(rowsLeft, titleRight) < 470;
+        sourcesTop = buttonsOnOwnLine ? 138 : 110;
+        const int buttonsY = buttonsOnOwnLine ? blockTop + blockHeight + 4 : sourcesTop - 30;
+        const int buttonsLeft = buttonsOnOwnLine ? juce::jmax(12, juce::jmin(rowsLeft, stripRight - 606)) : juce::jmax(rowsLeft, titleRight);
+        const int fileButton = juce::jlimit(110, 150, (stripRight - buttonsLeft - 12) * 3 / 10);
+        saveRoutingButton.setBounds(buttonsLeft, buttonsY, fileButton, 24);
+        loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, buttonsY, fileButton, 24);
+        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, buttonsY, stripRight - loadRoutingButton.getRight() - 6, 24);
         int y = sourcesTop;
         for (size_t ri = 0; ri < rows.size(); ++ri)
         {
@@ -1030,43 +1065,43 @@ private:
             y += rowHeight;
         }
         sourcesBottom = y;
-        listCables();
-        // THE GRID: cells of cellWidth() right of the gutter (the gutter widens with the cables it carries); a card
-        // spans as many cells as its width needs; a card without a remembered cell takes the first free one.
-        gutterWidth = juce::jmax(44, 16 + laneGap * (int)cables.size());
-        gridLeft = leftWidth + 20 + gutterWidth;
+        // THE ROWS OF CARDS (0.9.108, the user: "karta se často přesune jinam, pokud přesahuje políčko gridu. Grid by
+        // měl být fluidnější, nikoli přesně na políčka stejné velikosti" - the cells had one width, a wide card took
+        // two or three of them, and one let go where its cells met a neighbour's was thrown to the first free place):
+        // no columns. The cards of a row stand side by side, each as wide as its outputs need, in their remembered
+        // order; a row too long for the window goes on in the line below; a card without a remembered place joins the
+        // last row. A dragged card lands BETWEEN two cards (the others move aside) or in a new row.
         const int right = width - 10;
-        const int cw = cellWidth();
-        columns = juce::jmax(1, (right - gridLeft) / cw);
         const int jw0 = jackWidth(), jh = jackHeight();
-        for (auto& card : cards)
+        std::vector<int> order;
+        int lastRow = 0;
+        for (int i = 0; i < (int)cards.size(); ++i)
         {
+            auto& card = cards[(size_t)i];
             if (card.chip) continue;
             const int n = (int)card.jacks.size();
-            const int jw = n > 0 ? juce::jlimit(juce::jmin(18, jw0), jw0, (columns * cw - cellGap - 20) / juce::jmax(1, n) - 2) : jw0;
+            const int jw = n > 0 ? juce::jlimit(juce::jmin(18, jw0), jw0, (juce::jmax(cardWidth, right - gridLeft) - 20) / juce::jmax(1, n) - 2) : jw0;
             card.width = juce::jmax(cardWidth, 20 + n * (jw + 2));
-            card.span = juce::jmax(1, juce::jmin(columns, (card.width + cellGap + cw - 1) / cw));
-            if (card.cell.first >= 0 && card.cell.first + card.span > columns) card.cell.first = juce::jmax(0, columns - card.span);
+            order.push_back(i);
+            lastRow = juce::jmax(lastRow, card.place.second);
         }
-        // Collisions of remembered cells and the cards without one: the first free place, row by row.
-        auto fits = [this](const Card& who, Cell at)
+        auto rowOf = [this, lastRow](int i) { return cards[(size_t)i].place.second >= 0 ? cards[(size_t)i].place.second : lastRow; };
+        auto orderOf = [this](int i) { return cards[(size_t)i].place.second >= 0 ? cards[(size_t)i].place.first : 100000; };
+        std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return rowOf(a) != rowOf(b) ? rowOf(a) < rowOf(b) : orderOf(a) < orderOf(b); });
+        std::vector<int> cardX(cards.size(), gridLeft);
         {
-            if (at.first < 0 || at.first + who.span > columns) return false;
-            for (const auto& other : cards)
+            int line = -1, x = gridLeft, inLine = 0, rowBefore = 0;
+            for (const int i : order)
             {
-                if (other.chip || &other == &who || other.cell.first < 0 || other.cell.second != at.second) continue;
-                if (at.first < other.cell.first + other.span && other.cell.first < at.first + who.span) return false;
+                auto& card = cards[(size_t)i];
+                if (line < 0 || rowOf(i) != rowBefore || (inLine > 0 && x + card.width > right)) { ++line; x = gridLeft; inLine = 0; }
+                rowBefore = rowOf(i);
+                card.cell = { inLine++, line };
+                cardX[(size_t)i] = x;
+                x += card.width + cellGap;
             }
-            return true;
-        };
-        for (auto& card : cards)
-        {
-            if (card.chip || (card.cell.first >= 0 && fits(card, card.cell))) continue;
-            card.cell = { -1, -1 };
-            for (int r = 0; card.cell.first < 0; ++r)
-                for (int c = 0; c + card.span <= columns; ++c)
-                    if (fits(card, { c, r })) { card.cell = { c, r }; break; }
         }
+        cardOrder = order;
         int maxRow = -1;
         for (const auto& card : cards) if (!card.chip) maxRow = juce::jmax(maxRow, card.cell.second);
         // The rows' heights (the tallest card) and the corridors under them (the cables that end in that row).
@@ -1085,7 +1120,7 @@ private:
         {
             auto& card = cards[(size_t)i];
             if (card.chip) continue;
-            card.bounds = { gridLeft + card.cell.first * cw, rowTop[(size_t)card.cell.second], card.width, cardBase() + card.nameBand };
+            card.bounds = { cardX[(size_t)i], rowTop[(size_t)card.cell.second], card.width, cardBase() + card.nameBand };
             const int n = (int)card.jacks.size();
             const int jw = n > 0 ? juce::jlimit(juce::jmin(18, jw0), jw0, (card.width - 20) / n - 2) : jw0;
             for (int ch = 0; ch < n; ++ch)
@@ -1097,21 +1132,22 @@ private:
                 c->panel.setBounds(cx + 172, cy, 84, 22); c->reopen.setBounds(cx + 260, cy, 56, 22); c->test.setBounds(cx + 320, cy, 42, 22);
             }
         }
-        // Every cell of the grid (one spare row) and the free ones: the drop places of a dragged card.
-        allCells.clear(); freeCells.clear();
+        // The drop places of a dragged card: before each card of a line, after the line's last card, and a new row
+        // under the last line.
+        dropPlaces.clear();
+        for (int line = 0; line <= maxRow; ++line)
         {
-            int cy = maxRow >= 0 ? gridBottom : sourcesTop - 2;
-            for (int r = 0; r <= maxRow + 1; ++r)
+            std::vector<int> inLine;
+            for (const int i : cardOrder) if (cards[(size_t)i].cell.second == line) inLine.push_back(i);
+            const int top = rowTop[(size_t)line], h = rowHeights[(size_t)line];
+            for (size_t k = 0; k < inLine.size(); ++k)
             {
-                const int top = r <= maxRow ? rowTop[(size_t)r] : cy, h = r <= maxRow ? rowHeights[(size_t)r] : cardBase();
-                for (int c = 0; c < columns; ++c)
-                {
-                    const juce::Rectangle<int> rect(gridLeft + c * cw, top, cw - cellGap, h);
-                    allCells.push_back({ { c, r }, rect });
-                    if (cellOccupant({ c, r }) < 0) freeCells.push_back({ { c, r }, rect });
-                }
+                const auto& b = cards[(size_t)inLine[k]].bounds;
+                dropPlaces.push_back({ { k == 0 ? gridLeft - 5 : b.getX() - cellGap / 2 - 1, top, 3, h }, inLine[k], -1, false });
+                if (k + 1 == inLine.size()) dropPlaces.push_back({ { b.getRight() + cellGap / 2 - 1, top, 3, h }, -1, inLine[k], false });
             }
         }
+        dropPlaces.push_back({ { gridLeft, maxRow >= 0 ? gridBottom : sourcesTop - 2, juce::jmax(cardWidth, right - gridLeft), cardBase() }, -1, -1, true });
         fullCardsBottom = (maxRow >= 0 ? gridBottom : sourcesTop - 2) + cardBase() + 10;   // the spare row stays free below the grid
         // The other cards as buttons, a collapsible section per driver (ASIO first ...), below the grid and the sources.
         chipsTop = juce::jmax(fullCardsBottom + 10, sourcesBottom + 24);
@@ -1394,22 +1430,42 @@ private:
         selectedCable = -1;
         rebuild();
     }
-    // A full card dropped on a cell: a free cell takes it (its span shifted left when it would stick out), an
-    // occupied one swaps the two cards; the cells are the machine's memory.
-    void placeCard(int index, Cell cell)
+    // A full card dropped at a place of the rows (0.9.108): before a card, after the last card of a line, or as a
+    // new row; the others move aside. The order of every full card - "<order>,<row>|<card>", the lines as they
+    // stand on the screen - is the machine's memory.
+    void placeCard(const juce::String& key, const juce::String& beforeKey, const juce::String& afterKey, bool newRow)
     {
-        if (index < 0 || index >= (int)cards.size() || cards[(size_t)index].chip) return;
-        auto& card = cards[(size_t)index];
-        cell.first = juce::jlimit(0, juce::jmax(0, columns - card.span), cell.first);
-        const Cell old = card.cell;
-        const int occupant = cellOccupant(cell);
-        if (occupant >= 0 && occupant != index) cards[(size_t)occupant].cell = old;
-        card.cell = cell;
+        auto indexOf = [this](const juce::String& k) { if (k.isNotEmpty()) for (int i = 0; i < (int)cards.size(); ++i) if (!cards[(size_t)i].chip && cards[(size_t)i].key == k) return i; return -1; };
+        const int index = indexOf(key);
+        if (index < 0 || key == beforeKey || key == afterKey) return;   // (let go where it stood)
+        std::vector<std::pair<int, int>> sequence;   // card, line - without the moved card
+        for (const int i : cardOrder) if (i != index && i >= 0 && i < (int)cards.size() && !cards[(size_t)i].chip) sequence.push_back({ i, cards[(size_t)i].cell.second });
+        int lines = 0;
+        for (const auto& s : sequence) lines = juce::jmax(lines, s.second + 1);
+        const int target = indexOf(beforeKey.isNotEmpty() ? beforeKey : afterKey);
+        bool placed = false;
+        if (!newRow && target >= 0)
+            for (size_t i = 0; i < sequence.size() && !placed; ++i)
+                if (sequence[i].first == target)
+                {
+                    const int line = sequence[i].second;
+                    sequence.insert(sequence.begin() + (long)(beforeKey.isNotEmpty() ? i : i + 1), { index, line });
+                    placed = true;
+                }
+        if (!placed) sequence.push_back({ index, newRow ? lines : juce::jmax(0, lines - 1) });
         owner.audioRoutingCardCells.clear();
-        for (const auto& c : cards) if (!c.chip && c.cell.first >= 0) owner.audioRoutingCardCells.add(juce::String(c.cell.first) + "," + juce::String(c.cell.second) + "|" + c.key);
+        int row = -1, lineBefore = INT_MIN, position = 0;
+        for (const auto& s : sequence)
+        {
+            if (s.second != lineBefore) { ++row; position = 0; lineBefore = s.second; }
+            auto& c = cards[(size_t)s.first];
+            c.place = { position++, row };
+            owner.audioRoutingCardCells.add(juce::String(c.place.first) + "," + juce::String(c.place.second) + "|" + c.key);
+        }
         owner.saveSettings();
-        CrashHandler::note("Audio routing: card " + card.name + " placed in cell " + juce::String(cell.first) + "," + juce::String(cell.second)
-            + (occupant >= 0 && occupant != index ? " (" + cards[(size_t)occupant].name + " takes its old cell)" : ""));
+        CrashHandler::note("Audio routing: card " + cards[(size_t)index].name + (newRow || target < 0 ? juce::String(" placed in a new row")
+            : (beforeKey.isNotEmpty() ? " placed before " : " placed after ") + cards[(size_t)target].name)
+            + " - row " + juce::String(cards[(size_t)index].place.second + 1) + ", place " + juce::String(cards[(size_t)index].place.first + 1));
         rebuild();
     }
     void reopenWith(juce::AudioDeviceManager* manager, const juce::AudioDeviceManager::AudioDeviceSetup& setup, const juce::String& what)
@@ -1438,19 +1494,23 @@ private:
                     cardGrab = { 60.0f, 14.0f };
                     dragPoint = cards[(size_t)i].bounds.getPosition().toFloat() + cardGrab + juce::Point<float>((float)parts[2].getIntValue(), (float)parts[3].getIntValue());
                     beginCardDrag();
-                    dropCell = cellAt(dragPoint.toInt());
+                    dropPlace = dropPlaceAt(dragPoint.toInt());
                     repaint();
                     break;
                 }
             CrashHandler::note("ORGAN_TEST_ROUTE: " + spec + (dragCard < 0 ? " - no such full card" : " - held"));
             return;
         }
-        if (parts.size() >= 4 && parts[0].trim().equalsIgnoreCase("cell"))
+        // "place|<card name part>|before|<other card>", "...|after|<other card>", "...|newrow|x": a full card moved.
+        if (parts.size() >= 4 && parts[0].trim().equalsIgnoreCase("place"))
         {
-            int index = -1;
-            for (int i = 0; i < (int)cards.size(); ++i) if (!cards[(size_t)i].chip && cards[(size_t)i].name.containsIgnoreCase(parts[1].trim())) { index = i; break; }
+            auto find = [this](const juce::String& part) { for (int i = 0; i < (int)cards.size(); ++i) if (!cards[(size_t)i].chip && cards[(size_t)i].name.containsIgnoreCase(part.trim())) return i; return -1; };
+            const int index = find(parts[1]), other = find(parts[3]);
+            const auto how = parts[2].trim().toLowerCase();
             CrashHandler::note("ORGAN_TEST_ROUTE: " + spec + (index < 0 ? " - no such full card" : ""));
-            if (index >= 0) placeCard(index, { parts[2].getIntValue(), parts[3].getIntValue() });
+            if (index >= 0)
+                placeCard(cards[(size_t)index].key, how == "before" && other >= 0 ? cards[(size_t)other].key : juce::String(),
+                    how == "after" && other >= 0 ? cards[(size_t)other].key : juce::String(), how == "newrow");
             return;
         }
         if (parts.size() < 4) { CrashHandler::note("ORGAN_TEST_ROUTE: bad spec " + spec); return; }
@@ -1585,14 +1645,16 @@ private:
     std::vector<Row> rows;
     std::vector<Card> cards;
     std::vector<Cable> cables;
-    std::vector<std::pair<Cell, juce::Rectangle<int>>> allCells, freeCells;
+    struct DropPlace { juce::Rectangle<int> line; int before = -1, after = -1; bool newRow = false; };   // the landing line (the strip of a new row), the card it lands before / after
+    std::vector<DropPlace> dropPlaces;
+    std::vector<int> cardOrder;   // the full cards in their order (row by row)
     std::vector<int> rowTop, rowBottom;   // the grid rows' top and bottom (the corridor lies under the bottom)
     juce::OwnedArray<CardControls> controls;
     std::set<juce::String> unfolded;
     std::vector<TypeSection> typeSections;
-    int sourcesTop = 94, sourcesBottom = 94, fullCardsBottom = 94, chipsTop = 94, gridLeft = 320, gutterWidth = 44, columns = 1;
+    int sourcesTop = 94, sourcesBottom = 94, fullCardsBottom = 94, chipsTop = 94, gridLeft = 320, gutterWidth = 44;
     int dragRow = -1, dragCard = -1, liftedCable = -1, pressedCable = -1, dropCard = -1, dropChannel = -1, selectedCable = -1;
-    Cell dropCell{ -1, -1 };
+    int dropPlace = -1;   // the drop place of a dragged card (an index of dropPlaces)
     bool dragging = false, draggingCard = false, dropAdd = false, dropPairs = true;
     bool viaPipeWire = false;   // 0.9.96 (Linux): PipeWire carries the cards - set in rebuild()
     juce::Point<float> dragPoint;

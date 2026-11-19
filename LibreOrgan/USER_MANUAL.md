@@ -959,10 +959,13 @@ the card becomes active, unplug a card in use and it turns grey within a
 few seconds, its cables waiting until it is back (a click on a grey card
 asks at once). On Linux a card open
 through another driver is grey; it takes a drop only when the drop moves
-every route off that other card. The cards in use sit on a grid of cells like the
-stops: drag a card by its title onto a free cell (dashed while you drag,
-orange under the mouse) or onto another card to swap their places; the
-cables run in the aisles between the cards, never across one.
+every route off that other card. A card whose driver fails while the program
+runs (some do when their output goes away - headphones pulled out) is stopped
+and stays grey until the next start; the other cards play on. The cards in
+use stand in rows, each as wide as its outputs: drag a card by its title - the
+orange line shows between which two cards it lands (the others move aside),
+the dashed strip under the last row makes a new row; the cables run in the
+aisles between the rows, never across a card.
 
 **Drag a perspective onto an output**: while the mouse is over a card its
 output and the pair partner glow orange and the label under the cursor says
@@ -1012,7 +1015,12 @@ Three buttons on the line of the titles keep a routing for later.
 - **Use as default for new organs** makes these cables this computer's
   default. An organ that brings no audio of this computer - a published
   configuration, a Hauptwerk import, folders dropped on an empty console -
-  gets them by itself: the cables only, never the effects.
+  gets them by itself: the cables only, never the effects. Without a saved
+  default such an organ plays through this computer's default card. On
+  Windows that is the first ASIO card of a real device that answers
+  (software ASIO drivers - ReaRoute, ASIO4ALL, FlexASIO and the like - are
+  never taken by themselves), else Windows' default output, else any output
+  that opens; elsewhere the system's default output.
 
 A route is matched by its perspective's name and its division; a route the
 file does not know takes the cables of its nearest one, and the

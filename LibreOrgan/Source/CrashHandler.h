@@ -280,8 +280,75 @@ namespace CrashHandler
            #endif
         }
 
+       #if JUCE_WINDOWS
+        // 0.9.108 (19 Nov 2026, the user pulled the headphones out: the on-board card dropped its output and the
+        // thread of Realtek's ASIO driver wrote to address 0 - "Faulting module: rthdasio64.dll", the stack nothing but
+        // the driver and the thread's start - and took the program with it): a fault on a thread a sound card's
+        // DRIVER runs for itself, inside the driver, is not the program's to die of. The report is written as ever,
+        // then the thread is stopped for good (it never returns from here) and the program goes on; the application
+        // takes the card out of use (MainComponent::asioDriverFaulted) and never calls that driver again. No
+        // guarantee: a driver that held a lock when it failed can still bring everything to a halt - but without
+        // this the end was certain.
+        //   driverModules: the DLL file names of the ASIO drivers (lower case), set by the application at its start.
+        //   parkedDriver:  the index of the driver whose thread was stopped, taken by the application's timer.
+        //   pretendedDriver (tests): the next fault on a thread that is not the window's counts as that driver's.
+        struct DriverModules { static constexpr int capacity = 48; wchar_t names[capacity][80]{}; std::atomic<int> count{ 0 }; };
+        inline DriverModules& driverModules() { static DriverModules modules; return modules; }
+        inline std::atomic<int>& parkedDriver() { static std::atomic<int> index{ -1 }; return index; }
+        inline std::atomic<int>& pretendedDriver() { static std::atomic<int> index{ -1 }; return index; }
+        inline std::atomic<bool>& driverWasParked() { static std::atomic<bool> parked{ false }; return parked; }
+        inline DWORD& windowThreadId() { static DWORD id = 0; return id; }
+
+        inline int driverModuleAt(void* address)
+        {
+            HMODULE module = nullptr;
+            if (address == nullptr || !GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)address, &module) || module == nullptr) return -1;
+            wchar_t path[MAX_PATH]{};
+            GetModuleFileNameW(module, path, MAX_PATH);
+            const wchar_t* file = wcsrchr(path, L'\\');
+            file = file != nullptr ? file + 1 : path;
+            auto& modules = driverModules();
+            const int count = modules.count.load();
+            for (int i = 0; i < count; ++i) if (_wcsicmp(file, modules.names[i]) == 0) return i;
+            return -1;
+        }
+
+        // The driver (an index of driverModules) whose own thread this fault is on; -1 = not such a fault.
+        inline int driverOfFault(EXCEPTION_POINTERS* info)
+        {
+            if (info == nullptr || info->ExceptionRecord == nullptr) return -1;
+            if (windowThreadId() == 0 || GetCurrentThreadId() == windowThreadId()) return -1;   // never the window thread: the program cannot go on without it
+            if (const int pretended = pretendedDriver().exchange(-1); pretended >= 0) return pretended;
+            void* at = info->ExceptionRecord->ExceptionAddress;
+            if (const int index = driverModuleAt(at); index >= 0) return index;
+            // In a system library the driver called: only on a thread the driver itself started, and never in the
+            // program's own code (an audio callback of ours on the driver's thread is OUR fault).
+            HMODULE module = nullptr;
+            GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)at, &module);
+            if (module == nullptr || module == GetModuleHandleW(nullptr)) return -1;
+            using Query = LONG (WINAPI*)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+            if (HMODULE ntdll = GetModuleHandleW(L"ntdll.dll"))
+                if (auto query = reinterpret_cast<Query>(reinterpret_cast<void*>(GetProcAddress(ntdll, "NtQueryInformationThread"))))
+                {
+                    void* start = nullptr;
+                    if (query(GetCurrentThread(), 9 /* ThreadQuerySetWin32StartAddress */, &start, sizeof(start), nullptr) == 0) return driverModuleAt(start);
+                }
+            return -1;
+        }
+       #endif
+
         inline void juceCrashHandler(void* platformInfo)
         {
+           #if JUCE_WINDOWS
+            if (const int driver = driverOfFault(static_cast<EXCEPTION_POINTERS*>(platformInfo)); driver >= 0)
+            {
+                writeReport("A sound card's driver (" + juce::String(driverModules().names[driver]) + ") failed on a thread of its own - that thread is stopped, the program goes on without the card", platformInfo);
+                alreadyHandling().store(false);   // a later crash is reported too
+                driverWasParked().store(true);
+                parkedDriver().store(driver);
+                for (;;) Sleep(INFINITE);         // this thread never runs again
+            }
+           #endif
             writeReport("Unhandled exception", platformInfo);
         }
 
@@ -636,6 +703,7 @@ namespace CrashHandler
         _set_purecall_handler(detail::pureCallHandler);
        #endif
        #if JUCE_WINDOWS
+        detail::windowThreadId() = GetCurrentThreadId();   // 0.9.108: a fault on any OTHER thread inside a sound card's driver stops that thread alone
         {   // 0.9.84: a stack overflow on the message thread leaves the handler 64 KB to write its file (without the
             // guarantee the process vanishes without a line - the 16 Nov 2026 routing crash left no crash file)
             ULONG guarantee = 64 * 1024;

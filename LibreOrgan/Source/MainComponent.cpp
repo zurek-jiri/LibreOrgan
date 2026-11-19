@@ -6392,8 +6392,252 @@ juce::String MainComponent::defaultSharedTypeName()
     // ALSA plug-in. Without PipeWire, or with a system output that is no card of the list: ALSA's default as before.
     return pipeWireDefaultCard().isNotEmpty() ? "JACK" : "ALSA";
    #else
-    return "Windows Audio";
+    // 0.9.108: the card the default card search found (an ASIO card of a real device first) once it has run.
+    return preferredDefaultType.isNotEmpty() ? preferredDefaultType : juce::String("Windows Audio");
    #endif
+}
+
+juce::String MainComponent::preferredDefaultType, MainComponent::preferredDefaultName;
+
+// ASIO drivers that are software on top of something else (a router, a wrapper around Windows Audio, a virtual
+// cable): never taken as the default card by themselves. "Realtek ASIO" is among them on purpose: the on-board
+// chip's ASIO layer (44.1 kHz, 496 frames; "Device didn't start correctly" when asked; its thread ended the
+// program on 19 Nov 2026) - the on-board output is reached through Windows Audio instead.
+bool MainComponent::isSoftwareAsioDriver(const juce::String& name)
+{
+    static const char* const words[] = { "asio4all", "flexasio", "rearoute", "generic low latency", "voicemeeter", "vb-audio", "vb audio", "cable",
+        "jackrouter", "jack router", "asio link", "synchronous audio router", "fl studio asio", "magix low latency", "asio2wasapi", "wasapi",
+        "asio bridge", "dante via", "realtek asio" };
+    const auto lower = name.toLowerCase();
+    for (const auto* word : words) if (lower.contains(word)) return true;
+    return false;
+}
+
+void MainComponent::ensureCardChecker()
+{
+    if (cardChecker.onResult == nullptr) cardChecker.onResult = [this](const CardCheck::Result& result) { cardAnswered(result); };
+}
+
+void MainComponent::startDefaultCardSearch(const juce::String& why, bool moveRoutes)
+{
+   #if JUCE_WINDOWS
+    ensureCardChecker();
+    const bool move = defaultCardSearch.moveRoutes || moveRoutes;
+    if (defaultCardSearch.running) { defaultCardSearch.moveRoutes = move; return; }
+    defaultCardSearch = DefaultCardSearch();
+    auto& search = defaultCardSearch;
+    search.moveRoutes = move; search.why = why; search.running = true;
+    juce::StringArray software;
+    for (auto* type : deviceManager.getAvailableDeviceTypes())
+        if (type != nullptr && type->getTypeName().equalsIgnoreCase("ASIO"))
+            for (const auto& name : type->getDeviceNames(false))
+            {
+                if (isSoftwareAsioDriver(name)) { software.add(name); continue; }
+                if (const auto away = unavailableCards.find("ASIO|" + name); away != unavailableCards.end() && away->second.faulted) continue;
+                if (defaultCardsRefused.contains("ASIO|" + name)) continue;
+                search.candidates.push_back({ "ASIO", name });
+            }
+    for (auto* type : deviceManager.getAvailableDeviceTypes())
+        if (type != nullptr && type->getTypeName().equalsIgnoreCase("Windows Audio"))
+        {
+            type->scanForDevices();
+            const auto names = type->getDeviceNames(false);
+            const int index = type->getDefaultDeviceIndex(false);
+            if (index >= 0 && index < names.size()) { search.windowsDefault = names[index]; if (!defaultCardsRefused.contains("Windows Audio|" + names[index])) search.candidates.push_back({ "Windows Audio", names[index] }); }
+            for (const auto& name : names) if (name != search.windowsDefault && !defaultCardsRefused.contains("Windows Audio|" + name)) search.candidates.push_back({ "Windows Audio", name });
+        }
+    juce::StringArray list;
+    for (const auto& candidate : search.candidates) list.add(candidate.second + " (" + candidate.first + ")");
+    CrashHandler::note("Default sound card (" + why + "): asked in this order until one opens - " + list.joinIntoString(", ")
+        + (software.isEmpty() ? juce::String() : "; software ASIO drivers, never taken by themselves: " + software.joinIntoString(", ")));
+    askNextDefaultCandidate();
+   #else
+    juce::ignoreUnused(why, moveRoutes);
+   #endif
+}
+
+void MainComponent::askNextDefaultCandidate()
+{
+    auto& search = defaultCardSearch;
+    if (!search.running) return;
+    if (search.next < search.candidates.size())
+    {
+        const auto type = search.candidates[search.next].first, name = search.candidates[search.next].second;
+        if (auto* host = findSharedHost(type, name); host != nullptr && host->getCurrentAudioDevice() != nullptr) { defaultCardFound(type, name); return; }   // it plays already
+        cardChecker.ask(type, name);   // the answer: cardAnswered
+        return;
+    }
+    // No card of this computer opens.
+    search.running = false;
+    preferredDefaultType.clear(); preferredDefaultName.clear();
+    CrashHandler::note("Default sound card: NO card of this computer opens - " + (search.refusals.isEmpty() ? juce::String("none is listed") : search.refusals.joinIntoString("; ")));
+    if (search.moveRoutes)
+    {
+        search.moveRoutes = false;
+        search.lookAgainOnChange = true;
+        juce::String list;
+        for (int i = 0; i < search.refusals.size() && i < 6; ++i) list << "\n  - " << search.refusals[i];
+        if (search.refusals.size() > 6) list << "\n  - ... and " << (search.refusals.size() - 6) << " more (the activity log names them all)";
+        queueNotice(juce::MessageBoxIconType::WarningIcon, "No sound card",
+            "The organ is silent: no sound card of this computer could be opened." + (list.isEmpty() ? juce::String(" None is listed.") : "\n" + list)
+            + "\n\nSwitch a card on or plug it in - the program looks again as soon as Windows reports a device - or give the routes a card in the Audio routing.");
+    }
+}
+
+void MainComponent::defaultCardFound(const juce::String& type, const juce::String& name)
+{
+    auto& search = defaultCardSearch;
+    search.running = false;
+    search.lookAgainOnChange = false;
+    preferredDefaultType = type; preferredDefaultName = name;
+    CrashHandler::note("Default sound card: " + name + " (" + type + ")" + (search.refusals.isEmpty() ? juce::String() : " - asked before it in vain: " + search.refusals.joinIntoString("; ")));
+    if (!search.moveRoutes) return;
+    search.moveRoutes = false;
+    if (!type.equalsIgnoreCase("ASIO") && search.windowsDefault.isNotEmpty() && name != search.windowsDefault)
+        noteMessage("Default sound card", "Windows' default output \"" + search.windowsDefault + "\" could not be opened; the organ plays through \"" + name
+            + "\" instead. Give the routes another card in the Audio routing.");
+    moveRoutesToDefaultCard(type, name);
+}
+
+// Every route of the organ that has no "no card" of its own and does not play through the default card yet goes to
+// its first pair of outputs (the Audio routing's own queue: one route at a time behind the progress window).
+void MainComponent::moveRoutesToDefaultCard(const juce::String& type, const juce::String& name)
+{
+    if (applyAllRunning || activeFolderLoader != nullptr) { defaultRoutingPending = true; return; }   // not now: the timer comes back to it
+    std::vector<RoutingAssignStep> steps;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& perspective : engine.getPerspectivesForManual(manual))
+        {
+            if (isAuxiliaryPerspective(perspective)) continue;   // the auxiliary has no card until the user gives it one
+            juce::String xmlText;
+            if (perspective.equalsIgnoreCase("default")) xmlText = manualConfigs[(size_t)manual].audioDeviceStateXml;
+            else if (const auto found = manualConfigs[(size_t)manual].perspectiveAudio.find(perspectiveRouteKey(manual, perspective)); found != manualConfigs[(size_t)manual].perspectiveAudio.end())
+                xmlText = found->second.audioDeviceStateXml;
+            if (const auto xml = juce::parseXML(xmlText); xml != nullptr && xml->hasAttribute("audioOutputDeviceName") && xml->getStringAttribute("audioOutputDeviceName").isEmpty())
+                continue;   // a remembered "no card" stays
+            auto* manager = managerForRoute(manual, perspective);
+            auto* device = manager != nullptr ? manager->getCurrentAudioDevice() : nullptr;
+            if (device != nullptr && manager->getCurrentAudioDeviceType() == type && device->getName() == name) continue;
+            RoutingAssignStep step{ manual, perspective, { 0, 1 }, true };
+            step.type = type; step.name = name;
+            steps.push_back(step);
+        }
+    if (steps.empty()) { CrashHandler::note("Default sound card: every route of the organ plays through " + name + " already"); return; }
+    const int count = (int)steps.size();
+    CrashHandler::note("Default sound card: " + juce::String(count) + " route(s) of the organ go to " + name + " (" + type + "), outputs 1+2");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto finished = [safeThis, count, type, name]
+    {
+        if (safeThis == nullptr) return;
+        // It answered the helper - did it open here? If not, the next card (this one is left out until Windows reports a device).
+        if (auto* host = safeThis->findSharedHost(type, name); host == nullptr || host->getCurrentAudioDevice() == nullptr)
+        {
+            CrashHandler::note("Default sound card: " + name + " (" + type + ") answered the helper but did not open in the program - the next card is looked for");
+            safeThis->defaultCardsRefused.addIfNotAlreadyThere(type + "|" + name);
+            safeThis->preferredDefaultType.clear(); safeThis->preferredDefaultName.clear();
+            safeThis->startDefaultCardSearch(name + " did not open in the program", true);
+            return;
+        }
+        safeThis->noteMessage("Default sound card", "The organ brought no audio of this computer: its " + juce::String(count) + " route(s) play through " + name + " (" + type
+            + "), outputs 1+2. Move the cables in the Audio routing; \"Use as default for new organs\" there keeps your own cables for the next organ.");
+        safeThis->saveSettings();
+    };
+    audioMuted.store(true);
+    engine.noteOffAll();
+    ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 8000.0 + 1500.0 * (double)count);
+    beginRoutingAssign(type, name, 0.0, 0, std::move(steps), finished);
+}
+
+// 0.9.108: the DLL of every ASIO driver (the registry: SOFTWARE\\ASIO\\<driver>\\CLSID -> CLSID\\{...}\\InprocServer32) is
+// given to the crash handler, which stops a thread that fails inside one of them instead of ending the program.
+void MainComponent::registerAsioDriverModules()
+{
+   #if JUCE_WINDOWS
+    auto& modules = CrashHandler::detail::driverModules();
+    juce::StringArray lines;
+    for (auto* type : deviceManager.getAvailableDeviceTypes())
+        if (type != nullptr && type->getTypeName().equalsIgnoreCase("ASIO"))
+            for (const auto& name : type->getDeviceNames(false))
+            {
+                const auto clsid = juce::WindowsRegistry::getValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\ASIO\\" + name + "\\CLSID").trim();
+                if (clsid.isEmpty()) continue;
+                const auto path = juce::WindowsRegistry::getValue("HKEY_CLASSES_ROOT\\CLSID\\" + clsid + "\\InprocServer32\\").trim().unquoted();
+                const auto file = path.fromLastOccurrenceOf("\\", false, false).toLowerCase();
+                if (file.isEmpty()) continue;
+                int index = asioDriverModules.indexOf(file);
+                if (index < 0)
+                {
+                    if (asioDriverModules.size() >= CrashHandler::detail::DriverModules::capacity || file.length() >= 79) continue;
+                    index = asioDriverModules.size();
+                    asioDriverModules.add(file);
+                    asioDriversOfModule.push_back({});
+                    wcsncpy_s(modules.names[index], file.toWideCharPointer(), _TRUNCATE);
+                    modules.count.store(index + 1);
+                }
+                asioDriversOfModule[(size_t)index].add(name);
+                lines.add(name + " = " + file);
+            }
+    if (!lines.isEmpty()) CrashHandler::note("ASIO driver modules (a fault on a thread of one of them stops that thread, not the program): " + lines.joinIntoString(", "));
+   #endif
+}
+
+// The crash handler stopped a thread of this driver. Its card is out of use until the program is started again:
+// grey in the Audio routing with its cables waiting, never asked and never opened; its host - the driver's open
+// instance - is taken off the list and left as it is (closing it would call into the failed driver).
+void MainComponent::asioDriverFaulted(int moduleIndex)
+{
+    if (moduleIndex < 0 || moduleIndex >= (int)asioDriversOfModule.size()) return;
+    const auto file = asioDriverModules[moduleIndex];
+    juce::StringArray stopped;
+    audioMuted.store(true);
+    engine.noteOffAll();
+    ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
+    for (const auto& name : asioDriversOfModule[(size_t)moduleIndex])
+    {
+        auto& card = unavailableCards["ASIO|" + name];
+        card.reason = "its driver (" + file + ") failed and was stopped; start the program again to use this card.";
+        card.faulted = true; card.wanted = false;
+        ++unavailableCardsVersion;
+        for (size_t i = asioHosts.size(); i-- > 0;)
+        {
+            auto* host = asioHosts[i].get();
+            auto* device = host->getCurrentAudioDevice();
+            if (device == nullptr || !host->getCurrentAudioDeviceType().equalsIgnoreCase("ASIO") || device->getName() != name) continue;
+            // Off the list first: nothing may close it (detachRouteAudioQuietly ends with pruneUnusedAsioHosts).
+            (void)asioHosts[i].release();
+            asioHosts.erase(asioHosts.begin() + (long)i);
+            if (quietTestManager == host) { quietTestManager->removeAudioCallback(&quietTestPlayer); quietTestPlayer.setSource(nullptr); quietTestManager = nullptr; quietTestStopAt = -1.0; }
+            if (asioPanelWatch.manager == host) { asioPanelWatch.active = false; asioPanelWatch.manager = nullptr; }
+            pendingWindowsAudioResume.erase(std::remove_if(pendingWindowsAudioResume.begin(), pendingWindowsAudioResume.end(),
+                [host](const SuspendedDevice& entry) { return entry.manager == host; }), pendingWindowsAudioResume.end());
+            // Its routes: off the host (no call into the driver), their card kept as the one they wait for.
+            std::vector<std::pair<int, juce::String>> routes;
+            for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual) if (manualAsioHost[(size_t)manual] == host) routes.push_back({ manual, "default" });
+            for (const auto& entry : perspectiveAudioRoutes)
+                if (entry.second != nullptr && entry.second->managerInUse == host) routes.push_back({ entry.second->manual, entry.second->perspective });
+            juce::XmlElement wanted("DEVICESETUP");
+            wanted.setAttribute("deviceType", "ASIO"); wanted.setAttribute("audioOutputDeviceName", name); wanted.setAttribute("audioInputDeviceName", "");
+            for (const auto& route : routes)
+            {
+                if (keyboardsDialogSelectorHook) keyboardsDialogSelectorHook(true);
+                detachRouteAudioQuietly(route.first, route.second);
+                if (keyboardsDialogSelectorHook) keyboardsDialogSelectorHook(false);
+                auto& xmlText = route.second.equalsIgnoreCase("default") ? manualConfigs[(size_t)route.first].audioDeviceStateXml
+                    : manualConfigs[(size_t)route.first].perspectiveAudio[perspectiveRouteKey(route.first, route.second)].audioDeviceStateXml;
+                xmlText = wanted.toString();
+            }
+            stopped.add(name + " (" + juce::String((int)routes.size()) + " route(s))");
+        }
+    }
+    CrashHandler::note("Sound card driver FAILED: " + file + " - its thread was stopped by the crash handler, the program goes on. Out of use until the next start: "
+        + asioDriversOfModule[(size_t)moduleIndex].joinIntoString(", ") + (stopped.isEmpty() ? juce::String() : "; taken off: " + stopped.joinIntoString(", ")));
+    queueNotice(juce::MessageBoxIconType::WarningIcon, "Sound card driver failed",
+        "The driver of " + asioDriversOfModule[(size_t)moduleIndex].joinIntoString(", ") + " (" + file + ") failed - often when its output goes away "
+        "(headphones pulled out, the card switched off).\n\nThe program stopped the driver and goes on without this card: its cables wait, the other cards play. "
+        "Give the routes another card in the Audio routing, or save your work and start the program again to use this card.\n\n"
+        "The driver's fault is in the CrashLogs folder - Configuration Editor > Report a problem... sends it.");
+    saveSettings();
+    audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1500.0;
 }
 
 juce::String MainComponent::defaultDeviceNameOfType(const juce::String& typeName)
@@ -6404,6 +6648,10 @@ juce::String MainComponent::defaultDeviceNameOfType(const juce::String& typeName
         const auto card = pipeWireDefaultCard();
         if (card.isNotEmpty()) return card;
     }
+   #endif
+   #if JUCE_WINDOWS
+    // 0.9.108: the default card search's answer (an ASIO card of a real device, else the Windows Audio output that opens).
+    if (preferredDefaultName.isNotEmpty() && typeName.equalsIgnoreCase(preferredDefaultType)) return preferredDefaultName;
    #endif
     for (auto* type : deviceManager.getAvailableDeviceTypes())
         if (type->getTypeName().equalsIgnoreCase(typeName))
@@ -6546,6 +6794,7 @@ bool MainComponent::isAudioDeviceAvailableNow(const juce::String& typeName, cons
 // absent; every other type answers "yes" here (its absent devices are not listed at all).
 bool MainComponent::probeCard(const juce::String& typeName, const juce::String& deviceName)
 {
+    if (const auto away = unavailableCards.find(typeName + "|" + deviceName); away != unavailableCards.end() && away->second.faulted) return false;   // 0.9.108: its driver failed in this session
     if (!typeName.equalsIgnoreCase("ASIO") || findSharedHost(typeName, deviceName) != nullptr) return true;
     const auto key = typeName + "|" + deviceName;
     const double startMs = juce::Time::getMillisecondCounterHiRes();
@@ -6605,22 +6854,54 @@ void MainComponent::watchUnavailableCards()
        #if JUCE_WINDOWS   // (only ASIO lists cards that may not be there; elsewhere the lists are read again by the dialog itself)
         for (auto* type : deviceManager.getAvailableDeviceTypes()) if (type != nullptr) type->addListener(deviceListListener.get());
        #endif
-        cardChecker.onResult = [this](const CardCheck::Result& result) { cardAnswered(result); };
+        ensureCardChecker();
+        registerAsioDriverModules();   // 0.9.108
+       #if JUCE_WINDOWS
+        // ORGAN_TEST_DRIVER_FAULT="<seconds>|<ASIO card name part>" (tests): a thread that fails as if it were that
+        // card's driver's own - the crash handler must stop it and the program must go on without the card.
+        if (const char* env = std::getenv("ORGAN_TEST_DRIVER_FAULT"))
+        {
+            const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            const auto part = parts.size() >= 2 ? parts[1].trim() : juce::String();
+            juce::Timer::callAfterDelay(juce::jmax(1, parts[0].getIntValue()) * 1000, [safeThis, part]
+            {
+                if (safeThis == nullptr) return;
+                int index = -1;
+                for (int i = 0; i < (int)safeThis->asioDriversOfModule.size(); ++i)
+                    for (const auto& name : safeThis->asioDriversOfModule[(size_t)i]) if (name.containsIgnoreCase(part)) index = i;
+                CrashHandler::note("ORGAN_TEST_DRIVER_FAULT: " + part + (index < 0 ? juce::String(" - no such ASIO driver") : " - a thread fails as the driver " + safeThis->asioDriverModules[index]));
+                if (index < 0) return;
+                CrashHandler::detail::pretendedDriver().store(index);
+                std::thread([] { RaiseException(EXCEPTION_ACCESS_VIOLATION, 0, 0, nullptr); }).detach();
+            });
+        }
+       #endif
     }
+   #if JUCE_WINDOWS
+    if (const int stoppedDriver = CrashHandler::detail::parkedDriver().exchange(-1); stoppedDriver >= 0) asioDriverFaulted(stoppedDriver);
+   #endif
     const double nowMs = juce::Time::getMillisecondCounterHiRes();
     if (const double changedAt = systemDevicesChangedAtMs.load(); changedAt > 0.0 && nowMs - changedAt >= 1500.0)
     {
         // A second and a half after the LAST report (a card going changes the lists several times in a row).
         systemDevicesChangedAtMs.store(0.0);
         askCards(true);
+        defaultCardsRefused.clear();
+        // 0.9.108: no card opened for an organ without audio of its own - looked for again now.
+        if (defaultCardSearch.lookAgainOnChange && !defaultCardSearch.running) startDefaultCardSearch("Windows reported a device after no card had opened", true);
         return;
     }
     if (unavailableCards.empty() || activeFolderLoader != nullptr || nowMs - lastGreyCheckMs < 5000.0) return;
-    // Every five seconds: the cards a route waits for, always; the other grey ones while the Audio routing shows.
+    // Every five seconds: the cards a route waits for. The other grey ones are asked when Windows reports a device
+    // (above), when the Audio routing opens and by a click on them - and every half minute while the dialog shows
+    // (0.9.108: a round every five seconds for every grey card was what kept the "starting" cursor on the screen).
     const bool dialogShowing = audioRoutingWindow != nullptr && audioRoutingWindow->isShowing();
+    const bool idleRound = dialogShowing && nowMs - lastIdleGreyCheckMs >= 30000.0;
     for (const auto& [key, card] : unavailableCards)
-        if (card.wanted || dialogShowing)
+        if (!card.faulted && (card.wanted || idleRound))
             cardChecker.ask(juce::String(key).upToFirstOccurrenceOf("|", false, false), juce::String(key).fromFirstOccurrenceOf("|", false, false));
+    if (idleRound) lastIdleGreyCheckMs = nowMs;
     lastGreyCheckMs = nowMs;
 }
 
@@ -6641,17 +6922,28 @@ void MainComponent::askCards(bool everyAsioCard)
         for (auto* type : deviceManager.getAvailableDeviceTypes())
             if (type != nullptr && type->getTypeName().equalsIgnoreCase("ASIO"))
                 for (const auto& name : type->getDeviceNames(false))
+                {
+                    if (const auto away = unavailableCards.find("ASIO|" + name); away != unavailableCards.end() && away->second.faulted) continue;   // its driver failed: never asked again
                     if (findSharedHost("ASIO", name) == nullptr) { cardChecker.ask("ASIO", name); ++asked; }
+                }
     if (asked > 0) CrashHandler::note("Sound cards: " + juce::String(asked) + " ASIO card(s) that are not open are asked whether they are there (in a helper process)");
     for (const auto& [key, card] : unavailableCards)
-        cardChecker.ask(juce::String(key).upToFirstOccurrenceOf("|", false, false), juce::String(key).fromFirstOccurrenceOf("|", false, false));
-    lastGreyCheckMs = juce::Time::getMillisecondCounterHiRes();
+        if (!card.faulted) cardChecker.ask(juce::String(key).upToFirstOccurrenceOf("|", false, false), juce::String(key).fromFirstOccurrenceOf("|", false, false));
+    lastGreyCheckMs = lastIdleGreyCheckMs = juce::Time::getMillisecondCounterHiRes();
 }
 
 // The helper's answer about one card.
 void MainComponent::cardAnswered(const CardCheck::Result& result)
 {
     const auto key = result.type + "|" + result.name;
+    // 0.9.108: the answer the default card search waits for.
+    if (auto& search = defaultCardSearch; search.running && search.next < search.candidates.size()
+        && search.candidates[search.next].first == result.type && search.candidates[search.next].second == result.name)
+    {
+        if (result.ok) defaultCardFound(result.type, result.name);
+        else { search.refusals.add(result.name + " (" + result.type + "): " + result.reason); ++search.next; askNextDefaultCandidate(); }
+    }
+    if (const auto away = unavailableCards.find(key); away != unavailableCards.end() && away->second.faulted) return;   // its driver failed in this session: nothing brings it back
     if (findSharedHost(result.type, result.name) != nullptr)   // a route opened it meanwhile: it is there
     {
         if (unavailableCards.erase(key) > 0) ++unavailableCardsVersion;
@@ -6759,7 +7051,7 @@ void MainComponent::showMissingAudioDevicesIfDue()
         }
         if (name.isNotEmpty() && isAudioDeviceAvailableNow(typeName, name, nullptr))
         {
-            CrashHandler::note("Audio device '" + name + "' appeared during the wait: the route is reopened, not reported");
+            CrashHandler::note("Audio device '" + name + "' is listed after the wait (not open yet): not reported - its routes are opened when it opens, an organ without audio of its own takes the default card");
             continue;
         }
         stillMissing.add(item);
@@ -6861,7 +7153,7 @@ void MainComponent::watchMissingAudioDevices()
         // 0.9.107: an ASIO card known to be away is asked by the helper process (watchUnavailableCards), not here on
         // the window thread every two seconds; when it answers its entry goes and this pass opens the routes.
         if (typeName.equalsIgnoreCase("ASIO"))
-            if (const auto away = unavailableCards.find(typeName + "|" + wanted); away != unavailableCards.end()) { away->second.wanted = true; continue; }
+            if (const auto away = unavailableCards.find(typeName + "|" + wanted); away != unavailableCards.end()) { if (!away->second.faulted) away->second.wanted = true; continue; }
         juce::String error;
         if (!isAudioDeviceAvailableNow(typeName, wanted, &error))
         {
@@ -6944,9 +7236,13 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
     // first driver installed. JUCE has no "default" ASIO device: the host opened
     // with none, the route counted as missing and "Audio devices not available"
     // came after the wait (#34, 0.8.141).
+    bool asioByDefault = false;   // 0.9.108: ASIO as this computer's default card - the driver keeps its own rate and buffer
+    bool firstPairOnly = false;   // 0.9.108: the device refused every output it lists and opened with its first pair
     if (name.isEmpty() && asio)
     {
-        for (const auto& running : asioHosts)
+        asioByDefault = true;
+        if (preferredDefaultType.equalsIgnoreCase("ASIO")) name = preferredDefaultName;   // the default card search's answer before "whatever ASIO runs"
+        if (name.isEmpty()) for (const auto& running : asioHosts)
             if (running->getCurrentAudioDeviceType().equalsIgnoreCase("ASIO"))
                 if (auto* device = running->getCurrentAudioDevice()) { name = device->getName(); break; }
         if (name.isEmpty()) name = defaultDeviceNameOfType(typeName);
@@ -6986,9 +7282,10 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
             // JACK (0.9.97): never the rate or buffer of another type's state - a JACK route takes the server's
             // clock, and a portable file's figures would be forced on PipeWire for every program of the desktop.
             const bool jack = typeName.equalsIgnoreCase("JACK");
-            if (!jack && state != nullptr && state->hasAttribute("audioDeviceRate")) setup->setAttribute("audioDeviceRate", state->getStringAttribute("audioDeviceRate"));
+            if (asioByDefault) {}   // (a portable file's rate and buffer would be forced on the card for every program using it)
+            else if (!jack && state != nullptr && state->hasAttribute("audioDeviceRate")) setup->setAttribute("audioDeviceRate", state->getStringAttribute("audioDeviceRate"));
             else if (!jack) setup->setAttribute("audioDeviceRate", 48000.0);
-            if (!jack && state != nullptr && state->hasAttribute("audioDeviceBufferSize")) setup->setAttribute("audioDeviceBufferSize", state->getStringAttribute("audioDeviceBufferSize"));
+            if (!jack && !asioByDefault && state != nullptr && state->hasAttribute("audioDeviceBufferSize")) setup->setAttribute("audioDeviceBufferSize", state->getStringAttribute("audioDeviceBufferSize"));
             else if (!jack && !typeName.equalsIgnoreCase("ASIO")) setup->setAttribute("audioDeviceBufferSize", 512);
         }
         // A state written by the short-lived zero-output implementation contains
@@ -7013,6 +7310,25 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
             applySafeStart(*setup);
             beginDeviceOpen(*setup);
             error = host->initialise(0, 2, setup.get(), false);
+           #if JUCE_WINDOWS
+            // 0.9.108 - WHY THE USER'S DEFAULT OUTPUT NEVER OPENED (19 Nov 2026; 65 attempts in two days, none worked):
+            // "Reproduktory (Realtek(R) Audio)" LISTS 64 OUTPUTS (its driver says yes to every channel count asked),
+            // and opening it with all of them - what the mask above asks for - fails with "Couldn't open the output
+            // device!", while the first pair alone opens at once (measured through the helper: no mask / "11" ok,
+            // 64 ones no; the Fireface's and the monitor's outputs list 2 and open either way). A Windows Audio
+            // device that refuses its whole list is opened again with its first pair, and stays so.
+            if (host->getCurrentAudioDevice() == nullptr && !asio && setup->getStringAttribute("audioDeviceOutChans").length() > 2)
+            {
+                setup->setAttribute("audioDeviceOutChans", "11");
+                host->initialise(0, 2, setup.get(), false);
+                if (host->getCurrentAudioDevice() != nullptr)
+                {
+                    firstPairOnly = true;
+                    CrashHandler::note(typeName + " '" + name + "' does not open with every output it lists (" + error + "): opened with its first pair alone");
+                    error.clear();
+                }
+            }
+           #endif
             endDeviceOpen();
             if (host->getCurrentAudioDevice() == nullptr)
                 failedOpens[failKey] = { juce::Time::getMillisecondCounterHiRes(), error.isNotEmpty() ? error : juce::String("the device did not open") };
@@ -7022,7 +7338,7 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
     else
         host->setCurrentAudioDeviceType(typeName, true);   // no host open yet: the type's default device
     auto* device = host->getCurrentAudioDevice();
-    if (device != nullptr)
+    if (device != nullptr && !firstPairOnly)
     {
         // The default-device path above opens two channels only: enable them all.
         const int count = device->getOutputChannelNames().size();
@@ -8874,7 +9190,13 @@ void MainComponent::applyDefaultRoutingIfDue()
     defaultRoutingPending = false;
     quietSinceMs = 0.0;
     const auto file = defaultRoutingFile();
-    if (!file.existsAsFile()) return;
+    if (!file.existsAsFile())
+    {
+        // 0.9.108: no "default for new organs" saved - this computer's default card is looked for NOW (asked in the
+        // helper process) and every route of the organ that does not play through it goes there.
+        startDefaultCardSearch("an organ without this computer's audio was loaded", true);
+        return;
+    }
     const auto data = juce::JSON::parse(file.loadFileAsString());
     if (data.isObject()) applyRouting(data, false, "This computer's default routing");
 }
@@ -9133,6 +9455,8 @@ void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, co
     if (device == nullptr) return;
     const auto name = device->getName();
     const int oldBuffer = device->getCurrentBufferSizeSamples();
+    // 0.9.108: the user's own reopening (Reopen, the driver panel) lets the period recovery try this card once more.
+    if (!reason.startsWith("Callback period") && !reason.startsWith("No audio callbacks")) { asioPeriodRecovered.erase(name); asioPeriodNoted.erase(name); }
     audioMuted.store(true);
     engine.noteOffAll();
     ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
@@ -9515,6 +9839,7 @@ void MainComponent::checkAudioCallbackHealth()
     // "digitally broken" device state leaves objective evidence.
     int logged = 0;
     bool asioPeriodMismatch = false;
+    juce::StringArray mismatchingAsio;   // 0.9.108: the cards whose callbacks do not match their buffer
     // Which devices carry audio right now: the routes whose callback produced
     // more than -60 dBFS are listed with their peak levels, at most every 10 s.
     juce::String levels;
@@ -9526,7 +9851,11 @@ void MainComponent::checkAudioCallbackHealth()
     {
         if (callback == nullptr) return;
         const auto report = callback->healthReport();
-        if (callback->hadRateMismatch() && callback->isAsio()) asioPeriodMismatch = true;
+        if (callback->hadRateMismatch() && callback->isAsio())
+        {
+            asioPeriodMismatch = true;
+            mismatchingAsio.addIfNotAlreadyThere(callback->label().upToFirstOccurrenceOf(" manual ", false, false));
+        }
         // 0.9.12: a device that opened but calls back nothing (31 Oct 2026: the Fireface's Windows Audio
         // endpoint after a USB reset - DSP 0 %, silence, a log line once a minute and nothing else; the
         // ASIO recovery below never applied). After 4 s without a callback the device is reopened once
@@ -9653,21 +9982,25 @@ void MainComponent::checkAudioCallbackHealth()
     // Windows Audio streams were running) is reopened once, with the Windows
     // Audio devices closed meanwhile. If that does not help, nothing is retried
     // until the user acts (Driver Control Panel / Reopen device).
+    // 0.9.108 (the log of 19 Nov 2026: ReaRoute, which calls back twice as often as its buffer says while Reaper
+    // does not run, had every ASIO card - the Fireface, Realtek's - reopened with it, twice after every device
+    // change, the window standing still for two seconds each time): only the card whose callbacks do not match
+    // is reopened, and once - until the user acts on it (its Reopen button, its driver panel).
     asioRateMismatchSeconds = asioPeriodMismatch ? asioRateMismatchSeconds + 1 : 0;
-    if (asioRateMismatchSeconds >= 2 && asioRecoveriesSinceUserAction == 0
-        && !asioPanelWatch.active && !applyAllRunning)
+    if (asioRateMismatchSeconds >= 2 && !asioPanelWatch.active && !applyAllRunning)
     {
         asioRateMismatchSeconds = 0;
         for (auto* manager : allAudioManagers())
         {
             auto* device = manager->getCurrentAudioDevice();
-            if (device != nullptr && device->getTypeName().equalsIgnoreCase("ASIO"))
+            if (device == nullptr || !device->getTypeName().equalsIgnoreCase("ASIO") || !mismatchingAsio.contains(device->getName())) continue;
+            const auto name = device->getName();
+            if (asioPeriodRecovered.insert(name).second)
                 reopenAudioDeviceFresh(*manager, "Callback period does not match the buffer size - recovery");
+            else if (asioPeriodNoted.insert(name).second)
+                CrashHandler::note("ASIO callback period of " + name + " still does not match after the recovery; not retrying automatically");
         }
-        asioRecoveriesSinceUserAction = 1;
     }
-    else if (asioRateMismatchSeconds == 2 && asioRecoveriesSinceUserAction > 0)
-        CrashHandler::note("ASIO callback period still does not match after the recovery; not retrying automatically");
 }
 
 void MainComponent::reconcileAsioDevices()

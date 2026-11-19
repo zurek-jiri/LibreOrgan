@@ -1181,7 +1181,7 @@ private:
     // remembered here with the driver's reason: grey in the Audio routing, it takes no cable. It is asked again by
     // itself while the dialog is open (and at once when Windows reports a device coming), so a card connected later
     // becomes active without a click.
-    struct UnavailableCard { juce::String reason; double nextCheckMs = 0.0; bool wanted = false; };   // wanted: a route is set to it - asked again whether the dialog shows or not
+    struct UnavailableCard { juce::String reason; double nextCheckMs = 0.0; bool wanted = false; bool faulted = false; };   // wanted: a route is set to it - asked again whether the dialog shows or not; faulted (0.9.108): its driver failed in this session - never asked or opened again
     std::map<juce::String, UnavailableCard> unavailableCards;   // "type|name"
     int unavailableCardsVersion = 0;                            // the Audio routing's signature follows it
     bool probeCard(const juce::String& typeName, const juce::String& deviceName);   // true: it opens now
@@ -1197,7 +1197,39 @@ private:
     void systemDevicesChanged();                     // Windows reported a device coming or going
     void cardWentAway(const juce::String& typeName, const juce::String& deviceName, const juce::String& reason);
     std::atomic<double> systemDevicesChangedAtMs{ 0.0 };
-    double fastSilenceCheckUntilMs = 0.0, lastGreyCheckMs = 0.0;
+    double fastSilenceCheckUntilMs = 0.0, lastGreyCheckMs = 0.0, lastIdleGreyCheckMs = 0.0;
+    // 0.9.108: THIS COMPUTER'S DEFAULT SOUND CARD (Windows; the user: "Vždy musí po loading něco někam hrát" and
+    // "přednostně na windows bral ASIO. A to přednostně fyzické karty, nikoli ASIO fake software ovladače"). An organ
+    // that brings no audio of this computer (a published configuration, a Hauptwerk import, folders on an empty
+    // console) and no saved "default for new organs" gets, in this order: the first ASIO card of a real device
+    // that answers (software drivers - ReaRoute, ASIO4ALL, FlexASIO ... - are never taken by themselves), Windows'
+    // default output, any other Windows Audio output that opens. Every candidate is asked in the helper process
+    // (never opened in vain on the window thread); when none opens a box says so and the search runs again when
+    // Windows reports a device. The card found is also what defaultSharedTypeName / defaultDeviceNameOfType give.
+    struct DefaultCardSearch
+    {
+        std::vector<std::pair<juce::String, juce::String>> candidates;   // type, name - in the order of preference
+        size_t next = 0;
+        bool running = false, moveRoutes = false, lookAgainOnChange = false;
+        juce::String why, windowsDefault;
+        juce::StringArray refusals;
+    };
+    juce::StringArray defaultCardsRefused;   // "type|name": answered the helper but did not open in the program - not taken again until Windows reports a device
+    DefaultCardSearch defaultCardSearch;
+    static juce::String preferredDefaultType, preferredDefaultName;
+    static bool isSoftwareAsioDriver(const juce::String& name);
+    void ensureCardChecker();
+    void startDefaultCardSearch(const juce::String& why, bool moveRoutes);
+    void askNextDefaultCandidate();
+    void defaultCardFound(const juce::String& type, const juce::String& name);
+    void moveRoutesToDefaultCard(const juce::String& type, const juce::String& name);
+    // 0.9.108: a sound card's driver that fails on a thread of its own (CrashHandler stops the thread): the card is
+    // taken out of use for the session - grey, its cables waiting, its host never called or deleted again.
+    juce::StringArray asioDriverModules;                 // the DLL file names of the ASIO drivers, in CrashHandler's order
+    std::vector<juce::StringArray> asioDriversOfModule;  // the driver names of each DLL
+    void registerAsioDriverModules();
+    void asioDriverFaulted(int moduleIndex);
+    std::set<juce::String> asioPeriodRecovered, asioPeriodNoted;   // the ASIO cards reopened once for a callback period that does not match / named as still not matching
     bool cardsAskedOnce = false;
     std::unique_ptr<juce::AudioIODeviceType::Listener> deviceListListener;   // the audio device types' lists
     // Plug-ins that failed inside their own code and were caught (Windows): off until the program starts again.

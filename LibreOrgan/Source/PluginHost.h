@@ -15,6 +15,7 @@
 
 #include <JuceHeader.h>
 #include "CrashHandler.h"
+#include "QuietProcess.h"
 #if JUCE_WINDOWS
  #include <windows.h>
 #endif
@@ -225,7 +226,7 @@ namespace PluginHost
             if (onDone) onDone(true, detail);
         }
         juce::PluginDescription description;
-        juce::ChildProcess process;
+        QuietProcess process;   // (no "starting an application" cursor)
         juce::File request, result;
         double startedMs = 0.0;
         int left = 0;
@@ -383,7 +384,7 @@ namespace PluginHost
                 const auto request = work.getChildFile("request.txt"), result = work.getChildFile("result.xml");
                 result.deleteFile();
                 request.replaceWithText(job.format + "\n" + job.identifier + "\n" + result.getFullPathName() + "\n");
-                juce::ChildProcess worker;
+                QuietProcess worker;   // (no "starting an application" cursor)
                 juce::StringArray args;
                 args.add(exe.getFullPathName()); args.add("--pluginscan"); args.add(request.getFullPathName());
                 ScanStamp stamp;
