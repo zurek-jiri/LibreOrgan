@@ -4693,6 +4693,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   when the card is back" / "no outputs now - its cables wait" (was "... drop a perspective here to open it").
   TEST SCRIPT LESSON: `& script.ps1 | Select-Object -First 2` STOPS the script when two lines came - the test's
   process was left running and the next test refused; never cut a test script's output with -First.
+  v0.9.114 RELEASED (19 Nov 2026, the user: "udělej vše i na linux, dej na github ... set funguje"): the FIRST tag
+  (e1217fd) failed on ALL five jobs within two minutes - "No rule to make target .../Source/Splash/pipes-6.jpg":
+  `LibreOrgan/.gitignore` ignores `*.jpg`, `git add LibreOrgan/Source/Splash` added nothing and my `2>$null` hid git's
+  warning; the local MSBuild passed because the files are on the disk. `git add -f` the six files (82bd51b), main
+  pushed, the tag deleted locally and on origin and put on 82bd51b: every job green, the release out, Intel mac "late
+  symbols: 0", the CI exe deployed. RULE: a NEW binary file of the build (picture, IR, font) - `git check-ignore -v
+  <file>` and `git ls-files <folder>` before the tag; never `2>$null` on `git add`. The Linux and macOS halves
+  (the cover's paint, the direct ALSA tick box, the busy rule) COMPILE on CI; none of it was RUN there - the user
+  tests on Linux and macOS.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
