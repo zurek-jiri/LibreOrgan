@@ -370,6 +370,10 @@ inline void pipeWireForcedClock(int& quantum, int& rate)
     rate = valueOf("clock.force-rate");
 }
 
+// Raised while the USER sets a card's buffer or rate (the Audio routing's boxes): only then may a card change the
+// clock under other cards that play (0.9.111).
+inline int& pipeWireUserSetsClock() { static int held = 0; return held; }
+
 // While the routes are reopened BECAUSE the clock changed, their own opens tell nobody (0.9.110: no chain).
 inline int& pipeWireClockHookHeld() { static int held = 0; return held; }
 
@@ -464,10 +468,32 @@ public:
     int getDefaultBufferSize() override { return getCurrentBufferSizeSamples(); }
     juce::String open(const juce::BigInteger& inputChannels, const juce::BigInteger& outputChannels, double sampleRate, int bufferSizeSamples) override
     {
-        const int wantBuffer = bufferSizeSamples > 0 ? bufferSizeSamples : 0;
-        const int wantRate = sampleRate > 0.0 ? juce::roundToInt(sampleRate) : 0;
+        int wantBuffer = bufferSizeSamples > 0 ? bufferSizeSamples : 0;
+        int wantRate = sampleRate > 0.0 ? juce::roundToInt(sampleRate) : 0;
         int serverBuffer = 0, serverRate = 0;
         const bool known = jackServerClock(serverBuffer, serverRate);
+        // 0.9.111: PipeWire has ONE clock for every card. A card opened while other cards of ours play takes the
+        // clock in force, whatever buffer its route remembers - only the user's own choice in the Buffer / Sample
+        // rate boxes changes it for all. The first card takes its remembered buffer; with none remembered and
+        // nothing forced, 512 frames (PipeWire's own default of 1024 is slow under the fingers).
+        const bool othersPlay = heldJackDeviceNames().size() > 1;
+        if (othersPlay && pipeWireUserSetsClock() == 0)
+        {
+            if (known && ((wantBuffer > 0 && wantBuffer != serverBuffer) || (wantRate > 0 && wantRate != serverRate)))
+                CrashHandler::note("JACK: " + getName() + " remembers " + juce::String(wantBuffer) + " frames / " + juce::String(wantRate)
+                    + " Hz - opened at the clock in force, " + juce::String(serverBuffer) + " / " + juce::String(serverRate) + " (other cards play)");
+            wantBuffer = 0; wantRate = 0;
+        }
+        else if (!othersPlay && wantBuffer == 0 && known)
+        {
+            int forcedBuffer = 0, forcedRate = 0;
+            pipeWireForcedClock(forcedBuffer, forcedRate);
+            if (forcedBuffer == 0)
+            {
+                wantBuffer = 512;
+                CrashHandler::note("JACK: no buffer is remembered for " + getName() + " and PipeWire has none set - 512 frames asked for");
+            }
+        }
         const bool changeBuffer = known && wantBuffer > 0 && wantBuffer != serverBuffer;
         const bool changeRate = known && wantRate > 0 && wantRate != serverRate;
         bool changed = false;

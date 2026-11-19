@@ -1473,7 +1473,13 @@ private:
         owner.audioMuted.store(true);
         owner.engine.noteOffAll();
         owner.ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 4000.0);
+       #if JUCE_LINUX
+        ++pipeWireUserSetsClock();   // the user's own choice may change PipeWire's clock for every card
+       #endif
         const auto error = manager->setAudioDeviceSetup(setup, true);
+       #if JUCE_LINUX
+        --pipeWireUserSetsClock();
+       #endif
         CrashHandler::note("Audio routing: " + what + " of " + setup.outputDeviceName + " set to " + (what == "rate" ? juce::String(juce::roundToInt(setup.sampleRate)) + " Hz" : juce::String(setup.bufferSize)) + (error.isNotEmpty() ? " - " + error : juce::String()));
         if (error.isNotEmpty()) owner.noteMessage("Audio routing", error);
         owner.saveSettings();

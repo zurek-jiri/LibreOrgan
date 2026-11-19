@@ -4562,6 +4562,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   program. If PipeWire stays forced after a bad end: `pw-metadata -n settings 0 clock.force-quantum 0`. The user
   starts the Linux program from ~/Desktop/LibreOrgan (the local build was copied there and to ~/Downloads). NO
   Projucer resave (Linux): the VS2026 files say 0.9.109 - Windows next.
+  0.9.111 (19 Nov 2026, Linux; the user: "proč se nová karta otevře na 1024 a ne na tom, co tam už je" + "512 jako
+  default, když si program neví rady"): PipeWire has ONE clock for every card (a buffer set on one card is every
+  card's - right, told the user). `PipeWireJackDevice::open`: with other JACK devices of ours open
+  (`heldJackDeviceNames().size() > 1`) and no user act (`pipeWireUserSetsClock()`, raised around setAudioDeviceSetup
+  in AudioRouting's reopenWith = the Buffer / Sample rate boxes, and in the ORGAN_JACK_BUFFER hook) the remembered
+  buffer/rate are dropped - the card opens at the clock in force (log "remembers N frames ... opened at the clock in
+  force"); the FIRST card takes its remembered buffer; none remembered and nothing forced -> 512 frames asked for.
+  Tested (local build): start 1024 (the saved state), ORGAN_JACK_BUFFER=512,16 -> 512, a route moved to Komplete
+  Audio 6 by ORGAN_TEST_ROUTE -> "remembers 1024 ... opened at ... 512", both cards at 512, no chain (the two-card
+  case 0.9.110 could not test). The user's saved routes remember 1024: the first card of a start sets 1024 until he
+  chooses 512 in the Buffer box once.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

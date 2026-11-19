@@ -3119,7 +3119,13 @@ MainComponent::MainComponent()
                         auto setup = manager->getAudioDeviceSetup();
                         setup.bufferSize = frames;
                         CrashHandler::note("ORGAN_JACK_BUFFER: asking " + setup.outputDeviceName + " for " + juce::String(frames) + " frames");
+                       #if JUCE_LINUX
+                        ++pipeWireUserSetsClock();
+                       #endif
                         const auto error = manager->setAudioDeviceSetup(setup, true);
+                       #if JUCE_LINUX
+                        --pipeWireUserSetsClock();
+                       #endif
                         CrashHandler::note("ORGAN_JACK_BUFFER: " + (error.isEmpty() ? juce::String("ok") : "ERROR " + error));
                         break;
                     }

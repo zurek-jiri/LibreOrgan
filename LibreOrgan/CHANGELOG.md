@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.111] - 2026-11-19
+
+### Changed
+- **Linux: a card opened later takes the buffer in force.** PipeWire has one
+  buffer size and one sample rate for every card. A card opened while other
+  cards play no longer brings back the size its route remembers (and with it
+  changes the size for all); only the Buffer and Sample rate boxes of the Audio
+  routing change it, for every card at once. The first card takes its
+  remembered size; when none is remembered and PipeWire has none set, 512
+  frames are asked for.
+
 ## [0.9.110] - 2026-11-19
 
 ### Fixed
