@@ -311,6 +311,11 @@ inline void installFilteredAlsaType(juce::AudioDeviceManager& manager)
 // dlopen of the same soname find it, so "JACK" in the device list connects to
 // PipeWire and shows every channel of every card. Returns what was loaded.
 #include <dlfcn.h>
+#include <spawn.h>
+#include <poll.h>
+#include <signal.h>
+#include <sys/wait.h>
+extern char** environ;
 inline void*& jackLibraryHandle() { static void* handle = nullptr; return handle; }
 // True when the library loaded is PipeWire's own (not a jackd client library): see pipeWireCarriesTheCards().
 inline bool& pipeWireJackLibraryLoaded() { static bool loaded = false; return loaded; }
@@ -329,6 +334,51 @@ inline juce::String preloadPipeWireJack()
     return {};
 }
 
+// A small tool of the system (pw-metadata, wpctl) run to its end, its output read. Started with posix_spawn, NOT with
+// fork (juce::ChildProcess): a fork copies the page tables of the whole process - with an organ of many GB loaded
+// each start took about a second on the window thread, a buffer change several seconds a card (0.9.113; measured
+// in the stall stacks of 0.9.112: always inside fork). posix_spawn shares the memory until the tool starts.
+// False when the tool could not be started or did not end with 0; it is killed after the time limit.
+inline bool runSystemTool(const juce::StringArray& arguments, juce::String* output = nullptr, int timeoutMs = 3000)
+{
+    if (arguments.isEmpty()) return false;
+    int fds[2];
+    if (pipe(fds) != 0) return false;
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+    posix_spawn_file_actions_adddup2(&actions, fds[1], 1);
+    posix_spawn_file_actions_adddup2(&actions, fds[1], 2);
+    posix_spawn_file_actions_addclose(&actions, fds[0]);
+    posix_spawn_file_actions_addclose(&actions, fds[1]);
+    std::vector<std::string> store;
+    for (const auto& argument : arguments) store.push_back(argument.toStdString());
+    std::vector<char*> argv;
+    for (auto& text : store) argv.push_back(text.data());
+    argv.push_back(nullptr);
+    pid_t pid = 0;
+    const int started = posix_spawnp(&pid, argv[0], &actions, nullptr, argv.data(), environ);
+    posix_spawn_file_actions_destroy(&actions);
+    ::close(fds[1]);
+    if (started != 0) { ::close(fds[0]); return false; }
+    std::string text;
+    const double endMs = juce::Time::getMillisecondCounterHiRes() + (double)timeoutMs;
+    for (;;)
+    {
+        const int leftMs = (int)(endMs - juce::Time::getMillisecondCounterHiRes());
+        pollfd waiting{ fds[0], POLLIN, 0 };
+        if (leftMs <= 0 || poll(&waiting, 1, leftMs) <= 0) { ::kill(pid, SIGKILL); break; }
+        char buffer[4096];
+        const auto count = ::read(fds[0], buffer, sizeof(buffer));
+        if (count <= 0) break;
+        text.append(buffer, (size_t)count);
+    }
+    ::close(fds[0]);
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (output != nullptr) *output = juce::String::fromUTF8(text.data(), (int)text.size());
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
 // PipeWire's buffer size (quantum) and sample rate are the server's, shared by
 // every JACK client. pw-metadata sets them; 0 = unchanged. Empty = done.
 inline juce::String pipeWireSetClock(int quantum, int rate)
@@ -337,12 +387,10 @@ inline juce::String pipeWireSetClock(int quantum, int rate)
     {
         juce::StringArray args;
         args.add("pw-metadata"); args.add("-n"); args.add("settings"); args.add("0"); args.add(key); args.add(juce::String(value));
-        juce::ChildProcess process;
-        if (!process.start(args, juce::ChildProcess::wantStdOut | juce::ChildProcess::wantStdErr))
-            return juce::String("pw-metadata could not be started (package pipewire-bin)");
-        process.waitForProcessToFinish(5000);
-        const auto output = process.readAllProcessOutput().trim();
-        return process.getExitCode() == 0 ? juce::String() : (output.isNotEmpty() ? output : juce::String("pw-metadata failed"));
+        juce::String output;
+        if (runSystemTool(args, &output, 5000)) return juce::String();
+        output = output.trim();
+        return output.isNotEmpty() ? output : juce::String("pw-metadata could not be started or failed (package pipewire-bin)");
     };
     juce::String error;
     if (quantum > 0) error = run("clock.force-quantum", quantum);
@@ -356,10 +404,8 @@ inline void pipeWireForcedClock(int& quantum, int& rate)
     quantum = 0; rate = 0;
     juce::StringArray args;
     args.add("pw-metadata"); args.add("-n"); args.add("settings");
-    juce::ChildProcess process;
-    if (!process.start(args, juce::ChildProcess::wantStdOut)) return;
-    const auto output = process.readAllProcessOutput();
-    process.waitForProcessToFinish(2000);
+    juce::String output;
+    if (!runSystemTool(args, &output, 2000)) return;
     auto valueOf = [&output](const juce::String& key)
     {
         const int at = output.indexOf("key:'" + key + "'");
@@ -716,13 +762,12 @@ inline juce::String pipeWireDefaultCard()
     answer.clear();
     if (!pipeWireCarriesTheCards()) return answer;
     const auto clients = FilteredJackDeviceType::audioClients(true);
-    juce::ChildProcess process;
     juce::StringArray args;
     args.add("wpctl"); args.add("inspect"); args.add("@DEFAULT_AUDIO_SINK@");
-    if (!process.start(args, juce::ChildProcess::wantStdOut)) return answer;
-    process.waitForProcessToFinish(2000);
+    juce::String inspected;
+    if (!runSystemTool(args, &inspected, 2000)) return answer;
     juce::StringArray names;   // nick, description, name - in the order PipeWire's JACK side prefers them here
-    const auto lines = juce::StringArray::fromLines(process.readAllProcessOutput());
+    const auto lines = juce::StringArray::fromLines(inspected);
     for (const char* key : { "node.nick", "node.description", "node.name" })
         for (const auto& line : lines)
             if (line.contains(juce::String(key) + " ="))

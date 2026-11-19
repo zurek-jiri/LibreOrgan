@@ -4606,6 +4606,21 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   M)"), later cards at the clock in force. Tested: no file -> 512 (route remembered 1024), ORGAN_JACK_BUFFER=256 ->
   256 + file "256", the second card "opened at the clock in force, 256", restart -> 256. RULE (the user): never
   test with the value that was there before - a test of a setting must end at a value DIFFERENT from the old one.
+  0.9.113 (19 Nov 2026, Linux; the user: "změna buffer size je extrémně zdlouhavá ... několik sekund na kartě ...
+  dalších XX sekund na další"): the stall stacks of 0.9.112 ("Message thread silent for 2.4 s") all stood in
+  `fork` under juce::ChildProcess::start <- pipeWireForcedClock / pipeWireSetClock: A FORK COPIES THE PAGE TABLES OF
+  THE WHOLE PROCESS - about a second each with an organ loaded, several per open (my 0.9.110-0.9.112 added the
+  reads; my tests ran without an organ and saw nothing). `runSystemTool(args, &output, timeoutMs)` (PlatformAudio.h:
+  posix_spawnp + a pipe + poll, killed at the limit) replaces juce::ChildProcess for pw-metadata (set, read) and
+  wpctl (the default card). Measured with Caen loaded and two cards: the change and the other card's reopening in
+  the same second, no stall line. RULE: on Linux/macOS never juce::ChildProcess (fork) on the window thread of a
+  program that holds GBs - posix_spawn; and a timing test runs WITH A BIG ORGAN LOADED. Still fork (rare, the
+  user's own act, not changed): lsblk/udisksctl at a load, gdbus/KWin and osascript for the report windows, the
+  desktop-entry tools, QuietProcess on Linux/macOS (plug-in scan and window trial). Windows: CreateProcess copies
+  nothing and no such tool is used. THE 5 s LIMIT of 0.9.110 WAS A BUG (found in the user's clicks into my test
+  window: two changes 3 s apart left the Komplete at 256 beside 128): `reopenJackRoutesAfterClockChange` reopens a
+  card whenever its buffer/rate differ from `jackServerClock` (the forced clock) and skips one that runs at it
+  already; against a chain only a count stays (six reopenings of one card in five seconds).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

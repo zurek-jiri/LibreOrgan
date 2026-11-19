@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.113] - 2026-11-19
+
+### Fixed
+- **Linux: a buffer change took seconds per card with a large organ loaded.**
+  PipeWire's settings are read and set through a small system tool, and each
+  start of it copied the memory map of the whole program - about a second
+  with many GB of samples. The tool is started without that copy now; a
+  change on two cards is done within the same second.
+- **Linux: the second card kept the old buffer** when the buffer was changed
+  twice within five seconds. A card is reopened whenever its buffer differs
+  from the one in force.
+
 ## [0.9.112] - 2026-11-19
 
 ### Fixed

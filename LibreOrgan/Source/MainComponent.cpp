@@ -8744,19 +8744,28 @@ void MainComponent::reopenJackRoutesAfterClockChange(juce::AudioIODevice* change
     }
     // 0.9.110: these reopenings report no change of their own (two cards reopened each other for ever, three
     // times a second, with no sound), and a card reopened for this reason less than five seconds ago is left alone.
-    static std::map<juce::String, double> reopenedAtMs;
+    // 0.9.113: a card is reopened only when its buffer or rate really differs from the clock in force (the 0.9.110
+    // rule "not twice within five seconds" left a card at the old buffer when the user changed it twice quickly);
+    // against a chain there stays a count: six reopenings of one card within five seconds and no more.
+    static std::map<juce::String, std::vector<double>> reopenedAtMs;
     const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    int clockBuffer = 0, clockRate = 0;
+    const bool clockKnown = jackServerClock(clockBuffer, clockRate) && clockBuffer > 0;
     ++pipeWireClockHookHeld();
     for (auto* manager : managers)
     {
-        const auto name = manager->getCurrentAudioDevice()->getName();
-        if (const auto last = reopenedAtMs.find(name); last != reopenedAtMs.end() && nowMs - last->second < 5000.0)
+        auto* device = manager->getCurrentAudioDevice();
+        const auto name = device->getName();
+        if (clockKnown && device->getCurrentBufferSizeSamples() == clockBuffer
+            && (clockRate <= 0 || juce::roundToInt(device->getCurrentSampleRate()) == clockRate)) continue;   // it runs at the clock already
+        auto& times = reopenedAtMs[name];
+        times.erase(std::remove_if(times.begin(), times.end(), [nowMs](double t) { return nowMs - t > 5000.0; }), times.end());
+        if (times.size() >= 6)
         {
-            CrashHandler::note("PipeWire clock changed by another route: " + name + " was reopened for it "
-                + juce::String(juce::roundToInt(nowMs - last->second)) + " ms ago - NOT reopened again");
+            CrashHandler::note("PipeWire clock changed by another route: " + name + " was reopened for it six times within five seconds - NOT reopened again");
             continue;
         }
-        reopenedAtMs[name] = nowMs;
+        times.push_back(nowMs);
         reopenAudioDeviceFresh(*manager, "PipeWire clock changed by another route");
     }
     --pipeWireClockHookHeld();
