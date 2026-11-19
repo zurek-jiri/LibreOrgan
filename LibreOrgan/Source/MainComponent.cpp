@@ -1623,16 +1623,16 @@ MainComponent::MainComponent()
     emptyHintPanel.setOpaque(true);
     addChildComponent(emptyHintPanel);
 
-    combinationSetButton.setTooltip("While on, clicking a piston stores the current registration (stops, transmissions, couplers, tremulants) in it.");
+    combinationSetButton.setTooltip("While on, clicking a piston stores the current registration (stops, transmissions, couplers, tremulants) in it; << and >> store it in the previous / next piston and go there (into the neighbouring bank at the row's end).");
     addAndMakeVisible(combinationSetButton);
     combinationSetButton.setClickingTogglesState(true);
     combinationSetButton.setColour(juce::TextButton::buttonOnColourId, onColour());   // 0.9.79 (#230): latched orange while on
     combinationSetButton.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
 
-    previousCombinationButton.setTooltip("The previous piston. Right-click: MIDI learn.");
+    previousCombinationButton.setTooltip("The previous piston (with Set on: stores the registration there). Right-click: MIDI learn.");
     addAndMakeVisible(previousCombinationButton);
     previousCombinationButton.onClick = [this] { stepCombination(-1); };
-    nextCombinationButton.setTooltip("The next piston. Right-click: MIDI learn.");
+    nextCombinationButton.setTooltip("The next piston (with Set on: stores the registration there). Right-click: MIDI learn.");
     addAndMakeVisible(nextCombinationButton);
     nextCombinationButton.onClick = [this] { stepCombination(1); };
     bankDownButton.setTooltip("The previous bank of pistons. Right-click: MIDI learn.");
@@ -3343,6 +3343,9 @@ MainComponent::MainComponent()
 
 void MainComponent::requestQuit(std::function<void()> proceed)
 {
+    // 0.9.114: a driver's panel that blocks is open - the program sits inside the driver's call; the panel is shown,
+    // nothing quits under it.
+    if (driverPanelBlocks()) { CrashHandler::note("Quit requested while a driver's control panel is open: the panel is shown instead"); showBlockingDriverPanel(); return; }
     saveSettingsNow();   // 0.9.90: the dirty flag is decided by the write
     CrashHandler::note("Quit requested" + juce::String(configurationDirty ? " (the configuration has unsaved changes: asked)" : ""));   // 0.8.195: a save followed by the quit is not a crash
     askToKeepChanges("Quit LibreOrgan Sampler", "quit", std::move(proceed));
@@ -9606,6 +9609,17 @@ void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, co
     // set for this route (pw-metadata) - asking for 0 made JUCE take whatever
     // a fresh, not yet running client reported (512 frames, 44.1 kHz), and
     // that then became the server's clock. The route keeps its own values.
+    // 0.9.114: an ASIO card keeps the RATE it runs at (its buffer is still the driver's own). "The driver's own
+    // rate" brought Realtek ASIO back at 44.1 kHz after its panel was merely opened and closed (it ran at 48 kHz,
+    // the rate the samples are stored at - 0.9.109), and after the driver's own restart it reported 0 Hz; a rate
+    // set in a driver's panel (RME) is the rate the card runs at by now, so it is kept as well. A card that
+    // reports none is asked for the rate of the samples, as at its first opening.
+    if (device->getTypeName().equalsIgnoreCase("ASIO"))
+    {
+        double keep = device->getCurrentSampleRate();
+        if (keep <= 0.0 && resampleOnLoad) keep = storageSampleRate >= 44100.0 ? storageSampleRate : 48000.0;
+        if (keep > 0.0) setup.sampleRate = keep;
+    }
     if (device->getTypeName().equalsIgnoreCase("JACK"))
     {
         setup.bufferSize = oldBuffer;
@@ -9901,10 +9915,108 @@ namespace
    #endif
 }
 
+// 0.9.114 (the user: "zůstal tam viset otevřený realtek panel a nebyl vidět. To se nesmí stávat! Zasekne to ovládání
+// celé aplikace"): some drivers' panels are MODAL dialogs run on our own thread (Realtek ASIO: DialogBoxParam inside
+// controlPanel() - the call returns only when the panel is closed; RME's returns at once). Such a panel fell behind
+// the program's windows, which went on taking clicks - sixteen quit requests, a Save box - while the program sat
+// inside the driver. While the call blocks, a thread timer (it runs inside the dialog's own message loop):
+//   - finds the panel (a new visible window of this process that is no window of ours) and keeps it ABOVE everything,
+//   - disables the program's windows, as a modal dialog's owner is - they come back when the panel closes.
+// A quit asked for meanwhile shows the panel instead (quitting inside the driver's call would pull the device from
+// under it).
+namespace
+{
+   #if JUCE_WINDOWS
+    struct BlockingPanel
+    {
+        static std::vector<void*>& before() { static std::vector<void*> list; return list; }
+        static std::vector<void*>& disabled() { static std::vector<void*> list; return list; }
+        static HWND& panel() { static HWND window = nullptr; return window; }
+        static bool& inCall() { static bool blocking = false; return blocking; }
+        static bool isOurs(HWND hwnd)
+        {
+            wchar_t name[64]{};
+            GetClassNameW(hwnd, name, 63);
+            return juce::String(name).startsWithIgnoreCase("JUCE");
+        }
+        static void CALLBACK tick(HWND, UINT, UINT_PTR, DWORD)
+        {
+            if (!inCall()) return;
+            if (panel() == nullptr)
+            {
+                const DWORD process = GetCurrentProcessId();
+                for (void* handle : topLevelVisibleWindows())
+                {
+                    const HWND hwnd = (HWND)handle;
+                    DWORD owner = 0;
+                    GetWindowThreadProcessId(hwnd, &owner);
+                    if (owner != process || isOurs(hwnd)) continue;
+                    if (std::find(before().begin(), before().end(), handle) != before().end()) continue;
+                    panel() = hwnd;
+                    CrashHandler::note("Control panel '" + windowTitle(handle) + "' blocks until it is closed: kept above every window, the program's windows wait for it");
+                    break;
+                }
+                if (panel() == nullptr) return;
+                // The program's own windows wait, as the owner of a modal dialog does.
+                EnumThreadWindows(GetCurrentThreadId(), [](HWND hwnd, LPARAM) -> BOOL
+                {
+                    if (hwnd != panel() && isOurs(hwnd) && IsWindowVisible(hwnd) && IsWindowEnabled(hwnd))
+                    {
+                        EnableWindow(hwnd, FALSE);
+                        disabled().push_back((void*)hwnd);
+                    }
+                    return TRUE;
+                }, 0);
+            }
+            if (!IsWindow(panel())) return;
+            if (IsIconic(panel())) ShowWindow(panel(), SW_RESTORE);
+            SetWindowPos(panel(), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            // Whenever one of the program's (waiting) windows is made the foreground window - a click on it, its
+            // task bar button - the panel comes forward instead.
+            const HWND front = GetForegroundWindow();
+            DWORD frontProcess = 0;
+            if (front != nullptr && front != panel()) GetWindowThreadProcessId(front, &frontProcess);
+            if (frontProcess == GetCurrentProcessId()) { BringWindowToTop(panel()); SetForegroundWindow(panel()); }
+        }
+        static void released()
+        {
+            for (void* handle : disabled()) if (IsWindow((HWND)handle)) EnableWindow((HWND)handle, TRUE);
+            disabled().clear();
+            panel() = nullptr;
+            inCall() = false;
+        }
+    };
+   #endif
+}
+
+bool MainComponent::driverPanelBlocks()
+{
+   #if JUCE_WINDOWS
+    return BlockingPanel::inCall();
+   #else
+    return false;
+   #endif
+}
+
+void MainComponent::showBlockingDriverPanel()
+{
+   #if JUCE_WINDOWS
+    if (const HWND panel = BlockingPanel::panel(); panel != nullptr && IsWindow(panel))
+    {
+        if (IsIconic(panel)) ShowWindow(panel, SW_RESTORE);
+        SetWindowPos(panel, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        SetForegroundWindow(panel);
+        FLASHWINFO flash{ sizeof(FLASHWINFO), panel, FLASHW_CAPTION, 4, 90 };
+        FlashWindowEx(&flash);
+    }
+   #endif
+}
+
 void MainComponent::openAsioControlPanel(juce::AudioDeviceManager& manager)
 {
     auto* device = manager.getCurrentAudioDevice();
     if (device == nullptr || !device->hasControlPanel()) return;
+    if (driverPanelBlocks()) { showBlockingDriverPanel(); return; }   // 0.9.114: one panel at a time
     CrashHandler::note("Opening control panel of " + device->getName() + " (buffer "
         + juce::String(device->getCurrentBufferSizeSamples()) + ")");
    #if JUCE_WINDOWS
@@ -9919,7 +10031,28 @@ void MainComponent::openAsioControlPanel(juce::AudioDeviceManager& manager)
     asioPanelWatch.closedAtMs = -1.0;
     asioPanelWatch.deviceName = device->getName();
     asioPanelWatch.active = true;
+    // 0.9.114: a panel that blocks is kept in sight while the call lasts (BlockingPanel, above). One that returns
+    // at once (RME) never meets the timer; the watch below follows its window as before.
+    BlockingPanel::before() = asioPanelWatch.before;
+    BlockingPanel::panel() = nullptr;
+    BlockingPanel::inCall() = true;
+    const double callStartMs = juce::Time::getMillisecondCounterHiRes();
+    const UINT_PTR keeper = SetTimer(nullptr, 0, 200, &BlockingPanel::tick);
     device->showControlPanel();
+    KillTimer(nullptr, keeper);
+    const bool blocked = BlockingPanel::panel() != nullptr;
+    BlockingPanel::released();
+    if (blocked)
+    {
+        // (the program's windows were disabled when the panel closed, so Windows gave the focus to another program)
+        if (auto* top = getTopLevelComponent()) top->toFront(true);
+        // The panel is closed, the driver has its setting: the device is opened anew at the next poll (not from
+        // inside this call - it came from a button of a dialog that the reopening rebuilds).
+        CrashHandler::note("Control panel closed after " + juce::String((juce::Time::getMillisecondCounterHiRes() - callStartMs) / 1000.0, 1) + " s (it blocked until then)");
+        asioPanelWatch.panelWindows.clear();
+        asioPanelWatch.closedAtMs = juce::Time::getMillisecondCounterHiRes();
+        asioPanelWatch.blockedPanelClosed = true;
+    }
    #else
     device->showControlPanel();
     reopenAudioDeviceFresh(manager, "Control panel closed");
@@ -9930,6 +10063,15 @@ void MainComponent::pollAsioPanelWatch()
 {
    #if JUCE_WINDOWS
     if (!asioPanelWatch.active) return;
+    if (driverPanelBlocks()) return;   // 0.9.114: inside the driver's own call - nothing is reopened under it
+    if (asioPanelWatch.blockedPanelClosed)
+    {
+        if (juce::Time::getMillisecondCounterHiRes() - asioPanelWatch.closedAtMs < 300.0) return;
+        asioPanelWatch.blockedPanelClosed = false;
+        asioPanelWatch.active = false;
+        reopenAudioDeviceFresh(*asioPanelWatch.manager, "Control panel closed");
+        return;
+    }
     const double elapsed = juce::Time::getMillisecondCounterHiRes() - asioPanelWatch.startedMs;
     if (asioPanelWatch.panelWindows.empty())
     {
@@ -29346,7 +29488,11 @@ void MainComponent::stepCombination(int direction)
         currentBank = currentBank == 0 ? maxBank : currentBank - 1;
     }
     updateCombinationControls();
-    restoreCombination(target);
+    // 0.9.114 (the user: "při stisku SET a >> nebo << by to mělo uložit právě navolenou kombinaci ... do další nebo
+    // předchozí kombinace a udělat ji aktivní (i včetně přechodu na další banku)" - the organ consoles' way): with
+    // Set on the step STORES the registration at hand in the piston it arrives at; Set stays on, as with a piston.
+    if (combinationSetButton.getToggleState()) storeCombination(target);
+    else restoreCombination(target);
     saveMemories();
 }
 

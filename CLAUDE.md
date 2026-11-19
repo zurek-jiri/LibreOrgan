@@ -4657,6 +4657,42 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   NOT pushed: the Linux half is unverified. ASKED, NOT DONE: a random one of the website's six pipe pictures
   (site/assets/pipes*.png, 1254 px, 1.5 MB each) on the start picture - feasible as JPEG at 1024 px (~1 MB in all)
   through BinaryData in BOTH build systems (jucer + CMake juce_add_binary_data).
+  0.9.114 SECOND PART (the same evening; the user's next batch + his live "zacyklil se" report): (5) THE "LOOP" WAS A
+  DRIVER PANEL: Realtek ASIO's control panel is a MODAL dialog run on our own thread (the stall stack:
+  NtUserWaitMessage <- DialogBoxParamA <- ... <- Button::mouseUp; controlPanel() returns only when it is closed), it
+  fell behind the program's windows, which went on taking clicks (16 x "Quit requested", a Save box) while the
+  program sat inside the driver. The Audio routing's "Driver panel" button had called `device->showControlPanel()`
+  DIRECTLY since 0.9.81, past `openAsioControlPanel` (the watch that reopens the card when the panel closes) - it
+  goes through it again (by callAsync). `BlockingPanel` (anonymous namespace before openAsioControlPanel, Windows): a
+  thread timer (SetTimer(nullptr, ...) - it runs inside the dialog's own message loop) that, while the call lasts,
+  finds the panel (a new visible titled window of this process whose class is not JUCE's), sets HWND_TOPMOST,
+  DISABLES the program's JUCE windows (EnableWindow false; re-enabled in `released()`), and brings the panel forward
+  whenever one of our windows becomes the foreground window; `MainComponent::driverPanelBlocks()` /
+  `showBlockingDriverPanel()` (static): requestQuit shows the panel instead of quitting, pollAsioPanelWatch reopens
+  nothing while the call lasts; after a blocked call `asioPanelWatch.blockedPanelClosed` -> the next poll reopens
+  ("Control panel closed"), the main window toFront (Windows gave the focus away while ours were disabled).
+  TESTED with %TEMP%\test_0114_panel.ps1 (the default routes moved to Realtek ASIO by ORGAN_TEST_ROUTE, "Driver
+  panel" by ORGAN_TEST_CLICK, the windows listed with [waits], the panel closed by WM_CLOSE from the script): "blocks
+  until it is closed ..." -> "Control panel closed after 6.5 s" -> reopened. (WS_EX_TOPMOST did not show on the panel
+  in the listing; the activation rule is what keeps it in front.) A panel that returns at once (RME) never meets the
+  timer. RULE: never call a driver's showControlPanel() anywhere but through openAsioControlPanel. (6) ASIO KEEPS ITS
+  RATE AT A REOPEN: reopenAudioDeviceFresh asked "the driver's own" rate (0) - Realtek came back at 44.1 kHz after its
+  panel was only opened and closed (the test), and after the driver's own restart JUCE reported "rate 0" (the user's
+  "0 Hz"; his photo F:\temp\realtekASIO.jpg: the panel sets only the LATENCY 2-20 ms, the figures under it are the
+  buffer in PCM samples at 44.1 kHz and in DSD samples - no rate choice). Now for ASIO: setup.sampleRate = the rate the
+  device reports now (a rate set in a driver's panel is that), else with resampleOnLoad the storage rate (>= 44100,
+  else 48000); the buffer stays the driver's own. Test: 48000 after the panel (was 44100). (7) SET + << / >>:
+  `stepCombination` STORES (storeCombination) into the piston it arrives at when Set is on (bank wrap as before, Set
+  stays on; MIDI-learned steps too). (8) RANDOM START PICTURE: `StartPicture::random()` = one of
+  BinaryData::pipes1..6_jpg (LibreOrgan/Source/Splash/pipes-N.jpg = the website's six pictures at 1024 px, JPEG q88,
+  ~82 KB each; in the jucer as Splsh01-06 and in CMake's juce_add_binary_data); the background = the picture's own
+  corner colour; the window / program ICON stays AppIcon. (9) Audio routing: Save routing / Load routing / Use as
+  default = a row of the HEADER under the block, right-aligned, `chipHeight()` high and as wide as their texts (under
+  the help text only when they would reach below its right end); the line under them; the 0.9.108 "own line"
+  rule and `titleRight` are gone. A full card without outputs says "not there now - its cables wait and play again
+  when the card is back" / "no outputs now - its cables wait" (was "... drop a perspective here to open it").
+  TEST SCRIPT LESSON: `& script.ps1 | Select-Object -First 2` STOPS the script when two lines came - the test's
+  process was left running and the next test refused; never cut a test script's output with -First.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

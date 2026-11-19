@@ -20,12 +20,18 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   Linux the pipes over the whole window without a word. Now the pipes are
   large everywhere - the splash is seven tenths of the screen's height - with
   the name and the version under them, and the start's notes where the system
-  can show them (Windows, macOS).
+  can show them (Windows, macOS). The picture is one of six, chosen at random
+  at every start.
+- **Combinations: Set with << / >>.** With *Set* on, the stepping buttons
+  store the registration at hand in the previous / next piston and go there
+  (into the neighbouring bank at the end of the row), as on an organ console.
 - **Audio routing: the help text is larger and shorter** and follows *Button
   size*, as do the cards' status lines; Shift is told as what it is (a
   multi-channel output of a division, C side / C# side), Alt as one channel
   (mono). Where the header has no room for the text a "?" stands instead.
-  A line parts the header from *Organ out* and *Sound cards*.
+  *Save routing...*, *Load routing...* and *Use as default for new organs*
+  are a row of the header, as high as the sound card buttons; a line parts
+  the header from *Organ out* and *Sound cards*.
 - **Linux with PipeWire: the cards' direct ALSA devices can be listed.** The
   unfolded ALSA section has the tick box *Show the cards' direct ALSA
   devices* - not recommended, and mutually exclusive with PipeWire: a card
@@ -33,8 +39,16 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   Off by default; then nothing differs.
 
 ### Fixed
+- **A driver panel that blocks the program (Realtek ASIO).** Its panel is a
+  dialog the program has to wait for; it fell behind the program's windows,
+  which went on taking clicks while nothing could work. The panel now stays
+  above everything, the program's windows wait for it as for any dialog, and
+  the card is opened anew when it closes (it showed "0 Hz" after the driver's
+  own restart).
 - **Audio routing: the Sample rate box was empty** when the driver ran at a
-  rate its own list does not name (Realtek ASIO after a change in its panel).
+  rate its own list does not name.
+- **Audio routing: a card that is not there** said "drop a perspective here to
+  open it"; it says that its cables wait.
 
 ## [0.9.113] - 2026-11-19
 

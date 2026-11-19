@@ -140,7 +140,13 @@ juce_add_binary_data(LibreOrganData SOURCES
     "${ORGAN_SRC}/Icons/icon-48.png"
     "${ORGAN_SRC}/Icons/icon-64.png"
     "${ORGAN_SRC}/Icons/icon-128.png"
-    "${ORGAN_SRC}/Icons/icon-256.png")
+    "${ORGAN_SRC}/Icons/icon-256.png"
+    "${ORGAN_SRC}/Splash/pipes-1.jpg"
+    "${ORGAN_SRC}/Splash/pipes-2.jpg"
+    "${ORGAN_SRC}/Splash/pipes-3.jpg"
+    "${ORGAN_SRC}/Splash/pipes-4.jpg"
+    "${ORGAN_SRC}/Splash/pipes-5.jpg"
+    "${ORGAN_SRC}/Splash/pipes-6.jpg")
 
 target_include_directories(LibreOrgan PRIVATE
     "${ORGAN_SRC}"

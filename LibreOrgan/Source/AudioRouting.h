@@ -345,7 +345,10 @@ public:
             {
                 g.setColour(juce::Colours::grey);
                 g.setFont(juce::FontOptions(juce::jmax(11.0f, 13.0f * scale())));
-                g.drawText("outputs are known once the card is open - drop a perspective here to open it", card.bounds.withTrimmedTop(card.bounds.getHeight() - 30).reduced(10, 4), juce::Justification::centredLeft);
+                // 0.9.114 (the user: "drop a perspective here to ... je kravina, v té chvíli nic dropnout nejde"): a card
+                // shown in full without outputs is one whose cables wait for it.
+                g.drawText(card.open ? "no outputs now - its cables wait" : "not there now - its cables wait and play again when the card is back",
+                    card.bounds.withTrimmedTop(card.bounds.getHeight() - 30).reduced(10, 4), juce::Justification::centredLeft);
             }
         }
         if (showCables.getToggleState() || dragging || selectedCable >= 0) paintCables(g);
@@ -1034,7 +1037,10 @@ private:
                 c->rate.onChange = [this, manager, box = &c->rate] { auto setup = manager->getAudioDeviceSetup(); setup.sampleRate = box->getSelectedId(); reopenWith(manager, setup, "rate"); };
                 c->buffer.onChange = [this, manager, box = &c->buffer] { auto setup = manager->getAudioDeviceSetup(); setup.bufferSize = box->getSelectedId(); reopenWith(manager, setup, "buffer"); };
                 c->panel.setEnabled(device->hasControlPanel());
-                c->panel.onClick = [device] { device->showControlPanel(); };
+                // 0.9.114: through the program's own way to a driver panel (the watch that reopens the card once the panel
+                // is closed, and the keeper of a panel that blocks) - the bare call left Realtek's modal panel hidden
+                // behind the program's windows and the card at "0 Hz" after the driver's own restart.
+                c->panel.onClick = [this, manager] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target, manager] { if (target != nullptr) target->openAsioControlPanel(*manager); }); };
                 c->reopen.onClick = [this, manager] { owner.reopenAudioDeviceFresh(*manager, "Audio routing: Reopen"); };
             }
             else { c->rate.setEnabled(false); c->buffer.setEnabled(false); c->panel.setEnabled(false); c->reopen.setEnabled(false); }
@@ -1118,19 +1124,25 @@ private:
         // which moves right with every cable, while the buttons kept their place): the buttons begin right of the
         // title when it reaches under them, and take a line of their own (the titles a line lower) when what is
         // left is too narrow for their texts.
-        const int titleRight = gridLeft + 16 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(18.0f, juce::Font::bold)), "Sound cards"));
-        const bool buttonsOnOwnLine = stripRight - juce::jmax(rowsLeft, titleRight) < 470;
-        // 0.9.114 (the user: "Sekce Organ Out a Sound Cards by mohla být trochu oddělena od hlavičky"): a thin line
-        // under the header - whichever of its parts reaches lowest -, the two titles a little under it.
-        const int headerBottom = juce::jmax(blockTop + blockHeight, helpShown ? 6 + helpHeight : 0, buttonsOnOwnLine ? blockTop + blockHeight + 4 + 24 : 0);
+        // 0.9.114 (the user: the three buttons "stejně velké jako ostatní čudlíky zvukových karet ... patří ještě k
+        // hlavičce, čára by měla být až pod nimi"): a row of their own in the header, under the block and ending at
+        // its right edge, as high as the sound card buttons (Button size) and as wide as their texts; the line under
+        // the header - whichever of its parts reaches lowest -, then the two titles. Nothing shares a line with the
+        // titles any more, so nothing collides with them in a narrow window (the 0.9.108 rule is gone).
+        const int buttonHeight = chipHeight();
+        const juce::Font buttonFont(juce::FontOptions(juce::jmin(16.0f, (float)buttonHeight * 0.6f)));
+        auto widthOf = [&buttonFont](const juce::String& text) { return 30 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(buttonFont, text)); };
+        const int defaultWidth = widthOf("Use as default for new organs"), loadWidth = widthOf("Load routing..."), saveWidth = widthOf("Save routing...");
+        const int buttonsLeft = juce::jmax(12, stripRight - defaultWidth - loadWidth - saveWidth - 12);
+        const int helpBottom = helpShown ? 6 + helpHeight : 0;
+        // (beside the help text when they fit right of it, under it when they reach below its right end)
+        const int buttonsY = (buttonsLeft < help.getRight() + 10 ? juce::jmax(blockTop + blockHeight, helpBottom) : blockTop + blockHeight) + 6;
+        saveRoutingButton.setBounds(buttonsLeft, buttonsY, saveWidth, buttonHeight);
+        loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, buttonsY, loadWidth, buttonHeight);
+        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, buttonsY, stripRight - loadRoutingButton.getRight() - 6, buttonHeight);
+        const int headerBottom = juce::jmax(helpBottom, buttonsY + buttonHeight);
         separatorY = headerBottom + 8;
         sourcesTop = separatorY + 10 + 30;
-        const int buttonsY = buttonsOnOwnLine ? blockTop + blockHeight + 4 : sourcesTop - 30;
-        const int buttonsLeft = buttonsOnOwnLine ? juce::jmax(12, juce::jmin(rowsLeft, stripRight - 606)) : juce::jmax(rowsLeft, titleRight);
-        const int fileButton = juce::jlimit(110, 150, (stripRight - buttonsLeft - 12) * 3 / 10);
-        saveRoutingButton.setBounds(buttonsLeft, buttonsY, fileButton, 24);
-        loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, buttonsY, fileButton, 24);
-        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, buttonsY, stripRight - loadRoutingButton.getRight() - 6, 24);
         int y = sourcesTop;
         for (size_t ri = 0; ri < rows.size(); ++ri)
         {

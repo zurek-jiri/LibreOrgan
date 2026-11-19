@@ -10700,6 +10700,24 @@
     <None Include="..\..\Source\Icons\icon-256.png">
       <Filter>LibreOrgan\Source</Filter>
     </None>
+    <None Include="..\..\Source\Splash\pipes-1.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
+    <None Include="..\..\Source\Splash\pipes-2.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
+    <None Include="..\..\Source\Splash\pipes-3.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
+    <None Include="..\..\Source\Splash\pipes-4.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
+    <None Include="..\..\Source\Splash\pipes-5.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
+    <None Include="..\..\Source\Splash\pipes-6.jpg">
+      <Filter>LibreOrgan\Source</Filter>
+    </None>
     <None Include="..\..\..\JUCE\modules\juce_audio_devices\native\asio\LICENSE.txt">
       <Filter>JUCE Modules\juce_audio_devices\native\asio</Filter>
     </None>

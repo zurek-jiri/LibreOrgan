@@ -1122,6 +1122,9 @@ private:
     // Opens the driver's control panel and afterwards reopens a fresh device
     // instance at the driver's preferred buffer size and sample rate.
     void openAsioControlPanel(juce::AudioDeviceManager& manager);
+    // 0.9.114: a driver panel that is a modal dialog on our thread (Realtek ASIO) - true while its call lasts.
+    static bool driverPanelBlocks();
+    static void showBlockingDriverPanel();
     void reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, const juce::String& reason);
     // Linux, JACK through PipeWire: one route's device changed PipeWire's buffer
     // size or rate (shared by every JACK client); the other JACK routes reopen.
@@ -1133,6 +1136,7 @@ private:
         juce::AudioDeviceManager* manager = nullptr;
         std::vector<void*> before, panelWindows;   // HWNDs
         double closedAtMs = -1.0;                  // when the panel window disappeared
+        bool blockedPanelClosed = false;           // 0.9.114: the panel blocked its call and is closed now - reopen at the next poll
         juce::String deviceName;                   // for matching the panel by its title
     };
     // Dialog positions remembered across reopenings (shared by all divisions);

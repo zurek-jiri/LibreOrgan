@@ -449,7 +449,8 @@ the crescendo.
 
 - Click a piston to recall its registration (stops, transmissions, couplers,
   tremulants, Unison Off). With *Set* on, a click stores the current
-  registration in the piston.
+  registration in the piston, and *<<* / *>>* store it in the previous / next
+  piston and go there.
 - A piston that holds a registration is a darker grey (a taught crescendo
   step the same). The piston in use is orange; other pistons holding the
   same registration are a lighter dark grey.

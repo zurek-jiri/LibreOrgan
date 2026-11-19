@@ -18,6 +18,12 @@
       <FILE id="Icon064" name="icon-64.png" compile="0" resource="1" file="Source/Icons/icon-64.png"/>
       <FILE id="Icon128" name="icon-128.png" compile="0" resource="1" file="Source/Icons/icon-128.png"/>
       <FILE id="Icon256" name="icon-256.png" compile="0" resource="1" file="Source/Icons/icon-256.png"/>
+      <FILE id="Splsh01" name="pipes-1.jpg" compile="0" resource="1" file="Source/Splash/pipes-1.jpg"/>
+      <FILE id="Splsh02" name="pipes-2.jpg" compile="0" resource="1" file="Source/Splash/pipes-2.jpg"/>
+      <FILE id="Splsh03" name="pipes-3.jpg" compile="0" resource="1" file="Source/Splash/pipes-3.jpg"/>
+      <FILE id="Splsh04" name="pipes-4.jpg" compile="0" resource="1" file="Source/Splash/pipes-4.jpg"/>
+      <FILE id="Splsh05" name="pipes-5.jpg" compile="0" resource="1" file="Source/Splash/pipes-5.jpg"/>
+      <FILE id="Splsh06" name="pipes-6.jpg" compile="0" resource="1" file="Source/Splash/pipes-6.jpg"/>
       <FILE id="cCehlh" name="SamplerEngine.cpp" compile="1" resource="0"
             file="Source/SamplerEngine.cpp"/>
       <FILE id="elMrgs" name="SamplerEngine.h" compile="0" resource="0" file="Source/SamplerEngine.h"/>

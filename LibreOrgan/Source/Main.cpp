@@ -35,9 +35,29 @@
 // compositor maps the window at for a moment) shows the picture alone, as the Linux cover always did.
 namespace StartPicture
 {
+    // One of the six pipe pictures of the website (Source/Splash, JPEG at 1024 px, 80 KB each), chosen anew at
+    // every start (the user: "že by se i tady náhodně vybíralo, který se zrovna při startu zobrazí").
+    inline juce::Image random()
+    {
+        struct Entry { const char* data; int size; };
+        static const Entry pictures[] = {
+            { BinaryData::pipes1_jpg, BinaryData::pipes1_jpgSize }, { BinaryData::pipes2_jpg, BinaryData::pipes2_jpgSize },
+            { BinaryData::pipes3_jpg, BinaryData::pipes3_jpgSize }, { BinaryData::pipes4_jpg, BinaryData::pipes4_jpgSize },
+            { BinaryData::pipes5_jpg, BinaryData::pipes5_jpgSize }, { BinaryData::pipes6_jpg, BinaryData::pipes6_jpgSize } };
+        const auto& chosen = pictures[juce::Random::getSystemRandom().nextInt(6)];
+        auto image = juce::ImageFileFormat::loadFrom(chosen.data, (size_t)chosen.size);
+        if (!image.isValid()) image = juce::ImageCache::getFromMemory(BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize);   // (never expected)
+        return image;
+    }
+
     inline void paint(juce::Graphics& g, juce::Rectangle<int> area, const juce::Image& picture, const juce::String& status)
     {
-        g.setColour(juce::Colour(0xff1c1f24));
+        // The background is the picture's own edge colour (the pictures are dark to their corners), so its square
+        // does not show; a picture with clear corners (the icon) keeps the dark grey.
+        juce::Colour background(0xff1c1f24);
+        if (picture.isValid() && picture.getWidth() > 16)
+            if (const auto corner = picture.getPixelAt(6, 6); corner.isOpaque()) background = corner;
+        g.setColour(background);
         g.fillRect(area);
         const float h = (float)area.getHeight(), w = (float)area.getWidth();
         if (h < 300.0f || w < 300.0f)
@@ -69,7 +89,7 @@ struct StartSplash final : public juce::TopLevelWindow
 {
     StartSplash() : juce::TopLevelWindow("LibreOrgan Sampler", true)
     {
-        picture = juce::ImageCache::getFromMemory(BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize);
+        picture = StartPicture::random();
         setOpaque(true);
         // 0.9.114: seven tenths of the screen's height, whatever the interface size is (460 x 500 at the interface
         // scale was 345 x 375 px at 75 % - "ostudně malé píšťaly").
@@ -429,7 +449,7 @@ public:
             // before it is placed, and a separate splash window never appeared
             // there at all - so the picture lies inside the window itself, whatever
             // its size, and goes away once the window stands where it belongs.
-            startCover.setImage (juce::ImageCache::getFromMemory (BinaryData::AppIcon_png, BinaryData::AppIcon_pngSize));
+            startCover.setImage (StartPicture::random());   // 0.9.114: one of the six pipe pictures (was the icon's picture)
             startCover.setImagePlacement (juce::RectanglePlacement::centred);
             startCover.setInterceptsMouseClicks (false, false);
             addAndMakeVisible (startCover);

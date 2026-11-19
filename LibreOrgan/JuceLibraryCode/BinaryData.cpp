@@ -53063,6 +53063,12 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0xad5596e1:  numBytes = 4571; return icon64_png;
         case 0xef472588:  numBytes = 11860; return icon128_png;
         case 0x292fbba4:  numBytes = 64243; return icon256_png;
+        case 0xc8a8a16e:  numBytes = 82560; return pipes1_jpg;
+        case 0xc8b6b8ef:  numBytes = 83283; return pipes2_jpg;
+        case 0xc8c4d070:  numBytes = 86596; return pipes3_jpg;
+        case 0xc8d2e7f1:  numBytes = 82291; return pipes4_jpg;
+        case 0xc8e0ff72:  numBytes = 82267; return pipes5_jpg;
+        case 0xc8ef16f3:  numBytes = 82308; return pipes6_jpg;
         default: break;
     }
 
@@ -53082,7 +53088,13 @@ const char* namedResourceList[] =
     "icon48_png",
     "icon64_png",
     "icon128_png",
-    "icon256_png"
+    "icon256_png",
+    "pipes1_jpg",
+    "pipes2_jpg",
+    "pipes3_jpg",
+    "pipes4_jpg",
+    "pipes5_jpg",
+    "pipes6_jpg"
 };
 
 const char* originalFilenames[] =
@@ -53097,7 +53109,13 @@ const char* originalFilenames[] =
     "icon-48.png",
     "icon-64.png",
     "icon-128.png",
-    "icon-256.png"
+    "icon-256.png",
+    "pipes-1.jpg",
+    "pipes-2.jpg",
+    "pipes-3.jpg",
+    "pipes-4.jpg",
+    "pipes-5.jpg",
+    "pipes-6.jpg"
 };
 
 const char* getNamedResourceOriginalFilename (const char* resourceNameUTF8);

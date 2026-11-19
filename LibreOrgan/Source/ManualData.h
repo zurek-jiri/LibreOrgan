@@ -457,7 +457,8 @@ static const char* const kManualText_part2 =
     "\n"
     "- Click a piston to recall its registration (stops, transmissions, couplers,\n"
     "  tremulants, Unison Off). With *Set* on, a click stores the current\n"
-    "  registration in the piston.\n"
+    "  registration in the piston, and *<<* / *>>* store it in the previous / next\n"
+    "  piston and go there.\n"
     "- A piston that holds a registration is a darker grey (a taught crescendo\n"
     "  step the same). The piston in use is orange; other pistons holding the\n"
     "  same registration are a lighter dark grey.\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "\n"
     "### Alias\n"
     "\n"
-    "The caption of the button. *Automatic* shows the folder name; type any text\n"
     ;
 static const char* const kManualText_part3 =
+    "The caption of the button. *Automatic* shows the folder name; type any text\n"
     "to show that instead (an alias without a footage gets the stop's footage\n"
     "appended; a footage typed into the alias is kept as typed, on a transmission\n"
     "too). The alias is only a caption: saved states, combinations and MIDI\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "  loaded trees (a folder serves one cell only); the x beside a cell frees its\n"
     "  folder; a cell dragged onto another takes or swaps. The path shows in a\n"
     "  tip; an orange cell is a folder not on this computer.\n"
-    "- **Transmissions:** the cell shows where the stop's transmissions go; click\n"
     ;
 static const char* const kManualText_part4 =
+    "- **Transmissions:** the cell shows where the stop's transmissions go; click\n"
     "  it to add one into any division or to remove one. They act at once, no\n"
     "  Apply needed. *Show Trsm.* lists every transmission as a grey row of the\n"
     "  division it plays in.\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "(yellow, blue, red, then green, magenta, cyan, orange, white) in the order of\n"
     "the perspectives; the auxiliary takes the next one. The header of\n"
     "the dialog carries the **Master volume** (the console's slider itself - one\n"
-    "value, two places), the console's **audio meter** with its CLIP dot, and\n"
     ;
 static const char* const kManualText_part5 =
+    "value, two places), the console's **audio meter** with its CLIP dot, and\n"
     "**Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).\n"
     "Three or more routes dropped onto an Aggregated WASAPI card at once go one by\n"
     "one behind a progress window.\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "stereo pair for the desktop. An organ needs every output, so:\n"
     "\n"
     "1. **Set the interface to the \"Pro Audio\" profile** (KDE: System Settings >\n"
-    "   Sound, the card's Profile box; GNOME: Settings > Sound > Output >\n"
     ;
 static const char* const kManualText_part6 =
+    "   Sound, the card's Profile box; GNOME: Settings > Sound > Output >\n"
     "   Configuration; any desktop: `pavucontrol`, tab Configuration). The card\n"
     "   then appears under its own name with every channel; use the on-board chip\n"
     "   for the desktop.\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "  source's duration. The attack still speaks at the resampled speed.\n"
     "- **Pitch shift + time stretch**: the same copy, the attack (downwards) and\n"
     "  the release stretched back towards the source's duration. Large shifts\n"
-    "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     ;
 static const char* const kManualText_part7 =
+    "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
     "  octave, but it wobbles slightly upwards, loses body two octaves away and\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
     "release.\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
     "### Release sample volume\n"
     "\n"
     "All release samples, -20 to +10 dB (default 0); \"-inf\" silences them.\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "### Missing pipes: neighbours borrowed as a group\n"
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
-    "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
     ;
 static const char* const kManualText_part9 =
+    "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
     "that width.\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "\n"
     "One collapsed section per division, the same settings as the Divisions\n"
     "dialog.\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
     "### Stops and sample folders\n"
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
     "with the computer and every audio route, and pictures of the program's\n"
     "windows and dialogs, taken by the program itself (the Audio routing always,\n"
-    "open or not) - no samples. *Add screenshot files...* is optional: picture\n"
     ;
 static const char* const kManualText_part11 =
+    "open or not) - no samples. *Add screenshot files...* is optional: picture\n"
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
     "\n"
@@ -2423,9 +2424,9 @@ static const char* const kManualText_part11 =
     "the filled pipes stops the same way. Before the load the WAV bytes of the\n"
     "trees are estimated against the free memory and a warning is logged; the\n"
     "load is never refused.\n"
-    "\n"
     ;
 static const char* const kManualText_part12 =
+    "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"

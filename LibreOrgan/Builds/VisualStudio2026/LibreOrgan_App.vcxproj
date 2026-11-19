@@ -5957,6 +5957,12 @@
     <None Include="..\..\Source\Icons\icon-64.png"/>
     <None Include="..\..\Source\Icons\icon-128.png"/>
     <None Include="..\..\Source\Icons\icon-256.png"/>
+    <None Include="..\..\Source\Splash\pipes-1.jpg"/>
+    <None Include="..\..\Source\Splash\pipes-2.jpg"/>
+    <None Include="..\..\Source\Splash\pipes-3.jpg"/>
+    <None Include="..\..\Source\Splash\pipes-4.jpg"/>
+    <None Include="..\..\Source\Splash\pipes-5.jpg"/>
+    <None Include="..\..\Source\Splash\pipes-6.jpg"/>
     <None Include="..\..\..\JUCE\modules\juce_audio_devices\native\asio\LICENSE.txt"/>
     <None Include="..\..\..\JUCE\modules\juce_audio_devices\native\oboe\src\common\README.md"/>
     <None Include="..\..\..\JUCE\modules\juce_audio_devices\native\oboe\src\flowgraph\resampler\README.md"/>

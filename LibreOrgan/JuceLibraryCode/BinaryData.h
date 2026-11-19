@@ -41,8 +41,26 @@ namespace BinaryData
     extern const char*   icon256_png;
     const int            icon256_pngSize = 64243;
 
+    extern const char*   pipes1_jpg;
+    const int            pipes1_jpgSize = 82560;
+
+    extern const char*   pipes2_jpg;
+    const int            pipes2_jpgSize = 83283;
+
+    extern const char*   pipes3_jpg;
+    const int            pipes3_jpgSize = 86596;
+
+    extern const char*   pipes4_jpg;
+    const int            pipes4_jpgSize = 82291;
+
+    extern const char*   pipes5_jpg;
+    const int            pipes5_jpgSize = 82267;
+
+    extern const char*   pipes6_jpg;
+    const int            pipes6_jpgSize = 82308;
+
     // Number of elements in the namedResourceList and originalFileNames arrays.
-    const int namedResourceListSize = 11;
+    const int namedResourceListSize = 17;
 
     // Points to the start of a list of resource names.
     extern const char* namedResourceList[];
