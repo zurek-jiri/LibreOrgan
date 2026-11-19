@@ -6947,10 +6947,21 @@ void MainComponent::watchUnavailableCards()
     if (const int stoppedDriver = CrashHandler::detail::parkedDriver().exchange(-1); stoppedDriver >= 0) asioDriverFaulted(stoppedDriver);
    #endif
     const double nowMs = juce::Time::getMillisecondCounterHiRes();
-    if (const double changedAt = systemDevicesChangedAtMs.load(); changedAt > 0.0 && nowMs - changedAt >= 1500.0)
+    // 0.9.110: asking a card opens its driver in the helper, and a driver may make Windows report a device again -
+    // after three rounds in a row (each within 20 s of the one before) the next one waits a minute.
+    const bool roundsHeld = systemRoundsInARow >= 3 && nowMs - lastSystemRoundMs < 60000.0;
+    if (const double changedAt = systemDevicesChangedAtMs.load(); changedAt > 0.0 && nowMs - changedAt >= 1500.0 && roundsHeld && !systemRoundsHeldNoted)
+    {
+        systemRoundsHeldNoted = true;
+        CrashHandler::note("Sound cards: Windows reports devices again and again right after the cards were asked - the next round of questions waits a minute");
+    }
+    if (const double changedAt = systemDevicesChangedAtMs.load(); changedAt > 0.0 && nowMs - changedAt >= 1500.0 && !roundsHeld)
     {
         // A second and a half after the LAST report (a card going changes the lists several times in a row).
         systemDevicesChangedAtMs.store(0.0);
+        systemRoundsInARow = nowMs - lastSystemRoundMs < 20000.0 ? systemRoundsInARow + 1 : 1;
+        lastSystemRoundMs = nowMs;
+        systemRoundsHeldNoted = false;
         askCards(true);
         defaultCardsRefused.clear();
         // 0.9.108: no card opened for an organ without audio of its own - looked for again now.
@@ -8725,7 +8736,24 @@ void MainComponent::reopenJackRoutesAfterClockChange(juce::AudioIODevice* change
                     && manager->getCurrentAudioDeviceType().equalsIgnoreCase("JACK"))
                     managers.insert(manager);
     }
-    for (auto* manager : managers) reopenAudioDeviceFresh(*manager, "PipeWire clock changed by another route");
+    // 0.9.110: these reopenings report no change of their own (two cards reopened each other for ever, three
+    // times a second, with no sound), and a card reopened for this reason less than five seconds ago is left alone.
+    static std::map<juce::String, double> reopenedAtMs;
+    const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    ++pipeWireClockHookHeld();
+    for (auto* manager : managers)
+    {
+        const auto name = manager->getCurrentAudioDevice()->getName();
+        if (const auto last = reopenedAtMs.find(name); last != reopenedAtMs.end() && nowMs - last->second < 5000.0)
+        {
+            CrashHandler::note("PipeWire clock changed by another route: " + name + " was reopened for it "
+                + juce::String(juce::roundToInt(nowMs - last->second)) + " ms ago - NOT reopened again");
+            continue;
+        }
+        reopenedAtMs[name] = nowMs;
+        reopenAudioDeviceFresh(*manager, "PipeWire clock changed by another route");
+    }
+    --pipeWireClockHookHeld();
 #else
     juce::ignoreUnused(changedBy);
 #endif
@@ -9567,6 +9595,16 @@ void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, co
     {
         setup.bufferSize = oldBuffer;
         setup.sampleRate = device->getCurrentSampleRate();
+       #if JUCE_LINUX
+        // 0.9.110: reopened BECAUSE another route changed the clock - the new clock is taken, never the route's
+        // old values (they would change the clock back under the route that has just set it).
+        int serverBuffer = 0, serverRate = 0;
+        if (pipeWireClockHookHeld() > 0 && jackServerClock(serverBuffer, serverRate) && serverBuffer > 0 && serverRate > 0)
+        {
+            setup.bufferSize = serverBuffer;
+            setup.sampleRate = (double)serverRate;
+        }
+       #endif
     }
     // Measured on the RME Fireface USB: with a Windows Audio stream open on the
     // same interface, a new ASIO instance reports the panel's new buffer size but

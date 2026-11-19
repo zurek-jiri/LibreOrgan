@@ -1198,6 +1198,7 @@ private:
     void cardWentAway(const juce::String& typeName, const juce::String& deviceName, const juce::String& reason);
     std::atomic<double> systemDevicesChangedAtMs{ 0.0 };
     double fastSilenceCheckUntilMs = 0.0, lastGreyCheckMs = 0.0, lastIdleGreyCheckMs = 0.0;
+    double lastSystemRoundMs = -1.0e9; int systemRoundsInARow = 0; bool systemRoundsHeldNoted = false;   // 0.9.110
     // 0.9.108: THIS COMPUTER'S DEFAULT SOUND CARD (Windows; the user: "Vždy musí po loading něco někam hrát" and
     // "přednostně na windows bral ASIO. A to přednostně fyzické karty, nikoli ASIO fake software ovladače"). An organ
     // that brings no audio of this computer (a published configuration, a Hauptwerk import, folders on an empty

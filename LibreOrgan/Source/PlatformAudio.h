@@ -350,6 +350,29 @@ inline juce::String pipeWireSetClock(int quantum, int rate)
     return error;
 }
 
+// PipeWire's forced quantum and rate (pw-metadata, settings: clock.force-quantum / clock.force-rate; 0 = not forced).
+inline void pipeWireForcedClock(int& quantum, int& rate)
+{
+    quantum = 0; rate = 0;
+    juce::StringArray args;
+    args.add("pw-metadata"); args.add("-n"); args.add("settings");
+    juce::ChildProcess process;
+    if (!process.start(args, juce::ChildProcess::wantStdOut)) return;
+    const auto output = process.readAllProcessOutput();
+    process.waitForProcessToFinish(2000);
+    auto valueOf = [&output](const juce::String& key)
+    {
+        const int at = output.indexOf("key:'" + key + "'");
+        if (at < 0) return 0;
+        return output.substring(at).fromFirstOccurrenceOf("value:'", false, false).upToFirstOccurrenceOf("'", false, false).getIntValue();
+    };
+    quantum = valueOf("clock.force-quantum");
+    rate = valueOf("clock.force-rate");
+}
+
+// While the routes are reopened BECAUSE the clock changed, their own opens tell nobody (0.9.110: no chain).
+inline int& pipeWireClockHookHeld() { static int held = 0; return held; }
+
 // The buffer size and rate the JACK server reports now, read through a client
 // of its own that is never activated (an activated client opened while
 // PipeWire changes its quantum got a buffer of 1 frame and a flood of empty
@@ -372,6 +395,14 @@ inline bool jackServerClock(int& bufferSize, int& sampleRate)
     bufferSize = (int)getBuffer(client);
     sampleRate = (int)getRate(client);
     close(client);
+    // 0.9.110: a client that is not activated reports PipeWire's DEFAULT quantum (clock.quantum, 1024) even while
+    // the graph runs at a forced one (clock.force-quantum 256, what pipeWireSetClock sets) - every open with a
+    // buffer of its own then looked like a change of the clock, and two cards reopened each other for ever.
+    // The forced values are the clock when they are set.
+    int forcedBuffer = 0, forcedRate = 0;
+    pipeWireForcedClock(forcedBuffer, forcedRate);
+    if (forcedBuffer > 0) bufferSize = forcedBuffer;
+    if (forcedRate > 0) sampleRate = forcedRate;
     return true;
 }
 
@@ -486,7 +517,7 @@ public:
             error = "JACK reported a buffer of " + juce::String(got) + " frames";
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
         }
-        if (changed && error.isEmpty() && pipeWireClockChangedHook())
+        if (changed && error.isEmpty() && pipeWireClockHookHeld() == 0 && pipeWireClockChangedHook())
         {
             juce::AudioIODevice* self = this;
             juce::MessageManager::callAsync([self] { if (auto& hook = pipeWireClockChangedHook()) hook(self); });

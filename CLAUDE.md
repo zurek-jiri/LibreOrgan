@@ -4528,6 +4528,40 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   discontinuities" log line is written only with a real one. LESSON OF THE DAY: when a card "does not open", ask it
   through the helper with other parameters before believing the driver's words - the 64-output lie was found in
   five minutes that way after two days of "Couldn't open the output device!".
+  v0.9.109 CI: the first run (push) lost its Linux x86_64 job in "Linux dependencies (JUCE)" - apt could not reach the Ubuntu
+  mirror ("E: Failed to fetch ... Connection failed"), no compile error; the release job was skipped. build-retry.yml does
+  not cover it (a job that RAN and failed). The dispatch of the tag (POST .../workflows/build.yml/dispatches {"ref":"v0.9.109"},
+  HTTP 204) built everything green and published the release; Intel mac "late symbols: 0". Read the failed STEP's
+  name first (jobs[].steps with conclusion failure): a dependencies step = the runner's network, dispatch again.
+  0.9.109 CONFIRMED BY THE USER (19 Nov 2026, his own hands): Realtek ASIO came back by itself after the headphones were
+  pulled out and put back (the driver takes a new instance after its real fault), and the Windows Audio output shows
+  the right outputs after "Configure speakers" 5.1 (mmsys.cpl).
+  0.9.110 (19 Nov 2026, Linux; the user: after Reopen on the Komplete card "příšerné prodlevy čehokoli ... ani zvuk
+  nikde nehraje"): activity.log = an endless chain, three times a second, of "JACK: PipeWire clock 1024 frames -> 256
+  asked for X" + "PipeWire clock changed by another route: reopened Y" (ALC1220 Analog <-> Komplete Audio 6; 1.8 MB of
+  log in minutes). CAUSE: `jackServerClock` reads the clock through a client that is never activated, and PipeWire's
+  libjack gives such a client the DEFAULT quantum (clock.quantum 1024) while the graph runs at clock.force-quantum 256
+  (what pipeWireSetClock sets) - checked outside the program with a ctypes probe and pw-top. So every open with a
+  buffer of its own was "a change of the clock" -> pipeWireClockChangedHook -> the other JACK managers reopened ->
+  their opens "changed" it again. In the code since the PipeWire buffer switching; the Reopen with two cards on
+  PipeWire was the first open that hit it. NOW: `pipeWireForcedClock` (pw-metadata -n settings: clock.force-quantum /
+  clock.force-rate) overrides the probe's values when set; `pipeWireClockHookHeld()` (a counter) is raised by
+  `reopenJackRoutesAfterClockChange` so its own reopenings fire no hook; a card reopened for a clock change < 5 s ago
+  is left alone (logged "NOT reopened again"); `reopenAudioDeviceFresh` of a JACK route during such a reopening takes
+  the SERVER's new clock, not the route's old buffer (it would set the clock back). Tested with the local build:
+  force-quantum 256 set by hand before the start (the state that looped) -> one "256 -> 1024 asked", Reopen twice =
+  two reopenings, no chain. NOT reproduced: two cards on PipeWire at once (the saved routes were all on ALC1220).
+  THE AUDIT the user asked for ("není tam ještě něco podobného?") of every automatic reaction that could feed
+  itself: the silence recovery (once a minute per device), the ASIO period recovery (once per card), the missing-device
+  watcher (a 2 s poll, no trigger of its own), the default-card search and askCards (Windows) - the one open path:
+  a helper opening a driver may make Windows report a device, which starts the next round 1.5 s later; now after
+  three rounds in a row (each within 20 s of the one before) the next waits a minute (`systemRoundsInARow`,
+  `lastSystemRoundMs`; the wanted cards' 5 s questions go on). macOS has no such listener of ours. RULE: an automatic
+  reaction to a device event must not be able to produce that event itself - a held flag while it acts plus a
+  shortest interval, and a "current value" read from the system must be the value in force, verified outside the
+  program. If PipeWire stays forced after a bad end: `pw-metadata -n settings 0 clock.force-quantum 0`. The user
+  starts the Linux program from ~/Desktop/LibreOrgan (the local build was copied there and to ~/Downloads). NO
+  Projucer resave (Linux): the VS2026 files say 0.9.109 - Windows next.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

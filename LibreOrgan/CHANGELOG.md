@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.110] - 2026-11-19
+
+### Fixed
+- **Linux: two sound cards reopened each other for ever.** After Reopen (or a
+  buffer change) on one card while a second card played through PipeWire, both
+  cards were closed and opened again about three times a second: no sound,
+  everything slow. The program read PipeWire's buffer size through an idle
+  client, which reports the default size and not the one in force, so every
+  opening looked like a change of the clock. The size in force is read now, a
+  reopening caused by a clock change tells nobody, a card is never reopened
+  for it twice within five seconds, and such a card takes the new clock.
+- **Windows: rounds of questions to the sound cards cannot feed themselves.**
+  When asking a card makes Windows report a device again and again, the next
+  round waits a minute after three rounds in a row.
+
 ## [0.9.109] - 2026-11-19
 
 ### Fixed
