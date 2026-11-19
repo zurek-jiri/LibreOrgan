@@ -961,7 +961,13 @@ asks at once). On Linux a card open
 through another driver is grey; it takes a drop only when the drop moves
 every route off that other card. A card whose driver fails while the program
 runs (some do when their output goes away - headphones pulled out) is stopped
-and stays grey until the next start; the other cards play on. The cards in
+and grey until it answers again, the other cards play on; a second failure
+keeps it grey until the next start. A card that opens is asked for 48 kHz
+(or the rate the samples are stored at, when a card can run at it); a driver
+that refuses keeps its own rate. A Windows Audio output shows the channels
+Windows mixes for it - stereo, 5.1 or 7.1, as *Configure speakers* in
+Windows' sound settings says. On Windows every dialog stays above the main
+window: move it aside or close it to reach what it covers. The cards in
 use stand in rows, each as wide as its outputs: drag a card by its title - the
 orange line shows between which two cards it lands (the others move aside),
 the dashed strip under the last row makes a new row; the cables run in the

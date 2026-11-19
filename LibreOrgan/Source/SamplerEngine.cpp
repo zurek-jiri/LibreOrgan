@@ -3785,7 +3785,11 @@ namespace
         explicit RenderPool(int workerCount)
         {
             numWorkers = juce::jlimit(0, 62, workerCount);
-            scratchStore.resize((size_t)numWorkers + 2);
+            // 0.9.109: twice the lanes + 4 (was the lanes + 2). A lane keeps its scratch until the job's poster
+            // merges it; with several sound cards their device threads post jobs AT ONCE and a worker joins more
+            // than one of them - four ASIO cards left two thousand lanes a second without a scratch (they took
+            // no voices: no click, but the jobs ran with fewer lanes).
+            scratchStore.resize((size_t)numWorkers * 2 + 4);
             for (auto& s : scratchStore) s.assign((size_t)2 * kScratchChannels * kFrames, 0.0f);   // the outputs, then the wet shares
             for (int i = 0; i < (int)scratchStore.size(); ++i) scratchFree.push_back(i);
             for (int i = 0; i < numWorkers; ++i)

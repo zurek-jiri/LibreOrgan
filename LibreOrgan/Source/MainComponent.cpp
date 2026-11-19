@@ -6369,6 +6369,61 @@ void MainComponent::paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> are
 //==============================================================================
 // ASIO host pool
 //==============================================================================
+#if JUCE_WINDOWS
+ #include <mmdeviceapi.h>
+ #include <audioclient.h>
+namespace
+{
+    // 0.9.109: how many channels a Windows Audio output really plays in shared mode = the channels of its MIX
+    // FORMAT (what "Configure speakers" in Windows' sound settings says: stereo 2, 5.1 six, 7.1 eight). JUCE's own
+    // count asks the driver "would you take N channels?" - Realtek's on-board output says yes up to 64, opens with
+    // 2, 4, 6 or 8 of them (measured through the helper), refuses 64, and whatever is opened beyond the mix format
+    // is mixed down into the front pair by Windows. 0 = the output was not found.
+    int windowsOutputMixChannels(const juce::String& deviceName)
+    {
+        int channels = 0;
+        IMMDeviceEnumerator* enumerator = nullptr;
+        if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator)) || enumerator == nullptr) return 0;
+        IMMDeviceCollection* collection = nullptr;
+        if (SUCCEEDED(enumerator->EnumAudioEndpoints(eRender, 0x1 /* DEVICE_STATE_ACTIVE */, &collection)) && collection != nullptr)
+        {
+            UINT count = 0;
+            collection->GetCount(&count);
+            static const PROPERTYKEY friendlyName{ { 0xa45c254e, 0xdf1c, 0x4efd, { 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0 } }, 14 };   // PKEY_Device_FriendlyName
+            for (UINT i = 0; i < count && channels == 0; ++i)
+            {
+                IMMDevice* device = nullptr;
+                if (FAILED(collection->Item(i, &device)) || device == nullptr) continue;
+                juce::String name;
+                IPropertyStore* store = nullptr;
+                if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &store)) && store != nullptr)
+                {
+                    PROPVARIANT value;
+                    PropVariantInit(&value);
+                    if (SUCCEEDED(store->GetValue(friendlyName, &value)) && value.vt == VT_LPWSTR && value.pwszVal != nullptr) name = juce::String(value.pwszVal);
+                    PropVariantClear(&value);
+                    store->Release();
+                }
+                if (name == deviceName)
+                {
+                    IAudioClient* client = nullptr;
+                    if (SUCCEEDED(device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client)) && client != nullptr)
+                    {
+                        WAVEFORMATEX* format = nullptr;
+                        if (SUCCEEDED(client->GetMixFormat(&format)) && format != nullptr) { channels = (int)format->nChannels; CoTaskMemFree(format); }
+                        client->Release();
+                    }
+                }
+                device->Release();
+            }
+            collection->Release();
+        }
+        enumerator->Release();
+        return channels;
+    }
+}
+#endif
+
 juce::AudioDeviceManager* MainComponent::findSharedHost(const juce::String& typeName, const juce::String& deviceName) const
 {
     for (const auto& host : asioHosts)
@@ -6400,14 +6455,13 @@ juce::String MainComponent::defaultSharedTypeName()
 juce::String MainComponent::preferredDefaultType, MainComponent::preferredDefaultName;
 
 // ASIO drivers that are software on top of something else (a router, a wrapper around Windows Audio, a virtual
-// cable): never taken as the default card by themselves. "Realtek ASIO" is among them on purpose: the on-board
-// chip's ASIO layer (44.1 kHz, 496 frames; "Device didn't start correctly" when asked; its thread ended the
-// program on 19 Nov 2026) - the on-board output is reached through Windows Audio instead.
+// cable): never taken as the default card by themselves. "Realtek ASIO" is NOT among them (the user, 19 Nov 2026:
+// "realtek ASIO je mezi fyzickými kartami. Určitě.") - the on-board chip is a real card.
 bool MainComponent::isSoftwareAsioDriver(const juce::String& name)
 {
     static const char* const words[] = { "asio4all", "flexasio", "rearoute", "generic low latency", "voicemeeter", "vb-audio", "vb audio", "cable",
         "jackrouter", "jack router", "asio link", "synchronous audio router", "fl studio asio", "magix low latency", "asio2wasapi", "wasapi",
-        "asio bridge", "dante via", "realtek asio" };
+        "asio bridge", "dante via" };
     const auto lower = name.toLowerCase();
     for (const auto* word : words) if (lower.contains(word)) return true;
     return false;
@@ -6588,15 +6642,24 @@ void MainComponent::asioDriverFaulted(int moduleIndex)
 {
     if (moduleIndex < 0 || moduleIndex >= (int)asioDriversOfModule.size()) return;
     const auto file = asioDriverModules[moduleIndex];
+    const bool forGood = ++asioDriverFaults[file] >= 2;
     juce::StringArray stopped;
     audioMuted.store(true);
     engine.noteOffAll();
     ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
     for (const auto& name : asioDriversOfModule[(size_t)moduleIndex])
     {
+        // 0.9.109 (the user put the headphones back: "ve windows karta zas jede, ale v programu je furt šedá (do
+        // restartu??? ...)"): the FIRST failure of a driver is not for good - the card is asked in the helper like
+        // any card that went away, and when it answers its routes are opened again with a new instance of the
+        // driver (the failed one stays as it is, never called). A driver that fails a second time, or a card
+        // that answers the helper but does not open here again, is out of use until the next start.
         auto& card = unavailableCards["ASIO|" + name];
-        card.reason = "its driver (" + file + ") failed and was stopped; start the program again to use this card.";
-        card.faulted = true; card.wanted = false;
+        card.faulted = forGood;
+        card.wanted = !forGood;
+        card.reason = forGood ? "its driver (" + file + ") failed again and was stopped; start the program again to use this card."
+                              : "its driver (" + file + ") failed (its output went away?) and was stopped; the card comes back by itself when it answers again.";
+        asioCardsFaultedOnce.insert(name);
         ++unavailableCardsVersion;
         for (size_t i = asioHosts.size(); i-- > 0;)
         {
@@ -6629,13 +6692,15 @@ void MainComponent::asioDriverFaulted(int moduleIndex)
             stopped.add(name + " (" + juce::String((int)routes.size()) + " route(s))");
         }
     }
-    CrashHandler::note("Sound card driver FAILED: " + file + " - its thread was stopped by the crash handler, the program goes on. Out of use until the next start: "
+    CrashHandler::note("Sound card driver FAILED: " + file + " - its thread was stopped by the crash handler, the program goes on. "
+        + (forGood ? juce::String("The second time: out of use until the next start: ") : juce::String("Asked again until it answers: "))
         + asioDriversOfModule[(size_t)moduleIndex].joinIntoString(", ") + (stopped.isEmpty() ? juce::String() : "; taken off: " + stopped.joinIntoString(", ")));
     queueNotice(juce::MessageBoxIconType::WarningIcon, "Sound card driver failed",
         "The driver of " + asioDriversOfModule[(size_t)moduleIndex].joinIntoString(", ") + " (" + file + ") failed - often when its output goes away "
-        "(headphones pulled out, the card switched off).\n\nThe program stopped the driver and goes on without this card: its cables wait, the other cards play. "
-        "Give the routes another card in the Audio routing, or save your work and start the program again to use this card.\n\n"
-        "The driver's fault is in the CrashLogs folder - Configuration Editor > Report a problem... sends it.");
+        "(headphones pulled out, the card switched off).\n\nThe program stopped the driver and goes on without this card: its cables wait, the other cards play.\n\n"
+        + (forGood ? juce::String("It failed for the second time: the card is out of use until the program is started again.")
+                   : juce::String("When the card answers again (the headphones back in, the card switched on) its cables play again by themselves."))
+        + "\n\nThe driver's fault is in the CrashLogs folder - Configuration Editor > Report a problem... sends it.");
     saveSettings();
     audioDeviceSelectionUnmuteAt = juce::Time::getMillisecondCounterHiRes() + 1500.0;
 }
@@ -7155,8 +7220,20 @@ void MainComponent::watchMissingAudioDevices()
         if (typeName.equalsIgnoreCase("ASIO"))
             if (const auto away = unavailableCards.find(typeName + "|" + wanted); away != unavailableCards.end()) { if (!away->second.faulted) away->second.wanted = true; continue; }
         juce::String error;
+        if (typeName.equalsIgnoreCase("ASIO") && asioCardsFaultedOnce.count(wanted) != 0)
+            CrashHandler::note("Sound card " + wanted + ": its driver failed earlier in this session and it answers again - opened anew now (a new instance of the driver)");
         if (!isAudioDeviceAvailableNow(typeName, wanted, &error))
         {
+            if (typeName.equalsIgnoreCase("ASIO") && asioCardsFaultedOnce.count(wanted) != 0)
+            {
+                // It answered the helper but not this program: the failed driver does not take a second start here.
+                auto& card = unavailableCards[typeName + "|" + wanted];
+                card.faulted = true; card.wanted = false;
+                card.reason = "its driver failed in this session and does not open here again (" + (error.trim().isNotEmpty() ? error.trim() : juce::String("it did not open")) + "); start the program again to use this card.";
+                ++unavailableCardsVersion;
+                CrashHandler::note("Sound card " + wanted + " did not open again after its driver's failure (" + error.trim() + "): out of use until the next start");
+                continue;
+            }
             cardWentAway(typeName, wanted, error.trim().isNotEmpty() ? error.trim() : juce::String("its driver did not open"));
             if (error.isNotEmpty() && missingDeviceNextTryMs.count(wanted) == 0)
                 CrashHandler::note("Audio device '" + wanted + "' is listed but cannot be opened yet (" + error
@@ -7196,6 +7273,7 @@ void MainComponent::watchMissingAudioDevices()
         {
             missingDeviceNextTryMs.erase(wanted);
             forgetMissingAudioDevice(wanted);   // opened: nothing to report, the waiting box goes
+            asioCardsFaultedOnce.erase(wanted);  // (0.9.109: back after its driver's failure - an ordinary card again)
             CrashHandler::note("Audio device '" + wanted + "': " + juce::String(reopenedRoutes) + " route(s) reopened"
                 + (failedRoutes > 0 ? ", " + juce::String(failedRoutes) + " still without it (the next check in a few seconds)" : juce::String()));
         }
@@ -7238,6 +7316,7 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
     // came after the wait (#34, 0.8.141).
     bool asioByDefault = false;   // 0.9.108: ASIO as this computer's default card - the driver keeps its own rate and buffer
     bool firstPairOnly = false;   // 0.9.108: the device refused every output it lists and opened with its first pair
+    int mixChannels = 0;          // 0.9.109: a shared Windows Audio output's real channels (its mix format)
     if (name.isEmpty() && asio)
     {
         asioByDefault = true;
@@ -7282,9 +7361,8 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
             // JACK (0.9.97): never the rate or buffer of another type's state - a JACK route takes the server's
             // clock, and a portable file's figures would be forced on PipeWire for every program of the desktop.
             const bool jack = typeName.equalsIgnoreCase("JACK");
-            if (asioByDefault) {}   // (a portable file's rate and buffer would be forced on the card for every program using it)
+            if (asioByDefault) {}   // (a portable file's buffer is never forced on the card; its rate: the rule below)
             else if (!jack && state != nullptr && state->hasAttribute("audioDeviceRate")) setup->setAttribute("audioDeviceRate", state->getStringAttribute("audioDeviceRate"));
-            else if (!jack) setup->setAttribute("audioDeviceRate", 48000.0);
             if (!jack && !asioByDefault && state != nullptr && state->hasAttribute("audioDeviceBufferSize")) setup->setAttribute("audioDeviceBufferSize", state->getStringAttribute("audioDeviceBufferSize"));
             else if (!jack && !typeName.equalsIgnoreCase("ASIO")) setup->setAttribute("audioDeviceBufferSize", 512);
         }
@@ -7296,6 +7374,20 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
         // perspectives are the driver's physical outputs (extra bits are ignored).
         if (!setup->hasAttribute("audioDeviceOutChans"))
             setup->setAttribute("audioDeviceOutChans", juce::String::repeatedString("1", 64));
+       #if JUCE_WINDOWS
+        // 0.9.109: a shared Windows Audio output is opened with exactly the channels Windows mixes for it (see
+        // windowsOutputMixChannels) - whatever a saved state says: the speakers' configuration may have changed.
+        if (typeName.startsWithIgnoreCase("Windows Audio") && !typeName.containsIgnoreCase("Exclusive"))
+            if (mixChannels = windowsOutputMixChannels(name); mixChannels > 0)
+                setup->setAttribute("audioDeviceOutChans", juce::String::repeatedString("1", juce::jlimit(1, 64, mixChannels)));
+       #endif
+        // 0.9.109 (the user: "Karty by ses měl pokusit dát do default nastaveného sample rate on loading ... když se
+        // třeba otevře v 44100 tak ji potom hned přepnout, aspoň se o to pokusit" - Realtek's ASIO opened at
+        // 44.1 kHz): a card whose state names no rate is asked for the rate the samples are stored at when that
+        // is a card's rate, else for 48 kHz; with "keep the files' rate" nothing is asked. A driver that does not
+        // take the rate opens at its own (JUCE falls back by itself). JACK keeps the server's clock.
+        if (!setup->hasAttribute("audioDeviceRate") && !typeName.equalsIgnoreCase("JACK") && resampleOnLoad)
+            setup->setAttribute("audioDeviceRate", storageSampleRate >= 44100.0 ? storageSampleRate : 48000.0);
         // 0.9.97 (#244: four divisions dragged onto "Realtek ASIO", a driver that takes 3.5 s to say "Device didn't
         // start correctly" - the window stood still for 14 s): a card whose open failed is not tried again for
         // five seconds - the other routes of the same drop take the answer the first one got.
@@ -7341,7 +7433,8 @@ juce::AudioDeviceManager* MainComponent::sharedHostFor(const juce::String& typeN
     if (device != nullptr && !firstPairOnly)
     {
         // The default-device path above opens two channels only: enable them all.
-        const int count = device->getOutputChannelNames().size();
+        // (0.9.109: of a shared Windows Audio output, the channels of its mix format - its list may say 64.)
+        const int count = mixChannels > 0 ? juce::jmin(mixChannels, device->getOutputChannelNames().size()) : device->getOutputChannelNames().size();
         juce::BigInteger all;
         all.setRange(0, count, true);
         auto current = host->getAudioDeviceSetup();
@@ -9946,7 +10039,7 @@ void MainComponent::checkAudioCallbackHealth()
         int noScratch = 0;
         const int engineJumps = engine.takeOutputDiscontinuities(engineDetail, noScratch);
         const int shown = juce::jmax(engineJumps, deviceJumps);
-        if (shown > 0 || noScratch > 0)
+        if (shown > 0)   // (0.9.109: lanes without a scratch alone are no line - with four cards it was one every second)
         {
             CrashHandler::note("Output discontinuities: " + juce::String(shown) + " in the last second - in the render: "
                 + (engineDetail.isEmpty() ? juce::String("none") : engineDetail) + " | on the way to the driver: "
@@ -10178,7 +10271,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     }
                 g.setColour(juce::Colours::black.withAlpha(0.55f));
                 g.fillRectList(whites);
-                g.setColour(juce::Colour(0xff4a4a4a));   // a dark black key is grey: on the darkened white keys it would not show otherwise
+                g.setColour(juce::Colour(0xff9c9c9c));   // a dark black key is a LIGHT grey (0.9.109, the user: the dark grey of 0.9.93 could not be told from a working black key)
                 g.fillRectList(blacks);
                 // A key the bass octave layout moves: the note it plays (the E key of a short octave says C).
                 g.setFont(juce::FontOptions(juce::jlimit(8.0f, 11.0f, getKeyWidth() * 0.85f), juce::Font::bold));
@@ -29287,6 +29380,27 @@ void MainComponent::bringLostModalsToFront()
     // window system keeps a modal box reachable; the fault was a Windows Z-order one.
     auto& manager = *juce::ModalComponentManager::getInstance();
     auto* anchor = dynamic_cast<juce::TopLevelWindow*>(UIScale::dialogAnchor.getComponent());
+    // 0.9.109 (the user: "Když se objeví msgbox, tak to prostě ztratí okna pod sebou. Pak se nějaké zase objeví, ale
+    // ne všecka" - the Audio routing and the Effects open, a box came: both dialogs vanished, after the box's OK
+    // only one came back): a box is an owned window of the main window (below), and Windows brings the OWNER to
+    // the front with its owned window - the main window rose over every modeless dialog; the repair of 0.9.104
+    // then put back the one dialog that had stood in front. Now EVERY window of ours that is not a main window
+    // (the dialogs, the plug-ins' windows, the manual) is an owned window of the main window too: Windows keeps
+    // them all above it, in their own order, whatever comes and goes. The price: a dialog cannot be put behind
+    // the main window any more (move it aside or close it), and it is minimised with it.
+    if (anchor != nullptr)
+        if (auto* mainPeer = anchor->getPeer())
+            if (const HWND main = (HWND)mainPeer->getNativeHandle())
+                for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+                {
+                    auto* window = juce::TopLevelWindow::getTopLevelWindow(i);
+                    if (window == nullptr || window == anchor || !window->isOnDesktop() || window->getName().startsWith("LibreOrgan Sampler")) continue;   // (window 2 is a main window)
+                    auto* peer = window->getPeer();
+                    const HWND handle = peer != nullptr ? (HWND)peer->getNativeHandle() : nullptr;
+                    if (handle == nullptr || handle == main || ::GetWindow(handle, GW_OWNER) == main) continue;
+                    ::SetWindowLongPtr(handle, GWLP_HWNDPARENT, (LONG_PTR)main);
+                    CrashHandler::note("Window \"" + window->getName() + "\" made an owned window of the main window (stays above it)");
+                }
     // 0.9.104 (the user: "dialog Audio Routing spadl" - a cable dropped on a card that is not there, six seconds
     // later the box "Audio devices not available", and after its OK the dialog was gone): the box is an owned window
     // of the MAIN window (below), so Windows activates the main window when the box closes - and the main window

@@ -4487,6 +4487,47 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   answers "ok<TAB>N outputs, M open, rate, buffer" - %TEMP%\cardq: write "<result>\n<type>\n<name>\n<attrs>\n" and
   run `LibreOrgan.exe --cardcheck "<request>"` (only while no LibreOrgan runs). The dialog's minimum width is ~1000:
   a narrower "dialogBounds" is not taken; more cables (ORGAN_TEST_ROUTE "...|add") make the gutter wide instead.
+  0.9.109 (19 Nov 2026 afternoon; the user's own test of 0.9.108 with the headphones: THE REAL FAULT WAS SURVIVED -
+  12:43:24 "Sound card driver FAILED: rthdasio64.dll ... taken off: Realtek ASIO (10 route(s))", the program went on -
+  and his list: "Když se objeví msgbox, tak to prostě ztratí okna pod sebou. Pak se nějaké zase objeví, ale ne všecka",
+  the card "furt šedá (do restartu??? Kurva proč???)" after the headphones were back, "realtek ASIO je mezi fyzickými
+  kartami. Určitě.", cards to the sample rate on loading, why Realtek shows 2 outputs, the inactive black key too dark;
+  "beru všecko, co říkáš ... a dej to rovnou i na gitHub"): (1) EVERY WINDOW OF OURS IS AN OWNED WINDOW OF THE MAIN
+  WINDOW (Windows; the top of `bringLostModalsToFront`: every juce::TopLevelWindow on the desktop that is not the anchor
+  and whose name does not start with "LibreOrgan Sampler" (window 2 is a main window) gets GWLP_HWNDPARENT = main, once,
+  log 'Window "X" made an owned window of the main window'). WHY: a box was owned by the main window (0.9.29) and
+  Windows brings the OWNER forward with an owned window - the main window rose over every modeless dialog, and the
+  0.9.104 repair put back only the one that had stood in front. Owned windows stay above their owner in their own
+  order - nothing to repair. The price (told to the user, accepted): a dialog cannot go behind the main window and is
+  minimised with it. Verified by the Z order (test_0108.ps1 -Order): box > Audio routing > main, then Audio routing >
+  main. The 0.9.104 `dialogInFront` code stays (it finds nothing to do). (2) REALTEK'S OUTPUTS, measured through the
+  helper: "Realtek ASIO" offers 2 outputs (its driver's own limit; 44.1 kHz/496 by default, 48 kHz/528 when asked);
+  "Reproduktory (Realtek(R) Audio)" opens in shared mode with 2, 4, 6 or 8 channels and refuses 64, exclusive mode
+  lists 8 - and the registry's device format says 2 ch = Windows is set to STEREO (whatever is opened beyond the mix
+  format is folded into the front pair by Windows). `windowsOutputMixChannels(name)` (MainComponent.cpp before
+  findSharedHost; mmdeviceapi/audioclient: the endpoint by PKEY_Device_FriendlyName -> IAudioClient::GetMixFormat):
+  sharedHostFor opens a shared "Windows Audio..." output with exactly that many channels, whatever a saved mask says,
+  and the "enable them all" block is capped to it; the 0.9.108 first-pair fallback stays for a failed query. To get
+  5.1/7.1: Win+R `mmsys.cpl` > Playback > the output > Configure (or the Realtek Audio Console) - the USER DID NOT
+  FIND "Configure speakers" in Windows 11's Settings: name mmsys.cpl. Linux shows all jacks because ALSA takes them
+  directly. (3) A FAILED DRIVER COMES BACK: `asioDriverFaults[dll]` - the first fault leaves the card `wanted`, not
+  `faulted` (asked in the helper every 5 s like any absent card); when it answers, watchMissingAudioDevices logs
+  "its driver failed earlier ... opened anew now (a new instance of the driver)" and opens the routes; a second
+  fault, or a card of `asioCardsFaultedOnce` that answers the helper but fails `isAudioDeviceAvailableNow` in the
+  program, is `faulted` for good. THE SIMULATED FAULT CANNOT PROVE IT: the "failed" Fireface driver is alive in the
+  leaked host, and a second instance in the process said "Device didn't start correctly" -> for good (as designed).
+  Whether Realtek's driver takes a second instance after its real fault only the user's headphones tell. Never close
+  the leaked host to "free" the driver (its Release most likely waits for the stopped thread). (4) `isSoftwareAsioDriver`
+  without "realtek asio". (5) THE RATE: a device state without audioDeviceRate (any type but JACK, and only with
+  resampleOnLoad) gets `storageSampleRate >= 44100 ? storageSampleRate : 48000` in sharedHostFor - also for ASIO as
+  the default card (the 0.9.108 "no rate on the default ASIO" is gone; its BUFFER is still never copied from a foreign
+  state); JUCE falls back to the driver's own rate when it refuses. (6) Divisions keyboard: a dark black key
+  0xff9c9c9c (was 0xff4a4a4a). (7) RenderPool `scratchStore` = lanes x 2 + 4 (was lanes + 2): a lane keeps its
+  scratch until the job's poster merges, and with several cards their device threads post jobs at once (four ASIO
+  cards: "render lanes without a scratch buffer: ~2000" every second, 0 discontinuities); the "Output
+  discontinuities" log line is written only with a real one. LESSON OF THE DAY: when a card "does not open", ask it
+  through the helper with other parameters before believing the driver's words - the 64-output lie was found in
+  five minutes that way after two days of "Couldn't open the output device!".
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

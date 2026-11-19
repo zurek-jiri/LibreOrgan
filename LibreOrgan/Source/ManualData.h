@@ -973,7 +973,13 @@ static const char* const kManualText_part4 =
     "through another driver is grey; it takes a drop only when the drop moves\n"
     "every route off that other card. A card whose driver fails while the program\n"
     "runs (some do when their output goes away - headphones pulled out) is stopped\n"
-    "and stays grey until the next start; the other cards play on. The cards in\n"
+    "and grey until it answers again, the other cards play on; a second failure\n"
+    "keeps it grey until the next start. A card that opens is asked for 48 kHz\n"
+    "(or the rate the samples are stored at, when a card can run at it); a driver\n"
+    "that refuses keeps its own rate. A Windows Audio output shows the channels\n"
+    "Windows mixes for it - stereo, 5.1 or 7.1, as *Configure speakers* in\n"
+    "Windows' sound settings says. On Windows every dialog stays above the main\n"
+    "window: move it aside or close it to reach what it covers. The cards in\n"
     "use stand in rows, each as wide as its outputs: drag a card by its title - the\n"
     "orange line shows between which two cards it lands (the others move aside),\n"
     "the dashed strip under the last row makes a new row; the cables run in the\n"
@@ -1004,14 +1010,14 @@ static const char* const kManualText_part4 =
     "the perspectives; the auxiliary takes the next one. The header of\n"
     "the dialog carries the **Master volume** (the console's slider itself - one\n"
     "value, two places), the console's **audio meter** with its CLIP dot, and\n"
+    ;
+static const char* const kManualText_part5 =
     "**Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).\n"
     "Three or more routes dropped onto an Aggregated WASAPI card at once go one by\n"
     "one behind a progress window.\n"
     "\n"
     "**A device that is not there** (switched off, unplugged, taken by another\n"
     "program): the route keeps it and its channels, the card says so, the program\n"
-    ;
-static const char* const kManualText_part5 =
     "tries it every 2 seconds and plays again the moment it answers. A device that\n"
     "opened but gives no audio is reopened by itself; when that does not help, the\n"
     "DSP cell reads *no audio* and the Messages name it.\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "\n"
     "1. **Set the interface to the \"Pro Audio\" profile** (KDE: System Settings >\n"
     "   Sound, the card's Profile box; GNOME: Settings > Sound > Output >\n"
+    ;
+static const char* const kManualText_part6 =
     "   Configuration; any desktop: `pavucontrol`, tab Configuration). The card\n"
     "   then appears under its own name with every channel; use the on-board chip\n"
     "   for the desktop.\n"
     "2. **Install PipeWire's JACK library**: `sudo apt install pipewire-jack\n"
     "   pipewire-bin pavucontrol` (Ubuntu, Debian, Mint), `sudo dnf install\n"
     "   pipewire-jack-audio-connection-kit pipewire-utils pavucontrol` (Fedora),\n"
-    ;
-static const char* const kManualText_part6 =
     "   `sudo pacman -S pipewire-jack pavucontrol` (Arch), `sudo zypper install\n"
     "   pipewire-libjack-0_3 pipewire-tools pavucontrol` (openSUSE). Log out and\n"
     "   in again.\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
     "  octave, but it wobbles slightly upwards, loses body two octaves away and\n"
+    ;
+static const char* const kManualText_part7 =
     "  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).\n"
     "\n"
     "Until a pipe's copy is ready it plays by resampling; the stop buttons show\n"
     "the build (a dark track filling orange). The settings of the methods are\n"
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
-    ;
-static const char* const kManualText_part7 =
     "\n"
     "## 7.3 The cache\n"
     "\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "### Release sample volume\n"
     "\n"
     "All release samples, -20 to +10 dB (default 0); \"-inf\" silences them.\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Release cutting\n"
     "\n"
     "Releases are faded out over this share of their length and end there (5 to\n"
     "100 %, default 100). Shorter releases free polyphony sooner and dry a wet set.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Release played from\n"
     "\n"
     "Every release is played from this many milliseconds into its file (0 to 300,\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
     "that width.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: release length (pitch shift)\n"
     "\n"
     "Pitch shift method: the decay of a filled pipe's release as a share of its\n"
     "source's duration (25 to 200 %, default 100) - the room does not grow with\n"
     "the pipe.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: time stretch of the attack\n"
     "\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "### Stops and sample folders\n"
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
+    ;
+static const char* const kManualText_part10 =
     "Stop List.\n"
     "\n"
     "### Shown in window\n"
     "\n"
     "Which program window shows this division; *Window 2* opens the second window\n"
     "when it is not open yet.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Division alias\n"
     "\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
     "step no program can do for you (GitHub takes files only that way); without\n"
     "the zip a report gives nothing to work from. A free GitHub account is\n"
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
     "*Open the GitHub form* in the program's message opens the form again.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "## 9.4 Free software, licences, platforms\n"
     "\n"
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
+    ;
+static const char* const kManualText_part12 =
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"
     "One organ, 53.9 GB of 32-bit float WAV, the whole program with the copies of\n"
     "the filled pipes:\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "| Storage | Rate on loading | Releases | Packing in RAM | RAM |\n"
     "|---|---|---|---|---|\n"

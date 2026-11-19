@@ -1229,6 +1229,8 @@ private:
     std::vector<juce::StringArray> asioDriversOfModule;  // the driver names of each DLL
     void registerAsioDriverModules();
     void asioDriverFaulted(int moduleIndex);
+    std::map<juce::String, int> asioDriverFaults;        // DLL -> how often it failed in this session (the second time is for good)
+    std::set<juce::String> asioCardsFaultedOnce;         // the cards of such drivers: one that does not open again in the program is out of use for good
     std::set<juce::String> asioPeriodRecovered, asioPeriodNoted;   // the ASIO cards reopened once for a callback period that does not match / named as still not matching
     bool cardsAskedOnce = false;
     std::unique_ptr<juce::AudioIODeviceType::Listener> deviceListListener;   // the audio device types' lists

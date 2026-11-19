@@ -12,6 +12,40 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.109] - 2026-11-19
+
+### Fixed
+- **Dialogs vanished under a message box (Windows).** A box is an owned window
+  of the main window, and Windows brings the owner forward with it: the main
+  window rose over the Audio routing and the Effects, and after the box's OK
+  only one of them came back. Every dialog of the program - the plug-ins'
+  windows and the manual too - is an owned window of the main window now:
+  they stay above it in their own order whatever comes and goes. A dialog can
+  no longer be put behind the main window (move it aside or close it).
+- **A Windows Audio output is opened with the channels Windows mixes for it**
+  (stereo, 5.1, 7.1 - "Configure speakers"), asked from Windows itself. The
+  driver's own list is no measure: Realtek's on-board output lists 64, opens
+  with 2 to 8 and refuses 64; what is opened beyond the mix format Windows
+  folds into the front pair. Replaces the first-pair fallback of 0.9.108.
+- **A card whose driver failed comes back** when it answers again (the
+  headphones back in): its cables play again with a new instance of the
+  driver. A second failure, or a card that does not open again in the
+  program, stays out of use until the next start.
+- With several sound cards at once the render threads ran short of scratch
+  buffers (two thousand lanes a second took no voices - no click, less
+  parallel work) and the log got a line every second: twice the buffers, and
+  the line only with a real discontinuity.
+
+### Changed
+- **Realtek ASIO counts as a real card** in the search for the default card
+  (it was listed among the software drivers in 0.9.108).
+- **A card that opens is asked for the samples' rate**: 48 kHz, or the rate
+  on loading when a card can run at it; nothing with "keep the files' rate".
+  A driver that does not take it opens at its own (Realtek ASIO opened at
+  44.1 kHz before).
+- Divisions dialog: a black key that does not play is a light grey - the dark
+  grey could not be told from a working black key.
+
 ## [0.9.108] - 2026-11-19
 
 ### Fixed
