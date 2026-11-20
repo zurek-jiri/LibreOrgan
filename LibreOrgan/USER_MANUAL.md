@@ -1009,6 +1009,12 @@ tries it every 2 seconds and plays again the moment it answers. A device that
 opened but gives no audio is reopened by itself; when that does not help, the
 DSP cell reads *no audio* and the Messages name it.
 
+**Playing into another program** (ReaRoute into REAPER and the like): that
+program's own audio device sets the pace. With an ASIO card behind it the
+route works like a card of this program's own. Through the Windows sound
+system the blocks come in bursts - it plays, with about half the polyphony;
+the [measurement](#measure-the-maximum-polyphony) says so in its report.
+
 ### Routing files
 
 Three buttons on the line of the titles keep a routing for later.
@@ -2529,7 +2535,15 @@ Windows THREAD_PRIORITY_HIGHEST with MMCSS, Linux SCHED_FIFO when allowed
 macOS a time-constraint thread; a real-time thread waiting for another never
 yields the core (under SCHED_FIFO that starves the window thread). On one or
 two cores the device thread yields while it waits and the lanes take small
-chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;
+chunks. On Windows, a processor without hyper-threading (a worker for every
+logical processor) keeps an eighth of its processors free of waiting workers
+for the sound card's driver and the system: the workers beyond that sleep
+between jobs and join the large ones only. And when a job does not close
+within 0.6 ms of its last voice being taken - the thread that holds it has
+lost its processor - the idle workers stop waiting and sleep, so that it
+gets one back at once. The polyphony measurement judges a driver that hands
+its blocks over in bursts (ReaRoute behind a program on the Windows sound
+system) by the cycle of the bursts, heard in its two idle seconds. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;
 the self-test (`--kerneltest`) checks every kernel against the scalar code and
 prints its speed.
 

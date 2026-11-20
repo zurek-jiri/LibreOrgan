@@ -671,10 +671,14 @@ public:
             const int64_t lastEnd = deviceClock->lastEnd.load(std::memory_order_relaxed);
             const int64_t lastFirst = deviceClock->lastFirst.load(std::memory_order_relaxed);
             const bool first = lastEnd == 0 || (double)(entryTicks - lastEnd) > 0.2 * ticksPerMs;
+            if (first) deviceClock->firsts.fetch_add(1, std::memory_order_relaxed);
+            // A driver known to hand its blocks over in bursts (cycleMs, learned by the polyphony
+            // measurement at rest): a burst is one callback here, its time budget is the cycle.
+            const double burstCycleMs = deviceClock->cycleMs.load(std::memory_order_relaxed);
             if (first && periodMs > 0.0 && lastFirst > 0 && lastEnd > lastFirst)
             {
                 // The previous driver callback is complete: its whole duration against the period.
-                const float share = (float)((double)(lastEnd - lastFirst) / ticksPerMs / periodMs);
+                const float share = (float)((double)(lastEnd - lastFirst) / ticksPerMs / (burstCycleMs > 0.0 ? burstCycleMs : periodMs));
                 float known = deviceClock->maxCallbackShare.load(std::memory_order_relaxed);
                 while (share > known && !deviceClock->maxCallbackShare.compare_exchange_weak(known, share, std::memory_order_relaxed)) {}
                 deviceClock->periodMs.store(periodMs, std::memory_order_relaxed);
@@ -687,10 +691,13 @@ public:
                 // - the thread never idle, callbacks back to back - a route still
                 // running when the next period was due. Counted against 1.5 and 2
                 // periods (diagnostics) and 3 periods + 2 ms (late: the health log's rule).
-                if (sinceFirstMs > 1.5 * periodMs)
+                // A driver known to work in bursts (0.9.115): the same rules with its cycle for the period -
+                // the rounds of one burst follow each other at once and are one callback of that cycle.
+                const double gapBaseMs = burstCycleMs > 0.0 ? burstCycleMs : periodMs;
+                if (sinceFirstMs > 1.5 * gapBaseMs)
                 {
                     deviceClock->over15.fetch_add(1, std::memory_order_relaxed);
-                    if (sinceFirstMs > 2.0 * periodMs) deviceClock->over2.fetch_add(1, std::memory_order_relaxed);
+                    if (sinceFirstMs > 2.0 * gapBaseMs) deviceClock->over2.fetch_add(1, std::memory_order_relaxed);
                     const bool asio = deviceClock->asio.load(std::memory_order_relaxed);
                     // Windows Audio works in 10 ms packets: a shared-mode stream opened
                     // with a smaller buffer (an aggregate at 256) gets its blocks in
@@ -700,7 +707,7 @@ public:
                     if (asio || sinceFirstMs > 3.0 * lateBase + 2.0) deviceClock->late.fetch_add(1, std::memory_order_relaxed);
                     if (!first) deviceClock->lastFirst.store(entryTicks, std::memory_order_relaxed);   // counted once per period
                 }
-                if (first || sinceFirstMs > 1.5 * periodMs)
+                if (first || sinceFirstMs > 1.5 * gapBaseMs)
                 {
                     double known = deviceClock->maxGapMs.load(std::memory_order_relaxed);
                     while (sinceFirstMs > known && !deviceClock->maxGapMs.compare_exchange_weak(known, sinceFirstMs, std::memory_order_relaxed)) {}
@@ -8186,7 +8193,9 @@ juce::File MainComponent::writeProblemReport(const juce::String& what, const juc
            << "ram: " << juce::String(ramMb / 1024.0, 1) << " GB\n";
     if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
         system << "display: " << display->totalArea.getWidth() << "x" << display->totalArea.getHeight() << " at " << juce::roundToInt(display->scale * 100.0) << " %\n";
-    system << "render threads: " << (engine.getRenderWorkerCount() + 1) << "  (preset " << renderThreadPreset << "), kernel " << engine.currentKernelName() << "\n"
+    system << "render threads: " << (engine.getRenderWorkerCount() + 1) << "  (preset " << renderThreadPreset
+           << (engine.getRenderReserveWorkerCount() > 0 ? ", " + juce::String(engine.getRenderReserveWorkerCount()) + " reserve" : juce::String())
+           << "), kernel " << engine.currentKernelName() << "\n"
            << "polyphony limit: " << engine.getMaxPolyphony() << "\n"
            << "configuration: " << (currentConfigurationName.isNotEmpty() ? currentConfigurationName : juce::String("(none)")) << "\n"
            << "divisions: " << (manualCount + 1) << ", stops: " << engine.getStops().size() << ", folder trees: " << (int)sampleTrees.size() << "\n";
@@ -9845,7 +9854,33 @@ void MainComponent::rememberDialogBounds()
 {
     for (auto& entry : trackedDialogs)
         if (entry.second != nullptr && entry.second->isVisible() && entry.second->getWidth() >= 300)
-            dialogBounds[entry.first] = UIScale::toScreenSpace(entry.second->getBounds());
+        {
+            const auto now = UIScale::toScreenSpace(entry.second->getBounds());
+            if (entry.first == "secondWindow")
+            {
+                // 0.9.115 (#234): window 2 MAXIMISED is a state, not a size. Its rectangle was saved as
+                // the window's place, and the next start cut it to the work area less the margins and
+                // showed an ordinary window a little smaller than the screen - the maximise button
+                // "did not hold". The state is kept now and the place to come back to stays the one
+                // from before the maximising (one on the window's present display when that place
+                // lies on another display, or none is known).
+                auto* resizable = dynamic_cast<juce::ResizableWindow*>(entry.second.getComponent());
+                secondWindowMaximised = resizable != nullptr && resizable->isFullScreen();
+                if (secondWindowMaximised)
+                {
+                    const auto* here = juce::Desktop::getInstance().getDisplays().getDisplayForRect(now, false);
+                    const auto known = dialogBounds.find(entry.first);
+                    if (here != nullptr)
+                    {
+                        const auto area = here->userBounds.toNearestInt();
+                        if (known == dialogBounds.end() || !area.contains(known->second.getTopLeft() + juce::Point<int>(80, 20)))
+                            dialogBounds[entry.first] = area.reduced(area.getWidth() / 10, area.getHeight() / 10);
+                    }
+                    continue;
+                }
+            }
+            dialogBounds[entry.first] = now;
+        }
 }
 
 void MainComponent::resumeWindowsAudioDevices(const std::vector<SuspendedDevice>& suspended)
@@ -15786,7 +15821,7 @@ namespace
     // configuration, and taken from the local settings when one is loaded.
     const juce::StringArray& machineSpecificKeys()
     {
-        static const juce::StringArray keys{ "windowX", "windowY", "windowWidth", "windowHeight", "windowMaximised", "twoWindows",
+        static const juce::StringArray keys{ "windowX", "windowY", "windowWidth", "windowHeight", "windowMaximised", "secondWindowMaximised", "twoWindows",
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
@@ -27184,8 +27219,21 @@ void MainComponent::updateSecondWindow()
         if (secondWindow == nullptr)
         {
             secondWindow = std::make_unique<SecondWindow>(*this);
+            const bool maximised = secondWindowMaximised;   // placeDialog tracks the window: the state is read before
             placeDialog(*secondWindow, "secondWindow", 1200, 800);
             secondWindow->setVisible(true);
+           #if ! JUCE_LINUX
+            // 0.9.115 (#234): maximised at the last quit - maximised again, on the display of its place.
+            // Not on Linux: a window maximised right after it is shown reads a wrong geometry back
+            // there (the main window's story of 0.8.169-0.8.171); it comes back at its place.
+            if (maximised)
+            {
+                secondWindow->setFullScreen(true);
+                CrashHandler::note("Window 2: maximised again (as at the last quit)");
+            }
+           #else
+            juce::ignoreUnused(maximised);
+           #endif
         }
         if (voicer) voicer->setSecondScreen(&secondWindow->content->stops, &secondWindow->content->viewport);
     }
@@ -27520,6 +27568,7 @@ void MainComponent::loadSettings()
     savedWindowX = parsed.hasProperty("windowX") ? (int)parsed.getProperty("windowX", 0) : INT_MIN;
     savedWindowY = parsed.hasProperty("windowY") ? (int)parsed.getProperty("windowY", 0) : INT_MIN;
     savedWindowMaximised = parsed.getProperty("windowMaximised", false);
+    secondWindowMaximised = parsed.getProperty("secondWindowMaximised", false);
 
     manualCount = juce::jlimit(1, SamplerEngine::maxManuals - 1, (int)parsed.getProperty("manualCount", 2));
     const auto savedColumnWeights = parsed.getProperty("divisionColumnWeights", juce::var());
@@ -28244,6 +28293,7 @@ void MainComponent::saveSettingsNow()
         for (const auto& entry : dialogBounds)
             bounds->setProperty(entry.first, entry.second.toString());
         obj->setProperty("dialogBounds", juce::var(bounds));
+        obj->setProperty("secondWindowMaximised", secondWindowMaximised);
     }
     {
         auto* order = new juce::DynamicObject();
@@ -28702,7 +28752,7 @@ void MainComponent::saveSettingsNow()
         // properties in insertion order, so the string compares reliably.
         juce::DynamicObject::Ptr essential = new juce::DynamicObject();
         static const std::set<juce::String> volatileKeys{ "windowWidth", "windowHeight", "windowX", "windowY",
-            "windowMaximised", "dialogBounds", "configurationFile", "configurationName" };
+            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName" };
         for (const auto& property : obj->getProperties())
             if (volatileKeys.count(property.name.toString()) == 0) essential->setProperty(property.name, property.value);
         // Opening a voicing or unfolding its key rows is not a change worth asking about.
@@ -31534,6 +31584,7 @@ struct MainComponent::PolyphonyMeasurement
     void rememberPeakSecond() noexcept { peakHistory[0] = peakHistory[1]; peakHistory[1] = lastPeakSecond; }
     int idleAsioOver15 = 0;           // the driver's own jitter at rest (reference)
     double idleAsioMaxGapMs = 0.0;
+    double burstCycleMs = 0.0, burstBlockMs = 0.0;   // a driver working in bursts: its cycle and its block (0.9.115, learnDeviceCadence)
     // The CPU, sampled every second: this program's share of all logical CPUs
     // and the whole system's (a one-core limit shows as a low program share
     // beside a callback over its period). The reference clocks of the last tick.
@@ -31605,6 +31656,43 @@ MainComponent::DeviceClock* MainComponent::deviceClockFor(void* device, bool asi
         }
     }
     return nullptr;
+}
+
+juce::String MainComponent::learnDeviceCadence(double windowMs, double& cycleMsOut, double& blockMsOut) noexcept
+{
+    // 0.9.115 (#252, ReaRoute on a notebook: REAPER played through the Windows sound system with a
+    // block of 13-15 ms of its own and asked ReaRoute's client for its 256-frame blocks two or three
+    // at a time, then nothing for 12-15 ms). Every such pause was "a late driver callback" (a gap of
+    // more than 1.5 periods): 65-70 of them a second with no voice sounding, so no level could ever
+    // be clean and the measurement ended at its floor, whatever the computer. The driver's cadence
+    // is read from the two idle seconds: many pauses beyond 1.5 periods there are its own rhythm,
+    // and the cycle (the time from burst to burst) takes the period's place for the run - for the
+    // lateness and for the callback's share (a burst is one callback, the cycle is its time).
+    juce::String found;
+    cycleMsOut = blockMsOut = 0.0;
+    for (auto& clock : deviceClocks)
+    {
+        const int firsts = clock.firsts.exchange(0, std::memory_order_relaxed);
+        clock.cycleMs.store(0.0, std::memory_order_relaxed);
+        if (clock.device.load(std::memory_order_acquire) == nullptr || !clock.asio.load(std::memory_order_relaxed)) continue;
+        const double periodMs = clock.periodMs.load(std::memory_order_relaxed);
+        const int pauses = clock.over15.load(std::memory_order_relaxed);
+        const double longestMs = clock.maxGapMs.load(std::memory_order_relaxed);
+        if (periodMs <= 0.0 || windowMs <= 0.0 || pauses < juce::roundToInt(windowMs / 100.0)) continue;   // ten a second at least: a rhythm, not an accident
+        const double meanMs = firsts > 0 ? windowMs / (double)firsts : 0.0;
+        const double cycleMs = juce::jmax(meanMs, longestMs * 0.95);
+        if (cycleMs < 1.4 * periodMs) continue;
+        clock.cycleMs.store(cycleMs, std::memory_order_relaxed);
+        if (cycleMs > cycleMsOut) { cycleMsOut = cycleMs; blockMsOut = periodMs; }
+        found << (found.isEmpty() ? "" : "; ") << juce::String(pauses) << " pauses beyond 1.5 periods in " << juce::String(windowMs / 1000.0, 1)
+              << " s at rest, a cycle of " << juce::String(cycleMs, 1) << " ms for a block of " << juce::String(periodMs, 1) << " ms";
+    }
+    return found;
+}
+
+void MainComponent::clearDeviceCadence() noexcept
+{
+    for (auto& clock : deviceClocks) { clock.cycleMs.store(0.0, std::memory_order_relaxed); clock.firsts.store(0, std::memory_order_relaxed); }
 }
 
 MainComponent::DeviceLateness MainComponent::takeDeviceLateCallbacks() noexcept
@@ -32135,7 +32223,9 @@ void MainComponent::startPolyphonyMeasurement()
             + " (waiting " + juce::String(juce::roundToInt(pool.routeReverbWaitNs / 1000.0)) + ") + bookkeeping " + juce::String(juce::roundToInt((pool.routeTakeNs + pool.routeCompactNs + pool.routeRecordNs + pool.routeStatsNs) / 1000.0))
             + " (" + juce::String(pool.routeCallbacks) + " callbacks, " + juce::String(juce::roundToInt(100.0 * (double)pool.routeCallbacks * pool.routeTotalNs() * 1.0e-9)) + " % of the time; longest "
             + juce::String(juce::roundToInt(pool.routeMaxTotalNs / 1000.0)) + " us with own render " + juce::String(juce::roundToInt(pool.routeMaxOwnNs / 1000.0)) + ", wait " + juce::String(juce::roundToInt(pool.routeMaxWaitNs / 1000.0))
-            + "; lanes joined within " + juce::String(juce::roundToInt(pool.laneJoinDelayMaxNs / 1000.0)) + " us), CPU " + juce::String(juce::roundToInt(state->lastProcessShare * 100.0))
+            + "; lanes joined within " + juce::String(juce::roundToInt(pool.laneJoinDelayMaxNs / 1000.0)) + " us"
+            + [&] { const int sleeps = safeThis->engine.takeRenderTailSleeps(); return sleeps > 0 ? "; a job hung in its tail: idle workers sent to sleep " + juce::String(sleeps) + " time(s)" : juce::String(); }()
+            + "), CPU " + juce::String(juce::roundToInt(state->lastProcessShare * 100.0))
             + " % of all logical CPUs, late driver callbacks: ASIO " + juce::String(lateness.asioLate)
             + " (gaps over 1.5 periods " + juce::String(lateness.asioOver15) + ", over 2 " + juce::String(lateness.asioOver2) + ", longest "
             + juce::String(lateness.asioMaxGapMs, 1) + " ms), other devices " + juce::String(lateness.otherLate) + " (longest " + juce::String(lateness.otherMaxGapMs, 1) + " ms)");
@@ -32420,9 +32510,16 @@ void MainComponent::startPolyphonyMeasurement()
         safeThis->engine.takeMaxBlockLoad();
         safeThis->takeLateCallbacksOfAllRoutes();
         safeThis->takeDeviceLateCallbacks();
-        juce::Timer::callAfterDelay(2000, [safeThis, state, alive, setStimulus, showProgress, bash, tick]
+        safeThis->clearDeviceCadence();   // the idle seconds are heard with the plain rule
+        const double idleFromMs = juce::Time::getMillisecondCounterHiRes();
+        juce::Timer::callAfterDelay(2000, [safeThis, state, alive, setStimulus, showProgress, bash, tick, idleFromMs]
         {
             if (!alive()) return;
+            // A driver that works in bursts is known by its idle seconds (learnDeviceCadence): from here on its cycle counts.
+            const auto cadence = safeThis->learnDeviceCadence(juce::Time::getMillisecondCounterHiRes() - idleFromMs, state->burstCycleMs, state->burstBlockMs);
+            if (cadence.isNotEmpty())
+                CrashHandler::note("Polyphony measurement: the ASIO driver hands its blocks over in bursts (" + cadence
+                    + ") - the program behind it runs a larger buffer; late callbacks and the callback's time are judged by that cycle");
             const auto idle = safeThis->takeDeviceLateCallbacks();
             state->idleAsioOver15 = idle.asioOver15;
             state->idleAsioMaxGapMs = idle.asioMaxGapMs;
@@ -32545,6 +32642,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
     if (state == nullptr) return;
     polyphonyMeasurement = nullptr;   // the timers see this and stop
     CrashHandler::StallWatchdog::setStallAction(nullptr);
+    clearDeviceCadence();   // the bursts' cycle counted for the run only (0.9.115)
     // Keys up, everything back as it was: the registration, the mute state, the sound.
     // The release tails of the run go on sounding (nothing is killed, 0.8.146: a
     // cut and a flood of tails on the next device were the result) and the level
@@ -32801,6 +32899,9 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         const int renderCores = juce::jmax(1, engine.getRenderWorkerCount() + 1);
         details << (details.isEmpty() ? "" : "\n\n") << "Render threads: " << renderCores << " on " << physical << " physical " << (physical == 1 ? "core" : "cores")
                << ", kernel " << engine.currentKernelName() << ".";
+        if (const int reserve = engine.getRenderReserveWorkerCount(); reserve > 0)
+            details << " " << reserve << " of the workers sleep between jobs and join the large ones only: this processor has no spare logical processors"
+                   << " (no hyper-threading), and workers waiting on every one of them would leave none to the sound card's driver and the system.";
         if (const auto& hybrid = CpuInfo::hybrid(); hybrid.hybrid())
             details << " This processor has " << hybrid.performanceCores << " performance and " << hybrid.efficiencyCores << " efficiency cores"
                    << (renderThreadPreset == "performance" && renderThreads == 0 ? ": the render workers ran on the performance cores only."
@@ -32963,6 +33064,12 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
                << " gives every block twice the time and roughly doubles the polyphony, at " << juce::String(2.0 * ms, 1)
                << " ms of latency - still fine for an organ. It is set in the driver's control panel.";
     }
+    // A driver that hands its blocks over in bursts (0.9.115, #252): said, with what it means.
+    if (state->burstCycleMs > 0.0)
+        advice << "\n\nThe ASIO driver hands its blocks over in bursts: several blocks of " << juce::String(state->burstBlockMs, 1)
+               << " ms at once, then a pause - a cycle of " << juce::String(state->burstCycleMs, 1) << " ms. The program behind the driver"
+               << " (with ReaRoute: REAPER and its own audio device) runs a larger buffer than the one the driver names. This run counted with"
+               << " that cycle. The latency is that program's, not the " << juce::String(state->burstBlockMs, 1) << " ms shown here.";
     // Aggregated WASAPI below the Windows audio engine's 10 ms packet: the
     // blocks arrive in bursts with shorter deadlines and no less latency.
     {

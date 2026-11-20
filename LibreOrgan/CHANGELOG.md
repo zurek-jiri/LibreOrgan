@@ -12,6 +12,53 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.115] - 2026-11-20
+
+### Fixed
+- **Windows, a processor without hyper-threading (#251: 24 cores, 24 logical
+  processors, a polyphony limit of 616).** The render workers wait for the
+  next job spinning, at audio priority; with a worker for every logical
+  processor nothing was left for the sound card's driver (there: REAPER
+  behind ReaRoute) and the system, and a thread of ours that lost its
+  processor for a moment got none back until a waiting worker's window ran
+  out. Every measured second had a route callback of 1.0-2.5 ms, whatever
+  the polyphony - the pool's own waiting windows - and the measurement broke
+  on it. Now an eighth of the logical processors the program may use (one to
+  four) stays free of waiting workers, beside the device thread's; the
+  workers beyond that sleep and join the large jobs only. A processor with
+  hyper-threading (workers = physical cores) runs exactly as before, and so
+  do Linux and macOS, where a waiting worker yields. The log says "Render
+  pool: ..." when the rule applies, the measurement report and system.txt
+  name the reserve workers. Reproduced with REAPER + ReaRoute and the
+  program held on 16 logical processors of a 16-core computer: 37 400
+  voices with waits of 2.5 ms for a lane before, 54 500 with waits of
+  0.1 ms now.
+- **Windows: a job that hangs in its tail.** Wherever a thread carrying
+  voices loses its processor all the same (a notebook under a balanced power
+  plan showed the 1.0-2.5 ms callbacks with spare logical processors, #253):
+  when a job does not close within 0.6 ms of its last voice being taken, the
+  idle workers stop spinning and sleep, their processors go idle and the
+  waiting thread gets one. Measured alone (the first rule switched off): the
+  wait for a lane ends at 0.63 ms instead of 2.5 ms.
+- **The polyphony measurement with a driver that works in bursts (#252:
+  ReaRoute, REAPER on the Windows sound system).** REAPER asked for the
+  256-frame blocks two or three at a time and then paused for its own
+  period; every pause was "a late driver callback", a hundred a second with
+  no voice sounding, so no level was ever clean and the result was the floor
+  of 200 voices on any computer. The driver's cadence is now heard in the
+  two idle seconds: such a driver is judged by its cycle - for the lateness
+  and for the callback's share of the time - and the log and the report say
+  so. Reproduced here: 200 voices before, 27 300 now.
+- **Window 2 maximised stays maximised (#234).** Its maximised rectangle was
+  saved as an ordinary size, cut to the work area less the margins at the
+  next start and shown as a window a little smaller than the screen - the
+  maximise button "did not hold". The state is saved now (Windows, macOS)
+  and the place to come back to stays the one from before the maximising.
+- **The measurement report on the Windows power plan**: the plan is told by
+  its identifier, not by its English name - a High performance plan of a
+  Windows in another language was advised to switch to High performance -
+  and its name is read in the console's code page.
+
 ## [0.9.114] - 2026-11-19
 
 ### Changed

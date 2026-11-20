@@ -3785,6 +3785,47 @@ namespace
         explicit RenderPool(int workerCount)
         {
             numWorkers = juce::jlimit(0, 62, workerCount);
+            spinWorkers = numWorkers;
+           #if JUCE_WINDOWS
+            // 0.9.115 (#251, a 24-core processor without hyper-threading: 23 workers, the control thread and the
+            // device thread on 24 logical processors): the workers wait for the next job SPINNING (_mm_pause, at
+            // audio priority), so with a worker for every processor nothing was left for the sound card's own
+            // threads and the system - a thread of ours carrying voices that lost its processor for a moment got
+            // none back until a spinning worker's window ran out: every second had a route callback of 1.0-2.5 ms
+            // (the pool's own windows), whatever the polyphony, and the measurement ended at 616 voices on a
+            // computer that renders tens of thousands. Now an eighth of the processors this program may use (at
+            // least one, at most four) stays free of spinning workers, beside the one of the device thread. The
+            // workers beyond that are RESERVE workers: they sleep and are called for a large job only. With
+            // hyper-threading (workers = physical cores, half the logical processors) nothing changes: every
+            // worker spins as before.
+            // Dev switches for the tests of the two rules apart: ORGAN_POOL_RESERVE=0 (no reserve workers),
+            // ORGAN_POOL_TAIL=0 (the workers spin on while a job hangs in its tail, as before 0.9.115).
+            const bool reserveRule = juce::SystemStats::getEnvironmentVariable("ORGAN_POOL_RESERVE", "1") != "0";
+            tailRule = !gFewCores && juce::SystemStats::getEnvironmentVariable("ORGAN_POOL_TAIL", "1") != "0";
+            if (!reserveRule || !tailRule)
+                CrashHandler::note(juce::String("Render pool (dev switches): reserve workers ") + (reserveRule ? "on" : "OFF") + ", tail rule " + (tailRule ? "on" : "OFF"));
+            if (!gFewCores && numWorkers > 0 && reserveRule)
+            {
+                int processors = juce::jmax(1, juce::SystemStats::getNumCpus());
+                DWORD_PTR processMask = 0, systemMask = 0;
+                if (GetProcessAffinityMask(GetCurrentProcess(), &processMask, &systemMask) && processMask != 0)
+                {
+                    int count = 0;
+                    for (DWORD_PTR m = processMask; m != 0; m &= m - 1) ++count;
+                    processors = count;
+                }
+                const int keptFree = juce::jlimit(1, 4, processors / 8);
+                spinWorkers = juce::jlimit(1, numWorkers, processors - 1 - keptFree);
+                if (spinWorkers < numWorkers)
+                {
+                    reserveWakeVoices = 160 * (spinWorkers + 1);
+                    CrashHandler::note("Render pool: " + juce::String(numWorkers) + " workers on " + juce::String(processors)
+                        + " logical processors - " + juce::String(spinWorkers) + " wait for the next job spinning, "
+                        + juce::String(numWorkers - spinWorkers) + " sleep and join jobs of " + juce::String(reserveWakeVoices)
+                        + " voices or more; " + juce::String(keptFree) + " processor(s) and the device thread's stay free of spinning workers");
+                }
+            }
+           #endif
             // 0.9.109: twice the lanes + 4 (was the lanes + 2). A lane keeps its scratch until the job's poster
             // merges it; with several sound cards their device threads post jobs AT ONCE and a worker joins more
             // than one of them - four ASIO cards left two thousand lanes a second without a scratch (they took
@@ -3802,11 +3843,14 @@ namespace
             {
                 std::lock_guard<std::mutex> lk(sleepMutex);
                 sleepCv.notify_all();
+                reserveCv.notify_all();
             }
             for (auto& t : threads) if (t.joinable()) t.join();
         }
 
         int getWorkerCount() const noexcept { return numWorkers; }
+        int getReserveWorkerCount() const noexcept { return numWorkers - spinWorkers; }
+        int takeTailSleeps() noexcept { return statTailSleeps.exchange(0, std::memory_order_relaxed); }
 
         // Render voices [0..num) of the given list. The calling thread is a lane
         // and writes directly into outs; other lanes render into scratches which
@@ -3857,6 +3901,7 @@ namespace
             // count at this opening: the lane limit and the statistics count from it.
             job->joinBase = job->lanesJoined.load(std::memory_order_relaxed);
             job->nextVoice.store(0, std::memory_order_relaxed);
+            job->tailTicks.store(0, std::memory_order_relaxed);
             const int64_t jobStart = juce::Time::getHighResolutionTicks();
             job->openedTicks = jobStart;
             job->open.store(true, std::memory_order_release);
@@ -3911,6 +3956,12 @@ namespace
                 std::lock_guard<std::mutex> lk(sleepMutex);
                 sleepCv.notify_all();
             }
+            // The reserve workers (0.9.115) for a job large enough to outlast their wake-up.
+            if (num >= reserveWakeVoices && reserveSleepers.load(std::memory_order_acquire) > 0)
+            {
+                std::lock_guard<std::mutex> lk(sleepMutex);
+                reserveCv.notify_all();
+            }
 
             // This thread is a lane as well.
             int idx, count;
@@ -3919,7 +3970,9 @@ namespace
             while ((count = takeChunkAsPoster(*job, idx)) > 0)
                 renderRange(voiceIndices, idx, idx + count, pool, ctx, mine);
             const int64_t profOwn = prof ? profileDelta(profPoster0, profileTicks()) : 0;
-            const int64_t posterBusy = juce::Time::getHighResolutionTicks() - posterStart;
+            const int64_t posterEnd = juce::Time::getHighResolutionTicks();
+            const int64_t posterBusy = posterEnd - posterStart;
+            if (job->tailTicks.load(std::memory_order_relaxed) == 0) job->tailTicks.store(posterEnd, std::memory_order_relaxed);   // the tail begins (tailStalled)
             foldVoiceProfile();
             // Wait for the other lanes. On few cores the wait yields the core: a
             // lane that was preempted (the sound server, the window) gets it back
@@ -4056,6 +4109,7 @@ namespace
             std::atomic<uint32_t> lanesJoined{ 0 }, lanesLeft{ 0 };
             uint32_t joinBase = 0;                     // lanesJoined when this use opened
             std::atomic<int64_t> laneBusyTicks{ 0 };   // the lanes' rendering time of this job, summed (utilisation statistics)
+            std::atomic<int64_t> tailTicks{ 0 };       // when an idle worker first saw this use with no voices left to take (0.9.115, tailStalled)
             int64_t openedTicks = 0;                   // when the job opened (the lanes' join delay, 0.8.143)
             const uint32_t* voices = nullptr;
             int numVoices = 0, lanesHint = 1, maxWorkers = 0;
@@ -4184,7 +4238,9 @@ namespace
                 const int64_t laneStart = juce::Time::getHighResolutionTicks();
                 do renderRange(job.voices, idx, idx + count, job.pool, ctx, lane);
                 while ((count = takeChunk(job, idx)) > 0);
-                job.laneBusyTicks.fetch_add(juce::Time::getHighResolutionTicks() - laneStart, std::memory_order_relaxed);
+                const int64_t laneEnd = juce::Time::getHighResolutionTicks();
+                job.laneBusyTicks.fetch_add(laneEnd - laneStart, std::memory_order_relaxed);
+                if (job.tailTicks.load(std::memory_order_relaxed) == 0) job.tailTicks.store(laneEnd, std::memory_order_relaxed);   // no voice left: the tail begins (tailStalled)
                 foldVoiceProfile();
                 const int slot = job.completedCount.fetch_add(1, std::memory_order_acq_rel);
                 if (slot < kMaxLanesPerJob) job.completed[(size_t)slot] = scratchIndex;
@@ -4204,6 +4260,28 @@ namespace
             return anyPostedTask();
         }
 
+        // 0.9.115 (#251, #252): a job whose voices are all taken but which does not close - a lane
+        // (or the device thread itself) holds a chunk and does not come back with it. The tail of a
+        // job lasts as long as one chunk (up to 48 voices: 0.1-0.35 ms); beyond 0.6 ms that thread
+        // has lost its processor, and the idle workers spinning beside it at audio priority are
+        // what keeps it from getting one back: it returned only when their window ran out, 1.0 to
+        // 2.5 ms later - the longest route callback of every second on a processor without spare
+        // logical processors, on a notebook under a balanced power plan, beside a host program
+        // with an audio engine of its own. Told to the idle workers: they stop spinning and sleep
+        // (the next job wakes them), their processors go idle and the system gives one to the
+        // thread that waits.
+        bool tailStalled(int64_t now) noexcept
+        {
+            for (auto& job : jobs)
+            {
+                if (!job.open.load(std::memory_order_acquire)) continue;
+                if (job.nextVoice.load(std::memory_order_relaxed) < job.numVoices) continue;
+                const int64_t since = job.tailTicks.load(std::memory_order_relaxed);   // stamped by the first lane that found no voice left
+                if (since != 0 && now - since > tailLimitTicks) return true;
+            }
+            return false;
+        }
+
         void workerLoop(int index)
         {
             juce::Thread::setCurrentThreadName("Organ Render " + juce::String(index));
@@ -4218,9 +4296,28 @@ namespace
            #endif
             juce::ScopedNoDenormals noDenormals;
             int64_t lastWorkTicks = 0;
+            int64_t lastTailCheckTicks = 0;
+            // The pool's settings as this thread's own copies: the members lie beside the statistics every
+            // lane writes after every job, and a worker reading them in each turn of its spin shared that
+            // cache line with all the writers (the measurement lost a key step, 4 %, to it).
+            const bool reserveWorker = index >= spinWorkers;
+            const bool tailRuleOn = tailRule;
+            const int64_t tailLimit = tailLimitTicks, tailCheckEvery = tailCheckTicks;
+            juce::ignoreUnused(tailRuleOn, tailLimit, tailCheckEvery);
             while (!shutdown.load(std::memory_order_relaxed))
             {
                 if (tryWork()) { lastWorkTicks = juce::Time::getHighResolutionTicks(); continue; }
+                if (reserveWorker)
+                {
+                    // A reserve worker (0.9.115): never spins. It sleeps until a large job
+                    // calls it (render()), works while any job has voices left, sleeps again.
+                    std::unique_lock<std::mutex> lk(sleepMutex);
+                    reserveSleepers.fetch_add(1, std::memory_order_acq_rel);
+                    if (!anyOpenJob() && !shutdown.load(std::memory_order_relaxed))
+                        reserveCv.wait_for(lk, std::chrono::milliseconds(20));
+                    reserveSleepers.fetch_sub(1, std::memory_order_acq_rel);
+                    continue;
+                }
                 // Spin only briefly after work: long enough to catch the next
                 // route of the same callback, short enough to hand the CPU back
                 // to the OS/GUI between audio periods. Sleeping between periods is
@@ -4232,7 +4329,23 @@ namespace
                #else
                 const bool spinAllowed = !gFewCores;   // one or two cores: a spinning SCHED_FIFO worker starves the window thread (#15)
                #endif
-                if (spinAllowed && (now < hotUntilTicks.load(std::memory_order_relaxed) || now - lastWorkTicks < hotWindowTicks))
+               #if JUCE_WINDOWS
+                // Asked only by a worker that has itself had nothing to do for the length of the limit
+                // (a job cannot hang that long beside a worker that just worked), and then every 50 us
+                // at most: a busy pool never looks, so the lanes' counters are left alone (the first
+                // version looked in every turn of the spin and cost one key step of the measurement, 4 %).
+                bool stalled = false;
+                if (tailRuleOn && now - lastWorkTicks > tailLimit && now - lastTailCheckTicks > tailCheckEvery)
+                {
+                    lastTailCheckTicks = now;
+                    stalled = tailStalled(now);
+                    if (stalled) statTailSleeps.fetch_add(1, std::memory_order_relaxed);
+                }
+               #else
+                const bool stalled = false;   // a spinning worker yields there (ENGINE_CPU_PAUSE): a waiting thread gets the core
+                juce::ignoreUnused(lastTailCheckTicks);
+               #endif
+                if (!stalled && spinAllowed && (now < hotUntilTicks.load(std::memory_order_relaxed) || now - lastWorkTicks < hotWindowTicks))
                 {
                     for (int i = 0; i < 16; ++i) ENGINE_CPU_PAUSE();
                     continue;
@@ -4315,6 +4428,14 @@ namespace
     private:
 
         int numWorkers = 0;
+        int spinWorkers = 0;                        // the workers [0, spinWorkers) spin between jobs; the rest are reserve workers (0.9.115)
+        int reserveWakeVoices = INT_MAX;            // a job of this many voices calls the reserve workers
+        bool tailRule = false;                      // idle workers stop spinning while a job hangs in its tail (Windows, tailStalled)
+        const int64_t tailLimitTicks = juce::Time::getHighResolutionTicksPerSecond() * 6 / 10000;   // 0.6 ms
+        const int64_t tailCheckTicks = juce::Time::getHighResolutionTicksPerSecond() / 20000;       // a look every 50 us at most
+        std::atomic<int> statTailSleeps{ 0 };       // idle workers sent to sleep by the tail rule (the log, once a second)
+        std::condition_variable reserveCv;          // with sleepMutex
+        std::atomic<int> reserveSleepers{ 0 };
         std::vector<std::thread> threads;
         std::atomic<bool> shutdown{ false };
         std::array<Job, kMaxJobs> jobs;
@@ -8172,6 +8293,8 @@ void SamplerEngine::setSampleRate(double sr)
 }
 
 int SamplerEngine::getRenderWorkerCount() const noexcept { return impl->pool->getWorkerCount(); }
+int SamplerEngine::getRenderReserveWorkerCount() const noexcept { return impl->pool->getReserveWorkerCount(); }
+int SamplerEngine::takeRenderTailSleeps() noexcept { return impl->pool->takeTailSleeps(); }
 
 double SamplerEngine::getLastBlockMs() const noexcept { return impl->lastBlockMs.load(std::memory_order_relaxed); }
 

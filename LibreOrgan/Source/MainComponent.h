@@ -903,6 +903,13 @@ private:
         std::atomic<int> late{ 0 };                       // late callbacks by the device type's rule
         std::atomic<int> over15{ 0 }, over2{ 0 };         // gaps beyond 1.5 and 2 periods (diagnostics)
         std::atomic<double> maxGapMs{ 0.0 };
+        // 0.9.115 (#252): a driver that hands its blocks over in BURSTS (ReaRoute behind a REAPER
+        // whose own device runs a larger buffer: two or three blocks back to back, then a pause of
+        // REAPER's period). firsts = driver callbacks begun (counted always); cycleMs = the cycle
+        // the polyphony measurement learned from its two idle seconds, 0 = an even cadence. While
+        // it is set, lateness and the callback's share are judged by the cycle, not by the block.
+        std::atomic<int> firsts{ 0 };
+        std::atomic<double> cycleMs{ 0.0 };
         // The longest driver callback (first route in -> last route out, with the
         // note bookkeeping, every route's render, IRs and copies) as a share of
         // the period: the true load of the device thread.
@@ -928,6 +935,11 @@ private:
         float asioMaxCallbackShare = 0.0f, otherMaxCallbackShare = 0.0f;   // the longest driver callback / its period
     };
     DeviceLateness takeDeviceLateCallbacks() noexcept;
+    // The cadence of the ASIO drivers over the idle window just measured (the polyphony measurement's two idle
+    // seconds; call it BEFORE takeDeviceLateCallbacks): a driver whose callbacks came in bursts gets its cycle
+    // (DeviceClock::cycleMs). Returns what was found, for the log and the report; clearDeviceCadence ends it.
+    juce::String learnDeviceCadence(double windowMs, double& cycleMsOut, double& blockMsOut) noexcept;
+    void clearDeviceCadence() noexcept;
     std::atomic<float> masterGainLinear{ 0.1f };
     // Snapshot of the MIDI routing configuration for the MIDI callback thread.
     // Rebuilt by refreshMidiRouting() whenever settings change, so the MIDI
@@ -1578,6 +1590,7 @@ private:
     // Main window placement: remembered position and maximised state.
     int savedWindowX = INT_MIN, savedWindowY = INT_MIN;
     bool savedWindowMaximised = false;
+    bool secondWindowMaximised = false;   // window 2 was maximised when last seen (0.9.115; a machine key)
     // Configuration "changed" detection: the settings without their volatile
     // parts (window geometry, dialog positions) compared with the state at the
     // last configuration load or save.

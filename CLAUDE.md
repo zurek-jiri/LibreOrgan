@@ -4702,6 +4702,67 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   <file>` and `git ls-files <folder>` before the tag; never `2>$null` on `git add`. The Linux and macOS halves
   (the cover's paint, the direct ALSA tick box, the busy rule) COMPILE on CI; none of it was RUN there - the user
   tests on Linux and macOS.
+  0.9.115 (20 Nov 2026, Windows; #251 pasztor63: Ultra 9 285K 24 cores / 24 logical, ReaRoute at 256, limit 616; #252/#253
+  the user's own notebook with ReaRoute; #234 window 2): THREE DIFFERENT THINGS behind "ReaRoute does not work" - read the
+  IDLE line of the measurement first: "ASIO gaps over 1.5 periods 0" = an even cadence (REAPER on an ASIO card), then look
+  at the per-second "longest N us with own render A, wait B"; "gaps ... 100-200" at rest = bursts (REAPER on the Windows
+  sound system). (1) STALLS OF THE POOL'S OWN WINDOWS: in 157 of 161 measured seconds of #251 the longest route callback was
+  1.0-2.6 ms whatever the polyphony (2.3 ms at 168 voices), the values = hotWindowTicks 1 ms .. x 5/2 = 2.5 ms: the idle
+  workers spin (_mm_pause, MMCSS Pro Audio) and a thread of ours carrying voices that lost its processor got none back until
+  their window ran out. With 23 workers + control thread + device thread on 24 logical processors nothing is free (REAPER
+  IS the sound card there). REPRODUCED HERE: the process held on 16 logical processors (`$p.ProcessorAffinity = 0x55555555`
+  right after Start-Process = one per core of the Ryzen) - old exe: wait for lanes 2510-2570 us in most seconds, limit 37 400
+  (Windows Audio) / 39 500 (ASIO) / 37 400 (REAPER + ReaRoute); unrestricted: never. FIX A (RenderPool ctor, Windows only):
+  `spinWorkers` = min(numWorkers, processors - 1 - clamp(processors / 8, 1, 4)), processors = popcount of the PROCESS
+  affinity mask; workers with index >= spinWorkers are RESERVE workers (never spin, sleep on `reserveCv`, called by render()
+  for a job of `reserveWakeVoices` = 160 x (spinWorkers + 1) voices or more); with hyper-threading (workers = physical, half
+  the logical) spinWorkers == numWorkers = nothing changes; log "Render pool: N workers on L logical processors - ...";
+  the report and system.txt name the reserve. With it in the same simulation: 56 200 / 56 400 / 54 500, waits 60-200 us.
+  FIX B (the tail rule, Windows): `Job::tailTicks` stamped by the first lane (or the poster) that finds no voice left;
+  `tailStalled(now)` = a job open, no voices left, tail older than `tailLimitTicks` 0.6 ms -> the idle worker skips its
+  spin and sleeps (the next job's notify wakes it), `statTailSleeps` -> the per-second line "; a job hung in its tail: idle
+  workers sent to sleep N time(s)". Alone (ORGAN_POOL_RESERVE=0 in the simulation): the wait ends at 620-640 us instead of
+  2510. For machines where a thread is displaced although processors are spare (the 155H notebook: >= 0.9 ms in 24 of 24
+  low-load seconds of its Windows Audio run, 15 of 24 with ReaRoute at 16 lanes, 1 of 24 at 2 lanes). REGRESSION LESSON:
+  the first two builds with the tail rule lost ONE KEY STEP of the measurement (50 100 against 52 100-52 200 of 0.9.114,
+  A/B/A three times) - not the check itself (throttling it changed nothing) but the workers reading pool MEMBERS in every
+  turn of the spin (`spinWorkers`, `tailRule`, the limits): they lie right after the statProf* atomics every lane writes
+  after every job while the measurement profiles = one shared cache line. The worker takes them as LOCALS before its loop
+  (reserveWorker, tailRuleOn, tailLimit, tailCheckEvery) and asks tailStalled only when it has itself been idle for the
+  limit, every 50 us at most; then old/new/old/new = 39 800/48 000, 44 000/50 100, 50 100/54 200, 54 700/54 200 (the
+  machine drifted, new >= old in each pair). RULE: nothing a worker reads per spin iteration may be a pool member near
+  written statistics - copy to locals; and a regression check is an INTERLEAVED A/B (old, new, old, new) in one session,
+  the limit moves in key steps of ~4 % and drifts 10 % with the machine's state. Dev switches ORGAN_POOL_RESERVE=0,
+  ORGAN_POOL_TAIL=0 (logged). NOT re-run after the rework: the tail rule alone in the simulation. NOT run on a real
+  24/24 CPU. The device thread's priority is NOT touched (a driver's thread: time-critical ones would be lowered).
+  (2) BURSTS (#252): REAPER on WASAPI/DirectSound runs its own block (10-15 ms) and asks ReaRoute's client for its
+  256-frame blocks two or three at once, then pauses; every pause was "a late driver callback" (asio: any gap > 1.5
+  periods): 65-100 a second at rest, limit 200 on any computer. Reproduced here by switching REAPER's audio system to
+  WASAPI (reaper.ini mode=5; mode=3 = ASIO): old exe 200, new 27 300. FIX: `DeviceClock::firsts` + `cycleMs`,
+  `learnDeviceCadence(windowMs, ...)` after the measurement's two idle seconds (>= 10 pauses a second and a cycle >=
+  1.4 periods; cycle = max(window / firsts, 0.95 x longest gap)) -> log "the ASIO driver hands its blocks over in
+  bursts (...)", the callback uses the cycle for the late rule, the 1.5-period grouping and the callback's share;
+  `clearDeviceCadence()` at start and finish; the report's advice has a paragraph. Learned ONLY at rest inside a
+  measurement (an EMA while playing would take an overload's gaps for a cadence and pass it). Outside a measurement
+  nothing changes (the DSP field of such a route reads high). (3) "HALF THE POLYPHONY WITH REAROUTE" (#253) is the
+  BLOCK: 24 900 at ReaRoute/ASIO 256 against 41 400 at Windows Audio 480 on the notebook; here ReaRoute behind
+  REAPER on the Fireface = the Fireface itself (~50 000), behind REAPER on WASAPI 27 300 (blocks of 256 in a 10 ms
+  cycle). Manual: one paragraph in Audio routing ("Playing into another program"), the technique in 10.11.
+  #234: window 2's maximised state was saved as a rectangle (the log showed the start frame "1912 -8 1866 1035" = a
+  maximised window's client cut to the margins) - `secondWindowMaximised` (machine key, volatile for the dirty
+  fingerprint), rememberDialogBounds keeps the normal rectangle, updateSecondWindow maximises again (not on Linux).
+  powerSettingDescription: the plan by its GUID (8c5e7fda = High performance, e9a42b02 Ultimate, 381b4222 Balanced,
+  a1841308 Power saver), the name through CP_OEMCP ("Teljesitmenycentrikus" was advised to switch to High performance).
+  TEST LESSONS: (a) ORGAN_LOAD_CONFIGURATION of the user's LibreOrgans file loads it as PORTABLE: the routes go to the
+  default card (Windows Audio first, then the default-card search moves them to "ASIO Fireface USB") - a measurement
+  clicked right after the load runs on 20 Windows Audio routes, the next on ASIO; %TEMP%\test_0115_measure.ps1
+  [-Exe -Affinity <hex> -Measurements 2 -Tag] prints both; %TEMP%\test_0115_rearoute.ps1 [-Exe -Affinity -Env1 "A=B;C=D"]
+  = the routing saved by ORGAN_TEST_ROUTING, every route rewritten to "ReaRoute ASIO (x64)" (a pair per perspective),
+  loaded back, one measurement (REAPER must run). (b) NEVER KILL a test instance that plays through ReaRoute: the
+  driver is not closed, REAPER keeps playing the last block from the shared memory for ever ("zaseklé audio", the user
+  had to close REAPER) - end such a run with ORGAN_TEST_QUIT. (c) The activity log rotates at 1 MB mid-run: read
+  activity-previous.log + activity.log by time stamp, never by a length mark. (d) THE USER (20 Nov): "Co furt
+  testuješ ... pálíš mi tokeny" - one planned comparison, its numbers in four lines, then act; no test after test.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

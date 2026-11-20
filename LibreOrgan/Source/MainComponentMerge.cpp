@@ -170,10 +170,34 @@ juce::String MainComponent::powerSettingDescription()
    #elif JUCE_WINDOWS
     juce::ChildProcess process;
     if (!process.start("powercfg /getactivescheme")) return {};
-    const auto output = process.readAllProcessOutput().trim();
+    // 0.9.115 (#251): the plan is told by its GUID, its name is the system's own word in the system's
+    // language ("Teljesitmenycentrikus" on a Hungarian Windows was advised to switch to High performance,
+    // which it is) and comes in the console's code page.
+    juce::MemoryOutputStream raw;
+    for (char buffer[512];;)
+    {
+        const int got = process.readProcessOutput(buffer, sizeof(buffer));
+        if (got <= 0) break;
+        raw.write(buffer, (size_t)got);
+    }
+    juce::String output;
+    if (raw.getDataSize() > 0)
+    {
+        const int wide = MultiByteToWideChar(CP_OEMCP, 0, (const char*)raw.getData(), (int)raw.getDataSize(), nullptr, 0);
+        std::vector<wchar_t> text((size_t)juce::jmax(0, wide) + 1, 0);
+        if (wide > 0) MultiByteToWideChar(CP_OEMCP, 0, (const char*)raw.getData(), (int)raw.getDataSize(), text.data(), wide);
+        output = juce::String(text.data()).trim();
+    }
     const auto name = output.fromFirstOccurrenceOf("(", false, false).upToLastOccurrenceOf(")", false, false);
     if (name.isEmpty()) return {};
-    return "Windows power plan: " + name + (name.containsIgnoreCase("performance") || name.containsIgnoreCase("výkon") ? "." : " - a High performance plan keeps the clock up for the audio thread.");
+    const bool performancePlan = output.containsIgnoreCase("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c")    // High performance
+                              || output.containsIgnoreCase("e9a42b02-d5df-448d-aa00-03f14749eb61")    // Ultimate Performance
+                              || name.containsIgnoreCase("performance") || name.containsIgnoreCase(juce::String::fromUTF8("v\xc3\xbdkon"));
+    const bool knownSlowerPlan = output.containsIgnoreCase("381b4222-f694-41f0-9685-ff5bb260df2e")    // Balanced
+                              || output.containsIgnoreCase("a1841308-3541-4fab-bc81-f71556f20b4a");   // Power saver
+    return "Windows power plan: " + name + (performancePlan ? "."
+        : knownSlowerPlan ? " - a High performance plan keeps the clock up for the audio thread."
+        : " (a plan of this computer's own; High performance keeps the clock up for the audio thread, if this one does not).");
    #else
     return {};
    #endif

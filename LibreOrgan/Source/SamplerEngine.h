@@ -1204,6 +1204,8 @@ public:
     // Every route with voices right now, "label: count", for the measurement log.
     juce::String routeVoiceSummary() const;
     int getRenderWorkerCount() const noexcept;
+    int getRenderReserveWorkerCount() const noexcept;   // workers that sleep between jobs and join the large ones only (0.9.115; 0 with hyper-threading)
+    int takeRenderTailSleeps() noexcept;                // idle workers sent to sleep because a job hung in its tail, since the last call (0.9.115)
     // Number of render worker threads in addition to the audio callback thread.
     // 0 = the callback thread renders alone; negative = automatic (one lane per
     // physical core). Message thread only; briefly suspends rendering.

@@ -1023,6 +1023,12 @@ static const char* const kManualText_part5 =
     "opened but gives no audio is reopened by itself; when that does not help, the\n"
     "DSP cell reads *no audio* and the Messages name it.\n"
     "\n"
+    "**Playing into another program** (ReaRoute into REAPER and the like): that\n"
+    "program's own audio device sets the pace. With an ASIO card behind it the\n"
+    "route works like a card of this program's own. Through the Windows sound\n"
+    "system the blocks come in bursts - it plays, with about half the polyphony;\n"
+    "the [measurement](#measure-the-maximum-polyphony) says so in its report.\n"
+    "\n"
     "### Routing files\n"
     "\n"
     "Three buttons on the line of the titles keep a routing for later.\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "(the time is split between threads) and different latencies per division.\n"
     "The highest polyphony: one ASIO driver, all routes on it.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Audio on Linux\n"
     "\n"
     "Every current distribution runs PipeWire, which reduces every card to a\n"
     "stereo pair for the desktop. An organ needs every output, so:\n"
     "\n"
     "1. **Set the interface to the \"Pro Audio\" profile** (KDE: System Settings >\n"
-    ;
-static const char* const kManualText_part6 =
     "   Sound, the card's Profile box; GNOME: Settings > Sound > Output >\n"
     "   Configuration; any desktop: `pavucontrol`, tab Configuration). The card\n"
     "   then appears under its own name with every channel; use the on-board chip\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "  nothing to build - but an octave down lasts twice as long and the timbre\n"
     "  moves fully with the pitch. (An upward resampled pipe loses 0.1 dB of\n"
     "  level and treble per semitone to sound like a pipe of its pitch.)\n"
+    ;
+static const char* const kManualText_part7 =
     "- **Pitch shift**: a copy built in the background - resampled with the best\n"
     "  filter, the formants moved back by the stop's *Formants* value, loops on\n"
     "  whole periods, loudness matched, the release's decay laid out to the\n"
     "  source's duration. The attack still speaks at the resampled speed.\n"
     "- **Pitch shift + time stretch**: the same copy, the attack (downwards) and\n"
     "  the release stretched back towards the source's duration. Large shifts\n"
-    ;
-static const char* const kManualText_part7 =
     "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "over (default 110 ms). Set for the sounding c1; pipes below it get 1.25 times\n"
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
     "release.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Release sample volume\n"
     "\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "### Filled pipes: transposition method\n"
     "\n"
     "*Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase\n"
+    ;
+static const char* const kManualText_part9 =
     "vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the\n"
     "cache when on); the sliders that do not apply are greyed out.\n"
     "\n"
     "### Missing pipes: neighbours borrowed as a group\n"
     "\n"
     "This many adjacent real pipes are taken as a group and transposed by the\n"
-    ;
-static const char* const kManualText_part9 =
     "group's width for the missing ones (1 to 12, default 12: every missing pipe\n"
     "an octave transposition of a real one). Changing it refills every stop. In a\n"
     "sparse rank neighbouring filled pipes take turns between the real pipes within\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
     "definition's ranks without a perspective in their names take these prefixes\n"
+    ;
+static const char* const kManualText_part10 =
     "at the import too.\n"
     "\n"
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
     "\n"
     "One collapsed section per division, the same settings as the Divisions\n"
     "dialog.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Stops and sample folders\n"
     "\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "## 9.3 Report a problem\n"
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
+    ;
+static const char* const kManualText_part11 =
     "happened - a few words are enough. *Create the report and open GitHub*\n"
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
     "with the computer and every audio route, and pictures of the program's\n"
     "windows and dialogs, taken by the program itself (the Audio routing always,\n"
-    ;
-static const char* const kManualText_part11 =
     "open or not) - no samples. *Add screenshot files...* is optional: picture\n"
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"
     "the macOS kernel reporting memory pressure. The stops loaded so far make the\n"
+    ;
+static const char* const kManualText_part12 =
     "instrument; a stop cut in the middle of its files is dropped whole and named\n"
     "in the message; the pool keeps them. A stop whose samples the program holds\n"
     "already (a reload) is adopted whatever the memory says. The copy build of\n"
     "the filled pipes stops the same way. Before the load the WAV bytes of the\n"
     "trees are estimated against the free memory and a warning is logged; the\n"
     "load is never refused.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
@@ -2557,7 +2563,15 @@ static const char* const kManualText_part12 =
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
-    "chunks. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
+    "chunks. On Windows, a processor without hyper-threading (a worker for every\n"
+    "logical processor) keeps an eighth of its processors free of waiting workers\n"
+    "for the sound card's driver and the system: the workers beyond that sleep\n"
+    "between jobs and join the large ones only. And when a job does not close\n"
+    "within 0.6 ms of its last voice being taken - the thread that holds it has\n"
+    "lost its processor - the idle workers stop waiting and sleep, so that it\n"
+    "gets one back at once. The polyphony measurement judges a driver that hands\n"
+    "its blocks over in bursts (ReaRoute behind a program on the Windows sound\n"
+    "system) by the cycle of the bursts, heard in its two idle seconds. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"
     "\n"
