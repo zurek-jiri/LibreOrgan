@@ -4429,7 +4429,7 @@ namespace
 
         int numWorkers = 0;
         int spinWorkers = 0;                        // the workers [0, spinWorkers) spin between jobs; the rest are reserve workers (0.9.115)
-        int reserveWakeVoices = INT_MAX;            // a job of this many voices calls the reserve workers
+        int reserveWakeVoices = std::numeric_limits<int>::max();   // a job of this many voices calls the reserve workers
         bool tailRule = false;                      // idle workers stop spinning while a job hangs in its tail (Windows, tailStalled)
         const int64_t tailLimitTicks = juce::Time::getHighResolutionTicksPerSecond() * 6 / 10000;   // 0.6 ms
         const int64_t tailCheckTicks = juce::Time::getHighResolutionTicksPerSecond() / 20000;       // a look every 50 us at most
