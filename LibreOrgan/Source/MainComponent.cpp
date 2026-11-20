@@ -3124,6 +3124,7 @@ MainComponent::MainComponent()
                         && manager->getCurrentAudioDeviceType().equalsIgnoreCase("JACK"))
                     {
                         auto setup = manager->getAudioDeviceSetup();
+                        jackSetupWithEveryOutput(*manager, setup);
                         setup.bufferSize = frames;
                         CrashHandler::note("ORGAN_JACK_BUFFER: asking " + setup.outputDeviceName + " for " + juce::String(frames) + " frames");
                        #if JUCE_LINUX
@@ -9597,6 +9598,21 @@ bool MainComponent::allRoutesShareAudioDevice(bool auxiliary)
     return true;
 }
 
+// 0.9.116 (20 Nov 2026, REAPER as a PipeWire card): JUCE's JACK device counts as its active channels the ports that are
+// CONNECTED right now, and the manager's setup follows them. A program at the other end that makes its ports anew
+// (REAPER when its audio settings are applied) leaves none connected: the setup then carries no channel at all, and
+// JUCE's setAudioDeviceSetup answers such a setup by creating the device and returning without opening it - "ok",
+// a card that looked open, played nothing and could not be brought back by Reopen, the Buffer box or the recovery.
+void MainComponent::jackSetupWithEveryOutput(juce::AudioDeviceManager& manager, juce::AudioDeviceManager::AudioDeviceSetup& setup)
+{
+    auto* device = manager.getCurrentAudioDevice();
+    if (device == nullptr || !device->getTypeName().equalsIgnoreCase("JACK")) return;
+    const int count = device->getOutputChannelNames().size();
+    setup.useDefaultOutputChannels = false;
+    setup.outputChannels.clear();
+    setup.outputChannels.setRange(0, count > 0 ? count : 64, true);
+}
+
 void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, const juce::String& reason)
 {
     auto* device = manager.getCurrentAudioDevice();
@@ -9631,6 +9647,7 @@ void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, co
     }
     if (device->getTypeName().equalsIgnoreCase("JACK"))
     {
+        jackSetupWithEveryOutput(manager, setup);   // 0.9.116
         setup.bufferSize = oldBuffer;
         setup.sampleRate = device->getCurrentSampleRate();
        #if JUCE_LINUX
@@ -9656,6 +9673,7 @@ void MainComponent::reopenAudioDeviceFresh(juce::AudioDeviceManager& manager, co
     auto* reopened = manager.getCurrentAudioDevice();
     CrashHandler::note(reason + ": reopened " + name + " (was buffer " + juce::String(oldBuffer) + ") -> "
         + (error.isNotEmpty() ? "ERROR " + error : juce::String("ok"))
+        + (reopened != nullptr && !reopened->isOpen() ? juce::String("  NOT OPEN") : juce::String())
         + (reopened != nullptr ? "  buffer " + juce::String(reopened->getCurrentBufferSizeSamples())
             + "  rate " + juce::String(reopened->getCurrentSampleRate(), 0)
             + "  driver preferred " + juce::String(reopened->getDefaultBufferSize()) : juce::String("  no device")));
@@ -10197,7 +10215,23 @@ void MainComponent::checkAudioCallbackHealth()
                 // otherwise: a driver may pause that long on its own); a card that does not open again is marked as
                 // gone at once - grey in the Audio routing, its cables waiting, as on Linux.
                 const bool afterDeviceChange = nowMs < fastSilenceCheckUntilMs;
-                if (state->second.seconds >= (afterDeviceChange ? 1 : 4) && manager != nullptr && (state->second.reopenedMs < 0.0 || nowMs - state->second.reopenedMs > 60000.0))
+                bool unwired = false;
+               #if JUCE_LINUX
+                // 0.9.116: a PipeWire card none of whose ports is connected - the program at the other end made its
+                // ports anew (REAPER when its audio settings are applied), and nothing connected calls nothing back.
+                // Connected again after one second, each time it happens (five seconds apart, four times in a row at
+                // most - then the general rule).
+                if (manager != nullptr)
+                    if (auto* silentDevice = manager->getCurrentAudioDevice())
+                        if (silentDevice->getTypeName().equalsIgnoreCase("JACK") && silentDevice->isOpen() && silentDevice->getActiveOutputChannels().isZero())
+                        {
+                            auto& rewire = jackRewires[silentDevice->getName()];
+                            if (nowMs - rewire.first > 60000.0) rewire.second = 0;
+                            unwired = rewire.second < 4 && nowMs - rewire.first > 5000.0;
+                            if (unwired) { rewire.first = nowMs; ++rewire.second; state->second.reopenedMs = -1.0; }
+                        }
+               #endif
+                if (state->second.seconds >= ((afterDeviceChange || unwired) ? 1 : 4) && manager != nullptr && (state->second.reopenedMs < 0.0 || nowMs - state->second.reopenedMs > 60000.0))
                 {
                     state->second.reopenedMs = nowMs;
                     state->second.seconds = 0;
@@ -10220,7 +10254,9 @@ void MainComponent::checkAudioCallbackHealth()
                         noteMessage("Sound card", "\"" + nameBefore + "\" went away (unplugged or switched off). Its cables wait; it plays again by itself when it comes back.");
                     }
                    #endif
-                    if (!cardGone) reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label + (afterDeviceChange ? " right after the system's devices changed" : " for 4 s") + " - recovery");
+                    if (!cardGone) reopenAudioDeviceFresh(*manager, "No audio callbacks from " + label
+                        + (unwired ? juce::String(" - none of its ports is connected (the other program made its ports anew): connected again")
+                            : (afterDeviceChange ? " right after the system's devices changed" : " for 4 s") + juce::String(" - recovery")));
                     if (!cardGone && manager->getCurrentAudioDevice() == nullptr) cardWentAway(typeBefore, nameBefore, "it stopped answering (switched off or unplugged)");
                 }
                 else if (state->second.reopenedMs >= 0.0 && nowMs - state->second.reopenedMs > 8000.0 && !state->second.noticed)

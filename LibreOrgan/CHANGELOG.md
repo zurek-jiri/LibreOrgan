@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.116] - 2026-11-20
+
+### Fixed
+- **Linux, another program as the sound card (REAPER on JACK / PipeWire).**
+  Such a program makes its ports anew when its own audio settings are applied;
+  the connections from this program were then gone, nothing called back, and
+  the automatic reopening - like Reopen and the Buffer box - opened the card
+  with the channels that were connected at that moment: none, so the card was
+  only created, never opened (shown as open, at 1024 frames, silent until the
+  program was restarted). A PipeWire card is now always reopened with every
+  output it has, and a card none of whose ports is connected is connected
+  again within about three seconds, each time it happens.
+
 ## [0.9.115] - 2026-11-20
 
 ### Fixed

@@ -1014,6 +1014,10 @@ program's own audio device sets the pace. With an ASIO card behind it the
 route works like a card of this program's own. Through the Windows sound
 system the blocks come in bursts - it plays, with about half the polyphony;
 the [measurement](#measure-the-maximum-polyphony) says so in its report.
+On Linux no extra driver is needed: a program running on JACK (REAPER) is
+itself a card among the PipeWire cards, its inputs are that card's outputs,
+and the buffer is the one set in this program's Buffer box; REAPER shows a
+new buffer only after its Preferences are opened and closed.
 
 ### Routing files
 

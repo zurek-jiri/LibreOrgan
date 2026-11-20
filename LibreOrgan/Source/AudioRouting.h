@@ -1578,7 +1578,9 @@ private:
        #if JUCE_LINUX
         ++pipeWireUserSetsClock();   // the user's own choice may change PipeWire's clock for every card
        #endif
-        const auto error = manager->setAudioDeviceSetup(setup, true);
+        auto wanted = setup;
+        MainComponent::jackSetupWithEveryOutput(*manager, wanted);   // 0.9.116: a JACK card with every output, never the connected ports alone
+        const auto error = manager->setAudioDeviceSetup(wanted, true);
        #if JUCE_LINUX
         --pipeWireUserSetsClock();
        #endif

@@ -1028,6 +1028,10 @@ static const char* const kManualText_part5 =
     "route works like a card of this program's own. Through the Windows sound\n"
     "system the blocks come in bursts - it plays, with about half the polyphony;\n"
     "the [measurement](#measure-the-maximum-polyphony) says so in its report.\n"
+    "On Linux no extra driver is needed: a program running on JACK (REAPER) is\n"
+    "itself a card among the PipeWire cards, its inputs are that card's outputs,\n"
+    "and the buffer is the one set in this program's Buffer box; REAPER shows a\n"
+    "new buffer only after its Preferences are opened and closed.\n"
     "\n"
     "### Routing files\n"
     "\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "  ticked channels are the devices the route opens. Keep its buffer at 480\n"
     "  samples or more (the Windows audio engine feeds 10 ms packets).\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "Mixing ASIO and WASAPI routes in one organ works, at a price: less polyphony\n"
     "(the time is split between threads) and different latencies per division.\n"
     "The highest polyphony: one ASIO driver, all routes on it.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "### Audio on Linux\n"
     "\n"
     "Every current distribution runs PipeWire, which reduces every card to a\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "audio > Filled pipes). The default *Pitch shift + time stretch* suits most\n"
     "stops; compare on the lowest keys of a reed extension.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "- **Resampling**: the sample played faster or slower, like a tape. Exact,\n"
     "  nothing to build - but an octave down lasts twice as long and the timbre\n"
     "  moves fully with the pitch. (An upward resampled pipe loses 0.1 dB of\n"
     "  level and treble per semitone to sound like a pipe of its pitch.)\n"
-    ;
-static const char* const kManualText_part7 =
     "- **Pitch shift**: a copy built in the background - resampled with the best\n"
     "  filter, the formants moved back by the stop's *Formants* value, loops on\n"
     "  whole periods, loudness matched, the release's decay laid out to the\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "\n"
     "### Sustain fade-out on key release\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "How long the sounding pipe fades when its key goes up and the release takes\n"
     "over (default 110 ms). Set for the sounding c1; pipes below it get 1.25 times\n"
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Release sample fade-in\n"
     "\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "*Linear*, *Cubic interpolation* (images 20 dB lower), *Cubic + anti-alias\n"
     "filter* (default; also removes what folds back on upward shifts, a low-passed\n"
     "copy per such pipe). Real pipes are never touched.\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: transposition method\n"
     "\n"
     "*Resampling*, *Pitch shift*, *Pitch shift + time stretch* (default) or *Phase\n"
-    ;
-static const char* const kManualText_part9 =
     "vocoder*: [The transposition methods](#72-the-transposition-methods). Switching rebuilds the copies (from the\n"
     "cache when on); the sliders that do not apply are greyed out.\n"
     "\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "everywhere (the Stop List columns, the voicing boxes, the rows of the Audio routing):\n"
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
+    ;
+static const char* const kManualText_part10 =
     "replaced; a prefix that means another perspective in this computer's list is\n"
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
     "definition's ranks without a perspective in their names take these prefixes\n"
-    ;
-static const char* const kManualText_part10 =
     "at the import too.\n"
     "\n"
     "## 8.6 Division sections (Pedal, Manual I ... Manual VII)\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "`settings.json` is the state of the program, `settings-<date>.json` the\n"
     "snapshot of each of the last seven days; if the program crashes at every\n"
     "start, move `settings.json` away and it starts clean.\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "## 9.3 Report a problem\n"
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
-    ;
-static const char* const kManualText_part11 =
     "happened - a few words are enough. *Create the report and open GitHub*\n"
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
+    ;
+static const char* const kManualText_part12 =
     "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"
     "the macOS kernel reporting memory pressure. The stops loaded so far make the\n"
-    ;
-static const char* const kManualText_part12 =
     "instrument; a stop cut in the middle of its files is dropped whole and named\n"
     "in the message; the pool keeps them. A stop whose samples the program holds\n"
     "already (a reload) is adopted whatever the memory says. The copy build of\n"

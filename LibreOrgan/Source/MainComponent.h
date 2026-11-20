@@ -1538,6 +1538,11 @@ private:
     // the automatic reopen (once per minute at most) and whether the Messages/DSP cell were told.
     struct SilentDeviceState { int seconds = 0; double reopenedMs = -1.0; bool noticed = false; };
     std::map<juce::String, SilentDeviceState> silentDevices;
+    std::map<juce::String, std::pair<double, int>> jackRewires;   // 0.9.116: card -> when its ports were last connected anew, how often in a row
+public:
+    // 0.9.116: a JACK card is reopened with EVERY output it has, never with the channels its setup carries.
+    static void jackSetupWithEveryOutput(juce::AudioDeviceManager& manager, juce::AudioDeviceManager::AudioDeviceSetup& setup);
+private:
     double audioLevelsLastLogMs = -1.0e9;                  // "Audio levels" at most every 10 s
     std::map<juce::String, double> missingDeviceNextTryMs; // failed reopen attempts: next silent try
     bool missingAudioDevicesReportPending = false;

@@ -4763,6 +4763,31 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   had to close REAPER) - end such a run with ORGAN_TEST_QUIT. (c) The activity log rotates at 1 MB mid-run: read
   activity-previous.log + activity.log by time stamp, never by a length mark. (d) THE USER (20 Nov): "Co furt
   testuješ ... pálíš mi tokeny" - one planned comparison, its numbers in four lines, then act; no test after test.
+  0.9.116 (20 Nov 2026 evening, Linux; the user: with REAPER set to JACK "nelze v reaperu nastavit buffer size ... náš reaper
+  ukazuje 1024, ale stejně do reaperu nehraje"): ON LINUX THERE IS NO REAROUTE - a program on JACK is itself a card among the
+  PipeWire cards (its input ports = the card's outputs; REAPER connects its own inputs to the hardware captures by itself),
+  and it has no buffer field because the buffer is PipeWire's (our Buffer box; REAPER follows, verified 256 <-> 512). THE
+  FAULT: such a program makes its ports ANEW when its audio settings are applied (log: "Audio device started" twice per
+  route with no act of ours = JUCE's JACK updateActivePorts stop/start) -> our links are gone -> JUCE's JACK process() calls
+  back only while a port is CONNECTED and reports the connected ports as the active channels -> the manager's setup carries
+  NO channel -> every reopen that starts from `manager.getAudioDeviceSetup()` (the silence recovery, Reopen, the Buffer /
+  Sample rate boxes) hands JUCE's setAudioDeviceSetup an empty channel set, which CREATES the device and returns "" WITHOUT
+  open() ("reopened ... ok buffer 1024" with no "Audio device started" after it; pw-dump: node JUCEJack with its ports,
+  "suspended", no links; the health check blind because expectedBlock is 0). Fix: `MainComponent::jackSetupWithEveryOutput
+  (manager, setup)` (JACK only: every output of the card, 64 when it lists none) in reopenAudioDeviceFresh, AudioRouting's
+  reopenWith and the ORGAN_JACK_BUFFER hook; checkAudioCallbackHealth (JUCE_LINUX): a silent JACK device that is open with
+  NO active output = `unwired` -> reopened after one second (`jackRewires`: five seconds apart, four in a row at most, then
+  the general rule), reason "... none of its ports is connected ...: connected again"; the reopen log line says "NOT OPEN"
+  when a device came back unopened. TEST WITHOUT REAPER: `~/tools/fake_jack_card.py <seconds> <second>:ports|client ...`
+  (ctypes on PipeWire's libjack: a client "LoFakeCard" with two inputs that makes its ports anew / goes away for 8 s) +
+  `~/tools/test_fakecard0116.sh <exe> <seconds> <events>` (closes a running LibreOrgan by SIGINT, backs up and restores the
+  settings, ORGAN_TEST_QUIT; export ORGAN_TEST_CLICK="Audio routing" ORGAN_TEST_ROUTE="all|default|LoFakeCard|1" to move
+  the routes onto it): 0.9.115 ends dead exactly as with REAPER, 0.9.116 reconnects in 3 s twice, survives the client's
+  absence (the 0.9.112 path) and a buffer change; ALC1220 with a buffer change unchanged (6 links). LESSONS: (1) a JACK
+  client created but never activated shows in pw-dump as a node with ports and no links and NOT in jack_lsp; (2) never reopen
+  a JACK device with the channel set of its setup; (3) reproduce a fault of a foreign program with a stand-in client before
+  theorising (an hour went into reading code first). NOT run: the real REAPER (it was closed), Windows/macOS (the changes
+  are JACK-only or JUCE_LINUX; the "NOT OPEN" suffix is a log text). No Projucer resave (Linux) - the VS2026 files say 0.9.115.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
@@ -5341,6 +5366,9 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
 - The Windows process is named after the exe (`LibreOrgan_0.8.181`): check `Get-Process LibreOrgan*`, never
   `Get-Process LibreOrgan Sampler` (it finds nothing and the 0.8.182 deploy ran while the user played - harmless only
   because a new file name was written and the shortcut retargeted; still, check first).
-- Never build or launch the program while the user runs it. Linux test: `~/tools/linux_test.sh <exe> <seconds>`
+- THE USER'S RULE (20 Nov 2026, "kdykoli můžeš zavřít instanci LibreOrgan ... Nechci slyšet výmluvy 'tvoje aplikace běží'"):
+  his running LibreOrgan may be CLOSED whenever a test or a build needs it (SIGINT first so it ends in order; back up and
+  restore the settings files around the test; say in the report that it was closed) - the old "never build or launch
+  while the user runs it" is gone. Linux test: `~/tools/linux_test.sh <exe> <seconds>`
   with `CFG=`, `ORGAN_OPEN_STOP_LIST=`, `ORGAN_JACK_BUFFER=`, `ORGAN_SAVE_PORTABLE=` hooks; the activity log is
   `~/.config/LibreOrgan/CrashLogs/activity.log` (Windows: `%APPDATA%\LibreOrgan\CrashLogs\activity.log`).
