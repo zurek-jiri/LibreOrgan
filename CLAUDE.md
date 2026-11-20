@@ -4788,6 +4788,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   a JACK device with the channel set of its setup; (3) reproduce a fault of a foreign program with a stand-in client before
   theorising (an hour went into reading code first). NOT run: the real REAPER (it was closed), Windows/macOS (the changes
   are JACK-only or JUCE_LINUX; the "NOT OPEN" suffix is a log text). No Projucer resave (Linux) - the VS2026 files say 0.9.115.
+  RELEASED: commit 9c4e04b, tag v0.9.116, CI green at the first attempt, Intel mac "late symbols: 0", the Linux binary needs
+  GLIBC_2.38; the user confirmed with the real REAPER. REAPER'S BUFFER DISPLAY: it reads the JACK buffer when it opens its
+  device and shows a change only after its Preferences are opened and closed (the manual says so); every freshly opened JACK
+  client on this box is told 1024 whatever the graph runs at - Ubuntu Studio Audio Configuration sets PIPEWIRE_QUANTUM=
+  1024/48000 in the session's environment and node.latency = 1024/48000 in ~/.config/pipewire/jack.conf.d/ubuntustudio.conf
+  (PIPEWIRE_LATENCY=256/48000 makes a fresh client say 256; clock.quantum does not). pw-top: the DRIVER row's QUANT is the
+  graph's real buffer, a follower's QUANT is only what that client asked for.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
