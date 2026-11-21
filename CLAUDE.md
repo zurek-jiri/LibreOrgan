@@ -4827,6 +4827,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   window is made and painted before the Cocoa run loop turns, so the window server most likely never shows it; not
   touched (no Mac to run it on). Proposed, not done: the auxiliary as a SUM of the already rendered perspective routes
   when it plays through the same card (it would cost almost nothing instead of doubling the voices).
+  RELEASED: commit 9808251, tag v0.9.117, CI green at the first attempt (all five archives), Intel mac "late symbols: 0",
+  the Windows exe without VC runtime DLLs, deployed as C:\LibreOrgan\LibreOrgan_0.9.117.exe; Projucer resave done for 0.9.117.
+  Regression check before the tag: kerneltest OK; the full self-test with packed float, new against ORGAN_UNPACK_OLD=1 -
+  no WRONG line, polyphony equal, peak LEVELS differ between two runs of the SAME build too (random tuning, wind): the
+  self-test's levels are no bit-exact baseline, the kernel test's packed-against-raw render is. The user: do not touch macOS.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
