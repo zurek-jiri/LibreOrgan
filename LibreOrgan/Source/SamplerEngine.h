@@ -779,6 +779,9 @@ public:
     // every sample decoded or copied from now on is packed. Off by default - the
     // player unpacks every span it plays, several times the per-voice cost.
     void setCompressSamples(bool on) noexcept { compressSamples = on; }
+    // Dev (ORGAN_UNPACK_OLD=1 in the self-test): the packed samples unpacked as before 0.9.117 - the scalar
+    // decoder, every block to its end - to measure the new way against the old one in one binary.
+    static void setUnpackOldWay(bool old) noexcept;
     bool getCompressSamples() const noexcept { return compressSamples; }
     // The storage choices in force, as one string ("16-bit, 32 kHz, releases at half the rate, packed").
     juce::String storageSignature() const;

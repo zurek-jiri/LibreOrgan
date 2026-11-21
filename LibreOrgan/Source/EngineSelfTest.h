@@ -282,9 +282,16 @@ namespace EngineSelfTest
         // same test, rendered through the unpacking path; the figures must not move.
         if (const char* env = std::getenv("ORGAN_COMPRESS_SAMPLES"); env != nullptr && juce::String(env).getIntValue() != 0)
         {
-            engine.setSampleStorageFloat(false);
+            // 2 = the 32-bit float storage packed (0.9.117), any other value the 16-bit one.
+            const bool packedFloat = juce::String(env).getIntValue() == 2;
+            engine.setSampleStorageFloat(packedFloat);
             engine.setCompressSamples(true);
-            report << "Samples packed in RAM (ORGAN_COMPRESS_SAMPLES=1, 16-bit storage).\n";
+            report << "Samples packed in RAM (ORGAN_COMPRESS_SAMPLES=" << juce::String(env).getIntValue() << ", " << (packedFloat ? "32-bit float" : "16-bit") << " storage).\n";
+        }
+        if (const char* env = std::getenv("ORGAN_UNPACK_OLD"); env != nullptr && juce::String(env).getIntValue() != 0)
+        {
+            SamplerEngine::setUnpackOldWay(true);
+            report << "Packed samples unpacked the old way (ORGAN_UNPACK_OLD=1: the scalar decoder, whole blocks).\n";
         }
         engine.setPerspectivePatterns(perspectivePatterns);
         engine.setIgnoredPatterns(ignoredPatterns);

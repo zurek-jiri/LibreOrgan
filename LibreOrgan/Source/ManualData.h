@@ -1187,12 +1187,22 @@ static const char* const kManualText_part5 =
     "\n"
     "## 5.4 The auxiliary route\n"
     "\n"
-    "One more route per division: a mix of everything the division plays, every\n"
-    "pipe rendered once more, with its own device, channels, volume, separation\n"
-    "and IR. For monitoring (headphones, a control room), or to give a dry set a\n"
-    "second room: the auxiliary route on the rear speakers with a different IR is\n"
-    "a \"Rear\" perspective the set never had. It halves the reachable polyphony\n"
-    "while it has a device; leave it at *none* otherwise - then it costs nothing.\n"
+    "One more route per division: a mixdown of everything the division plays -\n"
+    "all its perspectives together - with its own sound card, outputs, volume,\n"
+    "separation and IR.\n"
+    "\n"
+    "**What it is for:** a dry set gets a second room - the auxiliary route on the\n"
+    "rear speakers with another IR is a \"Rear\" perspective the set never had. Or\n"
+    "monitoring: headphones, a control room.\n"
+    "\n"
+    "**What it costs:** every pipe is rendered once more for it, so every pipe\n"
+    "takes twice the voices and the organ reaches its polyphony limit with half as\n"
+    "many pipes sounding. The measured limit itself counts voices and stays the\n"
+    "same. Without a cable the route costs nothing.\n"
+    "\n"
+    "Leave it without a cable unless you need the mixdown - a set with several\n"
+    "perspectives rarely does - and never send it to the outputs of one of the\n"
+    "perspectives: they would only sound twice.\n"
     "\n"
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
@@ -1202,6 +1212,8 @@ static const char* const kManualText_part5 =
     "### Audio on Windows\n"
     "\n"
     "- **ASIO**: the professional driver of an interface - the lowest latency, the\n"
+    ;
+static const char* const kManualText_part6 =
     "  most polyphony. One driver is opened once and shared by every route on it;\n"
     "  a second interface with its own driver is opened beside it. Its buffer size\n"
     "  is set in the driver's control panel. Use it for every route when you can.\n"
@@ -1212,8 +1224,6 @@ static const char* const kManualText_part5 =
     "  ticked channels are the devices the route opens. Keep its buffer at 480\n"
     "  samples or more (the Windows audio engine feeds 10 ms packets).\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "Mixing ASIO and WASAPI routes in one organ works, at a price: less polyphony\n"
     "(the time is split between threads) and different latencies per division.\n"
     "The highest polyphony: one ASIO driver, all routes on it.\n"
@@ -1285,7 +1295,8 @@ static const char* const kManualText_part6 =
     "## 5.7 Getting the most polyphony\n"
     "\n"
     "Every sounding pipe is one **voice** per audio route of its division: three\n"
-    "perspectives render every pipe three times, the auxiliary route once more.\n"
+    "perspectives render every pipe three times, and the auxiliary route, when it\n"
+    "has a cable, as many times again.\n"
     "So the polyphony a computer reaches depends on the organ - the routes, the\n"
     "IRs on them, the drivers and buffer sizes, the samples - which is why\n"
     "*Maximum polyphony* is saved with the configuration and measured with the\n"
@@ -1293,7 +1304,8 @@ static const char* const kManualText_part6 =
     "\n"
     "- **The buffer size**: 512 samples allows twice the work of 256; an organ\n"
     "  does not need a small buffer.\n"
-    "- **The auxiliary route** halves the polyphony while it has a device.\n"
+    "- **[The auxiliary route](#54-the-auxiliary-route)** doubles the voices of\n"
+    "  every pipe while it has a cable: half as many pipes within the same limit.\n"
     "- **IR reverb** costs on every route that has one, whether pipes sound or\n"
     "  not (a silent route switches it off); true stereo IRs cost twice, long IRs\n"
     "  more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.\n"
@@ -1402,6 +1414,8 @@ static const char* const kManualText_part6 =
     "filled pipes take turns between the real pipes within reach. A pipe switched\n"
     "off in the voicing row is never filled.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have\n"
     "inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and\n"
     "so does the stop once retuned. Leave such a stop at transposition 0, keep its\n"
@@ -1414,8 +1428,6 @@ static const char* const kManualText_part6 =
     "audio > Filled pipes). The default *Pitch shift + time stretch* suits most\n"
     "stops; compare on the lowest keys of a reed extension.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "- **Resampling**: the sample played faster or slower, like a tape. Exact,\n"
     "  nothing to build - but an octave down lasts twice as long and the timbre\n"
     "  moves fully with the pitch. (An upward resampled pipe loses 0.1 dB of\n"
@@ -1604,6 +1616,8 @@ static const char* const kManualText_part7 =
     "Every slider has a checkbox that shows it on the main panel too; all are\n"
     "MIDI-learnable there.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "### Master volume\n"
     "\n"
     "The whole organ, -60 to +12 dB (default -18). Lower it when a full\n"
@@ -1616,8 +1630,6 @@ static const char* const kManualText_part7 =
     "\n"
     "### Sustain fade-out on key release\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "How long the sounding pipe fades when its key goes up and the release takes\n"
     "over (default 110 ms). Set for the sounding c1; pipes below it get 1.25 times\n"
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
@@ -1806,6 +1818,8 @@ static const char* const kManualText_part8 =
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
     "\n"
     "### Attack cut fade-in\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)\n"
     "value: the sample starts that far in and rises over this time (6 to 150 ms,\n"
@@ -1818,8 +1832,6 @@ static const char* const kManualText_part8 =
     "*Linear*, *Cubic interpolation* (images 20 dB lower), *Cubic + anti-alias\n"
     "filter* (default; also removes what folds back on upward shifts, a low-passed\n"
     "copy per such pipe). Real pipes are never touched.\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Filled pipes: transposition method\n"
     "\n"
@@ -2008,6 +2020,8 @@ static const char* const kManualText_part9 =
     "### Ignored folders (folder contains)\n"
     "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
+    ;
+static const char* const kManualText_part10 =
     "\"output\", \"Traktur\", \"mustr\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
@@ -2020,8 +2034,6 @@ static const char* const kManualText_part9 =
     "everywhere (the Stop List columns, the voicing boxes, the rows of the Audio routing):\n"
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
-    ;
-static const char* const kManualText_part10 =
     "replaced; a prefix that means another perspective in this computer's list is\n"
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
@@ -2210,6 +2222,8 @@ static const char* const kManualText_part10 =
     "you with a box: the texts are collected quietly under **Messages** in the\n"
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
+    ;
+static const char* const kManualText_part11 =
     "warnings and the polyphony report still come as boxes.\n"
     "\n"
     "## 9.2 The activity log\n"
@@ -2222,8 +2236,6 @@ static const char* const kManualText_part10 =
     "`settings.json` is the state of the program, `settings-<date>.json` the\n"
     "snapshot of each of the last seven days; if the program crashes at every\n"
     "start, move `settings.json` away and it starts clean.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "## 9.3 Report a problem\n"
     "\n"
@@ -2412,6 +2424,8 @@ static const char* const kManualText_part11 =
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
     "perspective prefix, and the new head on three folders at least. The log\n"
+    ;
+static const char* const kManualText_part12 =
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
     "A head is a perspective only when the same stems exist under another head\n"
@@ -2424,8 +2438,6 @@ static const char* const kManualText_part11 =
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
     "the memory and stops when any sign says it is short: less free than 512 MB or\n"
     "a sixteenth of the installed memory, the program's footprint within the\n"
-    ;
-static const char* const kManualText_part12 =
     "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
     "swapped out by more than 256 MB since the load began (on macOS the\n"
     "compressor growing that much while less than twice the reserve is free), or\n"

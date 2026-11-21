@@ -127,7 +127,7 @@ public:
     bool moreThanOneInstanceAllowed() override
     {
         const auto commandLine = juce::JUCEApplicationBase::getCommandLineParameters();
-        return commandLine.contains("--selftest") || commandLine.contains("--asiotest") || PluginHost::isScanWorker(commandLine) || CardCheck::isWorker(commandLine) || PluginHost::isEditorTrial(commandLine);
+        return commandLine.contains("--selftest") || commandLine.contains("--asiotest") || commandLine.contains("--kerneltest") || PluginHost::isScanWorker(commandLine) || CardCheck::isWorker(commandLine) || PluginHost::isEditorTrial(commandLine);
     }
 
     //==============================================================================

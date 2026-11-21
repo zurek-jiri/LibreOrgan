@@ -1173,12 +1173,22 @@ plug-in is there.
 
 ## 5.4 The auxiliary route
 
-One more route per division: a mix of everything the division plays, every
-pipe rendered once more, with its own device, channels, volume, separation
-and IR. For monitoring (headphones, a control room), or to give a dry set a
-second room: the auxiliary route on the rear speakers with a different IR is
-a "Rear" perspective the set never had. It halves the reachable polyphony
-while it has a device; leave it at *none* otherwise - then it costs nothing.
+One more route per division: a mixdown of everything the division plays -
+all its perspectives together - with its own sound card, outputs, volume,
+separation and IR.
+
+**What it is for:** a dry set gets a second room - the auxiliary route on the
+rear speakers with another IR is a "Rear" perspective the set never had. Or
+monitoring: headphones, a control room.
+
+**What it costs:** every pipe is rendered once more for it, so every pipe
+takes twice the voices and the organ reaches its polyphony limit with half as
+many pipes sounding. The measured limit itself counts voices and stays the
+same. Without a cable the route costs nothing.
+
+Leave it without a cable unless you need the mixdown - a set with several
+perspectives rarely does - and never send it to the outputs of one of the
+perspectives: they would only sound twice.
 
 ## 5.5 Sound cards on Windows, Linux and macOS
 
@@ -1269,7 +1279,8 @@ device appears and then reopen by themselves.
 ## 5.7 Getting the most polyphony
 
 Every sounding pipe is one **voice** per audio route of its division: three
-perspectives render every pipe three times, the auxiliary route once more.
+perspectives render every pipe three times, and the auxiliary route, when it
+has a cable, as many times again.
 So the polyphony a computer reaches depends on the organ - the routes, the
 IRs on them, the drivers and buffer sizes, the samples - which is why
 *Maximum polyphony* is saved with the configuration and measured with the
@@ -1277,7 +1288,8 @@ organ loaded (*Measure the maximum polyphony*). What decides:
 
 - **The buffer size**: 512 samples allows twice the work of 256; an organ
   does not need a small buffer.
-- **The auxiliary route** halves the polyphony while it has a device.
+- **[The auxiliary route](#54-the-auxiliary-route)** doubles the voices of
+  every pipe while it has a cable: half as many pipes within the same limit.
 - **IR reverb** costs on every route that has one, whether pipes sound or
   not (a silent route switches it off); true stereo IRs cost twice, long IRs
   more (*Decay*). Dry/wet 0 % or *Clear* removes the cost.

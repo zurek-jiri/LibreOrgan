@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.117] - 2026-11-21
+
+### Changed
+- **Packed samples cost far less at play time (#254).** A packed 32-bit float
+  organ was unpacked by the plain decoder alone - 1.6 of the 3.8 microseconds
+  a voice cost per block in the report. The 32-bit decoder now works eight
+  values at a step (AVX2), as the 16-bit one does, and both decode a block
+  only up to the last frame a voice needs instead of to its end. The result
+  is the same bit for bit (the kernel test compares the decoders and a voice
+  rendered from packed against unpacked samples). Measured: the decoder 0.71
+  against 2.25 ns per frame; the same packed float organ on an ASIO card at
+  512 samples 39 800 voices where 0.9.115 gave 21 000, through ReaRoute at
+  256 samples 22 900 against 14 600.
+- The first line of a polyphony measurement names the packing either way
+  ("packing on" / "packing off").
+- Manual: "The auxiliary route" says what it is for and what it costs - every
+  pipe takes twice the voices, so the same limit is reached with half the
+  pipes sounding.
+
 ## [0.9.116] - 2026-11-20
 
 ### Fixed

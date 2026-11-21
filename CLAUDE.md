@@ -4795,6 +4795,38 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   1024/48000 in the session's environment and node.latency = 1024/48000 in ~/.config/pipewire/jack.conf.d/ubuntustudio.conf
   (PIPEWIRE_LATENCY=256/48000 makes a fresh client say 256; clock.quantum does not). pw-top: the DRIVER row's QUANT is the
   graph's real buffer, a follower's QUANT is only what that client asked for.
+  0.9.117 (21 Nov 2026, Windows; #254 pasztor63: 0.9.115 gave his 24/24 box 21 900 voices (616 before) and he asked why
+  it is fewer than elsewhere; the user: "Rychle rozbalovani musime zkusit ... to je zasadni"): (1) THE AUXILIARY AND THE
+  FIGURE: the limit counts VOICES, and the auxiliary copies every voice of every perspective (duplicateVoiceToAux: pedal
+  150 x 4 perspectives + 600 auxiliary) - so the limit is THE SAME with and without it (the user measured 27 300 at 7
+  keys with, 27 200 at 13 keys without); what halves is the number of pipes. NEVER tell a reporter that removing the
+  auxiliary raises the measured figure (my first draft did). Manual 5.4 rewritten: what it is for (a dry set's second room
+  with another IR, monitoring), what it costs (twice the voices per pipe, the same limit with half the pipes), never to the
+  outputs of a perspective. (2) PACKED FLOAT WAS DECODED BY THE SCALAR DECODER: the AVX2 decoder of 0.9.90 served 16-bit
+  alone; his float + packed organ paid 1644 of 3825 ns per voice and block for unpacking. `unpackBlock32Avx2` (the 16-bit
+  one's scheme: eight residuals of w <= 27 bits = exactly w bytes, so every group starts at a byte and the dword pairs /
+  shifts are the same for every group; int32 stored as it is) + `unpackBlock32Fast`; packChannel32 pads 32 zero bytes
+  (was 8) for the last group's 32-byte load; and BOTH decode16/decode32 unpack a block only up to the last frame wanted
+  (`upTo`; a voice's window of ~286 frames ends inside a block nearly every time - half of the decoded frames were thrown
+  away). Bit-exact: the kernel test compares 600 windows AVX2 against scalar for float too and prints "N ns per frame
+  wanted (... scalar M ...)" - 0.71 against 2.25 here. Dev: `SamplerEngine::setUnpackOldWay` (env ORGAN_UNPACK_OLD=1 in the
+  self-test: scalar + whole blocks) and ORGAN_COMPRESS_SAMPLES=2 (float packed in the self-test; 1 = 16-bit); `--kerneltest`
+  may run beside a running instance (moreThanOneInstanceAllowed). MEASURED: self-test BENCH (Rural TA+CO x 3 divisions, ms
+  per 1000 voices): float unpacked 0.187, float packed old 0.270-0.280 -> new 0.212-0.214, 16-bit packed old 0.250 -> new
+  0.219; THE USER'S OWN RUNS (Ashton float packed, 20 routes): ASIO Fireface 512: 21 000 -> 39 800; ReaRoute 256: 14 600 ->
+  22 900; ReaRoute 512 new 35 600. In the real organ the unpacking fell only ~1.5 x per frame (memory-bound), yet the limit
+  nearly doubled - the peak decides. (3) The measurement's first line says "packing on" / "packing off" (the summary only;
+  `storageSignature()` itself is unchanged: it is compared for adoption and saved). (4) MY THREE WASTED RUNS (the user:
+  "takhle mi palis tokeny zbytecne"): test_0115_measure.ps1 loads the file as PORTABLE and the default-card search moves
+  the routes from Windows Audio to ASIO seconds after the load - a measurement clicked on a timer ran on ASIO once, on
+  Windows Audio the next time, and the script's own "measurement cancelled" match ended the third. RULE: an A/B of two
+  builds prints the device AND the buffer of each measurement and is thrown away unless they are equal; better, tell
+  the user the two exe paths and let him measure (he did it in five minutes). (5) HAUPTWERK'S "24-bit, 32-bit aligned" =
+  24-bit integers in 4-byte cells: the same RAM and precision as our float (a 24-bit value is exact in a float, and our
+  packing packs exactly those integers) - nothing to copy. OPEN: macOS shows no start picture (the user, "skoda") - the
+  window is made and painted before the Cocoa run loop turns, so the window server most likely never shows it; not
+  touched (no Mac to run it on). Proposed, not done: the auxiliary as a SUM of the already rendered perspective routes
+  when it plays through the same card (it would cost almost nothing instead of doubling the voices).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

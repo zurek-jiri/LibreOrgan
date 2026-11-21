@@ -844,6 +844,7 @@ namespace
     // low 16 bits of each value, as the scalar decoder's cast. The tail (fewer than eight
     // residuals left) and a block of width 0 go the scalar way. The packer leaves 32 zero bytes
     // after the data for the 32-byte load of the last group (packChannel).
+    std::atomic<bool> gUnpackWholeBlocks{ false };   // dev (setUnpackOldWay): every block decoded to its end, as before 0.9.117
    #if ENGINE_X86
     std::atomic<bool> gUnpackForceScalar{ false };   // the kernel test compares the two decoders
     inline bool unpackAvx2Wanted() noexcept
@@ -979,6 +980,89 @@ namespace
         return true;
     }
 
+    // 0.9.117 (#254: a packed 32-bit float organ unpacked with the scalar decoder above alone - 1.6 us of
+    // the 3.8 us a voice cost per block): the same decoding eight residuals at a step, as unpackBlockAvx2
+    // does for 16 bits. Eight residuals of w <= 27 bits are exactly w bytes, so every group starts at a
+    // byte and the lanes' dword pairs and shifts are the same for every group; the values are whole 32-bit
+    // integers, stored as they are. The tail and a block of width 0 go the scalar way. packChannel32
+    // leaves 32 zero bytes after the data for the 32-byte load of the last group.
+   #if ENGINE_X86
+    ENGINE_AVX2_FN inline bool unpackBlock32Avx2(const uint8_t* in, int n, int32_t* out) noexcept
+    {
+        const int order = in[0] & kPackHeaderOrderMask;
+        const int width = (in[0] >> 2) & 31;
+        if (order > 2 || width > 27 || n <= 0) return false;
+        if (width == 0 || n - order < 8) return unpackBlock32(in, n, out);
+        const uint8_t* p = in + 1;
+        int i = 0;
+        for (; i < order; ++i)
+        {
+            out[i] = (int32_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24));
+            p += 4;
+        }
+        const __m256i laneBits = _mm256_mullo_epi32(_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7), _mm256_set1_epi32(width));
+        const __m256i dword = _mm256_srli_epi32(laneBits, 5);
+        const __m256i dwordNext = _mm256_add_epi32(dword, _mm256_set1_epi32(1));
+        const __m256i shift = _mm256_and_si256(laneBits, _mm256_set1_epi32(31));
+        const __m256i shiftBack = _mm256_sub_epi32(_mm256_set1_epi32(32), shift);   // 32 for a value at a dword edge: sllv gives zero, as wanted
+        const __m256i mask = _mm256_set1_epi32((int)((1u << width) - 1u));
+        const __m256i bias = _mm256_set1_epi32(1 << (width - 1));
+        __m256i carryD = _mm256_setzero_si256(), carryX = _mm256_setzero_si256();
+        if (order == 1) carryX = _mm256_set1_epi32(out[0]);
+        else if (order == 2) { carryX = _mm256_set1_epi32(out[1]); carryD = _mm256_set1_epi32(out[1] - out[0]); }
+        const int groups = (n - order) / 8;
+        for (int g = 0; g < groups; ++g, p += width)
+        {
+            const __m256i words = _mm256_loadu_si256((const __m256i*)p);
+            const __m256i lo = _mm256_permutevar8x32_epi32(words, dword);
+            const __m256i hi = _mm256_permutevar8x32_epi32(words, dwordNext);
+            __m256i r = _mm256_or_si256(_mm256_srlv_epi32(lo, shift), _mm256_sllv_epi32(hi, shiftBack));
+            r = _mm256_sub_epi32(_mm256_and_si256(r, mask), bias);
+            __m256i x;
+            if (order == 0) x = r;
+            else if (order == 1) { x = _mm256_add_epi32(avx2ScanAdd(r), carryX); carryX = avx2Last(x); }
+            else
+            {
+                const __m256i d = _mm256_add_epi32(avx2ScanAdd(r), carryD);
+                carryD = avx2Last(d);
+                x = _mm256_add_epi32(avx2ScanAdd(d), carryX);
+                carryX = avx2Last(x);
+            }
+            _mm256_storeu_si256((__m256i*)(out + i), x);
+            i += 8;
+        }
+        if (i < n)
+        {
+            // The tail the scalar way: the groups ended at a byte, the running values go on.
+            uint64_t acc = 0;
+            int bitsHeld = 0;
+            const uint32_t m = (1u << width) - 1u;
+            const int32_t b = 1 << (width - 1);
+            int32_t x1 = 0, x2 = 0;
+            if (order == 1) x1 = avx2First(carryX);
+            else if (order == 2) { x1 = avx2First(carryX); x2 = x1 - avx2First(carryD); }
+            for (; i < n; ++i)
+            {
+                while (bitsHeld < width) { acc |= (uint64_t)*p++ << bitsHeld; bitsHeld += 8; }
+                const int32_t rr = (int32_t)(acc & m) - b;
+                acc >>= width; bitsHeld -= width;
+                const int32_t x = order == 0 ? rr : order == 1 ? rr + x1 : rr + 2 * x1 - x2;
+                out[i] = x;
+                x2 = x1; x1 = x;
+            }
+        }
+        return true;
+    }
+   #endif
+    // The 32-bit decoder in use: AVX2 where the CPU has it, else the scalar one.
+    inline bool unpackBlock32Fast(const uint8_t* in, int n, int32_t* out) noexcept
+    {
+       #if ENGINE_X86
+        if (unpackAvx2Wanted()) return unpackBlock32Avx2(in, n, out);
+       #endif
+        return unpackBlock32(in, n, out);
+    }
+
     void packChannel32(const int32_t* x, int64_t numFrames, Sample::PackedChannel& packed)
     {
         const int64_t blocks = (numFrames + Sample::kPackBlock - 1) / Sample::kPackBlock;
@@ -1040,9 +1124,9 @@ namespace
             }
         }
         packed.blockOffsets.push_back((uint32_t)pos);
-        jassert(pos + 8 <= worst);
-        std::memset(out + pos, 0, 8);   // the bit reader may fetch a few bytes past a block: zeros
-        packed.data.assign(out, out + pos + 8);
+        jassert(pos + 32 <= worst);
+        std::memset(out + pos, 0, 32);   // the readers fetch past a block (the AVX2 one 32 bytes at its last group, 0.9.117): zeros
+        packed.data.assign(out, out + pos + 32);
     }
 
     void packChannel(const int16_t* x, int64_t numFrames, Sample::PackedChannel& packed)
@@ -1182,11 +1266,20 @@ void Sample::decode16(int c, int64_t from, int64_t to, int16_t* out) const noexc
         }
         else
         {
-            if (!unpackBlock16(in, n, temp)) std::memset(temp, 0, sizeof(temp));
+            // 0.9.117: up to the last frame wanted, not to the block's end.
+            if (!unpackBlock16(in, gUnpackWholeBlocks.load(std::memory_order_relaxed) ? n : (int)((i - blockStart) + take), temp)) std::memset(temp, 0, sizeof(temp));
             std::memcpy(out + (i - from), temp + (i - blockStart), (size_t)take * sizeof(int16_t));
         }
         i += take;
     }
+}
+
+void SamplerEngine::setUnpackOldWay(bool old) noexcept
+{
+    gUnpackWholeBlocks.store(old);
+   #if ENGINE_X86
+    gUnpackForceScalar.store(old);
+   #endif
 }
 
 const int16_t* Sample::read16(int c, std::vector<int16_t>& scratch) const
@@ -1291,7 +1384,10 @@ void Sample::decode32(int c, int64_t from, int64_t to, float* out) const noexcep
         const int n = (int)juce::jmin<int64_t>(kPackBlock, numFrames - blockStart);
         const int64_t take = juce::jmin<int64_t>(to, blockStart + n) - i;
         if (b >= blocks) { std::fill(out + (i - from), out + (i - from) + take, 0.0f); i += take; continue; }
-        if (!unpackBlock32(pc.data.data() + pc.blockOffsets[(size_t)b], n, temp)) std::memset(temp, 0, sizeof(temp));
+        // 0.9.117: the block is decoded up to the last frame wanted, not to its end (a voice's window ends
+        // inside a block nearly every time), and with the AVX2 decoder where the CPU has it.
+        const int upTo = gUnpackWholeBlocks.load(std::memory_order_relaxed) ? n : (int)((i - blockStart) + take);
+        if (!unpackBlock32Fast(pc.data.data() + pc.blockOffsets[(size_t)b], upTo, temp)) std::memset(temp, 0, sizeof(temp));
         const int32_t* src = temp + (i - blockStart);
         float* dst = out + (i - from);
         for (int64_t k = 0; k < take; ++k) dst[k] = (float)src[k] * packScale;
@@ -8809,6 +8905,44 @@ juce::String SamplerEngine::runKernelSelfCheck()
                 ++windowsChecked;
             }
         }
+        // 0.9.117: the unpacking speed as a voice asks for it - a window of 286 frames (a block of 256
+        // plus the guard) from a place that moves on by 256 - and the AVX2 decoder against the scalar one.
+        auto unpackSpeedF = [&]
+        {
+            std::vector<float> w(320);
+            const double t0 = juce::Time::getMillisecondCounterHiRes();
+            int64_t wanted = 0;
+            for (int rep = 0; rep < 20; ++rep)
+                for (int64_t from = 100 + rep * 13; from + 286 < pf; from += 256) { packedS->decode32(0, from, from + 286, w.data()); wanted += 286; }
+            return (juce::Time::getMillisecondCounterHiRes() - t0) * 1.0e6 / (double)juce::jmax<int64_t>(1, wanted);
+        };
+        const double unpackNsF = unpackSpeedF();
+        juce::String avx2LineF;
+       #if ENGINE_X86
+        if (unpackAvx2Wanted())
+        {
+            std::vector<float> a(5000), b(5000);
+            uint32_t st = 7;
+            int64_t same = 0, different = 0;
+            for (int t = 0; t < 600; ++t)
+            {
+                st = st * 1664525u + 1013904223u; const int64_t from = (int64_t)(st % 130000u) - 5000;
+                st = st * 1664525u + 1013904223u; const int64_t len = 1 + (int64_t)(st % 4999u);
+                const int ch = t & 1;
+                packedS->decode32(ch, from, from + len, a.data());
+                gUnpackForceScalar.store(true);
+                packedS->decode32(ch, from, from + len, b.data());
+                gUnpackForceScalar.store(false);
+                if (std::memcmp(a.data(), b.data(), (size_t)len * sizeof(float)) != 0) ++different; else ++same;
+            }
+            gUnpackForceScalar.store(true);
+            const double scalarNs = unpackSpeedF();
+            gUnpackForceScalar.store(false);
+            if (different > 0) ok = false;
+            avx2LineF << " (AVX2: " << same << " windows as the scalar decoder" << (different > 0 ? ", " + juce::String(different) + " DIFFERENT" : juce::String())
+                      << "; scalar " << juce::String(scalarNs, 2) << " ns per frame wanted)";
+        }
+       #endif
         float worstRender = 0.0f;
         bool positionsSame = true;
         if (ok)
@@ -8874,7 +9008,8 @@ juce::String SamplerEngine::runKernelSelfCheck()
         }
         if (!roundedOk || !rawStays) ok = false;
         result << "Packed float samples: " << juce::String((double)packedBytes / (double)(pf * 8) * 100.0, 1) << " % of the raw size, "
-               << windowsChecked << " windows unpacked as stored; a voice rendered from the packed sample against the raw one (plain, splices, cubic, ratios 0.75-2.6): largest difference "
+               << windowsChecked << " windows unpacked as stored, " << juce::String(unpackNsF, 2) << " ns per frame wanted" << avx2LineF
+               << "; a voice rendered from the packed sample against the raw one (plain, splices, cubic, ratios 0.75-2.6): largest difference "
                << juce::String(worstRender * 100.0f, 5) << " % of the peak, end positions " << (positionsSame ? "identical" : "DIFFERENT")
                << "; real floats rounded to 24 bits " << (roundedOk ? "within half a step (" + juce::String(roundError * 8388608.0f, 3) + ")" : "WRONG")
                << ", a sample beyond full scale " << (rawStays ? "stays raw" : "WAS PACKED") << " -> " << (ok ? "OK" : "*** MISMATCH ***") << "\n";
