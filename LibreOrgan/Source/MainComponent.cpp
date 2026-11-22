@@ -35519,10 +35519,6 @@ void MainComponent::showConfigurationEditor()
                 for (int count = 1; count < SamplerEngine::maxManuals; ++count) divisions.add(juce::String(count) + " manuals + pedal");
                 addCombo("Divisions", divisions, o.manualCount - 1, [&o](int index)
                 { o.manualCountBox.setSelectedId(index + 1, juce::sendNotification); });
-                juce::StringArray pistons;
-                for (int count = 0; count <= MainComponent::maxPistons; ++count) pistons.add(juce::String(count));
-                addCombo("Combination pistons", pistons, o.pistonCount, [&o](int index)
-                { o.pistonCountBox.setSelectedId(index + 1, juce::sendNotification); });
                 addCombo("Program windows", { "One window", "Two windows (each division chooses its window)" },
                     o.twoWindows ? 1 : 0, [&o](int index) { o.setTwoWindows(index == 1); },
                     "With two windows every division section below offers \"Shown in window\"; the second window "
@@ -35635,6 +35631,12 @@ void MainComponent::showConfigurationEditor()
 
             // --- Combinations (0.9.119): what a piston holds and does; the rows of this subject together
             addSection("Combinations", true, false, 2);
+            {   // 0.9.120: moved here from the top of Console - the one value of the row's own Pistons box
+                juce::StringArray pistons;
+                for (int count = 0; count <= MainComponent::maxPistons; ++count) pistons.add(juce::String(count));
+                addCombo("Combination pistons", pistons, o.pistonCount, [&o](int index)
+                { o.pistonCountBox.setSelectedId(index + 1, juce::sendNotification); });
+            }
             addToggle("Combinations hold the voicing of the stops", o.combinationsHoldVoicing, [&o](bool state)
                 { o.combinationsHoldVoicing = state; o.saveSettings(); },
                 "Off (default): a piston switches stops, transmissions, couplers and tremulants on and off, as on an organ. "

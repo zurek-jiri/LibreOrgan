@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.120] - 2026-11-22
+
+### Changed
+- Configuration Editor: *Combination pistons* (the number of pistons shown,
+  the same value as the row's own Pistons box) stands in Console >
+  Combinations with the other combination options.
+
 ## [0.9.119] - 2026-11-22
 
 ### Added
