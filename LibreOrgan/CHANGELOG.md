@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.124] - 2026-11-22
+
+### Added
+- **Packing "Automatic": only what does not fit.** A third choice of *Compress
+  samples in RAM* (the load box and the Configuration Editor). The organ loads
+  unpacked; when the memory runs short, the samples loaded so far are packed in
+  the memory itself - nothing is read from the disk again - one step at a time,
+  the least played first: the pedal, then the keys of the manuals from both
+  ends of the keyboard inwards. The loading goes on where it stood; the middle
+  of the keyboards stays unpacked the longest. The Messages say how much was
+  packed. The stop at the memory's limit remains for an organ that does not
+  fit even when everything is packed.
+- **A load the memory stopped offers the way on (packing Off).** The box has
+  *Pack what is needed and load the rest*: the loaded samples are packed in the
+  memory as far as needed and the stops left out are loaded - no new load of
+  the organ. The choice becomes the organ's own (packing Automatic).
+- With packing Automatic, copies of filled pipes that find no room (an
+  extension made on a full computer) get it the same way.
+
 ## [0.9.123] - 2026-11-22
 
 ### Changed

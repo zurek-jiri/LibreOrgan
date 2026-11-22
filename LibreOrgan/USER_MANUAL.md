@@ -1531,6 +1531,14 @@ block, so about half the polyphony goes (a big organ: two thirds), and the
 load takes about 2.5 times as long. Use it when an organ does not fit the
 memory otherwise.
 
+**Automatic** packs only what does not fit. The organ loads unpacked; when
+the memory runs short, the samples loaded so far are packed in the memory
+itself (nothing is read from the disk again), the least played first: the
+pedal, then the keys of the manuals from both ends inwards. The middle of
+the keyboards stays unpacked longest, so the polyphony pays least. The
+Messages say how much was packed. With packing *Off*, a load the memory
+stopped offers the same in its box: *Pack what is needed and load the rest*.
+
 ### Sample rate on loading
 
 *Resample everything to 48 kHz* (default): every file converted once with a

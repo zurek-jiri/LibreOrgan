@@ -409,13 +409,18 @@ namespace
         }
         return records;
     }
-    // The floor: for the copies of filled pipes and everything outside a load.
-    bool memoryShortNow(juce::String* reason = nullptr)
+    std::atomic<juce::int64> gLargestRankBytes{ 0 };   // 0.9.124: the largest rank decoded in this load (the room the next one may want)
+    bool memoryShortWithRoom(juce::int64 room, juce::String* reason = nullptr)
     {
-        return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load()), gOthersBaseline.load(), 0, gTrimBaseline.load());
+        return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load()), gOthersBaseline.load(), room, gTrimBaseline.load());
     }
+    // The floor: for the copies of filled pipes and everything outside a load.
+    bool memoryShortNow(juce::String* reason = nullptr) { return memoryShortWithRoom(0, reason); }
     // The decoding of samples stops earlier by the room their copies will take.
-    bool memoryShortForDecoding(juce::String* reason = nullptr)
+    // 'beforeARank' (packing Automatic, 0.9.124): room for the rank about to be decoded too -
+    // the largest seen in this load and a quarter - so that the packing in the memory comes
+    // BEFORE a rank, never in the middle of one.
+    bool memoryShortForDecoding(juce::String* reason = nullptr, bool beforeARank = false)
     {
         // 1 GB for what the program itself takes once the decoding is over (the grid,
         // the tuning and fill tables, the routes: measured on Billerbeck - with the
@@ -423,8 +428,9 @@ namespace
         // theirs); a sixteenth and 512 MB on top of the copies, which are checked
         // against the bare reserve afterwards.
         const juce::int64 owed = juce::jmax((juce::int64)0, gCopyRoomOwed.load());
-        const juce::int64 room = (juce::int64)1024 * 1024 * 1024 + (owed > 0 ? owed + owed / 16 + (juce::int64)512 * 1024 * 1024 : 0);
-        return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load()), gOthersBaseline.load(), room, gTrimBaseline.load());
+        const juce::int64 room = (juce::int64)1024 * 1024 * 1024 + (owed > 0 ? owed + owed / 16 + (juce::int64)512 * 1024 * 1024 : 0)
+            + (beforeARank ? gLargestRankBytes.load() * 5 / 4 : 0);
+        return memoryShortWithRoom(room, reason);
     }
 
     // The render workers and the control thread run beside the audio callbacks
@@ -1458,6 +1464,8 @@ namespace
 {
     enum VoiceState : uint8_t { VoiceFree = 0, VoicePending = 1, VoiceActive = 2, VoiceFinished = 3 };
     enum VoiceCommand : uint8_t { CmdRelease = 1, CmdSteal = 2, CmdKill = 4, CmdFreeze = 8, CmdResume = 16 };
+    constexpr float kKillFadeMs = 300.0f;   // 0.9.124: how a killed voice ends (panic, a reload of a sounding stop, the packing of playing samples)
+    constexpr int kKillWaitMs = 380;        // what a caller waits before it suspends the render after a kill
 
    #if JUCE_MSVC
     #pragma warning(push)
@@ -3674,7 +3682,7 @@ namespace
                 }
             }
             if (cmd & CmdSteal) startFade(v, 5.0f, c.routeRate, false);
-            if (cmd & CmdKill) startFade(v, 2.0f, c.routeRate, true);
+            if (cmd & CmdKill) startFade(v, kKillFadeMs, c.routeRate, true);   // 0.9.124 (the user): a killed tone ends gracefully, always - 300 ms (it was 2)
         }
 
         // --- end-of-block targets (interpolated linearly across the block)
@@ -6095,6 +6103,11 @@ struct SamplerEngine::Impl
             windSnapshots[(size_t)m].write(w);
         }
     }
+
+    // 0.9.124: a kill is a fade of kKillFadeMs with the render running. Who suspends the
+    // render after a kill (a reload of a sounding stop, the packing of playing samples)
+    // waits kKillWaitMs first when anything sounded - else the fade would never be heard.
+    bool hasActiveVoices() const noexcept { return !controlActive.empty(); }
 
     // Hard reset while the engine is suspended and no render is in flight.
     void resetAllVoicesUnsafe() noexcept
@@ -11074,9 +11087,145 @@ void SamplerEngine::applyCopyLoopCrossfade(Sample& sample, double fraction)
     }
 }
 
-void SamplerEngine::packIfEnabled(Sample& sample) noexcept
+void SamplerEngine::packForLoad(Sample& sample, int manual, int key) noexcept
 {
-    if (!compressSamples || sample.compressed) return;
+    if (compressSamples) packIfEnabled(sample);
+    else if (packAutomatic && packOrderOf(manual, key) <= autoPackLevel.load(std::memory_order_relaxed)) packIfEnabled(sample, true);
+}
+
+juce::String SamplerEngine::packLevelText(int level)
+{
+    if (level < 0) return "nothing";
+    if (level == 0) return "the pedal";
+    if (level >= kMaxPackLevel) return "everything";
+    if (level == 1) return "the pedal, and the lowest and the highest key of every manual";
+    return "the pedal, and the " + juce::String(level) + " lowest and the " + juce::String(level) + " highest keys of every manual";
+}
+
+bool SamplerEngine::packingFitsNow(const Stop& rank) const
+{
+    // A reload adopts a rank's loaded samples only when their packing is what the load
+    // would give: with packing Off, a rank that Automatic packed (in part) is decoded
+    // anew. ("On" has its own storage signature.)
+    if (packAutomatic || compressSamples) return true;
+    for (const auto& list : rank.samplesByNote) for (const auto& s : list) if (s != nullptr && s->compressed) return false;
+    for (const auto& layer : rank.releaseLayers) for (const auto& list : layer.samplesByNote) for (const auto& s : list) if (s != nullptr && s->compressed) return false;
+    return true;
+}
+
+double SamplerEngine::packedShare()
+{
+    const juce::ScopedLock sl(controlLock);
+    double all = 0.0, packedFrames = 0.0;
+    auto count = [&](const Sample* s) { if (s == nullptr) return; const double f = (double)s->numFrames * s->numChannels; all += f; if (s->compressed) packedFrames += f; };
+    for (auto* stop : stops)
+    {
+        std::vector<Stop*> ranks{ stop };
+        for (auto& rank : stop->ranks) ranks.push_back(rank.get());
+        for (auto* rank : ranks)
+        {
+            if (rank->samplesUnloaded) continue;
+            for (auto& list : rank->samplesByNote) for (auto& s : list) count(s.get());
+            for (auto& layer : rank->velocityLayers) for (auto& list : layer.samplesByNote) for (auto& s : list) count(s.get());
+            for (auto& layer : rank->releaseLayers) for (auto& list : layer.samplesByNote) for (auto& s : list) count(s.get());
+        }
+    }
+    return all > 0.0 ? packedFrames / all : 0.0;
+}
+
+bool SamplerEngine::repackOneLevel(const std::vector<Stop*>& loading, bool insideBuild)
+{
+    int level = autoPackLevel.load(std::memory_order_relaxed);
+    if (level >= kMaxPackLevel) return false;
+    ++level;
+    autoPackLevel.store(level, std::memory_order_relaxed);   // from here on the loaders pack this level themselves
+    auto collect = [level](Stop* stop, std::vector<Sample*>& out)
+    {
+        std::vector<Stop*> ranks{ stop };
+        for (auto& rank : stop->ranks) ranks.push_back(rank.get());
+        for (auto* rank : ranks)
+        {
+            if (rank->samplesUnloaded) continue;
+            const int manual = rank->primaryManual;
+            auto take = [&](std::array<std::vector<std::unique_ptr<Sample>>, 128>& byNote)
+            {
+                for (int note = 0; note < 128; ++note)
+                    if (packOrderOf(manual, note) <= level)
+                        for (auto& s : byNote[(size_t)note]) if (s != nullptr && !s->compressed) out.push_back(s.get());
+            };
+            auto takeCopies = [&](std::map<int, std::vector<std::unique_ptr<Sample>>>& copies)
+            {
+                for (auto& [pipe, list] : copies)
+                    if (packOrderOf(manual, pipe) <= level)
+                        for (auto& s : list) if (s != nullptr && !s->compressed) out.push_back(s.get());
+            };
+            take(rank->samplesByNote); takeCopies(rank->aliasFree);
+            for (auto& layer : rank->velocityLayers) { take(layer.samplesByNote); takeCopies(layer.aliasFree); }
+            for (auto& layer : rank->releaseLayers) { take(layer.samplesByNote); takeCopies(layer.aliasFree); }
+        }
+    };
+    // Not playing: the tree being decoded and the divisions loaded before it in this load.
+    std::vector<Sample*> quiet;
+    for (auto* stop : loading) collect(stop, quiet);
+    {
+        std::lock_guard<std::mutex> lk(impl->pendingMutex);
+        for (const auto& division : impl->pendingDivisions) for (auto* stop : division->stops) collect(stop, quiet);
+    }
+    // The engine's own stops may sound.
+    std::vector<Sample*> live;
+    {
+        const juce::ScopedLock sl(controlLock);
+        for (auto* stop : stops) collect(stop, live);
+    }
+    const juce::int64 before = MemoryInfo::heldBytes();
+    const double started = juce::Time::getMillisecondCounterHiRes();
+    auto packAll = [this](std::vector<Sample*>& list)
+    {
+        parallelFor((int)list.size(), [&](int index, int) { packIfEnabled(*list[(size_t)index], true); });
+    };
+    packAll(quiet);
+    if (!live.empty())
+    {
+        // As a stop's reload does: no build reads the samples, no voice plays them, no render runs.
+        // (Not a BuildPause: its end launches the pending builds again - in the middle of
+        // a load. A build interrupted here is resumed by the stop rows' timer.)
+        const bool wasInterrupted = insideBuild ? true : buildsInterrupted.exchange(true, std::memory_order_acq_rel);
+        if (!insideBuild) antiAliasBuildLock.enter();   // the running build stops at its next pipe
+        // The tones that sound end gracefully (the user: never abruptly): a 300 ms fade
+        // with the render running, then the stop.
+        impl->clearMidi();
+        bool anySounding = false;
+        {
+            const juce::ScopedLock sl(controlLock);
+            anySounding = impl->hasActiveVoices();
+            impl->killAllVoices();
+        }
+        if (anySounding) juce::Thread::sleep(kKillWaitMs);
+        impl->clearMidi();
+        impl->suspend();
+        {
+            const juce::ScopedLock sl(controlLock);
+            impl->killAllVoices();
+            impl->resetAllVoicesUnsafe();
+        }
+        packAll(live);
+        impl->resume();
+        if (!insideBuild)
+        {
+            if (!wasInterrupted) buildsInterrupted.store(false, std::memory_order_release);
+            antiAliasBuildLock.exit();
+        }
+    }
+    CrashHandler::note("Automatic packing: level " + juce::String(level) + " (" + packLevelText(level) + ") - " + juce::String((int)(quiet.size() + live.size()))
+        + " sample(s) packed in the memory" + (live.empty() ? juce::String() : juce::String(" (" + juce::String((int)live.size()) + " of the playing organ: every voice ended)"))
+        + ", " + juce::String((double)(before - MemoryInfo::heldBytes()) / 1073741824.0, 2) + " GB freed in "
+        + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - started)) + " ms");
+    return true;
+}
+
+void SamplerEngine::packIfEnabled(Sample& sample, bool whateverTheOption) noexcept
+{
+    if ((!compressSamples && !whateverTheOption) || sample.compressed) return;
     const int64_t raw = (int64_t)sample.frameBytes();
     size_t packedBytes = 0;
     const auto started = std::chrono::steady_clock::now();
@@ -11248,7 +11397,9 @@ int SamplerEngine::resumeIncompleteCopyBuilds()
 {
     if (buildsAborted.load(std::memory_order_acquire) || buildsInterrupted.load(std::memory_order_acquire)
         || buildsHeld.load(std::memory_order_acquire)) return 0;
-    if (memoryShortNow()) return 0;   // 0.9.123: a build the memory stopped is not started again every five seconds while the memory is full
+    // 0.9.123: a build the memory stopped is not started again every five seconds while the memory
+    // is full - unless (0.9.124) packing Automatic can still make room for it.
+    if (memoryShortNow() && !(packAutomatic && !compressSamples && autoPackLevel.load(std::memory_order_relaxed) < kMaxPackLevel)) return 0;
     int resumed = 0;
     for (auto* stop : stops)
     {
@@ -11745,6 +11896,12 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
         }
     } queuedReset{ stop };
     if (buildsAborted.load(std::memory_order_acquire) || buildsInterrupted.load(std::memory_order_acquire)) return;   // launched again later
+    // 0.9.124, packing Automatic: copies that would find no room make it first - another level
+    // of the loaded samples is packed in the memory (here, before any pipe of this build is read;
+    // the user: quietly). With the other choices the build stops at the reserve as before.
+    if (packAutomatic && !compressSamples)
+        while (autoPackLevel.load(std::memory_order_relaxed) < kMaxPackLevel && memoryShortWithRoom((juce::int64)1024 * 1024 * 1024))
+            repackOneLevel({}, true);
     // Progress for the UI: how many pipes (over every rank and folder tree) still
     // need a copy; counted first, then built.
     {
@@ -11978,7 +12135,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                         {
                             copyCacheHits.fetch_add(1, std::memory_order_relaxed);
                             if (crossfade > 0.0) for (auto& copy : copies) applyCopyLoopCrossfade(*copy, crossfade);
-                            for (auto& copy : copies) packIfEnabled(*copy);
+                            for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, pipe);
                             fresh[pipe] = std::move(copies);
                             stop->copiesDone.fetch_add(1, std::memory_order_relaxed);
                             continue;
@@ -12040,7 +12197,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                 if (copies.empty()) return;
                 if (releases && method >= 1) releaseLevelGain(rank, task.pipe, task.source, samplesByNote, copies);
                 if (crossfade > 0.0) for (auto& copy : copies) applyCopyLoopCrossfade(*copy, crossfade);
-                for (auto& copy : copies) packIfEnabled(*copy);
+                for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, task.pipe);
                 results[(size_t)index] = std::move(copies);
                 computed.fetch_add(1, std::memory_order_relaxed);
                 stop->copiesDone.fetch_add(1, std::memory_order_relaxed);
@@ -13488,7 +13645,10 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         {
             if (loadCancelRequested.load(std::memory_order_relaxed)) { loadCancelled.store(true, std::memory_order_relaxed); loadOutOfMemory.store(true, std::memory_order_relaxed); return; }
             juce::String memoryReason;
-            if (memoryShortForDecoding(&memoryReason))
+            // 0.9.124, packing Automatic with levels left: the room was made before this rank
+            // (loadDivisionTree) - inside it only the bare reserve stops the decoding.
+            const bool canStillPack = packAutomatic && !compressSamples && autoPackLevel.load(std::memory_order_relaxed) < kMaxPackLevel;
+            if (canStillPack ? memoryShortNow(&memoryReason) : memoryShortForDecoding(&memoryReason))
             {
                 if (!loadStoppedForMemory.exchange(true, std::memory_order_relaxed))
                 {
@@ -13557,7 +13717,8 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
                 (keptFull ? halfRateKeptFull : halfRateReleases).fetch_add(1, std::memory_order_relaxed);
                 if (decoded[(size_t)index]->sincHead) halfRateSincHeads.fetch_add(1, std::memory_order_relaxed);
             }
-            if (decoded[(size_t)index] != nullptr) packIfEnabled(*decoded[(size_t)index]);   // 0.8.145: packed on the loader thread, before it counts
+            if (decoded[(size_t)index] != nullptr)   // 0.8.145: packed on the loader thread, before it counts (0.9.124: Automatic by division and key)
+                packForLoad(*decoded[(size_t)index], stop->primaryManual, entries[(size_t)index].midi - stop->keyShift());
         }
         catch (const std::bad_alloc&)
         {
@@ -14105,9 +14266,9 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         for (auto* stop : stops)
         {
             if (stop->primaryManual != manual) continue;
-            if (!stop->container && stop->folder == folder && !stop->samplesUnloaded && stop->storageSignature == signatureNow && stop->keyShift() == keyShift) return true;
+            if (!stop->container && stop->folder == folder && !stop->samplesUnloaded && stop->storageSignature == signatureNow && packingFitsNow(*stop) && stop->keyShift() == keyShift) return true;
             for (const auto& rank : stop->ranks)
-                if (rank->folder == folder && !rank->samplesUnloaded && rank->storageSignature == signatureNow && rank->keyShift() == keyShift) return true;
+                if (rank->folder == folder && !rank->samplesUnloaded && rank->storageSignature == signatureNow && packingFitsNow(*rank) && rank->keyShift() == keyShift) return true;
         }
         return false;
     };
@@ -14140,7 +14301,9 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
             if (knownSamples > 0) gCopyRoomOwed.fetch_add(knownSamples * (storeSamplesAsFloat ? 4 : 2));
             const juce::int64 heldBefore = MemoryInfo::heldBytes();
             loadRankSamples(rank);
-            if (knownSamples < 0) gCopyRoomOwed.fetch_add(juce::jmax((juce::int64)0, MemoryInfo::heldBytes() - heldBefore) / 16);
+            const juce::int64 took = juce::jmax((juce::int64)0, MemoryInfo::heldBytes() - heldBefore);
+            if (knownSamples < 0) gCopyRoomOwed.fetch_add(took / 16);
+            if (took > gLargestRankBytes.load()) gLargestRankBytes.store(took);
         }
         rank->folderHash = (uint32_t)stopFolder.getFullPathName().hashCode();
         rank->windContribution = windStopContribution(rank->name);
@@ -14208,6 +14371,13 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         gOthersBaseline.store(MemoryInfo::othersBytes());
         gTrimBaseline.store(MemoryInfo::trimmedBytes());
         gCopyRoomOwed.store(0);
+        gLargestRankBytes.store(0);
+        {
+            // 0.9.124: an empty engine starts with nothing packed; a load beside loaded
+            // stops (a reload, a further tree) keeps the level those stops were packed to.
+            const juce::ScopedLock sl(controlLock);
+            if (stops.isEmpty()) autoPackLevel.store(-1, std::memory_order_relaxed);
+        }
         {
             // What the copies of every rank took when they were last built here.
             auto records = copyCacheDir != juce::File() ? readCopyRoomFile(copyCacheDir.getChildFile("CopyRoom.txt")) : std::map<juce::String, juce::int64>();
@@ -14252,7 +14422,23 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                     loadOutOfMemory.store(true, std::memory_order_relaxed);
                     CrashHandler::note("Loading cancelled by the user before \"" + stopName + "\"");
                 }
-                else if (memoryShortForDecoding(&memoryReason))
+                else if ([&]
+                    {
+                        // 0.9.124, packing Automatic: short of memory before a rank -> the samples loaded
+                        // so far are packed in the memory, one level at a time (the pedal, then the outer
+                        // keys of the manuals inwards), until the rank fits or everything is packed.
+                        const bool automatic = packAutomatic && !compressSamples;
+                        bool isShort = memoryShortForDecoding(&memoryReason, automatic);
+                        while (isShort && automatic && autoPackLevel.load(std::memory_order_relaxed) < kMaxPackLevel)
+                        {
+                            if (loadStatusCallback) loadStatusCallback("Packing in the memory to make room ...");
+                            std::vector<Stop*> loadingNow;
+                            for (auto& [m, g] : groups) for (auto* s : g.division->stops) loadingNow.push_back(s);
+                            repackOneLevel(loadingNow, false);
+                            isShort = memoryShortForDecoding(&memoryReason, autoPackLevel.load(std::memory_order_relaxed) < kMaxPackLevel);
+                        }
+                        return isShort;
+                    }())
                 {
                     loadStoppedForMemory.store(true, std::memory_order_relaxed);
                     loadOutOfMemory.store(true, std::memory_order_relaxed);
@@ -14490,9 +14676,9 @@ void SamplerEngine::commitPendingDivisions()
                 const juce::String wanted = storageSignature();
                 for (auto* old : retiring)
                 {
-                    if (!old->container && old->folder == rank->folder && !old->samplesUnloaded && old->storageSignature == wanted && old->keyShift() == rank->keyShift()) source = old;
+                    if (!old->container && old->folder == rank->folder && !old->samplesUnloaded && old->storageSignature == wanted && packingFitsNow(*old) && old->keyShift() == rank->keyShift()) source = old;
                     for (auto& r : old->ranks)
-                        if (source == nullptr && r->folder == rank->folder && !r->samplesUnloaded && r->storageSignature == wanted && r->keyShift() == rank->keyShift()) source = r.get();
+                        if (source == nullptr && r->folder == rank->folder && !r->samplesUnloaded && r->storageSignature == wanted && packingFitsNow(*r) && r->keyShift() == rank->keyShift()) source = r.get();
                     if (source != nullptr) break;
                 }
                 rank->adoptSamples = false;
@@ -15040,6 +15226,13 @@ void SamplerEngine::reloadStopSamples(Stop* stop, bool evenIfLoaded)
         // (0.8.155 crashed in renderVoiceSpans when "Files vs keys" changed while a
         // key was held). Every voice is killed first, as removing a stop does.
         impl->clearMidi();
+        bool anySounding = false;   // 0.9.124: the tones end gracefully (the kill fade is heard) before the render stops
+        {
+            const juce::ScopedLock sl(controlLock);
+            anySounding = impl->hasActiveVoices();
+            impl->killAllVoices();
+        }
+        if (anySounding) juce::Thread::sleep(kKillWaitMs);
         impl->suspend();
         {
             const juce::ScopedLock sl(controlLock);
@@ -15057,6 +15250,7 @@ void SamplerEngine::reloadStopSamples(Stop* stop, bool evenIfLoaded)
     {
         entry.second->sampleOffset = entry.first->sampleOffset;
         entry.second->sampleOffsetSet = true;   // a reload keeps the transposition as it is
+        entry.second->primaryManual = entry.first->primaryManual;   // 0.9.124: the automatic packing goes by the division
         loadRankSamples(entry.second.get());
     }
     impl->suspend();

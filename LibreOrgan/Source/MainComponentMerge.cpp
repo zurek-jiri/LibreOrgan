@@ -342,7 +342,12 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     const auto gb = [](juce::int64 bytes) { return juce::String((double)bytes / (1024.0 * 1024.0 * 1024.0), 2) + " GB"; };
     CrashHandler::note("Merge configuration: " + addedName + " - " + juce::String((int)newTrees.size()) + " new tree(s), " + gb(addedBytes) + " of WAV files (about "
         + gb(needed) + " in memory), " + gb(available) + " free");
-    if (needed > available - (juce::int64)512 * 1024 * 1024)
+    // 0.9.124: with packing Automatic nothing is refused - the loader packs the loaded
+    // samples in the memory as far as the added organ needs (and stops at the limit
+    // only when everything is packed).
+    if (compressAutomatic && needed > available - (juce::int64)512 * 1024 * 1024)
+        CrashHandler::note("Merge configuration: more than the free memory - packing Automatic will make the room");
+    else if (needed > available - (juce::int64)512 * 1024 * 1024)
     {
         queueNotice(juce::MessageBoxIconType::WarningIcon, "Merge configuration",
             "Not enough memory for the added organ: its new sample folders hold " + gb(addedBytes) + " of WAV files (about " + gb(needed)

@@ -4997,12 +4997,52 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   working sets + kernel pools 1.3 GB) - the user's "12 GB gap" = 8.7 others + 3.8 free (2 reserve + 1.8 the commit limit of
   the tiny page file). %TEMP%\test_0123_box.ps1 [-Seed] pictures the load box (Rural on the command line, organMemory seeded).
   NOT run: Linux (the same rules, MemAvailable), Pasztor's box (a system-managed page file: the RAM rule will decide),
-  the watch's two notes (no way to take the memory away on purpose). NEXT = 0.9.124, AGREED WITH THE USER (22 Nov 2026):
-  packing "Automatic" as the third item of the load box's packing combo - pack only what does not fit, IN THE RAM (already
-  loaded samples are packed in place, nothing is read from the disk twice), order = least played first: the pedal, then the
-  outer keys of the manuals inwards; with packing Off and the memory full the box offers the same repacking + loading of the
-  missing stops (never a new load of everything); copies without room: quietly (the Messages line above), in Automatic the
-  repacking makes their room.
+  the watch's two notes (no way to take the memory away on purpose).
+  0.9.124 (22 Nov 2026 evening, the user's design in six rounds): PACKING "AUTOMATIC" = only what does not fit, packed IN THE
+  RAM. HIS RULES: never a new load of everything ("jen uvolnit, co potřebuje"); the order as proposed = least played first;
+  the choice in the load box AND the repacking when the RAM runs out with packing Off; copies without room: quietly, a line in
+  the Messages; sounding tones end GRACEFULLY, never abruptly, and "dej do killu rovnou těch 300 ms, ať je to tak vždycky".
+  ENGINE: `packAutomatic` (bool, with compressSamples off) + `autoPackLevel` (atomic, -1 nothing .. kMaxPackLevel 31),
+  `packOrderOf(manual, key)` = 0 for the pedal, else 1 + min(key - 36, 96 - key) clamped 0..30 (1 = the outermost key);
+  a sample is packed when its order <= the level. `packForLoad(sample, manual, key)` at the three places packIfEnabled stood
+  (the decode: stop->primaryManual + entries[i].midi - keyShift; the copies from the cache and the built ones: the pipe;
+  reloadStopSamples gives its stand-ins the primaryManual); `packIfEnabled(sample, whateverTheOption)`.
+  `repackOneLevel(loading, insideBuild)`: level + 1, collects the unpacked samples of that order from the tree being decoded,
+  the pendingDivisions and the engine's own stops (samplesByNote, velocity/release layers, aliasFree copies), packs them with
+  parallelFor; the engine's own ("live") only after `killAllVoices` + a wait of kKillWaitMs 380 ms with the render running
+  (the fade is heard), then clearMidi + suspend + kill + resetAllVoicesUnsafe, pack, resume - under antiAliasBuildLock with
+  buildsInterrupted set by hand (NOT a BuildPause: its end relaunches the pending builds in the middle of a load). The level
+  is reset to -1 at the first tree of a load ONLY when the engine holds no stop. Triggers: loadDivisionTree before every rank
+  (`memoryShortForDecoding(reason, beforeARank)` adds the largest rank of the load x 5/4 - `gLargestRankBytes` - so the packing
+  comes before a rank, never inside one; loop while short and levels are left; status "Packing in the memory to make room
+  ..."), the in-rank check uses the bare reserve while levels are left; buildAntiAliasCopies at its START (packing Automatic:
+  while short with 1 GB of room -> repackOneLevel({}, true); never from the phases - their workers read the sources);
+  resumeIncompleteCopyBuilds goes on when Automatic can still pack. `packingFitsNow(rank)` in the four adoption tests: with
+  packing Off a rank holding packed samples is decoded anew (the storage signature is THE SAME for Off and Automatic on
+  purpose - the box action must adopt). `kKillFadeMs` 300 (CmdKill was a 2 ms fade): panic, a reload of a sounding stop
+  (reloadStopSamples now kills, waits 380 ms, then suspends) and the packing all end the tones that way; the self-test has
+  no WRONG line with it. `packedShare()`, `packLevelText(level)` ("the pedal, and the N lowest and the N highest keys of
+  every manual"). MAINCOMPONENT: `compressAutomatic` (configuration key, travels with the organ like compressSamples; the
+  load box's packing combo item 3 "Automatic: only what does not fit, the least played first", the Editor's toggle became
+  the same three-way combo; storageChoiceKey 'a'; the box's memory line "packed as far as needed to fit the N GB ...");
+  `memoryStopNotice(error)` (free friend function, both loaders call it instead of queueNotice): a memory-limited load with
+  packing Off and levels left -> runWhenLoaded -> showOkCancelBox "Pack what is needed and load the rest" / "Leave it" ->
+  `packAndLoadTheRest()` = compressAutomatic on + reloadDivisions(all) (the loader adopts what is loaded, packs live samples
+  as needed, decodes the stops left out); logRamAfterLoadIfDue: log "Automatic packing after the load: level N (...), P % of
+  the samples packed" + Messages "Packed to fit the memory"; the measurement summary says "packing automatic (P % of the
+  samples packed)"; the merge no longer refuses for memory when compressAutomatic. Test switches: ORGAN_TEST_PACKING=off|on|
+  automatic, ORGAN_TEST_STORAGE=float|16|16half (the hook path of askLoadOptions - a hook import takes NO storage choice from
+  settings.json: absent keys = the defaults, float), ORGAN_TEST_PACK_REST=1 (takes the offer). MEASURED (this Ryzen,
+  Billerbeck "8 chan." float, %TEMP%\test_0123_mem.ps1 -Auto 1 | -PackRest 1 -WaitFor "Division\(s\).*rebuilt:" | -Drop
+  "<division>|<folders>" -DropAt N): AUTOMATIC: the WHOLE organ (no stop left out), level 8 = 36 % of the samples packed,
+  107.0 GB held, 9.9 GB free, page file 0 MB, the packing 12 s of a 351 s load (level 0 = the pedal: 11.4 GB freed in 4 s;
+  a manual level ~2.3 GB in 0.9 s). OFF -> BOX -> PACK AND LOAD THE REST: stopped at 111.8 GB, the reload packed levels 0-7
+  of the playing organ in the memory, read ONLY the missing 23 GB ("235 rank(s) kept their samples and copies"), 72 stops,
+  109.6 GB, 9 GB free. The free memory ends higher than needed (the room for the largest rank + a level's 2.3 GB step): the
+  safe side, not tuned. "Pages input/s" of Windows counts the loader's own file reads (the cache manager's faults) - 82 000/s
+  while a tree loads is no paging; the page file's "in use" is the figure. THE USER CLICKS IN MY TEST WINDOWS (he took the
+  offer box of the first run by hand): say that a window is a test and what a click does to it. NOT measured: the polyphony
+  of a partly packed organ against a fully packed one (my estimate "a third more" is a guess), Linux/macOS (CI compiles).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

@@ -175,7 +175,10 @@ private:
     std::map<juce::String, juce::String> organMemory;
     void rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value);
     juce::String organMemoryOf(const juce::String& organ, const juce::String& key) const;
-    static juce::String storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate);
+    static juce::String storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate, bool automatic = false);
+    // 0.9.124: the memory stop of a load - with packing Off the box offers to pack what is needed IN THE MEMORY and
+    // to load the stops left out (no new load of the organ); else the plain notice.
+    void packAndLoadTheRest();
     // The watch after a load (once a second): the free memory under MemoryInfo::tightBelowBytes(), or
     // (Windows) the program's memory taken out of its working set - told once in the Messages.
     void watchMemoryAfterLoad();
@@ -1014,6 +1017,7 @@ private:
     double storageSampleRate = 48000.0;   // the rate the samples are stored at when resampled (48 000 / 36 000 / 32 000; 0.8.143)
     bool releaseHalfRate = false;         // release samples at half the storage rate (0.8.143)
     bool compressSamples = false;         // lossless packing of the 16-bit samples in RAM (0.8.145, off by default)
+    bool compressAutomatic = false;       // 0.9.124: packing "Automatic" - only what does not fit, packed in the memory (travels with the organ)
     int pendingMaxPolyphony = 0;          // the limit a measurement decided, set in the engine once the run's tails have died (0.8.146)
     juce::StringArray nestedTreesDropped; // folder trees dropped from the pool for lying inside another (the notice after the load)
     juce::StringArray nestedTreesNoticed; // the ones the user was told about in this session (settings.json and the configuration file both carried the tree: two boxes, 0.8.144)
@@ -1745,6 +1749,7 @@ private:
     bool noticeShowing = false, noticeRetryPending = false, noticeWaitLogged = false;
     static MainComponent* noticeOwner;   // the one instance, for the free function queueNotice (usable from any lambda or helper struct)
     friend void queueNotice(juce::MessageBoxIconType, const juce::String&, const juce::String&, const juce::String&, juce::Component*, juce::ModalComponentManager::Callback*);
+    friend void memoryStopNotice(const juce::String&);   // 0.9.124: the loaders call it for a load the memory stopped
     friend struct HelpKeyWatcher;   // 0.8.232: F1 -> openManualForMouse
     friend class HelpTooltipWindow;   // 0.8.233: every tooltip ends with "For details press F1."
     void enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
@@ -1917,5 +1922,6 @@ private:
 // alert box is up - the same arguments as juce::AlertWindow::showMessageBoxAsync, callable
 // from any lambda or helper struct (a free function, so no 'this' is needed). Without a
 // MainComponent it shows the box at once.
+void memoryStopNotice(const juce::String& error);
 void queueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button = {},
                  juce::Component* associated = nullptr, juce::ModalComponentManager::Callback* callback = nullptr);

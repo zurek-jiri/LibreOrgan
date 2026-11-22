@@ -1549,6 +1549,14 @@ static const char* const kManualText_part7 =
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
     "\n"
+    "**Automatic** packs only what does not fit. The organ loads unpacked; when\n"
+    "the memory runs short, the samples loaded so far are packed in the memory\n"
+    "itself (nothing is read from the disk again), the least played first: the\n"
+    "pedal, then the keys of the manuals from both ends inwards. The middle of\n"
+    "the keyboards stays unpacked longest, so the polyphony pays least. The\n"
+    "Messages say how much was packed. With packing *Off*, a load the memory\n"
+    "stopped offers the same in its box: *Pack what is needed and load the rest*.\n"
+    "\n"
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
@@ -1608,6 +1616,8 @@ static const char* const kManualText_part7 =
     "restores everything. Pressed while\n"
     "the filled pipes are still being built, the window waits for them and the run\n"
     "starts by itself. Save the\n"
+    ;
+static const char* const kManualText_part8 =
     "configuration afterwards; measure again after a change of routes, IRs,\n"
     "buffer or samples. The same button sits in the header of\n"
     "[Audio routing](#audio-routing). Details: [The polyphony measurement](#108-the-polyphony-measurement).\n"
@@ -1616,8 +1626,6 @@ static const char* const kManualText_part7 =
     "\n"
     "On by default. The program counts every click between two blocks of its own\n"
     "output, logs it with the route and stage and shows \"!N\" in orange in the DSP\n"
-    ;
-static const char* const kManualText_part8 =
     "cell. A few microseconds per period\n"
     "([The discontinuity detector](#1010-the-discontinuity-detector)).\n"
     "## 8.2 Global sound\n"
@@ -1810,6 +1818,8 @@ static const char* const kManualText_part8 =
     "random share between 0 and this of what it was (default 20 %); a pipe starting\n"
     "while a unison, octave, fifth, fourth or third of it sounds is pulled towards\n"
     "the pure interval with those pipes instead (the thirds only a little), and they\n"
+    ;
+static const char* const kManualText_part9 =
     "move a little towards it. Celeste stops stay out of it. Travels with the organ.\n"
     "\n"
     "### Pipe coupling: pipes left untouched\n"
@@ -1818,8 +1828,6 @@ static const char* const kManualText_part8 =
     "started with (default 10 %); 0 % pulls every pipe, 100 % none. Travels with the\n"
     "organ.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Pipe coupling: farthest pitch offset to pull\n"
     "\n"
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
@@ -2012,6 +2020,8 @@ static const char* const kManualText_part9 =
     "adds one.\n"
     "\n"
     "### Sample and IR locations: the file\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
@@ -2020,8 +2030,6 @@ static const char* const kManualText_part9 =
     "\n"
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Samples' base temperament\n"
     "\n"
     "The temperament the samples were recorded in - found by itself when two\n"
@@ -2214,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "### Wind: sag settling lag\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
     "ms, default 255).\n"
     "\n"
@@ -2222,8 +2232,6 @@ static const char* const kManualText_part10 =
     "The other divisions fed from this wind: they receive half of this division's\n"
     "sag.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "---\n"
     "\n"
     "## 8.7 Plug-ins (VST3)\n"
@@ -2416,6 +2424,8 @@ static const char* const kManualText_part11 =
     "folder prefixes learned into the patterns); the compass of every stop from\n"
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
+    ;
+static const char* const kManualText_part12 =
     "becomes the route volume, the median of the rest the stop volume, the\n"
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
@@ -2424,8 +2434,6 @@ static const char* const kManualText_part11 =
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
-    ;
-static const char* const kManualText_part12 =
     "carries, else the stop playing it straight over the whole division, else the\n"
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
     "stop with none becomes a transmission of the owner it borrows the most keys\n"
@@ -2618,6 +2626,8 @@ static const char* const kManualText_part12 =
     "a pool task posted by the last route of its group and joined by the first\n"
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
+    ;
+static const char* const kManualText_part13 =
     "and the device thread takes no more voices at the tail of a job when the\n"
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
@@ -2626,8 +2636,6 @@ static const char* const kManualText_part12 =
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
-    ;
-static const char* const kManualText_part13 =
     "chunks. On Windows, a processor without hyper-threading (a worker for every\n"
     "logical processor) keeps an eighth of its processors free of waiting workers\n"
     "for the sound card's driver and the system: the workers beyond that sleep\n"

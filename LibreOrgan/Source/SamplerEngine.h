@@ -803,7 +803,30 @@ public:
     void notePackStats(const juce::String& what);
     // Packs a sample when the option is on (and counts it); the loaders, the copy
     // builds and the cache import call it on every finished sample.
-    void packIfEnabled(Sample& sample) noexcept;
+    void packIfEnabled(Sample& sample, bool whateverTheOption = false) noexcept;
+    // 0.9.124 PACKING "AUTOMATIC" (the user's design, 22 Nov 2026): only what does not fit the memory is packed,
+    // the least played first - the pedal (order 0), then the keys of the manuals from both ends of 36..96
+    // inwards (order 1 = the outermost, 31 = the middle). A sample is packed when its order is <= the level in
+    // force; the level starts at -1 (nothing) with an empty engine and is raised one step at a time when the
+    // memory runs short - by the loader before a stop (the samples loaded so far are packed IN THE RAM, nothing
+    // is read from the disk again) and by a copy build that finds no room. The option "On" packs everything as
+    // ever and knows no levels.
+    static constexpr int kMaxPackLevel = 31;
+    static int packOrderOf(int manual, int key) noexcept { return manual <= 0 ? 0 : 1 + juce::jlimit(0, 30, juce::jmin(key - 36, 96 - key)); }
+    void setPackAutomatic(bool on) noexcept { packAutomatic = on; }
+    bool getPackAutomatic() const noexcept { return packAutomatic; }
+    int getAutoPackLevel() const noexcept { return autoPackLevel.load(std::memory_order_relaxed); }
+    // Packs the sample of that division and key when the options say so (the loaders and the copy builds).
+    void packForLoad(Sample& sample, int manual, int key) noexcept;
+    // One level up: every loaded sample of the new level is packed in place ('loading' = the stops of the tree
+    // being decoded now, beside the pending divisions and the engine's own stops). Samples the engine plays are
+    // packed with every voice killed and the render suspended (as a reload of a stop does); 'insideBuild' = called
+    // by a copy build, which holds the build lock already. False when the level was at its top.
+    bool repackOneLevel(const std::vector<Stop*>& loading, bool insideBuild);
+    // The share of the loaded samples' frames that are packed (0..1), and what the level means in words.
+    double packedShare();
+    static juce::String packLevelText(int level);
+    bool packingFitsNow(const Stop& rank) const;   // may a reload adopt this rank's samples as they are packed?
     // Samples recorded at another rate are resampled to the 48 kHz base rate
     // while they load (windowed sinc); off = they keep their rate and the
     // player reads them at the right speed (linear interpolation). Affects
@@ -1781,6 +1804,8 @@ private:
     double storageSampleRate = 48000.0;
     bool releaseHalfRate = false;
     bool compressSamples = false;   // 0.8.145: pack the 16-bit samples in RAM (Sample::compress16)
+    bool packAutomatic = false;     // 0.9.124: pack only what does not fit (compressSamples off)
+    std::atomic<int> autoPackLevel{ -1 };
     std::atomic<int64_t> packRawBytes{ 0 }, packPackedBytes{ 0 };
     std::atomic<int> packSamples{ 0 }, packFailed{ 0 }, packFloatsLeftRaw{ 0 }, packFloatsRounded{ 0 };   // floats: beyond +-2 full scale (left raw) / rounded to 24 bits (0.8.183)
     std::atomic<int64_t> packNanoseconds{ 0 };   // thread time spent packing since the last takePackStats (0.8.153: what the option costs at the load)

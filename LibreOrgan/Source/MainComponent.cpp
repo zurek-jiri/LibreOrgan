@@ -15675,7 +15675,7 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
     // The load box's storage choices carried over to another var of the same organ (0.8.193).
     auto* target = to.getDynamicObject();
     if (target == nullptr) return;
-    for (const auto* key : { "sampleStorageFloat", "releaseHalfRate", "compressSamples", "resampleOnLoad", "storageSampleRate" })
+    for (const auto* key : { "sampleStorageFloat", "releaseHalfRate", "compressSamples", "compressAutomatic", "resampleOnLoad", "storageSampleRate" })
         if (from.hasProperty(key)) target->setProperty(key, from.getProperty(key, juce::var()));
 }
 
@@ -15885,6 +15885,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     const bool asFloat = fromFile ? (bool)root->getProperty("sampleStorageFloat") : sampleStorageFloat;
     const bool halfRate = root->hasProperty("releaseHalfRate") ? (bool)root->getProperty("releaseHalfRate") : releaseHalfRate;
     const bool packed = root->hasProperty("compressSamples") ? (bool)root->getProperty("compressSamples") : compressSamples;
+    const bool automatic = !packed && (root->hasProperty("compressAutomatic") ? (bool)root->getProperty("compressAutomatic") : compressAutomatic);   // 0.9.124
     const bool resample = root->hasProperty("resampleOnLoad") ? (bool)root->getProperty("resampleOnLoad") : resampleOnLoad;
     const double rate = root->hasProperty("storageSampleRate") ? (double)root->getProperty("storageSampleRate") : storageSampleRate;
     // Where the file goes (0.8.191, 0.8.193 - the user: never a duplicate, never an
@@ -15903,6 +15904,17 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         // ORGAN_TEST_COPY_INTO_CONFIGURATIONS set, else loaded from its own folder.
         if (offerChoice)
             root->setProperty("fileChoice", importing ? "replace" : std::getenv("ORGAN_TEST_COPY_INTO_CONFIGURATIONS") != nullptr ? (exists ? "replace" : "copy") : "inPlace");
+        // 0.9.124: ORGAN_TEST_PACKING=off|on|automatic and ORGAN_TEST_STORAGE=float|16|16half set the box's choices for a test.
+        if (const char* packing = std::getenv("ORGAN_TEST_PACKING"))
+        {
+            root->setProperty("compressSamples", juce::String(packing) == "on");
+            root->setProperty("compressAutomatic", juce::String(packing) == "automatic");
+        }
+        if (const char* storage = std::getenv("ORGAN_TEST_STORAGE"))
+        {
+            root->setProperty("sampleStorageFloat", juce::String(storage) == "float");
+            root->setProperty("releaseHalfRate", juce::String(storage) == "16half");
+        }
         proceed(configuration);
         return;
     }
@@ -15916,8 +15928,8 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         "16-bit",
         "16-bit, releases at half the rate: half the polyphony, a quarter of the RAM" }, "Sample storage in RAM");
     window->getComboBoxComponent("storage")->setSelectedItemIndex(asFloat ? 0 : halfRate ? 2 : 1, juce::dontSendNotification);
-    window->addComboBox("packing", { "Off  [default]", "On: a third less RAM, half the polyphony" }, "Compress samples in RAM (lossless)");
-    window->getComboBoxComponent("packing")->setSelectedItemIndex(packed ? 1 : 0, juce::dontSendNotification);
+    window->addComboBox("packing", { "Off  [default]", "On: a third less RAM, half the polyphony", "Automatic: only what does not fit, the least played first" }, "Compress samples in RAM (lossless)");
+    window->getComboBoxComponent("packing")->setSelectedItemIndex(packed ? 1 : automatic ? 2 : 0, juce::dontSendNotification);
     window->addComboBox("rate", { "48 kHz  [default]", "36 kHz: a quarter less RAM",
         "32 kHz: a third less RAM", "Each file's own rate: faster loading" }, "Sample rate on loading");
     window->getComboBoxComponent("rate")->setSelectedItemIndex(!resample ? 3 : rate < 34000.0 ? 2 : rate < 42000.0 ? 1 : 0, juce::dontSendNotification);
@@ -15943,6 +15955,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             if (boxOfLine == nullptr || self == nullptr) return;
             const int storage = boxOfLine->getComboBoxComponent("storage")->getSelectedItemIndex();
             const bool packedNow = boxOfLine->getComboBoxComponent("packing")->getSelectedItemIndex() == 1;
+            const bool automaticNow = boxOfLine->getComboBoxComponent("packing")->getSelectedItemIndex() == 2;   // 0.9.124
             const int rateIndex = boxOfLine->getComboBoxComponent("rate")->getSelectedItemIndex();
             const bool resampleNow = rateIndex != 3;
             const double rateNow = rateIndex == 1 ? 36000.0 : rateIndex == 2 ? 32000.0 : 48000.0;
@@ -15953,7 +15966,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             double usable = (double)(MainComponent::availablePhysicalMemoryBytes() - MemoryInfo::reserveBytes());
             if (organLoadedNow && !merging) usable += (double)juce::jmax((juce::int64)0, MainComponent::processMemoryBytes() - (juce::int64)1024 * 1024 * 1024);
             usable = juce::jmax(0.0, usable);
-            const juce::String measured = self->organMemoryOf(what, MainComponent::storageChoiceKey(storage == 0, storage == 2, packedNow, resampleNow, rateNow));
+            const juce::String measured = self->organMemoryOf(what, MainComponent::storageChoiceKey(storage == 0, storage == 2, packedNow, resampleNow, rateNow, automaticNow));
             juce::String text;
             bool bad = false;
             if (measured.isNotEmpty() && measured.fromFirstOccurrenceOf("|", false, false) != "1")
@@ -15974,7 +15987,9 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
                 double factor = (storage == 0 ? 32.0 : 16.0) / bits;
                 if (resampleNow && fileRate > 1000.0) factor *= rateNow / fileRate;
                 const double unpacked = bytes * factor * 1.05 + 717.0 * 1024.0 * 1024.0;   // the figure of warnIfMemoryShortForTrees: the copies and the program with it
-                if (!packedNow && storage != 2)
+                if (automaticNow && storage != 2 && unpacked > usable)
+                    text = "Memory: packed as far as needed to fit the " + gb(usable) + " that can be used (about " + gb(unpacked) + " unpacked).";
+                else if (!packedNow && storage != 2)
                 {
                     bad = unpacked > usable;
                     text = "Memory: about " + gb(unpacked) + "; " + gb(usable) + " can be used" + (bad ? " - it will NOT fit." : ".");
@@ -16049,11 +16064,13 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         o.sampleStorageFloat = storage == 0;
         o.releaseHalfRate = storage == 2;
         o.compressSamples = packing == 1;
+        o.compressAutomatic = packing == 2;
         o.resampleOnLoad = rateIndex != 3;
         o.storageSampleRate = rateIndex == 1 ? 36000.0 : rateIndex == 2 ? 32000.0 : 48000.0;
         o.engine.setSampleStorageFloat(o.sampleStorageFloat);
         o.engine.setReleaseHalfRate(o.releaseHalfRate);
         o.engine.setCompressSamples(o.compressSamples);
+        o.engine.setPackAutomatic(o.compressAutomatic);
         o.engine.setResampleOnLoad(o.resampleOnLoad);
         o.engine.setStorageSampleRate(o.storageSampleRate);
         if (auto* r = configuration.getDynamicObject())
@@ -16061,11 +16078,12 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             r->setProperty("sampleStorageFloat", o.sampleStorageFloat);
             r->setProperty("releaseHalfRate", o.releaseHalfRate);
             r->setProperty("compressSamples", o.compressSamples);
+            r->setProperty("compressAutomatic", o.compressAutomatic);
             r->setProperty("resampleOnLoad", o.resampleOnLoad);
             r->setProperty("storageSampleRate", o.storageSampleRate);
         }
         CrashHandler::note("Load Configuration \"" + what + "\": sample storage " + juce::String(o.sampleStorageFloat ? "32-bit float" : o.releaseHalfRate ? "16-bit, releases at half the rate" : "16-bit")
-            + ", packing " + (o.compressSamples ? "on" : "off") + ", rate on loading " + (o.resampleOnLoad ? juce::String(juce::roundToInt(o.storageSampleRate)) + " Hz" : juce::String("the files' own")));
+            + ", packing " + (o.compressSamples ? "on" : o.compressAutomatic ? "automatic" : "off") + ", rate on loading " + (o.resampleOnLoad ? juce::String(juce::roundToInt(o.storageSampleRate)) + " Hz" : juce::String("the files' own")));
         proceed(configuration);
     }), true);
 }
@@ -17745,7 +17763,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
             const double rate = (double)configuration.getProperty("storageSampleRate", 48000.0);
             const juce::String measuredText = configuration.hasProperty("sampleStorageFloat")
                 ? juce::String(asFloat ? "32-bit float" : "16-bit") + ", " + (resample ? juce::String(juce::roundToInt(rate / 1000.0)) + " kHz" : juce::String("the files' own rate"))
-                    + ", " + (halfRate ? "releases at half the rate" : "full releases") + ", " + (packed ? "packed" : "no packing")
+                    + ", " + (halfRate ? "releases at half the rate" : "full releases") + ", " + (packed ? "packed" : (bool)configuration.getProperty("compressAutomatic", false) ? "packed only as far as the memory asked" : "no packing")
                 : configuration.getProperty("measuredRamStorage", "16-bit").toString();
             const bool fullQuality = asFloat && !halfRate && !packed;   // the measurement was at the full quality already
             struct Line { juce::int64 bytes; juce::String what; };
@@ -19163,7 +19181,7 @@ public:
         engine.commitPendingDivisions();
         const auto error = engine.takeLastLoadError();
         if (error.isNotEmpty())
-            queueNotice(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
+            memoryStopNotice(error);   // 0.9.124: the plain notice, or the offer to pack and load the rest
         if (finished) finished(cancelled);
     }
 private:
@@ -19325,7 +19343,7 @@ private:
         engine.commitPendingDivisions();
         const auto error = engine.takeLastLoadError();
         if (error.isNotEmpty())
-            queueNotice(juce::MessageBoxIconType::WarningIcon, "Loading samples", error);
+            memoryStopNotice(error);   // 0.9.124: the plain notice, or the offer to pack and load the rest
     }
     void report(const juce::String& text, double fraction)
     {
@@ -27608,6 +27626,8 @@ void MainComponent::loadSettings()
     releaseHalfRate = (bool)parsed.getProperty("releaseHalfRate", false);
     engine.setReleaseHalfRate(releaseHalfRate);
     compressSamples = (bool)parsed.getProperty("compressSamples", false);
+    compressAutomatic = !compressSamples && (bool)parsed.getProperty("compressAutomatic", false);   // 0.9.124: pack only what does not fit
+    engine.setPackAutomatic(compressAutomatic);
     engine.setCompressSamples(compressSamples);
     irProcessing = parsed.getProperty("irProcessing", "automatic").toString();
     if (irProcessing != "full" && irProcessing != "light") irProcessing = "automatic";
@@ -28708,6 +28728,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("storageSampleRate", storageSampleRate);
     obj->setProperty("releaseHalfRate", releaseHalfRate);
     obj->setProperty("compressSamples", compressSamples);
+    obj->setProperty("compressAutomatic", compressAutomatic);
     obj->setProperty("irProcessing", irProcessing);
     obj->setProperty("irLightAuto", irLightAuto);
     obj->setProperty("stopListShowTransmissions", stopListShowTransmissions);
@@ -29192,6 +29213,44 @@ void queueNotice(juce::MessageBoxIconType icon, const juce::String& title, const
     else juce::AlertWindow::showMessageBoxAsync(icon, title, text, button, associated, callback);
 }
 
+// 0.9.124 (the user's design): a load the memory stopped. With packing Off (and something
+// left to pack) the box offers the way on: the samples loaded so far are packed IN THE
+// MEMORY as far as needed - the least played first - and the stops left out are loaded,
+// nothing that is loaded is read from the disk again. With packing On, a cancelled load
+// or no window: the plain notice as before. ORGAN_TEST_PACK_REST=1 takes the offer.
+void memoryStopNotice(const juce::String& error)
+{
+    auto* owner = MainComponent::noticeOwner;
+    const bool offer = owner != nullptr && owner->engine.lastLoadWasMemoryLimited() && !owner->compressSamples
+        && owner->engine.getAutoPackLevel() < SamplerEngine::kMaxPackLevel;
+    if (!offer) { queueNotice(juce::MessageBoxIconType::WarningIcon, "Loading samples", error); return; }
+    juce::Component::SafePointer<MainComponent> safe(owner);
+    owner->runWhenLoaded([safe, error]
+    {
+        if (safe == nullptr) return;
+        if (std::getenv("ORGAN_TEST_PACK_REST") != nullptr) { CrashHandler::note("ORGAN_TEST_PACK_REST: the offer taken"); safe->packAndLoadTheRest(); return; }
+        const juce::String text = error.upToFirstOccurrenceOf("\n\nThey are not on the grid", false, false)
+            + ".\n\nThe whole organ can still fit: the samples loaded so far are packed in the memory as far as needed (lossless; the pedal first, then the "
+              "outer keys of the manuals inwards - packed samples cost polyphony), and the stops left out are loaded. Nothing loaded is read again.";
+        juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "Loading samples", text,
+            "Pack what is needed and load the rest", "Leave it", nullptr,
+            juce::ModalCallbackFunction::create([safe](int result) { if (result == 1 && safe != nullptr) safe->packAndLoadTheRest(); }));
+    });
+}
+
+void MainComponent::packAndLoadTheRest()
+{
+    // The choice becomes the organ's own (saved with it): packing Automatic.
+    compressAutomatic = true;
+    engine.setPackAutomatic(true);
+    configurationDirty = true;
+    saveSettings();
+    std::vector<int> manuals;
+    for (int manual = 0; manual <= manualCount; ++manual) manuals.push_back(manual);
+    CrashHandler::note("Packing Automatic chosen after the memory stop: the loaded samples are packed in the memory as needed, the stops left out are loaded");
+    reloadDivisions(manuals);
+}
+
 void MainComponent::enqueueNotice(juce::MessageBoxIconType icon, const juce::String& title, const juce::String& text, const juce::String& button,
                                   juce::ModalComponentManager::Callback* callback)
 {
@@ -29322,18 +29381,26 @@ void MainComponent::logRamAfterLoadIfDue()
     // 0.9.123: the figure of this load for the load box of the next one, and the
     // baseline of the watch (what lies outside the working set by nature).
     engine.rememberCopyRoom();
+    // 0.9.124, packing Automatic: what the memory made it pack, said once in the Messages (quietly).
+    if (engine.getPackAutomatic() && engine.getAutoPackLevel() >= 0)
+    {
+        const int share = juce::roundToInt(engine.packedShare() * 100.0);
+        CrashHandler::note("Automatic packing after the load: level " + juce::String(engine.getAutoPackLevel()) + " (" + SamplerEngine::packLevelText(engine.getAutoPackLevel()) + "), " + juce::String(share) + " % of the samples packed");
+        queueNotice(juce::MessageBoxIconType::InfoIcon, "Packed to fit the memory",
+            juce::String(share) + " % of the samples are packed in RAM so that the organ fits: " + SamplerEngine::packLevelText(engine.getAutoPackLevel()) + ". The rest plays unpacked.");
+    }
     trimmedAfterLoadBytes = MemoryInfo::trimmedBytes();
     workingSetAfterLoadBytes = MemoryInfo::workingSetBytes();
     memoryTightNoted = memoryTrimmedNoted = false;
     const juce::String organ = currentConfigurationFile != juce::File() ? currentConfigurationFile.getFileNameWithoutExtension() : currentConfigurationName;
     if (organ.isNotEmpty() && !engine.getStops().isEmpty())
-        rememberOrganMemory(organ, storageChoiceKey(sampleStorageFloat, releaseHalfRate, compressSamples, resampleOnLoad, storageSampleRate),
+        rememberOrganMemory(organ, storageChoiceKey(sampleStorageFloat, releaseHalfRate, compressSamples, resampleOnLoad, storageSampleRate, compressAutomatic),
             juce::String(processMemoryBytes()) + "|" + (engine.lastLoadWasMemoryLimited() ? "0" : "1"));
 }
 
-juce::String MainComponent::storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate)
+juce::String MainComponent::storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate, bool automatic)
 {
-    return juce::String(asFloat ? "f" : halfRate ? "h" : "i") + (packed ? "p" : "u") + (resample ? juce::String(juce::roundToInt(rate)) : juce::String("own"));
+    return juce::String(asFloat ? "f" : halfRate ? "h" : "i") + (packed ? "p" : automatic ? "a" : "u") + (resample ? juce::String(juce::roundToInt(rate)) : juce::String("own"));
 }
 
 namespace
@@ -32424,7 +32491,7 @@ void MainComponent::startPolyphonyMeasurement()
                 + (irShared > 0 ? " (" + juce::String(irShared) + " share the convolution of a route with the same device, channels and IR settings)" : juce::String()) : juce::String())
             + "; samples " + (engine.storageSignature().endsWith(", packed")   // the storage in force (0.8.149): a packed or halved organ measures differently
                                  ? engine.storageSignature().dropLastCharacters(8) + ", packing on"
-                                 : engine.storageSignature() + ", packing off");   // 0.9.117 (the user): the packing named either way
+                                 : engine.storageSignature() + (engine.getPackAutomatic() ? ", packing automatic (" + juce::String(juce::roundToInt(engine.packedShare() * 100.0)) + " % of the samples packed)" : juce::String(", packing off")));   // 0.9.117 (the user): the packing named either way; 0.9.124: Automatic with its share
     }
     CrashHandler::note("Polyphony measurement started: " + state->summary + ", previous limit " + juce::String(state->previousLimit));
     // Very quiet output (-42 dB, reached within 50 ms - before the first strike); the engine renders as if it were heard.
@@ -35154,13 +35221,18 @@ void MainComponent::showConfigurationEditor()
                 o.saveSettings();
             }, "Releases at half the rate lose what lies above 12 kHz and take a quarter of their RAM; they play through the sinc kernel, "
                "which costs about half the polyphony. Takes effect at the next load.");
-            addToggle("Compress samples in RAM (lossless)", o.compressSamples, [&o](bool state)
+            addCombo("Compress samples in RAM (lossless)", { "Off  [default]", "On: a third less RAM, half the polyphony",
+                "Automatic: only what does not fit, the least played first" },
+                o.compressSamples ? 1 : o.compressAutomatic ? 2 : 0, [&o](int index)
             {
-                o.compressSamples = state;
-                o.engine.setCompressSamples(state);
+                o.compressSamples = index == 1;
+                o.compressAutomatic = index == 2;
+                o.engine.setCompressSamples(o.compressSamples);
+                o.engine.setPackAutomatic(o.compressAutomatic);
                 o.saveSettings();
-            }, "FLAC-like packing of the samples in RAM: every frame comes back exactly, a third less RAM, half the polyphony "
-               "(every voice unpacks what it plays). Only when the organ does not fit the RAM otherwise. Takes effect at the next load.");
+            }, "FLAC-like packing of the samples in RAM: every frame comes back exactly; a packed sample costs polyphony (every voice unpacks what it plays). "
+               "Automatic packs only as much as the memory asks, in the memory itself: the pedal first, then the outer keys of the manuals inwards. "
+               "On and Off take effect at the next load.");
             addCombo("Sample rate on loading", { "48 kHz  [default]",
                 "36 kHz: a quarter less RAM",
                 "32 kHz: a third less RAM",
