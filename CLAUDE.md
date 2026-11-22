@@ -5112,6 +5112,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   "<bytes>|1|2" and the box trusts only "|1|2" and "|0" (memory full) - the "|1" records of 0.9.123/0.9.124 are ignored
   (the arithmetic of the WAV bytes is shown instead). A merge no longer ends in a full load, so it writes no record under
   the base organ's name either. RULE: a figure shown as "what happened before" must come from a run that ENDED as intended.
+  THE USER'S OWN RUN OF 0.9.125 (20:00-20:08, "asi to funguje, polyfonie nic moc"): Billerbeck float, packing Off -> memory stop
+  (26 stops left out) -> the offer taken: levels 0-8 packed in the memory, 232 ranks kept, 72 stops; Caen Surround merged
+  through the box as 16-bit + Automatic: "the loaded organ stays in the memory", only Caen's 16 trees read (~2.5 min), levels
+  9-15, "288 rank(s) kept", 159 stops, 54 % of the samples packed. MEASURED by him (28 routes on ASIO Fireface): 256 frames
+  22 500 (2 late driver callbacks at 90 %), 512 frames 35 000 (8 keys clean at 78 %; 86 % once). Per voice and 512 block:
+  kernel 2160 + unpack 1080 + header/spans 240 = 3480 ns (16-bit unpacked: ~1950 ns = Caen alone 55 900 on this card);
+  16 lanes x 10.67 ms / 3480 ns = 49 000 at 100 % -> 35 000 at the 75-78 % it ran at: the figure is what float + packing
+  costs, no fault. Automatic packs the PEDAL and the OUTER keys first - level 15 = only the middle 31 keys of a manual
+  unpacked - so a stimulus over the whole compass plays mostly packed samples. The watch's note "Samples moved out of the
+  RAM" came once (1.2 GB out of the working set, 10.2 GB free, the page file tiny): seen, cause not known.
+  v0.9.125 pushed (6d0b75d) and tagged on his word.
 ## Pending for the next session (delete when done)
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
