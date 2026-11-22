@@ -1541,6 +1541,18 @@ private:
     std::map<juce::String, juce::String> treeRelativePaths;
     juce::String knownRelativeOf(const juce::String& absolute) const;
     void rememberTreeRelative(const juce::String& absolute, const juce::String& relative);
+    // 0.9.125 (the user: "každé varhany mohou mít svou bitrate a všecko"): the folder trees with a sample
+    // storage of their OWN (an organ merged into another), keyed by the tree's path on this computer ->
+    // "float|half|packed|resample|rate" ("0|0|0|1|32000"). A tree without an entry follows the organ's choices
+    // (sampleStorageFloat ...). settings.json "treeStorage" (by path); a configuration file carries
+    // "treeStorageByTree" (by the tree's key in sampleTrees). The engine gets them by syncTreeStorageToEngine.
+    std::map<juce::String, juce::String> treeStorage;
+    juce::var mergeStorageChoice;   // the load box's choices for an organ being merged in; taken (and cleared) by mergeConfiguration
+    static juce::String treeStorageText(bool asFloat, bool halfRate, bool packed, bool resample, double rate);
+    static bool treeStorageFromText(const juce::String& text, SamplerEngine::TreeStorage& storage);
+    juce::String treeStorageOf(const juce::String& path) const;   // the entry of a tree, by its path whatever the letters' case and separators; "" = none
+    void syncTreeStorageToEngine();
+    void addNestedTreeStorage(juce::DynamicObject& own, const juce::String& poolPath, const juce::String& keptKey) const;   // the entries of folders below a pool tree, keyed "<the tree's key>/<the rest>"
     juce::File locationsFile() const;
     void readLocationsFile(const juce::var& settings);   // the file, else the old settings key / ArchiveFolders.txt once
     void writeLocationsFile() const;
@@ -1761,8 +1773,10 @@ private:
     void resolveAndApplyPortableConfigurationNow(juce::var configuration,
         const juce::File& configurationFile, const juce::File& selectedLibraryRoot);
     bool searchingSampleFolders = false;   // 0.9.33: the search window of a load is up (runWhenLoaded waits for it)
+    // keepLoadedOrgan (0.9.125, a merge): the loaded stops are NOT unloaded - the divisions are rebuilt by
+    // reloadDivisions, whose new stops adopt the samples in the memory; only what is new is read.
     void applyPortableConfiguration(juce::var configuration,
-        const juce::File& configurationFile, const juce::File& libraryRoot);
+        const juce::File& configurationFile, const juce::File& libraryRoot, bool keepLoadedOrgan = false);
     void pressPiston(int piston);
     void storeCombination(int piston);
     void restoreCombination(int piston);

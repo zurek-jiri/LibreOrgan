@@ -123,6 +123,12 @@ namespace
     juce::String gIndexingName;             // the archive being walked (set under gMutex before the walk)
     std::atomic<int> gIndexingVolume{ 0 }, gIndexingVolumes{ 0 };   // the part being walked and the set's size (0.8.176)
     juce::StringArray gWalking;             // archives being walked right now (keys; under gMutex) - the walk runs with the mutex released
+    // 0.9.125: a walk can be CANCELLED (the "Reading the archives" window's Cancel), the window thread never
+    // walks an archive (it gets "not read yet"), and archives whose reading was cancelled are left alone for
+    // the session by archivesNotRead().
+    std::atomic<bool> gIndexingCancel{ false };
+    juce::StringArray gNotReadNoted;        // keys said once in the log: not walked on the window thread (under gMutex)
+    juce::StringArray gLeftUnread;          // keys of archives whose reading the user cancelled (under gMutex)
     std::map<juce::String, std::shared_ptr<ArchiveIndex>> gIndexes;      // lower-case first-volume path -> index
     std::map<juce::String, std::vector<juce::File>> gArchivesOfFolder;   // lower-case disk folder -> its first volumes (scanned once)
     std::vector<juce::File> gSearchFolders;   // folders named as a whole whose archives serve paths (0.8.158; folder lines of ArchiveFolders.txt, OrganRarPackages)
@@ -285,6 +291,7 @@ namespace
             std::vector<juce::uint8> header;
             while (pos + 7 <= fileSize)
             {
+                if (gIndexingCancel.load(std::memory_order_relaxed)) return fail("the reading was cancelled");
                 if (!readAt(in, pos, 7)) break;
                 const juce::uint8* head = chunk;
                 const int type = head[2];
@@ -351,6 +358,7 @@ namespace
             std::vector<juce::uint8> header;
             while (pos + 7 <= fileSize)
             {
+                if (gIndexingCancel.load(std::memory_order_relaxed)) return fail("the reading was cancelled");
                 if (!readAt(in, pos, 5)) break;
                 size_t at = 4;
                 juce::uint64 size = 0;
@@ -645,9 +653,22 @@ namespace
         index->first = first;
         index->volumes = SampleFiles::volumesOf(first);
         const double started = juce::Time::getMillisecondCounterHiRes();
+        const bool onWindowThread = [] { auto* mm = juce::MessageManager::getInstanceWithoutCreating(); return mm != nullptr && mm->isThisTheMessageThread(); }();
+        if (onWindowThread && gNotReadNoted.contains(key)) return nullptr;   // said already: not read yet
         const bool cached = readCachedIndex(*index);
         if (!cached)
         {
+            // 0.9.125: THE WINDOW THREAD NEVER WALKS AN ARCHIVE. A set on a hard disk takes minutes of
+            // seeks; walked here, the program stood grey and silent for six minutes (the user's merge of an
+            // organ that lay on the disk, with three unread archives of another organ remembered). For the
+            // window thread such an archive is "not read yet" - its folders count as not there - until a
+            // worker thread reads it (behind "Reading the archives" or the loading window).
+            if (onWindowThread)
+            {
+                gNotReadNoted.add(key);
+                CrashHandler::note("Archive " + first.getFileName() + " is not read yet: never walked on the window thread - its folders count as not there until it is read behind a window");
+                return nullptr;
+            }
             *index = ArchiveIndex();
             index->first = first;
             index->volumes = SampleFiles::volumesOf(first);
@@ -662,7 +683,16 @@ namespace
             gMutex.lock();
             gWalking.removeString(key);
             gIndexingFiles.store(-1, std::memory_order_relaxed);
+            if (gIndexingCancel.load(std::memory_order_relaxed))
+            {
+                // Cancelled: nothing of it is kept (no half index in the memory or in the cache).
+                CrashHandler::note("Archive " + first.getFileName() + ": the reading was cancelled after "
+                    + juce::String(juce::roundToInt((juce::Time::getMillisecondCounterHiRes() - started) / 1000.0)) + " s - nothing of it is kept");
+                return nullptr;
+            }
             if (index->valid) writeCachedIndex(*index);
+            gNotReadNoted.removeString(key);
+            gLeftUnread.removeString(key);
         }
         juce::int64 bytes = 0, split = 0, stored = 0;
         for (const auto& entry : index->entries) { bytes += entry.size; if (entry.pieces.size() > 1) ++split; if (entry.stored) ++stored; }
@@ -1366,13 +1396,44 @@ namespace SampleFiles
         return result;
     }
 
-    void indexArchives(const std::vector<juce::File>& archives)
+    bool indexArchives(const std::vector<juce::File>& archives)
     {
         for (const auto& archive : archives)
         {
+            if (gIndexingCancel.load(std::memory_order_relaxed)) return false;
             std::lock_guard<std::mutex> lock(gMutex);
             indexOfLocked(archive);
         }
+        return !gIndexingCancel.load(std::memory_order_relaxed);
+    }
+
+    void cancelIndexing(bool cancel)
+    {
+        gIndexingCancel.store(cancel, std::memory_order_relaxed);
+    }
+
+    void leaveUnread(const std::vector<juce::File>& archives)
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        for (const auto& archive : archives)
+        {
+            const auto key = lower(firstVolumeOf(archive).getFullPathName());
+            if (gIndexes.count(key) == 0) gLeftUnread.addIfNotAlreadyThere(key);
+        }
+    }
+
+    std::vector<juce::File> archivesNotRead()
+    {
+        std::lock_guard<std::mutex> lock(gMutex);
+        std::vector<juce::File> list;
+        for (const auto& archive : servingArchivesLocked())
+        {
+            const auto first = firstVolumeOf(archive);
+            const auto key = lower(first.getFullPathName());
+            if (gIndexes.count(key) != 0 || gLeftUnread.contains(key) || !first.existsAsFile()) continue;
+            if (std::find(list.begin(), list.end(), first) == list.end()) list.push_back(first);
+        }
+        return list;
     }
 
     juce::String indexingProgress()
@@ -1382,6 +1443,16 @@ namespace SampleFiles
         const int volume = gIndexingVolume.load(std::memory_order_relaxed), volumes = gIndexingVolumes.load(std::memory_order_relaxed);
         return "Reading the contents of " + gIndexingName + (volumes > 1 ? " (part " + juce::String(volume) + " of " + juce::String(volumes) + ")" : juce::String())
             + ": " + juce::String(files) + " file(s) so far";
+    }
+
+    bool indexingNow(juce::String& archiveName, juce::String& where)
+    {
+        const int files = gIndexingFiles.load(std::memory_order_relaxed);
+        if (files < 0) return false;
+        const int volume = gIndexingVolume.load(std::memory_order_relaxed), volumes = gIndexingVolumes.load(std::memory_order_relaxed);
+        archiveName = gIndexingName;
+        where = (volumes > 1 ? "part " + juce::String(volume) + " of " + juce::String(volumes) + ", " : juce::String()) + juce::String(files) + " files so far";
+        return true;
     }
 
     juce::String archiveSummary(const juce::File& archive)

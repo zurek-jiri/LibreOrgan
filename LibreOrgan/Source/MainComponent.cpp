@@ -2139,6 +2139,8 @@ MainComponent::MainComponent()
             crescendoFromVar(juce::var(empty.get()));
         }
         CrashHandler::note("Started without a configuration: the sample library starts empty, the pistons and the crescendo too");
+        treeStorage.clear();   // 0.9.125: the last organ's trees with a storage of their own went with it
+        syncTreeStorageToEngine();
     }
     if (willLoadLastConfiguration)
     {
@@ -2414,6 +2416,7 @@ MainComponent::MainComponent()
         juce::Timer::callAfterDelay(2000, [archive]
         {
             SampleFiles::addChosenArchives({ archive });   // 0.8.177: only a chosen archive serves paths - the test's counts as chosen
+            { std::thread reader([archive] { SampleFiles::indexArchives({ archive }); }); reader.join(); }   // 0.9.125: the window thread never walks an archive itself
             juce::StringArray volumes;
             for (const auto& v : SampleFiles::volumesOf(archive)) volumes.add(v.getFileName());
             CrashHandler::note("ORGAN_TEST_ARCHIVE: " + archive.getFullPathName() + " first volume " + (SampleFiles::isFirstVolume(archive) ? "yes" : "NO")
@@ -15726,11 +15729,14 @@ void MainComponent::loadConfigurationFromArchives(const std::vector<juce::File>&
     // merged) straight from the archives; the other archives serve its paths.
     const std::vector<juce::File> archives = SampleFiles::firstVolumes(archivesChosen);   // every multi-part set once (0.8.176: all six parts chosen = six "definitions")
     if (archives.empty()) return;
-    for (const auto& archive : archives) registerArchive(archive);
     juce::Component::SafePointer<MainComponent> safeThis(this);
     indexArchivesThen(archives, [safeThis, archives, merge]
     {
         if (safeThis == nullptr) return;
+        // 0.9.125: remembered only now, AFTER they were read - a reading cancelled (or a program closed during
+        // it) leaves no line in Locations.txt (the user's three Billerbeck lines stayed after such a try and
+        // every later lookup that missed on the disk asked those unread archives).
+        for (const auto& archive : archives) safeThis->registerArchive(archive);
         std::vector<juce::File> candidates;
         juce::StringArray captions;
         const std::function<bool(const juce::String&)> isConfiguration = [](const juce::String& p) { return p.endsWithIgnoreCase(".json") && !p.endsWithIgnoreCase(".bak"); };
@@ -15881,6 +15887,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     // last choice. Tests (ORGAN_LOAD_CONFIGURATION) take them as they are.
     auto* root = configuration.getDynamicObject();
     if (root == nullptr) return;
+    mergeStorageChoice = juce::var();   // 0.9.125: set by this box when a merge is chosen
     const bool fromFile = root->hasProperty("sampleStorageFloat");
     const bool asFloat = fromFile ? (bool)root->getProperty("sampleStorageFloat") : sampleStorageFloat;
     const bool halfRate = root->hasProperty("releaseHalfRate") ? (bool)root->getProperty("releaseHalfRate") : releaseHalfRate;
@@ -16034,7 +16041,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     if (organLoaded)
     {
         window->addComboBox("action", { "Load it as a new organ  [default]  (the loaded organ is closed)",
-            "Merge it into the loaded organ  (its stops and folders are added to the organ loaded now)" }, "An organ is loaded now");
+            "Merge it into the loaded organ  (its stops are added with the choices above; the loaded organ stays as it is)" }, "An organ is loaded now");
         const char* testAction = std::getenv("ORGAN_TEST_LOAD_ACTION");   // tests: "merge" preselects the merge
         window->getComboBoxComponent("action")->setSelectedItemIndex(testAction != nullptr && juce::String(testAction) == "merge" ? 1 : 0, juce::dontSendNotification);
         window->getComboBoxComponent("action")->onChange = updateMemoryLine;
@@ -16051,7 +16058,8 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
-        if (organLoaded && box->getComboBoxComponent("action")->getSelectedItemIndex() == 1)
+        const bool mergeChosen = organLoaded && box->getComboBoxComponent("action")->getSelectedItemIndex() == 1;
+        if (mergeChosen)
             if (auto* r = configuration.getDynamicObject()) { r->setProperty("mergeIntoLoaded", true); CrashHandler::note("Load Configuration \"" + what + "\": to be merged into the loaded organ (the box's choice)"); }
         if (!choiceIds.isEmpty())
             if (auto* r = configuration.getDynamicObject())
@@ -16061,6 +16069,33 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
                 CrashHandler::note("Load Configuration \"" + what + "\": the file " + choiceIds[index]);
             }
         auto& o = *safeThis;
+        if (mergeChosen)
+        {
+            // 0.9.125 (the user's Caen merged into a Billerbeck held as float, the box at Caen's 16-bit: the
+            // loaded organ was thrown away and read again from the disk; "každé varhany mohou mít svou bitrate
+            // a všecko ... billerbeck musí zůstat, jak byl"): the choices are for the ADDED organ alone - they
+            // travel to the merge (mergeStorageChoice), which gives them to the added folder trees; the loaded
+            // organ's storage, this computer's choices and the engine's are not touched. Only "Automatic" is
+            // the whole program's (it packs whatever does not fit, of either organ).
+            juce::DynamicObject::Ptr choice = new juce::DynamicObject();
+            choice->setProperty("sampleStorageFloat", storage == 0);
+            choice->setProperty("releaseHalfRate", storage == 2);
+            choice->setProperty("compressSamples", packing == 1);
+            choice->setProperty("resampleOnLoad", rateIndex != 3);
+            choice->setProperty("storageSampleRate", rateIndex == 1 ? 36000.0 : rateIndex == 2 ? 32000.0 : 48000.0);
+            o.mergeStorageChoice = juce::var(choice.get());
+            if (packing == 2 && !o.compressSamples && !o.compressAutomatic)
+            {
+                o.compressAutomatic = true;
+                o.engine.setPackAutomatic(true);
+            }
+            CrashHandler::note("Load Configuration \"" + what + "\": the added organ's sample storage " + juce::String(storage == 0 ? "32-bit float" : storage == 2 ? "16-bit, releases at half the rate" : "16-bit")
+                + ", packing " + (packing == 1 ? "on" : packing == 2 ? "automatic (the whole program's)" : "off") + ", rate on loading "
+                + (rateIndex != 3 ? juce::String(rateIndex == 1 ? 36000 : rateIndex == 2 ? 32000 : 48000) + " Hz" : juce::String("the files' own"))
+                + "; the loaded organ keeps " + o.engine.storageSignature());
+            proceed(configuration);
+            return;
+        }
         o.sampleStorageFloat = storage == 0;
         o.releaseHalfRate = storage == 2;
         o.compressSamples = packing == 1;
@@ -16672,6 +16707,18 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 if (print.isNotEmpty()) prints->setProperty(juce::Identifier(kept[to].toString()), print);
             }
             root->setProperty("treeFingerprints", juce::var(prints.get()));
+            // 0.9.125: the trees with a sample storage of their own, by the tree's key (no path of this computer).
+            {
+                juce::DynamicObject::Ptr own = new juce::DynamicObject();
+                for (const auto& [from, to] : remap)
+                {
+                    if (const auto storageText = treeStorageOf(pool->getReference(from).toString()); storageText.isNotEmpty() && kept[to].toString().isNotEmpty())
+                        own->setProperty(juce::Identifier(kept[to].toString()), storageText);
+                    addNestedTreeStorage(*own, pool->getReference(from).toString(), kept[to].toString());
+                }
+                if (own->getProperties().size() > 0) root->setProperty("treeStorageByTree", juce::var(own.get())); else root->removeProperty("treeStorageByTree");
+                root->removeProperty("treeStorage");
+            }
             root->setProperty("sampleTrees", kept);
         }
         // No absolute path of this computer anywhere: the IRs and the trees of the
@@ -16719,6 +16766,18 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 if (print.isNotEmpty()) prints->setProperty(juce::Identifier(kept[i].toString()), print);
             }
             root->setProperty("treeFingerprints", juce::var(prints.get()));
+            // 0.9.125: the trees with a sample storage of their own, by the tree's key (see the portable branch).
+            {
+                juce::DynamicObject::Ptr own = new juce::DynamicObject();
+                for (int i = 0; i < pool->size(); ++i)
+                {
+                    if (const auto storageText = treeStorageOf(pool->getReference(i).toString()); storageText.isNotEmpty() && kept[i].toString().isNotEmpty())
+                        own->setProperty(juce::Identifier(kept[i].toString()), storageText);
+                    addNestedTreeStorage(*own, pool->getReference(i).toString(), kept[i].toString());
+                }
+                if (own->getProperties().size() > 0) root->setProperty("treeStorageByTree", juce::var(own.get())); else root->removeProperty("treeStorageByTree");
+                root->removeProperty("treeStorage");
+            }
             root->setProperty("sampleTrees", kept);
         }
         if (auto* array = manuals.getArray())
@@ -18028,11 +18087,13 @@ namespace
     std::atomic<bool> gLookupMemoOn{ false };
     std::mutex gLookupMemoLock;
     std::map<juce::String, bool> gIsDirectoryMemo;
+    std::map<juce::String, bool> gIsDiskDirectoryMemo;   // 0.9.125: the disk alone (no archive asked)
     std::map<juce::String, std::vector<juce::File>> gChildDirectoriesMemo;
     void setLookupMemo(bool on)
     {
         const std::lock_guard<std::mutex> lock(gLookupMemoLock);
         gIsDirectoryMemo.clear();
+        gIsDiskDirectoryMemo.clear();
         gChildDirectoriesMemo.clear();
         gLookupMemoOn.store(on);
     }
@@ -18086,8 +18147,27 @@ namespace
         return dir;
     }
 
+    // 0.9.125: THE DISK FIRST. A candidate that is a folder on the disk wins over every candidate an archive
+    // would serve - an organ lying on the disk must never be taken from (or cost the reading of) an archive
+    // that happens to be remembered (the user's Billerbeck rars beside the installed Billerbeck).
+    bool lookupIsDiskDirectory(const juce::File& folder)
+    {
+        if (!gLookupMemoOn.load()) return folder.isDirectory();
+        const auto key = folder.getFullPathName();
+        {
+            const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+            if (const auto it = gIsDiskDirectoryMemo.find(key); it != gIsDiskDirectoryMemo.end()) return it->second;
+        }
+        const bool result = folder.isDirectory();
+        const std::lock_guard<std::mutex> lock(gLookupMemoLock);
+        if (gLookupMemoOn.load()) gIsDiskDirectoryMemo[key] = result;
+        return result;
+    }
+
     juce::File firstExistingDirectory(const juce::Array<juce::File>& candidates)
     {
+        for (const auto& candidate : candidates)
+            if (lookupIsDiskDirectory(candidate)) return candidate;
         for (const auto& candidate : candidates)
             if (lookupIsDirectory(candidate)) return candidate;
         for (const auto& candidate : candidates)
@@ -18103,10 +18183,14 @@ namespace
     juce::File firstMatchingTree(const juce::Array<juce::File>& candidates, const juce::String& fingerprint, juce::StringArray* refused)
     {
         if (fingerprint.isEmpty()) return firstExistingDirectory(candidates);
-        for (int pass = 0; pass < 2; ++pass)
+        // Pass 0: on the disk (0.9.125: the disk first); 1: served by an archive; 2: by the name ignoring the case.
+        for (int pass = 0; pass < 3; ++pass)
             for (const auto& candidate : candidates)
             {
-                const juce::File found = pass == 0 ? (lookupIsDirectory(candidate) ? candidate : juce::File()) : resolveCaseInsensitive(candidate);
+                juce::File found;
+                if (pass == 0) { if (lookupIsDiskDirectory(candidate)) found = candidate; }
+                else if (pass == 1) { if (!lookupIsDiskDirectory(candidate) && lookupIsDirectory(candidate)) found = candidate; }
+                else found = resolveCaseInsensitive(candidate);
                 if (found == juce::File()) continue;
                 juce::String why;
                 if (treeMatchesFingerprint(found, fingerprint, &why)) return found;
@@ -18337,8 +18421,26 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
                     show("Searching for the sample folders ...", "Tree " + juce::String((int)n + 1) + " of " + juce::String((int)which.size()) + ": "
                         + (name.length() > 22 ? "..." + name.getLastCharacters(19) : name));
                     const auto candidates = portableFolderCandidates(configuration, file, root, tree.relative, tree.absolute);
-                    const auto found = tree.relativeForm ? firstMatchingTree(candidates, fingerprintOfTree(configuration, slashes(tree.relative)), nullptr)
-                                                         : firstExistingDirectory(candidates);
+                    // 0.9.125 (the user: "nikdy okno nesmí vypadat vytuhlé, ať stále tam dává řádky, co právě dělá -
+                    // např. čtu rar archiv, a který"): the lookup on a thread of its own, this one says what it
+                    // does - a tree the disk has nowhere is asked of the remembered archives, and one not read yet
+                    // is read here (minutes on a hard disk): its name, its part and the files counted are shown.
+                    juce::File found;
+                    std::atomic<bool> lookedUp{ false };
+                    std::thread lookup([&]
+                    {
+                        found = tree.relativeForm ? firstMatchingTree(candidates, fingerprintOfTree(configuration, slashes(tree.relative)), nullptr)
+                                                  : firstExistingDirectory(candidates);
+                        lookedUp.store(true);
+                    });
+                    for (int waited = 0; !lookedUp.load(); ++waited)
+                    {
+                        juce::Thread::sleep(waited < 30 ? 1 : 50);   // a tree on the disk answers in a millisecond
+                        juce::String archiveName, where;
+                        if (SampleFiles::indexingNow(archiveName, where))
+                            show("Reading the archive " + (archiveName.length() > 26 ? archiveName.substring(0, 23) + "..." : archiveName), where);
+                    }
+                    lookup.join();
                     if (found == juce::File()) missing.push_back(which[n]);
                     else ++foundCount;
                 }
@@ -18750,7 +18852,7 @@ juce::StringArray MainComponent::renameRowsWithoutPerspectivePrefixes(juce::var 
 }
 
 void MainComponent::applyPortableConfiguration(juce::var configuration,
-    const juce::File& configurationFile, const juce::File& libraryRoot)
+    const juce::File& configurationFile, const juce::File& libraryRoot, bool keepLoadedOrgan)
 {
     saveSettingsNow();
     // A Stop List left open from the organ before would be shown again as it
@@ -18996,7 +19098,47 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
             resolved.add(found != juce::File() ? found.getFullPathName() : entry.toString());
             if (found != juce::File()) rememberTreeRelative(found.getFullPathName(), text);   // found or the placeholder (0.8.216)
         }
+        // 0.9.125: the trees with a sample storage of their own - a configuration file names them by the
+        // tree's key ("treeStorageByTree"), this computer's settings and a merge by the path ("treeStorage");
+        // from here on by the path the tree has on this computer.
+        {
+            const auto byTree = root->getProperty("treeStorageByTree");
+            const auto byPath = root->getProperty("treeStorage");
+            juce::DynamicObject::Ptr own = new juce::DynamicObject();
+            for (int i = 0; i < pool->size() && i < resolved.size(); ++i)
+            {
+                const auto key = pool->getReference(i).toString(), path = resolved[i].toString();
+                if (key.isEmpty() || path.isEmpty()) continue;
+                juce::String storageText = byTree.getProperty(juce::Identifier(key), "").toString();
+                if (storageText.isEmpty()) storageText = byTree.getProperty(juce::Identifier(slashes(key)), "").toString();
+                if (storageText.isEmpty()) storageText = byPath.getProperty(juce::Identifier(path), "").toString();
+                if (storageText.isEmpty()) storageText = byPath.getProperty(juce::Identifier(key), "").toString();
+                if (storageText.isNotEmpty()) own->setProperty(juce::Identifier(path), storageText);
+                // Entries of folders BELOW this tree (a tree folded into the one above it): by the path too.
+                for (const auto* source : { &byTree, &byPath })
+                    if (auto* object = source->getDynamicObject())
+                        for (const auto& entry : object->getProperties())
+                        {
+                            const auto name = slashes(entry.name.toString());
+                            for (const auto& head : { slashes(key), slashes(path) })
+                                if (name.length() > head.length() + 1 && name.startsWithIgnoreCase(head + "/") && entry.value.toString().isNotEmpty())
+                                    own->setProperty(juce::Identifier(juce::File(path).getChildFile(name.substring(head.length() + 1)).getFullPathName()), entry.value);
+                        }
+            }
+            root->setProperty("treeStorage", juce::var(own.get()));
+            root->removeProperty("treeStorageByTree");
+            treeStorage.clear();
+            for (const auto& entry : own->getProperties()) treeStorage[entry.name.toString()] = entry.value.toString();
+            syncTreeStorageToEngine();
+        }
         root->setProperty("sampleTrees", resolved);
+    }
+    else
+    {
+        root->removeProperty("treeStorage");
+        root->removeProperty("treeStorageByTree");
+        treeStorage.clear();
+        syncTreeStorageToEngine();
     }
     {
         // The relative paths travel in the var the settings are written from (0.8.216): loadSettings
@@ -19062,7 +19204,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     if (keyboardsWindow != nullptr) keyboardsWindow.reset();
     // The grid as it stands, kept as a picture over the workspace until the new
     // instrument is built (0.8.154); taken before the divisions are unloaded.
-    if (frozenGrid == nullptr && !engine.getStops().isEmpty() && stopsViewport.isShowing() && stopsViewport.getWidth() > 0)
+    if (!keepLoadedOrgan && frozenGrid == nullptr && !engine.getStops().isEmpty() && stopsViewport.isShowing() && stopsViewport.getWidth() > 0)
     {
         // The old stops laid out in the NEW organ's division columns first (0.8.204,
         // #105: a 3-division picture over a 5-division workspace showed both sets of
@@ -19087,13 +19229,16 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         addChildComponent(*frozenGrid);
     }
     rememberPatterns(false);   // 0.8.213: the lists in force kept on this computer before the organ goes
-    engine.setRelaunchHeld(true);   // 0.8.184: no build of the old organ launched again between its unloads
+    // 0.9.125 (the user: "billerbeck musí zůstat, jak byl"): a merge keeps the loaded organ - nothing is
+    // unloaded; the divisions are rebuilt at the end (reloadDivisions) and their new stops adopt the samples
+    // in the memory. Before, every merge freed the whole organ and read it again from the disk.
+    if (!keepLoadedOrgan) engine.setRelaunchHeld(true);   // 0.8.184: no build of the old organ launched again between its unloads
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         removePerspectiveAudioRoutesForManual(manual);
-        engine.unloadManual(manual, false);   // freed by the loader thread (0.8.185), not by threads beside this one
+        if (!keepLoadedOrgan) engine.unloadManual(manual, false);   // freed by the loader thread (0.8.185), not by threads beside this one
     }
-    engine.setRelaunchHeld(false);
+    if (!keepLoadedOrgan) engine.setRelaunchHeld(false);
     settingsFile.replaceWithText(juce::JSON::toString(configuration, true));
     loadSettings();
     manualCountBox.setSelectedId(manualCount, juce::dontSendNotification);
@@ -19104,7 +19249,7 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
         voicer->setActiveManualCount(manualCount + 1);
         voicer->rebuildUI(stopsContent, stopsViewport);
     }
-    freezeGrid();   // after the rebuild: the picture was taken before it, the empty grid stays under it
+    if (!keepLoadedOrgan) freezeGrid();   // after the rebuild: the picture was taken before it, the empty grid stays under it
     lastSettingsDirectory = configurationFile.getParentDirectory();
     saveLastDirectory();
     setCurrentConfigurationName(configurationFile.getFileNameWithoutExtension());
@@ -19136,6 +19281,19 @@ void MainComponent::applyPortableConfiguration(juce::var configuration,
     learnPrefixesFromTables();   // 0.8.223: the prefixes the tables reveal, on every load
     saveSettingsNow();
     markConfigurationClean();
+    if (keepLoadedOrgan)
+    {
+        // The voicer reads the merged state first (the entries of the stops to come are retained): the
+        // reload saves the voicer's state before it starts, and an unread file would be overwritten by the
+        // old organ's alone. Then every division is rebuilt; a stop whose folder is in the memory with the
+        // storage of its tree keeps its samples and copies, the rest is read.
+        if (voicer != nullptr && voicerStateFile.existsAsFile()) { voicer->loadState(voicerStateFile); voicerStateLoaded = true; }
+        std::vector<int> every;
+        for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual) every.push_back(manual);
+        CrashHandler::note("Merge: the loaded organ stays in the memory - " + juce::String((int)every.size()) + " division(s) rebuilt, the stops in the memory keep their samples, only the added ones are read");
+        reloadDivisions(every);
+        return;
+    }
     {
         // Will the samples fit? A warning when the free memory is short (#16,
         // #17: a 7 GB organ on an 8 GB Mac paged, every stroke stalled).
@@ -20777,6 +20935,11 @@ bool MainComponent::applyTreeRelocation(int poolIndex, const juce::File& tree)
     sampleTrees[index] = tree.getFullPathName();
     if (const auto relative = knownRelativeOf(old.getFullPathName()); relative.isNotEmpty())
         rememberTreeRelative(tree.getFullPathName(), relative);   // 0.8.216: the relative path follows the tree to its new place
+    if (const auto own = treeStorageOf(old.getFullPathName()); own.isNotEmpty())
+    {
+        treeStorage[tree.getFullPathName()] = own;   // 0.9.125: so does a storage of its own
+        syncTreeStorageToEngine();
+    }
     for (int m = 0; m <= manualCount && m < SamplerEngine::maxManuals; ++m)
     {
         auto& config = manualConfigs[(size_t)m];
@@ -22916,11 +23079,12 @@ void MainComponent::loadChosenIntoDivision(const std::vector<juce::File>& folder
     // The archives' contents are read first (a walk of the headers on a thread: minutes
     // for a big set on a hard disk, cached afterwards), then they are loaded. Their
     // folders are remembered (0.8.158): the paths find the archives on the next start.
-    for (const auto& archive : archives) registerArchive(archive);
     juce::Component::SafePointer<MainComponent> safeThis(this);
     indexArchivesThen(archives, [safeThis, folders, archives, manual]
     {
-        if (safeThis != nullptr) safeThis->loadIndexedIntoDivision(folders, archives, manual);
+        if (safeThis == nullptr) return;
+        for (const auto& archive : archives) safeThis->registerArchive(archive);   // 0.9.125: remembered after the reading, never before
+        safeThis->loadIndexedIntoDivision(folders, archives, manual);
     });
 }
 
@@ -22930,21 +23094,27 @@ void MainComponent::indexArchivesThen(const std::vector<juce::File>& archives, s
     struct IndexJob final : public juce::ThreadWithProgressWindow
     {
         IndexJob(const std::vector<juce::File>& a, juce::Component* over)
-            : juce::ThreadWithProgressWindow("Reading the archives", false, false, 10000, {}, over), archives(a) {}
+            : juce::ThreadWithProgressWindow("Reading the archives", false, true, 10000, "Cancel", over), archives(a) {}
         void run() override
         {
-            // The walk itself cannot be interrupted; the status shows where it is.
+            // 0.9.125 (the user: "když je reading the archives, nelze udělat CANCEL! Musí se dát udělat"):
+            // Cancel stops the walk at its next header; nothing of the archive being read is kept, and
+            // nothing follows (no load).
+            SampleFiles::cancelIndexing(false);
             std::thread worker([this] { SampleFiles::indexArchives(archives); done.store(true); });
             while (!done.load())
             {
+                if (threadShouldExit() && !cancelled.exchange(true)) SampleFiles::cancelIndexing(true);
                 const auto progress = SampleFiles::indexingProgress();
-                setStatusMessage(progress.isNotEmpty() ? progress : juce::String("Reading the contents of the archive(s)..."));
-                juce::Thread::sleep(200);
+                setStatusMessage(cancelled.load() ? juce::String("Cancelling ...")
+                    : progress.isNotEmpty() ? progress : juce::String("Reading the contents of the archive(s)..."));
+                juce::Thread::sleep(100);
             }
             worker.join();
+            SampleFiles::cancelIndexing(false);
         }
         std::vector<juce::File> archives;
-        std::atomic<bool> done{ false };
+        std::atomic<bool> done{ false }, cancelled{ false };
     };
     auto job = std::make_shared<IndexJob>(archives, this);
     job->launchThread();
@@ -22954,6 +23124,16 @@ void MainComponent::indexArchivesThen(const std::vector<juce::File>& archives, s
     {
         if (job->isThreadRunning()) { juce::Timer::callAfterDelay(200, [poll] { (*poll)(); }); return; }
         juce::MessageManager::callAsync([keep = poll] { *keep = nullptr; });   // cleared after this call returns, never while it runs
+        if (job->cancelled.load())
+        {
+            // 0.9.125: a Cancel ends everything - nothing is loaded, nothing loads by itself afterwards. The
+            // archives not read stay unread for this session (a merge asks for them once, not at every try).
+            SampleFiles::leaveUnread(archives);
+            juce::StringArray names;
+            for (const auto& archive : archives) names.add(archive.getFileName());
+            CrashHandler::note("Reading the archives: cancelled by the user - nothing is loaded (" + names.joinIntoString(", ") + ")");
+            return;
+        }
         // A multi-part set: the user chose one part, the others were found beside it and
         // read as one - said once per set and session (0.8.176).
         if (safeThis != nullptr)
@@ -25032,7 +25212,12 @@ void MainComponent::finishDivisionsLoadEnd(const std::vector<int>& manuals)
     juce::String list;
     for (int manual : manuals) list << (list.isEmpty() ? "" : ", ") << manual;
     CrashHandler::note("Division(s) " + list + " rebuilt: " + juce::String(divisionStops) + " stops");
-    if (pendingTransmissionOffer != nullptr)   // 0.9.25: the halves moved and the transmissions offered NOW, not after runWhenLoaded's quiet polls (the user: the box came late, as if nothing was left to do)
+    if (pendingConfigurationRegistration != nullptr)   // 0.9.125: a merge that kept the loaded organ - the stops on as they were before it
+    {
+        applyRegistrationState(*pendingConfigurationRegistration);
+        pendingConfigurationRegistration.reset();
+    }
+    if (pendingTransmissionOffer != nullptr || !pendingMergeTransmissions.empty())   // 0.9.25: the halves moved and the transmissions offered NOW, not after runWhenLoaded's quiet polls (the user: the box came late, as if nothing was left to do); 0.9.125: a merge's too
     {
         juce::Component::SafePointer<MainComponent> safeThis(this);
         juce::Timer::callAfterDelay(300, [safeThis] { if (safeThis != nullptr) safeThis->offerTransmissionsForLoadedFolders(); });
@@ -28259,6 +28444,12 @@ void MainComponent::loadSettings()
     sampleTrees.clear();
     if (auto* pool = parsed.getProperty("sampleTrees", juce::var()).getArray())
         for (const auto& path : *pool) if (path.toString().isNotEmpty()) sampleTrees.push_back(path.toString());
+    // 0.9.125: the trees with a sample storage of their own (an organ merged in), by their path.
+    treeStorage.clear();
+    if (auto* own = parsed.getProperty("treeStorage", juce::var()).getDynamicObject())
+        for (const auto& entry : own->getProperties())
+            if (entry.value.toString().isNotEmpty()) treeStorage[entry.name.toString()] = entry.value.toString();
+    syncTreeStorageToEngine();
     const bool migrate = sampleTrees.empty();   // decided once: the first migrated division fills the pool
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
@@ -28687,6 +28878,18 @@ void MainComponent::saveSettingsNow()
         juce::Array<juce::var> pool;
         for (const auto& path : sampleTrees) pool.add(path);
         obj->setProperty("sampleTrees", pool);
+        // 0.9.125: the storage of the trees that have their own, by their path (trees no longer in the pool dropped).
+        // A tree that was folded into the tree above it (dropNestedTrees) keeps its entry: the engine goes by the path.
+        juce::DynamicObject::Ptr own = new juce::DynamicObject();
+        for (const auto& [tree, text] : treeStorage)
+        {
+            const auto wanted = slashes(tree).toLowerCase() + "/";
+            bool inPool = false;
+            for (const auto& path : sampleTrees)
+                if (wanted.startsWith(slashes(path).toLowerCase() + "/")) { inPool = true; break; }
+            if (inPool && tree.isNotEmpty() && text.isNotEmpty()) own->setProperty(juce::Identifier(tree), text);
+        }
+        obj->setProperty("treeStorage", juce::var(own.get()));
     }
     {
         juce::DynamicObject::Ptr shown = new juce::DynamicObject();
@@ -29548,6 +29751,67 @@ void MainComponent::rememberTreeRelative(const juce::String& absolute, const juc
 {
     if (absolute.isEmpty() || relative.isEmpty()) return;
     treeRelativePaths[absolute] = slashes(relative);
+}
+
+// 0.9.125: the sample storage of a folder tree of its own (see treeStorage in the header).
+juce::String MainComponent::treeStorageText(bool asFloat, bool halfRate, bool packed, bool resample, double rate)
+{
+    return juce::String(asFloat ? 1 : 0) + "|" + juce::String(halfRate ? 1 : 0) + "|" + juce::String(packed ? 1 : 0) + "|" + juce::String(resample ? 1 : 0)
+        + "|" + juce::String(juce::roundToInt(rate));
+}
+
+bool MainComponent::treeStorageFromText(const juce::String& text, SamplerEngine::TreeStorage& storage)
+{
+    const auto fields = juce::StringArray::fromTokens(text, "|", "");
+    if (fields.size() < 5) return false;
+    storage.asFloat = fields[0].getIntValue() != 0;
+    storage.halfRate = fields[1].getIntValue() != 0;
+    storage.packed = fields[2].getIntValue() != 0;
+    storage.resample = fields[3].getIntValue() != 0;
+    storage.rate = juce::jlimit(22050.0, 96000.0, fields[4].getDoubleValue());
+    return true;
+}
+
+juce::String MainComponent::treeStorageOf(const juce::String& path) const
+{
+    if (path.isEmpty() || treeStorage.empty()) return {};
+    const auto wanted = slashes(path).toLowerCase();
+    for (const auto& [tree, text] : treeStorage)
+        if (slashes(tree).toLowerCase() == wanted) return text;
+    return {};
+}
+
+void MainComponent::addNestedTreeStorage(juce::DynamicObject& own, const juce::String& poolPath, const juce::String& keptKey) const
+{
+    if (poolPath.isEmpty() || keptKey.isEmpty()) return;
+    const auto head = slashes(poolPath);
+    for (const auto& [tree, text] : treeStorage)
+    {
+        const auto name = slashes(tree);
+        if (name.length() > head.length() + 1 && name.startsWithIgnoreCase(head + "/") && text.isNotEmpty())
+            own.setProperty(juce::Identifier((keptKey == "." ? juce::String() : slashes(keptKey) + "/") + name.substring(head.length() + 1)), text);
+    }
+}
+
+void MainComponent::syncTreeStorageToEngine()
+{
+    engine.clearTreeStorage();
+    juce::StringArray said;
+    for (const auto& [tree, text] : treeStorage)
+    {
+        SamplerEngine::TreeStorage storage;
+        if (!treeStorageFromText(text, storage)) continue;
+        engine.setTreeStorage(tree, storage);
+        said.add(tree + " = " + SamplerEngine::signatureOf(storage));
+    }
+    const auto line = said.joinIntoString("; ");
+    static juce::String lastLine;
+    if (line != lastLine)
+    {
+        lastLine = line;
+        CrashHandler::note(said.isEmpty() ? juce::String("Sample storage: every folder tree follows the organ's choices (" + engine.storageSignature() + ")")
+            : "Sample storage: " + juce::String(said.size()) + " folder tree(s) keep their own - " + line + "; the others " + engine.storageSignature());
+    }
 }
 
 void MainComponent::readLocationsFile(const juce::var& settings)
@@ -31828,6 +32092,8 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
                 self.voicer->rebuildUI(self.stopsContent, self.stopsViewport);
             }
             CrashHandler::note("Global reset: everything unloaded, the instrument is empty (the samples are freed in the background)");
+            self.treeStorage.clear();   // 0.9.125
+            self.syncTreeStorageToEngine();
             self.globalResetStatus("Resetting the controls and divisions ...");
         }
         juce::MessageManager::callAsync([safeThis, o] { if (safeThis != nullptr) safeThis->globalResetControls(o); });

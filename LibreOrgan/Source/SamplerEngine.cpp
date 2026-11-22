@@ -11087,9 +11087,9 @@ void SamplerEngine::applyCopyLoopCrossfade(Sample& sample, double fraction)
     }
 }
 
-void SamplerEngine::packForLoad(Sample& sample, int manual, int key) noexcept
+void SamplerEngine::packForLoad(Sample& sample, int manual, int key, bool packedTree) noexcept
 {
-    if (compressSamples) packIfEnabled(sample);
+    if (compressSamples || packedTree) packIfEnabled(sample, true);
     else if (packAutomatic && packOrderOf(manual, key) <= autoPackLevel.load(std::memory_order_relaxed)) packIfEnabled(sample, true);
 }
 
@@ -11107,7 +11107,7 @@ bool SamplerEngine::packingFitsNow(const Stop& rank) const
     // A reload adopts a rank's loaded samples only when their packing is what the load
     // would give: with packing Off, a rank that Automatic packed (in part) is decoded
     // anew. ("On" has its own storage signature.)
-    if (packAutomatic || compressSamples) return true;
+    if (packAutomatic || compressSamples || storageFor(rank.folder).packed) return true;
     for (const auto& list : rank.samplesByNote) for (const auto& s : list) if (s != nullptr && s->compressed) return false;
     for (const auto& layer : rank.releaseLayers) for (const auto& list : layer.samplesByNote) for (const auto& s : list) if (s != nullptr && s->compressed) return false;
     return true;
@@ -12135,7 +12135,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                         {
                             copyCacheHits.fetch_add(1, std::memory_order_relaxed);
                             if (crossfade > 0.0) for (auto& copy : copies) applyCopyLoopCrossfade(*copy, crossfade);
-                            for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, pipe);
+                            for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, pipe, stop->storageSignature.endsWith(", packed"));
                             fresh[pipe] = std::move(copies);
                             stop->copiesDone.fetch_add(1, std::memory_order_relaxed);
                             continue;
@@ -12197,7 +12197,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                 if (copies.empty()) return;
                 if (releases && method >= 1) releaseLevelGain(rank, task.pipe, task.source, samplesByNote, copies);
                 if (crossfade > 0.0) for (auto& copy : copies) applyCopyLoopCrossfade(*copy, crossfade);
-                for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, task.pipe);
+                for (auto& copy : copies) packForLoad(*copy, stop->primaryManual, task.pipe, stop->storageSignature.endsWith(", packed"));
                 results[(size_t)index] = std::move(copies);
                 computed.fetch_add(1, std::memory_order_relaxed);
                 stop->copiesDone.fetch_add(1, std::memory_order_relaxed);
@@ -13626,10 +13626,14 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
     std::vector<std::unique_ptr<Sample>> decoded(entries.size());
     std::array<std::unique_ptr<juce::AudioFormatManager>, 16> managers;
     juce::SpinLock managerLock;
-    const bool asFloat = storeSamplesAsFloat;
-    const bool resample = resampleOnLoad;
+    // 0.9.125: the storage of the folder's own tree when it has one (an organ merged in), else the engine's.
+    const TreeStorage ownStorage = storageFor(folder);
+    const bool asFloat = ownStorage.asFloat;
+    const bool resample = ownStorage.resample;
+    const double storageSampleRate = ownStorage.rate;   // shadows the member on purpose: every use below is this folder's
+    const bool packedTree = ownStorage.packed;
     // The storage rate (0.8.143): 48 kHz as ever or lower; releases at half of it when asked.
-    const bool halfRate = isRelease && releaseHalfRate;
+    const bool halfRate = isRelease && ownStorage.halfRate;
     const double baseRate = halfRate ? storageSampleRate * 0.5 : storageSampleRate;
     // 0.9.70: the pitch of every attack sample measured from its sound (the setting "Measure the pitch of every
     // pipe from its sound"): a smpl chunk off the sound by more than 3 cents (6 under 50 Hz) is replaced, a missing
@@ -13718,7 +13722,7 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
                 if (decoded[(size_t)index]->sincHead) halfRateSincHeads.fetch_add(1, std::memory_order_relaxed);
             }
             if (decoded[(size_t)index] != nullptr)   // 0.8.145: packed on the loader thread, before it counts (0.9.124: Automatic by division and key)
-                packForLoad(*decoded[(size_t)index], stop->primaryManual, entries[(size_t)index].midi - stop->keyShift());
+                packForLoad(*decoded[(size_t)index], stop->primaryManual, entries[(size_t)index].midi - stop->keyShift(), packedTree);
         }
         catch (const std::bad_alloc&)
         {
@@ -14257,11 +14261,11 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
     // Does the committed division hold this folder with its samples in RAM?
     // Samples the division holds for that folder, decoded with the storage
     // choices in force now (0.8.149: with other choices they are decoded anew).
-    const juce::String signatureNow = storageSignature();
     // ... and with the same "Files vs keys" offset (0.8.155): samples keyed for
     // another offset are decoded afresh, never adopted.
-    auto hasLoadedRankForFolder = [this, &signatureNow](int manual, const juce::File& folder, int keyShift)
+    auto hasLoadedRankForFolder = [this](int manual, const juce::File& folder, int keyShift)
     {
+        const juce::String signatureNow = storageSignatureFor(folder);   // 0.9.125: the storage of the folder's own tree
         const juce::ScopedLock sl(controlLock);
         for (auto* stop : stops)
         {
@@ -14298,7 +14302,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 const std::lock_guard<std::mutex> lk(gCopyRoomMutex);
                 if (const auto found = gCopyRoomSamples.find(copyCachePathTag(*rank)); found != gCopyRoomSamples.end()) knownSamples = found->second;
             }
-            if (knownSamples > 0) gCopyRoomOwed.fetch_add(knownSamples * (storeSamplesAsFloat ? 4 : 2));
+            if (knownSamples > 0) gCopyRoomOwed.fetch_add(knownSamples * (storageFor(rank->folder).asFloat ? 4 : 2));
             const juce::int64 heldBefore = MemoryInfo::heldBytes();
             loadRankSamples(rank);
             const juce::int64 took = juce::jmax((juce::int64)0, MemoryInfo::heldBytes() - heldBefore);
@@ -14673,7 +14677,7 @@ void SamplerEngine::commitPendingDivisions()
             {
                 if (!rank->adoptSamples) return;
                 Stop* source = nullptr;
-                const juce::String wanted = storageSignature();
+                const juce::String wanted = storageSignatureFor(rank->folder);   // 0.9.125: the storage of the folder's own tree
                 for (auto* old : retiring)
                 {
                     if (!old->container && old->folder == rank->folder && !old->samplesUnloaded && old->storageSignature == wanted && packingFitsNow(*old) && old->keyShift() == rank->keyShift()) source = old;
@@ -15067,16 +15071,69 @@ SamplerEngine::MinimumRamEstimate SamplerEngine::estimateMinimumRam() const
     return e;
 }
 
+juce::String SamplerEngine::signatureOf(const TreeStorage& storage)
+{
+    return juce::String(storage.asFloat ? "32-bit float" : "16-bit") + ", "
+        + (storage.resample ? juce::String(juce::roundToInt(storage.rate / 1000.0)) + " kHz" : juce::String("the files' own rate"))
+        + (storage.halfRate ? ", releases at half the rate" : "") + (storage.packed ? ", packed" : "");   // float too since 0.8.183
+}
+
 juce::String SamplerEngine::storageSignature() const
 {
-    return juce::String(storeSamplesAsFloat ? "32-bit float" : "16-bit") + ", "
-        + (resampleOnLoad ? juce::String(juce::roundToInt(storageSampleRate / 1000.0)) + " kHz" : juce::String("the files' own rate"))
-        + (releaseHalfRate ? ", releases at half the rate" : "") + (compressSamples ? ", packed" : "");   // float too since 0.8.183
+    TreeStorage storage;
+    storage.asFloat = storeSamplesAsFloat; storage.resample = resampleOnLoad; storage.rate = storageSampleRate;
+    storage.halfRate = releaseHalfRate; storage.packed = compressSamples;
+    return signatureOf(storage);
+}
+
+namespace
+{
+    // A path as the tree storage keys it: lower case, '/' between the parts and at the end.
+    juce::String treeStorageKey(const juce::String& path)
+    {
+        auto key = path.replaceCharacter('\\', '/').toLowerCase();
+        while (key.endsWithChar('/')) key = key.dropLastCharacters(1);
+        return key + "/";
+    }
+}
+
+void SamplerEngine::setTreeStorage(const juce::String& treePath, const TreeStorage& storage)
+{
+    if (treePath.isEmpty()) return;
+    const auto key = treeStorageKey(treePath);
+    const std::lock_guard<std::mutex> lock(treeStorageLock);
+    for (auto& entry : treeStorages) if (entry.first == key) { entry.second = storage; return; }
+    treeStorages.push_back({ key, storage });
+}
+
+void SamplerEngine::clearTreeStorage()
+{
+    const std::lock_guard<std::mutex> lock(treeStorageLock);
+    treeStorages.clear();
+}
+
+SamplerEngine::TreeStorage SamplerEngine::storageFor(const juce::File& folder) const
+{
+    TreeStorage storage;
+    storage.asFloat = storeSamplesAsFloat; storage.resample = resampleOnLoad; storage.rate = storageSampleRate;
+    storage.halfRate = releaseHalfRate; storage.packed = compressSamples;
+    const std::lock_guard<std::mutex> lock(treeStorageLock);
+    if (treeStorages.empty()) return storage;
+    const auto path = treeStorageKey(folder.getFullPathName());
+    int longest = 0;
+    for (const auto& entry : treeStorages)
+        if (entry.first.length() > longest && path.startsWith(entry.first)) { longest = entry.first.length(); storage = entry.second; }
+    return storage;
+}
+
+juce::String SamplerEngine::storageSignatureFor(const juce::File& folder) const
+{
+    return signatureOf(storageFor(folder));
 }
 
 void SamplerEngine::loadRankSamples(Stop* rank)
 {
-    rank->storageSignature = storageSignature();
+    rank->storageSignature = storageSignatureFor(rank->folder);
     loadSamplesIntoStop(rank, rank->folder, false, 99999);
     // The automatic transposition (0.8.158): when the row carries none (no
     // definition, nothing chosen), the smpl pitches tell at what footage the

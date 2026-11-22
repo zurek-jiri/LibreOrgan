@@ -62,8 +62,18 @@ namespace SampleFiles
     // Builds (or loads from the cache) the indexes of these archives - to be called on
     // a worker thread before the archives are used: a 60 GB set on a hard disk takes
     // minutes of seeks. indexingProgress() tells where the walk is ("" when none runs).
-    void indexArchives(const std::vector<juce::File>& archives);
+    // 0.9.125: returns false when the reading was cancelled (cancelIndexing from another thread: the walk
+    // stops at its next header, nothing of the archive being read is kept; cancelIndexing(false) arms it
+    // again). The WINDOW THREAD never walks an archive: for it an archive not read yet holds nothing, until
+    // a worker thread has read it (indexArchives). archivesNotRead(): the serving archives not read in this
+    // session, less those whose reading the user cancelled (leaveUnread).
+    bool indexArchives(const std::vector<juce::File>& archives);
+    void cancelIndexing(bool cancel = true);
+    void leaveUnread(const std::vector<juce::File>& archives);
+    std::vector<juce::File> archivesNotRead();
     juce::String indexingProgress();
+    // The same in two short parts for a window with short lines: the archive's name, "part 3 of 8, 12345 files so far"; false when no walk runs.
+    bool indexingNow(juce::String& archiveName, juce::String& where);
     // "RAR 5, 17938 file(s), 27081 MB" (tests and the log).
     juce::String archiveSummary(const juce::File& archive);
     // Which archives serve paths (0.8.177): ONLY the archives the user chose - in

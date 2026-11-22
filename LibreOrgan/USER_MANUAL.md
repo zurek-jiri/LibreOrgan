@@ -289,7 +289,9 @@ line of `libreorgans/INDEX.md`. A new version replaces the old one.
 
 Right-click *Load Configuration* > *Merge another configuration into this
 organ* (or choose *Merge it into the loaded organ* in the load box of an
-ordinary load). The added stops become further rows under the rows of their division
+ordinary load). The loaded organ stays in the memory as it is; the load box's
+choices of the sample storage are for the added organ alone - each organ may
+have its own bit depth, rate and packing. The added stops become further rows under the rows of their division
 (drag them where they belong), their folder trees join yours, their voicing
 comes along. When the program finds that an added folder is a further
 perspective of a stop you have, it joins that stop's row as the new

@@ -5050,12 +5050,82 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Now two jobs (build -> deploy with `needs`) and the deployment tried once more after 45 s (`continue-on-error` on the first
   deploy-pages step, the second `if: steps.deployment.outcome == 'failure'`). A failed website run leaves the SITE STALE (the
   version shown is the last deployed one): after a failure look at the page's version.
+  v0.9.124 RELEASED (22 Nov 2026): commit ae97049, CI green at the first attempt (all five archives), Intel mac "late
+  symbols: 0", the Windows exe on system DLLs only; C:\LibreOrgan\LibreOrgan_0.9.124.exe is the LOCAL build (the user was
+  running it when the CI exe came - not replaced). SEEN IN HIS RUN, NOT EXPLAINED: with Billerbeck loaded (Automatic) the
+  process had 110.4 GB private and 81.7 GB working set = 28.7 GB trimmed by Windows, page file 15 MB of 512, 11 GB free -
+  the pages are in RAM (modified list), not on the disk; when the trim happened is not known (look at the "RAM held after
+  the load" line's Windows figures and the watch's "Samples moved out of the RAM" note next time).
+  0.9.125 (22 Nov 2026 night; the user's merge of Caen Surround.json into a float Billerbeck through the load box, "16-bit +
+  Automatic": the program grey for six minutes, then the memory emptied, Billerbeck read AGAIN as 16-bit, a Cancel left a part
+  of Billerbeck; his rules: "každé varhany mohou mít svou bitrate a všecko", "když je Billerbeck načtený 16-bitů 48k, tak klidně
+  se k němu může přidat caen 16-bit 32kHz. A billerbeck musí zůstat, jak byl", "nikdy okno nesmí vypadat vytuhlé, ať stále tam
+  dává řádky, co právě dělá - např. čtu rar archiv, a který"): THREE FAULTS, none of them the packing. (1) EVERY MERGE FREED THE
+  WHOLE ORGAN AND READ IT AGAIN - mergeConfiguration ends in applyPortableConfiguration, which unloads every division (always
+  did; my 0.9.124 answer "the loaded organ is packed in the RAM for an added one" held for Load folder / reloadDivisions only -
+  NEVER claim adoption for a path without reading whether it unloads). Now `applyPortableConfiguration(..., keepLoadedOrgan)`
+  (true from the merge): no unloadManual, no frozen grid picture; after loadSettings the voicer READS the merged voicer.json
+  (`voicer->loadState`, else reloadDivisions' own saveState would overwrite it with the old organ's alone), then
+  `reloadDivisions(every division)` - the new stops adopt the samples in the memory ("Commit: N rank(s) kept their samples");
+  finishDivisionsLoadEnd applies `pendingConfigurationRegistration` (the stops on as before) and triggers the merge's pending
+  transmissions. (2) ONE STORAGE FOR EVERYTHING: the box's choices (prefilled from the ADDED file) became the program's and
+  the loaded organ's signature no longer matched. Now PER FOLDER TREE: engine `TreeStorage {asFloat, resample, rate,
+  halfRate, packed}`, `setTreeStorage(path, s)` / `clearTreeStorage` / `storageFor(folder)` (the longest tree path the folder
+  lies under, else the engine's own choices) / `storageSignatureFor(folder)` / `signatureOf` - used by the decode
+  (loadSamplesIntoStop: a local `storageSampleRate` shadows the member on purpose), the rank's signature, both adoption tests,
+  packingFitsNow and packForLoad(..., packedTree). "Automatic" stays the whole program's. MainComponent `treeStorage` (path ->
+  "float|half|packed|resample|rate"), `treeStorageText/FromText/Of`, `syncTreeStorageToEngine` (log "Sample storage: N folder
+  tree(s) keep their own - ..."), `addNestedTreeStorage`; settings.json "treeStorage" (by path, NOT a machine key: the merge's
+  var must survive applyPortableConfiguration's machine-key override), a configuration FILE "treeStorageByTree" (by the tree's
+  key in sampleTrees, "<key>/<rest>" for a tree folded into the one above it); applyPortableConfiguration rebuilds the map
+  from both forms after the pool is resolved; applyTreeRelocation moves the entry; cleared at a start without a configuration
+  and at Global Reset's unload. The load box with "Merge it into the loaded organ" no longer touches the members or the
+  engine: the choices go into `mergeStorageChoice` (taken and cleared by mergeConfiguration; cleared when the box opens and in
+  mergeConfigurationDialog) and to the NEW trees of the merge alone (a tree like the loaded organ gets no entry); a
+  right-click merge takes the added file's own values the same way. (3) ARCHIVES: `SampleFiles::indexOfLocked` NEVER walks an
+  archive on the message thread (it answers "not read yet", logged once per archive; a cached index is still read there);
+  `firstExistingDirectory` / `firstMatchingTree` / the merge's resolveTree look ON THE DISK FIRST through every candidate
+  (`lookupIsDiskDirectory`, its own memo), the archives only for a tree the disk has nowhere - before, the first candidate
+  that missed on the disk was served by (or cost the reading of) any remembered archive, so an installed organ with its rars
+  remembered would even have been LOADED from the rars; the merge reads unread remembered archives through
+  indexArchivesThen and starts again (`SampleFiles::archivesNotRead()`, `leaveUnread` after a Cancel so the next try goes on
+  without them); "Reading the archives" has Cancel (`cancelIndexing`, checked at every header; nothing of a cancelled archive
+  is kept; nothing follows); the search window of a load runs each tree's lookup on a std::thread and shows "Reading the
+  archive <name>" / "part 3 of 8, N files so far" (`SampleFiles::indexingNow`); `registerArchive` runs in the `then` of
+  indexArchivesThen (Load folder, Load Configuration from archives) - an archive is written to Locations.txt AFTER it was
+  read (his three Billerbeck lines came from a try he killed at 19:09 because it was slow). Test
+  %TEMP%\test_0125_merge.ps1 (copies of Rural + TestingOrgan beside the originals, the added one with 16-bit 32 kHz;
+  settings restored, copies deleted): "Merge: the loaded organ stays in the memory", "Commit: 14 rank(s) kept their samples
+  and copies", 4.64 GB read (the added organ alone; 5.67 GB before = both), 69 stops, settings "treeStorage" and the saved
+  file's "treeStorageByTree" written. NOT RUN: Cancel in "Reading the archives" and the search window's archive lines (every
+  archive here is indexed in a second or cached - the Billerbeck cache is the user's), an ODF merged through the box, the
+  real Billerbeck + Caen (his to try), Linux/macOS (not compiled: no push yet). NOT DONE: Cancel in the load's search window;
+  the memory estimates, the RAM line's storage text and organMemory still speak of ONE storage; a merged organ loaded later
+  through the box: the box rules the organ's main storage, the merged-in trees keep theirs (nothing in the box says so).
+  LESSON: when he reports a freeze, read the stack in the log BEFORE answering, and read what the path does to the loaded
+  organ before promising that something "stays in the memory".
 ## Pending for the next session (delete when done)
-- TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
+- DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,
   nothing loads by itself afterwards (the 0.9.44 rule: a Cancel ends everything). An index walk of a big set on the HDD
   takes minutes (Bellevue 84 s, Ashton longer).
+  THE SAME EVENING, FOUND IN HIS OWN MERGE (0.9.124, 19:18:42, "program je jako vytuhlý ... zešedl"): the MERGE resolves the
+  added organ's trees ON THE MESSAGE THREAD (MainComponentMerge.cpp resolveTree -> SampleFiles::isDirectory -> locate ->
+  indexOfLocked, the stack in his log) - for a candidate path that is not on the disk it asks the remembered archives
+  (Locations.txt held three Billerbeck rars on the E: HDD) and WALKS THEIR INDEX there, minutes long, no window, the program
+  grey ("Message thread unresponsive for 69 s", reading 0.3 MB/s = header seeks). Not the packing. TO DO with the Cancel
+  above: the merge's tree lookup goes behind a progress window on a thread (as the load's SearchJob, 0.9.33) with the
+  archive walk shown and cancellable; never an archive index walk on the message thread.
+  WHERE THE RAR LINES CAME FROM (his log, the user: "Já nelouduji z rarů!!!" - right): 19:09:38 the three rars were chosen
+  once, `registerArchive` wrote them into Locations.txt BEFORE "Reading the archives" began, the window had no Cancel, he
+  killed the program (new start 19:11:50) - the lines STAYED, unindexed; Billerbeck was then loaded from the disk, and the
+  merge's first candidate that missed on the disk (resolveTree: `SampleFiles::isDirectory(candidate)` -> locate's
+  "elsewhere" loop over EVERY remembered archive) walked all three. TWO MORE FIXES for the same build: (1) an archive is
+  written to Locations.txt only AFTER its index was read (a Cancel / a killed read leaves no line); (2) resolveTree looks
+  on the DISK first through every candidate and resolveTreeLikeALoad (juce::File::isDirectory), the archives only when the
+  disk has nothing - a tree that is on the disk must never cost an archive walk (check the load path's
+  lookupIsDirectory -> SampleFiles::isDirectory the same way: a miss there asks the archives too, behind its window).
 - TO-DO, left open by 0.9.124 (22 Nov 2026): the user tests "a folder added to a loaded organ with packing Automatic"
   himself (my test dropped the package 001318, which holds a stale Caen configuration: the 0.9.18 rule loaded it as a NEW
   organ and the hook skipped the box); the load box with its third packing item was not pictured; the polyphony of a partly

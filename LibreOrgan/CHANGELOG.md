@@ -12,6 +12,32 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.125] - 2026-11-22
+
+### Added
+- **Every organ may have its own sample storage.** An organ merged into a
+  loaded one is held as chosen for it - bit depth, rate on loading, half-rate
+  releases, packing - while the loaded organ stays in the memory as it is: a
+  Billerbeck at 16-bit 48 kHz takes a Caen at 16-bit 32 kHz beside it. The load
+  box's choices, with "Merge it into the loaded organ", are for the added organ
+  alone; the configuration remembers the storage of its folder trees.
+- **Cancel in "Reading the archives".** The reading stops at once, nothing of
+  the archive is kept, nothing is loaded.
+
+### Fixed
+- **A merge threw the loaded organ away and read it again** when the box showed
+  another storage than the loaded organ's (the added file's own): minutes of
+  loading, and a Cancel left a part of the old organ. The loaded organ is no
+  longer touched by a merge.
+- **The program stood grey for minutes during a merge** of an organ that lay
+  on the disk: archives remembered from an earlier try were read on the window's
+  own thread, without a window. Now the disk comes first - an organ on the disk
+  never costs the reading of an archive -, an archive is never read on the
+  window's thread, and when one has to be read the window says which archive,
+  which part and how many files so far.
+- An archive is remembered (Locations.txt) only after it was read: a reading
+  cancelled, or a program closed during it, leaves no line behind.
+
 ## [0.9.124] - 2026-11-22
 
 ### Added

@@ -785,6 +785,16 @@ public:
     bool getCompressSamples() const noexcept { return compressSamples; }
     // The storage choices in force, as one string ("16-bit, 32 kHz, releases at half the rate, packed").
     juce::String storageSignature() const;
+    // 0.9.125 (the user: "každé varhany mohou mít svou bitrate a všecko"): a folder tree may carry its OWN
+    // storage - an organ merged into a loaded one is decoded as chosen for it while the loaded one stays as
+    // it is. A folder under such a tree is decoded, adopted and signed with the tree's storage; every other
+    // folder with the engine's choices above. Set before the load (the message thread), read by the loaders.
+    struct TreeStorage { bool asFloat = true; bool resample = true; double rate = 48000.0; bool halfRate = false; bool packed = false; };
+    void setTreeStorage(const juce::String& treePath, const TreeStorage& storage);
+    void clearTreeStorage();
+    TreeStorage storageFor(const juce::File& folder) const;
+    juce::String storageSignatureFor(const juce::File& folder) const;
+    static juce::String signatureOf(const TreeStorage& storage);
     // 0.8.151: the RAM the samples would take with every saving option of the load
     // box - 16-bit, 32 kHz on loading, releases at half the rate (where the treble
     // rule of the loader keeps them so), packed - estimated from the samples loaded
@@ -817,7 +827,7 @@ public:
     bool getPackAutomatic() const noexcept { return packAutomatic; }
     int getAutoPackLevel() const noexcept { return autoPackLevel.load(std::memory_order_relaxed); }
     // Packs the sample of that division and key when the options say so (the loaders and the copy builds).
-    void packForLoad(Sample& sample, int manual, int key) noexcept;
+    void packForLoad(Sample& sample, int manual, int key, bool packedTree = false) noexcept;   // packedTree: the folder's own tree is packed (0.9.125)
     // One level up: every loaded sample of the new level is packed in place ('loading' = the stops of the tree
     // being decoded now, beside the pending divisions and the engine's own stops). Samples the engine plays are
     // packed with every voice killed and the render suspended (as a reload of a stop does); 'insideBuild' = called
@@ -1805,6 +1815,8 @@ private:
     bool releaseHalfRate = false;
     bool compressSamples = false;   // 0.8.145: pack the 16-bit samples in RAM (Sample::compress16)
     bool packAutomatic = false;     // 0.9.124: pack only what does not fit (compressSamples off)
+    mutable std::mutex treeStorageLock;   // 0.9.125: the trees with a storage of their own (lower-case path with '/' and a trailing '/')
+    std::vector<std::pair<juce::String, TreeStorage>> treeStorages;
     std::atomic<int> autoPackLevel{ -1 };
     std::atomic<int64_t> packRawBytes{ 0 }, packPackedBytes{ 0 };
     std::atomic<int> packSamples{ 0 }, packFailed{ 0 }, packFloatsLeftRaw{ 0 }, packFloatsRounded{ 0 };   // floats: beyond +-2 full scale (left raw) / rounded to 24 bits (0.8.183)

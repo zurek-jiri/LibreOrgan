@@ -295,7 +295,9 @@ static const char* const kManualText_part1 =
     "\n"
     "Right-click *Load Configuration* > *Merge another configuration into this\n"
     "organ* (or choose *Merge it into the loaded organ* in the load box of an\n"
-    "ordinary load). The added stops become further rows under the rows of their division\n"
+    "ordinary load). The loaded organ stays in the memory as it is; the load box's\n"
+    "choices of the sample storage are for the added organ alone - each organ may\n"
+    "have its own bit depth, rate and packing. The added stops become further rows under the rows of their division\n"
     "(drag them where they belong), their folder trees join yours, their voicing\n"
     "comes along. When the program finds that an added folder is a further\n"
     "perspective of a stop you have, it joins that stop's row as the new\n"
@@ -402,10 +404,10 @@ static const char* const kManualText_part1 =
     "\n"
     "# 2. The main window\n"
     "\n"
-    "From top to bottom: the top bar of buttons, the combination row, the global\n"
-    "sound sliders with the polyphony display, and the workspace - one column per\n"
     ;
 static const char* const kManualText_part2 =
+    "From top to bottom: the top bar of buttons, the combination row, the global\n"
+    "sound sliders with the polyphony display, and the workspace - one column per\n"
     "division with its header and its stop grid. A button *Messages: N new* appears in\n"
     "the top bar when the program has something to say ([Messages](#91-messages)).\n"
     "\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "interval with the footage it gives - \"0 -> 8' (as the original)\", \"-12 ->\n"
     "16'\", \"+7 -> 5 1/3'\", \"+3 -> 6 2/3'\" (octaves bold). The button's footage\n"
     "follows it, and so do the stop's transmissions. A change reloads the stop's\n"
-    "samples at once. The program sets it by itself where it can: from a\n"
-    "Hauptwerk definition, or from the samples' pitch against the footage in the\n"
     ;
 static const char* const kManualText_part3 =
+    "samples at once. The program sets it by itself where it can: from a\n"
+    "Hauptwerk definition, or from the samples' pitch against the footage in the\n"
     "folder's name (\"quintaton 16\" whose files sound 8' on their numbers gets\n"
     "-12). A whole organ standing a semitone off is a tuning, not a transposition,\n"
     "and stays at 0. The same setting is the Stop List column \"Transp.\"; clearing\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "  right). Drag a stop name up or down to change it; *Apply* asks whether the\n"
     "  grid should follow.\n"
     "- **Division:** drag a row into another division's block, or choose it in\n"
-    "  the row's combo box. The stop moves with its folders.\n"
-    "- **Stop folders:** drag a name a little to the **right** and the row is\n"
     ;
 static const char* const kManualText_part4 =
+    "  the row's combo box. The stop moves with its folders.\n"
+    "- **Stop folders:** drag a name a little to the **right** and the row is\n"
     "  indented under the row above: it becomes that stop's child and sounds with\n"
     "  it - that is a stop folder (\"Cornet [III]\"). Drag it **left** to take it\n"
     "  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "so a chord spreads across the speakers like pipes across a windchest (a mono\n"
     "sample to one channel in turn, a stereo sample to a pair).\n"
     "\n"
-    "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
-    "in miniature: four green segments, three orange, red for three seconds\n"
     ;
 static const char* const kManualText_part5 =
+    "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
+    "in miniature: four green segments, three orange, red for three seconds\n"
     "after a clip of the row or of its card's sum) and the **fx** button -\n"
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "Leave it without a cable unless you need the mixdown - a set with several\n"
     "perspectives rarely does - and never send it to the outputs of one of the\n"
     "perspectives: they would only sound twice.\n"
-    "\n"
-    "## 5.5 Sound cards on Windows, Linux and macOS\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
+    "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "Every rank is completed to the full keyboard: pipes it does not have are\n"
     "played from neighbouring real pipes, transposed - the extra octave of an\n"
     "extension, missing top or bottom keys, gaps inside the compass. Only the\n"
-    "pipes a stop can be asked to play are filled (its division's compass and\n"
-    "every transmission's shifted compass). A filled pipe has everything a real\n"
     ;
 static const char* const kManualText_part7 =
+    "pipes a stop can be asked to play are filled (its division's compass and\n"
+    "every transmission's shifted compass). A filled pipe has everything a real\n"
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "kernel, the cost per voice, the device thread) under *Advanced analysis*,\n"
     "folded; it never forecasts other buffer sizes. One to two minutes; *Cancel*\n"
     "restores everything. Pressed while\n"
-    "the filled pipes are still being built, the window waits for them and the run\n"
-    "starts by itself. Save the\n"
     ;
 static const char* const kManualText_part8 =
+    "the filled pipes are still being built, the window waits for them and the run\n"
+    "starts by itself. Save the\n"
     "configuration afterwards; measure again after a change of routes, IRs,\n"
     "buffer or samples. The same button sits in the header of\n"
     "[Audio routing](#audio-routing). Details: [The polyphony measurement](#108-the-polyphony-measurement).\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled\n"
     "towards its rank's tuning: its detune shrinks within a second or two to a\n"
     "random share between 0 and this of what it was (default 20 %); a pipe starting\n"
-    "while a unison, octave, fifth, fourth or third of it sounds is pulled towards\n"
-    "the pure interval with those pipes instead (the thirds only a little), and they\n"
     ;
 static const char* const kManualText_part9 =
+    "while a unison, octave, fifth, fourth or third of it sounds is pulled towards\n"
+    "the pure interval with those pipes instead (the thirds only a little), and they\n"
     "move a little towards it. Celeste stops stay out of it. Travels with the organ.\n"
     "\n"
     "### Pipe coupling: pipes left untouched\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "The places the program looks for sample trees and impulse responses - every\n"
     "folder and archive you ever chose, counted after the button. *Add folder...*\n"
     "adds one.\n"
-    "\n"
-    "### Sample and IR locations: the file\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
+    "### Sample and IR locations: the file\n"
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "kicks half; keys struck together are one stroke; the swing never exceeds the\n"
     "depth - the bellows has its end positions.\n"
     "\n"
-    "### Wind: sag settling lag\n"
-    "\n"
     ;
 static const char* const kManualText_part11 =
+    "### Wind: sag settling lag\n"
+    "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
     "ms, default 255).\n"
     "\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
-    "its own rows (keys outside switched off in the voicing, no fills); the\n"
-    "per-pipe levels, split in three - the median of a division's perspective\n"
     ;
 static const char* const kManualText_part12 =
+    "its own rows (keys outside switched off in the voicing, no fills); the\n"
+    "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
     "remainder the per-key voicing; the tremulant rate (the middle of its range);\n"
     "the couplers the definition has that exist in our catalog, and only those\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
-    "route of the next block, so it takes render time but never piles up on the\n"
-    "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     ;
 static const char* const kManualText_part13 =
+    "route of the next block, so it takes render time but never piles up on the\n"
+    "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
     "lanes still at work would finish them sooner. The workers and the control\n"
     "thread (MIDI, attacks and releases, finished voices) run at audio priority:\n"
