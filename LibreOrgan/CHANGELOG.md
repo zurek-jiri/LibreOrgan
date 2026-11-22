@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.121] - 2026-11-22
+
+### Changed
+- **The polyphony measurement no longer ends on a single hiccup (#257).** The
+  first time the sound breaks at a level (a late driver callback, one callback
+  over its period), the level is played once more; only a second break counts.
+  One stray stall of the computer at 2 800 voices ended a run at 3 600 voices
+  that reaches 19 000 otherwise.
+
 ## [0.9.120] - 2026-11-22
 
 ### Changed

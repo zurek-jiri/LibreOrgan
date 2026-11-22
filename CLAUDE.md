@@ -4905,6 +4905,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   transmission's values through Load Voicing with a CHANGED value (the 12 transmissions of the run were set to what they
   had), the sliders option with a slider moved between store and recall other than the crafted master, Linux / macOS.
   THE REPLY TO #256 is a draft with the user (not posted).
+  0.9.120 / 0.9.121 (22 Nov 2026): 0.9.120 = the Editor's "Combination pistons" row moved into Console > Combinations (released,
+  CI green, the reply to #256 handed to the user as text). #257 (the user's Ultra 7 155H notebook, Caen packed + full releases,
+  256 frames, ten runs 3 600-19 300): FOUR variables mixed - the measurement limit 85 % then 100 %, all 16 cores then
+  Performance cores only, ReaRoute vs Komplete, and single LATE DRIVER CALLBACKS that ended a run wherever they fell; the
+  clean runs agree (all cores 16 500-19 300 at 82-88 % of the period, P cores 10 900 twice); the longest callback at the SAME
+  2 400 voices was 28-74 % between runs = a peak of 1.5-4 ms of the notebook (Balanced plan), not load. THE OLD RETRY
+  (`lateRetried`, "a late callback with every callback within its period") NEVER FIRED: a late driver callback comes WITH a
+  callback of 110-158 % (the device thread itself lost its processor). 0.9.121: the FIRST break of a level (late callback or
+  a callback over 100 %) is always repeated ("the sound broke (...) - this level once more, a second break counts"), and a
+  4 s hold spoilt by late callbacks alone with every callback within the limit is held once more; one extra chance per level
+  (reset in setStimulus). Verified only that the flow works (Rural: first break repeated, the second counted, the run ended) -
+  THE USER: a measurement on Rural proves nothing about figures ("nemá žádné píšťaly") - never present a Rural run as a
+  polyphony result; the figures are his to measure on Caen. PISTONS WITH VOICING vs SOUNDING PIPES (read from the code, not
+  measured): stop volume and volume per key reach a sounding voice within ONE audio block (renderVoice: gainStart = lastGain ->
+  gainEnd, a linear ramp of 5-10 ms: no step, but a thump on a held bass pipe for a big change); treble per key glides 0.5 dB
+  per block; a transmission's volume glides over routeGainLagMs; the master glides in the callback; attack gain / time / per-key
+  attack, random tuning and release crossfade touch only the NEXT notes; the perspective boxes are assigned directly
+  (rankEnabled) - a held pipe keeps its old perspectives until the key goes up, nothing is cut. PROPOSED to the user, not
+  coded: a per-voice glide of the stop x key gain over a set time (as routeGain has), and perspectives switched by a piston
+  crossfaded for held keys.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

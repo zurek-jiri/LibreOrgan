@@ -32649,12 +32649,18 @@ void MainComponent::startPolyphonyMeasurement()
         // A late driver callback while every callback stayed within its period
         // comes from outside as often as not (the system, another program): the
         // level gets one more chance; a second time it counts.
-        if (brokeUp && late > 0 && callbackShare <= state->shareLimit && worst <= state->shareLimit && !state->lateRetried && state->second >= 2)
+        // 0.9.121 (#257): the first break of a level is repeated whatever its figures. The rule above asked for
+        // "every callback within its period", but a late driver callback comes WITH a long callback (110-158 % in
+        // the reports: the device thread itself lost its processor), so it never applied - and a single hiccup of
+        // the computer at 2 800 voices ended runs at 3 600 that reach 19 000 otherwise. A real overload breaks the
+        // repeated level again within a second or two, and then it counts.
+        if (brokeUp && !state->lateRetried && state->second >= 2)
         {
             state->lateRetried = true;
             brokeUp = false;
             if (state->holding) { state->secondsHeld = 0; state->holdShare = 0.0f; state->holdWorstBlock = 0.0f; state->holdLate = 0; }
-            CrashHandler::note("Polyphony measurement: " + juce::String(late) + " late driver callback(s) with every callback within its period - this level once more");
+            CrashHandler::note("Polyphony measurement: the sound broke (" + juce::String(late) + " late driver callback(s), the longest callback "
+                + juce::String(juce::roundToInt(callbackShare * 100.0f)) + " % of the period) - this level once more, a second break counts");
         }
         // A failure (a breakup, or a hold judged unclean): the failing level is
         // remembered and the run narrows down between the clean and the failing
@@ -32771,6 +32777,16 @@ void MainComponent::startPolyphonyMeasurement()
             if (++state->secondsHeld >= 4)
             {
                 const bool clean = state->holdShare <= state->shareLimit && state->holdWorstBlock <= state->shareLimit && state->holdLate == 0;
+                // 0.9.121 (#257): a hold spoilt by late driver callbacks alone (every callback within the limit) is
+                // held once more, like a break (the one extra chance of the level).
+                if (!clean && state->holdLate > 0 && state->holdShare <= state->shareLimit && state->holdWorstBlock <= state->shareLimit && !state->lateRetried)
+                {
+                    state->lateRetried = true;
+                    CrashHandler::note("Polyphony measurement: " + juce::String(state->holdLate) + " late driver callback(s) in the four seconds, every callback within the limit - this level once more");
+                    state->secondsHeld = 0; state->holdShare = 0.0f; state->holdWorstBlock = 0.0f; state->holdLate = 0;
+                    juce::Timer::callAfterDelay(1000, [tick] { (*tick)(); });
+                    return;
+                }
                 state->results.push_back({ state->targetVoices, state->currentKeys, state->currentStrikes, state->holdPeak, state->holdShare, state->holdWorstBlock, state->holdLate, clean });
                 CrashHandler::note("Polyphony measurement: target " + juce::String(state->targetVoices) + (clean ? " clean" : " FAILED") + " at " + describe()
                     + " (peak " + juce::String(state->holdPeak) + " voices, longest driver callback " + juce::String(juce::roundToInt(state->holdShare * 100.0f))
