@@ -15,18 +15,34 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Two jobs on purpose: with the upload and the deployment in ONE job the deployment
+# asked for the artifact before GitHub listed it ("No artifacts named github-pages
+# were found for this workflow run") - 4 of 14 runs failed that way. The deployment
+# is also tried once more after 45 s when it fails.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.again.outputs.page_url }}
+    steps:
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+      - id: again
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4

@@ -5043,7 +5043,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   while a tree loads is no paging; the page file's "in use" is the figure. THE USER CLICKS IN MY TEST WINDOWS (he took the
   offer box of the first run by hand): say that a window is a test and what a click does to it. NOT measured: the polyphony
   of a partly packed organ against a fully packed one (my estimate "a third more" is a guess), Linux/macOS (CI compiles).
+  WEBSITE WORKFLOW (22 Nov 2026, the user: "proč tam furt padá stavění webu ... najdi a oprav"): pages.yml had the upload
+  (upload-pages-artifact) and deploy-pages in ONE job - the deployment asked the API for the artifact before GitHub listed it:
+  "No artifacts named "github-pages" were found for this workflow run" / "Fetching artifact metadata failed" in 4 of 14 runs
+  (read without a token: `actions/workflows/pages.yml/runs`, `actions/runs/<id>/jobs`, `check-runs/<job id>/annotations`).
+  Now two jobs (build -> deploy with `needs`) and the deployment tried once more after 45 s (`continue-on-error` on the first
+  deploy-pages step, the second `if: steps.deployment.outcome == 'failure'`). A failed website run leaves the SITE STALE (the
+  version shown is the last deployed one): after a failure look at the page's version.
 ## Pending for the next session (delete when done)
+- TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
+  (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
+  "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,
+  nothing loads by itself afterwards (the 0.9.44 rule: a Cancel ends everything). An index walk of a big set on the HDD
+  takes minutes (Bellevue 84 s, Ashton longer).
+- TO-DO, left open by 0.9.124 (22 Nov 2026): the user tests "a folder added to a loaded organ with packing Automatic"
+  himself (my test dropped the package 001318, which holds a stale Caen configuration: the 0.9.18 rule loaded it as a NEW
+  organ and the hook skipped the box); the load box with its third packing item was not pictured; the polyphony of a partly
+  packed organ against a fully packed one is not measured.
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto
   division I, then AdlingtonHallVol0.CompPkg.Hauptwerk.rar onto division II with "Load the folders" (as if without
