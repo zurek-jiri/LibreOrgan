@@ -18,8 +18,6 @@ juce::var Voicer::transmissionsToVar(const Stop* stop)
         obj->setProperty("db", t.db);
         obj->setProperty("enabled", t.enabled);
         if (t.alias.isNotEmpty()) obj->setProperty("alias", t.alias);
-        if (t.volumeKeysExpanded) obj->setProperty("volumeKeysExpanded", true);
-        if (t.toneKeysExpanded) obj->setProperty("toneKeysExpanded", true);
         if (t.groupMaster.isNotEmpty()) obj->setProperty("groupMaster", t.groupMaster);
         obj->setProperty("formantFollowPct", juce::roundToInt(t.formantFollow * 100.0f));
         if (t.keyDisabled.any())
@@ -66,8 +64,6 @@ std::vector<Stop::Transmission> Voicer::transmissionsFromVar(const juce::var& st
             t.db = juce::jlimit(-10.0f, 10.0f, (float)(double)item.getProperty("db", 0.0));
             t.enabled = (bool)item.getProperty("enabled", false);
             t.alias = item.getProperty("alias", "").toString();
-            t.volumeKeysExpanded = (bool)item.getProperty("volumeKeysExpanded", false);
-            t.toneKeysExpanded = (bool)item.getProperty("toneKeysExpanded", false);
             t.groupMaster = item.getProperty("groupMaster", "").toString();
             t.formantFollow = juce::jlimit(0.0f, 1.0f, (float)(double)item.getProperty("formantFollowPct", 100.0 * SamplerEngine::defaultFormantFollow) / 100.0f);
             if (auto* off = item.getProperty("disabledKeys", juce::var()).getArray())
@@ -4444,6 +4440,8 @@ juce::var Voicer::createState() const
         stopObj->setProperty("perspective", stop->perspective);
         stopObj->setProperty("alias", stop->alias);
         if (!stop->showRankCount) stopObj->setProperty("showRankCount", false);   // a stop folder's "[II]" switched off (0.8.146)
+        if (stop->oneShotManual >= 0) stopObj->setProperty("oneShot", stop->oneShotManual == 1);   // 0.9.118: the row's One-shot switch (it was in the Save Voicing file alone)
+        if (stop->releaseCrossfade != 1.0f) stopObj->setProperty("releaseCrossfade", (double)stop->releaseCrossfade);   // 0.9.118: the row's Release xfade
         stopObj->setProperty(juce::Identifier("globalDb"), stop->db);
         stopObj->setProperty(juce::Identifier("gainDb"), stop->gainDb);
         stopObj->setProperty(juce::Identifier("attackMs"), stop->attackMs);
@@ -4461,9 +4459,6 @@ juce::var Voicer::createState() const
         stopObj->setProperty(juce::Identifier("primaryManual"), stop->primaryManual);
         stopObj->setProperty("transmissions", transmissionsToVar(stop));
         if (stop->nextTransmissionId > 0) stopObj->setProperty("nextTransmissionId", stop->nextTransmissionId);   // 0.9.7: ids are never reused
-        stopObj->setProperty(juce::Identifier("voicingExpanded"), stop->voicingExpanded);
-        stopObj->setProperty("volumeKeysExpanded", stop->volumeKeysExpanded);
-        stopObj->setProperty("toneKeysExpanded", stop->toneKeysExpanded);
         juce::Array<juce::var> ranks;
         auto addRankState = [&ranks](const Stop* rank)
         {
@@ -4493,7 +4488,6 @@ juce::var Voicer::createState() const
             stopObj->setProperty("perNoteAttackMs", juce::var(attackObj.release()));
         }
         if (!stop->attackRandomize) stopObj->setProperty("attackRandomize", false);
-        if (stop->attackKeysExpanded) stopObj->setProperty("attackKeysExpanded", true);
         {
             juce::Array<juce::var> off;
             for (int pipe = 0; pipe < 128; ++pipe) if (stop->pipeDisabled.test((size_t)pipe)) off.add(pipe);
@@ -4815,6 +4809,11 @@ void Voicer::loadState(const juce::File& file)
                 stop->attackDelayMs = stopObj->hasProperty("attackDelayMs") ? juce::jlimit(0.0f, 500.0f, (float)(double)stopObj->getProperty("attackDelayMs")) : 0.0f;   // 0.9.77
                 stop->alias = stopObj->getProperty("alias").toString();
                 stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
+                {   // 0.9.118: the row's One-shot switch and Release xfade (absent = by the patterns / x1)
+                    const int oneShot = stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1;
+                    if (oneShot != stop->oneShotManual) engine.setStopOneShot(stop, oneShot);
+                    engine.setStopReleaseCrossfade(stop, stopObj->hasProperty("releaseCrossfade") ? (float)(double)stopObj->getProperty("releaseCrossfade") : 1.0f);
+                }
                 engine.setStopRandomPitchError(stop, randomPitchErrorCents, true);
                 // The formant share of the filled pipes: set before any copy is built (no rebuild here).
                 {
@@ -4837,11 +4836,11 @@ void Voicer::loadState(const juce::File& file)
                 }
                 stop->nextTransmissionId = juce::jmax(stop->nextTransmissionId, (int)stopObj->getProperty("nextTransmissionId"));   // 0.9.7
                 engine.replaceTransmissions(stop, transmissionsFromVar(stopVar, stop->primaryManual));
-                // Loading a folder/state always starts with a compact stop list; the
-                // per-key folds are remembered (folded when the state does not say).
+                // Loading a folder/state always starts with a compact stop list, the
+                // per-key rows folded too (0.9.118: what is unfolded is not saved).
                 stop->voicingExpanded = false;
-                stop->volumeKeysExpanded = (bool)stopObj->getProperty("volumeKeysExpanded");
-                stop->toneKeysExpanded = (bool)stopObj->getProperty("toneKeysExpanded");
+                stop->volumeKeysExpanded = false;
+                stop->toneKeysExpanded = false;
                 const auto ranks = stopObj->hasProperty("ranks")
                     ? stopObj->getProperty("ranks") : juce::var();
                 if (ranks.isArray())
@@ -4883,7 +4882,7 @@ void Voicer::loadState(const juce::File& file)
                     else if (stop->attackDelayMs > 0.0f)
                         for (int note = 0; note < 128; ++note) stop->setNoteAttackMs(note, stop->attackDelayMs);
                     stop->attackRandomize = !stopObj->hasProperty("attackRandomize") || (bool)stopObj->getProperty("attackRandomize");
-                    stop->attackKeysExpanded = (bool)stopObj->getProperty("attackKeysExpanded");
+                    stop->attackKeysExpanded = false;
                 }
                 // Pipes switched off in the voicing.
                 {

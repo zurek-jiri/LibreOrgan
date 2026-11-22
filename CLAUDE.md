@@ -4832,6 +4832,42 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Regression check before the tag: kerneltest OK; the full self-test with packed float, new against ORGAN_UNPACK_OLD=1 -
   no WRONG line, polyphony equal, peak LEVELS differ between two runs of the SAME build too (random tuning, wind): the
   self-test's levels are no bit-exact baseline, the kernel test's packed-against-raw render is. The user: do not touch macOS.
+  0.9.118 (22 Nov 2026, Windows; #256 read first: pasztor63's 29 900 at ReaRoute 256 is ABOVE our Ryzen's 22 900 like for
+  like - unpacking still 1299 of 3119 ns, sinc from 2420 Hz, the bench from RAM 1.67 ns = ours, broke on a lane-wait peak;
+  no fault found, nothing coded for it. THEN THE USER'S RULES after my inventory of what the files hold): (1) A COMBINATION
+  IS ON / OFF AND NOTHING ELSE ("NIC víc!!!!"): stops, transmissions, extensions, couplers, tremulants. `onOffSlot(memory)`
+  (anonymous namespace after storedTransmissionIndex: stops {name, perspective, primaryManual, enabled, transmissions
+  [{id, manual, enabled}] - EVERY transmission in order, an entry without an id is found by its place}, couplers {id,
+  enabled}, tremulants {manual, enabled}) is applied in storeCombination and in combinationsFromVar (an older file's
+  master volume and voicing figures are DROPPED at reading - his order); combinationsToVar writes no "masterDb";
+  `applyRegistrationState(memory, includeMasterVolume, onOffOnly)` - restoreCombination passes (false, true): no master,
+  no setDb/gainDb/attackMs/attackFadeoutMs/attackDelayMs/random tuning, no adoption of a transmission list. Before, a
+  piston put a stop's volume, attack gain/time and random tuning back to the moment it was stored (a revoicing was undone
+  by the next piston) and set the master. captureCurrentState itself is unchanged (the configuration's registration with
+  registrationMasterDb, the crescendo's restore and steps use it). (2) THE VOICING FILE = EVERYTHING AN UNFOLDED VOICING
+  ROW SETS (his rule: "Co jiného by uživatel očekával od save voicing"), never the grid: saveStopSettings adds
+  "transposition" (stop->sampleOffset; loadStopSettings collects the differing ones and calls setStopSampleOffset after
+  its loop - each loads the stop's samples again), "formantFollowPct" (setStopFormantFollow when it differs),
+  "undulationBeats" + "undulationManual" (only a value set by hand; absent = nothing changes), "disabledVelocityLayers"
+  (always written, 128 = the plain files). A file from before has none of these keys and changes none of them.
+  Load Voicing still REPLACES every stop's transmission list by the file's (unchanged, told the user). (3) THE HOLE:
+  "oneShot" and "releaseCrossfade" were written and read by Save/Load Voicing ALONE since 0.8.158 / 0.9.62 - never by
+  Voicer::createState/loadState, so the configuration lost them at the next load (the Hauptwerk import's Glocken x8.3
+  too); the 0.8.158 and 0.9.62 notes above saying "voicing state key" were WRONG. Now in createState (when set) and
+  loadState (absent = by the patterns / x1; setStopOneShot only on a change). RULE: a new voicing-row value goes into
+  FOUR places - Voicer::createState, Voicer::loadState, saveStopSettings, loadStopSettings - and is proved by a load ->
+  save round trip, not by reading the code. (4) NOTHING UNFOLDED IS SAVED (his mid-work order: "Budou defaultně vždy
+  sbalené"): voicingExpanded / volumeKeysExpanded / toneKeysExpanded / attackKeysExpanded are neither written nor read
+  (stops and transmissions; loadState sets them false) - a division reload folds the per-key rows too.
+  Test %TEMP%\test_0118.ps1 (+ test_0118_make.py / test_0118_check.py; Rural copy with an OLD-format piston 1: master
+  -40, stop volume -9, random 30, and oneShot / releaseCrossfade 3 / unfolded flags in the voicing; ORGAN_TEST_CLICK
+  "1|Set|2|Set", ORGAN_TEST_QUIT): master stayed -27.5, the stop's voicing untouched, the piston's stop and tremulant
+  switched on, memories.json holds on/off keys alone for both pistons, voicingSettings keeps oneShot true and
+  releaseCrossfade 3 with no "Expanded" key. THE COMBINATIONS LIVE IN memories.json (settings folder) and in the
+  configuration's "combinationMemory"; the master of the session is settings.json "masterVolumeDb". NOT run: Save
+  Voicing / Load Voicing themselves (a native file chooser, no hook) and the transposition's reload through them.
+  TEST HYGIENE: the program writes a daily `settings-<date>.json` at start - a test run leaves the TEST's settings in
+  it (the script deletes the ones it made) - and changes lastdir.json (back it up too; the first run lost its old value).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

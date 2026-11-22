@@ -13406,6 +13406,56 @@ namespace
         return stop->transmissionIndex(t.manual, t.ordinal);
     }
 
+    // 0.9.118 (the user's rule): a combination holds ON / OFF and nothing else - of the stops, their
+    // transmissions and extensions, the couplers and the tremulants. No master volume, no voicing figure.
+    // What an older file carries beyond that is dropped here, when it is read.
+    MemorySlot onOffSlot(const MemorySlot& memory)
+    {
+        MemorySlot result;
+        for (const auto& stopObj : memory.stopData)
+        {
+            if (!stopObj.isObject()) continue;
+            juce::DynamicObject::Ptr st = new juce::DynamicObject();
+            st->setProperty("name", stopObj.getProperty("name", ""));
+            st->setProperty("perspective", stopObj.getProperty("perspective", ""));
+            st->setProperty("primaryManual", stopObj.getProperty("primaryManual", 0));
+            st->setProperty("enabled", (bool)stopObj.getProperty("enabled", true));
+            if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
+            {
+                juce::Array<juce::var> transmissions;   // every one, in its order: an entry without an id is found by its place
+                for (const auto& item : *list)
+                {
+                    juce::DynamicObject::Ptr t = new juce::DynamicObject();
+                    if ((int)item.getProperty("id", 0) > 0) t->setProperty("id", (int)item.getProperty("id", 0));
+                    t->setProperty("manual", (int)item.getProperty("manual", 0));
+                    t->setProperty("enabled", (bool)item.getProperty("enabled", false));
+                    transmissions.add(juce::var(t.get()));
+                }
+                st->setProperty("transmissions", transmissions);
+            }
+            else if (stopObj.hasProperty("transmissionEnabledMask"))
+                st->setProperty("transmissionEnabledMask", stopObj.getProperty("transmissionEnabledMask", 0));
+            result.stopData.add(juce::var(st.get()));
+        }
+        for (const auto& state : memory.couplerData)
+        {
+            if (!state.isObject()) continue;
+            juce::DynamicObject::Ptr coupler = new juce::DynamicObject();
+            coupler->setProperty("id", state.getProperty("id", ""));
+            coupler->setProperty("enabled", (bool)state.getProperty("enabled", false));
+            result.couplerData.add(juce::var(coupler.get()));
+        }
+        for (const auto& state : memory.tremulantData)
+        {
+            if (!state.isObject()) continue;
+            juce::DynamicObject::Ptr tremulant = new juce::DynamicObject();
+            tremulant->setProperty("manual", (int)state.getProperty("manual", -1));
+            tremulant->setProperty("enabled", (bool)state.getProperty("enabled", false));
+            result.tremulantData.add(juce::var(tremulant.get()));
+        }
+        return result;
+    }
+
     // 0.9.90: the crescendo steps in the file. A step is read through registrationOnSet alone (name, division,
     // perspective, on/off, the transmissions' id / division / on-off, the couplers' id / on-off), so that is
     // what is written - one string per stop and per coupler instead of an object with every voicing figure:
@@ -14638,11 +14688,25 @@ void MainComponent::saveStopSettings()
                     stopObj->setProperty("perNoteAttackMs", juce::var(attackObj.get()));
                 }
                 if (!stop->attackRandomize) stopObj->setProperty("attackRandomize", false);
-                if (stop->attackKeysExpanded) stopObj->setProperty("attackKeysExpanded", true);
                 {
                     juce::Array<juce::var> off;
                     for (int pipe = 0; pipe < 128; ++pipe) if (stop->pipeDisabled.test((size_t)pipe)) off.add(pipe);
                     if (!off.isEmpty()) stopObj->setProperty("disabledPipes", off);
+                }
+                // 0.9.118: everything else of the voicing row - the transposition, the formant share of the
+                // filled pipes, an undulation set by hand, the velocity layers switched off (128 = the plain files).
+                if (!stop->container) stopObj->setProperty("transposition", stop->sampleOffset);
+                stopObj->setProperty("formantFollowPct", juce::roundToInt(stop->formantFollow * 100.0f));
+                if (stop->undulationManual)
+                {
+                    stopObj->setProperty("undulationBeats", stop->undulationBeats);
+                    stopObj->setProperty("undulationManual", true);
+                }
+                {
+                    juce::Array<juce::var> off;
+                    for (int v = 1; v < 128; ++v) if (stop->velocityLayerDisabled.test((size_t)v)) off.add(v);
+                    if (stop->plainLayerDisabled()) off.add(128);
+                    stopObj->setProperty("disabledVelocityLayers", off);
                 }
                 stopsArray.add(juce::var(stopObj.get()));
             }
@@ -14688,6 +14752,7 @@ void MainComponent::loadStopSettings()
             auto stopsArray = parsed.getProperty(juce::Identifier("stops"), juce::var());
             if (!stopsArray.isArray()) return;
 
+            std::vector<std::pair<Stop*, int>> transpositions;   // 0.9.118: applied after the loop (each loads its stop's samples again)
             for (const auto& stopVar : *stopsArray.getArray())
             {
                 if (!stopVar.isObject()) continue;
@@ -14803,8 +14868,33 @@ void MainComponent::loadStopSettings()
                             else if (stop->attackDelayMs > 0.0f)
                                 for (int note = 0; note < 128; ++note) stop->setNoteAttackMs(note, stop->attackDelayMs);
                             stop->attackRandomize = !stopObj->hasProperty("attackRandomize") || (bool)stopObj->getProperty("attackRandomize");
-                            stop->attackKeysExpanded = (bool)stopObj->getProperty("attackKeysExpanded");
                         }
+                        // 0.9.118: the rest of the voicing row; a file from before it has none of these and changes none.
+                        if (stopObj->hasProperty("formantFollowPct"))
+                        {
+                            const float share = juce::jlimit(0.0f, 1.0f, (float)(double)stopObj->getProperty("formantFollowPct") / 100.0f);
+                            if (std::abs(share - stop->formantFollow) > 0.004f) engine.setStopFormantFollow(stop, share);
+                        }
+                        if (stopObj->hasProperty("undulationBeats") && (bool)stopObj->getProperty("undulationManual"))
+                        {
+                            stop->undulationManual = true;
+                            engine.setStopUndulation(stop, (float)(double)stopObj->getProperty("undulationBeats"));
+                        }
+                        if (auto* off = stopObj->getProperty("disabledVelocityLayers").getArray())
+                        {
+                            std::bitset<128> wanted;   // bit 0 = the plain files (saved as 128)
+                            for (const auto& v : *off)
+                            {
+                                if ((int)v == 128) wanted.set(Stop::plainLayerBit);
+                                else if ((int)v >= 1 && (int)v < 128) wanted.set((size_t)(int)v);
+                            }
+                            for (int v = 0; v < 128; ++v)
+                                if (wanted.test((size_t)v) != stop->velocityLayerDisabled.test((size_t)v))
+                                    engine.setVelocityLayerEnabled(stop, v == 0 ? 128 : v, !wanted.test((size_t)v));
+                        }
+                        if (stopObj->hasProperty("transposition") && !stop->container
+                            && (int)stopObj->getProperty("transposition") != stop->sampleOffset)
+                            transpositions.push_back({ stop, (int)stopObj->getProperty("transposition") });
                         {
                             std::bitset<128> wanted;
                             if (auto* off = stopObj->getProperty("disabledPipes").getArray())
@@ -14819,6 +14909,7 @@ void MainComponent::loadStopSettings()
                 }
             }
 
+            for (const auto& [stop, offset] : transpositions) setStopSampleOffset(stop, offset);
             voicer->updateStopStates();
             repaint();
             DBG("Stop settings loaded from: " << file.getFullPathName());
@@ -14859,7 +14950,6 @@ juce::var MainComponent::combinationsToVar() const
         juce::DynamicObject::Ptr scene = new juce::DynamicObject();
         scene->setProperty("bank", bank);
         scene->setProperty("piston", piston);
-        scene->setProperty("masterDb", memory.masterDb);
         scene->setProperty("stops", memory.stopData);
         scene->setProperty("couplers", memory.couplerData);
         scene->setProperty("tremulants", memory.tremulantData);
@@ -14907,7 +14997,6 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
         if (bank < 0 || bank > maxBank || piston < 0 || piston >= maxPistons) continue;
 
         MemorySlot memory;
-        memory.masterDb = scene.getProperty("masterDb", 0.0);
 
         auto stopsArray = scene.getProperty("stops", juce::var());
         if (stopsArray.isArray())
@@ -14925,7 +15014,7 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
             for (const auto& item : *tremulantsArray.getArray())
                 if (item.isObject()) memory.tremulantData.add(item);
         if (!memory.stopData.isEmpty() || !memory.couplerData.isEmpty())
-            combinations[combinationKey(bank, piston)] = std::move(memory);
+            combinations[combinationKey(bank, piston)] = onOffSlot(memory);   // 0.9.118: an older file's master volume and voicing figures are left out
     }
     return true;
 }
@@ -29283,7 +29372,7 @@ MemorySlot MainComponent::captureCurrentState() const
 void MainComponent::storeCombination(int piston)
 {
     if (piston < 0 || piston >= pistonCount) return;
-    combinations[combinationKey(currentBank, piston)] = captureCurrentState();
+    combinations[combinationKey(currentBank, piston)] = onOffSlot(captureCurrentState());   // 0.9.118: ON / OFF alone
     activePiston = piston;
 
     saveMemories();
@@ -29300,13 +29389,13 @@ void MainComponent::restoreCombination(int piston)
         updateCombinationLights();
         return;
     }
-    applyRegistrationState(found->second);
+    applyRegistrationState(found->second, false, true);   // 0.9.118: a piston switches on and off - no master volume, no voicing
     activePiston = piston;
     if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
     updateCombinationLights();
 }
 
-void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includeMasterVolume)
+void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includeMasterVolume, bool onOffOnly)
 {
     if (includeMasterVolume) masterVolumeSlider.setValue(memory.masterDb, juce::sendNotification);
 
@@ -29326,13 +29415,16 @@ void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includ
         if (target != nullptr)
         {
             const bool shouldBeEnabled = stopObj.getProperty("enabled", true);
-            target->setDb(static_cast<float>(stopObj.getProperty("db", 0.0)));
-            target->gainDb = static_cast<float>(stopObj.getProperty("gainDb", 0.0));
-            target->attackMs = static_cast<float>(stopObj.getProperty("attackMs", 0.0));
-            target->attackFadeoutMs = static_cast<float>(stopObj.getProperty("attackFadeoutMs", 0.0));
-            target->attackDelayMs = juce::jlimit(0.0f, 500.0f, static_cast<float>(stopObj.getProperty("attackDelayMs", 0.0)));   // 0.9.77
-            engine.setStopRandomPitchError(target, (float)(double)stopObj.getProperty(
-                "randomPitchErrorCents", 4.0), true);
+            if (!onOffOnly)   // 0.9.118: a combination carries none of these
+            {
+                target->setDb(static_cast<float>(stopObj.getProperty("db", 0.0)));
+                target->gainDb = static_cast<float>(stopObj.getProperty("gainDb", 0.0));
+                target->attackMs = static_cast<float>(stopObj.getProperty("attackMs", 0.0));
+                target->attackFadeoutMs = static_cast<float>(stopObj.getProperty("attackFadeoutMs", 0.0));
+                target->attackDelayMs = juce::jlimit(0.0f, 500.0f, static_cast<float>(stopObj.getProperty("attackDelayMs", 0.0)));   // 0.9.77
+                engine.setStopRandomPitchError(target, (float)(double)stopObj.getProperty(
+                    "randomPitchErrorCents", 4.0), true);
+            }
             // A combination, a crescendo step or a configuration's registration
             // carries a snapshot of the stop's transmissions, but the list itself
             // belongs to the organ (Stop List, voicing state): a registration sets
@@ -29340,8 +29432,8 @@ void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includ
             // saved before the user grouped transmissions under a stop folder used
             // to wipe them on recall. The snapshot is adopted only when the stop has
             // no transmissions at all (older files without a voicing state).
-            if (stopObj.hasProperty("transmissions") || stopObj.hasProperty("transmissionMask")
-                || stopObj.hasProperty("manualMask"))
+            if (!onOffOnly && (stopObj.hasProperty("transmissions") || stopObj.hasProperty("transmissionMask")
+                || stopObj.hasProperty("manualMask")))
             {
                 auto wanted = Voicer::transmissionsFromVar(stopObj, target->primaryManual);
                 if (target->transmissions.empty() && !wanted.empty())

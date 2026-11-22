@@ -421,7 +421,9 @@ anywhere else to finish; *Top bar: back to the built-in order* undoes it.
   the folder name lists ([Folder name patterns](#85-folder-name-patterns-one-per-line)).
 - **Stop-Merging** renders the engaged stops into one new stop
   ([Stop-Merging](#36-stop-merging)).
-- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a file.
+- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a
+  file: everything an unfolded voicing row sets, for every stop, transmission
+  and extension.
 - **Load Configuration / Save Configuration** - the instrument as a file; a
   right-click on Load offers the merge.
 - **Shut down PC** (hidden by default) saves everything, quits and shuts the
@@ -447,8 +449,9 @@ combination files (their own folder, `Documents\LibreOrgan\LibreCombinations`;
 the file last used with an organ is read again when the organ loads), and
 the crescendo.
 
-- Click a piston to recall its registration (stops, transmissions, couplers,
-  tremulants, Unison Off). With *Set* on, a click stores the current
+- Click a piston to recall its registration: what is on and what is off
+  (stops, transmissions, extensions, couplers, tremulants, Unison Off) and
+  nothing else - no master volume, no voicing. With *Set* on, a click stores the current
   registration in the piston, and *<<* / *>>* store it in the previous / next
   piston and go there.
 - A piston that holds a registration is a darker grey (a taught crescendo

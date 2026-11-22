@@ -1740,7 +1740,7 @@ private:
     void pressPiston(int piston);
     void storeCombination(int piston);
     void restoreCombination(int piston);
-    void applyRegistrationState(const MemorySlot& memory, bool includeMasterVolume = true);
+    void applyRegistrationState(const MemorySlot& memory, bool includeMasterVolume = true, bool onOffOnly = false);
     void stepCombination(int direction);
     void changeBank(int direction, bool persist = true);
     void bankButtonStateChanged(int direction, bool isDown);

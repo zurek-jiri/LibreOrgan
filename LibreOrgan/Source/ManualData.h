@@ -429,7 +429,9 @@ static const char* const kManualText_part2 =
     "  the folder name lists ([Folder name patterns](#85-folder-name-patterns-one-per-line)).\n"
     "- **Stop-Merging** renders the engaged stops into one new stop\n"
     "  ([Stop-Merging](#36-stop-merging)).\n"
-    "- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a file.\n"
+    "- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a\n"
+    "  file: everything an unfolded voicing row sets, for every stop, transmission\n"
+    "  and extension.\n"
     "- **Load Configuration / Save Configuration** - the instrument as a file; a\n"
     "  right-click on Load offers the merge.\n"
     "- **Shut down PC** (hidden by default) saves everything, quits and shuts the\n"
@@ -455,8 +457,9 @@ static const char* const kManualText_part2 =
     "the file last used with an organ is read again when the organ loads), and\n"
     "the crescendo.\n"
     "\n"
-    "- Click a piston to recall its registration (stops, transmissions, couplers,\n"
-    "  tremulants, Unison Off). With *Set* on, a click stores the current\n"
+    "- Click a piston to recall its registration: what is on and what is off\n"
+    "  (stops, transmissions, extensions, couplers, tremulants, Unison Off) and\n"
+    "  nothing else - no master volume, no voicing. With *Set* on, a click stores the current\n"
     "  registration in the piston, and *<<* / *>>* store it in the previous / next\n"
     "  piston and go there.\n"
     "- A piston that holds a registration is a darker grey (a taught crescendo\n"
@@ -603,11 +606,11 @@ static const char* const kManualText_part2 =
     "-12). A whole organ standing a semitone off is a tuning, not a transposition,\n"
     "and stays at 0. The same setting is the Stop List column \"Transp.\"; clearing\n"
     "that cell lets the program find it again.\n"
+    ;
+static const char* const kManualText_part3 =
     "\n"
     "### Alias\n"
     "\n"
-    ;
-static const char* const kManualText_part3 =
     "The caption of the button. *Automatic* shows the folder name; type any text\n"
     "to show that instead (an alias without a footage gets the stop's footage\n"
     "appended; a footage typed into the alias is kept as typed, on a transmission\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "  it - that is a stop folder (\"Cornet [III]\"). Drag it **left** to take it\n"
     "  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
     "- **Folder cells:** click a cell to choose one of the free folders of all\n"
+    ;
+static const char* const kManualText_part4 =
     "  loaded trees (a folder serves one cell only); the x beside a cell frees its\n"
     "  folder; a cell dragged onto another takes or swaps. The path shows in a\n"
     "  tip; an orange cell is a folder not on this computer.\n"
-    ;
-static const char* const kManualText_part4 =
     "- **Transmissions:** the cell shows where the stop's transmissions go; click\n"
     "  it to add one into any division or to remove one. They act at once, no\n"
     "  Apply needed. *Show Trsm.* lists every transmission as a grey row of the\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
     "on it resets them to the default. The cables take the primary colours first\n"
+    ;
+static const char* const kManualText_part5 =
     "(yellow, blue, red, then green, magenta, cyan, orange, white) in the order of\n"
     "the perspectives; the auxiliary takes the next one. The header of\n"
     "the dialog carries the **Master volume** (the console's slider itself - one\n"
-    ;
-static const char* const kManualText_part5 =
     "value, two places), the console's **audio meter** with its CLIP dot, and\n"
     "**Measure Polyphony**, the [polyphony measurement](#measure-the-maximum-polyphony).\n"
     "Three or more routes dropped onto an Aggregated WASAPI card at once go one by\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "### Audio on Windows\n"
     "\n"
     "- **ASIO**: the professional driver of an interface - the lowest latency, the\n"
-    ;
-static const char* const kManualText_part6 =
     "  most polyphony. One driver is opened once and shared by every route on it;\n"
     "  a second interface with its own driver is opened beside it. Its buffer size\n"
     "  is set in the driver's control panel. Use it for every route when you can.\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
     "the rank keeps its chromatic variety; in a sparse rank the neighbouring\n"
+    ;
+static const char* const kManualText_part7 =
     "filled pipes take turns between the real pipes within reach. A pipe switched\n"
     "off in the voicing row is never filled.\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "Percussion and bell-like stops (Chimes, Glockenspiel, Celesta, Harp) have\n"
     "inharmonic partials: a pipe of theirs transposed sounds plainly wrong, and\n"
     "so does the stop once retuned. Leave such a stop at transposition 0, keep its\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "([The discontinuity detector](#1010-the-discontinuity-detector)).\n"
     "## 8.2 Global sound\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "Every slider has a checkbox that shows it on the main panel too; all are\n"
     "MIDI-learnable there.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Master volume\n"
     "\n"
     "The whole organ, -60 to +12 dB (default -18). Lower it when a full\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "\n"
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
     "within this of where the starting pipe would otherwise settle (default\n"
+    ;
+static const char* const kManualText_part9 =
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
     "\n"
     "### Attack cut fade-in\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)\n"
     "value: the sample starts that far in and rises over this time (6 to 150 ms,\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A\n"
     "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Ignored folders (folder contains)\n"
     "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
-    ;
-static const char* const kManualText_part10 =
     "\"output\", \"Traktur\", \"mustr\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
+    ;
+static const char* const kManualText_part11 =
     "you with a box: the texts are collected quietly under **Messages** in the\n"
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
-    ;
-static const char* const kManualText_part11 =
     "warnings and the polyphony report still come as boxes.\n"
     "\n"
     "## 9.2 The activity log\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "retouch of a few headers does not refuse a real perspective. A folder with a\n"
     "degenerate smpl (no chunk, few distinct values, every fraction 0) is compared\n"
     "by its measured pitch instead (the four lowest files, within 2 cents). The\n"
+    ;
+static const char* const kManualText_part12 =
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
     "perspective prefix, and the new head on three folders at least. The log\n"
-    ;
-static const char* const kManualText_part12 =
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
     "A head is a perspective only when the same stems exist under another head\n"

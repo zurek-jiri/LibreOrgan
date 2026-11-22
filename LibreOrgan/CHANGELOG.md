@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.118] - 2026-11-22
+
+### Changed
+- **A combination is ON / OFF and nothing else**: the stops, their
+  transmissions and extensions, the couplers and the tremulants. A piston no
+  longer stores or sets the master volume, and no longer puts a stop's volume,
+  attack gain, attack time or random tuning back to what they were when the
+  piston was stored. What an older combinations file carries beyond ON / OFF
+  is ignored.
+- **Save Voicing / Load Voicing hold the whole voicing row**: added the
+  transposition, the formant share of the filled pipes, an undulation set by
+  hand and the velocity layers switched off.
+- What is unfolded (a voicing row, its per-key rows) is no longer saved
+  anywhere: everything comes up folded.
+
+### Fixed
+- The voicing row's **One-shot** switch and **Release xfade** were kept in a
+  Save Voicing file alone and lost with the next load of the configuration
+  (the release crossfades a Hauptwerk import had set too). They are saved
+  with the configuration now.
+
 ## [0.9.117] - 2026-11-21
 
 ### Changed
