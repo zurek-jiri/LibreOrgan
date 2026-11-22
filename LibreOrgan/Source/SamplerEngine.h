@@ -924,6 +924,7 @@ public:
     // Non-empty after a load ran out of memory (the division is then incomplete).
     juce::String takeLastLoadError();
     bool lastLoadWasMemoryLimited() const noexcept { return lastLoadMemoryLimited.load(std::memory_order_relaxed); }
+    bool lastLoadWasCancelled() const noexcept { return loadCancelled.load(std::memory_order_relaxed); }   // the user's Cancel in the loader (until the next load starts)
 
     // Records the stereo mix of every route's output (even output channels to
     // the left, odd to the right) into a 24-bit WAV. Message thread only.

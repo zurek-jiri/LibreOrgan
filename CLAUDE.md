@@ -5104,6 +5104,14 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   through the box: the box rules the organ's main storage, the merged-in trees keep theirs (nothing in the box says so).
   LESSON: when he reports a freeze, read the stack in the log BEFORE answering, and read what the path does to the loaded
   organ before promising that something "stays in the memory".
+  SAME BUILD, SECOND DEPLOY (the user: the load box said "Memory: 14 GB when loaded this way before" for Billerbeck -
+  "Stornované čtení nesmí dávat jako příklad později!!!"): `organMemory` took the RAM figure of ANY load as "complete"
+  ("|1"), a cancelled one too (19:52 cancelled at 13.8 GB; 19:27 a cancelled merge at 66 GB). Now
+  `engine.lastLoadWasCancelled()` (loadCancelled, reset at the next load's first tree) -> nothing is remembered, logged
+  "Memory of this load not remembered for the load box: the loading was cancelled"; a whole load is written
+  "<bytes>|1|2" and the box trusts only "|1|2" and "|0" (memory full) - the "|1" records of 0.9.123/0.9.124 are ignored
+  (the arithmetic of the WAV bytes is shown instead). A merge no longer ends in a full load, so it writes no record under
+  the base organ's name either. RULE: a figure shown as "what happened before" must come from a run that ENDED as intended.
 ## Pending for the next session (delete when done)
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the

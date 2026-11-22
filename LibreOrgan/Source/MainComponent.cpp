@@ -15973,10 +15973,16 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             double usable = (double)(MainComponent::availablePhysicalMemoryBytes() - MemoryInfo::reserveBytes());
             if (organLoadedNow && !merging) usable += (double)juce::jmax((juce::int64)0, MainComponent::processMemoryBytes() - (juce::int64)1024 * 1024 * 1024);
             usable = juce::jmax(0.0, usable);
-            const juce::String measured = self->organMemoryOf(what, MainComponent::storageChoiceKey(storage == 0, storage == 2, packedNow, resampleNow, rateNow, automaticNow));
+            juce::String measured = self->organMemoryOf(what, MainComponent::storageChoiceKey(storage == 0, storage == 2, packedNow, resampleNow, rateNow, automaticNow));
+            // "<bytes>|0" = the memory was full; "<bytes>|1|2" = a whole load. A "|1" without the "|2" was written
+            // by 0.9.123/0.9.124, which also wrote it after a load the user CANCELLED (0.9.125: "Stornované čtení
+            // nesmí dávat jako příklad později" - the box said 14 GB for a 110 GB organ): not trusted, not shown.
+            const auto measuredFields = juce::StringArray::fromTokens(measured, "|", "");
+            const bool measuredFull = measuredFields.size() >= 2 && measuredFields[1] == "0";
+            if (!measuredFull && !(measuredFields.size() >= 3 && measuredFields[1] == "1" && measuredFields[2] == "2")) measured.clear();
             juce::String text;
             bool bad = false;
-            if (measured.isNotEmpty() && measured.fromFirstOccurrenceOf("|", false, false) != "1")
+            if (measured.isNotEmpty() && measuredFull)
             {
                 text = "Memory: full when loaded this way before - stops were left out.";
                 bad = true;
@@ -29596,9 +29602,13 @@ void MainComponent::logRamAfterLoadIfDue()
     workingSetAfterLoadBytes = MemoryInfo::workingSetBytes();
     memoryTightNoted = memoryTrimmedNoted = false;
     const juce::String organ = currentConfigurationFile != juce::File() ? currentConfigurationFile.getFileNameWithoutExtension() : currentConfigurationName;
-    if (organ.isNotEmpty() && !engine.getStops().isEmpty())
+    // 0.9.125 (the user: "Stornované čtení nesmí dávat jako příklad později!!!" - the box said "14 GB when
+    // loaded this way before" from a load he had cancelled): a CANCELLED load is no figure of the organ.
+    if (engine.lastLoadWasCancelled())
+        CrashHandler::note("Memory of this load not remembered for the load box: the loading was cancelled");
+    else if (organ.isNotEmpty() && !engine.getStops().isEmpty())
         rememberOrganMemory(organ, storageChoiceKey(sampleStorageFloat, releaseHalfRate, compressSamples, resampleOnLoad, storageSampleRate, compressAutomatic),
-            juce::String(processMemoryBytes()) + "|" + (engine.lastLoadWasMemoryLimited() ? "0" : "1"));
+            juce::String(processMemoryBytes()) + "|" + (engine.lastLoadWasMemoryLimited() ? "0" : "1|2"));   // "|2": written by a build that leaves cancelled loads out
 }
 
 juce::String MainComponent::storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate, bool automatic)
