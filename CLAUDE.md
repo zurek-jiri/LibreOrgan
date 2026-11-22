@@ -4941,6 +4941,68 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   The factor 1.5 is MY pick ("hodně", more than the fades' 1.25). Also: showMidiLearnMenu item 9 "Crescendo settings..." for the
   target "crescendo" (the Cresc. button; the display's own menu had it). v0.9.121 was pushed to main WITHOUT a tag (the tool
   refused the tag push: the user had not asked for that release) - 0.9.122 is the release that carries it.
+  LINUX vs WINDOWS ON THE SAME RYZEN 5950X (22 Nov 2026, 0.9.122, Caen Surround, 8 routes, 16 threads; Windows from the local
+  activity.log 15:09-15:37, Linux from #259; the FIRST like-for-like table - the user: "Linux je absolutní vítěz, dvojnásobná"):
+  16-bit / halved releases / no packing: one card 512 W 55 900 (Fireface) | L 68 200 (ALC1220) = x 1.22; two cards 512 W 68 400 |
+  L 83 500 = x 1.22; through REAPER 512 W 44 600 (ReaRoute) | L 66 200 (JACK) = x 1.48; through REAPER 256 W 36 700-40 700 |
+  L 50 600 = x 1.24-1.38; one card 256 W 45 700 (Fireface), 37 900 (Komplete: a callback of 152 %). Float + packing: two cards
+  512 W 54 600 | L 52 700 = EQUAL; W two cards 256 32 400, ReaRoute 512 39 300, ReaRoute 256 25 600; L one card 512 46 100.
+  So Linux leads by about a fifth on a card, by a quarter to a half through REAPER, and not at all with packed float -
+  never "double" at equal settings (the double comes from comparing other buffers / packing / paths). WHAT THE LOGS SHOW: the
+  lane time of one voice at the same settings is ~25 % higher on Windows (1927-1966 ns per 512 block against 1561-1596) - the
+  whole card-direct lead; why is NOT known (same code, same CPU); and ReaRoute costs Windows a fifth against the card itself
+  (44 600 vs 55 900) while REAPER on JACK costs Linux 3 % (66 200 vs 68 200). The notebook (#258, 155H): ReaRoute 512 no packing
+  27 600 on 6 P cores, 46 600 on all 16 (its best), packed 16 500. No regression on any machine.
+  #260 (22 Nov, Linux, the float + packing rows through REAPER added): REAPER/JACK 512 L 45 100 | ReaRoute 512 W 39 300 = x 1.15;
+  REAPER 256 L 26 000 | W 25 600 = EQUAL. So with 32-bit float + packing Linux = Windows everywhere but REAPER at 512 (+15 %):
+  the lane time of a voice is THE SAME there (512: W 4286-4468 ns, L 4107-4248; 256: W 3097-3256, L 3050) - unpacking and memory
+  rule, the system does not; the Linux lead exists only with the cheap voice (16-bit, no packing). For a reporter on float +
+  packing through ReaRoute at 256 (Pasztor) a move to Linux brings NOTHING - the buffer (256 -> 512: x 1.5-1.75) and the
+  storage (float packed -> 16-bit unpacked: x 1.4-1.5) do.
+  0.9.123 (22 Nov 2026, #261 pasztor63, 127.4 GB, Billerbeck float UNPACKED: "stopped at 102 GB, why reserve 25.47 GB, HW9
+  needs 1-2"; the user: "udělej to. Rezerva jak jsi navrhl. Ale nesmíme jít do stránkovacího souboru"): the stop was
+  MemoryInfo's footprint rule `held > installed - systemShareBytes()`, share = installed / 5 (made for the 8 GB laptops), and
+  the free rule behind it installed / 16 = 8 GB. NOW (MemoryInfo.h; macOS UNCHANGED by `#if JUCE_MAC`): `reserveBytes()` =
+  max(512 MB, min(installed / 16, 2 GB)) (<= 32 GB the same); `systemShareBytes(othersAtLoadStart)` above 16.5 GB =
+  min(fifth, max(1.5 GB, others) + reserve), `othersBytes()` = installed - free - held taken at the first tree of a load
+  (`gOthersBaseline`, dropped in takeLastLoadError with gSwapBaseline; -1 = read now = the free rule again);
+  `commitHeadroomBytes()` (Windows ullAvailPageFile) < reserve = a NEW stop sign ("the system's commit limit is nearly
+  reached"); `trimmedBytes()` (Windows PrivateUsage - WorkingSet) grown > 1 GB since the load began (`gTrimBaseline`) = a stop
+  sign, only with a baseline (a plug-in's untouched buffers would trip it otherwise); `tightBelowBytes()` (RAM cell orange +
+  the watch): a tenth up to 32 GB, 3/4 of the reserve above. `shortNow(reason, swapBaseline, others, room, trimBaseline)`.
+  THE COPIES: phase 1 of buildAntiAliasCopies (copies read from the CACHE) had NO memory check (his log: 5.2 GB of them after
+  the stop; and resumeIncompleteCopyBuilds restarted a memory-stopped build every 5 s) - `copyMemoryShort(why)` in both
+  phases, resume returns while memoryShortNow(). ROOM FOR THEM WHILE DECODING: `memoryShortForDecoding` = shortNow with room =
+  1 GB (what the program takes after the decode: grid, tuning/fill tables - measured) + owed x 17/16 + 512 MB;
+  `gCopyRoomOwed` grows per rank in loadRank: known rank -> its copies' samples x 4 or 2 bytes from `CopyRoom.txt` in the
+  cache folder ("<copyCachePathTag> <frames x channels>", 0 = needs none; written by `engine.rememberCopyRoom()` from
+  logRamAfterLoadIfDue for every loaded rank whose build is complete), unknown rank -> a sixteenth of what its decode took
+  (heldBytes delta). The cache FILES' sizes were tried first and dropped (extension copies only exist after a build; no cache
+  = nothing known = four stops without copies in the first run). `takeCopyBuildsStoppedForMemory()` -> ONE Messages line
+  "Filled pipes" per stop and load (the user: quietly, no box; `copyStopsNoted`); hook ORGAN_TEST_COPY_STOP=<stop part>.
+  MainComponent: `watchMemoryAfterLoad()` (1 s timer, not macOS: free < tightBelow -> Messages "Memory nearly full" once;
+  Windows: working set shrank > 1 GB AND trimmed grew > 1 GB since the load -> "Samples moved out of the RAM");
+  `organMemory` (settings key, machine-specific AND in volatileKeys of the dirty fingerprint: name lower-case less ".portable"
+  -> "w=bytes|bits|rate;<storageChoiceKey>=heldBytes|1 complete or 0 cut"), written by warnIfMemoryShortForTrees ("w") and
+  logRamAfterLoadIfDue; askLoadOptions shows a Label line under the three storage combos for an organ with a "w" record
+  ("Memory: about N GB; M GB can be used[ - it will NOT fit.]" / "N GB when loaded this way before" / "less than N GB (not
+  loaded this way here yet)" for packed or halved choices / "full when loaded this way before - stops were left out"),
+  usable = free - reserve + what the loaded organ gives back; an organ never loaded here: the box as before. The estimate:
+  bytes x bits/rate factor x 1.05 + 0.7 GB (was x 1.15: 210 GB for Billerbeck, whose 94 GB of WAV took 115 GB = 1.22 a byte
+  against the headers' 1.20; 192 GB now). MEASURED ON THIS RYZEN (127.9 GB; page file 512 MB on E: -> commit limit 128.4 GB;
+  %TEMP%\test_0123_mem.ps1 [-Tag -Float -Packed]: the Billerbeck "8 chan." definition through the hook, float unpacked,
+  ~270 s from the SATA disk, the process killed after the figures): old rule 102 GB; new: stopped by the COMMIT limit with
+  3.8 GB of RAM free and 2.0 GB of commit left, program 115.2-115.4 GB (63 of 80 stops, 94 of 152 GB of WAV), page file 0 MB
+  before and after, pages input 0, trimmed 0.4-0.6 GB (natural). The idle system holds 9 GB here (187 processes 6.3 GB of
+  working sets + kernel pools 1.3 GB) - the user's "12 GB gap" = 8.7 others + 3.8 free (2 reserve + 1.8 the commit limit of
+  the tiny page file). %TEMP%\test_0123_box.ps1 [-Seed] pictures the load box (Rural on the command line, organMemory seeded).
+  NOT run: Linux (the same rules, MemAvailable), Pasztor's box (a system-managed page file: the RAM rule will decide),
+  the watch's two notes (no way to take the memory away on purpose). NEXT = 0.9.124, AGREED WITH THE USER (22 Nov 2026):
+  packing "Automatic" as the third item of the load box's packing combo - pack only what does not fit, IN THE RAM (already
+  loaded samples are packed in place, nothing is read from the disk twice), order = least played first: the pedal, then the
+  outer keys of the manuals inwards; with packing Off and the memory full the box offers the same repacking + loading of the
+  missing stops (never a new load of everything); copies without room: quietly (the Messages line above), in Automatic the
+  repacking makes their room.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

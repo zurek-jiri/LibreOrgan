@@ -254,7 +254,8 @@ merged into it. A configuration with unsaved changes asks at quit or at the next
 load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks
 how they are to be held in RAM (storage, packing, rate -
 [Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with
-the configuration.
+the configuration. For an organ this computer has loaded before, the box also
+says how much memory the choice takes and how much can be used.
 
 ### The loading window
 
@@ -2447,12 +2448,19 @@ or "Ped_" is a division mark and never becomes a perspective.
 ## 10.6 Memory and the loading stop
 
 Before every stop (and every 32 files inside a large one) the loader looks at
-the memory and stops when any sign says it is short: less free than 512 MB or
-a sixteenth of the installed memory, the program's footprint within the
-system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program
-swapped out by more than 256 MB since the load began (on macOS the
-compressor growing that much while less than twice the reserve is free), or
-the macOS kernel reporting memory pressure. The stops loaded so far make the
+the memory and stops when any sign says it is short: less free than the
+reserve (512 MB or a sixteenth of the installed memory, 2 GB at the most), the
+program's footprint within the system's share (up to 16 GB installed: 1.5 GB
+or a fifth, 1 GB on 4 GB and less; above: what the system and the other
+programs held when the load began, plus the reserve), the program swapped out
+by more than 256 MB since the load began (on macOS the compressor growing that
+much while less than twice the reserve is free; on Windows 1 GB of the program
+taken out of its working set), the macOS kernel reporting memory pressure, or
+on Windows the commit limit (RAM and page file together) nearly reached. The
+samples never count on the page file: the loading ends while they are all in
+the RAM. The room the copies of the filled pipes will take is left free while
+the samples load, and the copies themselves stop at the reserve. macOS keeps
+the sixteenth and the fifth at every size. The stops loaded so far make the
 instrument; a stop cut in the middle of its files is dropped whole and named
 in the message; the pool keeps them. A stop whose samples the program holds
 already (a reload) is adopted whatever the memory says. The copy build of

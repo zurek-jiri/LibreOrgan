@@ -133,6 +133,27 @@ namespace MemoryInfo
         return 0;
     }
 
+    // The free memory the loading leaves untouched: 512 MB or a sixteenth
+    // (768 MB until 0.8.134 - too much of a small memory; the footprint rule
+    // below is the one that bites on the 8 GB machines), 2 GB at the most
+    // (0.9.123, #261: a sixteenth of 128 GB kept 8 GB idle; up to 32 GB nothing
+    // changes). macOS keeps the sixteenth: its free figure is another kind.
+    inline juce::int64 reserveBytes()
+    {
+        const juce::int64 least = (juce::int64)512 * 1024 * 1024, sixteenth = installedBytes() / 16;
+       #if JUCE_MAC
+        return juce::jmax(least, sixteenth);
+       #else
+        return juce::jmax(least, juce::jmin(sixteenth, (juce::int64)2048 * 1024 * 1024));
+       #endif
+    }
+
+    // What the system and every other program hold now.
+    inline juce::int64 othersBytes()
+    {
+        return juce::jmax((juce::int64)0, installedBytes() - freeBytes() - heldBytes());
+    }
+
     // The memory the system keeps for itself and the window: 1.5 GB or a fifth
     // of the installed memory. The program must stop loading before its own
     // footprint reaches installed - share: beyond it the system pages samples
@@ -140,18 +161,78 @@ namespace MemoryInfo
     // laptops with 8 GB and a 7 GB organ, issues #16, #17, #19).
     // On a small computer (4 GB and less) 1 GB: 1.5 GB of 4 would leave the
     // organ a bare half (0.8.135).
-    inline juce::int64 systemShareBytes()
+    // 0.9.123 (#261): a fifth of 128 GB is 25.5 GB while the system and the
+    // other programs held 8.6 GB. Above 16 GB (Windows and Linux) the share is
+    // what the others really held when the load began (never under 1.5 GB)
+    // plus the reserve - and never more than the fifth, so the rule only gets
+    // looser. Up to 16 GB, and on macOS, the fifth as before.
+    inline juce::int64 systemShareBytes(juce::int64 othersAtLoadStart = -1)
     {
         const juce::int64 installed = installedBytes();
         if (installed <= (juce::int64)4608 * 1024 * 1024) return (juce::int64)1024 * 1024 * 1024;
-        return juce::jmax((juce::int64)1536 * 1024 * 1024, installed / 5);
+        const juce::int64 least = (juce::int64)1536 * 1024 * 1024;
+        const juce::int64 fifth = juce::jmax(least, installed / 5);
+       #if JUCE_MAC
+        juce::ignoreUnused(othersAtLoadStart);
+        return fifth;
+       #else
+        if (installed <= (juce::int64)16896 * 1024 * 1024) return fifth;
+        const juce::int64 others = othersAtLoadStart >= 0 ? othersAtLoadStart : othersBytes();
+        return juce::jmin(fifth, juce::jmax(least, others) + reserveBytes());
+       #endif
     }
-    // The free memory the loading leaves untouched: 512 MB or a sixteenth
-    // (768 MB until 0.8.134 - too much of a small memory; the footprint rule
-    // above is the one that bites on the 8 GB machines).
-    inline juce::int64 reserveBytes()
+
+    // Windows: what may still be committed (RAM + page file - what every program
+    // has committed). Not a figure of the RAM: with a small or no page file it
+    // runs out first, and then allocations fail in every program. -1 elsewhere.
+    inline juce::int64 commitHeadroomBytes()
     {
-        return juce::jmax((juce::int64)512 * 1024 * 1024, installedBytes() / 16);
+       #if JUCE_WINDOWS
+        MEMORYSTATUSEX status{};
+        status.dwLength = sizeof(status);
+        if (GlobalMemoryStatusEx(&status)) return (juce::int64)status.ullAvailPageFile;
+       #endif
+        return -1;
+    }
+
+    // Windows: the program's memory that is NOT in its working set - what the
+    // system took out of the RAM towards the page file (plus whatever was
+    // allocated and never touched, so only the GROWTH since a baseline tells).
+    // 0 elsewhere (Linux and macOS have swappedBytes()).
+    inline juce::int64 trimmedBytes()
+    {
+       #if JUCE_WINDOWS
+        PROCESS_MEMORY_COUNTERS_EX counters{};
+        counters.cb = sizeof(counters);
+        if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&counters, sizeof(counters)) && counters.PrivateUsage > counters.WorkingSetSize)
+            return (juce::int64)(counters.PrivateUsage - counters.WorkingSetSize);
+       #endif
+        return 0;
+    }
+
+    // Windows: the program's working set (what of it is in the RAM now). 0 elsewhere.
+    inline juce::int64 workingSetBytes()
+    {
+       #if JUCE_WINDOWS
+        PROCESS_MEMORY_COUNTERS_EX counters{};
+        counters.cb = sizeof(counters);
+        if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&counters, sizeof(counters)))
+            return (juce::int64)counters.WorkingSetSize;
+       #endif
+        return 0;
+    }
+
+    // The free memory under which the RAM cell turns orange and the watch after
+    // a load speaks: a tenth of the installed memory up to 32 GB (as before),
+    // three quarters of the reserve above (a tenth of 128 GB is 12.8 GB - a full
+    // big computer would be orange for good).
+    inline juce::int64 tightBelowBytes()
+    {
+        const juce::int64 installed = installedBytes();
+       #if ! JUCE_MAC
+        if (installed > (juce::int64)33792 * 1024 * 1024) return reserveBytes() * 3 / 4;
+       #endif
+        return installed / 10;
     }
 
     // macOS: the kernel's own memory pressure level (1 normal, 2 warning, 4
@@ -175,25 +256,43 @@ namespace MemoryInfo
     // figure is the whole system's: other programs' compressed pages sit there
     // at idle, 0.43 GB on the 8 GB Mac of #21 - the absolute figure stopped a
     // load of 2.4 GB); the kernel reporting pressure (macOS, warning or worse).
-    inline bool shortNow(juce::String* reason = nullptr, juce::int64 swappedBaseline = 0)
+    // 0.9.123: 'othersAtLoadStart' (what the others held when the load began; -1 =
+    // read now), 'room' (memory owed to something that comes after: the filled
+    // pipes' copies of the stops loaded so far), 'trimmedBaseline' (Windows: the
+    // trimmedBytes() of the load's start; -1 = that sign is not looked at).
+    inline bool shortNow(juce::String* reason = nullptr, juce::int64 swappedBaseline = 0, juce::int64 othersAtLoadStart = -1,
+        juce::int64 room = 0, juce::int64 trimmedBaseline = -1)
     {
         auto gb = [](juce::int64 b) { return juce::String((double)b / 1073741824.0, 2) + " GB"; };
         const juce::int64 installed = installedBytes(), free = freeBytes(), held = heldBytes(), swapped = swappedBytes();
+        const juce::String roomText = room > 0 ? " and " + gb(room) + " are kept for what comes after the samples (the copies of the filled pipes, the grid)" : juce::String();
         if (const int level = pressureLevel(); level >= 2)
         {
             if (reason != nullptr) *reason = juce::String("the system reports memory pressure (level ") + juce::String(level) + ", " + (level >= 4 ? "critical" : "warning") + "), " + gb(free) + " free, the program holds " + gb(held);
             return true;
         }
-        if (free < reserveBytes())
+        if (free < reserveBytes() + room)
         {
-            if (reason != nullptr) *reason = gb(free) + " free, the reserve is " + gb(reserveBytes());
+            if (reason != nullptr) *reason = gb(free) + " free, the reserve is " + gb(reserveBytes()) + roomText;
             return true;
         }
-        if (held > 0 && held > installed - systemShareBytes())
+        const juce::int64 share = systemShareBytes(othersAtLoadStart);
+        if (held > 0 && held > installed - share - room)
         {
-            if (reason != nullptr) *reason = "the program holds " + gb(held) + " of " + gb(installed) + " installed and the system needs " + gb(systemShareBytes());
+            if (reason != nullptr) *reason = "the program holds " + gb(held) + " of " + gb(installed) + " installed and the system needs " + gb(share) + roomText;
             return true;
         }
+        if (const juce::int64 commit = commitHeadroomBytes(); commit >= 0 && commit < reserveBytes() + room)
+        {
+            if (reason != nullptr) *reason = "the system's commit limit is nearly reached (" + gb(commit) + " left of the RAM and the page file together; " + gb(free) + " of the RAM free)" + roomText;
+            return true;
+        }
+        if (trimmedBaseline >= 0)
+            if (const juce::int64 trimmed = trimmedBytes(); trimmed - trimmedBaseline > (juce::int64)1024 * 1024 * 1024)
+            {
+                if (reason != nullptr) *reason = "the system is taking the program's memory out of the RAM already (" + gb(trimmed - trimmedBaseline) + " since the load began), " + gb(free) + " free";
+                return true;
+            }
         const bool swapGrew = swapped - swappedBaseline > (juce::int64)256 * 1024 * 1024;
        #if JUCE_MAC
         // The compressor figure is the whole system's: it grows as macOS squeezes

@@ -1479,6 +1479,8 @@ public:
     // A safety net for the UI's timer: builds that ended before their last pipe and
     // were not launched again (whatever the reason) are launched now. Returns how many.
     int resumeIncompleteCopyBuilds();
+    void rememberCopyRoom();   // 0.9.123: what the built copies of every loaded rank hold, for the memory room of the next load
+    juce::StringArray takeCopyBuildsStoppedForMemory();   // 0.9.123: the stops whose copies of filled pipes the memory stopped (for the Messages)
     // Takes the build lock without stalling the caller for a whole stop's build:
     // the running build stops at its next pipe (a second at most), the operation
     // runs, then the pending builds are launched again. For the message thread

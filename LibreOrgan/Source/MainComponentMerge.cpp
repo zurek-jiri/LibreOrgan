@@ -95,15 +95,21 @@ void MainComponent::warnIfMemoryShortForTrees(std::vector<juce::String> trees, c
         const double bits = headers > 0 ? bitsSum / headers : 24.0, rate = headers > 0 ? rateSum / headers : 48000.0;
         double factor = asFloat ? 32.0 / bits : 16.0 / bits;
         if (resample && rate > 1000.0) factor *= storageRate / rate;   // the storage rate (48, 36 or 32 kHz) against the files' rate
-        factor *= 1.15;   // the copies of filled pipes, loops, the program itself
-        const juce::int64 needed = (juce::int64)((double)bytes * factor);
-        juce::MessageManager::callAsync([safeThis, bytes, needed, available, installed, configurationName]
+        // The copies of filled pipes about a twentieth, the program itself 0.7 GB
+        // (0.9.123: a flat 1.15 said 210 GB for Billerbeck in float, whose 94 GB of
+        // WAV took 115 GB with the program - 1.22 a byte against the headers' 1.20;
+        // #19's 5.3 GB of 16-bit 44.1 kHz files held 6.9 GB: this gives 6.8).
+        factor *= 1.05;
+        const juce::int64 needed = (juce::int64)((double)bytes * factor) + (juce::int64)717 * 1024 * 1024;
+        juce::MessageManager::callAsync([safeThis, bytes, needed, available, installed, configurationName, bits, rate]
         {
             if (safeThis == nullptr) return;
+            // 0.9.123: what the trees hold, kept for the load box of the next load of this organ.
+            if (bytes > 0) safeThis->rememberOrganMemory(configurationName, "w", juce::String(bytes) + "|" + juce::String(bits, 2) + "|" + juce::String(juce::roundToInt(rate)));
             const auto gb = [](juce::int64 b) { return juce::String((double)b / (1024.0 * 1024.0 * 1024.0), 1) + " GB"; };
             const bool tight = needed > available - (juce::int64)512 * 1024 * 1024;
             CrashHandler::note("Memory for \"" + configurationName + "\": " + gb(bytes) + " of WAV files, about " + gb(needed) + " in memory, "
-                + gb(available) + " free of " + gb(installed) + " installed" + (tight ? " - TOO LITTLE: the system will page samples out" : ""));
+                + gb(available) + " free of " + gb(installed) + " installed" + (tight ? " - TOO LITTLE: the loading will stop when the memory is full" : ""));
             // No message box (0.8.146, the user's rule): the estimate cannot know
             // the packing, the half-rate releases or the storage rate's effect for
             // sure, and the loading stops itself when the memory runs short - that

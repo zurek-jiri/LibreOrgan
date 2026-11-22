@@ -260,7 +260,8 @@ static const char* const kManualText_part1 =
     "load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks\n"
     "how they are to be held in RAM (storage, packing, rate -\n"
     "[Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with\n"
-    "the configuration.\n"
+    "the configuration. For an organ this computer has loaded before, the box also\n"
+    "says how much memory the choice takes and how much can be used.\n"
     "\n"
     "### The loading window\n"
     "\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "\n"
     "From top to bottom: the top bar of buttons, the combination row, the global\n"
     "sound sliders with the polyphony display, and the workspace - one column per\n"
-    "division with its header and its stop grid. A button *Messages: N new* appears in\n"
     ;
 static const char* const kManualText_part2 =
+    "division with its header and its stop grid. A button *Messages: N new* appears in\n"
     "the top bar when the program has something to say ([Messages](#91-messages)).\n"
     "\n"
     "## 2.1 Top bar buttons\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "follows it, and so do the stop's transmissions. A change reloads the stop's\n"
     "samples at once. The program sets it by itself where it can: from a\n"
     "Hauptwerk definition, or from the samples' pitch against the footage in the\n"
-    "folder's name (\"quintaton 16\" whose files sound 8' on their numbers gets\n"
     ;
 static const char* const kManualText_part3 =
+    "folder's name (\"quintaton 16\" whose files sound 8' on their numbers gets\n"
     "-12). A whole organ standing a semitone off is a tuning, not a transposition,\n"
     "and stays at 0. The same setting is the Stop List column \"Transp.\"; clearing\n"
     "that cell lets the program find it again.\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "- **Division:** drag a row into another division's block, or choose it in\n"
     "  the row's combo box. The stop moves with its folders.\n"
     "- **Stop folders:** drag a name a little to the **right** and the row is\n"
-    "  indented under the row above: it becomes that stop's child and sounds with\n"
     ;
 static const char* const kManualText_part4 =
+    "  indented under the row above: it becomes that stop's child and sounds with\n"
     "  it - that is a stop folder (\"Cornet [III]\"). Drag it **left** to take it\n"
     "  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
     "- **Folder cells:** click a cell to choose one of the free folders of all\n"
@@ -1009,9 +1010,9 @@ static const char* const kManualText_part4 =
     "\n"
     "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
     "in miniature: four green segments, three orange, red for three seconds\n"
-    "after a clip of the row or of its card's sum) and the **fx** button -\n"
     ;
 static const char* const kManualText_part5 =
+    "after a clip of the row or of its card's sum) and the **fx** button -\n"
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
     "on it resets them to the default. The cables take the primary colours first\n"
@@ -1211,9 +1212,9 @@ static const char* const kManualText_part5 =
     "perspectives: they would only sound twice.\n"
     "\n"
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
-    "\n"
     ;
 static const char* const kManualText_part6 =
+    "\n"
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
     "\n"
@@ -1413,9 +1414,9 @@ static const char* const kManualText_part6 =
     "extension, missing top or bottom keys, gaps inside the compass. Only the\n"
     "pipes a stop can be asked to play are filled (its division's compass and\n"
     "every transmission's shifted compass). A filled pipe has everything a real\n"
-    "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
     ;
 static const char* const kManualText_part7 =
+    "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
     "the rank keeps its chromatic variety; in a sparse rank the neighbouring\n"
@@ -1615,9 +1616,9 @@ static const char* const kManualText_part7 =
     "\n"
     "On by default. The program counts every click between two blocks of its own\n"
     "output, logs it with the route and stage and shows \"!N\" in orange in the DSP\n"
-    "cell. A few microseconds per period\n"
     ;
 static const char* const kManualText_part8 =
+    "cell. A few microseconds per period\n"
     "([The discontinuity detector](#1010-the-discontinuity-detector)).\n"
     "## 8.2 Global sound\n"
     "\n"
@@ -1817,9 +1818,9 @@ static const char* const kManualText_part8 =
     "started with (default 10 %); 0 % pulls every pipe, 100 % none. Travels with the\n"
     "organ.\n"
     "\n"
-    "### Pipe coupling: farthest pitch offset to pull\n"
     ;
 static const char* const kManualText_part9 =
+    "### Pipe coupling: farthest pitch offset to pull\n"
     "\n"
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
     "within this of where the starting pipe would otherwise settle (default\n"
@@ -2019,9 +2020,9 @@ static const char* const kManualText_part9 =
     "\n"
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
-    "### Samples' base temperament\n"
     ;
 static const char* const kManualText_part10 =
+    "### Samples' base temperament\n"
     "\n"
     "The temperament the samples were recorded in - found by itself when two\n"
     "thirds of the ranks agree; set it by hand when they disagree or the set has\n"
@@ -2221,9 +2222,9 @@ static const char* const kManualText_part10 =
     "The other divisions fed from this wind: they receive half of this division's\n"
     "sag.\n"
     "\n"
-    "---\n"
     ;
 static const char* const kManualText_part11 =
+    "---\n"
     "\n"
     "## 8.7 Plug-ins (VST3)\n"
     "\n"
@@ -2423,9 +2424,9 @@ static const char* const kManualText_part11 =
     "with the most drawknobs (columns and rows copied).\n"
     "\n"
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
-    "carries, else the stop playing it straight over the whole division, else the\n"
     ;
 static const char* const kManualText_part12 =
+    "carries, else the stop playing it straight over the whole division, else the\n"
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
     "stop with none becomes a transmission of the owner it borrows the most keys\n"
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
@@ -2475,12 +2476,19 @@ static const char* const kManualText_part12 =
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
-    "the memory and stops when any sign says it is short: less free than 512 MB or\n"
-    "a sixteenth of the installed memory, the program's footprint within the\n"
-    "system's share (1.5 GB or a fifth; 1 GB on 4 GB and less), the program\n"
-    "swapped out by more than 256 MB since the load began (on macOS the\n"
-    "compressor growing that much while less than twice the reserve is free), or\n"
-    "the macOS kernel reporting memory pressure. The stops loaded so far make the\n"
+    "the memory and stops when any sign says it is short: less free than the\n"
+    "reserve (512 MB or a sixteenth of the installed memory, 2 GB at the most), the\n"
+    "program's footprint within the system's share (up to 16 GB installed: 1.5 GB\n"
+    "or a fifth, 1 GB on 4 GB and less; above: what the system and the other\n"
+    "programs held when the load began, plus the reserve), the program swapped out\n"
+    "by more than 256 MB since the load began (on macOS the compressor growing that\n"
+    "much while less than twice the reserve is free; on Windows 1 GB of the program\n"
+    "taken out of its working set), the macOS kernel reporting memory pressure, or\n"
+    "on Windows the commit limit (RAM and page file together) nearly reached. The\n"
+    "samples never count on the page file: the loading ends while they are all in\n"
+    "the RAM. The room the copies of the filled pipes will take is left free while\n"
+    "the samples load, and the copies themselves stop at the reserve. macOS keeps\n"
+    "the sixteenth and the fifth at every size. The stops loaded so far make the\n"
     "instrument; a stop cut in the middle of its files is dropped whole and named\n"
     "in the message; the pool keeps them. A stop whose samples the program holds\n"
     "already (a reload) is adopted whatever the memory says. The copy build of\n"
@@ -2618,6 +2626,8 @@ static const char* const kManualText_part12 =
     "macOS a time-constraint thread; a real-time thread waiting for another never\n"
     "yields the core (under SCHED_FIFO that starves the window thread). On one or\n"
     "two cores the device thread yields while it waits and the lanes take small\n"
+    ;
+static const char* const kManualText_part13 =
     "chunks. On Windows, a processor without hyper-threading (a worker for every\n"
     "logical processor) keeps an eighth of its processors free of waiting workers\n"
     "for the sound card's driver and the system: the workers beyond that sleep\n"
@@ -2626,8 +2636,6 @@ static const char* const kManualText_part12 =
     "lost its processor - the idle workers stop waiting and sleep, so that it\n"
     "gets one back at once. The polyphony measurement judges a driver that hands\n"
     "its blocks over in bursts (ReaRoute behind a program on the Windows sound\n"
-    ;
-static const char* const kManualText_part13 =
     "system) by the cycle of the bursts, heard in its two idle seconds. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"

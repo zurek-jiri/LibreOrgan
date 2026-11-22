@@ -168,6 +168,20 @@ private:
     double ramLogAfterMs = 0.0;
     int copyCacheHitsAtLoad = 0;
     void logRamAfterLoadIfDue();
+    // 0.9.123 (#261): what this computer knows about the memory an organ takes - the WAV bytes of its
+    // trees ("w" = bytes|bits|rate, counted at every load) and what the program held after a load with
+    // each choice of the load box (storageChoiceKey = bytes|1 complete or 0 cut by the memory). The load
+    // box says it before the loading starts. Settings key "organMemory" (this computer's).
+    std::map<juce::String, juce::String> organMemory;
+    void rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value);
+    juce::String organMemoryOf(const juce::String& organ, const juce::String& key) const;
+    static juce::String storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate);
+    // The watch after a load (once a second): the free memory under MemoryInfo::tightBelowBytes(), or
+    // (Windows) the program's memory taken out of its working set - told once in the Messages.
+    void watchMemoryAfterLoad();
+    juce::int64 trimmedAfterLoadBytes = -1, workingSetAfterLoadBytes = 0;
+    bool memoryTightNoted = false, memoryTrimmedNoted = false;
+    juce::StringArray copyStopsNoted;   // the stops whose copies the memory stopped, told in the Messages already (this load)
     juce::StringArray volumeSetsAnnounced;   // multi-part archives whose other parts were announced (once per session, 0.8.176)
     LeftOnlyTextButton shutdownButton{ "Shut down PC" };   // saves, quits and shuts the computer down (hidden by default)
     LeftOnlyTextButton unpackArchiveButton{ "Unpack archive" };   // RAR sample archives unpacked by libarchive (hidden by default)

@@ -12,6 +12,48 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.123] - 2026-11-22
+
+### Changed
+- **A big computer's memory is used to the end (#261).** The loading stopped
+  when the program held four fifths of the installed memory: 102 GB of 128, with
+  a fifth (25.5 GB) "for the system" that really held 8.6 GB. The rule was made
+  for 8 GB laptops. Above 16 GB (Windows and Linux) the system's share is now
+  what the system and the other programs hold when the load begins, plus the
+  reserve; the reserve of free memory is 2 GB at the most (it was a sixteenth:
+  8 GB of 128). Up to 16 GB installed nothing changes, up to 32 GB the reserve
+  is the same, macOS is as it was. The samples still never go to the page file:
+  the loading ends while everything is in the RAM.
+- The room for the copies of the filled pipes is left free while the samples
+  load, so the copies of the loaded stops fit afterwards: the program remembers
+  what the copies of every rank took (`CopyRoom.txt` in the cache folder); a
+  rank never loaded here leaves a sixteenth of its own size.
+- The estimate "about N GB in memory" of the log was a seventh too high (210 GB
+  for an organ that takes about 190): the copies count a twentieth, the program
+  itself 0.7 GB.
+- The *RAM GB* cell turns orange under 1.5 GB free on computers above 32 GB
+  (a tenth of the memory before - 12.8 GB of 128).
+
+### Added
+- **The load box says what the choice takes.** For an organ this computer has
+  loaded before: "Memory: about 210 GB; 116 GB can be used - it will NOT fit",
+  or the figure measured when it was loaded this way before.
+- Windows: the loading also stops when the commit limit (RAM and page file
+  together) is nearly reached, and when Windows starts taking the program's
+  memory out of the RAM.
+- After a load the program watches the memory: under the limit (another program
+  took it), or Windows moving the organ out of the RAM, is told once in the
+  Messages.
+- When the memory is full and the copies of some filled pipes cannot be built
+  (an extension made on a full computer), a line in the Messages names the
+  stops; those pipes play from the plain sample until the copies fit.
+
+### Fixed
+- The copies of filled pipes read from the cache ignored the memory reserve
+  (only computing new ones looked at it): 5.2 GB of them came on top of a load
+  that had just stopped for memory, and a build the memory had stopped was
+  started again every five seconds.
+
 ## [0.9.122] - 2026-11-22
 
 ### Added

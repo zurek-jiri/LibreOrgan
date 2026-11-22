@@ -226,7 +226,7 @@ private:
                 // rounded up from 10 on.
                 const double gb = (double)used / 1073741824.0;
                 ramText = gb < 9.95 ? juce::String(gb, 1) : juce::String((int)std::ceil(gb));
-                ramTight = installed > 0 && free >= 0 && free < installed / 10;
+                ramTight = installed > 0 && free >= 0 && free < MemoryInfo::tightBelowBytes();   // 0.9.123: a tenth up to 32 GB, 1.5 GB above
             }
         }
         current = engine.getCurrentPolyphony();
@@ -15921,6 +15921,71 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     window->addComboBox("rate", { "48 kHz  [default]", "36 kHz: a quarter less RAM",
         "32 kHz: a third less RAM", "Each file's own rate: faster loading" }, "Sample rate on loading");
     window->getComboBoxComponent("rate")->setSelectedItemIndex(!resample ? 3 : rate < 34000.0 ? 2 : rate < 42000.0 ? 1 : 0, juce::dontSendNotification);
+    // 0.9.123 (#261): what the chosen storage takes of the memory, said here, before the loading starts -
+    // from what this computer saw of the organ (rememberOrganMemory): the figure of an earlier load with
+    // the same choices, else the arithmetic of the trees' WAV bytes (the packing and the halved releases
+    // are not known before the organ was loaded so once: "less than"). An organ never loaded on this
+    // computer: no line, the box as it was.
+    std::function<void()> updateMemoryLine = [] {};
+    if (const juce::String wavRecord = organMemoryOf(what, "w"); wavRecord.isNotEmpty())
+    {
+        auto memoryLine = std::make_shared<juce::Label>();
+        memoryLine->setSize(640, 24);
+        memoryLine->setFont(juce::Font(juce::FontOptions(15.0f)));
+        memoryLine->setJustificationType(juce::Justification::centredLeft);
+        memoryLine->setBorderSize(juce::BorderSize<int>(0));   // the text on the left edge of the combo boxes above it
+        window->addCustomComponent(memoryLine.get());
+        juce::Component::SafePointer<juce::AlertWindow> boxOfLine(window);
+        juce::Component::SafePointer<MainComponent> self(this);
+        const bool organLoadedNow = !engine.getStops().isEmpty();
+        updateMemoryLine = [memoryLine, boxOfLine, self, what, wavRecord, organLoadedNow]
+        {
+            if (boxOfLine == nullptr || self == nullptr) return;
+            const int storage = boxOfLine->getComboBoxComponent("storage")->getSelectedItemIndex();
+            const bool packedNow = boxOfLine->getComboBoxComponent("packing")->getSelectedItemIndex() == 1;
+            const int rateIndex = boxOfLine->getComboBoxComponent("rate")->getSelectedItemIndex();
+            const bool resampleNow = rateIndex != 3;
+            const double rateNow = rateIndex == 1 ? 36000.0 : rateIndex == 2 ? 32000.0 : 48000.0;
+            const auto gb = [](double b) { const double g = b / 1073741824.0; return (g < 10.0 ? juce::String(g, 1) : juce::String(juce::roundToInt(g))) + " GB"; };
+            // What can be used: the free memory less the reserve, and what the loaded organ gives back when it is closed.
+            auto* action = boxOfLine->getComboBoxComponent("action");
+            const bool merging = action != nullptr && action->getSelectedItemIndex() == 1;
+            double usable = (double)(MainComponent::availablePhysicalMemoryBytes() - MemoryInfo::reserveBytes());
+            if (organLoadedNow && !merging) usable += (double)juce::jmax((juce::int64)0, MainComponent::processMemoryBytes() - (juce::int64)1024 * 1024 * 1024);
+            usable = juce::jmax(0.0, usable);
+            const juce::String measured = self->organMemoryOf(what, MainComponent::storageChoiceKey(storage == 0, storage == 2, packedNow, resampleNow, rateNow));
+            juce::String text;
+            bool bad = false;
+            if (measured.isNotEmpty() && measured.fromFirstOccurrenceOf("|", false, false) != "1")
+            {
+                text = "Memory: full when loaded this way before - stops were left out.";
+                bad = true;
+            }
+            else if (measured.isNotEmpty())
+            {
+                const double held = measured.upToFirstOccurrenceOf("|", false, false).getDoubleValue();
+                bad = held > usable;
+                text = "Memory: " + gb(held) + " when loaded this way before; " + gb(usable) + " can be used" + (bad ? " - it will NOT fit." : ".");
+            }
+            else
+            {
+                const auto fields = juce::StringArray::fromTokens(wavRecord, "|", "");
+                const double bytes = fields[0].getDoubleValue(), bits = juce::jmax(8.0, fields[1].getDoubleValue()), fileRate = fields[2].getDoubleValue();
+                double factor = (storage == 0 ? 32.0 : 16.0) / bits;
+                if (resampleNow && fileRate > 1000.0) factor *= rateNow / fileRate;
+                const double unpacked = bytes * factor * 1.05 + 717.0 * 1024.0 * 1024.0;   // the figure of warnIfMemoryShortForTrees: the copies and the program with it
+                if (!packedNow && storage != 2)
+                {
+                    bad = unpacked > usable;
+                    text = "Memory: about " + gb(unpacked) + "; " + gb(usable) + " can be used" + (bad ? " - it will NOT fit." : ".");
+                }
+                else text = "Memory: less than " + gb(unpacked) + " (not loaded this way here yet); " + gb(usable) + " can be used.";
+            }
+            memoryLine->setText(text, juce::dontSendNotification);
+            memoryLine->setColour(juce::Label::textColourId, bad ? onColour() : juce::Colours::white);
+        };
+        for (const char* name : { "storage", "packing", "rate" }) window->getComboBoxComponent(name)->onChange = updateMemoryLine;
+    }
     juce::StringArray choiceIds;
     if (offerChoice)
     {
@@ -15957,7 +16022,9 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             "Merge it into the loaded organ  (its stops and folders are added to the organ loaded now)" }, "An organ is loaded now");
         const char* testAction = std::getenv("ORGAN_TEST_LOAD_ACTION");   // tests: "merge" preselects the merge
         window->getComboBoxComponent("action")->setSelectedItemIndex(testAction != nullptr && juce::String(testAction) == "merge" ? 1 : 0, juce::dontSendNotification);
+        window->getComboBoxComponent("action")->onChange = updateMemoryLine;
     }
+    updateMemoryLine();
     window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
@@ -16013,7 +16080,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -19490,6 +19557,7 @@ void MainComponent::beginStartupFolderLoading()
                 // The RAM held, logged once the filled pipes' copies are built (0.8.184: the
                 // #87 measurements had to be read off the screen).
                 ramLogPending = true;
+                copyStopsNoted.clear();   // 0.9.123: a new load tells its own stops without copies
                 ramLogAfterMs = juce::Time::getMillisecondCounterHiRes() + 2000.0;
                 copyCacheHitsAtLoad = engine.copyCacheHits.load();
                 // Loading writes device states, tuning and folders into the settings:
@@ -27635,6 +27703,9 @@ void MainComponent::loadSettings()
     combinationsFiles.clear();
     if (auto* files = parsed.getProperty("combinationsFiles", juce::var()).getDynamicObject())
         for (const auto& prop : files->getProperties()) combinationsFiles[prop.name.toString()] = prop.value.toString();
+    organMemory.clear();
+    if (auto* organs = parsed.getProperty("organMemory", juce::var()).getDynamicObject())
+        for (const auto& prop : organs->getProperties()) organMemory[prop.name.toString()] = prop.value.toString();
     outputDiscontinuityDetector.store(parsed.getProperty("outputDiscontinuityDetector", true));   // 0.8.227: on by default while the crackle is hunted
     engine.setOutputDiscontinuityDetector(outputDiscontinuityDetector.load());
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
@@ -28553,6 +28624,9 @@ void MainComponent::saveSettingsNow()
         juce::DynamicObject::Ptr files = new juce::DynamicObject();
         for (const auto& [configuration, file] : combinationsFiles) files->setProperty(juce::Identifier(configuration), file);
         obj->setProperty("combinationsFiles", juce::var(files.get()));
+        juce::DynamicObject::Ptr organs = new juce::DynamicObject();
+        for (const auto& [organ, record] : organMemory) organs->setProperty(juce::Identifier(organ), record);
+        obj->setProperty("organMemory", juce::var(organs.get()));
     }
     obj->setProperty("manualFontScale", (double)manualFontScale);
     {
@@ -28951,7 +29025,7 @@ void MainComponent::saveSettingsNow()
         // properties in insertion order, so the string compares reliably.
         juce::DynamicObject::Ptr essential = new juce::DynamicObject();
         static const std::set<juce::String> volatileKeys{ "windowWidth", "windowHeight", "windowX", "windowY",
-            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName" };
+            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName", "organMemory" };
         for (const auto& property : obj->getProperties())
             if (volatileKeys.count(property.name.toString()) == 0) essential->setProperty(property.name, property.value);
         // Opening a voicing or unfolding its key rows is not a change worth asking about.
@@ -29240,7 +29314,97 @@ void MainComponent::logRamAfterLoadIfDue()
     const auto gb = [](juce::int64 b) { return juce::String((double)b / (1024.0 * 1024.0 * 1024.0), 1) + " GB"; };
     CrashHandler::note("RAM held after the load (" + engine.storageSignature() + "): " + gb(processMemoryBytes())
         + " - the whole program with the filled pipes' copies, " + juce::String(engine.copyCacheHits.load() - copyCacheHitsAtLoad)
-        + " pipe(s) of them from the cache; " + gb(availablePhysicalMemoryBytes()) + " free of " + gb(MemoryInfo::installedBytes()) + " installed");
+        + " pipe(s) of them from the cache; " + gb(availablePhysicalMemoryBytes()) + " free of " + gb(MemoryInfo::installedBytes()) + " installed"
+       #if JUCE_WINDOWS
+        + "; " + gb(MemoryInfo::trimmedBytes()) + " of the program outside its working set, " + gb(MemoryInfo::commitHeadroomBytes()) + " left to commit"
+       #endif
+        );
+    // 0.9.123: the figure of this load for the load box of the next one, and the
+    // baseline of the watch (what lies outside the working set by nature).
+    engine.rememberCopyRoom();
+    trimmedAfterLoadBytes = MemoryInfo::trimmedBytes();
+    workingSetAfterLoadBytes = MemoryInfo::workingSetBytes();
+    memoryTightNoted = memoryTrimmedNoted = false;
+    const juce::String organ = currentConfigurationFile != juce::File() ? currentConfigurationFile.getFileNameWithoutExtension() : currentConfigurationName;
+    if (organ.isNotEmpty() && !engine.getStops().isEmpty())
+        rememberOrganMemory(organ, storageChoiceKey(sampleStorageFloat, releaseHalfRate, compressSamples, resampleOnLoad, storageSampleRate),
+            juce::String(processMemoryBytes()) + "|" + (engine.lastLoadWasMemoryLimited() ? "0" : "1"));
+}
+
+juce::String MainComponent::storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate)
+{
+    return juce::String(asFloat ? "f" : halfRate ? "h" : "i") + (packed ? "p" : "u") + (resample ? juce::String(juce::roundToInt(rate)) : juce::String("own"));
+}
+
+namespace
+{
+    // One organ whatever its file is called: "X.portable" is "X".
+    juce::String organMemoryName(const juce::String& organ) { return organ.replace(".portable", "", true).trim().toLowerCase(); }
+}
+
+void MainComponent::rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value)
+{
+    const juce::String name = organMemoryName(organ);
+    if (name.isEmpty() || key.isEmpty()) return;
+    juce::StringArray parts;
+    for (const auto& part : juce::StringArray::fromTokens(organMemory[name], ";", ""))
+        if (part.isNotEmpty() && !part.startsWith(key + "=")) parts.add(part);
+    parts.add(key + "=" + value);
+    const juce::String record = parts.joinIntoString(";");
+    if (organMemory[name] == record) return;
+    organMemory[name] = record;
+    saveSettings();
+}
+
+juce::String MainComponent::organMemoryOf(const juce::String& organ, const juce::String& key) const
+{
+    const auto found = organMemory.find(organMemoryName(organ));
+    if (found == organMemory.end()) return {};
+    for (const auto& part : juce::StringArray::fromTokens(found->second, ";", ""))
+        if (part.startsWith(key + "=")) return part.fromFirstOccurrenceOf("=", false, false);
+    return {};
+}
+
+void MainComponent::watchMemoryAfterLoad()
+{
+    // 0.9.123 (#261): the loading leaves a few GB free now where a fifth of the
+    // memory lay idle - so the program watches what happens afterwards. Another
+    // program that takes the rest makes the system move the organ's samples out
+    // of the RAM; it is said once (again after the memory was free meanwhile).
+   #if JUCE_MAC
+    return;   // macOS: its own free figure and pressure level; nothing of this rule applies there
+   #else
+    if (engine.getStops().isEmpty() || activeFolderLoader != nullptr || ramLogPending) return;
+    const auto gb = [](juce::int64 b) { return juce::String((double)b / 1073741824.0, 1) + " GB"; };
+    const juce::int64 free = availablePhysicalMemoryBytes();
+    if (free >= 0 && free < MemoryInfo::tightBelowBytes())
+    {
+        if (!memoryTightNoted)
+        {
+            memoryTightNoted = true;
+            CrashHandler::note("Memory watch: " + gb(free) + " free of " + gb(MemoryInfo::installedBytes()) + " installed, the program holds " + gb(processMemoryBytes()));
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Memory nearly full",
+                "Only " + gb(free) + " of the memory are free (the organ holds " + gb(processMemoryBytes()) + "). Below this the system moves samples out of the RAM "
+                "and the sound stalls when a key reaches them.");
+        }
+    }
+    else if (free > MemoryInfo::reserveBytes()) memoryTightNoted = false;
+   #if JUCE_WINDOWS
+    // Both signs together: more of the program lies outside its working set AND the
+    // working set itself shrank (memory allocated and never touched - a plug-in's
+    // buffers - grows the first figure alone).
+    const juce::int64 oneGb = (juce::int64)1024 * 1024 * 1024;
+    if (trimmedAfterLoadBytes >= 0 && !memoryTrimmedNoted && MemoryInfo::workingSetBytes() < workingSetAfterLoadBytes - oneGb)
+        if (const juce::int64 grown = MemoryInfo::trimmedBytes() - trimmedAfterLoadBytes; grown > oneGb)
+        {
+            memoryTrimmedNoted = true;
+            CrashHandler::note("Memory watch: the system took " + gb(grown) + " of the program out of its working set since the load; " + gb(free) + " free");
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Samples moved out of the RAM",
+                "Windows has taken " + gb(grown) + " of the organ out of the RAM since it was loaded (" + gb(free) + " are free now). "
+                "The sound stalls when a key reaches those samples.");
+        }
+   #endif
+   #endif
 }
 
 void MainComponent::updateMissingTreeNotices()
@@ -30222,6 +30386,25 @@ void MainComponent::timerCallback()
     updateEmptyHint();
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
+    watchMemoryAfterLoad();
+    // 0.9.123 (the user: quietly, a line in the Messages): the copies of filled pipes
+    // the memory did not let be built - said once per stop and load, no box. Those
+    // pipes play from the plain sample of their neighbour until the copies fit.
+    if (engine.pendingBackgroundWorkers() == 0)
+    {
+        juce::StringArray fresh;
+        for (const auto& name : engine.takeCopyBuildsStoppedForMemory())
+            if (!copyStopsNoted.contains(name)) { fresh.add(name); copyStopsNoted.add(name); }
+        if (!fresh.isEmpty())
+        {
+            juce::StringArray shown;
+            for (int i = 0; i < juce::jmin(8, fresh.size()); ++i) shown.add(fresh[i]);
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Filled pipes",
+                "The memory is full: the copies of the filled pipes of " + juce::String(fresh.size()) + " stop(s) could not be built ("
+                + shown.joinIntoString(", ") + (fresh.size() > 8 ? ", and " + juce::String(fresh.size() - 8) + " more" : juce::String())
+                + "). Those pipes play from the plain sample of their neighbour; the copies are built when memory is free again.");
+        }
+    }
     watchPlugins();   // 0.9.102
     watchUnavailableCards();   // 0.9.105
     // Every 2 s (every second during the start-up wait): a route whose saved

@@ -385,7 +385,47 @@ namespace
     // #21, and the rule stopped a load of 2.4 GB). -1: no load running.
     std::atomic<juce::int64> gSwapBaseline{ -1 };
     std::atomic<uint64_t> gRenderWorkerAffinity{ 0 };   // the render workers' processors (Windows, a hybrid CPU's performance cores; 0 = any)
-    bool memoryShortNow(juce::String* reason = nullptr) { return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load())); }
+    // 0.9.123 (#261), all taken at the first tree of a load and dropped with gSwapBaseline:
+    // what the system and the other programs held then (the system's share is measured,
+    // not a fifth of the memory), the program's memory outside its working set then
+    // (Windows: its growth means the system pages our samples out), and the room owed to
+    // the filled pipes' copies of the ranks decoded so far. That room is KNOWN for a rank
+    // whose copies were built on this computer before (CopyRoom.txt in the cache folder:
+    // the rank's path tag and the samples its copies hold, 0 = it needs none - written by
+    // rememberCopyRoom once the copies of a load are built); a rank never seen leaves a
+    // sixteenth of what it took itself.
+    std::atomic<juce::int64> gOthersBaseline{ -1 }, gTrimBaseline{ -1 }, gCopyRoomOwed{ 0 };
+    std::mutex gCopyRoomMutex;
+    std::map<juce::String, juce::int64> gCopyRoomSamples;   // rank path tag -> frames x channels of its copies
+    std::mutex gCopyStopMutex;
+    juce::StringArray gCopyStopped;   // the stops whose copy build the memory stopped, until the window takes them
+    std::map<juce::String, juce::int64> readCopyRoomFile(const juce::File& file)
+    {
+        std::map<juce::String, juce::int64> records;
+        for (const auto& line : juce::StringArray::fromLines(file.loadFileAsString()))
+        {
+            const auto tag = line.upToFirstOccurrenceOf(" ", false, false).trim();
+            if (tag.isNotEmpty()) records[tag] = line.fromFirstOccurrenceOf(" ", false, false).trim().getLargeIntValue();
+        }
+        return records;
+    }
+    // The floor: for the copies of filled pipes and everything outside a load.
+    bool memoryShortNow(juce::String* reason = nullptr)
+    {
+        return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load()), gOthersBaseline.load(), 0, gTrimBaseline.load());
+    }
+    // The decoding of samples stops earlier by the room their copies will take.
+    bool memoryShortForDecoding(juce::String* reason = nullptr)
+    {
+        // 1 GB for what the program itself takes once the decoding is over (the grid,
+        // the tuning and fill tables, the routes: measured on Billerbeck - with the
+        // copies' 3.2 GB known exactly, 4 GB of room still left two stops without
+        // theirs); a sixteenth and 512 MB on top of the copies, which are checked
+        // against the bare reserve afterwards.
+        const juce::int64 owed = juce::jmax((juce::int64)0, gCopyRoomOwed.load());
+        const juce::int64 room = (juce::int64)1024 * 1024 * 1024 + (owed > 0 ? owed + owed / 16 + (juce::int64)512 * 1024 * 1024 : 0);
+        return MemoryInfo::shortNow(reason, juce::jmax((juce::int64)0, gSwapBaseline.load()), gOthersBaseline.load(), room, gTrimBaseline.load());
+    }
 
     // The render workers and the control thread run beside the audio callbacks
     // at audio priority on every system (Windows had it from the start; on
@@ -8291,6 +8331,9 @@ juce::String SamplerEngine::takeLastLoadError()
     lastLoadError.clear();
     loadMemorySkipped.clear();
     gSwapBaseline.store(-1);   // the next load takes its own baseline
+    gOthersBaseline.store(-1);
+    gTrimBaseline.store(-1);
+    gCopyRoomOwed.store(0);
     return result;
 }
 
@@ -11205,6 +11248,7 @@ int SamplerEngine::resumeIncompleteCopyBuilds()
 {
     if (buildsAborted.load(std::memory_order_acquire) || buildsInterrupted.load(std::memory_order_acquire)
         || buildsHeld.load(std::memory_order_acquire)) return 0;
+    if (memoryShortNow()) return 0;   // 0.9.123: a build the memory stopped is not started again every five seconds while the memory is full
     int resumed = 0;
     for (auto* stop : stops)
     {
@@ -11583,6 +11627,64 @@ int64_t SamplerEngine::copyCacheBytes() const
     return total;
 }
 
+juce::StringArray SamplerEngine::takeCopyBuildsStoppedForMemory()
+{
+    const std::lock_guard<std::mutex> lk(gCopyStopMutex);
+    juce::StringArray taken;
+    taken.swapWith(gCopyStopped);
+    return taken;
+}
+
+void SamplerEngine::rememberCopyRoom()
+{
+    // 0.9.123 (#261): what the copies of every loaded rank hold (frames x channels,
+    // whatever the storage), written once the copies of a load are built - the next
+    // load of the rank leaves exactly that room free while it decodes (0: the rank
+    // needs no copies). A stop whose build did not finish keeps its older record.
+    if (copyCacheDir == juce::File()) return;
+    std::map<juce::String, juce::int64> seen;
+    {
+        const juce::ScopedLock sl(controlLock);
+        auto samplesOf = [](const std::map<int, std::vector<std::unique_ptr<Sample>>>& aliasFree)
+        {
+            juce::int64 total = 0;
+            for (const auto& [pipe, copies] : aliasFree)
+                for (const auto& copy : copies)
+                    if (copy != nullptr) total += (juce::int64)copy->numFrames * (juce::int64)copy->numChannels;
+            return total;
+        };
+        for (auto* stop : stops)
+        {
+            if (stop->container || stop->copiesIncomplete.load(std::memory_order_acquire) || stop->copiesQueued.load(std::memory_order_acquire)) continue;
+            std::vector<Stop*> ranks{ stop };
+            for (auto& rank : stop->ranks) ranks.push_back(rank.get());
+            for (auto* rank : ranks)
+            {
+                if (rank->samplesUnloaded || rank->folder == juce::File()) continue;
+                juce::int64 total = samplesOf(rank->aliasFree);
+                for (auto& layer : rank->velocityLayers) total += samplesOf(layer.aliasFree);
+                for (auto& layer : rank->releaseLayers) total += samplesOf(layer.aliasFree);
+                seen[copyCachePathTag(*rank)] = total;
+            }
+        }
+    }
+    if (seen.empty()) return;
+    const juce::File file = copyCacheDir.getChildFile("CopyRoom.txt");
+    auto records = readCopyRoomFile(file);
+    bool changed = false;
+    for (const auto& [tag, samples] : seen)
+        if (const auto found = records.find(tag); found == records.end() || found->second != samples) { records[tag] = samples; changed = true; }
+    if (!changed) return;
+    juce::MemoryOutputStream text;
+    for (const auto& [tag, samples] : records) text << tag << " " << juce::String(samples) << "\n";
+    copyCacheDir.createDirectory();
+    file.replaceWithData(text.getData(), text.getDataSize());
+    juce::int64 all = 0;
+    for (const auto& [tag, samples] : seen) all += samples;
+    CrashHandler::note("Copy room remembered for " + juce::String((int)seen.size()) + " rank(s): their copies of filled pipes hold "
+        + juce::String((double)all * (storeSamplesAsFloat ? 4.0 : 2.0) / 1073741824.0, 2) + " GB in this storage");
+}
+
 void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
 {
     const int method = transposeMethod.load(std::memory_order_relaxed);
@@ -11672,6 +11774,19 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
         }
     } doneNote{ stop, this, copyCacheHits.load() };
     std::atomic<bool> memoryShort{ false };   // the memory reserve reached by this build (0.8.180): the rest is left for later
+    // The one question of both phases (0.9.123). ORGAN_TEST_COPY_STOP=<part of a stop's name>
+    // answers "short" for that stop (a test of the Messages line without filling the memory).
+    auto copyMemoryShort = [stop](juce::String& why)
+    {
+        bool isShort = memoryShortNow(&why);
+        if (const char* forced = std::getenv("ORGAN_TEST_COPY_STOP"); forced != nullptr && stop->name.containsIgnoreCase(forced)) { isShort = true; why = "ORGAN_TEST_COPY_STOP"; }
+        if (isShort)
+        {
+            const std::lock_guard<std::mutex> lk(gCopyStopMutex);
+            gCopyStopped.addIfNotAlreadyThere(stop->name);   // told once in the Messages (takeCopyBuildsStoppedForMemory)
+        }
+        return isShort;
+    };
     for (auto* rank : ranks)
     {
         // What is needed. Resampling: filled pipes whose source lies below them
@@ -11836,6 +11951,20 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                 // The engine is closing, or a message-thread operation waits for the lock:
                 // no more copies now (the finished ones are kept; the rest come with the next build).
                 if (buildsAborted.load(std::memory_order_acquire) || buildsInterrupted.load(std::memory_order_acquire)) break;
+                // The reserve holds for the copies read from the cache as well (0.9.123,
+                // #261: 5.2 GB of them came on top of a load that had stopped for memory -
+                // only the computing below looked at the memory).
+                if (memoryShort.load(std::memory_order_relaxed)) break;
+                if (cacheIn != nullptr)
+                {
+                    juce::String why;
+                    if (copyMemoryShort(why))
+                    {
+                        if (!memoryShort.exchange(true))
+                            CrashHandler::note("Copy build of " + stop->name + " stopped for memory: " + why + " - the pipes left play the plain sample");
+                        break;
+                    }
+                }
                 if (cacheIn != nullptr)
                 {
                     std::vector<int64_t> sourceFrames;
@@ -11873,7 +12002,7 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
                 if (memoryShort.load(std::memory_order_relaxed)) return;
                 {
                     juce::String why;
-                    if (memoryShortNow(&why))
+                    if (copyMemoryShort(why))
                     {
                         if (!memoryShort.exchange(true))
                             CrashHandler::note("Copy build of " + stop->name + " stopped for memory: " + why + " - the pipes left play the plain sample");
@@ -13359,7 +13488,7 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         {
             if (loadCancelRequested.load(std::memory_order_relaxed)) { loadCancelled.store(true, std::memory_order_relaxed); loadOutOfMemory.store(true, std::memory_order_relaxed); return; }
             juce::String memoryReason;
-            if (memoryShortNow(&memoryReason))
+            if (memoryShortForDecoding(&memoryReason))
             {
                 if (!loadStoppedForMemory.exchange(true, std::memory_order_relaxed))
                 {
@@ -13996,7 +14125,23 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         const bool replaces = !append || (replacing != nullptr && replacing->count(manualIndex) != 0);
         if (isPooledStop(manualIndex, rank->name)) rank->samplesUnloaded = true;
         else if (replaces && hasLoadedRankForFolder(manualIndex, stopFolder, rank->keyShift())) { rank->samplesUnloaded = true; rank->adoptSamples = true; }
-        else loadRankSamples(rank);
+        else
+        {
+            // The room this rank's copies of filled pipes will want after the load
+            // (0.9.123): owed from here on, so the decoding leaves it free.
+            // Known from an earlier load: its copies' samples in the storage of this
+            // load (packed copies take less - the safe side). Never seen: a sixteenth
+            // of what the rank itself took.
+            juce::int64 knownSamples = -1;
+            {
+                const std::lock_guard<std::mutex> lk(gCopyRoomMutex);
+                if (const auto found = gCopyRoomSamples.find(copyCachePathTag(*rank)); found != gCopyRoomSamples.end()) knownSamples = found->second;
+            }
+            if (knownSamples > 0) gCopyRoomOwed.fetch_add(knownSamples * (storeSamplesAsFloat ? 4 : 2));
+            const juce::int64 heldBefore = MemoryInfo::heldBytes();
+            loadRankSamples(rank);
+            if (knownSamples < 0) gCopyRoomOwed.fetch_add(juce::jmax((juce::int64)0, MemoryInfo::heldBytes() - heldBefore) / 16);
+        }
         rank->folderHash = (uint32_t)stopFolder.getFullPathName().hashCode();
         rank->windContribution = windStopContribution(rank->name);
     };
@@ -14060,6 +14205,20 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
     if (gSwapBaseline.load() < 0)   // the first tree of a load
     {
         gSwapBaseline.store(MemoryInfo::swappedBytes());   // the paging rule counts the growth from here
+        gOthersBaseline.store(MemoryInfo::othersBytes());
+        gTrimBaseline.store(MemoryInfo::trimmedBytes());
+        gCopyRoomOwed.store(0);
+        {
+            // What the copies of every rank took when they were last built here.
+            auto records = copyCacheDir != juce::File() ? readCopyRoomFile(copyCacheDir.getChildFile("CopyRoom.txt")) : std::map<juce::String, juce::int64>();
+            const std::lock_guard<std::mutex> lk(gCopyRoomMutex);
+            gCopyRoomSamples = std::move(records);
+        }
+        CrashHandler::note("Memory at the start of the load: " + juce::String((double)MemoryInfo::freeBytes() / 1073741824.0, 1) + " GB free of "
+            + juce::String((double)MemoryInfo::installedBytes() / 1073741824.0, 1) + " GB installed; the system and the other programs hold "
+            + juce::String((double)gOthersBaseline.load() / 1073741824.0, 1) + " GB, the program " + juce::String((double)MemoryInfo::heldBytes() / 1073741824.0, 1)
+            + " GB; the loading keeps " + juce::String((double)MemoryInfo::reserveBytes() / 1073741824.0, 2) + " GB free and stops when the program holds "
+            + juce::String((double)(MemoryInfo::installedBytes() - MemoryInfo::systemShareBytes(gOthersBaseline.load())) / 1073741824.0, 1) + " GB");
         lastLoadMemoryLimited.store(false, std::memory_order_relaxed);
         loadCancelRequested.store(false, std::memory_order_relaxed);
         loadCancelled.store(false, std::memory_order_relaxed);
@@ -14093,7 +14252,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                     loadOutOfMemory.store(true, std::memory_order_relaxed);
                     CrashHandler::note("Loading cancelled by the user before \"" + stopName + "\"");
                 }
-                else if (memoryShortNow(&memoryReason))
+                else if (memoryShortForDecoding(&memoryReason))
                 {
                     loadStoppedForMemory.store(true, std::memory_order_relaxed);
                     loadOutOfMemory.store(true, std::memory_order_relaxed);
@@ -14229,7 +14388,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 + ".\n\nThey are not on the grid; the Stop List keeps their rows, and \"Add stop\" on the grid offers them as ready-made stops.";
         else if (loadStoppedForMemory.load(std::memory_order_relaxed))
             lastLoadError = "The memory is full: the loading stopped (" + (loadMemoryStopReason.isNotEmpty() ? loadMemoryStopReason : juce::String((double)freePhysicalMemoryBytes() / 1073741824.0, 1) + " GB free")
-                + " of " + juce::String((double)juce::SystemStats::getMemorySizeInMegabytes() / 1024.0, 1) + " GB installed; the system would page samples out, and every stroke would stall the sound).\n\n"
+                + "; " + juce::String((double)juce::SystemStats::getMemorySizeInMegabytes() / 1024.0, 1) + " GB installed). Beyond this the system would move samples out of the RAM, and every stroke would stall the sound.\n\n"
                 "The instrument is built from the stops loaded so far; " + juce::String(skipped) + " stop(s) were not loaded: " + list
                 + ".\n\nThey are not on the grid; the Stop List keeps their rows, and \"Add stop\" on the grid offers them as ready-made stops (taking one loads it again). Load fewer stops (a smaller configuration), keep the 16-bit sample storage, or add memory.";
         else
