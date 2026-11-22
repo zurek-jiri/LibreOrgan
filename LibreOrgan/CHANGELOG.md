@@ -12,6 +12,28 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.119] - 2026-11-22
+
+### Added
+- **Configuration Editor > Console > Combinations**: what a piston holds and
+  does is your choice.
+  - *Combinations hold the voicing of the stops* (off by default): a piston
+    also stores and recalls every stop's and transmission's voicing - stop
+    volume, attack gain and time, random tuning, release crossfade, the
+    perspective boxes, volume / treble / attack per key. One piston can
+    change the colour and the strength of the same stops.
+  - *Combinations hold the top row's sliders* (off by default): master
+    volume, pitch, the fades, release scaling, cutting and "played from",
+    attack minimum time and delay.
+  - *An empty piston switches everything off* (off by default): a general
+    cancel, as on many organs; off, an empty piston changes nothing.
+  - *Show the Tutti button*.
+
+### Changed
+- **Load Voicing never touches the list of transmissions and extensions**: it
+  sets the voicing of the ones that are there (by their identity) and adds,
+  removes or moves none. It replaced every stop's list with the file's before.
+
 ## [0.9.118] - 2026-11-22
 
 ### Changed

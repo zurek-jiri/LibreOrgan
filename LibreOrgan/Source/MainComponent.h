@@ -21,6 +21,7 @@ struct MemorySlot
     juce::Array<juce::var> stopData; // will contain name, enabled, db, gainDb, attackMs, attackFadeoutMs
     juce::Array<juce::var> couplerData;
     juce::Array<juce::var> tremulantData; // { manual, enabled } per division
+    juce::var globalSliders;              // 0.9.119: { name: value } of the top row's sliders - a piston stored with that option on
 };
 
 // A step of "Compiling the Stop List" in the loading dialog: its text, the
@@ -153,6 +154,11 @@ private:
     // combinations file path; machine-specific) and the Editor switch that reads it again after the organ loads.
     std::map<juce::String, juce::String> combinationsFiles;
     bool loadLastCombinationsFile = true;
+    // 0.9.119: Configuration Editor > Console > Combinations (this computer's choices)
+    bool showTuttiButton = true;
+    bool emptyPistonCancels = false;        // a piston that holds nothing switches everything off (general cancel); off: it changes nothing
+    bool combinationsHoldVoicing = false;   // a piston stores and recalls the voicing of every stop and transmission as well
+    bool combinationsHoldSliders = false;   // ... and the top row's sliders (master volume, pitch, the fades ...)
     void rememberCombinationsFile(const juce::File& file);
     void loadRememberedCombinationsFile();
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
@@ -1830,6 +1836,13 @@ private:
     int takeLateCallbacksOfAllRoutes();
     void saveStopSettings();
     void loadStopSettings();
+    void saveVoicingToFile(const juce::File& file);     // 0.9.119: what Save Voicing writes (the chooser and the test hook)
+    void loadVoicingFromFile(const juce::File& file);   // what Load Voicing reads
+    void addVoicingToSlot(MemorySlot& slot);            // 0.9.119: the options of Console > Combinations
+    void applySlotVoicing(const MemorySlot& slot);
+    juce::var globalSlidersNow();
+    void applySlotSliders(const MemorySlot& slot);
+    std::vector<std::pair<juce::String, juce::Slider*>> globalSliderList();
     void saveLastDirectory();
     void mergeStops();
     void loadSettings();

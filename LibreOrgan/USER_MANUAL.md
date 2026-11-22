@@ -423,7 +423,8 @@ anywhere else to finish; *Top bar: back to the built-in order* undoes it.
   ([Stop-Merging](#36-stop-merging)).
 - **Load Voicing / Save Voicing** (hidden by default) - the voicing as a
   file: everything an unfolded voicing row sets, for every stop, transmission
-  and extension.
+  and extension. Loading sets the voicing of what is there; it never adds,
+  removes or moves a transmission.
 - **Load Configuration / Save Configuration** - the instrument as a file; a
   right-click on Load offers the merge.
 - **Shut down PC** (hidden by default) saves everything, quits and shuts the
@@ -451,7 +452,9 @@ the crescendo.
 
 - Click a piston to recall its registration: what is on and what is off
   (stops, transmissions, extensions, couplers, tremulants, Unison Off) and
-  nothing else - no master volume, no voicing. With *Set* on, a click stores the current
+  nothing else - unless you choose more in the Configuration Editor
+  ([the voicing](#combinations-hold-the-voicing-of-the-stops),
+  [the top row's sliders](#combinations-hold-the-top-rows-sliders)). With *Set* on, a click stores the current
   registration in the piston, and *<<* / *>>* store it in the previous / next
   piston and go there.
 - A piston that holds a registration is a darker grey (a taught crescendo
@@ -1921,6 +1924,30 @@ so a brief overlap does not make the solo stop jump.
 ### Load the last configuration at startup
 
 Off by default. On: the configuration used last time opens at the start.
+
+### Combinations hold the voicing of the stops
+
+Off by default: a piston switches on and off, as on an organ. On: a piston
+also stores and recalls the voicing of every stop and transmission - stop
+volume, attack gain and time, random tuning, release crossfade, the
+perspective boxes, volume / treble / attack per key - so one piston can change
+the colour and the strength of the same stops, which no pipe organ can. A
+piston stored while this was off holds no voicing and changes none.
+
+### Combinations hold the top row's sliders
+
+Off by default. On: a piston also stores and recalls the global sliders -
+master volume, pitch, the fades, release scaling, cutting and "played from",
+attack minimum time and delay.
+
+### An empty piston switches everything off
+
+Off by default: a piston that holds nothing changes nothing. On: it is a
+general cancel, like *X*.
+
+### Show the Tutti button
+
+On by default. Hidden, its MIDI assignment still works.
 
 ### Load the last combinations file with the organ
 

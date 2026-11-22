@@ -2905,6 +2905,21 @@ MainComponent::MainComponent()
                 CrashHandler::note("ORGAN_TEST_PLUGIN: " + parts[2] + " of " + parts[1] + " - " + safeThis->pluginStatus(parts[1], id));
             });
         }
+    // 0.9.119: ORGAN_TEST_VOICING="<seconds>|save|<file>^<seconds>|load|<file>" = Save Voicing / Load Voicing without the chooser.
+    if (const char* env = std::getenv("ORGAN_TEST_VOICING"))
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String(juce::CharPointer_UTF8(env)), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 3) continue;
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, action = parts[1], path = parts[2]]
+                {
+                    if (safeThis == nullptr) return;
+                    CrashHandler::note("ORGAN_TEST_VOICING: " + action + " " + path);
+                    if (action == "save") safeThis->saveVoicingToFile(juce::File(path));
+                    else if (action == "load") safeThis->loadVoicingFromFile(juce::File(path));
+                });
+        }
     // 0.9.102: ORGAN_TEST_QUIT=<seconds> ends the program in order (as a quit without questions).
     if (const char* env = std::getenv("ORGAN_TEST_QUIT"))
         juce::Timer::callAfterDelay(1000 * juce::jmax(1, juce::String(env).getIntValue()), [] { juce::JUCEApplicationBase::quit(); });
@@ -3614,7 +3629,8 @@ void MainComponent::resized()
     items.push_back({ &previousCombinationButton, 58, 40, false });
     items.push_back({ &nextCombinationButton, 58, 40, false });
     items.push_back({ nullptr, 12, 4, false });   // gap
-    items.push_back({ &enableAllButton, 78, 50, false });
+    enableAllButton.setVisible(showTuttiButton);   // 0.9.119: Console > Combinations
+    if (showTuttiButton) items.push_back({ &enableAllButton, 78, 50, false });
     items.push_back({ &disableAllButton, 58, 40, false });
     items.push_back({ nullptr, 12, 4, false });
     items.push_back({ &saveCombinationsButton, 64, 44, false });
@@ -13412,6 +13428,7 @@ namespace
     MemorySlot onOffSlot(const MemorySlot& memory)
     {
         MemorySlot result;
+        result.globalSliders = memory.globalSliders;   // 0.9.119: there only when the piston was stored with that option
         for (const auto& stopObj : memory.stopData)
         {
             if (!stopObj.isObject()) continue;
@@ -13420,6 +13437,7 @@ namespace
             st->setProperty("perspective", stopObj.getProperty("perspective", ""));
             st->setProperty("primaryManual", stopObj.getProperty("primaryManual", 0));
             st->setProperty("enabled", (bool)stopObj.getProperty("enabled", true));
+            if (stopObj.getProperty("voicing", juce::var()).isObject()) st->setProperty("voicing", stopObj.getProperty("voicing", juce::var()));   // 0.9.119: stored with the option on
             if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
             {
                 juce::Array<juce::var> transmissions;   // every one, in its order: an entry without an id is found by its place
@@ -13429,6 +13447,7 @@ namespace
                     if ((int)item.getProperty("id", 0) > 0) t->setProperty("id", (int)item.getProperty("id", 0));
                     t->setProperty("manual", (int)item.getProperty("manual", 0));
                     t->setProperty("enabled", (bool)item.getProperty("enabled", false));
+                    if (item.getProperty("voicing", juce::var()).isObject()) t->setProperty("voicing", item.getProperty("voicing", juce::var()));
                     transmissions.add(juce::var(t.get()));
                 }
                 st->setProperty("transmissions", transmissions);
@@ -14638,7 +14657,14 @@ void MainComponent::saveStopSettings()
 
             if (!file.hasFileExtension("json"))
                 file = file.withFileExtension("json");
+            saveVoicingToFile(file);
+        });
+}
 
+// 0.9.119: the body of Save Voicing as a function of its own (the chooser above and the test hook
+// ORGAN_TEST_VOICING call it). Everything an unfolded voicing row sets, for every stop and its transmissions.
+void MainComponent::saveVoicingToFile(const juce::File& file)
+{
             juce::DynamicObject::Ptr root = new juce::DynamicObject();
             juce::Array<juce::var> stopsArray;
 
@@ -14718,8 +14744,7 @@ void MainComponent::saveStopSettings()
                 DBG("File successfully written and exists at: " << file.getFullPathName());
             else
                 DBG("ERROR: File was not written or does not exist at: " << file.getFullPathName());
-
-        });
+            CrashHandler::note("Voicing saved: " + file.getFullPathName() + " (" + juce::String(stopsArray.size()) + " stop(s))");
 }
 
 void MainComponent::loadStopSettings()
@@ -14744,10 +14769,19 @@ void MainComponent::loadStopSettings()
 
             DBG("Attempting to load from: " << file.getFullPathName() << " exists=" << (file.existsAsFile() ? "YES" : "NO"));
             if (!file.existsAsFile()) return;
+            loadVoicingFromFile(file);
+        });
+}
 
+// 0.9.119: the body of Load Voicing as a function of its own (the chooser above and the test hook).
+// It sets the voicing of the stops and transmissions that ARE here - the list of transmissions and
+// extensions is the organ's (Stop List), a voicing file never adds, removes or moves one.
+void MainComponent::loadVoicingFromFile(const juce::File& file)
+{
             auto text = file.loadFileAsString();
             auto parsed = juce::JSON::parse(text);
             if (!parsed.isObject()) return;
+            int stopsSet = 0, transmissionsSet = 0, transmissionsNotHere = 0;
 
             auto stopsArray = parsed.getProperty(juce::Identifier("stops"), juce::var());
             if (!stopsArray.isArray()) return;
@@ -14827,7 +14861,30 @@ void MainComponent::loadStopSettings()
                         engine.setStopOneShot(stop, stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1);
                         engine.setStopReleaseCrossfade(stop, stopObj->hasProperty("releaseCrossfade") ? (float)(double)stopObj->getProperty("releaseCrossfade") : 1.0f);   // 0.9.62
                         engine.setStopRandomPitchError(stop, randomPitchErrorCents, true);
-                        engine.replaceTransmissions(stop, Voicer::transmissionsFromVar(stopVar, stop->primaryManual));
+                        ++stopsSet;
+                        {   // 0.9.119: the voicing of the transmissions that are here - each by its id, one without an id
+                            // by its place among the file's transmissions into the same division. Never the list itself.
+                            const auto wanted = Voicer::transmissionsFromVar(stopVar, stop->primaryManual);
+                            std::array<int, SamplerEngine::maxManuals> ordinals{};
+                            for (const auto& w : wanted)
+                            {
+                                const int ordinal = ordinals[(size_t)w.manual]++;
+                                const int index = storedTransmissionIndex(stop, { w.id, w.manual, ordinal });
+                                if (index < 0 || index >= (int)stop->transmissions.size()) { ++transmissionsNotHere; continue; }
+                                ++transmissionsSet;
+                                if (stop->transmissions[(size_t)index].shift != w.shift) engine.setTransmissionShift(stop, index, w.shift);
+                                engine.setTransmissionDb(stop, index, w.db);
+                                if (std::abs(stop->transmissions[(size_t)index].formantFollow - w.formantFollow) > 0.004f) engine.setTransmissionFormantFollow(stop, index, w.formantFollow);
+                                { const juce::ScopedLock sl(engine.getLock()); stop->transmissions[(size_t)index].alias = w.alias; }
+                                for (int key = 0; key < 128; ++key)
+                                {
+                                    const auto& now = stop->transmissions[(size_t)index];
+                                    if (now.keyDisabled.test((size_t)key) != w.keyDisabled.test((size_t)key)) engine.setTransmissionKeyEnabled(stop, index, key, !w.keyDisabled.test((size_t)key));
+                                    if (std::abs(now.keyDb[(size_t)key] - w.keyDb[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyDb(stop, index, key, w.keyDb[(size_t)key]);
+                                    if (std::abs(now.keyTone[(size_t)key] - w.keyTone[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyTone(stop, index, key, w.keyTone[(size_t)key]);
+                                }
+                            }
+                        }
                         if (stopObj->hasProperty("ranks"))
                             for (const auto& state : *stopObj->getProperty("ranks").getArray())
                             {
@@ -14913,7 +14970,11 @@ void MainComponent::loadStopSettings()
             voicer->updateStopStates();
             repaint();
             DBG("Stop settings loaded from: " << file.getFullPathName());
-        });
+            CrashHandler::note("Voicing loaded: " + file.getFullPathName() + " - " + juce::String(stopsSet) + " stop(s) and " + juce::String(transmissionsSet)
+                + " transmission(s) set" + (transmissionsNotHere > 0 ? "; " + juce::String(transmissionsNotHere) + " transmission(s) of the file are not in this organ (the list is the organ's, nothing added)" : juce::String())
+                + (transpositions.empty() ? juce::String() : "; " + juce::String((int)transpositions.size()) + " transposition(s) changed"));
+            voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
+            if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);   // the open rows show the loaded values
 }
 
 void MainComponent::saveMemories()
@@ -14953,6 +15014,7 @@ juce::var MainComponent::combinationsToVar() const
         scene->setProperty("stops", memory.stopData);
         scene->setProperty("couplers", memory.couplerData);
         scene->setProperty("tremulants", memory.tremulantData);
+        if (memory.globalSliders.isObject()) scene->setProperty("sliders", memory.globalSliders);   // 0.9.119
         scenes.add(juce::var(scene.get()));
     }
 
@@ -14997,6 +15059,7 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
         if (bank < 0 || bank > maxBank || piston < 0 || piston >= maxPistons) continue;
 
         MemorySlot memory;
+        memory.globalSliders = scene.getProperty("sliders", juce::var());   // 0.9.119: a piston stored with the top row's sliders
 
         auto stopsArray = scene.getProperty("stops", juce::var());
         if (stopsArray.isArray())
@@ -15950,7 +16013,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -27563,6 +27626,10 @@ void MainComponent::loadSettings()
     // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file -> file) and
     // whether it is read again once the organ is loaded.
     loadLastCombinationsFile = parsed.getProperty("loadLastCombinationsFile", true);
+    showTuttiButton = parsed.getProperty("showTuttiButton", true);   // 0.9.119: Console > Combinations
+    emptyPistonCancels = parsed.getProperty("emptyPistonCancels", false);
+    combinationsHoldVoicing = parsed.getProperty("combinationsHoldVoicing", false);
+    combinationsHoldSliders = parsed.getProperty("combinationsHoldSliders", false);
     combinationsFiles.clear();
     if (auto* files = parsed.getProperty("combinationsFiles", juce::var()).getDynamicObject())
         for (const auto& prop : files->getProperties()) combinationsFiles[prop.name.toString()] = prop.value.toString();
@@ -28475,6 +28542,10 @@ void MainComponent::saveSettingsNow()
     }
     obj->setProperty("outputDiscontinuityDetector", outputDiscontinuityDetector.load());
     obj->setProperty("loadLastCombinationsFile", loadLastCombinationsFile);   // 0.9.79 (#232)
+    obj->setProperty("showTuttiButton", showTuttiButton);   // 0.9.119: Console > Combinations
+    obj->setProperty("emptyPistonCancels", emptyPistonCancels);
+    obj->setProperty("combinationsHoldVoicing", combinationsHoldVoicing);
+    obj->setProperty("combinationsHoldSliders", combinationsHoldSliders);
     {
         juce::DynamicObject::Ptr files = new juce::DynamicObject();
         for (const auto& [configuration, file] : combinationsFiles) files->setProperty(juce::Identifier(configuration), file);
@@ -29372,7 +29443,10 @@ MemorySlot MainComponent::captureCurrentState() const
 void MainComponent::storeCombination(int piston)
 {
     if (piston < 0 || piston >= pistonCount) return;
-    combinations[combinationKey(currentBank, piston)] = onOffSlot(captureCurrentState());   // 0.9.118: ON / OFF alone
+    auto slot = onOffSlot(captureCurrentState());   // 0.9.118: ON / OFF alone ...
+    if (combinationsHoldVoicing) addVoicingToSlot(slot);   // 0.9.119: ... unless Console > Combinations says more
+    if (combinationsHoldSliders) slot.globalSliders = globalSlidersNow();
+    combinations[combinationKey(currentBank, piston)] = std::move(slot);
     activePiston = piston;
 
     saveMemories();
@@ -29386,13 +29460,188 @@ void MainComponent::restoreCombination(int piston)
     if (found == combinations.end())
     {
         activePiston = piston;
+        if (emptyPistonCancels)   // 0.9.119: a piston that holds nothing = general cancel (the X button), when chosen so
+        {
+            CrashHandler::note("Piston " + juce::String(piston) + " holds nothing: everything switched off (general cancel)");
+            disableAllStops();
+        }
         updateCombinationLights();
         return;
     }
     applyRegistrationState(found->second, false, true);   // 0.9.118: a piston switches on and off - no master volume, no voicing
+    if (combinationsHoldVoicing) applySlotVoicing(found->second);   // 0.9.119: what the piston was stored with, when the option is on
+    if (combinationsHoldSliders) applySlotSliders(found->second);
     activePiston = piston;
     if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
     updateCombinationLights();
+}
+
+// 0.9.119: "Combinations hold the voicing" (Console > Combinations). Every stop entry of the slot gets
+// "voicing" - what a voicing row sets and a piston can change at once: stop volume, attack gain and time,
+// random tuning, release crossfade, the perspective boxes, volume / treble / attack per key (the keys that
+// are not 0 only) - and every transmission entry its own volume and per-key values. Never the transposition,
+// the formant share (both load or build samples), an alias or the list of transmissions.
+namespace
+{
+    Stop* stopOfSlotEntry(SamplerEngine& engine, const juce::var& stopObj)
+    {
+        const auto name = stopObj.getProperty("name", "").toString();
+        const int manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)stopObj.getProperty("primaryManual", 0));
+        const auto perspective = stopObj.getProperty("perspective", "").toString();
+        for (auto* stop : engine.getStops())
+            if (stop->name == name && stop->primaryManual == manual && (perspective.isEmpty() || stop->perspective.equalsIgnoreCase(perspective))) return stop;
+        return nullptr;
+    }
+    juce::var sparseKeys(const std::array<float, 128>& values)
+    {
+        juce::DynamicObject::Ptr object = new juce::DynamicObject();
+        for (int key = 0; key < 128; ++key)
+            if (std::abs(values[(size_t)key]) > 1.0e-4f) object->setProperty(juce::Identifier(juce::String(key)), values[(size_t)key]);
+        return juce::var(object.get());
+    }
+    std::array<float, 128> keysOf(const juce::var& object)
+    {
+        std::array<float, 128> values{};
+        if (auto* dynamic = object.getDynamicObject())
+            for (const auto& prop : dynamic->getProperties())
+            {
+                const int key = prop.name.toString().getIntValue();
+                if (key >= 0 && key < 128) values[(size_t)key] = (float)(double)prop.value;
+            }
+        return values;
+    }
+}
+
+void MainComponent::addVoicingToSlot(MemorySlot& slot)
+{
+    const juce::ScopedLock engineLock(engine.getLock());
+    for (auto& stopObj : slot.stopData)
+    {
+        auto* entry = stopObj.getDynamicObject();
+        auto* stop = entry != nullptr ? stopOfSlotEntry(engine, stopObj) : nullptr;
+        if (stop == nullptr) continue;
+        juce::DynamicObject::Ptr voicing = new juce::DynamicObject();
+        voicing->setProperty("db", stop->db);
+        voicing->setProperty("gainDb", stop->gainDb);
+        voicing->setProperty("attackMs", stop->attackMs);
+        voicing->setProperty("attackFadeoutMs", stop->attackFadeoutMs);
+        voicing->setProperty("randomPitchErrorCents", stop->randomPitchErrorCents);
+        voicing->setProperty("releaseCrossfade", (double)stop->releaseCrossfade);
+        juce::Array<juce::var> ranks;
+        auto addRank = [&ranks](const Stop* rank)
+        {
+            juce::DynamicObject::Ptr state = new juce::DynamicObject();
+            state->setProperty("perspective", rank->perspective);
+            state->setProperty("enabled", rank->rankEnabled);
+            ranks.add(juce::var(state.get()));
+        };
+        addRank(stop);
+        for (const auto& rank : stop->ranks) addRank(rank.get());
+        voicing->setProperty("ranks", ranks);
+        std::array<float, 128> keyDb{}, keyTone{};
+        for (const int note : stop->voicedNotes())
+            if (note >= 0 && note < 128) { keyDb[(size_t)note] = stop->getNoteDb(note); keyTone[(size_t)note] = stop->getNoteToneDb(note); }
+        voicing->setProperty("keyDb", sparseKeys(keyDb));
+        voicing->setProperty("keyTone", sparseKeys(keyTone));
+        voicing->setProperty("keyAttackMs", sparseKeys(stop->attackKeyMs));
+        voicing->setProperty("attackRandomize", stop->attackRandomize);
+        entry->setProperty("voicing", juce::var(voicing.get()));
+        // The transmission entries stand in the stop's own order (the slot was captured just now).
+        if (auto* list = entry->getProperty("transmissions").getArray())
+            for (int index = 0; index < list->size() && index < (int)stop->transmissions.size(); ++index)
+                if (auto* tEntry = list->getReference(index).getDynamicObject())
+                {
+                    const auto& t = stop->transmissions[(size_t)index];
+                    juce::DynamicObject::Ptr tv = new juce::DynamicObject();
+                    tv->setProperty("db", t.db);
+                    tv->setProperty("keyDb", sparseKeys(t.keyDb));
+                    tv->setProperty("keyTone", sparseKeys(t.keyTone));
+                    tEntry->setProperty("voicing", juce::var(tv.get()));
+                }
+    }
+}
+
+void MainComponent::applySlotVoicing(const MemorySlot& slot)
+{
+    int applied = 0;
+    for (const auto& stopObj : slot.stopData)
+    {
+        const auto voicing = stopObj.getProperty("voicing", juce::var());
+        auto* stop = voicing.isObject() ? stopOfSlotEntry(engine, stopObj) : nullptr;
+        if (stop == nullptr) continue;
+        ++applied;
+        stop->setDb((float)(double)voicing.getProperty("db", 0.0));
+        stop->gainDb = (float)(double)voicing.getProperty("gainDb", 0.0);
+        stop->attackMs = (float)(double)voicing.getProperty("attackMs", 0.0);
+        stop->attackFadeoutMs = (float)(double)voicing.getProperty("attackFadeoutMs", 0.0);
+        const float random = (float)(double)voicing.getProperty("randomPitchErrorCents", 4.0);
+        if (std::abs(random - stop->randomPitchErrorCents) > 1.0e-3f) engine.setStopRandomPitchError(stop, random, true);   // only on a change: it draws every pipe's detune anew
+        engine.setStopReleaseCrossfade(stop, (float)(double)voicing.getProperty("releaseCrossfade", 1.0));
+        if (const auto* ranks = voicing.getProperty("ranks", juce::var()).getArray())
+            for (const auto& state : *ranks)
+            {
+                const auto perspective = canonicalPerspectiveName(state.getProperty("perspective", "").toString());
+                auto apply = [&](Stop* rank) { if (rank->perspective.equalsIgnoreCase(perspective)) rank->rankEnabled = state.getProperty("enabled", true); };
+                apply(stop);
+                for (auto& rank : stop->ranks) apply(rank.get());
+            }
+        {
+            const auto keyDb = keysOf(voicing.getProperty("keyDb", juce::var())), keyTone = keysOf(voicing.getProperty("keyTone", juce::var()));
+            const juce::ScopedLock sl(engine.getLock());
+            for (const int note : stop->voicedNotes())
+                if (note >= 0 && note < 128) { stop->setNoteDb(note, keyDb[(size_t)note]); stop->setNoteToneDb(note, keyTone[(size_t)note]); }
+            stop->attackKeyMs = keysOf(voicing.getProperty("keyAttackMs", juce::var()));
+            stop->attackRandomize = (bool)voicing.getProperty("attackRandomize", true);
+        }
+        // The transmissions: each stored entry finds its transmission by the id, an entry without one by its place.
+        if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
+        {
+            std::array<int, SamplerEngine::maxManuals> ordinals{};
+            for (const auto& item : *list)
+            {
+                const int manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)item.getProperty("manual", 0));
+                const int ordinal = ordinals[(size_t)manual]++;
+                const auto tv = item.getProperty("voicing", juce::var());
+                if (!tv.isObject()) continue;
+                const int index = storedTransmissionIndex(stop, { juce::jmax(0, (int)item.getProperty("id", 0)), manual, ordinal });
+                if (index < 0 || index >= (int)stop->transmissions.size()) continue;
+                engine.setTransmissionDb(stop, index, (float)(double)tv.getProperty("db", 0.0));
+                const auto keyDb = keysOf(tv.getProperty("keyDb", juce::var())), keyTone = keysOf(tv.getProperty("keyTone", juce::var()));
+                for (int key = 0; key < 128; ++key)
+                {
+                    if (std::abs(stop->transmissions[(size_t)index].keyDb[(size_t)key] - keyDb[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyDb(stop, index, key, keyDb[(size_t)key]);
+                    if (std::abs(stop->transmissions[(size_t)index].keyTone[(size_t)key] - keyTone[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyTone(stop, index, key, keyTone[(size_t)key]);
+                }
+            }
+        }
+    }
+    if (applied > 0) voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 500.0;
+}
+
+// 0.9.119: "Combinations hold the top row's sliders" - the nine global sliders by their MIDI-learn names.
+std::vector<std::pair<juce::String, juce::Slider*>> MainComponent::globalSliderList()
+{
+    return { { "master", &masterVolumeSlider }, { "pitch", &pitchSlider }, { "sustainFade", &releaseFadeOutSlider },
+             { "releaseFade", &releaseFadeInSlider }, { "releaseScale", &releaseScalingSlider }, { "attackTime", &attackMinimumSlider },
+             { "attackDelay", &attackMinimumDelaySlider }, { "releaseCut", &releaseCutSlider }, { "releasePlayedFrom", &releasePlayedFromSlider } };
+}
+
+juce::var MainComponent::globalSlidersNow()
+{
+    juce::DynamicObject::Ptr object = new juce::DynamicObject();
+    for (const auto& [name, slider] : globalSliderList()) object->setProperty(juce::Identifier(name), slider->getValue());
+    return juce::var(object.get());
+}
+
+void MainComponent::applySlotSliders(const MemorySlot& slot)
+{
+    if (!slot.globalSliders.isObject()) return;
+    for (const auto& [name, slider] : globalSliderList())
+        if (slot.globalSliders.hasProperty(juce::Identifier(name)))
+        {
+            const double value = (double)slot.globalSliders.getProperty(juce::Identifier(name), slider->getValue());
+            if (std::abs(value - slider->getValue()) > 1.0e-6) slider->setValue(value, juce::sendNotification);
+        }
 }
 
 void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includeMasterVolume, bool onOffOnly)
@@ -35296,10 +35545,6 @@ void MainComponent::showConfigurationEditor()
                 { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
                 "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
                 "and every stop being dragged glows for a moment. Off: the console as it was.");
-            addToggle("Load the last combinations file with the organ", o.loadLastCombinationsFile, [&o](bool state)   // 0.9.79 (#232)
-                { o.loadLastCombinationsFile = state; o.saveSettings(); },
-                "The combinations file (all banks of pistons) last loaded or saved with this organ is read again once the "
-                "organ is loaded, on top of the combinations the configuration carries. Off: the configuration's own combinations only.");
             // Where the configurations and the samples live (0.8.190).
             addButtonWithNote("LibreOrgans folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
                 {
@@ -35387,6 +35632,30 @@ void MainComponent::showConfigurationEditor()
                 { o.selectTemperament(names[index]); });
             }
             addInfo("Window size", juce::String(o.getWidth()) + " x " + juce::String(o.getHeight()) + " (saved automatically)");
+
+            // --- Combinations (0.9.119): what a piston holds and does; the rows of this subject together
+            addSection("Combinations", true, false, 2);
+            addToggle("Combinations hold the voicing of the stops", o.combinationsHoldVoicing, [&o](bool state)
+                { o.combinationsHoldVoicing = state; o.saveSettings(); },
+                "Off (default): a piston switches stops, transmissions, couplers and tremulants on and off, as on an organ. "
+                "On: a piston also stores and recalls the voicing of every stop and transmission - stop volume, attack gain and time, "
+                "random tuning, release crossfade, the perspective boxes, volume / treble / attack per key. One piston can then change "
+                "the colour and the strength of the same stops. Pistons stored while this was off hold no voicing and change none.");
+            addToggle("Combinations hold the top row's sliders", o.combinationsHoldSliders, [&o](bool state)
+                { o.combinationsHoldSliders = state; o.saveSettings(); },
+                "On: a piston also stores and recalls the global sliders - master volume, pitch, the sustain and release fades, "
+                "release scaling, release cutting, release played from, attack minimum time and delay. Off (default): a piston never touches them.");
+            addToggle("An empty piston switches everything off", o.emptyPistonCancels, [&o](bool state)
+                { o.emptyPistonCancels = state; o.saveSettings(); },
+                "On: a piston that holds nothing acts as a general cancel (every stop, transmission, coupler and tremulant off), as on "
+                "many organs. Off (default): an empty piston changes nothing.");
+            addToggle("Show the Tutti button", o.showTuttiButton, [&o](bool state)
+                { o.showTuttiButton = state; o.saveSettings(); o.resized(); },
+                "The Tutti button of the combination row (every stop on). Hidden, its MIDI assignment still works.");
+            addToggle("Load the last combinations file with the organ", o.loadLastCombinationsFile, [&o](bool state)   // 0.9.79 (#232)
+                { o.loadLastCombinationsFile = state; o.saveSettings(); },
+                "The combinations file (all banks of pistons) last loaded or saved with this organ is read again once the "
+                "organ is loaded, on top of the combinations the configuration carries. Off: the configuration's own combinations only.");
 
             // --- Top bar (0.8.228: a subsection of its own, folded by default)
             addSection("Top bar", true, true, 2);

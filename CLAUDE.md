@@ -4868,6 +4868,43 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Voicing / Load Voicing themselves (a native file chooser, no hook) and the transposition's reload through them.
   TEST HYGIENE: the program writes a daily `settings-<date>.json` at start - a test run leaves the TEST's settings in
   it (the script deletes the ones it made) - and changes lastdir.json (back it up too; the first run lost its old value).
+  0.9.119 (22 Nov 2026, the same day; the user: the voicing in the pistons "měl být flag-ship našeho programu ... My se
+  nechceme vázat pouze na skutečné varhany" - so it comes back as a CHOICE; "Nechceme aby load voicing nahrazoval seznam
+  transmisí a extenzí ... to do voicingů vůbec nepatří"; "Udělej si hook na save a load voicing"): (1) CONFIGURATION EDITOR >
+  CONSOLE > "Combinations" (a level-2 section before "Top bar"; four machine-specific keys, all in loadSettings /
+  saveSettingsNow / the machine key list): `combinationsHoldVoicing` ("Combinations hold the voicing of the stops", off) -
+  storeCombination calls `addVoicingToSlot(slot)`: every stop entry gets "voicing" {db, gainDb, attackMs, attackFadeoutMs,
+  randomPitchErrorCents, releaseCrossfade, ranks [{perspective, enabled}], keyDb / keyTone / keyAttackMs (sparse: the keys
+  that are not 0), attackRandomize} and every transmission entry "voicing" {db, keyDb, keyTone}; restoreCombination calls
+  `applySlotVoicing` (random tuning set only on a change - it draws every pipe's detune anew; transmissions found by id,
+  else by place; voicingSaveAt). NEVER in a piston: transposition and formant share (they load / build samples), aliases,
+  the transmission list. A piston stored with the option off holds no "voicing" and changes none; the keys of the
+  pre-0.9.118 files (flat db / gainDb ..., masterDb) stay ignored. `combinationsHoldSliders` ("Combinations hold the top
+  row's sliders", off): `MemorySlot::globalSliders` = {name: value} of `globalSliderList()` (the nine MIDI-learn names:
+  master pitch sustainFade releaseFade releaseScale attackTime attackDelay releaseCut releasePlayedFrom), saved as the
+  scene's "sliders", applied by `applySlotSliders` (setValue with notification, only on a change) - the ONLY way the master
+  volume gets into a piston. `emptyPistonCancels` ("An empty piston switches everything off", off): a piston with no entry
+  in `combinations` calls disableAllStops() (the X button's general cancel), log "Piston N holds nothing ...".
+  `showTuttiButton` ("Show the Tutti button", on): resized() leaves enableAllButton out of the row. "Load the last
+  combinations file with the organ" moved into the section (the rows of one subject together). Manual: a ### per label.
+  (2) LOAD VOICING NEVER TOUCHES THE LIST: `loadVoicingFromFile` no longer calls replaceTransmissions - every transmission
+  of the file is looked up in the stop (storedTransmissionIndex: id, else division + place) and gets its shift (only when
+  different), db, formant share (only when different), alias, disabled keys, per-key db / tone; one that is not in the
+  organ is counted in the log and nothing is added. Voicer::loadState (the configuration) still owns and replaces the
+  list - right. After a Load Voicing: voicingSaveAt + voicer->rebuildUI (added: the open rows showed the old values).
+  (3) `saveVoicingToFile(file)` / `loadVoicingFromFile(file)` = the old chooser lambdas' bodies as functions (log "Voicing
+  saved: ..." / "Voicing loaded: ... N stop(s) and M transmission(s) set ..."); HOOK `ORGAN_TEST_VOICING="<seconds>|save|
+  <file>^<seconds>|load|<file>"`. Tests: %TEMP%\test_0119.ps1 -Options on|off (+ test_0119_make.py / _check.py; Rural with
+  an old-format piston 1 and a piston 4 carrying "sliders" {master -30}; a voicing file B = the configuration's voicing
+  with subbass -6 dB / xfade 2 / key 36 -3, a bogus transmission and violon "transposition" 12): ON - C (after B) -6 / 2 /
+  -3, the stop's transmission count unchanged, violon 12 ("Transposition of ... set to 12"), D (after piston 3, stored
+  before B) back at 0 / x1 / 6.6, piston 4 -> master -30, empty piston 5 -> general cancel, pistons hold voicing + 9
+  sliders; OFF - D stays at B's values, master stays -27.5, piston 6 stored after the empty piston still has the stop on,
+  no voicing / sliders in the stored pistons, Tutti not in the row (pictured). The Editor section pictured
+  (ORGAN_TEST_EDITOR_SECTION=Combinations with configEditorCollapsed {Console false, Combinations false}). NOT run: a
+  transmission's values through Load Voicing with a CHANGED value (the 12 transmissions of the run were set to what they
+  had), the sliders option with a slider moved between store and recall other than the crafted master, Linux / macOS.
+  THE REPLY TO #256 is a draft with the user (not posted).
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

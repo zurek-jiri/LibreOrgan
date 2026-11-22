@@ -431,7 +431,8 @@ static const char* const kManualText_part2 =
     "  ([Stop-Merging](#36-stop-merging)).\n"
     "- **Load Voicing / Save Voicing** (hidden by default) - the voicing as a\n"
     "  file: everything an unfolded voicing row sets, for every stop, transmission\n"
-    "  and extension.\n"
+    "  and extension. Loading sets the voicing of what is there; it never adds,\n"
+    "  removes or moves a transmission.\n"
     "- **Load Configuration / Save Configuration** - the instrument as a file; a\n"
     "  right-click on Load offers the merge.\n"
     "- **Shut down PC** (hidden by default) saves everything, quits and shuts the\n"
@@ -459,7 +460,9 @@ static const char* const kManualText_part2 =
     "\n"
     "- Click a piston to recall its registration: what is on and what is off\n"
     "  (stops, transmissions, extensions, couplers, tremulants, Unison Off) and\n"
-    "  nothing else - no master volume, no voicing. With *Set* on, a click stores the current\n"
+    "  nothing else - unless you choose more in the Configuration Editor\n"
+    "  ([the voicing](#combinations-hold-the-voicing-of-the-stops),\n"
+    "  [the top row's sliders](#combinations-hold-the-top-rows-sliders)). With *Set* on, a click stores the current\n"
     "  registration in the piston, and *<<* / *>>* store it in the previous / next\n"
     "  piston and go there.\n"
     "- A piston that holds a registration is a darker grey (a taught crescendo\n"
@@ -603,11 +606,11 @@ static const char* const kManualText_part2 =
     "samples at once. The program sets it by itself where it can: from a\n"
     "Hauptwerk definition, or from the samples' pitch against the footage in the\n"
     "folder's name (\"quintaton 16\" whose files sound 8' on their numbers gets\n"
+    ;
+static const char* const kManualText_part3 =
     "-12). A whole organ standing a semitone off is a tuning, not a transposition,\n"
     "and stays at 0. The same setting is the Stop List column \"Transp.\"; clearing\n"
     "that cell lets the program find it again.\n"
-    ;
-static const char* const kManualText_part3 =
     "\n"
     "### Alias\n"
     "\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "  the row's combo box. The stop moves with its folders.\n"
     "- **Stop folders:** drag a name a little to the **right** and the row is\n"
     "  indented under the row above: it becomes that stop's child and sounds with\n"
+    ;
+static const char* const kManualText_part4 =
     "  it - that is a stop folder (\"Cornet [III]\"). Drag it **left** to take it\n"
     "  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
     "- **Folder cells:** click a cell to choose one of the free folders of all\n"
-    ;
-static const char* const kManualText_part4 =
     "  loaded trees (a folder serves one cell only); the x beside a cell frees its\n"
     "  folder; a cell dragged onto another takes or swaps. The path shows in a\n"
     "  tip; an orange cell is a folder not on this computer.\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
     "in miniature: four green segments, three orange, red for three seconds\n"
     "after a clip of the row or of its card's sum) and the **fx** button -\n"
+    ;
+static const char* const kManualText_part5 =
     "grey while everything of it is default, orange when an effect is set or a\n"
     "module set apart; it opens the row's [Effects](#53-effects), a right-click\n"
     "on it resets them to the default. The cables take the primary colours first\n"
-    ;
-static const char* const kManualText_part5 =
     "(yellow, blue, red, then green, magenta, cyan, orange, white) in the order of\n"
     "the perspectives; the auxiliary takes the next one. The header of\n"
     "the dialog carries the **Master volume** (the console's slider itself - one\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "\n"
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "LibreOrgan Sampler plays through **several sound cards at the same time**, every\n"
     "route on the device you choose, and can mix kinds of driver in one organ.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "### Audio on Windows\n"
     "\n"
     "- **ASIO**: the professional driver of an interface - the lowest latency, the\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "pipes a stop can be asked to play are filled (its division's compass and\n"
     "every transmission's shifted compass). A filled pipe has everything a real\n"
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
+    ;
+static const char* const kManualText_part7 =
     "nothing while silent. *Missing pipes: neighbours borrowed as a group* (12 by\n"
     "default) makes every missing pipe the octave transposition of a real one, so\n"
     "the rank keeps its chromatic variety; in a sparse rank the neighbouring\n"
-    ;
-static const char* const kManualText_part7 =
     "filled pipes take turns between the real pipes within reach. A pipe switched\n"
     "off in the voicing row is never filled.\n"
     "\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "On by default. The program counts every click between two blocks of its own\n"
     "output, logs it with the route and stage and shows \"!N\" in orange in the DSP\n"
     "cell. A few microseconds per period\n"
+    ;
+static const char* const kManualText_part8 =
     "([The discontinuity detector](#1010-the-discontinuity-detector)).\n"
     "## 8.2 Global sound\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "Every slider has a checkbox that shows it on the main panel too; all are\n"
     "MIDI-learnable there.\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "organ.\n"
     "\n"
     "### Pipe coupling: farthest pitch offset to pull\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
     "within this of where the starting pipe would otherwise settle (default\n"
-    ;
-static const char* const kManualText_part9 =
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
     "\n"
     "### Attack cut fade-in\n"
@@ -1944,6 +1947,30 @@ static const char* const kManualText_part9 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
+    "### Combinations hold the voicing of the stops\n"
+    "\n"
+    "Off by default: a piston switches on and off, as on an organ. On: a piston\n"
+    "also stores and recalls the voicing of every stop and transmission - stop\n"
+    "volume, attack gain and time, random tuning, release crossfade, the\n"
+    "perspective boxes, volume / treble / attack per key - so one piston can change\n"
+    "the colour and the strength of the same stops, which no pipe organ can. A\n"
+    "piston stored while this was off holds no voicing and changes none.\n"
+    "\n"
+    "### Combinations hold the top row's sliders\n"
+    "\n"
+    "Off by default. On: a piston also stores and recalls the global sliders -\n"
+    "master volume, pitch, the fades, release scaling, cutting and \"played from\",\n"
+    "attack minimum time and delay.\n"
+    "\n"
+    "### An empty piston switches everything off\n"
+    "\n"
+    "Off by default: a piston that holds nothing changes nothing. On: it is a\n"
+    "general cancel, like *X*.\n"
+    "\n"
+    "### Show the Tutti button\n"
+    "\n"
+    "On by default. Hidden, its MIDI assignment still works.\n"
+    "\n"
     "### Load the last combinations file with the organ\n"
     "\n"
     "On by default. The combinations file (all banks of pistons) last loaded or\n"
@@ -1993,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
@@ -2020,8 +2049,6 @@ static const char* const kManualText_part9 =
     "bells). Defaults: Chiff, Chimes, Tubular, Celesta, Harp, Glockenspiel. A\n"
     "pattern without a star matches anywhere, \"\\*x\" the end, \"x\\*\" the start.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Ignored folders (folder contains)\n"
     "\n"
     "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
@@ -2195,6 +2222,8 @@ static const char* const kManualText_part10 =
     "folders and the ones you added, behind the playing - nothing waits for it.\n"
     "Each plug-in file is tried in a process of its own and given 8 seconds: one\n"
     "that crashes there or does not answer is refused and never loaded into the\n"
+    ;
+static const char* const kManualText_part11 =
     "program. A file is scanned again only when it changed. What is found is\n"
     "offered by the **+** of an effects chain\n"
     "([Plug-ins in the chain](#plug-ins-in-the-chain)).\n"
@@ -2222,8 +2251,6 @@ static const char* const kManualText_part10 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
-    ;
-static const char* const kManualText_part11 =
     "you with a box: the texts are collected quietly under **Messages** in the\n"
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
@@ -2397,6 +2424,8 @@ static const char* const kManualText_part11 =
     "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
     "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
     "ranks (blower, action) are left out; combinations, wind, displays are ignored.\n"
+    ;
+static const char* const kManualText_part12 =
     "Encrypted sets (.hbw/.hbx) refuse the import.\n"
     "\n"
     "Names: a row is named after its stop folder as it stands on disk, with the\n"
@@ -2424,8 +2453,6 @@ static const char* const kManualText_part11 =
     "retouch of a few headers does not refuse a real perspective. A folder with a\n"
     "degenerate smpl (no chunk, few distinct values, every fraction 0) is compared\n"
     "by its measured pitch instead (the four lowest files, within 2 cents). The\n"
-    ;
-static const char* const kManualText_part12 =
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
     "perspective prefix, and the new head on three folders at least. The log\n"
@@ -2599,6 +2626,8 @@ static const char* const kManualText_part12 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
+    ;
+static const char* const kManualText_part13 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
@@ -2627,5 +2656,5 @@ static const char* const kManualText_part12 =
     "Voicing* exchange it as a file.\n"
     "\n"
     ;
-static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10, kManualText_part11, kManualText_part12 };
-static const int kManualTextPartCount = 13;
+static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10, kManualText_part11, kManualText_part12, kManualText_part13 };
+static const int kManualTextPartCount = 14;
