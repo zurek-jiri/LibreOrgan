@@ -27569,6 +27569,8 @@ void MainComponent::loadSettings()
     engine.setCouplingMaxCents(couplingMaxCents);
     attackCutFadeMs = juce::jlimit(6.0f, 150.0f, (float)(double)parsed.getProperty("attackCutFadeMs", 20.0));   // 0.9.80
     engine.setAttackCutFadeMs(attackCutFadeMs);
+    voicingGlideMs = juce::jlimit(0.0f, 2000.0f, (float)(double)parsed.getProperty("voicingGlideMs", 150.0));   // 0.9.122
+    engine.setVoicingGlideMs(voicingGlideMs);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -28513,6 +28515,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("couplingSkipPercent", couplingSkipPercent);   // 0.9.59
     obj->setProperty("couplingMaxCents", couplingMaxCents);   // 0.9.60
     obj->setProperty("attackCutFadeMs", attackCutFadeMs);     // 0.9.80
+    obj->setProperty("voicingGlideMs", voicingGlideMs);       // 0.9.122
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -30562,6 +30565,11 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
         menu.addSeparator();
         menu.addItem(5, "Merge another configuration into this organ (LibreOrgan Sampler .json, or a Hauptwerk organ definition)...");
     }
+    if (target == "crescendo")   // 0.9.122: the Cresc. button offers the settings too (as the crescendo display does)
+    {
+        menu.addSeparator();
+        menu.addItem(9, "Crescendo settings...");
+    }
     if (target.startsWith("header:"))
     {
         menu.addSeparator();
@@ -30580,6 +30588,7 @@ void MainComponent::showMidiLearnMenu(const juce::String& target)
         else if (result == 6) showManualSection(chapter);
         else if (result == 7) beginHeaderArranging();
         else if (result == 8) { headerButtonOrder.clear(); saveSettings(); resized(); CrashHandler::note("Top bar: the built-in order again"); }
+        else if (result == 9) showCrescendoDialog();
     });
 }
 
@@ -35270,6 +35279,17 @@ void MainComponent::showConfigurationEditor()
                 "The fade-in of a pipe whose attack is CUT by a negative \"Attack per key\" value: the sample starts that far "
                 "in and rises over this time (6 to 150 ms, default 20). Too short clicks or sounds like an edit, too long "
                 "softens the speech. Travels with the organ; new notes take the change.");
+            addSlider("Voicing changes glide over", 0.0, 2000.0, 10.0, " ms", o.voicingGlideMs, 150.0,   // 0.9.122
+                [&o](double value)
+                {
+                    o.voicingGlideMs = juce::jlimit(0.0f, 2000.0f, (float)value);
+                    o.engine.setVoicingGlideMs(o.voicingGlideMs);
+                    o.saveSettings();
+                },
+                "A sounding pipe whose stop volume or volume per key changes - a piston that holds the voicing, a voicing slider "
+                "moved - glides to the new level over this time (default 150 ms; 0 = at once). The time is for the sounding c1; "
+                "a deeper pipe takes 1.5 times as long per octave below it (a fast change thumps in the bass). Perspectives, "
+                "attack settings and random tuning apply from the next key. Travels with the organ.");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);

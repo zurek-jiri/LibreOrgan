@@ -1513,6 +1513,8 @@ namespace
         float lastShelf = 0.0f;           // shelf mix at the end of the previous block
         float shelfSmoothed = 0.0f;       // shelf mix lagging the level (15 degrees)
         float routeGain = 1.0f, routeGainFrom = 1.0f, routeGainLastTarget = 1.0f;   // linear glide between route volumes
+        float voicingGain = 1.0f;         // 0.9.122: stop volume x volume per key as this voice plays it now - it glides to a changed setting
+        float voicingGlideSlow = 1.0f;    // ... and how much slower a deep pipe glides: 1 / (1.5 per octave below the sounding c1, 8 at most)
         uint32_t routeGainRemaining = 0, routeGainTotal = 0;
         float toneDb = 0.0f;                        // current tone shelf dB (glides to toneTarget)
         float toneCoeffDb = 1.0e9f, toneCoeffRate = 0.0f;   // what toneCoeff was computed for
@@ -1555,6 +1557,7 @@ namespace
         bool shelfEnabled = true;
         float shelfSwell = 0.60189f, shelfWind = 0.20567f, shelfTrem = 0.36904f;   // mixes at full attenuation (1 - 10^(-db/20))
         float shelfSmoothing = 1.0f;      // per-block smoothing of the shelf mix: 15 degrees lag at the tremulant rate
+        float voicingGlide = 1.0f;        // 0.9.122: per-block share of the way to a changed stop / key volume (1 = at once)
         float shelfLp[5]{};               // Butterworth lowpass section (b0 b1 b2 a1 a2) at kShelfCornerHz for routeRate
         float exprMaxDb = 13.0f;          // swell: deepest attenuation of this division
         float windMaxDb = 0.0f;           // wind: level change at the current sag limit (0 = no wind)
@@ -3727,7 +3730,23 @@ namespace
                 v.routeGain = v.routeGainFrom + (target - v.routeGainFrom) * progress;
             }
         }
-        const float gainEnd = v.velocityGain * v.stop->getGain() * v.stop->getNoteGain((int)v.note)
+        // 0.9.122: the voicing's level (stop volume x volume per key). A sounding pipe glides to a changed
+        // setting over "Voicing changes glide over" (a piston that holds the voicing, a slider moved) instead of
+        // jumping there within one block; a voice that starts takes the setting as it is.
+        {
+            const float target = v.stop->getGain() * v.stop->getNoteGain((int)v.note);
+            if (!v.started)
+            {
+                v.voicingGain = target;
+                // The set time is for the sounding c1; a deeper pipe takes 1.5 times as long per octave below it
+                // (the user: a fast change thumps in the pedal), 8 times at most - like the release fades, more so.
+                const Stop* rank = v.rank != nullptr ? v.rank : v.stop;
+                const int sounding = (int)v.note + (rank->footageKnown ? rank->footageSemitones + rank->sampleOffset : 0);
+                v.voicingGlideSlow = 1.0f / juce::jlimit(1.0f, 8.0f, std::pow(1.5f, juce::jmax(0.0f, (60.0f - (float)sounding) / 12.0f)));
+            }
+            else v.voicingGain += (target - v.voicingGain) * (c.voicingGlide >= 1.0f ? 1.0f : c.voicingGlide * v.voicingGlideSlow);
+        }
+        const float gainEnd = v.velocityGain * v.voicingGain
             * expr * c.divisionGain * (v.detachedRelease ? c.releaseScale : 1.0f)
             * windGain * tremGain * c.outputGain * v.routeGain * v.fillGain;
 
@@ -7639,6 +7658,11 @@ struct SamplerEngine::Impl
             // 15 degrees of lag at the tremulant rate: tau = tan(15 deg) / (2 pi f).
             const float lagSeconds = 0.26795f / (2.0f * juce::MathConstants<float>::pi * juce::jmax(0.5f, rateHz));
             ctx.shelfSmoothing = juce::jlimit(0.01f, 1.0f, 1.0f - std::exp((float)(-blockMs * 0.001) / lagSeconds));
+        }
+        {
+            // 0.9.122: 95 % of the way within the set time (three time constants); 0 = at once, as before.
+            const float glideMs = owner.voicingGlideMs.load(std::memory_order_relaxed);
+            ctx.voicingGlide = glideMs < 1.0f ? 1.0f : juce::jlimit(0.0005f, 1.0f, 1.0f - std::exp((float)(-blockMs * 3.0) / glideMs));
         }
         ctx.exprMaxDb = expressionMaxDb[(size_t)manual].load(std::memory_order_relaxed);
         ctx.windMaxDb = windLevelDbPerCent * combinedSagLimit * 1.12f;   // largest gainScale of the variations

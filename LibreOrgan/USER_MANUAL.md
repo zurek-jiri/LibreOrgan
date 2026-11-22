@@ -1810,6 +1810,15 @@ value: the sample starts that far in and rises over this time (6 to 150 ms,
 default 20). Too short clicks or sounds like an edit, too long softens the
 speech. Travels with the organ.
 
+### Voicing changes glide over
+
+A sounding pipe whose stop volume or volume per key changes - a piston that
+[holds the voicing](#combinations-hold-the-voicing-of-the-stops), a voicing
+slider moved - glides to the new level over this time (default 150 ms; 0 = at
+once). The time is for the sounding c1; a deeper pipe takes 1.5 times as long
+per octave below it. Perspectives, attack settings and random tuning apply
+from the next key. Travels with the organ.
+
 ### Filled pipes: resampling quality
 
 How a neighbour's sample is played at another pitch while no copy exists:

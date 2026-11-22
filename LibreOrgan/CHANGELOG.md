@@ -12,6 +12,18 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.122] - 2026-11-22
+
+### Added
+- **Voicing changes glide over** (Configuration Editor > Advanced global audio,
+  default 150 ms, 0 = at once): a sounding pipe whose stop volume or volume per
+  key changes - a piston that holds the voicing, a voicing slider moved - glides
+  to the new level over this time. It jumped there within one audio block (5 to
+  10 ms) before: a thump on a held bass pipe. The time is for the sounding c1;
+  a deeper pipe takes 1.5 times as long per octave below it. Perspectives,
+  attack settings and random tuning apply from the next key, as before.
+- A right-click on the *Cresc.* button offers *Crescendo settings...* too.
+
 ## [0.9.121] - 2026-11-22
 
 ### Changed

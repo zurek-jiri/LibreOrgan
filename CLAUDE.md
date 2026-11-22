@@ -4925,6 +4925,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (rankEnabled) - a held pipe keeps its old perspectives until the key goes up, nothing is cut. PROPOSED to the user, not
   coded: a per-voice glide of the stop x key gain over a set time (as routeGain has), and perspectives switched by a piston
   crossfaded for held keys.
+  0.9.122 (22 Nov 2026, the user: perspectives stay "from the next key"; "ostatní udělej plynulý nájezd po nastavitelnou dobu,
+  výchozí 150 ms"; "v hlubokých tónech ... automaticky prodlužoval hodně! Tohle v pedále bouchá"): `Voice::voicingGain` = stop
+  volume x volume per key as the voice plays it; renderVoice: a starting voice takes the target, a sounding one moves
+  `c.voicingGlide * v.voicingGlideSlow` of the way per block (BlockContext::voicingGlide = 1 - exp(-3 blockMs / glideMs): 95 % in
+  the set time; 1 = at once when the setting is < 1 ms = the old one-block ramp); `voicingGlideSlow` = 1 / (1.5 per octave of
+  the SOUNDING pitch below c1, 8 at most; set at the voice's first block from pipe + footageSemitones + sampleOffset, as
+  fadeScale does with 1.25). Setting "Voicing changes glide over" (configuration key `voicingGlideMs`, 0-2000 ms, default 150,
+  travels with the organ; engine atomic + setVoicingGlideMs; Editor addSlider in Advanced global audio right AFTER "Attack cut
+  fade-in"; manual ### of the label). It serves the pistons that hold the voicing AND a voicing slider moved by hand. MEASURED
+  (%TEMP%\test_0122_glide.ps1 -GlideMs N + test_0122_make.py + test_0122_glide.py: Rural subbass 16 key 48 held by
+  ORGAN_TEST_RECORD, its stop volume switched 0 / -12 dB every 3 s by ORGAN_TEST_VOICING; 10-90 % of each step in dB from 40 ms
+  RMS windows): setting 0 -> 25-30 ms (the window itself), 150 without the pitch rule -> 100-145 ms, 150 with it (x 2.25 on
+  that pipe) -> 180-335 ms; the largest sample-to-sample jump of the file equals the usual one. The user: "perfektní!".
+  The factor 1.5 is MY pick ("hodně", more than the fades' 1.25). Also: showMidiLearnMenu item 9 "Crescendo settings..." for the
+  target "crescendo" (the Cresc. button; the display's own menu had it). v0.9.121 was pushed to main WITHOUT a tag (the tool
+  refused the tag push: the user had not asked for that release) - 0.9.122 is the release that carries it.
 ## Pending for the next session (delete when done)
 - VIDEO (1 Nov 2026, the user's decisions): the Stralsund script stays EXACTLY, only two scenes go before its Load
   Configuration: the folder D:\Hauptwerk\...\OrganInstallationPackages\000370 (St. Carlo, Brescia) dragged onto

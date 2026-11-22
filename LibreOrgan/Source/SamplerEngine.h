@@ -960,6 +960,7 @@ public:
     void setCouplingSkipPercent(float percent) { couplingSkipPercent.store(juce::jlimit(0.0f, 100.0f, percent), std::memory_order_relaxed); }   // 0.9.59
     void setCouplingMaxCents(float cents) { couplingMaxCents.store(juce::jlimit(0.0f, 50.0f, cents), std::memory_order_relaxed); }   // 0.9.60
     void setAttackCutFadeMs(float ms) { attackCutFadeMs.store(juce::jlimit(6.0f, 150.0f, ms), std::memory_order_relaxed); }   // 0.9.80
+    void setVoicingGlideMs(float ms) { voicingGlideMs.store(juce::jlimit(0.0f, 2000.0f, ms), std::memory_order_relaxed); }   // 0.9.122
     float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
     void setStopNoteTone(Stop* stop, int note, float db);
     void setTransmissionKeyTone(Stop* stop, int index, int key, float db);
@@ -1720,6 +1721,7 @@ private:
     std::atomic<float> couplingSkipPercent{ 10.0f };  // 0.9.59: the share of pipes the coupling leaves untouched (0 = every pipe couples)
     std::atomic<float> couplingMaxCents{ 14.0f };     // 0.9.60: a partner whose pure interval lies further than this from the pipe's base does not pull (nor is pulled)
     std::atomic<float> attackCutFadeMs{ 20.0f };      // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0), 6-150 ms
+    std::atomic<float> voicingGlideMs{ 150.0f };      // 0.9.122: a sounding pipe's glide to a changed stop / key volume, 0-2000 ms
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1
     std::atomic<int> fillGroupSize{ 12 };
     std::atomic<int> transposeQuality{ 2 };

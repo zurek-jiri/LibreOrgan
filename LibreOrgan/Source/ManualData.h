@@ -1832,6 +1832,15 @@ static const char* const kManualText_part9 =
     "default 20). Too short clicks or sounds like an edit, too long softens the\n"
     "speech. Travels with the organ.\n"
     "\n"
+    "### Voicing changes glide over\n"
+    "\n"
+    "A sounding pipe whose stop volume or volume per key changes - a piston that\n"
+    "[holds the voicing](#combinations-hold-the-voicing-of-the-stops), a voicing\n"
+    "slider moved - glides to the new level over this time (default 150 ms; 0 = at\n"
+    "once). The time is for the sounding c1; a deeper pipe takes 1.5 times as long\n"
+    "per octave below it. Perspectives, attack settings and random tuning apply\n"
+    "from the next key. Travels with the organ.\n"
+    "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
     "How a neighbour's sample is played at another pitch while no copy exists:\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
     "### Samples' base temperament\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "The temperament the samples were recorded in - found by itself when two\n"
     "thirds of the ranks agree; set it by hand when they disagree or the set has\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "\n"
     "The temperament the organ plays in. [Temperaments](#63-temperaments).\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Window size\n"
     "\n"
     "The size of the main window, saved by itself. Information.\n"
@@ -2213,6 +2222,8 @@ static const char* const kManualText_part10 =
     "sag.\n"
     "\n"
     "---\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "## 8.7 Plug-ins (VST3)\n"
     "\n"
@@ -2222,8 +2233,6 @@ static const char* const kManualText_part10 =
     "folders and the ones you added, behind the playing - nothing waits for it.\n"
     "Each plug-in file is tried in a process of its own and given 8 seconds: one\n"
     "that crashes there or does not answer is refused and never loaded into the\n"
-    ;
-static const char* const kManualText_part11 =
     "program. A file is scanned again only when it changed. What is found is\n"
     "offered by the **+** of an effects chain\n"
     "([Plug-ins in the chain](#plug-ins-in-the-chain)).\n"
@@ -2415,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "Ownership: a rank several stops play belongs to the stop whose name it\n"
     "carries, else the stop playing it straight over the whole division, else the\n"
+    ;
+static const char* const kManualText_part12 =
     "one with the most keys. A stop with ranks of its own is loaded from them; a\n"
     "stop with none becomes a transmission of the owner it borrows the most keys\n"
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
@@ -2424,8 +2435,6 @@ static const char* const kManualText_part11 =
     "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
     "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
     "ranks (blower, action) are left out; combinations, wind, displays are ignored.\n"
-    ;
-static const char* const kManualText_part12 =
     "Encrypted sets (.hbw/.hbx) refuse the import.\n"
     "\n"
     "Names: a row is named after its stop folder as it stands on disk, with the\n"
@@ -2617,6 +2626,8 @@ static const char* const kManualText_part12 =
     "lost its processor - the idle workers stop waiting and sleep, so that it\n"
     "gets one back at once. The polyphony measurement judges a driver that hands\n"
     "its blocks over in bursts (ReaRoute behind a program on the Windows sound\n"
+    ;
+static const char* const kManualText_part13 =
     "system) by the cycle of the bursts, heard in its two idle seconds. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
     "the self-test (`--kerneltest`) checks every kernel against the scalar code and\n"
     "prints its speed.\n"
@@ -2626,8 +2637,6 @@ static const char* const kManualText_part12 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
-    ;
-static const char* const kManualText_part13 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"

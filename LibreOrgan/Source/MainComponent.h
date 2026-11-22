@@ -1458,6 +1458,7 @@ private:
     float couplingSkipPercent = 10.0f;   // 0.9.59: the share of pipes the coupling leaves untouched (0 = every pipe couples); travels with the organ
     float couplingMaxCents = 14.0f;      // 0.9.60: the farthest pitch offset the coupling pulls together (pipes further apart stay apart); travels with the organ
     float attackCutFadeMs = 20.0f;       // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0); travels with the organ
+    float voicingGlideMs = 150.0f;       // 0.9.122: a sounding pipe's glide to a changed stop / key volume; travels with the organ
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.
     juce::String publicationOrgan, publicationProducer, publicationProduct, publicationLink, publicationAuthor;
