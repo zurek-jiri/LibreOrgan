@@ -20,7 +20,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)▼ | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Remove |
 |---|---:|---:|---:|---|---|
-| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 7.9 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20stralsund-st-jakobi-kr-wegscheider&organ=stralsund-st-jakobi-kr-wegscheider&name=stralsund-st-jakobi-kr-wegscheider) |
+| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 72 | 8.1 GB | Direct, Diffuse, Rear | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20stralsund-st-jakobi-kr-wegscheider&organ=stralsund-st-jakobi-kr-wegscheider&name=stralsund-st-jakobi-kr-wegscheider) |
 | [Rural Organ - the demo](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary |  |
 
 ## All the others
