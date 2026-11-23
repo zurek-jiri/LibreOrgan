@@ -107,6 +107,12 @@ public:
             + " | " + one("oneShot", oneShotToggle) + (oneShotToggle.getToggleState() ? " on" : " off") + " | " + one("releaseCrossfade", releaseFadeBox) + " " + releaseFadeBox.getText()
             + " | " + one("rankCount", rankCountToggle);
     }
+    // 0.9.126: the width the "All" slider takes before the first key of every per-key row (the slider + a gap).
+    static int allControlSpace(int keySliderWidth) noexcept { return keySliderWidth + 10; }
+    // Tests (ORGAN_TEST_ALL): the "All" slider of a row dragged by `offset` and released; the row unfolded first.
+    bool keyRowShown(int row) const { return row == 0 ? volumeRowShown() : row == 1 ? toneRowShown() : attackRowShown(); }
+    void openKeyRow(int row) { if (!keyRowShown(row) && toggleSection) toggleSection(row); }
+    juce::String scriptMoveAll(int row, double offset);
     // Expanded rows carry two lines of controls above the per-key sliders.
     static constexpr int expandedControlsHeight = 104;
     // Height of the per-key area below them: the "Volume per key" and "Treble per
@@ -389,6 +395,23 @@ private:
     bool attackRowShown() const { return !isTransmission() && stop->attackKeysExpanded; }
     void attackSliderChanged(int note, float value);
     void resetAttackRow();
+    // 0.9.126 (the user): "All" - one spring slider before each per-key row (0 volume, 1 treble, 2 attack; a
+    // transmission's rows too). Dragged, it moves EVERY slider of its row by the same amount on top of what each
+    // one has - from the values at the drag's start, each stopping at its own end of the range; released, it
+    // springs back to 0 and the keys keep their values. The wheel or a typed value moves the row once.
+    // Made with the per-key controls alone (an open voicing - the 0.9.43 rule).
+    struct AllControl
+    {
+        juce::Slider slider{ juce::Slider::LinearVertical, juce::Slider::TextBoxBelow };
+        juce::Label label;
+        std::vector<double> start;   // the row's values when the move began
+        bool dragging = false;
+    };
+    std::unique_ptr<AllControl> allControls[3];
+    juce::OwnedArray<LearnableSlider>& keyRow(int row) noexcept { return row == 0 ? keySliders : row == 1 ? toneSliders : attackSliders; }
+    void makeAllControl(int row);
+    void takeRowStart(int row);
+    void moveRowBy(int row, double offset);
     juce::OwnedArray<LearnableSlider>* paintRow = nullptr;   // the row being painted with the right button
 
     // For note highlighting

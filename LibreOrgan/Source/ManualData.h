@@ -699,7 +699,10 @@ static const char* const kManualText_part3 =
     "box switches the pipe on or off: an unticked pipe is silent and is never\n"
     "filled from a neighbour - a cornet keeps its compass. *Reset to 0 dB* beside\n"
     "each header; dragging with the right mouse button paints one value across a\n"
-    "row. The sliders light while the key sounds (the keys the couplers play too, in\n"
+    "row. The **All** slider before the first key (darker blue; in the *Attack per\n"
+    "key* row too) moves every slider of its row by the same amount on top of what\n"
+    "each one has, and springs back to 0 when released - the keys keep their\n"
+    "values. The sliders light while the key sounds (the keys the couplers play too, in\n"
     "the division where they sound); a **green thumb** marks a filled\n"
     "pipe (hover it for its source), an **orange note name** a sample without\n"
     "loop points, a **grey slider** no pipe at all.\n"
@@ -805,11 +808,11 @@ static const char* const kManualText_part3 =
     "## 4.2 The table\n"
     "\n"
     "- **Order:** the rows open in the order of the grid (row by row, left to\n"
+    ;
+static const char* const kManualText_part4 =
     "  right). Drag a stop name up or down to change it; *Apply* asks whether the\n"
     "  grid should follow.\n"
     "- **Division:** drag a row into another division's block, or choose it in\n"
-    ;
-static const char* const kManualText_part4 =
     "  the row's combo box. The stop moves with its folders.\n"
     "- **Stop folders:** drag a name a little to the **right** and the row is\n"
     "  indented under the row above: it becomes that stop's child and sounds with\n"
@@ -1007,11 +1010,11 @@ static const char* const kManualText_part4 =
     "gone, the source is silent. Several cables into the same outputs stripe the\n"
     "output in all their colours and clamp it one ring outside the other. The\n"
     "channels of a route may be any number: the pipes are spread over them by key,\n"
+    ;
+static const char* const kManualText_part5 =
     "so a chord spreads across the speakers like pipes across a windchest (a mono\n"
     "sample to one channel in turn, a stereo sample to a pair).\n"
     "\n"
-    ;
-static const char* const kManualText_part5 =
     "**Every row** of *Organ out* ends with a small **meter** (the large meter\n"
     "in miniature: four green segments, three orange, red for three seconds\n"
     "after a clip of the row or of its card's sum) and the **fx** button -\n"
@@ -1209,11 +1212,11 @@ static const char* const kManualText_part5 =
     "many pipes sounding. The measured limit itself counts voices and stays the\n"
     "same. Without a cable the route costs nothing.\n"
     "\n"
+    ;
+static const char* const kManualText_part6 =
     "Leave it without a cable unless you need the mixdown - a set with several\n"
     "perspectives rarely does - and never send it to the outputs of one of the\n"
     "perspectives: they would only sound twice.\n"
-    ;
-static const char* const kManualText_part6 =
     "\n"
     "## 5.5 Sound cards on Windows, Linux and macOS\n"
     "\n"
@@ -1411,11 +1414,11 @@ static const char* const kManualText_part6 =
     "\n"
     "## 7.1 What a filled pipe is\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "Every rank is completed to the full keyboard: pipes it does not have are\n"
     "played from neighbouring real pipes, transposed - the extra octave of an\n"
     "extension, missing top or bottom keys, gaps inside the compass. Only the\n"
-    ;
-static const char* const kManualText_part7 =
     "pipes a stop can be asked to play are filled (its division's compass and\n"
     "every transmission's shifted compass). A filled pipe has everything a real\n"
     "pipe has (voicing slider, detune, wind, tremulant, releases) and costs\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "options of the organ and what each costs in voices (the packing roughly half,\n"
     "the halved releases and the full kernel their share through the sinc) - and\n"
     "keeps the figures (where the time went: the render cores, the pool, the\n"
+    ;
+static const char* const kManualText_part8 =
     "kernel, the cost per voice, the device thread) under *Advanced analysis*,\n"
     "folded; it never forecasts other buffer sizes. One to two minutes; *Cancel*\n"
     "restores everything. Pressed while\n"
-    ;
-static const char* const kManualText_part8 =
     "the filled pipes are still being built, the window waits for them and the run\n"
     "starts by itself. Save the\n"
     "configuration afterwards; measure again after a change of routes, IRs,\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "\n"
     "### Pipe coupling: detune left after the pull\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled\n"
     "towards its rank's tuning: its detune shrinks within a second or two to a\n"
     "random share between 0 and this of what it was (default 20 %); a pipe starting\n"
-    ;
-static const char* const kManualText_part9 =
     "while a unison, octave, fifth, fourth or third of it sounds is pulled towards\n"
     "the pure interval with those pipes instead (the thirds only a little), and they\n"
     "move a little towards it. Celeste stops stay out of it. Travels with the organ.\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "\n"
     "### Sample and IR locations\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "The places the program looks for sample trees and impulse responses - every\n"
     "folder and archive you ever chose, counted after the button. *Add folder...*\n"
     "adds one.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Sample and IR locations: the file\n"
     "\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "\n"
     "The impulse a key stroke gives the wind (0 to 100 %, default 40). A release\n"
     "kicks back with 75 % of it; a key struck or released while another is held\n"
+    ;
+static const char* const kManualText_part11 =
     "kicks half; keys struck together are one stroke; the swing never exceeds the\n"
     "depth - the bellows has its end positions.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "### Wind: sag settling lag\n"
     "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
     "without a coupler is placed stop by stop where the name says); the stops\n"
+    ;
+static const char* const kManualText_part12 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
-    ;
-static const char* const kManualText_part12 =
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "\n"
     "The routes of one device are one stream: the driver's callback calls every\n"
     "route in turn, each route's voices become one job of the render pool, the\n"
+    ;
+static const char* const kManualText_part13 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
-    ;
-static const char* const kManualText_part13 =
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"

@@ -5123,6 +5123,23 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   unpacked - so a stimulus over the whole compass plays mostly packed samples. The watch's note "Samples moved out of the
   RAM" came once (1.2 GB out of the working set, 10.2 GB free, the page file tiny): seen, cause not known.
   v0.9.125 pushed (6d0b75d) and tagged on his word.
+  0.9.126 (23 Nov 2026, the user's design: "před každou řadou vertikálních voicing sliderů ... jeden generelní, asi s tmavším
+  modrým palcem, který bude all ... jako na pružině ... přičítá či odčítá k již nastavené hodnotě"; he chose A = each key stops
+  at its own end of the range, the others go on; no tilt for now; "transmise samozřejmě taky, počítám je vždycky jako normální
+  rejstříky"): `StopRow::AllControl` {juce::Slider, Label "All", start values, dragging} x 3 (`allControls[row]`, 0 volume /
+  1 treble / 2 attack; a transmission has rows 0 and 1), made by `makeAllControl(row)` ONLY with the per-key controls (an open
+  voicing - the 0.9.43 rule); the row's own range (+-9 dB / +-300 ms), thumb 0xff1f5aa6; onDragStart -> `takeRowStart` (the
+  row's values), onValueChange -> `moveRowBy(row, offset)` = every ENABLED key slider to clamp(start + offset) with
+  sendNotificationSync (so each goes its usual way: engine + stateChanged), onDragEnd -> the slider back to 0 without a
+  notification; the wheel comes as a drag of its own (JUCE's DragInProgress), a typed value or an arrow key moves the row
+  once. Layout: `StopRow::allControlSpace(sliderWidth)` (the slider + 10 px) before the first key in resized() (`keysLeft`,
+  `placeAll`) and in Voicer's `voicingWidth`; visibility with its row in BOTH places that set the rows' visibility. Hook
+  `ORGAN_TEST_ALL="<division>|<stop prefix>|<row>|<offset>[|trsm]"` (voicer.cpp beside ORGAN_TEST_EXPAND: opens the voicing,
+  unfolds the row, `scriptMoveAll`, logs the first keys before / during / released); test %TEMP%\test_0126_all.ps1 [-Row
+  -Offset -Trsm 1 -Division -Stop] (a copy of Rural, ORGAN_DUMP_GRID + ORGAN_TEST_SNAPSHOT: grid.png.row.png): volume +2.5
+  "6.6 5.9 5.8 -> 9.0 8.4 8.3" (the first key stopped at +9), treble -3, attack +40, the transmission of subbass into II -4;
+  "All" back at 0 every time; pictured (the label on the note names' line, the value box in the row of the keys'). NOT tried:
+  a drag by a real mouse and the wheel (the hook calls the slider's own callbacks), Linux/macOS. Not pushed (not asked).
 ## Pending for the next session (delete when done)
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the

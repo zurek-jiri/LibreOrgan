@@ -12,6 +12,16 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.126] - 2026-11-23
+
+### Added
+- **"All" slider in the per-key rows.** Before the first key of *Volume per
+  key*, *Treble per key* and *Attack per key* (a transmission's rows too)
+  stands one slider with a darker blue thumb. Dragged, it moves every slider
+  of its row by the same amount on top of what each one has; released, it
+  springs back to 0 and the keys keep their values. A slider that reaches the
+  end of its range stops there, the others go on.
+
 ## [0.9.125] - 2026-11-22
 
 ### Added

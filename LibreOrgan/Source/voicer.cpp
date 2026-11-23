@@ -983,6 +983,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             }
         }
     }
+    // 0.9.126: the "All" slider before each per-key row (a transmission has no attack row).
+    if (keyControlsWanted)
+        for (int row = 0; row < (isTransmission() ? 2 : 3); ++row) makeAllControl(row);
 
     const bool showVoicing = isExpanded();
     // A stop folder without pipes: information and alias only, no sliders or key rows.
@@ -1037,6 +1040,11 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     for (auto* slider : keySliders) slider->setVisible(showVolumeRow);
     for (auto* label : noteNameLabels) label->setVisible(showVolumeRow);
     for (auto* label : midiNumLabels) label->setVisible(showVolumeRow);
+    {   // 0.9.126: the "All" slider of each row shows with its row
+        const bool allShown[3] = { showVolumeRow, showToneRow, withPipes && !isTransmission() && attackRowShown() };
+        for (int row = 0; row < 3; ++row)
+            if (auto* all = allControls[row].get()) { all->slider.setVisible(allShown[row]); all->label.setVisible(allShown[row]); }
+    }
 }
 
 void StopRow::aliasChanged()
@@ -1365,6 +1373,96 @@ void StopRow::resetKeyRow(bool tone)
     auto& row = tone ? toneSliders : keySliders;
     for (auto* slider : row)
         if (slider != nullptr && slider->isEnabled()) slider->setValue(0.0, juce::sendNotificationSync);
+}
+
+// 0.9.126 (the user: "před každou řadou vertikálních voicing sliderů ... jeden generelní ... jako na pružině ...
+// přičítá či odčítá k již nastavené hodnotě"): the "All" slider of a per-key row.
+void StopRow::makeAllControl(int row)
+{
+    auto control = std::make_unique<AllControl>();
+    auto* raw = control.get();
+    auto& slider = control->slider;
+    const bool attack = row == 2;
+    slider.setRange(attack ? -300.0 : -9.0, attack ? 300.0 : 9.0, attack ? 1.0 : 0.1);   // the scale of the row's own sliders
+    slider.setValue(0.0, juce::dontSendNotification);
+    slider.setScrollWheelEnabled(true);
+    slider.setDoubleClickReturnValue(false, 0.0);
+    if (attack) slider.getProperties().set("smallTextBox", true);
+    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
+    slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff1f5aa6));   // a darker blue than the keys' thumbs
+    slider.getProperties().set("manualChapter", attack ? "Attack per key" : "Volume per key and Treble per key");
+    slider.setTooltip(juce::String("All: drag to move EVERY slider of this row by the same amount, on top of what each one has (")
+        + (attack ? "ms" : "dB") + "). Released, it springs back to 0 and the keys keep their values. A slider that reaches the end of its "
+        "range stops there; the others go on.");
+    slider.onDragStart = [this, row, raw] { raw->dragging = true; takeRowStart(row); };
+    slider.onValueChange = [this, row, raw]
+    {
+        if (raw->dragging) { moveRowBy(row, raw->slider.getValue()); return; }
+        // A typed value (no drag): the row moved once, the slider back at 0.
+        const double step = raw->slider.getValue();
+        if (step == 0.0) return;
+        takeRowStart(row);
+        moveRowBy(row, step);
+        raw->start.clear();
+        raw->slider.setValue(0.0, juce::dontSendNotification);
+    };
+    slider.onDragEnd = [raw]
+    {
+        raw->dragging = false;
+        raw->start.clear();
+        raw->slider.setValue(0.0, juce::dontSendNotification);   // the spring
+    };
+    control->label.setText("All", juce::dontSendNotification);
+    control->label.setJustificationType(juce::Justification::centred);
+    control->label.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    control->label.setTooltip(slider.getTooltip());
+    addAndMakeVisible(control->slider);
+    addAndMakeVisible(control->label);
+    allControls[row] = std::move(control);
+}
+
+void StopRow::takeRowStart(int row)
+{
+    if (row < 0 || row > 2 || allControls[row] == nullptr) return;
+    auto& sliders = keyRow(row);
+    auto& start = allControls[row]->start;
+    start.assign((size_t)sliders.size(), 0.0);
+    for (int i = 0; i < sliders.size(); ++i)
+        if (auto* slider = sliders[i]) start[(size_t)i] = slider->getValue();
+}
+
+void StopRow::moveRowBy(int row, double offset)
+{
+    if (row < 0 || row > 2 || allControls[row] == nullptr) return;
+    auto& sliders = keyRow(row);
+    const auto& start = allControls[row]->start;
+    for (int i = 0; i < sliders.size() && i < (int)start.size(); ++i)
+    {
+        auto* slider = sliders[i];
+        if (slider == nullptr || !slider->isEnabled()) continue;   // a key without a pipe, or switched off: as the row's Reset
+        const double target = juce::jlimit(slider->getMinimum(), slider->getMaximum(), start[(size_t)i] + offset);
+        if (std::abs(target - slider->getValue()) > 1.0e-6) slider->setValue(target, juce::sendNotificationSync);
+    }
+}
+
+juce::String StopRow::scriptMoveAll(int row, double offset)
+{
+    if (row < 0 || row > 2 || allControls[row] == nullptr) return "no All slider (the voicing is closed, or a transmission has no attack row)";
+    auto& control = *allControls[row];
+    auto& sliders = keyRow(row);
+    auto firstKeys = [&sliders]
+    {
+        juce::StringArray values;
+        for (int i = 0; i < juce::jmin(5, sliders.size()); ++i) if (auto* s = sliders[i]) values.add(juce::String(s->getValue(), 1));
+        return values.joinIntoString(" ");
+    };
+    const auto before = firstKeys();
+    control.slider.onDragStart();
+    control.slider.setValue(offset, juce::sendNotificationSync);
+    const auto during = firstKeys() + " (All at " + juce::String(control.slider.getValue(), 1) + ")";
+    control.slider.onDragEnd();
+    return "the first keys " + before + " -> " + during + " -> released " + firstKeys() + " (All at " + juce::String(control.slider.getValue(), 1)
+        + (control.slider.isVisible() ? ", shown " + control.slider.getBounds().toString() : ", hidden") + ")";
 }
 
 void StopRow::paintKeySlidersAt(juce::Point<int> screenPosition)
@@ -1714,14 +1812,29 @@ void StopRow::resized()
         attackHeader.setVisible(attackRow); attackReset.setVisible(showAttackRow); attackRandomizeBox.setVisible(showAttackRow);
         for (auto* slider : attackSliders) slider->setVisible(showAttackRow);
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
+        // 0.9.126: the "All" slider of each row shows with its row.
+        const bool allShown[3] = { showVolumeRow, showToneRow, showAttackRow };
+        for (int row = 0; row < 3; ++row)
+            if (auto* all = allControls[row].get()) { all->slider.setVisible(allShown[row]); all->label.setVisible(allShown[row]); }
     }
+    // The "All" slider stands before the first key of its row; the keys begin after it.
+    const int keysLeft = margin + inset + allControlSpace(sliderWidth);
+    auto placeAll = [this, inset](int row, int labelY, int sliderY)
+    {
+        if (auto* all = allControls[row].get())
+        {
+            all->label.setBounds(margin + inset, labelY, sliderWidth, 12);
+            all->slider.setBounds(margin + inset, sliderY, sliderWidth, keySliderHeight);
+        }
+    };
     int y = keyAreaTop;
     volumeHeader.setBounds(margin + inset, y, 170, keyHeaderHeight);
     volumeReset.setBounds(margin + inset + 172, y + 2, 92, keyHeaderHeight - 4);
     y += keyHeaderHeight;
     if (volumeRowShown())
     {
-        x = margin + inset;
+        placeAll(0, y + 12, y + keyLabelsHeight);
+        x = keysLeft;
         for (int note = noteMin; note <= noteMax; ++note)
         {
             const int idx = note - noteMin;
@@ -1742,7 +1855,8 @@ void StopRow::resized()
     y += keyHeaderHeight;
     if (toneRowShown())
     {
-        x = margin + inset;
+        placeAll(1, y, y + toneLabelsHeight);
+        x = keysLeft;
         for (int note = noteMin; note <= noteMax; ++note)
         {
             const int idx = note - noteMin;
@@ -1763,7 +1877,8 @@ void StopRow::resized()
         y += keyHeaderHeight;
         if (attackRowShown())
         {
-            x = margin + inset;
+            placeAll(2, y, y + toneLabelsHeight);
+            x = keysLeft;
             for (int note = noteMin; note <= noteMax; ++note)
             {
                 const int idx = note - noteMin;
@@ -2282,6 +2397,41 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
                         });
                         break;
                     }
+            }
+            // ORGAN_TEST_ALL="<division>|<stop prefix>|<row 0 volume / 1 treble / 2 attack>|<offset>[|trsm]" (0.9.126): the
+            // voicing of that stop (with "trsm": of its first transmission sounding in the division) opened, the
+            // row unfolded, its "All" slider dragged by the offset and released; the first keys logged.
+            static int allSteps = 0;
+            if (const char* all = std::getenv("ORGAN_TEST_ALL"); all != nullptr && allSteps < 6 && !compactCells.empty())
+            {
+                const auto parts = juce::StringArray::fromTokens(juce::String(all), "|", "");
+                const bool trsm = parts.size() >= 5 && parts[4] == "trsm";
+                for (auto* r : stopRows)
+                {
+                    if (parts.size() < 4 || r == nullptr || r->getStop() == nullptr || r->isTransmission() != trsm) continue;
+                    if (r->soundingManual() != parts[0].getIntValue() || !r->getStop()->name.startsWith(parts[1])) continue;
+                    const int row = parts[2].getIntValue();
+                    ++allSteps;
+                    if (!r->isExpanded())
+                    {
+                        if (auto* t = r->transmission()) t->voicingExpanded = true; else r->getStop()->voicingExpanded = true;
+                        CrashHandler::note("ORGAN_TEST_ALL: the voicing of " + r->getStop()->name + (trsm ? " (transmission)" : "") + " opened");
+                        juce::Timer::callAfterDelay(50, [this] { if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport); });
+                    }
+                    else if (!r->keyRowShown(row))
+                    {
+                        CrashHandler::note("ORGAN_TEST_ALL: row " + juce::String(row) + " unfolded");
+                        r->openKeyRow(row);
+                    }
+                    else
+                    {
+                        allSteps = 6;
+                        CrashHandler::note("ORGAN_TEST_ALL: " + r->getStop()->name + (trsm ? " (transmission)" : "") + " row " + juce::String(row) + " by "
+                            + parts[3] + ": " + r->scriptMoveAll(row, parts[3].getDoubleValue()));
+                        juce::Timer::callAfterDelay(400, [this] { if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport); });   // the picture with the moved row
+                    }
+                    break;
+                }
             }
             // ORGAN_TEST_OFFSET="<manual>|<stop name>|<offset>": "Files vs keys" as the voicing box would set it (once).
             // ORGAN_TEST_TRANSPOSITION="<manual>|<stop prefix>|<semitones>" (tests): the voicing's Transposition path.
@@ -3160,7 +3310,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 widestCompass = juce::jmax(widestCompass, last - first + 1);
             }
     }
-    const int voicingWidth = juce::jmax(topControlsWidth, margin * 2 + widestCompass * sliderWidth);
+    const int voicingWidth = juce::jmax(topControlsWidth, margin * 2 + StopRow::allControlSpace(sliderWidth) + widestCompass * sliderWidth);   // 0.9.126: the "All" slider before the keys
     const int wideWidth = juce::jmax(availableExpanded, voicingWidth);
     std::array<int, SamplerEngine::maxManuals> configuredWidths{};
     float totalColumnWeight = 0.0f;
