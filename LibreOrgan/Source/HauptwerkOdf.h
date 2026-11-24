@@ -96,8 +96,30 @@ struct HauptwerkOdf
     // speed wanders in; the middle is taken) and the divisions whose pipes it
     // modulates (Tremulant > TremulantWaveform > TremulantWaveformPipe > pipe >
     // rank > the stop playing it > its division).
-    struct Tremulant { int id = 0; juce::String name; float rateHz = 0.0f; std::set<int> divisionIds; };
+    struct Tremulant { int id = 0; juce::String name; float rateHz = 0.0f; std::set<int> divisionIds; int switchId = 0; };   // switchId: its ControllingSwitchID (0.9.127: the noises of its drawknob)
     std::vector<Tremulant> tremulants;
+    // 0.9.127 THE NOISES. Hauptwerk knows nothing but pipes, so a definition writes every noise as a pipe with
+    // a pallet switch of its own (Pipe_SoundEngine01.ControllingPalletSwitchID), and the switch linkages say
+    // what drives that switch: a key of a keyboard (the press and the release are two pipes; link action codes
+    // 4/7 = "on when the source goes on", 7/4 = "on when it goes off"), an input of a division (the same through
+    // the couplers), a stop's, a coupler's or a tremulant's drawknob, a tremulant while it runs, or a switch of
+    // the console of its own (blower, calcant, rossignol, zimbelstern ...). Read here as what they ARE - a
+    // trigger, an edge, the files - never as pipes. The perspective is the head of the rank's name.
+    struct Noise
+    {
+        enum Trigger { key = 0, divisionInput, stop, coupler, tremulant, console };
+        enum Edge { held = 0, on, off };    // held: sounds while the trigger is on (a loop, its release at the end)
+        int trigger = console, edge = held;
+        int keyboardId = 0, divisionId = 0, note = 0;       // key / divisionInput
+        int stopId = 0, couplerSwitchId = 0, tremulantId = 0;
+        int switchId = 0; juce::String switchName; bool defaultOn = false;   // console: the switch, its name, on from the load
+        juce::String rankName, perspective;                  // perspective: empty = every perspective (the old sets' "Special: ...")
+        float levelDb = 0.0f;
+        int packageId = 0;
+        juce::StringArray files, releaseFiles;               // the variants of the sound and of its release, relative to the package
+    };
+    std::vector<Noise> noises;
+    int noisePipesUnused = 0, noisePipesEncrypted = 0;       // pallet pipes nothing drives; noises with encrypted files
     // The general crescendo of the definition: Hauptwerk keeps it as one
     // combination per stage ("Cresc.Comb.1" ... "Cresc.Comb.64"), each listing
     // the switches it sets; the stop switches are found through the switch
@@ -205,6 +227,19 @@ struct HauptwerkOdf
         struct PlanCoupler { juce::String id, label; int switchId = 0; };
         std::vector<PlanCoupler> couplers;
         int couplersUnmapped = 0;                    // couplers of the definition with no coupler of ours (the notes say which)
+        // 0.9.127: the definition's noises as ours. kind: "keys" (division, note), "stop" (stopId; 0 = any
+        // stop), "coupler" (couplerId; empty = any), "tremulant" (division: its drawknob), "tremulantRun"
+        // (division: while it runs), "button" (a button of its own: name, defaultOn, division or -1).
+        // edge: "on" / "off" (a whole one-shot at that moment) or "held" (while on, its release at the end).
+        struct PlanNoise
+        {
+            juce::String kind, edge, name, perspective, couplerId;
+            int division = -1, note = 0, stopId = 0;
+            bool followsCouplers = false, defaultOn = false;
+            float levelDb = 0.0f;
+            std::vector<juce::File> files, releaseFiles;
+        };
+        std::vector<PlanNoise> noises;
         juce::StringArray notes;                     // what was left out and why (for the log and the message)
         juce::String error;
     };

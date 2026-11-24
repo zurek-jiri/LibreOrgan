@@ -89,6 +89,12 @@ namespace
                 p = close + 1;
                 const int at = head.indexOf("ObjectType=\"");
                 if (at < 0) continue;
+                // 0.9.127: an EMPTY table written as <ObjectList ObjectType="enclosure"/> (the uncompacted
+                // definitions: St. Guilhem Surround, Den Haag Surr ...) has no end tag - taken for a table,
+                // its "skip" ran to the end of the NEXT table and swallowed it (the samples after
+                // "reversiblepiston", the linkages after "switchexclusiveselectgroupelement"): the import
+                // said "no stops with sample pipes".
+                if (head.trimEnd().endsWithChar('/')) continue;
                 const auto rest = head.substring(at + 12);
                 return rest.upToFirstOccurrenceOf("\"", false, false);
             }
@@ -425,7 +431,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
     struct LayerRow { int pipeId = 0; float levelDb = 0.0f; };
     std::map<int, LayerRow> layers;                   // LayerID -> pipe, level (file order: the first layer of a pipe comes first)
     std::vector<int> layerOrder;
-    struct PipeRow { int rankId = 0, note = 60; };
+    struct PipeRow { int rankId = 0, note = 60, palletSwitch = 0; };   // palletSwitch (0.9.127): a pipe with a pallet switch of its own is a NOISE
     std::map<int, PipeRow> pipes;                     // PipeID
     std::vector<int> pipeOrder;
     struct StopRankRow { int stopId = 0, rankId = 0, alternateRankId = 0, firstNote = 0, count = 0, increment = 0; };
@@ -446,6 +452,15 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
     // element = a switch the combination sets, on (Y) or off.
     std::map<int, juce::String> combinationNames;                    // CombinationID -> name
     std::map<int, juce::String> switchNames;                         // SwitchID -> name (the couplers' drawstops)
+    // 0.9.127, for the noises: every attack and release sample of a layer, what a switch is (on from the load,
+    // shown on the console), which key / division input a switch is, and the linkages read BACKWARDS with
+    // their action codes (4/7: the destination goes on when the source goes on; 7/4: when it goes off).
+    std::map<int, std::vector<int>> attackSamplesOfLayer, releaseSamplesOfLayer;
+    struct SwitchRow { bool defaultOn = false, shown = false; };
+    std::map<int, SwitchRow> switchRows;
+    std::map<int, std::pair<int, int>> keyOfSwitch, inputOfSwitch;   // switch -> (keyboard, note) / (division, note)
+    struct BackLink { int source = 0, on = 0, off = 0, condition = 0; };
+    std::map<int, std::vector<BackLink>> backLinks;                  // destination switch -> what leads to it
     std::map<int, juce::String> pageNames;                           // DisplayPageID -> name
     struct DrawknobRow { int page = 0, x = 0, y = 0; juce::String name; };
     std::vector<DrawknobRow> drawknobs;                              // ImageSetInstance rows (every image on every page; the stops are picked by name)
@@ -507,6 +522,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
                 if (keyboard > 0 && note >= 0) keyboardNotes[keyboard].push_back(note);
                 const int keySwitch = row.integer("SwitchID", "b");
                 if (keyboard > 0 && keySwitch > 0) keyboardKeySwitches[keyboard].push_back(keySwitch);
+                if (keyboard > 0 && keySwitch > 0) keyOfSwitch[keySwitch] = { keyboard, note >= 0 ? note : 60 };   // a compacted file leaves the default out: key 60
             }
         }
         else if (lower == "divisioninput")
@@ -515,6 +531,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int division = row.integer("DivisionID", "a"), inputSwitch = row.integer("SwitchID", "b");
                 if (division > 0 && inputSwitch > 0) divisionOfInputSwitch[inputSwitch] = division;
+                if (division > 0 && inputSwitch > 0) inputOfSwitch[inputSwitch] = { division, row.integer("NormalMIDINoteNumber", "c", 60) };
             }
         }
         else if (lower == "displaypage")
@@ -545,6 +562,13 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int id = row.integer("SwitchID", "a");
                 if (id > 0) switchNames[id] = row.text("Name", "b");
+                if (id > 0)
+                {
+                    SwitchRow sr;
+                    sr.defaultOn = row.text("DefaultToEngaged", "e").equalsIgnoreCase("Y");
+                    sr.shown = row.integer("Disp_ImageSetInstanceID", "k") > 0 || row.text("Clickable", "i").equalsIgnoreCase("Y");
+                    switchRows[id] = sr;
+                }
             }
         }
         else if (lower == "keyaction")
@@ -575,6 +599,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int source = row.integer("SourceSwitchID", "a"), dest = row.integer("DestSwitchID", "b"), condition = row.integer("ConditionSwitchID", "c");
                 if (source > 0 && dest > 0) switchLinks[source].push_back({ dest, condition });
+                if (source > 0 && dest > 0) backLinks[dest].push_back({ source, row.integer("EngageLinkActionCode", "f"), row.integer("DisengageLinkActionCode", "g"), condition });
             }
         }
         else if (lower == "tremulant")
@@ -584,6 +609,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
                 Tremulant t;
                 t.id = row.integer("TremulantID", "a");
                 t.name = row.text("Name", "b");
+                t.switchId = row.integer("ControllingSwitchID", "c");
                 // The speed wanders between a minimum and a maximum (Hz): the middle is the rate.
                 const float lowHz = row.number("ModRateHz_Min", "d", 0.0f), highHz = row.number("ModRateHz_Max", "e", 0.0f);
                 t.rateHz = lowHz > 0.0f && highHz > 0.0f ? 0.5f * (lowHz + highHz) : juce::jmax(lowHz, highHz);
@@ -662,6 +688,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int id = row.integer("PipeID", "a");
                 PipeRow pr; pr.rankId = row.integer("RankID", "b"); pr.note = row.integer("NormalMIDINoteNumber", "d", 60);
+                pr.palletSwitch = row.integer("ControllingPalletSwitchID", "c");
                 if (id > 0 && pipes.find(id) == pipes.end()) { pipes[id] = pr; pipeOrder.push_back(id); }
             }
         }
@@ -680,6 +707,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int layer = row.integer("LayerID", "b");
                 if (layer > 0) ++releaseRowsOfLayer[layer];
+                if (layer > 0 && row.integer("SampleID", "c") > 0) releaseSamplesOfLayer[layer].push_back(row.integer("SampleID", "c"));
                 // 0.9.62: the crossfade length is the 14th column = "n" (the compacted letters follow the
                 // column order and skip "o", the row tag): Hildesheim's Glocken 711-1000 ms, its pipes 60-150.
                 if (layer > 0) releaseMsOfLayer[layer] += row.integer("ReleaseCrossfadeLengthMs", "n");
@@ -691,6 +719,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             {
                 const int layer = row.integer("LayerID", "b"), sample = row.integer("SampleID", "c");
                 if (layer > 0 && sample > 0 && attackSampleOfLayer.find(layer) == attackSampleOfLayer.end()) attackSampleOfLayer[layer] = sample;
+                if (layer > 0 && sample > 0) attackSamplesOfLayer[layer].push_back(sample);
             }
         }
         else if (lower == "sample")
@@ -724,6 +753,169 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             k.highNote = *std::max_element(notes->second.begin(), notes->second.end());
         }
         if (k.lowNote <= 0 || k.highNote < k.lowNote) { k.lowNote = 36; k.highNote = k.name.containsIgnoreCase("ped") ? 67 : 96; }
+    }
+
+    // 0.9.127 THE NOISES: every pipe with a pallet switch of its own, and what drives that switch.
+    {
+        auto plain = [](const BackLink& l) { return (l.on == 0 && l.off == 0) || (l.on == 1 && l.off == 2); };
+        // The drawknobs: every switch that leads to a stop's (tremulant's, coupler's) own switch by plain
+        // links within three hops (the knob on each console page links to the one switch the stop has).
+        std::map<int, int> stopOfSwitch, tremulantOfSwitch, couplerOfSwitch;
+        auto spread = [&](int start, int value, std::map<int, int>& into)
+        {
+            if (start <= 0) return;
+            into.emplace(start, value);
+            std::set<int> seen{ start };
+            std::vector<int> frontier{ start };
+            for (int hop = 0; hop < 3 && !frontier.empty(); ++hop)
+            {
+                std::vector<int> next;
+                for (const int s : frontier)
+                    if (const auto found = backLinks.find(s); found != backLinks.end())
+                        for (const auto& link : found->second)
+                            if (plain(link) && seen.insert(link.source).second)
+                            {
+                                into.emplace(link.source, value);
+                                next.push_back(link.source);
+                            }
+                frontier = std::move(next);
+            }
+        };
+        for (const auto& [id, stop] : odf.stops) spread(stop.switchId, id, stopOfSwitch);
+        for (const auto& t : odf.tremulants) spread(t.switchId, t.id, tremulantOfSwitch);
+        for (const auto& c : odf.couplers) spread(c.switchId, c.switchId, couplerOfSwitch);
+        std::map<juce::String, int> stopByName;
+        for (const auto& [id, stop] : odf.stops) stopByName.emplace(stop.name.trim().toLowerCase(), id);
+        // "OW Vox humana 8 (Stop Screen)", "Blower (Tab1)" -> the name alone (the definition cuts names at 32 characters).
+        auto consoleName = [](juce::String name)
+        {
+            name = name.trim();
+            const int open = name.lastIndexOf("(");
+            if (open > 0)
+            {
+                const auto tail = name.substring(open).toLowerCase();
+                for (const char* word : { "scre", "tab", "jamb", "photo", "simple", "split" })
+                    if (tail.contains(word)) { name = name.substring(0, open).trim(); break; }
+            }
+            return name;
+        };
+        struct Found { int trigger = -1, edge = Noise::held, a = 0, b = 0, switchId = 0; };
+        auto trace = [&](int pallet)
+        {
+            Found result;
+            struct Node { int id = 0, edge = Noise::held; };
+            std::set<int> seen{ pallet };
+            std::vector<Node> frontier{ { pallet, Noise::held } }, visited;
+            for (int hop = 0; hop < 6 && !frontier.empty(); ++hop)
+            {
+                std::vector<Node> next;
+                for (const auto& node : frontier)
+                {
+                    if (const auto k = keyOfSwitch.find(node.id); k != keyOfSwitch.end()) return Found{ Noise::key, node.edge, k->second.first, k->second.second, node.id };
+                    if (const auto k = inputOfSwitch.find(node.id); k != inputOfSwitch.end()) return Found{ Noise::divisionInput, node.edge, k->second.first, k->second.second, node.id };
+                    if (const auto k = stopOfSwitch.find(node.id); k != stopOfSwitch.end()) return Found{ Noise::stop, node.edge, k->second, 0, node.id };
+                    if (const auto k = tremulantOfSwitch.find(node.id); k != tremulantOfSwitch.end()) return Found{ Noise::tremulant, node.edge, k->second, 0, node.id };
+                    if (const auto k = couplerOfSwitch.find(node.id); k != couplerOfSwitch.end()) return Found{ Noise::coupler, node.edge, k->second, 0, node.id };
+                    if (const auto found = backLinks.find(node.id); found != backLinks.end())
+                        for (const auto& link : found->second)
+                            if (seen.insert(link.source).second)
+                            {
+                                int edge = node.edge;
+                                if (edge == Noise::held && !plain(link))
+                                    edge = link.on == 4 && link.off == 7 ? Noise::on : link.on == 7 && link.off == 4 ? Noise::off : Noise::held;
+                                next.push_back({ link.source, edge });
+                                visited.push_back({ link.source, edge });
+                            }
+                }
+                frontier = std::move(next);
+            }
+            // No key, stop, tremulant or coupler behind it: the nearest switch shown on the console is a
+            // button of its own - or a stop's drawknob the linkages did not tie to its stop (by its name).
+            for (const auto& node : visited)
+                if (const auto row = switchRows.find(node.id); row != switchRows.end() && row->second.shown)
+                {
+                    if (const auto named = stopByName.find(consoleName(switchNames[node.id]).toLowerCase()); named != stopByName.end())
+                        return Found{ Noise::stop, node.edge, named->second, 0, node.id };
+                    return Found{ Noise::console, node.edge, 0, 0, node.id };
+                }
+            if (const auto row = switchRows.find(pallet); row != switchRows.end() && (row->second.shown || row->second.defaultOn))
+                return Found{ Noise::console, Noise::held, 0, 0, pallet };
+            return result;   // nothing drives it: an unused pipe of the definition
+        };
+        auto silent = [](const juce::String& file)
+        {
+            const auto name = file.fromLastOccurrenceOf("/", false, false).toLowerCase();
+            return name.startsWith("blank") || name.startsWith("mute") || name.startsWith("silence");
+        };
+        std::map<int, int> firstLayerOfPipe;
+        for (const int layerId : layerOrder) firstLayerOfPipe.emplace(layers[layerId].pipeId, layerId);
+        std::map<int, Found> traced;   // the pipes of one noise in several perspectives share their trigger's switch
+        for (const int pipeId : pipeOrder)
+        {
+            const auto& pipe = pipes[pipeId];
+            if (pipe.palletSwitch <= 0) continue;
+            const auto layer = firstLayerOfPipe.find(pipeId);
+            if (layer == firstLayerOfPipe.end()) continue;
+            Noise n;
+            bool encrypted = false;
+            auto take = [&](const std::vector<int>& ids, juce::StringArray& into)
+            {
+                for (const int id : ids)
+                    if (const auto s = samples.find(id); s != samples.end() && s->second.file.isNotEmpty())
+                    {
+                        if (n.packageId == 0) n.packageId = s->second.packageId;
+                        if (s->second.packageId != n.packageId) continue;
+                        if (s->second.file.endsWithIgnoreCase(".hbw") || s->second.file.endsWithIgnoreCase(".hbx")) encrypted = true;
+                        into.addIfNotAlreadyThere(s->second.file);
+                    }
+            };
+            take(attackSamplesOfLayer[layer->second], n.files);
+            take(releaseSamplesOfLayer[layer->second], n.releaseFiles);
+            if (n.files.isEmpty()) continue;
+            if (encrypted) { ++odf.noisePipesEncrypted; continue; }
+            if (traced.find(pipe.palletSwitch) == traced.end()) traced[pipe.palletSwitch] = trace(pipe.palletSwitch);
+            Found found = traced[pipe.palletSwitch];
+            if (found.trigger < 0)
+            {
+                // Nothing drives it. A drawknob noise of the definition no stop uses (a stop this edition leaves
+                // out) is a FREE one: kept for the buttons that have none - transmissions, extensions (the user).
+                const auto rank = odf.ranks.find(pipe.rankId);
+                const auto rankName = rank != odf.ranks.end() ? rank->second.name.toLowerCase() : juce::String();
+                if (!rankName.contains("stop")) { ++odf.noisePipesUnused; continue; }
+                found.trigger = Noise::stop;
+                found.a = 0;
+                found.edge = rankName.contains("off") || rankName.contains("release") ? Noise::off : Noise::on;
+                found.switchId = pipe.palletSwitch;
+            }
+            n.trigger = found.trigger;
+            n.edge = found.edge;
+            if (found.trigger == Noise::key) { n.keyboardId = found.a; n.note = found.b; }
+            else if (found.trigger == Noise::divisionInput) { n.divisionId = found.a; n.note = found.b; }
+            else if (found.trigger == Noise::stop) n.stopId = found.a;
+            else if (found.trigger == Noise::tremulant) n.tremulantId = found.a;
+            else if (found.trigger == Noise::coupler) n.couplerSwitchId = found.a;
+            n.switchId = found.switchId;
+            n.switchName = consoleName(switchNames[found.switchId]);
+            if (const auto row = switchRows.find(found.switchId); row != switchRows.end()) n.defaultOn = row->second.defaultOn;
+            // A silent attack ("blankloop.wav" held while the key is down) whose RELEASE is the noise: the noise at the end.
+            juce::StringArray audible;
+            for (const auto& file : n.files) if (!silent(file)) audible.add(file);
+            if (audible.isEmpty())
+            {
+                if (n.releaseFiles.isEmpty()) continue;
+                n.files = n.releaseFiles;
+                n.releaseFiles.clear();
+                n.edge = Noise::off;
+            }
+            else n.files = audible;
+            if (const auto rank = odf.ranks.find(pipe.rankId); rank != odf.ranks.end())
+            {
+                n.rankName = rank->second.name;
+                n.perspective = perspectiveOfRankName(rank->second.name);
+            }
+            n.levelDb = layers[layer->second].levelDb;
+            odf.noises.push_back(std::move(n));
+        }
     }
 
     // The divisions every keyboard plays: from each key switch along the switch
@@ -1995,6 +2187,91 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
             for (const auto& existing : result.couplers) if (existing.id == pc.id) known = true;
             if (!known) result.couplers.push_back(pc);
         }
+    }
+    // 0.9.127: the noises of the definition as ours - the keyboard's division, the stop, our coupler id,
+    // the tremulant's division; the files as they lie in their package.
+    {
+        auto indexOfKeyboard = [&](int keyboardId) -> int
+        {
+            for (size_t i = 0; i < ordered.size(); ++i) if (ordered[i].id == keyboardId && keyboardId > 0) return (int)i;
+            return -1;
+        };
+        auto indexOfDivision = [&](int divisionId) -> int
+        {
+            for (size_t i = 0; i < ordered.size(); ++i)
+            {
+                const auto ids = divisionsOf(ordered[i]);
+                if (std::find(ids.begin(), ids.end(), divisionId) != ids.end()) return (int)i;
+            }
+            return -1;
+        };
+        int withoutDivision = 0;
+        // The folders the drawknob noises lie in: a click of another console switch (a ventil, "Tacet") out of
+        // the same folder is one more free drawknob noise, never a button of ours.
+        std::set<juce::String> drawknobFolders;
+        for (const auto& n : noises)
+            if (n.trigger == Noise::stop && !n.files.isEmpty())
+                drawknobFolders.insert(juce::String(n.packageId) + "/" + n.files[0].upToLastOccurrenceOf("/", false, false).toLowerCase());
+        for (const auto& n : noises)
+        {
+            Plan::PlanNoise p;
+            p.edge = n.edge == Noise::on ? "on" : n.edge == Noise::off ? "off" : "held";
+            p.perspective = n.perspective;
+            p.levelDb = n.levelDb;
+            p.name = n.rankName;
+            const auto package = packageFolder(hauptwerkRoot, n.packageId);
+            for (const auto& file : n.files) p.files.push_back(package.getChildFile(file));
+            for (const auto& file : n.releaseFiles) p.releaseFiles.push_back(package.getChildFile(file));
+            if (n.trigger == Noise::key)
+            {
+                p.kind = "keys"; p.note = n.note;
+                p.division = indexOfKeyboard(n.keyboardId);
+                if (p.division < 0 && pedalPullDownFound && n.keyboardId == pedalPullDown.id) p.division = 0;
+            }
+            else if (n.trigger == Noise::divisionInput)
+            {
+                p.kind = "keys"; p.note = n.note; p.followsCouplers = true;
+                p.division = indexOfDivision(n.divisionId);
+            }
+            else if (n.trigger == Noise::stop)
+            {
+                p.kind = "stop"; p.stopId = n.stopId;
+                if (const auto stop = stops.find(n.stopId); stop != stops.end()) p.division = indexOfDivision(stop->second.divisionId);
+            }
+            else if (n.trigger == Noise::coupler)
+            {
+                p.kind = "coupler";
+                for (const auto& pc : result.couplers) if (pc.switchId == n.couplerSwitchId) p.couplerId = pc.id;
+            }
+            else if (n.trigger == Noise::tremulant)
+            {
+                p.kind = n.edge == Noise::held ? "tremulantRun" : "tremulant";
+                for (const auto& t : tremulants)
+                    if (t.id == n.tremulantId)
+                    {
+                        p.name = t.name;
+                        for (const int divisionId : t.divisionIds)
+                            if (const int index = indexOfDivision(divisionId); index >= 0) { p.division = index; break; }
+                    }
+            }
+            else if (n.edge != Noise::held && !n.files.isEmpty()
+                     && drawknobFolders.count(juce::String(n.packageId) + "/" + n.files[0].upToLastOccurrenceOf("/", false, false).toLowerCase()) > 0)
+            {
+                p.kind = "stop"; p.stopId = 0;   // a free drawknob noise
+            }
+            else
+            {
+                p.kind = "button"; p.name = n.switchName; p.defaultOn = n.defaultOn;
+            }
+            if (p.kind == "keys" && p.division < 0) { ++withoutDivision; continue; }
+            if (p.files.empty()) continue;
+            result.noises.push_back(std::move(p));
+        }
+        if (!result.noises.empty() || noisePipesUnused > 0)
+            result.notes.add("Noises: " + juce::String((int)result.noises.size()) + " of the definition taken"
+                + (withoutDivision > 0 ? ", " + juce::String(withoutDivision) + " key noise(s) of a keyboard without a division of ours left out" : juce::String())
+                + (noisePipesUnused > 0 ? ", " + juce::String(noisePipesUnused) + " noise pipe(s) nothing drives left out" : juce::String())
+                + (noisePipesEncrypted > 0 ? ", " + juce::String(noisePipesEncrypted) + " with encrypted files left out" : juce::String()));
     }
     // What the whole definition holds besides (for the message): the tremmed
     // ranks (alternate ranks of the stops, never listed under them) and the noises.

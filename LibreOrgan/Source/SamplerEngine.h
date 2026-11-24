@@ -1564,6 +1564,40 @@ public:
     void setStopOneShot(Stop* stop, int manual);
     // The voicing's release crossfade multiplier (0.9.62): new releases take it.
     void setStopReleaseCrossfade(Stop* stop, float factor);
+
+    // 0.9.127 THE NOISES (key action, drawknobs, couplers, tremulant, blower, calcant, rossignol, zimbelstern ...).
+    // A noise is one or more files (the variants) started by an event and played as they are - no tuning, wind,
+    // tremulant or swell - through the route of its division and perspective. kind / edge / ref:
+    //   "keys"          on | off     manual + note: the key's press / release (keyNoise)
+    //   "stop"          on | off     ref "<division>|<stop name>"; an empty ref = a FREE drawknob noise, given
+    //                                (always the same one) to a button that has none - a transmission, an extension
+    //   "coupler"       on | off     ref = the coupler's id (empty = free, as above)
+    //   "tremulant"     on | off     ref = the division: its drawknob;  "tremulantRun" held: while it runs
+    //   "button"        on | off | held   ref = its name: a button of its own (blower, calcant, rossignol ...)
+    // "held" loops while its trigger is on and ends with its release file; "on" / "off" are whole one-shots.
+    // group: what ties the perspectives of ONE free drawknob noise together (its file name).
+    // The stops', transmissions' and tremulants' switches make their noises by themselves (setStopEnabled ...);
+    // the keys, the couplers and the buttons are told by the caller. Nothing sounds until setNoisesArmed(true)
+    // (a load, a registration applied at a load: no clicks).
+    struct NoiseSpec
+    {
+        juce::String kind, edge, ref, perspective, group;
+        int manual = -1, note = 60;
+        float gainDb = 0.0f;
+        juce::StringArray files, releaseFiles;
+    };
+    juce::String loadNoises(const std::vector<NoiseSpec>& specs);   // decodes the files (call it from a background thread), replaces the set; returns a summary
+    void clearNoises();
+    static bool fileHasLoop(const juce::File& file);                // a loop in the file's smpl chunk (the folder reading: a held noise or a click)
+    void noiseHousekeeping();                                       // once a second: frees replaced sets, restarts a held noise a panic ended
+    int noiseSoundCount() const;
+    bool hasNoiseFor(const juce::String& kind, const juce::String& ref) const;
+    void keyNoise(int manualIndex, int midiNote, bool down) noexcept;   // any thread
+    void noiseEvent(const juce::String& kind, const juce::String& ref, bool on, int contextManual = -1);
+    void setNoisesEnabled(bool enabled);
+    bool getNoisesEnabled() const noexcept { return noisesEnabled.load(std::memory_order_relaxed); }
+    void setNoiseVolumeDb(float db) noexcept;
+    void setNoisesArmed(bool armed) noexcept { noisesArmed.store(armed, std::memory_order_relaxed); }
     // The footage the stop's caption shows (written in its name or alias, else the
     // measured one that displayName() appends, else the smpl footage): the base
     // for the footage of its transmissions, so both agree.
@@ -1799,6 +1833,8 @@ private:
     std::atomic<float> undulationBeatRatio{ 12.0f };
     juce::String lastLoadError;
     std::atomic<double> defaultSampleRate{ 48000.0 };
+    std::atomic<bool> noisesEnabled{ true }, noisesArmed{ false };   // 0.9.127: the noises' master switch; armed = events make sound (never while loading)
+    std::atomic<float> noiseVolumeGain{ 1.0f };
     std::atomic<float> releaseFadeOutMs{ 110.0f };   // 0.8.215: the GUI's defaults (110 ms), so the self-test renders the same join
     std::atomic<float> releaseFadeInMs{ 110.0f };
     std::atomic<float> velocityFadeInMs{ 100.0f };

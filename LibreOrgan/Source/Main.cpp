@@ -264,6 +264,26 @@ public:
             for (const auto& f : plan.oneShotFolders) report << "  one-shot folder: " << f << "\n";
             for (const auto& c : plan.couplers) report << "  coupler " << c.id << " = \"" << c.label << "\" (switch " << c.switchId << ")\n";
             if (plan.couplersUnmapped > 0) report << "  couplers without one of ours: " << plan.couplersUnmapped << "\n";
+            {   // 0.9.127: the noises, one line per kind + edge + division + perspective (the buttons by name)
+                std::map<juce::String, std::pair<int, int>> kinds;   // line -> noises, files
+                std::map<juce::String, juce::String> example;
+                for (const auto& n : plan.noises)
+                {
+                    juce::String line = n.kind + " " + n.edge;
+                    if (n.kind == "button") line << " \"" << n.name << "\"" << (n.defaultOn ? " (on from the load)" : "");
+                    else if (n.kind == "coupler") line << (n.couplerId.isNotEmpty() ? " of ours" : " (any)");
+                    else line << " division " << n.division << (n.followsCouplers ? " (through the couplers)" : "");
+                    line << " [" << (n.perspective.isNotEmpty() ? n.perspective : juce::String("every perspective")) << "]";
+                    auto& entry = kinds[line];
+                    ++entry.first;
+                    entry.second += (int)n.files.size();
+                    if (example.count(line) == 0 && !n.files.empty())
+                        example[line] = n.files.front().getFullPathName().fromLastOccurrenceOf("OrganInstallationPackages", false, true)
+                            + (n.releaseFiles.empty() ? juce::String() : " + release") + (n.files.front().existsAsFile() ? "" : " (NOT ON DISK)");
+                }
+                for (const auto& [line, counts] : kinds)
+                    report << "  noise " << line << ": " << counts.first << " (" << counts.second << " file(s)), e.g. " << example[line] << "\n";
+            }
             report << "  configuration: " << plan.configurationFile.getFullPathName() << "\n";
             juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("LibreOrgan").getChildFile("hauptwerk.txt").replaceWithText(report);
             std::fputs(report.toRawUTF8(), stdout);

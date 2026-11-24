@@ -5139,8 +5139,164 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   -Offset -Trsm 1 -Division -Stop] (a copy of Rural, ORGAN_DUMP_GRID + ORGAN_TEST_SNAPSHOT: grid.png.row.png): volume +2.5
   "6.6 5.9 5.8 -> 9.0 8.4 8.3" (the first key stopped at +9), treble -3, attack +40, the transmission of subbass into II -4;
   "All" back at 0 every time; pictured (the label on the note names' line, the value box in the row of the keys'). NOT tried:
-  a drag by a real mouse and the wheel (the hook calls the slider's own callbacks), Linux/macOS. Not pushed (not asked).
+  a drag by a real mouse and the wheel (the hook calls the slider's own callbacks), Linux/macOS. RELEASED on his word:
+  commit 8906a39, tag v0.9.126, CI green at the first attempt (all five archives), Intel mac "late symbols: 0", the Windows
+  exe on system DLLs only, the CI exe deployed.
+  #264 (pasztor63, 23 Nov 2026, 0.9.126, Ultra 9 285K 8 P + 16 E, 127.4 GB, Billerbeck 8 chan.; READ FOR THE USER, he writes
+  the answer himself): ReaRoute ASIO 256 / 48 kHz (idle: 0 gaps = REAPER on an ASIO card), 24 routes (4 perspectives x 6
+  divisions), auxiliary none, no IR, measurement limit 85 %, all 24 cores (3 reserve workers), AVX2, sinc from 2980 Hz,
+  float 48 kHz, full releases, High performance plan. Runs: packing On 34 700 / 31 000 / 36 200; Automatic (level 12, 47 %
+  packed) 38 800 / 41 600; Automatic 34 % packed 23 900 (9 late driver callbacks). Voice 2134 ns per 256 block (kernel 1283,
+  unpack 715), cores busy 55 %, broke on one callback of 89 %; longest route callback 956 us of which lane wait 858.
+  Automatic left 19.4 GB FREE at 100.1 GB held (here 9.9 GB): the room for the largest rank + whole levels - not tuned.
+  TEXT FAULTS SEEN, NOT FIXED: with packing Automatic the report still says "Compress samples in RAM: about half the
+  polyphony ... Load the organ without it" and "Compress samples in RAM is on"; "Save the configuration: the value belongs
+  to this organ" although "maxPolyphony" is a MACHINE-SPECIFIC key (his comment: the limit is not kept with the
+  configuration - true); the power plan's name is mojibake in the log. NOISES (his question, the user's too): Billerbeck
+  002283 has pipe\mech\mech.wav (one file, no key number) and no blower sound (the blower folder = pictures). Proposed to
+  the user, NOT coded: a stop flag "sounds while drawn" (zimbelstern, rossignol, blower) + a "noise" flag (untuned, no fill /
+  wind / tremulant, out of tutti and crescendo) for key-action folders; per-stop drawknob noises need the definition's map.
+  NOISES, THE USER'S FACTS (24 Nov 2026) + a real set, D:\Hauptwerk\...\OrganInstallationPackages\002740\ruchy: klapky\<GO|ped|
+  Positif|Recit>\<01-Hlava_Klapky|02-AB_klapky|03-ORTF_klapky|04-Rea_klapky>\<down|up>\036-C.wav, 036-C_bis.wav, _ter (KEY
+  numbers, 2-3 variants a key, on/off = sibling folders); mech\<perspective>.wav + mech\rel\ (a loop + release, one file a
+  perspective, the file NAME is the perspective); ross\{ab,hlava,ortf,rear}.wav + ross\rel\; spojky\<perspective>\<on|off>\
+  Positif_to_GO_1.wav, _2; tahla\<perspective>\<pull|push>\01.wav..44.wav (numbers that are NOT keys - today's loader would
+  put them on keys 1-44); Tahla_Tremblants_silna\<perspective>\<pull|push>\01_Trembl_doux.wav; z_Calcant\<perspective>\
+  01_calcant.wav, 02_calcant.wav (one-shot variants). His rules: rossignol / zimbelstern have no MIDI number and may have
+  several variants (random or round-robin); key noises have an ON and an OFF sound (the key's release starts the off noise);
+  drawknobs have no MIDI number and are random in his own ODFs too (measured at most for couplers and tremulants); some
+  noises have loops + release, others are one-shot, and a one-shot with a release plays attack AND release WHOLE, no
+  crossfade. PROPOSED (not coded, waiting for his choice): a "noise" row = folder + TRIGGER (its own button / the keys of
+  a division / the stop buttons / the couplers / the tremulant); only the "keys" trigger reads file numbers as keys, else
+  every file is a variant; on/off halves by sibling folder names (down-up, on-off, pull-push, rel); never tuned, filled,
+  winded or tremmed. maxPolyphony per organ: proposed as a map organ -> limit on this computer (or the configuration key).
+  NOISE SURVEY (24 Nov 2026; the user: "skoro každé varhany mají různé složky ruchy, které bys měl projít, než to začneš
+  stavět ... Hledej prostě ruchy"; and ASK before spending tokens on a search - he knew the organ: 002740 = Saint-Guilhem):
+  `python -I %TEMP%\ruchy_survey.py <OrganInstallationPackages> <out.txt>` (sibling folders of one structure printed once
+  as {a,b}; file shapes KEY / N; loop + length of the first wav) -> %TEMP%\ruchy_survey.txt: 32 folders "ruchy" (27
+  packages + the BezEncrypce copies). WHAT VARIES: (1) the on/off halves: sibling folders down/up, on/off, pull/push,
+  atk/rel, att/rel, x_on/x_off (hw_on, tahla_off_left, Left_on), tremulant/tremulantrel, najezdMechu/vypnutiMechu; a
+  subfolder rel / rel99999 under the on folder; a subfolder "02" (old sets 000345, 001740); file suffixes in ONE folder
+  (dif_mech.wav + dif_mechrel.wav, dif.wav + dif_rel.wav); rel1/rel2, atk2/atk3 = variants. (2) THE ORDER OF THE LEVELS
+  differs (division > on/off > perspective; division > perspective > on/off; perspective > on/off ...): a level is known by
+  its NAME, never by its depth. (3) Perspectives: prefix folders "02-dirMk22-klapky-221115_2050", bare dif/dir/dis/dist/
+  rea/rear, or the FILE name (ab.wav, N-diffuse.wav, dif-calcant.wav, 02-ORTF-BP_trem.wav), spelt differently inside one
+  set; a release folder may hold files named by perspective while the attack has perspective folders. (4) Variants: _bis,
+  _ter, __bis2, _BIS, "KEY_ter.wav.wav", N.wav, name_N.wav; drawknobs by console side (N_hw_L.wav) and NAMED specials among
+  them (spojka.wav, affsluiting_hw.wav, ventil_HW.wav, N_bis_tremulant_voxhumana.wav). (5) Tremulant noise = a LOOP per
+  division (Tremul_Pos_N, tr_BW_N, TremHW folders) with its release. (6) Kinds: key noises, drawknobs, couplers, levers
+  (paky), ventils, blower (two alternatives mech / mechpuv, mech_null), calcant bell, zimbelstern (left/right stars), birds,
+  drum (tambor: several NAMED samples), thunder (orage), glocklein. (7) JUNK only the definition can tell from the used:
+  "- kopie" folders, empty folders, raw-recording folders inside a noise folder, 0.1 s mono files. CONCLUSION told to the
+  user: the definition is the first source for noises, the folder guess a fallback with a hand-set row. How a definition
+  wires its noises (ranks, switches) is NOT READ YET - the first step before any code. His hint: near a package there is
+  usually an (almost) empty folder of the same number with the organ's short name = the core pack - tells the organ.
+  NOISES IN THE DEFINITIONS, READ OVER ALL 252 FILES (24 Nov 2026, the user: "chtělo by to důkladnější čtení ODF, nestačí
+  jen 4 definice ... musí se nouzově dát číst i z adresářů - to je náš LibreOrgan přístup"). Tools in %TEMP%\odftools (copy
+  into LibreOrgan/Tools when the build starts): `odf_noises.py <odf> [all]` (every pipe grouped by the folder of its first
+  attack sample, with what makes it sound), `odf_noise_summary.py <folder> <out>` (-> %TEMP%\odf_noise_summary2.txt, 88 KB:
+  per kind the folders, file shapes, rank names, console switch names; one line per definition), `odf_noise_questions.py`,
+  `odf_switch.py <odf> <switch name part>` (a switch and every row naming it, linkages followed back), `odf_fields.py
+  <mysqldump.xml> <table>` (the field ORDER of a table = the compact letters a..z without o, then a1..; the *.xml beside
+  the definitions are mysqldumps of his source databases, e.g. Guilhem.xml). FACTS: (1) FORMATS: compact (`<o>` rows, letter
+  tags) AND uncompacted (150-300 MB: object types and row tags in LOWER CASE - `ObjectType="pipe_soundengine01"`,
+  `<sample>`, full field names, empty `<X/>`): St. Guilhem Surround, Den Haag Surr, Zutphen Surround, Rott_Moric, martini,
+  Altenbruch Surround Extended, Schwerin Demo, Sonus Paradisi Dry Eclectic - a parser must match both, case-insensitively.
+  KeyboardKey = a KeyboardID, b SwitchID, c NormalMIDINoteNumber (NOT c = switch). Pipe_SoundEngine01.c =
+  ControllingPalletSwitchID. SwitchLinkage f/g = EngageLinkActionCode / DisengageLinkActionCode: 4/7 = the destination
+  goes on when the source goes ON, 7/4 = when it goes OFF; c = ConditionSwitchID. Switch e = DefaultToEngaged, i =
+  Clickable, k = Disp_ImageSetInstanceID. StopRank f/g = ActionTypeCode / ActionEffectCode (1/1 everywhere: no noise code).
+  (2) THE ONE MECHANISM (226 of 252 definitions have noises): a noise is a PIPE WITH ITS OWN PALLET SWITCH (never a stop
+  played through a division), the switch driven through linkages by: a KEY of a keyboard - 200 definitions, TWO pipes a
+  key, one on the press and one on the release, 1-4 attack samples in a pipe = the variants, no release sample (7
+  definitions use the DIVISION INPUT instead = the noise follows the couplers; 46 groups are conditional on a switch such
+  as " Compass Selection"); a STOP's drawknob on / off - 205 definitions, ONE pipe per stop and edge, so the definition
+  names the file of every stop (the user: assigned at random when the definition is generated); a COUPLER's drawknob
+  (190); a TREMULANT's drawknob (131) and the tremulant's RUNNING noise, a loop with a release while it is on (43); a
+  CONSOLE SWITCH of its own, held: the blower (default ON, 160 definitions, folder "mech"), calcant bell, rossignol /
+  nachtigall / kuckuck / vogelgesang / paxaros, zimbelstern / etoile / cimbelstern left and right, pauke / tambor / drum,
+  orage, vielle, gloecklein / clochette; and on/off clicks of other console switches (ventils, Tacet, Windablass, Matrix,
+  Walze, "Appel d'anches"). A third-party style (Erfurt, Oloron: folders Noises, trakturarej, trakturaNman): the noise is
+  the RELEASE sample of a pipe whose attack is a silent loop "blankloop.wav", ranks "Key action noises Release (front)".
+  (3) PERSPECTIVE = the head of the rank's name ("Front A (direct): Tracker noise On 1. man.", "Rear: Blower noise");
+  "Special: ..." (2039 of ~3300 rank kinds, the old sets) = no perspective. (4) FOLDERS IN USE: top "pipe" (old sets: the
+  noises lie BESIDE the pipe tone under pipe\ - kl1_mokry, kl2_suchy, ped_mokry, stop, stop_suchy, mech), ruchy,
+  ruchy_mokre, ruchy_suche, noises, tahlaklapky, trakturarej, registers, stop, blower, manual, pedal; second level: keys
+  klN_mokry / klN_suchy / klN_dry / klN_far / kl_mN / kl_p / klapky* / keys / traktura / ped_mokry; stops stop / stops /
+  tahla* (tahlaatk + tahlarel, tahla_atk + tahla_rel, tahlarwatk, tahlaposrel) / hluky_mokry / hluky_suchy / rejstr* /
+  registers / apels_*; mech; calcant / kalk / kalkantglock / schel_calcant; paky; crezal; hracky / toys / toy;
+  below: atk / rel (the most common), on / off, down / up, pull / push, vpravoin / vpravoout / vlevoin / vlevoout, numbers.
+  File shapes: KEY.wav, KEY_bis, KEY_ter, KEY__bisN, N.wav, mute.wav, blankloop.wav, and .hbw (encrypted). (5) THE
+  FALSE FRIENDS of a word match: "cimbel" (a mixture stop), "nachthorn", "glockenton", "(tremmed)" ranks, "gross...".
+  THE PROGRAM'S OWN IMPORT: does HauptwerkOdf.cpp read the lower-case uncompacted files? NOT CHECKED.
 ## Pending for the next session (delete when done)
+- 0.9.127 IN WORK (24 Nov 2026, the user's GO for the noises: "ano ... To, co říká ODF, zachovat pevné přiřazení. Nezapomeň
+  na ty drobné opravy pro Pásztora"; ALL of it in ONE version). HIS DECISIONS: (1) published configurations open with
+  everything off as before; else the state as the definition says (the blower mostly on), a master switch + volume
+  "Noises". (2) "V Hauptwerku to musely být píšťaly ... My to takhle dělat nemusíme, není-li to nutné" - a noise need not be
+  a pipe / stop inside. (3) The definition's fixed drawknob assignment is KEPT; buttons that have none (transmissions,
+  extensions - Stralsund St. Jakobi) get one AT RANDOM from the drawknob files no stop uses. (4) Key noises: the missing
+  keys filled from the neighbour (no transposition); only the physically played keys by default, a Configuration Editor
+  switch "Key noises follow the couplers". (5) The folder reading as the fallback (levels known by NAME), what misses is
+  set by hand in a Noises window. (6) "nezapomeň upravit i voicing, pokud přidáváš nějaké volby - aby si to zapamatovaly
+  save voicing, load voicing, a další místa - případně i combinations, pokud je volba zapnutá": every noise setting goes
+  into the configuration, Save / Load Voicing and (with "Combinations hold the voicing") the pistons; own-button noises
+  are in the pistons' on/off like stops. (7) Adding the noises of a definition to an EXISTING configuration must touch
+  nothing else (a separate list). STAGES: 0 Pásztor (DONE IN CODE, not built yet: `organPolyphony` map = the limit per
+  organ on this computer, machine key + volatile key, read in loadSettings after "maxPolyphony", written in
+  saveSettingsNow; the report's texts with packing Automatic; the "mojibake" power plan name was MY Get-Content reading the
+  UTF-8 log as ANSI - no fault). 1 HauptwerkOdf: the noises parsed into the plan + `--hauptwerk` prints them (checked
+  against %TEMP%\odftools\odf_noises.py on Freiberg, St. Guilhem Surround, Stralsund). 2 the configuration's "noises" list
+  (save / load / portable paths below the library root) + the import writes it + "Add noises from a definition". 3 the
+  engine: noise voices (untuned, no wind / tremulant / fill, whole one-shots, loops with release) through the perspective
+  routes, the triggers (key press / release, stop, coupler, tremulant on / off / running, own button). 4 the folder
+  guess. 5 UI: Noises window, own buttons on the grid, Editor switch, master switch + volume, voicing / pistons. 6 manual,
+  CHANGELOG, tests, release on his word.
+  PROGRESS (24 Nov 2026, NOTHING committed or version-bumped yet; the build of the working tree passes): STAGE 0 built.
+  STAGE 1 DONE AND VERIFIED: HauptwerkOdf.h `Noise` {trigger key / divisionInput / stop / coupler / tremulant / console, edge
+  held / on / off, keyboardId, divisionId, note, stopId, couplerSwitchId, tremulantId, switchName, defaultOn, rankName,
+  perspective, levelDb, packageId, files, releaseFiles} in `odf.noises`, `Plan::PlanNoise` {kind keys / stop / coupler /
+  tremulant / tremulantRun / button, edge, name, perspective, couplerId, division, note, stopId (0 = a FREE drawknob noise),
+  followsCouplers, defaultOn, levelDb, files, releaseFiles} in `plan.noises`; parse(): the block "0.9.127 THE NOISES" after
+  the keyboards' compasses (pallet pipes traced back through `backLinks` to keyOfSwitch / inputOfSwitch / stopOfSwitch /
+  tremulantOfSwitch / couplerOfSwitch - the drawknobs spread three plain hops back -, else the nearest SHOWN switch = a
+  button, or by its name a stop; a silent attack "blankloop"/"mute" with a release = the noise at the end; unused
+  "stop" pallet pipes and console clicks out of the drawknob folders = free drawknob noises); `--hauptwerk` prints
+  "noise <kind> <edge> division N [perspective]: count (files), e.g. ...". Checked: Freiberg 349 noises (blower, keys
+  30+54+54 on and off, stops 5+14+13, couplers, tremulant drawknobs), Stralsund Jakobi 1560 (+ Cimbelstern, Pauke,
+  Calcant, the tremulant's running noise), St. Guilhem Surround 1476 (+ Rossignol, "Clochette pour la souffl").
+  A REAL IMPORT BUG FOUND AND FIXED on the way: `Scanner::nextTable` took an EMPTY table written `<ObjectList
+  ObjectType="enclosure"/>` (the uncompacted, lower-case definitions) for a table, and skipTable() then ran to the end of
+  the NEXT table - the samples after "reversiblepiston", the linkages after "switchexclusiveselectgroupelement": the import
+  of St. Guilhem Surround said "no stops with sample pipes". Also: a compacted KeyboardKey row without <c> is key 60 (the
+  default is left out). ENGINE MAP (an Explore agent's, 24 Nov): Voice struct SamplerEngine.cpp ~1474, renderVoice ~3657
+  (pitch = temperament + random + wind + trem + tuning + shift; gain = velocity x voicing x expr x division x wind x trem x
+  output x route x fill; `v.stop` must not be null), allocVoice ~5917, publishVoice ~5958, findRoute ~4961, startNote ~6669
+  with the lambda startRank, finishNoteOff ~7068, startReleaseSamples ~7191, the MIDI queue `MidiCommand {note, velocity,
+  manual, on}` + pushMidi ~6158 + processMidi ~6181 (the place for a noise command), the freeing pattern BuildPause +
+  clearMidi + suspend + killAllVoices + resetAllVoicesUnsafe + resume, decodeSampleFile ~13284 (anonymous namespace).
+  STAGE 3 (ENGINE) WRITTEN, COMPILES, NOT RUN YET: `Voice::noise` + the bypasses in renderVoice + `v.noise = false` in
+  allocVoice; `MidiCommand::kind` 1 = a key's noise (processMidi -> `noiseKeyImmediate`); in Impl after processMidi:
+  `NoiseSound`, `NoiseSet` {sounds, keyOn / keyOff[manual][note], byRef "<kind>|<edge>|<ref>", freeOn / freeOff by group,
+  heldWanted}, `noiseRoute` (division + perspective; no division = the trigger's; no perspective = the division's
+  "default" route; never the auxiliary), `startNoiseVoice`, `playNoise` (one-shot whole / held loop + release),
+  `noiseTrigger`, `switchNoise` (80 ms dedupe per button, 8 per 100 ms), `retireNoiseSet` / `purgeRetiredNoiseSets`,
+  `keepHeldNoises`; public (SamplerEngine.h after setStopReleaseCrossfade): `NoiseSpec {kind, edge, ref, perspective,
+  group, manual, note, gainDb, files, releaseFiles}`, `loadNoises(specs)` (parallel decode with the folder's storage,
+  the missing keys filled from the nearest, replaces the set without touching the organ's voices), `clearNoises`,
+  `noiseHousekeeping` (1 s), `noiseSoundCount`, `hasNoiseFor`, `keyNoise(manual, note, down)`, `noiseEvent(kind, ref,
+  on, contextManual)`, `setNoisesEnabled`, `setNoiseVolumeDb`, `setNoisesArmed`; hooks in setStopEnabled (the master of a
+  stop folder is the button), setTransmissionEnabled (ref "<manual>|<name>#tr<id>" or its groupMaster -> a free noise) and
+  setManualTremulant ("tremulant" click + "tremulantRun"). NEXT: MainComponent - the model, the configuration key
+  "noises", the import writing it, loadNoises after an organ's load + arming, keyNoise calls, coupler / button events,
+  the UI, the voicing / pistons, the folder guess, "Add noises from a definition", manual.
+  THE ENGINE DESIGN CHOSEN: `Voice::noise` (render: no cents at all, wind / tremulant / swell gains 1, no dynamic shelf), a
+  carrier Stop per sound for the gain, sounds kept OUTSIDE `stops`; specs by REF from MainComponent {kind, edge, ref,
+  perspective, manual, note, gainDb, files, releaseFiles}; commands through the MIDI queue; hooks in the engine for the
+  stops' and the tremulants' switches (a stop folder's children click once: the master is the button; several within
+  80 ms deduped; a cap per 100 ms; mute while loading), keys through a call from MainComponent (physical division, or
+  every routed note with "Key noises follow the couplers"); a button without a noise of its own takes a free one by the
+  hash of its name.
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,

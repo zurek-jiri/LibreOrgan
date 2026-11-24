@@ -12,6 +12,40 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.127] - 2026-11-24
+
+### Added
+- **Noises.** The mechanical sounds of the organ: the keys (press and release,
+  with their variants in turn), the drawknobs, the couplers, the tremulant's
+  knob and its running, the blower, and the effects with a button of their own
+  (calcant bell, rossignol, zimbelstern, drum ...). A noise is played as its
+  file is - never tuned, never touched by wind, tremulant or swell - through
+  the route of its division and perspective.
+  - An organ made from a Hauptwerk definition takes its noises with it: the
+    definition is read for where the noise files are and what starts each of
+    them. LibreOrgan Sampler does not load the definition.
+  - *Configuration Editor > Noises > Noises of a Hauptwerk definition* adds
+    the noises to an organ you already have; nothing else of the
+    configuration is touched. A drawknob's noise finds its stop by the sample
+    folder the stop plays.
+  - *Noises of a folder* reads a folder of noises by the names of its folders
+    when there is no definition.
+  - A key without a recording takes its neighbour's. A button without a
+    drawknob noise of its own (a transmission, an extension) takes one of the
+    free ones.
+  - *Noise buttons* (a window that stays open), *Noises on*, *Noises volume*,
+    *Key noises follow the couplers*. A published configuration opens with
+    every noise button off.
+- **The polyphony limit belongs to the organ.** Every organ keeps its own limit
+  on this computer; it is taken back when the organ is loaded. It never
+  travels in a configuration file.
+
+### Fixed
+- **Uncompacted Hauptwerk definitions could not be imported** ("no stops with
+  sample pipes" - St. Guilhem Surround and other large definitions): an empty
+  table of the definition made the reader skip the table after it.
+- **The measurement's report with packing Automatic** no longer says "Compress
+  samples in RAM is on" nor advises to load the organ without it.
 ## [0.9.126] - 2026-11-23
 
 ### Added

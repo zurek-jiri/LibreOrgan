@@ -3453,6 +3453,7 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
 
 MainComponent::~MainComponent()
 {
+    for (int i = 0; i < 1200 && noisesLoading.load(); ++i) juce::Thread::sleep(50);   // 0.9.127: the noises' loading thread uses the engine
     if (deviceListListener != nullptr)
         for (auto* type : deviceManager.getAvailableDeviceTypes()) if (type != nullptr) type->removeListener(deviceListListener.get());
     PluginHost::scanner().cancel();
@@ -4071,11 +4072,13 @@ void MainComponent::applyRoutedNoteDelta(int manual, int note, int velocity, int
     // couplers), not the physical key (0.9.53: a super coupler lit the key pressed, not the pipe playing).
     if (before == 0 && count > 0)
     {
+        if (keyNoisesFollowCouplers.load(std::memory_order_relaxed)) engine.keyNoise(manual, note, true);   // 0.9.127
         engine.noteOn(note, juce::jlimit(1, 127, velocity), manual);
         if (voicer) voicer->setNoteActive(manual, note, true);
     }
     else if (before > 0 && count == 0)
     {
+        if (keyNoisesFollowCouplers.load(std::memory_order_relaxed)) engine.keyNoise(manual, note, false);
         engine.noteOff(note, manual);
         if (voicer) voicer->setNoteActive(manual, note, false);
     }
@@ -4173,6 +4176,8 @@ void MainComponent::routeKeyboardNote(int manual, int note, int velocity, bool i
             held[note] = juce::jlimit(1, 127, velocity);
             physicalNotePressTimes[(size_t)manual][note] =
                 juce::Time::getMillisecondCounterHiRes();
+            // 0.9.127: the key's noise - of the key that is really played (the user), whatever the couplers do.
+            if (!keyNoisesFollowCouplers.load(std::memory_order_relaxed)) engine.keyNoise(manual, note, true);
             if (!selfRoutedByCoupler) applyRoutedNoteDelta(manual, note, velocity, 1);
         }
         else
@@ -4182,6 +4187,7 @@ void MainComponent::routeKeyboardNote(int manual, int note, int velocity, bool i
     {
         if (!selfRoutedByCoupler) applyRoutedNoteDelta(manual, note, found->second, -1);
         held.erase(found);
+        if (!keyNoisesFollowCouplers.load(std::memory_order_relaxed)) engine.keyNoise(manual, note, false);
     }
     recomputeCouplersForSource(manual, note, isOn);
     if (!isOn) physicalNotePressTimes[(size_t)manual].erase(note);
@@ -4309,6 +4315,7 @@ void MainComponent::setCouplerEnabled(const juce::String& id, bool enabled)
             if (coupler->enabled == enabled) return;
             coupler->enabled = enabled;
             recomputeCouplersForSource(coupler->sourceManual);
+            engine.noiseEvent("coupler", id, enabled, coupler->sourceManual);   // 0.9.127: its drawknob's noise
         }
         else return;
     }
@@ -16139,7 +16146,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -16406,6 +16413,15 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
         allOff(registration.stopData);
         allOff(registration.couplerData);
         allOff(registration.tremulantData);
+        // 0.9.127: the noise buttons too (the blower, the effects) - a copy, the loaded organ keeps its own.
+        if (root->getProperty("noises").isObject())
+        {
+            juce::var noises = root->getProperty("noises").clone();
+            if (auto* buttons = noises.getProperty("buttons", juce::var()).getDynamicObject())
+                for (const auto& prop : buttons->getProperties())
+                    if (auto* button = prop.value.getDynamicObject()) button->setProperty("on", false);
+            root->setProperty("noises", noises);
+        }
     }
     root->setProperty("registrationMasterDb", registration.masterDb);
     root->setProperty("registrationStops", registration.stopData);
@@ -17296,6 +17312,12 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             rootObject->setProperty("couplers", couplerList);
             rootObject->setProperty("couplersExclusive", true);   // every coupler not listed is hidden (0.8.142: the others kept the visibility of the organ before)
         }
+        // 0.9.127: the noises of the definition (key action, drawknobs, couplers, tremulant, blower, effects).
+        rootObject->setProperty("noises", noisesVarFromPlan(plan, [&rowOfStop](int stopId) -> juce::String
+        {
+            const auto row = rowOfStop.find(stopId);
+            return row != rowOfStop.end() ? juce::String(row->second.first) + "|" + row->second.second : juce::String();
+        }));
         {
             // An empty voicing state: a new organ, nothing of the previous one's
             // stops is kept (the voicing of unloaded stops is retained on purpose
@@ -27796,6 +27818,8 @@ void MainComponent::loadSettings()
         // A configuration without a crescendo EMPTIES it (0.8.241, the user: the steps of the
         // organ before looked filled after a load) - crescendoFromVar leaves everything as it
         // is for a missing object, which is right for a bad crescendo file, not for a load.
+        // 0.9.127: the organ's noises (absent = none: a missing key must RESET, never keep the organ before).
+        noisesChanged(parsed.getProperty("noises", juce::var()), (bool)parsed.getProperty("keyNoisesFollowCouplers", false));
         auto crescendoVar = parsed.getProperty("crescendo", juce::var());
         if (!crescendoVar.isObject())
         {
@@ -27917,6 +27941,8 @@ void MainComponent::loadSettings()
     organMemory.clear();
     if (auto* organs = parsed.getProperty("organMemory", juce::var()).getDynamicObject())
         for (const auto& prop : organs->getProperties()) organMemory[prop.name.toString()] = prop.value.toString();
+    if (auto* limits = parsed.getProperty("organPolyphony", juce::var()).getDynamicObject())   // 0.9.127
+        for (const auto& prop : limits->getProperties()) organPolyphony[prop.name.toString()] = (int)prop.value;
     outputDiscontinuityDetector.store(parsed.getProperty("outputDiscontinuityDetector", true));   // 0.8.227: on by default while the crackle is hunted
     engine.setOutputDiscontinuityDetector(outputDiscontinuityDetector.load());
     manualFontScale = juce::jlimit(0.6f, 2.5f, (float)(double)parsed.getProperty("manualFontScale", 1.0));   // 0.8.213
@@ -28133,7 +28159,14 @@ void MainComponent::loadSettings()
     pitchLabel.setText("Pitch: " + juce::String(globalPitch, 0) + " cents", juce::dontSendNotification);
     engine.setGlobalPitchCents((float)globalPitch);
     engine.setMaxPolyphony((int)parsed.getProperty("maxPolyphony", 30000));
-    measurementShareLimit = juce::jlimit(0.6f, 1.0f, (float)(double)parsed.getProperty("measurementShareLimit", 0.85));
+    // 0.9.127 (#264): the limit this organ had on this computer, when it was loaded here before.
+    if (const auto organ = currentConfigurationName.replace(".portable", "", true).trim().toLowerCase(); organ.isNotEmpty())
+        if (const auto known = organPolyphony.find(organ); known != organPolyphony.end() && known->second > 0)
+        {
+            engine.setMaxPolyphony(known->second);
+            CrashHandler::note("Polyphony limit of \"" + currentConfigurationName + "\" on this computer: " + juce::String(known->second));
+        }
+    measurementShareLimit =juce::jlimit(0.6f, 1.0f, (float)(double)parsed.getProperty("measurementShareLimit", 0.85));
 
     const double attackMinimum = parsed.getProperty("attackMinimumTimeMs", 80.0);
     attackMinimumSlider.setValue(attackMinimum, juce::dontSendNotification);
@@ -28760,7 +28793,17 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("manualCount", manualCount);
     obj->setProperty("masterVolumeDb", masterVolumeSlider.getValue());
     obj->setProperty("globalPitchCents", pitchSlider.getValue());
-    obj->setProperty("maxPolyphony", pendingMaxPolyphony > 0 ? pendingMaxPolyphony : engine.getMaxPolyphony());
+    const int limitNow = pendingMaxPolyphony > 0 ? pendingMaxPolyphony : engine.getMaxPolyphony();
+    obj->setProperty("maxPolyphony", limitNow);
+    // 0.9.127 (#264): remembered for the loaded organ (never while a measurement holds the limit out of the way).
+    if (const auto organ = currentConfigurationName.replace(".portable", "", true).trim().toLowerCase();
+        organ.isNotEmpty() && limitNow > 0 && limitNow < SamplerEngine::maxVoices && !engine.getStops().isEmpty())
+        organPolyphony[organ] = limitNow;
+    {
+        juce::DynamicObject::Ptr limits = new juce::DynamicObject();
+        for (const auto& [organ, limit] : organPolyphony) limits->setProperty(juce::Identifier(organ), limit);
+        obj->setProperty("organPolyphony", juce::var(limits.get()));
+    }
     obj->setProperty("measurementShareLimit", (double)measurementShareLimit);
     obj->setProperty("releaseFadeOutMs", releaseFadeOutSlider.getValue());
     obj->setProperty("releaseFadeInMs", releaseFadeInSlider.getValue());
@@ -28790,6 +28833,8 @@ void MainComponent::saveSettingsNow()
     }
     obj->setProperty("configurationFile", currentConfigurationFile.getFullPathName());
     obj->setProperty("crescendo", crescendoToVar());
+    if (noisesVar.isObject()) obj->setProperty("noises", noisesVar);   // 0.9.127
+    obj->setProperty("keyNoisesFollowCouplers", keyNoisesFollowCouplers.load());
     {
         juce::Array<juce::var> shown;
         for (const bool flag : globalSliderShown) shown.add(flag);
@@ -29255,7 +29300,7 @@ void MainComponent::saveSettingsNow()
         // properties in insertion order, so the string compares reliably.
         juce::DynamicObject::Ptr essential = new juce::DynamicObject();
         static const std::set<juce::String> volatileKeys{ "windowWidth", "windowHeight", "windowX", "windowY",
-            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName", "organMemory" };
+            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName", "organMemory", "organPolyphony" };
         for (const auto& property : obj->getProperties())
             if (volatileKeys.count(property.name.toString()) == 0) essential->setProperty(property.name, property.value);
         // Opening a voicing or unfolding its key rows is not a change worth asking about.
@@ -30727,6 +30772,7 @@ void MainComponent::timerCallback()
     updateEmptyHint();
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
+    noisesTick();   // 0.9.127
     watchMemoryAfterLoad();
     // 0.9.123 (the user: quietly, a line in the Messages): the copies of filled pipes
     // the memory did not let be built - said once per stop and load, no box. Those
@@ -30993,7 +31039,7 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
     struct Pair { const char* titleStart; const char* chapter; };
     static const Pair pairs[]{
         { "Audio routing", "Audio routing" },   // 0.9.79 (#236)
-        { "Couplers", "Couplers" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
+        { "Couplers", "Couplers" }, { "Noises", "Noises" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
         { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
         { "Report a problem", "Report a problem" }, { "IR reverb settings", "IR reverb" }, { "Set for all", "Audio routing" }, { "Effects", "Effects" },   // 0.9.89: the Effects dialog, the audio tabs are gone
         { "Measuring the maximum polyphony", "Measure the maximum polyphony" }, { "Maximum polyphony measured", "Measure the maximum polyphony" },
@@ -33690,7 +33736,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
     else
         text << ": every target up to " << state->highestCleanPeak << " voices stayed clean.";
     text << " The slider is yours: lower it for more headroom (couplers, long releases, other programs running), raise it if you dare."
-            "\n\nSave the configuration: the value belongs to this organ (its routes, IRs, drivers and buffers), not to the computer alone.";
+            "\n\nThe limit is remembered for this organ on this computer (its routes, IRs, drivers and buffers decide it); every organ has its own.";
     // 0.9.90: the report is two parts - what to do (text + advice, shown) and the measured figures
     // (details: "Advanced analysis", folded by default; the user: "a million figures that mean nothing
     // to the user - the advice is what matters").
@@ -33799,10 +33845,14 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
         const double unpackNs = voices > 0.0 ? state->profUnpackSum / voices : 0.0;
         const double totalNs = voices > 0.0 ? (state->profHeaderSum + state->profSpansSum + state->profKernelSum + state->profPostSum + state->profUnpackSum) / voices : 0.0;
         // 0.9.92 (the user: short; and never a figure that was not measured - "0 ns of the 0 ns").
-        if (compressSamples || unpackNs > 0.5)
-            options << "\n  - Compress samples in RAM: about half the polyphony"
-                    << (unpackNs > 0.5 && totalNs > 0.5 ? " (unpacking took " + juce::String(juce::roundToInt(unpackNs)) + " of the " + juce::String(juce::roundToInt(totalNs)) + " ns a voice cost per block)" : juce::String())
-                    << ". Load the organ without it if the RAM allows.";
+        const juce::String unpackTook = unpackNs > 0.5 && totalNs > 0.5
+            ? " (unpacking took " + juce::String(juce::roundToInt(unpackNs)) + " of the " + juce::String(juce::roundToInt(totalNs)) + " ns a voice cost per block)" : juce::String();
+        // 0.9.127 (#264): with packing Automatic the organ does NOT fit unpacked - never "load it without".
+        if (compressAutomatic && !compressSamples)
+            options << "\n  - Packing Automatic: " << juce::roundToInt(engine.packedShare() * 100.0) << " % of the samples are packed, because the organ does not fit the memory unpacked"
+                    << unpackTook << ".";
+        else if (compressSamples || unpackNs > 0.5)
+            options << "\n  - Compress samples in RAM: about half the polyphony" << unpackTook << ". Load the organ without it if the RAM allows.";
         if (releaseHalfRate && !sampleStorageFloat)
             options << "\n  - Releases at half the rate: they play through the sinc kernel. Full releases cost RAM instead.";
         if (sincKernelFromHz < 19999.0f)
@@ -33900,7 +33950,7 @@ void MainComponent::finishPolyphonyMeasurement(bool cancelled)
             details << " A voice cost a lane " << juce::roundToInt(total) << " ns per block in this run: bookkeeping " << juce::roundToInt(header)
                    << ", span logic " << juce::roundToInt(spans) << ", kernel " << juce::roundToInt(kernel)
                    << (post > 0.5 ? ", per-key tone " + juce::String(juce::roundToInt(post)) : juce::String())
-                   << (unpack > 0.5 ? ", unpacking the packed samples " + juce::String(juce::roundToInt(unpack)) + " (Compress samples in RAM is on: that is its price)" : juce::String()) << ".";
+                   << (unpack > 0.5 ? ", unpacking the packed samples " + juce::String(juce::roundToInt(unpack)) + (compressAutomatic && !compressSamples ? " (the price of the samples packed by packing Automatic)" : " (Compress samples in RAM is on: that is its price)") : juce::String()) << ".";
         }
         const double nsBest = state->kernelBench.nsBest();
         const double blockMs = 1000.0 * blockFrames / juce::jmax(1000.0, blockRate);
@@ -36001,8 +36051,56 @@ void MainComponent::showConfigurationEditor()
                    "files already built there, so a cache on a big drive beside the samples costs nothing in time.",
                 "Filled pipes cache folder");
 
-            //---------------------------------------------------------------- Plug-ins (0.9.102), then the Console
-            addSection("Plug-ins (VST3)", true, true);
+            //---------------------------------------------------------------- Noises (0.9.127)
+            addSection("Noises", true, true);
+            {
+                const bool has = o.noisesVar.isObject();
+                const int soundCount = has && o.noisesVar.getProperty("sounds", juce::var()).isArray() ? o.noisesVar.getProperty("sounds", juce::var()).size() : 0;
+                addToggle("Noises on", has ? (bool)o.noisesVar.getProperty("enabled", true) : true, [&o](bool state) { o.setNoisesMaster(state); },
+                    "The noises of the organ - key action, drawknobs, couplers, tremulant, blower and the effects with a button of their own "
+                    "(calcant, rossignol, zimbelstern ...). They come from the organ's Hauptwerk definition or from a folder of noises. "
+                    "Off: none of them sounds. Travels with the organ.", "Noises on");
+                addSlider("Noises volume", -30.0, 12.0, 0.5, " dB", has ? (double)o.noisesVar.getProperty("volumeDb", 0.0) : 0.0, 0.0,
+                    [&o](double value) { o.setNoisesVolume(value); },
+                    "The level of every noise against the pipes, on top of the level the definition gives each of them. Travels with the organ.");
+                addToggle("Key noises follow the couplers", o.keyNoisesFollowCouplers.load(), [&o](bool state)
+                    { o.keyNoisesFollowCouplers.store(state); o.configurationDirty = true; o.saveSettings(); },
+                    "Off (default): a key's noise is heard on the keyboard that is played, once, whatever the couplers do. "
+                    "On: every division a coupler reaches adds the noise of its own key, as the trackers of a mechanical organ move the coupled keys.",
+                    "Key noises follow the couplers");
+                addButton("Noise buttons", "Show...", [&o] { o.showNoisesWindow(); },
+                    "The window with the organ's noise buttons (blower, calcant, rossignol, zimbelstern ...), the master switch and the volume - stays open while you play.",
+                    "Noise buttons");
+                addButtonWithNote("Noises of a Hauptwerk definition", "Add...", juce::String(soundCount) + " noise sound(s) in this organ", [&o]
+                    {
+                        auto chooser = std::make_shared<juce::FileChooser>("The organ's Hauptwerk definition", o.lastSettingsDirectory, "*.Organ_Hauptwerk_xml", true);
+                        juce::Component::SafePointer<MainComponent> safeThis(&o);
+                        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [safeThis, chooser](const juce::FileChooser& fc)
+                        {
+                            if (safeThis != nullptr && fc.getResult().existsAsFile()) safeThis->addNoisesFromDefinition(fc.getResult());
+                        });
+                    },
+                    "Adds the noises of the organ's Hauptwerk definition to the LOADED organ: the definition is read for the noises alone - where their "
+                    "files are and what starts each of them (a key, a drawknob, a coupler, the tremulant, a button of its own). LibreOrgan Sampler does not load the "
+                    "definition; nothing else of your configuration is touched - stops, transmissions, voicing and the grid stay as they are. Save the configuration afterwards.",
+                    "Noises of a Hauptwerk definition");
+                addButton("Noises of a folder", "Add...", [&o]
+                    {
+                        auto chooser = std::make_shared<juce::FileChooser>("The folder with the organ's noises", o.lastSampleFolderDirectory, juce::String(), true);
+                        juce::Component::SafePointer<MainComponent> safeThis(&o);
+                        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [safeThis, chooser](const juce::FileChooser& fc)
+                        {
+                            if (safeThis != nullptr && fc.getResult().isDirectory()) safeThis->addNoisesFromFolder(fc.getResult());
+                        });
+                    },
+                    "Without a definition: reads a folder of noises by the names of its folders - the perspectives, the moment (atk / rel, on / off, down / up, "
+                    "pull / push), the kind (keys, drawknobs, couplers, tremulant; anything else becomes a button named after its folder) and the division. "
+                    "A guess: what the names do not tell is missed. Drawknob noises are given to the buttons at random.", "Noises of a folder");
+                addButton("Noises of this organ", "Remove", [&o] { o.removeNoises(); },
+                    "Takes every noise out of the configuration (the files stay on the disk).", "Noises of this organ");
+            }
+
+            //---------------------------------------------------------------- Plug-ins (0.9.102), then the Console            addSection("Plug-ins (VST3)", true, true);
             {
                 const auto found = PluginHost::effects().size();
                 const auto refused = PluginHost::refusedLines().size();
@@ -36707,3 +36805,721 @@ void MainComponent::editFolderPatterns(bool perspectives)
     patternsWindow->toFront(true);
 }
 // ========== KONEC NOVÉ METODY ==========
+
+//==============================================================================
+// 0.9.127 THE NOISES (key action, drawknobs, couplers, tremulant, blower, calcant, rossignol ...).
+// The model is the configuration's "noises" object as it is saved:
+//   enabled, volumeDb, sounds [ "kind\tedge\tref\tperspective\tdivision\tnote\tlevelDb\tfollows\tfiles\treleases" ],
+//   buttons { name: { on, division } }
+// kind / edge / ref as SamplerEngine::NoiseSpec says; files = "<folder>//a.wav|b.wav", the folder BELOW THE
+// LIBRARY ROOT (absolute only outside it - the rule of every path of a configuration).
+namespace
+{
+    juce::String noiseFilesText(const std::vector<juce::File>& files, const juce::File& root)
+    {
+        if (files.empty()) return {};
+        const auto folder = files.front().getParentDirectory();
+        const juce::String folderText = root != juce::File() && folder.isAChildOf(root)
+            ? folder.getRelativePathFrom(root).replaceCharacter('\\', '/') : folder.getFullPathName();
+        juce::StringArray names;
+        for (const auto& file : files) if (file.getParentDirectory() == folder) names.add(file.getFileName());
+        return folderText + "//" + names.joinIntoString("|");
+    }
+
+    juce::StringArray noiseFilesOf(const juce::String& text, const juce::File& root)
+    {
+        juce::StringArray files;
+        if (!text.contains("//")) return files;
+        const auto folderText = text.upToFirstOccurrenceOf("//", false, false);
+        juce::File folder;
+        if (juce::File::isAbsolutePath(folderText)) folder = juce::File(folderText);
+        else if (root != juce::File()) folder = root.getChildFile(folderText);
+        else return files;
+        for (const auto& name : juce::StringArray::fromTokens(text.fromFirstOccurrenceOf("//", false, false), "|", ""))
+            if (name.isNotEmpty()) files.add(folder.getChildFile(name).getFullPathName());
+        return files;
+    }
+}
+
+juce::var MainComponent::noisesVarFromPlan(const HauptwerkOdf::Plan& plan, const std::function<juce::String(int)>& refOfStop)
+{
+    if (plan.noises.empty()) return {};
+    juce::DynamicObject::Ptr noises = new juce::DynamicObject();
+    noises->setProperty("enabled", true);
+    noises->setProperty("volumeDb", 0.0);
+    juce::Array<juce::var> sounds;
+    juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+    std::set<juce::String> buttonNames;
+    for (const auto& p : plan.noises)
+    {
+        juce::String ref;
+        if (p.kind == "stop") ref = p.stopId > 0 ? refOfStop(p.stopId) : juce::String();   // a stop without a row of ours (an extension): a free drawknob noise
+        else if (p.kind == "coupler") ref = p.couplerId;
+        else if (p.kind == "tremulant" || p.kind == "tremulantRun") { if (p.division < 0) continue; ref = juce::String(p.division); }
+        else if (p.kind == "button")
+        {
+            ref = p.name.trim();
+            if (ref.isEmpty()) continue;
+            if (buttonNames.insert(ref.toLowerCase()).second)
+            {
+                juce::DynamicObject::Ptr button = new juce::DynamicObject();
+                button->setProperty("name", ref);
+                button->setProperty("on", p.defaultOn);
+                button->setProperty("division", p.division);
+                buttons->setProperty(juce::Identifier("b" + juce::String((int)buttonNames.size())), juce::var(button.get()));
+            }
+        }
+        juce::StringArray fields;
+        fields.add(p.kind); fields.add(p.edge); fields.add(ref); fields.add(p.perspective);
+        fields.add(juce::String(p.division)); fields.add(juce::String(p.note)); fields.add(juce::String(p.levelDb, 1));
+        fields.add(p.followsCouplers ? "1" : "0");
+        fields.add(noiseFilesText(p.files, plan.libraryRoot));
+        fields.add(noiseFilesText(p.releaseFiles, plan.libraryRoot));
+        sounds.add(fields.joinIntoString("\t"));
+    }
+    noises->setProperty("sounds", sounds);
+    noises->setProperty("buttons", juce::var(buttons.get()));
+    return juce::var(noises.get());
+}
+
+juce::File MainComponent::libraryRootOnThisComputer() const
+{
+    for (const auto& [absoluteTree, relativeTree] : treeRelativePaths)
+        if (const auto root = rootFromKnownRelative(absoluteTree, relativeTree); root != juce::File()) return root;
+    return {};
+}
+
+void MainComponent::noisesChanged(const juce::var& noises, bool followCouplers)
+{
+    noisesVar = noises.isObject() ? noises : juce::var();
+    keyNoisesFollowCouplers.store(followCouplers);
+    engine.setNoisesEnabled(noisesVar.isObject() ? (bool)noisesVar.getProperty("enabled", true) : true);
+    engine.setNoiseVolumeDb(noisesVar.isObject() ? (float)(double)noisesVar.getProperty("volumeDb", 0.0) : 0.0f);
+    ++noisesVersionWanted;
+}
+
+std::vector<SamplerEngine::NoiseSpec> MainComponent::noiseSpecs(int& unresolved) const
+{
+    std::vector<SamplerEngine::NoiseSpec> specs;
+    unresolved = 0;
+    const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
+    if (sounds == nullptr) return specs;
+    const juce::File root = libraryRootOnThisComputer();
+    for (const auto& text : *sounds)
+    {
+        juce::StringArray fields;
+        fields.addTokens(text.toString(), "\t", "");
+        if (fields.size() < 10) continue;
+        SamplerEngine::NoiseSpec spec;
+        spec.kind = fields[0]; spec.edge = fields[1]; spec.ref = fields[2]; spec.perspective = fields[3];
+        spec.manual = fields[4].getIntValue(); spec.note = fields[5].getIntValue();
+        spec.gainDb = fields[6].getFloatValue();
+        spec.files = noiseFilesOf(fields[8], root);
+        spec.releaseFiles = noiseFilesOf(fields[9], root);
+        if (spec.files.isEmpty()) { ++unresolved; continue; }
+        // A drawknob or coupler noise no stop has: the perspectives of ONE noise are tied by its file's name.
+        if (spec.ref.isEmpty() && (spec.kind == "stop" || spec.kind == "coupler"))
+        {
+            spec.group = juce::File(spec.files[0]).getFileName().toLowerCase();
+            spec.manual = -1;   // it sounds where the button is
+        }
+        specs.push_back(std::move(spec));
+    }
+    return specs;
+}
+
+// Once a second. While an organ loads nothing clicks (the registration set at a load would be a salvo); when the
+// load is over and the model is newer than what the engine holds, the files are read on a thread of their own;
+// a moment later the noises are armed and the buttons that are on (the blower) start.
+void MainComponent::noisesTick()
+{
+    engine.noiseHousekeeping();
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (activeFolderLoader != nullptr || searchingSampleFolders)
+    {
+        engine.setNoisesArmed(false);
+        noisesArmAtMs = 0.0;
+        noisesQuietSinceMs = 0.0;
+        if (noisesVersionLoaded == noisesVersionWanted) noisesArmAtMs = -1.0;   // arm again once the load is over
+        return;
+    }
+    if (noisesQuietSinceMs <= 0.0) noisesQuietSinceMs = now;
+    if (noisesLoading.load()) return;
+    if (noisesVersionLoaded != noisesVersionWanted)
+    {
+        if (now - noisesQuietSinceMs < 1500.0) return;
+        const int version = noisesVersionWanted;
+        int unresolved = 0;
+        auto specs = noiseSpecs(unresolved);
+        engine.setNoisesArmed(false);
+        if (specs.empty())
+        {
+            engine.clearNoises();
+            noisesVersionLoaded = version;
+            if (unresolved > 0)
+            {
+                CrashHandler::note("Noises: " + juce::String(unresolved) + " sound(s) of the configuration not found - the library root is not known on this computer");
+                queueNotice(juce::AlertWindow::InfoIcon, "Noises", "The noises of this organ were not found: its sample folders are not on this computer.");
+            }
+            return;
+        }
+        noisesLoading.store(true);
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        SamplerEngine* enginePointer = &engine;
+        std::atomic<bool>* loadingFlag = &noisesLoading;
+        juce::Thread::launch([safeThis, enginePointer, loadingFlag, version, unresolved, specs = std::move(specs)]
+        {
+            const juce::String summary = enginePointer->loadNoises(specs);
+            juce::MessageManager::callAsync([safeThis, version, unresolved, summary]
+            {
+                if (safeThis == nullptr) return;
+                safeThis->noisesVersionLoaded = version;
+                safeThis->noisesArmAtMs = juce::Time::getMillisecondCounterHiRes() + 1200.0;
+                if (summary.contains("NOT FOUND") || unresolved > 0)
+                    queueNotice(juce::AlertWindow::InfoIcon, "Noises", "Some noise files of this organ were not found: " + summary
+                        + (unresolved > 0 ? "; " + juce::String(unresolved) + " sound(s) without a file" : juce::String()));
+            });
+            loadingFlag->store(false);
+        });
+        return;
+    }
+    if (noisesArmAtMs < 0.0) noisesArmAtMs = now + 1200.0;
+    if (noisesArmAtMs > 0.0 && now >= noisesArmAtMs)
+    {
+        noisesArmAtMs = 0.0;
+        engine.setNoisesArmed(true);
+        applyNoiseButtons();
+        {   // Tests (0.9.127): ORGAN_TEST_NOISE_FOLDER=<folder> logs what the folder reading makes of it;
+            // ORGAN_TEST_NOISE_ODF=<definition> adds a definition's noises to the loaded organ; both once.
+            static bool windowDone2 = false;
+            static bool folderDone = false, odfDone = false, windowDone = false;
+            // ORGAN_TEST_NOISE_WINDOW=1 opens the Noises window; ORGAN_TEST_NOISE_BUTTON="<name>|<seconds>" presses a noise button on, then off.
+            if (std::getenv("ORGAN_TEST_NOISE_WINDOW") != nullptr && !windowDone) { windowDone = true; showNoisesWindow(); }
+            if (const char* press = std::getenv("ORGAN_TEST_NOISE_BUTTON"); press != nullptr && !windowDone2)
+            {
+                windowDone2 = true;
+                const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(press), "|", "");
+                juce::Component::SafePointer<MainComponent> safeThis(this);
+                const juce::String name = parts[0];
+                const int seconds = juce::jmax(1, parts[1].getIntValue());
+                juce::Timer::callAfterDelay(2000, [safeThis, name] { if (safeThis != nullptr) { CrashHandler::note("ORGAN_TEST_NOISE_BUTTON: " + name + " on"); safeThis->setNoiseButton(name, true); } });
+                juce::Timer::callAfterDelay(2000 + seconds * 1000, [safeThis, name] { if (safeThis != nullptr) { CrashHandler::note("ORGAN_TEST_NOISE_BUTTON: " + name + " off"); safeThis->setNoiseButton(name, false); } });
+            }
+            if (const char* folder = std::getenv("ORGAN_TEST_NOISE_FOLDER"); folder != nullptr && !folderDone && !engine.getStops().isEmpty())
+            {
+                folderDone = true;
+                juce::String summary;
+                const juce::var read = noisesVarFromFolder(juce::File(juce::String::fromUTF8(folder)), summary);
+                CrashHandler::note("ORGAN_TEST_NOISE_FOLDER: " + summary);
+                if (const auto* list = read.getProperty("sounds", juce::var()).getArray())
+                {
+                    std::map<juce::String, int> seen;
+                    for (const auto& sound : *list)
+                    {
+                        auto fields = juce::StringArray::fromTokens(sound.toString(), "\t", "");
+                        const juce::String key = fields[0] + " " + fields[1] + " \"" + fields[2] + "\" [" + fields[3] + "] division " + fields[4];
+                        if (++seen[key] == 1) CrashHandler::note("  " + key + ": " + fields[8] + (fields[9].isNotEmpty() ? "  + release " + fields[9] : juce::String()));
+                    }
+                    for (const auto& [key, count] : seen) if (count > 1) CrashHandler::note("  " + key + ": " + juce::String(count) + " sounds");
+                }
+                if (std::getenv("ORGAN_TEST_NOISE_FOLDER_TAKE") != nullptr && read.isObject()) setNoisesModel(read, "test: taken from the folder");
+            }
+            if (const char* odf = std::getenv("ORGAN_TEST_NOISE_ODF"); odf != nullptr && !odfDone && !engine.getStops().isEmpty())
+            {
+                odfDone = true;
+                addNoisesFromDefinition(juce::File(juce::String::fromUTF8(odf)));
+            }
+        }    }
+}
+
+// The buttons of their own (blower, calcant, rossignol ...): their state is in the model; told to the engine.
+void MainComponent::applyNoiseButtons()
+{
+    if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
+        for (const auto& prop : buttons->getProperties())
+        {
+            const juce::String name = prop.value.getProperty("name", "").toString();
+            if (name.isEmpty() || !(bool)prop.value.getProperty("on", false)) continue;
+            engine.noiseEvent("button", name, true, juce::jmax(0, (int)prop.value.getProperty("division", 0)));
+        }
+}
+
+void MainComponent::setNoiseButton(const juce::String& name, bool on)
+{
+    auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject();
+    if (buttons == nullptr) return;
+    for (const auto& prop : buttons->getProperties())
+        if (prop.value.getProperty("name", "").toString().equalsIgnoreCase(name))
+        {
+            if (auto* button = prop.value.getDynamicObject())
+            {
+                if ((bool)button->getProperty("on") == on) return;
+                button->setProperty("on", on);
+                engine.noiseEvent("button", name, on, juce::jmax(0, (int)button->getProperty("division")));
+                configurationDirty = true;
+                saveSettings();
+            }
+            return;
+        }
+}
+// The model replaced (an import of noises, a folder read, "Remove"): saved with the organ, loaded by noisesTick.
+void MainComponent::setNoisesModel(const juce::var& noises, const juce::String& why)
+{
+    noisesVar = noises.isObject() ? noises : juce::var();
+    engine.setNoisesEnabled(noisesVar.isObject() ? (bool)noisesVar.getProperty("enabled", true) : true);
+    engine.setNoiseVolumeDb(noisesVar.isObject() ? (float)(double)noisesVar.getProperty("volumeDb", 0.0) : 0.0f);
+    ++noisesVersionWanted;
+    configurationDirty = true;
+    saveSettings();
+    CrashHandler::note("Noises: " + why);
+    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow();
+    refreshConfigurationEditor();
+}
+
+void MainComponent::setNoisesMaster(bool enabled)
+{
+    if (auto* object = noisesVar.getDynamicObject()) object->setProperty("enabled", enabled);
+    engine.setNoisesEnabled(enabled);
+    configurationDirty = true;
+    saveSettings();
+}
+
+void MainComponent::setNoisesVolume(double db)
+{
+    if (auto* object = noisesVar.getDynamicObject()) object->setProperty("volumeDb", db);
+    engine.setNoiseVolumeDb((float)db);
+    configurationDirty = true;
+    saveSettings();
+}
+
+void MainComponent::removeNoises()
+{
+    if (!noisesVar.isObject()) return;
+    setNoisesModel({}, "removed from the configuration");
+}
+
+// The noises of a Hauptwerk definition added to the LOADED organ (the user: an organ already made must take its
+// noises without anything else of it being touched). The definition is read for the noises alone; a drawknob's
+// noise finds its row by the FOLDER the stop plays (renamed rows, aliases and moved stops do not matter).
+void MainComponent::addNoisesFromDefinition(const juce::File& odfFile)
+{
+    if (engine.getStops().isEmpty()) { queueNotice(juce::AlertWindow::WarningIcon, "Noises", "Load the organ first: the noises are added to the loaded organ."); return; }
+    juce::File root = HauptwerkOdf::hauptwerkRootFor(odfFile);
+    if (root == juce::File())
+        if (const auto library = libraryRootOnThisComputer(); library != juce::File()) root = library.getParentDirectory();
+    const auto places = usedFolderPlaces();
+    std::map<juce::String, juce::String> masterOfRow;   // "<division>|<row>" of a stop folder's rank -> its folder's row
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->groupMasterPtr != nullptr)
+            masterOfRow[juce::String(stop->primaryManual) + "|" + stop->name.toLowerCase()] = juce::String(stop->groupMasterPtr->primaryManual) + "|" + stop->groupMasterPtr->name;
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    CrashHandler::note("Noises: reading the definition " + odfFile.getFullPathName());
+    juce::Thread::launch([safeThis, odfFile, root, places, masterOfRow]
+    {
+        auto odf = HauptwerkOdf::parse(odfFile);
+        HauptwerkOdf::Plan plan;
+        if (odf.error.isEmpty()) plan = odf.plan(root);
+        std::map<int, juce::String> refOfStop;
+        int matched = 0, drawknobs = 0;
+        if (odf.error.isEmpty())
+        {
+            std::function<void(const HauptwerkOdf::PlanStop&)> take = [&](const HauptwerkOdf::PlanStop& stop)
+            {
+                auto folders = stop.folders;
+                for (const auto& child : stop.children) for (const auto& folder : child.folders) folders.push_back(folder);
+                for (const auto& folder : folders)
+                {
+                    const auto wanted = folder.getFullPathName().toLowerCase();
+                    for (const auto& [place, row] : places)
+                    {
+                        const auto used = juce::File(place).getFullPathName().toLowerCase();
+                        if (used != wanted && !used.startsWith(wanted + juce::File::getSeparatorString()) && !wanted.startsWith(used + juce::File::getSeparatorString())) continue;
+                        juce::String ref = juce::String(row.first) + "|" + row.second;
+                        if (const auto master = masterOfRow.find(ref.toLowerCase()); master != masterOfRow.end()) ref = master->second;
+                        refOfStop[stop.stopId] = ref;
+                        return;
+                    }
+                }
+            };
+            for (const auto& division : plan.divisions) for (const auto& stop : division.stops) take(stop);
+            for (const auto& noise : plan.noises) if (noise.kind == "stop" && noise.stopId > 0) { ++drawknobs; if (refOfStop.count(noise.stopId) > 0) ++matched; }
+        }
+        const juce::var noises = odf.error.isEmpty() ? MainComponent::noisesVarFromPlan(plan, [&refOfStop](int stopId) -> juce::String
+        {
+            const auto found = refOfStop.find(stopId);
+            return found != refOfStop.end() ? found->second : juce::String();
+        }) : juce::var();
+        const juce::String error = odf.error, organ = odf.organName;
+        const int count = (int)plan.noises.size();
+        juce::MessageManager::callAsync([safeThis, noises, error, organ, count, matched, drawknobs, odfFile]
+        {
+            if (safeThis == nullptr) return;
+            if (error.isNotEmpty() || !noises.isObject())
+            {
+                queueNotice(juce::AlertWindow::WarningIcon, "Noises", error.isNotEmpty() ? "The definition could not be read: " + error
+                    : "The definition " + odfFile.getFileName() + " holds no noises.");
+                return;
+            }
+            safeThis->setNoisesModel(noises, juce::String(count) + " taken from the definition \"" + organ + "\"; " + juce::String(matched) + " of " + juce::String(drawknobs)
+                + " drawknob noise(s) found their stop by its folder, the rest are free ones");
+            queueNotice(juce::AlertWindow::InfoIcon, "Noises", "The noises of \"" + organ + "\" were added to this organ (" + juce::String(count)
+                + " sounds). Nothing else of the configuration was changed. Save the configuration to keep them.");
+        });
+    });
+}
+
+// THE FALLBACK: the noises read from a folder by the NAMES of its levels (no definition). A level is known by its
+// name, never by its depth: a perspective (the Perspective Patterns' prefixes and labels), the moment (atk / rel,
+// on / off, down / up, pull / push, in / out), the kind (keys, drawknobs, couplers, tremulant; anything else is a
+// button of its own, named after its folder), the division (a number, "ped", a division's name or alias). What it
+// misses is set by hand. The drawknobs of a folder cannot be told apart: they are free ones, given to the buttons.
+juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::String& summary) const
+{
+    const juce::File root = libraryRootOnThisComputer();
+    // The perspectives: label -> the words that name it (its pattern prefixes, the label itself, its first letters).
+    std::vector<std::pair<juce::String, juce::StringArray>> perspectives;
+    for (const auto& line : engine.getPerspectivePatterns())
+    {
+        auto parts = juce::StringArray::fromTokens(line, ";", "");
+        if (parts.isEmpty() || parts[0].trim().isEmpty()) continue;
+        juce::StringArray words;
+        for (int i = 1; i < parts.size(); ++i)
+        {
+            juce::String letters;
+            for (const auto c : parts[i].toLowerCase()) if (juce::CharacterFunctions::isLetter(c)) letters << c;
+            if (letters.length() >= 2) words.addIfNotAlreadyThere(letters);
+        }
+        const auto label = parts[0].trim().toLowerCase();
+        words.addIfNotAlreadyThere(label);
+        if (label.length() >= 3) words.addIfNotAlreadyThere(label.substring(0, 3));
+        perspectives.push_back({ parts[0].trim(), words });
+    }
+    // Only the perspectives THIS organ has (the patterns hold every organ's: "Distant" of another one must not take
+    // a folder of this one - its sounds would have no route).
+    juce::StringArray organPerspectives;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& name : engine.getPerspectivesForManual(manual))
+            if (!name.equalsIgnoreCase("default") && !name.equalsIgnoreCase("auxiliary")) organPerspectives.addIfNotAlreadyThere(name, true);
+    if (!organPerspectives.isEmpty())
+        perspectives.erase(std::remove_if(perspectives.begin(), perspectives.end(), [&](const std::pair<juce::String, juce::StringArray>& entry)
+            { return !organPerspectives.contains(entry.first, true); }), perspectives.end());
+    for (const auto& name : organPerspectives)   // a perspective without a pattern line still has its name
+    {
+        bool known = false;
+        for (const auto& entry : perspectives) if (entry.first.equalsIgnoreCase(name)) known = true;
+        if (known) continue;
+        juce::StringArray words;
+        words.add(name.toLowerCase());
+        if (name.length() >= 3) words.add(name.toLowerCase().substring(0, 3));
+        perspectives.push_back({ name, words });
+    }
+    auto lettersOf = [](const juce::String& text)
+    {
+        juce::StringArray tokens;
+        juce::String token;
+        for (const auto c : text.toLowerCase())
+        {
+            if (juce::CharacterFunctions::isLetter(c)) token << c;
+            else { if (token.isNotEmpty()) tokens.add(token); token.clear(); }
+        }
+        if (token.isNotEmpty()) tokens.add(token);
+        return tokens;
+    };
+    auto perspectiveOf = [&](const juce::String& name) -> juce::String
+    {
+        const auto tokens = lettersOf(name);
+        for (const auto& [label, words] : perspectives)
+            for (const auto& token : tokens)
+                for (const auto& word : words)
+                    if (token == word || (word.length() >= 3 && token.startsWith(word))) return label;
+        return {};
+    };
+    auto edgeOf = [&](const juce::String& name) -> juce::String
+    {
+        const auto low = name.toLowerCase();
+        if (low.startsWith("rel") && low.substring(3).containsOnly("0123456789") && low.length() > 3) return "release";   // "rel99999": the release of the folder above
+        for (const auto& token : lettersOf(low))
+        {
+            for (const char* word : { "atk", "att", "attack", "on", "down", "pull", "in", "najezd" }) if (token == word || token.endsWith(juce::String("_") + word)) return "on";
+            for (const char* word : { "rel", "release", "off", "up", "push", "out", "vypnuti" }) if (token == word) return "off";
+            if (token.endsWith("atk") && token.length() > 5) return "on";
+            if (token.endsWith("rel") && token.length() > 5) return "off";
+            if (token.endsWith("in") && (token.startsWith("vpravo") || token.startsWith("vlevo"))) return "on";
+            if (token.endsWith("out") && (token.startsWith("vpravo") || token.startsWith("vlevo"))) return "off";
+        }
+        if (low == "02") return "off";   // the old sets: the folder itself = on, its "02" = off
+        return {};
+    };
+    auto kindOf = [&](const juce::String& name) -> juce::String
+    {
+        const auto low = name.toLowerCase();
+        for (const char* word : { "klap", "key", "trakt", "track" }) if (low.contains(word)) return "keys";
+        if (low.startsWith("kl") && (low.length() == 2 || !juce::CharacterFunctions::isLetter(low[2]))) return "keys";
+        if (low.startsWith("ped_") || low == "ped" || low == "pedal" || low == "manual" || low == "pe") return "keys";
+        for (const char* word : { "spoj", "coup", "copul" }) if (low.contains(word)) return "coupler";
+        for (const char* word : { "trem", "trpo", "trre" }) if (low.contains(word)) return "tremulant";
+        for (const char* word : { "tahl", "tahel", "stop", "rejst", "regist", "drawst", "hluky" }) if (low.contains(word)) return "stop";
+        return {};
+    };
+    auto divisionOf = [&](const juce::String& name) -> int
+    {
+        const auto low = name.toLowerCase();
+        if (low.startsWith("ped") || low == "pe" || low.endsWith("_p") || low.endsWith("_ped")) return 0;
+        const auto digits = low.retainCharacters("0123456789");
+        if (digits.isNotEmpty() && digits.length() <= 1 && digits.getIntValue() >= 1 && digits.getIntValue() <= manualCount) return digits.getIntValue();
+        for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        {
+            const auto alias = manualConfigs[(size_t)manual].alias.trim().toLowerCase();
+            if (alias.length() >= 2 && (low == alias || low.startsWith(alias.substring(0, juce::jmin(3, alias.length()))))) return manual;
+        }
+        return -1;
+    };
+    struct Leaf { juce::String kind, edge, perspective, name; int division = -1; juce::Array<juce::File> files; juce::File folder; bool isRelease = false; };
+    std::vector<Leaf> leaves;
+    for (const auto& entry : juce::RangedDirectoryIterator(folder, true, "*.wav", juce::File::findFiles))
+    {
+        const auto file = entry.getFile();
+        const auto directory = file.getParentDirectory();
+        auto found = std::find_if(leaves.begin(), leaves.end(), [&](const Leaf& leaf) { return leaf.folder == directory; });
+        if (found == leaves.end())
+        {
+            Leaf leaf;
+            leaf.folder = directory;
+            juce::StringArray parts;
+            parts.add(folder.getFileName());
+            parts.addTokens(directory == folder ? juce::String() : directory.getRelativePathFrom(folder).replaceCharacter('\\', '/'), "/", "");
+            for (const auto& part : parts)
+            {
+                if (part.isEmpty()) continue;
+                const auto edge = edgeOf(part);
+                if (edge == "release") { leaf.isRelease = true; continue; }
+                if (edge.isNotEmpty() && leaf.edge.isEmpty()) leaf.edge = edge;
+                if (const auto perspective = perspectiveOf(part); perspective.isNotEmpty() && leaf.perspective.isEmpty() && kindOf(part).isEmpty()) { leaf.perspective = perspective; if (edge.isEmpty()) continue; }
+                if (const auto kind = kindOf(part); kind.isNotEmpty() && leaf.kind.isEmpty()) leaf.kind = kind;
+                if (const int division = divisionOf(part); division >= 0 && leaf.division < 0 && (leaf.kind == "keys" || leaf.kind == "tremulant" || leaf.kind.isEmpty())) leaf.division = division;
+                if (edge.isEmpty() && part != parts[0] && leaf.name.isEmpty() && kindOf(part).isEmpty() && perspectiveOf(part).isEmpty()) leaf.name = part;
+            }
+            if (leaf.name.isEmpty())
+                for (int i = parts.size(); --i >= 1;)
+                    if (edgeOf(parts[i]).isEmpty() && perspectiveOf(parts[i]).isEmpty()) { leaf.name = parts[i]; break; }
+            if (leaf.name.isEmpty()) leaf.name = parts[parts.size() > 1 ? 1 : 0];
+            leaves.push_back(leaf);
+            found = leaves.end() - 1;
+        }
+        found->files.add(file);
+    }
+    if (leaves.empty()) { summary = "no WAV files under " + folder.getFullPathName(); return {}; }
+    // By elimination: the folders of one sound, one per perspective of the organ, of which ONE was not understood
+    // ("04-distMk2H" in an organ of Direct / Diffuse / Rear) - it is the perspective that is left.
+    if (organPerspectives.size() >= 2)
+    {
+        std::map<juce::String, std::vector<size_t>> groups;
+        for (size_t i = 0; i < leaves.size(); ++i)
+            groups[leaves[i].kind + "|" + leaves[i].name.toLowerCase() + "|" + leaves[i].edge + "|" + juce::String(leaves[i].division) + (leaves[i].isRelease ? "|r" : "")].push_back(i);
+        for (const auto& [key, members] : groups)
+        {
+            if ((int)members.size() != organPerspectives.size()) continue;
+            juce::StringArray left = organPerspectives;
+            std::vector<size_t> unknown;
+            for (const size_t i : members)
+            {
+                if (leaves[i].perspective.isEmpty()) unknown.push_back(i);
+                else left.removeString(leaves[i].perspective, true);
+            }
+            if (unknown.size() == 1 && left.size() == 1) leaves[unknown.front()].perspective = left[0];
+        }
+    }
+    juce::DynamicObject::Ptr noises = new juce::DynamicObject();
+    noises->setProperty("enabled", true);
+    noises->setProperty("volumeDb", 0.0);
+    juce::Array<juce::var> sounds;
+    juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+    std::set<juce::String> buttonNames;
+    std::map<juce::String, int> counts;
+    auto addSound = [&](const juce::String& kind, const juce::String& edge, const juce::String& ref, const juce::String& perspective, int division, int note,
+                        const std::vector<juce::File>& files, const std::vector<juce::File>& releases)
+    {
+        juce::StringArray fields;
+        fields.add(kind); fields.add(edge); fields.add(ref); fields.add(perspective);
+        fields.add(juce::String(division)); fields.add(juce::String(note)); fields.add("0.0"); fields.add("0");
+        fields.add(noiseFilesText(files, root)); fields.add(noiseFilesText(releases, root));
+        sounds.add(fields.joinIntoString("\t"));
+        ++counts[kind + " " + edge];
+    };
+    auto releaseFolderOf = [&](const Leaf& leaf) -> const Leaf*
+    {
+        for (const auto& other : leaves)
+            if ((other.isRelease || other.edge == "off") && other.folder.getParentDirectory() == leaf.folder) return &other;
+        for (const auto& other : leaves)   // "x/rel/<perspective>" beside "x/<perspective>", or "x/rel" holding files named like ours
+            if (other.isRelease && other.name == leaf.name && other.kind == leaf.kind && (other.perspective == leaf.perspective || other.perspective.isEmpty())) return &other;
+        return nullptr;
+    };
+    for (const auto& leaf : leaves)
+    {
+        if (leaf.isRelease) continue;
+        // A "rel" folder under a folder of LOOPED files is that sound's release (mech/rel, ross/rel), not a click of
+        // its own; under one-shot files (calcant/rel) it is the sound of the button going off.
+        if (leaf.edge == "off" && leaf.kind != "keys" && leaf.kind != "stop" && leaf.kind != "coupler")
+        {
+            bool releaseOfItsParent = false;
+            for (const auto& parent : leaves)
+                if (parent.folder == leaf.folder.getParentDirectory() && !parent.files.isEmpty() && SamplerEngine::fileHasLoop(parent.files.getFirst())) releaseOfItsParent = true;
+            if (releaseOfItsParent) continue;
+        }
+        if (leaf.kind == "keys")
+        {
+            std::map<int, std::vector<juce::File>> byKey;
+            for (const auto& file : leaf.files)
+            {
+                const auto name = file.getFileNameWithoutExtension();
+                if (name.length() >= 3 && name.substring(0, 3).containsOnly("0123456789")) byKey[name.substring(0, 3).getIntValue()].push_back(file);
+            }
+            for (const auto& [key, files] : byKey)
+                if (key >= 0 && key <= 127) addSound("keys", leaf.edge == "off" ? "off" : "on", {}, leaf.perspective, juce::jmax(0, leaf.division), key, files, {});
+            continue;
+        }
+        if (leaf.kind == "stop" || leaf.kind == "coupler")
+        {
+            for (const auto& file : leaf.files) addSound(leaf.kind, leaf.edge == "off" ? "off" : "on", {}, leaf.perspective, -1, 60, { file }, {});   // free ones
+            continue;
+        }
+        // The files of a leaf that name the perspectives themselves ("ab.wav", "02-dif_mech.wav"): one sound each.
+        std::map<juce::String, std::vector<juce::File>> byPerspective;
+        bool filesArePerspectives = leaf.perspective.isEmpty() && leaf.files.size() >= 2;
+        if (filesArePerspectives)
+            for (const auto& file : leaf.files)
+            {
+                const auto stem = file.getFileNameWithoutExtension();
+                if (stem.toLowerCase().endsWith("rel")) continue;   // "dif_mechrel.wav": the release beside its loop
+                const auto perspective = perspectiveOf(stem);
+                if (perspective.isEmpty()) { filesArePerspectives = false; break; }
+                byPerspective[perspective].push_back(file);
+            }
+        if (!filesArePerspectives) { byPerspective.clear(); for (const auto& file : leaf.files) byPerspective[leaf.perspective].push_back(file); }
+        const Leaf* releases = releaseFolderOf(leaf);
+        for (const auto& [perspective, files] : byPerspective)
+        {
+            std::vector<juce::File> releaseFiles;
+            if (releases != nullptr)
+                for (const auto& file : releases->files)
+                    if (!filesArePerspectives || perspectiveOf(file.getFileNameWithoutExtension()) == perspective) releaseFiles.push_back(file);
+            for (const auto& file : leaf.files)   // "x_rel.wav" beside "x.wav"
+                if (file.getFileNameWithoutExtension().toLowerCase().endsWith("rel") && (!filesArePerspectives || perspectiveOf(file.getFileNameWithoutExtension()) == perspective)) releaseFiles.push_back(file);
+            const bool held = leaf.edge.isEmpty() && SamplerEngine::fileHasLoop(files.front());   // a loop in the file: it sounds while it is on
+            if (!held) releaseFiles.clear();
+            const juce::String edge = held ? "held" : leaf.edge == "off" ? "off" : "on";
+            if (leaf.kind == "tremulant")
+                addSound(held ? "tremulantRun" : "tremulant", edge, juce::String(juce::jmax(0, leaf.division)), perspective, juce::jmax(0, leaf.division), 60, files, releaseFiles);
+            else
+            {
+                addSound("button", edge, leaf.name, perspective, leaf.division, 60, files, releaseFiles);
+                if (buttonNames.insert(leaf.name.toLowerCase()).second)
+                {
+                    juce::DynamicObject::Ptr button = new juce::DynamicObject();
+                    button->setProperty("name", leaf.name);
+                    button->setProperty("on", false);
+                    button->setProperty("division", leaf.division);
+                    buttons->setProperty(juce::Identifier("b" + juce::String((int)buttonNames.size())), juce::var(button.get()));
+                }
+            }
+        }
+    }
+    noises->setProperty("sounds", sounds);
+    noises->setProperty("buttons", juce::var(buttons.get()));
+    juce::StringArray lines;
+    for (const auto& [what, n] : counts) lines.add(juce::String(n) + " " + what);
+    summary = juce::String(sounds.size()) + " sound(s) from " + juce::String((int)leaves.size()) + " folder(s): " + lines.joinIntoString(", ")
+        + (buttonNames.empty() ? juce::String() : "; buttons: " + juce::StringArray(std::vector<juce::String>(buttonNames.begin(), buttonNames.end()).data(), (int)buttonNames.size()).joinIntoString(", "));
+    return sounds.isEmpty() ? juce::var() : juce::var(noises.get());
+}
+
+void MainComponent::addNoisesFromFolder(const juce::File& folder)
+{
+    juce::String summary;
+    const juce::var noises = noisesVarFromFolder(folder, summary);
+    if (!noises.isObject()) { queueNotice(juce::AlertWindow::WarningIcon, "Noises", "No noises were found in " + folder.getFullPathName() + " (" + summary + ")."); return; }
+    setNoisesModel(noises, "read from the folder " + folder.getFullPathName() + " by its names: " + summary);
+    queueNotice(juce::AlertWindow::InfoIcon, "Noises", "Noises read from " + folder.getFullPathName() + " by the names of its folders: " + summary
+        + ". Drawknob and coupler noises are given to the buttons at random; what the names did not tell can be read from the organ's definition instead.");
+}
+
+// The window of the noises: the master switch, the volume and the buttons of their own (blower, calcant, rossignol,
+// zimbelstern ...) - big toggle buttons, modeless, to be played while playing.
+namespace
+{
+    struct NoiseButtonsContent final : public juce::Component
+    {
+        explicit NoiseButtonsContent(MainComponent& ownerIn, std::function<void(const juce::String&, bool)> pressed,
+                                     std::function<void(bool)> master, std::function<void(double)> volumeChanged,
+                                     const juce::var& model) : owner(ownerIn)
+        {
+            masterBox.setButtonText("Noises on");
+            masterBox.setToggleState((bool)model.getProperty("enabled", true), juce::dontSendNotification);
+            masterBox.setTooltip("Every noise of the organ on or off: key action, drawknobs, couplers, tremulant, blower and the buttons below.");
+            masterBox.onClick = [this, master] { master(masterBox.getToggleState()); };
+            addAndMakeVisible(masterBox);
+            volumeLabel.setText("Noises volume", juce::dontSendNotification);
+            addAndMakeVisible(volumeLabel);
+            volume.setSliderStyle(juce::Slider::LinearHorizontal);
+            volume.setTextBoxStyle(juce::Slider::TextBoxRight, false, 70, 22);
+            volume.setRange(-30.0, 12.0, 0.5);
+            volume.setTextValueSuffix(" dB");
+            volume.setDoubleClickReturnValue(true, 0.0);
+            volume.setValue((double)model.getProperty("volumeDb", 0.0), juce::dontSendNotification);
+            volume.setTooltip("The level of every noise against the pipes, on top of the levels the organ's definition gives each of them.");
+            volume.onValueChange = [this, volumeChanged] { volumeChanged(volume.getValue()); };
+            addAndMakeVisible(volume);
+            if (auto* list = model.getProperty("buttons", juce::var()).getDynamicObject())
+                for (const auto& prop : list->getProperties())
+                {
+                    const juce::String name = prop.value.getProperty("name", "").toString();
+                    if (name.isEmpty()) continue;
+                    auto* button = buttons.add(new juce::TextButton(name));
+                    button->setClickingTogglesState(true);
+                    button->setToggleState((bool)prop.value.getProperty("on", false), juce::dontSendNotification);
+                    button->setColour(juce::TextButton::buttonOnColourId, onColour());
+                    button->setTooltip("A noise of its own: on / off. Its state is saved with the organ.");
+                    button->onClick = [button, name, pressed] { pressed(name, button->getToggleState()); };
+                    addAndMakeVisible(button);
+                }
+            info.setText(buttons.isEmpty() ? "This organ has no noise buttons of its own." : "", juce::dontSendNotification);
+            info.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+            addAndMakeVisible(info);
+            setSize(560, 96 + ((buttons.size() + 2) / 3) * 44 + (buttons.isEmpty() ? 30 : 0));
+        }
+        void resized() override
+        {
+            auto area = getLocalBounds().reduced(12);
+            auto top = area.removeFromTop(30);
+            masterBox.setBounds(top.removeFromLeft(130));
+            volumeLabel.setBounds(top.removeFromLeft(110));
+            volume.setBounds(top);
+            area.removeFromTop(12);
+            if (buttons.isEmpty()) info.setBounds(area.removeFromTop(26));
+            const int width = (area.getWidth() - 16) / 3;
+            for (int i = 0; i < buttons.size(); ++i)
+                buttons[i]->setBounds(area.getX() + (i % 3) * (width + 8), area.getY() + (i / 3) * 44, width, 36);
+        }
+        MainComponent& owner;
+        juce::ToggleButton masterBox;
+        juce::Label volumeLabel, info;
+        juce::Slider volume;
+        juce::OwnedArray<juce::TextButton> buttons;
+    };
+}
+
+void MainComponent::showNoisesWindow()
+{
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    juce::var model = noisesVar;
+    if (!model.isObject()) { juce::DynamicObject::Ptr empty = new juce::DynamicObject(); model = juce::var(empty.get()); }
+    auto* content = new NoiseButtonsContent(*this,
+        [safeThis](const juce::String& name, bool on) { if (safeThis != nullptr) safeThis->setNoiseButton(name, on); },
+        [safeThis](bool on) { if (safeThis != nullptr) safeThis->setNoisesMaster(on); },
+        [safeThis](double db) { if (safeThis != nullptr) safeThis->setNoisesVolume(db); }, model);
+    const int width = content->getWidth(), height = content->getHeight();
+    noisesWindow = std::make_unique<ModelessDialog>("Noises", content, true);
+    placeDialog(*noisesWindow, "noises", width, height + 40);
+    noisesWindow->setVisible(true);
+    noisesWindow->toFront(true);
+}

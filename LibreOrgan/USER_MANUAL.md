@@ -1392,6 +1392,36 @@ stop (a short fade ends it). The file dialog starts in *Recordings folder*
 (Configuration Editor > Console; `LibreRecordings` beside the LibreOrgans
 folder by default).
 
+## 6.6 Noises
+
+The mechanical sounds of the organ: the keys (press and release), the
+drawknobs, the couplers, the tremulant's knob and its running, the blower, and
+the effects with a button of their own (calcant bell, rossignol, zimbelstern,
+drum ...). A noise is played as its file is - never tuned, never touched by
+the wind, the tremulant or the swell - through the route of its division and
+perspective, so every perspective has its own recording where the sample
+folders hold one.
+
+- **Where they come from.** An organ made from a Hauptwerk definition takes its
+  noises with it. An organ you already have gets them by
+  [Noises of a Hauptwerk definition](#noises-of-a-hauptwerk-definition) -
+  nothing else of the configuration is touched. Without a definition,
+  [Noises of a folder](#noises-of-a-folder) reads a folder of noises by the
+  names of its folders.
+- **Keys.** The noise of the key that is played; a key without a recording
+  takes its neighbour's. With several variants of one key they alternate.
+  See [Key noises follow the couplers](#key-noises-follow-the-couplers).
+- **Drawknobs.** A stop keeps the noise the definition gives it; a button
+  without one (a transmission, an extension) takes one of the free drawknob
+  noises, always the same.
+- **Buttons of their own.** *Configuration Editor > Noises >
+  [Noise buttons](#noise-buttons)*: a window that stays open while you play.
+  Their state is saved with the organ; a published configuration opens with
+  all of them off.
+- **Level.** [Noises on](#noises-on) and [Noises volume](#noises-volume).
+
+Nothing clicks while an organ loads.
+
 ---
 
 # 7. Filled pipes
@@ -2241,6 +2271,52 @@ one file).
 The system's own plug-in folders are always searched. Folders of your own go
 into this list, one per line - type them, or use *Add folder...* below it.
 Press *Scan* afterwards.
+
+## 8.8 Noises
+
+What they are: [6.6 Noises](#66-noises).
+
+### Noises on
+
+Every noise of the organ on or off. Travels with the organ.
+
+### Noises volume
+
+The level of all noises against the pipes (-30 to +12 dB), on top of the level
+the definition gives each of them. Travels with the organ.
+
+### Key noises follow the couplers
+
+Off (default): a key's noise is heard once, on the keyboard that is played.
+On: every division a coupler reaches adds the noise of its own key.
+
+### Noise buttons
+
+Opens the window with the master switch, the volume and the organ's noise
+buttons (blower, calcant, rossignol, zimbelstern ...).
+
+### Noises of a Hauptwerk definition
+
+Adds the noises of the organ's Hauptwerk definition to the loaded organ.
+LibreOrgan Sampler does not load the definition: it is read for where the
+noise files are and what starts each of them - a key, a drawknob, a coupler,
+the tremulant, a button of its own. A drawknob's noise finds its stop by the
+sample folder the stop plays, so renamed and rearranged stops keep theirs.
+Stops, transmissions, voicing and the grid stay as they are. Save the
+configuration afterwards.
+
+### Noises of a folder
+
+Without a definition: reads a folder of noises by the names of its folders -
+the perspective, the moment (atk / rel, on / off, down / up, pull / push), the
+kind (keys, drawknobs, couplers, tremulant; anything else becomes a button
+named after its folder) and the division. It is a guess; what the names do not
+tell is missed. Drawknob noises are given to the buttons at random.
+
+### Noises of this organ
+
+*Remove* takes every noise out of the configuration. The files stay on the
+disk.
 
 # 9. Messages, the activity log, reporting a problem, licences
 

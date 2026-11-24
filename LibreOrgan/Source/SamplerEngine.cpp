@@ -1491,6 +1491,7 @@ namespace
         bool preShifted = false;          // filled pipe playing a pitch-shifted copy at unity (its shiftCents lack the semitones)
         uint8_t windPitchVar = 0, windGainVar = 0, tremBucket = 0;
         bool detachedRelease = false, loopEnabled = true, couplingUsed = false, startFrozen = false;
+        bool noise = false;   // 0.9.127: a NOISE (key action, drawknob, blower ...): the file as it is - no tuning, wind, tremulant, swell or dynamic tone
         float velocityGain = 1.0f;        // always 1: organ keys do not play softer when struck gently (see 'velocity')
         uint8_t velocity = 127;           // the key velocity: picks the velocity layer (and its release), scales the start fade-in
         float coupledPitchCents = 0.0f;
@@ -3734,6 +3735,7 @@ namespace
             if (v.detachedRelease) { tremPitch = c.tremPitchCentsRelease[b]; tremGain = c.tremGainRelease[b]; }
             else { tremPitch = c.tremPitchCents[b]; tremGain = c.tremGain[b]; }
         }
+        if (v.noise) { randomCents = windPitch = tremPitch = 0.0f; windGain = tremGain = 1.0f; v.lastWindGain = 1.0f; }   // 0.9.127
         // The temperament belongs to the key that is played (a transposed pipe
         // must sound as a pure harmonic of its key), the recorded deviation to the
         // pipe itself. Untransposed voices: keyClass == pitchClass, as before.
@@ -3750,14 +3752,14 @@ namespace
             temperamentCents = c.pitchClassCents[pitchClass];
             if (keyClass != pitchClass) temperamentCents += c.selectedCents[keyClass] - c.selectedCents[pitchClass];
         }
-        const float totalCents = temperamentCents + randomCents + windPitch + tremPitch
-            + v.tuningCents.load(std::memory_order_relaxed) + v.shiftCents.load(std::memory_order_relaxed);
+        const float totalCents = v.noise ? 0.0f : temperamentCents + randomCents + windPitch + tremPitch
+            + v.tuningCents.load(std::memory_order_relaxed) + v.shiftCents.load(std::memory_order_relaxed);   // a noise plays at the file's own pitch
         const double incEnd = (s->sampleRate / juce::jmax(1.0, c.routeRate)) * (double)fastCentsToRatio(totalCents);
         // Fixed-point increment; ratios up to 32:1 (the old 4.0e9 ceiling capped
         // every upward retune and pulled 48 kHz samples ~120 cents flat).
         const int64_t incEndF = (int64_t)juce::jlimit(1.0, 32.0 * kFixedOne, incEnd * kFixedOne);
 
-        const float expr = v.exprFrozen ? v.frozenExpr : c.exprGain;
+        const float expr = v.noise ? 1.0f : v.exprFrozen ? v.frozenExpr : c.exprGain;   // a noise is not in the swell box
         // Route volume: the loudest route holding the pipe. A change (that route
         // let go, another took over) glides linearly over the wind sag lag.
         {
@@ -3828,7 +3830,7 @@ namespace
         // dip = 1, wind at its sag limit = 1); the sum, clamped to 1, scales the
         // -3 dB shelf.
         float shelfTarget = 0.0f;
-        if (c.shelfEnabled)
+        if (c.shelfEnabled && !v.noise)
         {
             // Each modulator has its own depth; the three shares add up (capped at -12 dB).
             float mix = 0.0f;
@@ -4697,7 +4699,7 @@ struct SamplerEngine::Impl
     std::atomic<bool> reverbLight{ false };
     std::atomic<bool> reverbOverload{ false };
 
-    struct MidiCommand { uint8_t note = 0, velocity = 0; int8_t manual = -1; bool on = false; };
+    struct MidiCommand { uint8_t note = 0, velocity = 0; int8_t manual = -1; bool on = false; uint8_t kind = 0; };   // kind 1 (0.9.127): a key's NOISE (press / release), no note
     static constexpr uint32_t midiRingSize = 8192;
     std::array<MidiCommand, midiRingSize> midiRing{};
     std::atomic<uint32_t> midiHead{ 0 }, midiTail{ 0 };
@@ -5938,6 +5940,7 @@ struct SamplerEngine::Impl
         v.controlIndex = -1; v.keyPrev = v.keyNext = -1;
         v.ctlReleasing = v.ctlStolen = false;
         v.detachedRelease = false; v.loopEnabled = true; v.couplingUsed = false; v.startFrozen = false;
+        v.noise = false;
         v.windFrozen = false; v.frozenWindPitch = 0.0f; v.frozenWindGain = v.lastWindGain = v.initialWindGain = 1.0f;
         v.curWindGain.store(1.0f, std::memory_order_relaxed);
         std::fill(&v.shelfState[0][0], &v.shelfState[0][0] + 8, 0.0f); v.lastShelf = v.shelfSmoothed = 0.0f;
@@ -6188,10 +6191,244 @@ struct SamplerEngine::Impl
             const MidiCommand command = midiRing[head % midiRingSize];
             ++head;
             midiHead.store(head, std::memory_order_release);
-            if (command.on) noteOnImmediate(command.note, command.velocity, command.manual);
+            if (command.kind == 1) noiseKeyImmediate(command.manual, command.note, command.on);
+            else if (command.on) noteOnImmediate(command.note, command.velocity, command.manual);
             else noteOffImmediate(command.note, command.manual);
             if (pastDeadline(deadlineTicks)) break;   // a note-off of a tutti key releases dozens of voices: checked after every command
         }
+    }
+
+    //--------------------------------------------------------------------------
+    // 0.9.127 THE NOISES (key action, drawknobs, couplers, tremulant, blower, calcant, rossignol ...). A noise
+    // is a sound of its own, not a pipe: one or more files (the variants, taken in turn at random, never the same
+    // twice running) started by an event, played as the file is - no tuning, no wind, no tremulant, no swell -
+    // through the route of its division and perspective. "on" / "off" sounds are whole one-shots at that moment;
+    // a "held" sound loops while its trigger is on and ends with its release file. Kept outside `stops`: nothing
+    // of the grid, the voicing, the registrations or the counts knows them. All of it runs under the control lock.
+    struct NoiseSound
+    {
+        juce::String kind, edge, ref, perspective, group;
+        int manual = -1, note = 60;
+        float gain = 1.0f;
+        std::vector<std::unique_ptr<Sample>> variants, releases;
+        std::unique_ptr<Stop> carrier;                              // what a voice needs as its stop: unity gain, nothing else
+        int lastVariant = -1, lastRelease = -1;
+        std::vector<std::pair<uint32_t, uint64_t>> sounding;       // held: the voices sounding (index, creation order)
+    };
+    struct NoiseSet
+    {
+        std::vector<std::unique_ptr<NoiseSound>> sounds;
+        std::array<std::array<std::vector<int>, 128>, maxManuals> keyOn, keyOff;   // the sounds of a key's press / release
+        std::map<juce::String, std::vector<int>> byRef;            // "<kind>|<edge>|<ref>" -> sounds (one per perspective)
+        std::map<juce::String, std::vector<int>> freeOn, freeOff;  // the drawknob noises no stop has: group -> its perspectives
+        std::vector<juce::String> freeOnGroups, freeOffGroups;
+        std::map<int, int> heldWanted;                             // the held sounds that are ON (sound -> the division of its trigger): kept sounding
+    };
+    std::unique_ptr<NoiseSet> noiseSet;
+    std::vector<std::unique_ptr<NoiseSet>> retiredNoiseSets;      // replaced sets, kept until no noise voice sounds
+    std::map<juce::String, double> lastSwitchNoiseMs;
+    double noiseBurstStartMs = 0.0, lastHeldCheckMs = 0.0;
+    int noiseBurst = 0;
+
+    bool noisesLive() const noexcept
+    {
+        return noiseSet != nullptr && owner.noisesEnabled.load(std::memory_order_relaxed) && owner.noisesArmed.load(std::memory_order_relaxed);
+    }
+    // The route of a sound: its division's route of its perspective; a sound without a division plays where its
+    // trigger is (contextManual), one without a perspective on the division's "default" (else its first) route.
+    Route* noiseRoute(const NoiseSound& sound, int contextManual) const noexcept
+    {
+        const int wanted = sound.manual >= 0 ? sound.manual : contextManual;
+        const int count = routeCount.load(std::memory_order_acquire);
+        Route* best = nullptr;
+        int bestRank = 1000;
+        for (int i = 0; i < count; ++i)
+        {
+            Route* r = routes[(size_t)i].get();
+            if (r == nullptr || !r->hasDevice.load(std::memory_order_acquire) || r->perspective.equalsIgnoreCase("auxiliary")) continue;
+            const bool sameManual = wanted < 0 || r->manual == wanted;
+            int rank;
+            if (sound.perspective.isNotEmpty())
+            {
+                if (!r->perspective.equalsIgnoreCase(sound.perspective)) continue;
+                rank = sameManual ? 0 : 10 + r->manual;
+            }
+            else rank = (sameManual ? 0 : 20 + r->manual) + (r->perspective.equalsIgnoreCase("default") ? 0 : 1);
+            if (rank < bestRank) { bestRank = rank; best = r; }
+        }
+        return best;
+    }
+    const Sample* nextOf(std::vector<std::unique_ptr<Sample>>& list, int& last) noexcept
+    {
+        const int n = (int)list.size();
+        if (n == 0) return nullptr;
+        int pick = n == 1 ? 0 : tuningRandom.nextInt(n);
+        if (n > 1 && pick == last) pick = (pick + 1) % n;
+        last = pick;
+        return list[(size_t)pick].get();
+    }
+    void startNoiseVoice(NoiseSound& sound, const Sample* sample, bool loop, float fadeInMs, int contextManual, bool remember) noexcept
+    {
+        if (sample == nullptr || sound.carrier == nullptr) return;
+        Route* route = noiseRoute(sound, contextManual);
+        if (route == nullptr) return;
+        makeRoomForVoice();
+        uint32_t idx = 0;
+        Voice* voice = allocVoice(idx);
+        if (voice == nullptr) return;
+        Voice& v = *voice;
+        const double rate = route->sampleRate.load(std::memory_order_relaxed);
+        v.sample = sample; v.stop = sound.carrier.get(); v.rank = sound.carrier.get();
+        v.routeIndex = routeIndexOf(route); v.bus = 0; v.sourceKey = -1; v.manual = (int8_t)route->manual;
+        v.note = v.keyNote = v.sampleNote = (uint8_t)juce::jlimit(0, 127, sound.note);
+        v.shift = 0; v.noise = true; v.preShifted = false; v.fullKernel = false; v.cubic = false;
+        v.tuningCents.store(0.0f, std::memory_order_relaxed);
+        v.shiftCents.store(0.0f, std::memory_order_relaxed);
+        v.randomPitchCents.store(0.0f, std::memory_order_relaxed);
+        v.tempMode.store(0, std::memory_order_relaxed);
+        v.couplingUsed = false; v.coupledPitchCents = 0.0f; v.couplingTotalSamples = 1;
+        v.couplingRetarget.store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);
+        v.routeGainTarget.store(sound.gain * owner.noiseVolumeGain.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        v.toneTarget.store(0.0f, std::memory_order_relaxed);
+        v.loopEnabled = loop; v.detachedRelease = false; v.startFrozen = false;
+        v.initialFrozenExpr = 1.0f; v.initialWindGain = 1.0f;
+        v.fadeInTotal = v.fadeInRemaining = (uint32_t)juce::jmax(8.0, (double)fadeInMs * 0.001 * rate);
+        v.attackBoost = 1.0f; v.attackHold = v.attackFade = 0; v.attackActive = false;
+        v.velocityGain = 1.0f; v.velocity = 127;
+        v.releaseFadeMsRequested.store(owner.releaseFadeOutMs.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        v.windPitchVar = v.windGainVar = 0; v.windKeyScale = 0.0f; v.tremBucket = 0;
+        publishVoice(idx, *route);
+        if (remember) sound.sounding.push_back({ idx, v.creationOrder });
+        owner.storePolyphony((int)controlActive.size());
+        static const bool debug = std::getenv("ORGAN_NOISE_DEBUG") != nullptr;   // tests: one log line per noise voice (allocates)
+        if (debug)
+            CrashHandler::note("Noise voice: " + sound.kind + " " + sound.edge + " \"" + sound.ref + "\" key " + juce::String(sound.note) + " -> division " + juce::String(route->manual)
+                + " / " + route->perspective + ", " + sample->fileName + (loop ? " (held)" : "") + ", gain " + juce::String(juce::Decibels::gainToDecibels(sound.gain), 1) + " dB");
+    }
+    void playNoise(int index, bool on, int contextManual) noexcept
+    {
+        if (noiseSet == nullptr || index < 0 || index >= (int)noiseSet->sounds.size()) return;
+        NoiseSound& sound = *noiseSet->sounds[(size_t)index];
+        if (sound.edge != "held")
+        {
+            if (on) startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), false, 0.0f, contextManual, false);   // the whole file, as it is
+            return;
+        }
+        // The voices of it that still sound (a panic, a reload of the organ ends them behind our back).
+        sound.sounding.erase(std::remove_if(sound.sounding.begin(), sound.sounding.end(), [this](const std::pair<uint32_t, uint64_t>& entry)
+        {
+            const Voice& v = voices[entry.first];
+            const auto state = v.state.load(std::memory_order_acquire);
+            return v.creationOrder != entry.second || !v.noise || v.ctlReleasing || (state != VoiceActive && state != VoicePending);
+        }), sound.sounding.end());
+        if (on)
+        {
+            noiseSet->heldWanted[index] = contextManual;
+            if (!sound.sounding.empty()) return;   // it runs
+            startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), true, 0.0f, contextManual, true);
+            return;
+        }
+        noiseSet->heldWanted.erase(index);
+        // Off: the loop fades into its release file, as a pipe does (without one it just fades).
+        const bool hasRelease = !sound.releases.empty();
+        bool wasSounding = false;
+        for (const auto& [idx, order] : sound.sounding)
+        {
+            Voice& v = voices[idx];
+            const auto state = v.state.load(std::memory_order_acquire);
+            if (v.creationOrder != order || !v.noise || (state != VoiceActive && state != VoicePending)) continue;
+            v.releaseFadeMsRequested.store(hasRelease ? owner.releaseFadeOutMs.load(std::memory_order_relaxed) : 400.0f, std::memory_order_relaxed);
+            v.ctlReleasing = true;
+            refreshStealable(v);
+            sendCommand(v, CmdRelease);
+            wasSounding = true;
+        }
+        sound.sounding.clear();
+        if (wasSounding && hasRelease)
+            startNoiseVoice(sound, nextOf(sound.releases, sound.lastRelease), false, owner.releaseFadeInMs.load(std::memory_order_relaxed), contextManual, false);
+    }
+    // An event of a switch: "stop" (ref "<division>|<name lower-case>"), "coupler" (its id), "tremulant" /
+    // "tremulantRun" (the division), "button" (its name lower-case). The click of that moment and the held sound;
+    // a stop or coupler without a noise of its own takes one of the free drawknob noises - always the same one.
+    void noiseTrigger(const juce::String& kind, const juce::String& ref, bool on, int contextManual) noexcept
+    {
+        if (!noisesLive()) return;
+        bool any = false;
+        auto run = [&](const juce::String& edge, bool state)
+        {
+            const auto found = noiseSet->byRef.find(kind + "|" + edge + "|" + ref);
+            if (found == noiseSet->byRef.end()) return;
+            any = true;
+            for (const int index : found->second) playNoise(index, state, contextManual);
+        };
+        run(on ? "on" : "off", true);
+        run("held", on);
+        if (any || (kind != "stop" && kind != "coupler")) return;
+        const auto& groups = on ? noiseSet->freeOnGroups : noiseSet->freeOffGroups;
+        if (groups.empty()) return;
+        const auto& group = groups[(size_t)((juce::uint32)ref.hashCode() % (juce::uint32)groups.size())];
+        const auto& map = on ? noiseSet->freeOn : noiseSet->freeOff;
+        if (const auto found = map.find(group); found != map.end())
+            for (const int index : found->second) playNoise(index, true, contextManual);
+    }
+    // A drawknob: a button switched twice within 80 ms (a stop folder's ranks are ONE button) clicks once, and a
+    // registration that moves many at once is heard as a few clicks, not as a crash.
+    void switchNoise(const juce::String& kind, const juce::String& ref, bool on, int contextManual) noexcept
+    {
+        static const bool debug = std::getenv("ORGAN_NOISE_DEBUG") != nullptr;
+        if (debug)
+            CrashHandler::note("Noise switch: " + kind + " \"" + ref + "\" " + (on ? "on" : "off") + (noiseSet == nullptr ? " - no noises loaded" : !owner.noisesEnabled.load() ? " - noises off"
+                : !owner.noisesArmed.load() ? " - not armed" : noiseSet->byRef.count(kind + "|" + (on ? "on" : "off") + "|" + ref) > 0 ? " - its own noise"
+                : " - none of its own, " + juce::String((int)(on ? noiseSet->freeOnGroups : noiseSet->freeOffGroups).size()) + " free one(s)"));
+        if (!noisesLive()) return;
+        const double now = nowMs();
+        double& last = lastSwitchNoiseMs[kind + (on ? "+" : "-") + ref];
+        if (now - last < 80.0) return;
+        last = now;
+        if (now - noiseBurstStartMs > 100.0) { noiseBurstStartMs = now; noiseBurst = 0; }
+        if (++noiseBurst > 8) return;
+        noiseTrigger(kind, ref, on, contextManual);
+    }
+    void noiseKeyImmediate(int manual, int note, bool down) noexcept
+    {
+        if (!noisesLive() || manual < 0 || manual >= maxManuals || note < 0 || note > 127) return;
+        const auto& list = (down ? noiseSet->keyOn : noiseSet->keyOff)[(size_t)manual][(size_t)note];
+        for (const int index : list) playNoise(index, true, manual);
+    }
+    // The set in force is replaced: its voices are told to end (the kill fade), the set waits among the retired ones
+    // until no noise voice sounds any more.
+    void retireNoiseSet() noexcept
+    {
+        if (noiseSet == nullptr) return;
+        for (const uint32_t idx : controlActive)
+            if (voices[idx].noise) sendCommand(voices[idx], CmdKill);
+        retiredNoiseSets.push_back(std::move(noiseSet));
+        lastSwitchNoiseMs.clear();
+    }
+    void purgeRetiredNoiseSets() noexcept
+    {
+        if (retiredNoiseSets.empty()) return;
+        reclaimFinished();
+        for (const uint32_t idx : controlActive)
+            if (voices[idx].noise && noiseSet != nullptr)
+            {
+                // a noise voice of the set in force is fine; one of a retired set keeps them all
+                bool current = false;
+                for (const auto& sound : noiseSet->sounds) if (sound->carrier.get() == voices[idx].stop) { current = true; break; }
+                if (!current) return;
+            }
+            else if (voices[idx].noise) return;
+        retiredNoiseSets.clear();
+    }
+    // Once a second: a held sound that is on but no longer sounds (a panic or a reload ended it) starts again.
+    void keepHeldNoises() noexcept
+    {
+        if (!noisesLive()) return;
+        const double now = nowMs();
+        if (now - lastHeldCheckMs < 1000.0) return;
+        lastHeldCheckMs = now;
+        const auto wanted = noiseSet->heldWanted;
+        for (const auto& [index, contextManual] : wanted) playNoise(index, true, contextManual);
     }
 
     //--------------------------------------------------------------------------
@@ -12438,7 +12675,12 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
 {
     if (manualIndex < 0 || manualIndex >= maxManuals) return;
     auto& t = impl->trem[(size_t)manualIndex];
-    t.enabled.store(enabled);
+    if (t.enabled.exchange(enabled) != enabled)   // 0.9.127: the tremulant's drawknob, and its noise while it runs
+    {
+        const juce::ScopedLock sl(controlLock);
+        impl->switchNoise("tremulant", juce::String(manualIndex), enabled, manualIndex);
+        impl->noiseTrigger("tremulantRun", juce::String(manualIndex), enabled, manualIndex);
+    }
     t.rateHz.store(juce::jlimit(2.0f, 11.0f, rateHz));
     t.depthCents.store(juce::jlimit(0.0f, 50.0f, depthCents));
     t.rankDriftDegrees.store(juce::jlimit(0.0f, 360.0f, rankDriftDegrees));
@@ -12510,6 +12752,10 @@ void SamplerEngine::setStopEnabled(Stop* stop, bool enabled)
     if (stop->enabled == enabled) return;
     stop->enabled = enabled;
     impl->reclaimFinished();
+    {   // 0.9.127: the drawknob's noise - the ranks of a stop folder are ONE button (their master's)
+        const Stop* button = stop->groupMasterPtr != nullptr ? stop->groupMasterPtr : stop;
+        impl->switchNoise("stop", juce::String(button->primaryManual) + "|" + button->name.toLowerCase(), enabled, button->primaryManual);
+    }
 
     if (!enabled)
     {
@@ -12558,6 +12804,10 @@ void SamplerEngine::setTransmissionEnabled(Stop* stop, int index, bool enabled)
     if (transmission.enabled == enabled) return;
     transmission.enabled = enabled;
     impl->reclaimFinished();
+    // 0.9.127: a transmission's (an extension's) button has no drawknob noise of its own in a definition - it takes
+    // one of the free ones (always the same); indented under a stop folder it is that folder's button.
+    impl->switchNoise("stop", juce::String(transmission.manual) + "|" + (transmission.groupMaster.isNotEmpty() ? transmission.groupMaster.toLowerCase()
+        : stop->name.toLowerCase() + "#tr" + juce::String(transmission.id)), enabled, transmission.manual);
     if (!enabled)
     {
         // Switching a transmission off: pipes that are still held through the
@@ -13602,6 +13852,177 @@ namespace
 
     double hzOfMidi(double midi) { return 440.0 * std::pow(2.0, (midi - 69.0) / 12.0); }
     double midiOfHz(double hz) { return 69.0 + 12.0 * std::log2(hz / 440.0); }
+}
+
+//------------------------------------------------------------------------------
+// 0.9.127 THE NOISES: loading, the events, the switches.
+juce::String SamplerEngine::loadNoises(const std::vector<NoiseSpec>& specs)
+{
+    const double startMs = nowMs();
+    auto set = std::make_unique<Impl::NoiseSet>();
+    struct Job { int sound = 0; bool release = false; juce::File file; };
+    std::vector<Job> jobs;
+    for (const auto& spec : specs)
+    {
+        auto sound = std::make_unique<Impl::NoiseSound>();
+        sound->kind = spec.kind; sound->edge = spec.edge; sound->ref = spec.ref.toLowerCase(); sound->perspective = spec.perspective; sound->group = spec.group;
+        sound->manual = spec.manual; sound->note = juce::jlimit(0, 127, spec.note);
+        sound->gain = juce::Decibels::decibelsToGain(juce::jlimit(-60.0f, 24.0f, spec.gainDb));
+        sound->carrier = std::make_unique<Stop>("noise", juce::File());
+        const int index = (int)set->sounds.size();
+        for (const auto& file : spec.files) jobs.push_back({ index, false, juce::File(file) });
+        for (const auto& file : spec.releaseFiles) jobs.push_back({ index, true, juce::File(file) });
+        set->sounds.push_back(std::move(sound));
+    }
+    std::vector<std::unique_ptr<Sample>> decoded(jobs.size());
+    std::array<std::unique_ptr<juce::AudioFormatManager>, 16> managers;
+    juce::SpinLock managerLock;
+    std::atomic<int> missing{ 0 }, leftForMemory{ 0 };
+    std::atomic<bool> memoryStop{ false };
+    std::atomic<juce::int64> bytes{ 0 };
+    parallelFor((int)jobs.size(), [&](int index, int thread)
+    {
+        juce::AudioFormatManager* manager = nullptr;
+        {
+            const juce::SpinLock::ScopedLockType lk(managerLock);
+            auto& slot = managers[(size_t)juce::jlimit(0, 15, thread)];
+            if (slot == nullptr) { slot = std::make_unique<juce::AudioFormatManager>(); slot->registerBasicFormats(); }
+            manager = slot.get();
+        }
+        try
+        {
+            const auto& file = jobs[(size_t)index].file;
+            std::shared_ptr<juce::MemoryBlock> data;
+            if (!file.existsAsFile()) data = SampleFiles::readFile(file);   // inside an archive
+            if (!file.existsAsFile() && data == nullptr) { missing.fetch_add(1, std::memory_order_relaxed); return; }
+            // The memory: the noises never push the organ out of it (every 16 files; what is left out is said).
+            if ((index & 15) == 15 && !memoryStop.load(std::memory_order_relaxed) && memoryShortNow()) memoryStop.store(true, std::memory_order_relaxed);
+            if (memoryStop.load(std::memory_order_relaxed)) { leftForMemory.fetch_add(1, std::memory_order_relaxed); return; }
+            // Always 16-bit (a click needs no float: half the memory - Stralsund's noises took 1.3 GB as float), at the
+            // folder's rate; packed whenever the organ packs anything (they sound seldom, the unpacking costs nothing).
+            const TreeStorage storage = storageFor(file.getParentDirectory());
+            decoded[(size_t)index] = decodeSampleFile(file, *manager, false, parseSmpl(file, data),
+                storage.resample || storage.rate < kBaseSampleRate - 0.5, storage.rate, 0.0, nullptr, data);
+            if (decoded[(size_t)index] == nullptr) { missing.fetch_add(1, std::memory_order_relaxed); return; }
+            packIfEnabled(*decoded[(size_t)index], packAutomatic || storage.packed);
+            bytes.fetch_add((juce::int64)decoded[(size_t)index]->frameBytes(), std::memory_order_relaxed);
+        }
+        catch (const std::bad_alloc&) { missing.fetch_add(1, std::memory_order_relaxed); }
+    });
+    for (size_t i = 0; i < jobs.size(); ++i)
+        if (decoded[i] != nullptr)
+            (jobs[i].release ? set->sounds[(size_t)jobs[i].sound]->releases : set->sounds[(size_t)jobs[i].sound]->variants).push_back(std::move(decoded[i]));
+    // The tables: a key's sounds; the sounds by their trigger; the drawknob noises no stop has, by their group.
+    int usable = 0;
+    for (int index = 0; index < (int)set->sounds.size(); ++index)
+    {
+        const auto& sound = *set->sounds[(size_t)index];
+        if (sound.variants.empty()) continue;
+        ++usable;
+        if (sound.kind == "keys")
+        {
+            if (sound.manual >= 0 && sound.manual < maxManuals && sound.edge != "held")
+                (sound.edge == "off" ? set->keyOff : set->keyOn)[(size_t)sound.manual][(size_t)sound.note].push_back(index);
+        }
+        else if ((sound.kind == "stop" || sound.kind == "coupler") && sound.ref.isEmpty() && sound.edge != "held")
+        {
+            auto& map = sound.edge == "off" ? set->freeOff : set->freeOn;
+            auto& groups = sound.edge == "off" ? set->freeOffGroups : set->freeOnGroups;
+            if (map.find(sound.group) == map.end()) groups.push_back(sound.group);
+            map[sound.group].push_back(index);
+        }
+        else set->byRef[sound.kind + "|" + sound.edge + "|" + sound.ref].push_back(index);
+    }
+    // The keys without a noise of their own take the nearest key's (the user: useful for key noises - a division
+    // recorded from g up, a pedal with a few keys): the file as it is, no transposition.
+    int filled = 0;
+    for (int manual = 0; manual < maxManuals; ++manual)
+        for (auto* table : { &set->keyOn[(size_t)manual], &set->keyOff[(size_t)manual] })
+        {
+            std::vector<int> have;
+            for (int note = 0; note < 128; ++note) if (!(*table)[(size_t)note].empty()) have.push_back(note);
+            if (have.empty()) continue;
+            for (int note = 0; note < 128; ++note)
+            {
+                if (!(*table)[(size_t)note].empty()) continue;
+                int nearest = have.front();
+                for (const int other : have) if (std::abs(other - note) < std::abs(nearest - note)) nearest = other;
+                (*table)[(size_t)note] = (*table)[(size_t)nearest];
+                ++filled;
+            }
+        }
+    {
+        const juce::ScopedLock sl(controlLock);
+        impl->retireNoiseSet();
+        impl->noiseSet = std::move(set);
+    }
+    const juce::String summary = juce::String(usable) + " noise sound(s) of " + juce::String((int)specs.size()) + ", " + juce::String((int)jobs.size() - missing.load() - leftForMemory.load()) + " file(s), "
+        + juce::String((double)bytes.load() / 1048576.0, 1) + " MB in " + juce::String((nowMs() - startMs) / 1000.0, 1) + " s"
+        + (missing.load() > 0 ? "; " + juce::String(missing.load()) + " file(s) NOT FOUND or unreadable" : juce::String())
+        + (leftForMemory.load() > 0 ? "; " + juce::String(leftForMemory.load()) + " file(s) LEFT OUT: the memory is full" : juce::String());
+    CrashHandler::note("Noises loaded: " + summary);
+    return summary;
+}
+
+bool SamplerEngine::fileHasLoop(const juce::File& file)
+{
+    return !parseSmpl(file).loops.empty();
+}
+
+void SamplerEngine::clearNoises()
+{
+    const juce::ScopedLock sl(controlLock);
+    impl->retireNoiseSet();
+}
+
+void SamplerEngine::noiseHousekeeping()
+{
+    const juce::ScopedLock sl(controlLock);
+    impl->purgeRetiredNoiseSets();
+    impl->keepHeldNoises();
+}
+
+int SamplerEngine::noiseSoundCount() const
+{
+    const juce::ScopedLock sl(controlLock);
+    return impl->noiseSet != nullptr ? (int)impl->noiseSet->sounds.size() : 0;
+}
+
+bool SamplerEngine::hasNoiseFor(const juce::String& kind, const juce::String& ref) const
+{
+    const juce::ScopedLock sl(controlLock);
+    if (impl->noiseSet == nullptr) return false;
+    for (const char* edge : { "on", "off", "held" })
+        if (impl->noiseSet->byRef.count(kind + "|" + edge + "|" + ref.toLowerCase()) > 0) return true;
+    return false;
+}
+
+void SamplerEngine::keyNoise(int manualIndex, int midiNote, bool down) noexcept
+{
+    if (midiNote < 0 || midiNote >= 128 || manualIndex < 0 || manualIndex >= maxManuals) return;
+    if (!noisesEnabled.load(std::memory_order_relaxed) || !noisesArmed.load(std::memory_order_relaxed)) return;
+    impl->pushMidi({ (uint8_t)midiNote, 0, (int8_t)manualIndex, down, 1 });
+}
+
+void SamplerEngine::noiseEvent(const juce::String& kind, const juce::String& ref, bool on, int contextManual)
+{
+    const juce::ScopedLock sl(controlLock);
+    if (kind == "button") impl->noiseTrigger(kind, ref.toLowerCase(), on, contextManual);   // the user's own press: always heard
+    else impl->switchNoise(kind, ref.toLowerCase(), on, contextManual);
+}
+
+void SamplerEngine::setNoisesEnabled(bool enabled)
+{
+    if (noisesEnabled.exchange(enabled) == enabled) return;
+    if (enabled) return;
+    const juce::ScopedLock sl(controlLock);
+    for (const uint32_t idx : impl->controlActive)
+        if (impl->voices[idx].noise) impl->sendCommand(impl->voices[idx], CmdKill);   // the held ones start again when switched on (noiseHousekeeping)
+}
+
+void SamplerEngine::setNoiseVolumeDb(float db) noexcept
+{
+    noiseVolumeGain.store(juce::Decibels::decibelsToGain(juce::jlimit(-40.0f, 20.0f, db)), std::memory_order_relaxed);
 }
 
 void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bool isRelease, int releaseMaxHoldMs)

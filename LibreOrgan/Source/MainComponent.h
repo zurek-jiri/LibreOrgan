@@ -173,6 +173,37 @@ private:
     // each choice of the load box (storageChoiceKey = bytes|1 complete or 0 cut by the memory). The load
     // box says it before the loading starts. Settings key "organMemory" (this computer's).
     std::map<juce::String, juce::String> organMemory;
+    // 0.9.127 (#264, the user: "maxpolyphony by měl být klíč varhan ... každé varhany budou mít jiný limit"): the
+    // polyphony limit of every organ ON THIS COMPUTER (organ name lower-case, ".portable" dropped -> the limit),
+    // settings key "organPolyphony". Written whenever the settings are saved with an organ loaded, taken back
+    // when that organ is loaded; an organ without an entry starts with the limit in force. Never in a
+    // configuration file: the figure is this computer's (its processor, routes, drivers and buffers).
+    std::map<juce::String, int> organPolyphony;
+    // 0.9.127 THE NOISES (key action, drawknobs, couplers, tremulant, blower, calcant, rossignol ...): the model
+    // is the configuration's "noises" object as it is saved (MainComponent.cpp, the last section, says its form).
+    // noisesVersionWanted grows whenever the model changes (a configuration read, an import, an edit); the
+    // once-a-second noisesTick reads the files on a thread once no organ loads, then arms the engine.
+    juce::var noisesVar;
+    std::atomic<bool> keyNoisesFollowCouplers{ false };   // configuration key: the key noises of every division a coupler reaches (off: the played keys alone)
+    std::atomic<bool> noisesLoading{ false };
+    int noisesVersionWanted = 0, noisesVersionLoaded = 0;
+    double noisesArmAtMs = 0.0, noisesQuietSinceMs = 0.0;
+    static juce::var noisesVarFromPlan(const HauptwerkOdf::Plan& plan, const std::function<juce::String(int)>& refOfStop);
+    juce::File libraryRootOnThisComputer() const;
+    void noisesChanged(const juce::var& noises, bool followCouplers);
+    std::vector<SamplerEngine::NoiseSpec> noiseSpecs(int& unresolved) const;
+    void noisesTick();
+    void applyNoiseButtons();
+    void setNoiseButton(const juce::String& name, bool on);
+    std::unique_ptr<juce::DialogWindow> noisesWindow;
+    void setNoisesModel(const juce::var& noises, const juce::String& why);
+    void setNoisesMaster(bool enabled);
+    void setNoisesVolume(double db);
+    void removeNoises();
+    void addNoisesFromDefinition(const juce::File& odfFile);
+    juce::var noisesVarFromFolder(const juce::File& folder, juce::String& summary) const;
+    void addNoisesFromFolder(const juce::File& folder);
+    void showNoisesWindow();
     void rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value);
     juce::String organMemoryOf(const juce::String& organ, const juce::String& key) const;
     static juce::String storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate, bool automatic = false);
