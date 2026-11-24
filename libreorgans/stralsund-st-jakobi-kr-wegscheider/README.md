@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Stralsund, St. Jakobi, Kr. Wegsch
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Stralsund_Jakobi_Wegscheider.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/Stralsund_Jakobi_Wegscheider.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Stralsund_Jakobi_Wegscheider.portable.json` there yourself.
+**Download:** [Stralsund, St. Jakobi, Wegscheider.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/Stralsund,%20St.%20Jakobi,%20Wegscheider.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Stralsund, St. Jakobi, Wegscheider.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,19 +15,18 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.8.214 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.9.126 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **7.9 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **41 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
-  - **79 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.8.214.
-- **Author:** Jiri Zurek, 27 October 2026.
+  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **85 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
+- **Saved with:** LibreOrgan Sampler 0.9.126.
+- **Author:** Jiri Zurek, 23 November 2026.
 
 ## Where to put the file
 
-Put `Stralsund_Jakobi_Wegscheider.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `003135` and `003136` must stand side by side in one folder:
+Put `Stralsund, St. Jakobi, Wegscheider.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `003135` and `003136` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -68,4 +67,4 @@ Put `Stralsund_Jakobi_Wegscheider.portable.json` into your LibreOrgans folder (C
 |  |  | Flöte 2' (Trsm.) |  |
 |  |  | HW Tromp 4' (Ext.) |  |
 
-<!-- published by @zurek-jiri (issue #109, 2026-10-27) -->
+<!-- published by @zurekjiri (issue #262, 2026-11-23) -->
