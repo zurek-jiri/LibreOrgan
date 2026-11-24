@@ -26,11 +26,19 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPO: ${{ github.repository }}
           TAG: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           # 24 Nov 2026: a build cancelled because a NEWER version came (build.yml cancels them) is never started
           # again - it would wait for the same runners and cancel the newer one in its turn.
+          # ... and not by the tag's NAME alone: a tag moved onto a newer commit leaves older runs of the same
+          # name behind (v0.9.132 was moved twice and its three runs kept starting and cancelling one another).
           newest=$(gh api "repos/$REPO/tags?per_page=100" --jq '.[].name' | grep '^v[0-9]' | sort -V | tail -1)
-          case "$TAG" in v[0-9]*) if [ -n "$newest" ] && [ "$TAG" != "$newest" ]; then echo "$TAG is not the newest version ($newest): nothing to retry"; exit 0; fi ;; esac
+          case "$TAG" in
+            v[0-9]*)
+              if [ -n "$newest" ] && [ "$TAG" != "$newest" ]; then echo "$TAG is not the newest version ($newest): nothing to retry"; exit 0; fi
+              now=$(gh api "repos/$REPO/commits/$TAG" --jq '.sha' 2>/dev/null || true)
+              if [ -n "$now" ] && [ "$now" != "$SHA" ]; then echo "$TAG stands on $now now, this run built $SHA: nothing to retry"; exit 0; fi ;;
+          esac
           jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")
           lost=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "cancelled" and (.steps | length) == 0)] | length')
           broken=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and (.steps | length) > 0 and (.name | test("test build") | not))] | length')

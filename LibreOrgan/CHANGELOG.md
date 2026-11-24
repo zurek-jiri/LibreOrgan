@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.133] - 2026-11-24
+
+### Fixed
+- **macOS on Apple silicon said the app is damaged** (#267): the release build
+  changed the app bundle after it had been signed, so its signature no longer
+  fitted. The bundle is signed again as the last step of the build. The app is
+  still not notarised by Apple: the first start is allowed in System Settings >
+  Privacy & Security > Open Anyway.
+
 ## [0.9.132] - 2026-11-24
 
 ### Changed
@@ -20,13 +29,6 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   recognised by its name and its empty folders. It may be renamed, indented
   or moved to another division and stays the noise's button. A file saved
   with 0.9.127 - 0.9.131 gets the flag on its noise rows at the first load.
-
-### Fixed
-- **macOS on Apple silicon said the app is damaged** (#267): the release build
-  changed the app bundle after it had been signed, so its signature no longer
-  fitted. The bundle is signed again as the last step of the build. The app is
-  still not notarised by Apple: the first start is allowed in System Settings >
-  Privacy & Security > Open Anyway.
 
 ## [0.9.131] - 2026-11-24
 
