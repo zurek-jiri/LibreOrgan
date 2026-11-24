@@ -5290,6 +5290,43 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   setManualTremulant ("tremulant" click + "tremulantRun"). NEXT: MainComponent - the model, the configuration key
   "noises", the import writing it, loadNoises after an organ's load + arming, keyNoise calls, coupler / button events,
   the UI, the voicing / pistons, the folder guess, "Add noises from a definition", manual.
+  STATE AT THE END OF 24 Nov 2026: LOCAL COMMIT 7c00e1e "0.9.127: noises ...", version bumped everywhere, Projucer resave
+  done, C:\LibreOrgan\LibreOrgan_0.9.127.exe = the local build (shortcut retargeted); NOT pushed, NOT tagged (his word).
+  DONE + RUN (%TEMP%\test_0127_noise.ps1 [-Odf <definition or json> -KeepConfig 1 -Seconds -Midi -Clicks -ClickAt -Tag];
+  env ORGAN_NOISE_DEBUG=1 logs "Noise voice: ..." / "Noise switch: ..."; ORGAN_TEST_NOISE_FOLDER=<folder> [+ _TAKE],
+  ORGAN_TEST_NOISE_ODF=<odf>, ORGAN_TEST_NOISE_WINDOW=1, ORGAN_TEST_NOISE_BUTTON="<name>|<seconds>"; a stop button answers
+  ORGAN_TEST_MOUSE "<caption>|click", NOT ORGAN_TEST_CLICK; the Stralsund demo's load takes 35-110 s by the page cache -
+  time the hooks late): import of "Stralsund, St. Jakobi, Wegscheider, Demo" -> the configuration's "noises" {enabled,
+  volumeDb, sounds ["kind\tedge\tref\tperspective\tdivision\tnote\tlevelDb\tfollows\t<folder>//a.wav|b.wav\t<releases>"],
+  buttons {bN: {name, on, division}}} (the folders BELOW the library root; `libraryRootOnThisComputer()` from
+  treeRelativePaths), 1040 sounds / 2130 files / 653 MB (always 16-bit; packed when the organ packs or Automatic; the
+  memory guard every 16 files) loaded by `noisesTick` 1.5 s after a load, armed 1.2 s later; the blower starts by
+  itself; keys: every perspective its file, variants in turn, press and release, the levels of the definition;
+  "OW. Cimbelstern" on = the loops, off = their releases; "Principal 16'" = its own drawknob noise on and off;
+  `addNoisesFromDefinition` on the loaded organ: "204 of 204 drawknob noise(s) found their stop by its folder"
+  (usedFolderPlaces; a stop folder's rank -> its master); `noisesVarFromFolder` on 003135\ruchy = the definition's
+  picture (keys per division and perspective, calcant on/off, cimb / mech / pauke held with their releases, the
+  tremulant's run, 330 free drawknob noises) - a held sound = a LOOP in the file (`SamplerEngine::fileHasLoop`), "rel"
+  under looped files = their release, under one-shots = the off click; only the ORGAN's perspectives count and the one
+  folder left unknown takes the perspective left (written AFTER the run: the elimination itself is NOT run yet).
+  MainComponent: the last section of MainComponent.cpp (noiseFilesText / noiseFilesOf, noisesVarFromPlan,
+  noisesChanged from loadSettings - a missing key RESETS -, noiseSpecs, noisesTick, applyNoiseButtons, setNoiseButton,
+  setNoisesModel / Master / Volume, removeNoises, addNoisesFromDefinition, noisesVarFromFolder, addNoisesFromFolder,
+  NoiseButtonsContent + showNoisesWindow = ModelessDialog "Noises"); keyNoise calls in routeKeyboardNote (physical) /
+  applyRoutedNoteDelta (with keyNoisesFollowCouplers, configuration key); setCouplerEnabled -> noiseEvent("coupler");
+  the Editor section "Noises" before "Plug-ins (VST3)" (Noises on, Noises volume, Key noises follow the couplers, Noise
+  buttons, Noises of a Hauptwerk definition, Noises of a folder, Noises of this organ); a publish switches the noise
+  buttons off (a clone); manual 6.6 + 8.8, F1 title "Noises"; CHANGELOG 0.9.127. A held voice on a route that is not
+  rendered yet is flushed by cleanStaleRoutes and started again by keepHeldNoises (seen right after a load).
+  NOT DONE (told the user): the noise buttons ON THE GRID, in the PISTONS / crescendo and under MIDI LEARN (they live
+  in the Noises window alone); no top-bar button for that window (Configuration Editor > Noises > Noise buttons); the
+  Noises window has no row editor for what the folder reading misses (perspective, division, kind by hand); a
+  tremulant's noise is tied to ONE division of ours (the first the definition's tremulant works on - Stralsund's click
+  on I, its run on III; St. Guilhem's on the pedal); coupler noises never run-tested; the merge of two organs drops
+  the added organ's noises (the base's stay); Save / Load Voicing know nothing of the noises (their settings are the
+  configuration's); the website / README / 1.5 / 10.4 still say the definition is read for TWO things - the noises are
+  a third, the wording is the user's rule to change; Linux / macOS not compiled (no push); the uncompacted-definition
+  fix was run on St. Guilhem Surround by --hauptwerk only, not by a whole import.
   THE ENGINE DESIGN CHOSEN: `Voice::noise` (render: no cents at all, wind / tremulant / swell gains 1, no dynamic shelf), a
   carrier Stop per sound for the gain, sounds kept OUTSIDE `stops`; specs by REF from MainComponent {kind, edge, ref,
   perspective, manual, note, gainDb, files, releaseFiles}; commands through the MIDI queue; hooks in the engine for the
