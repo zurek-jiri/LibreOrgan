@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.129] - 2026-11-24
+
+### Added
+- **The voicing row of a noise's button** (blower, zimbelstern ...): a box per
+  perspective - the same switches as in the Noises window -, *One-shot* for a
+  noise that loops (the file once, whole, instead of the loop) and *Release
+  xfade* where the loop has a release file.
+- **Every button without a drawknob noise of its own gets its own** (couplers,
+  transmissions, extensions): the next free noise no other button has, kept
+  with the organ. They all clicked alike before. *Free drawknob noises: a
+  random one at every press* in the Noises window is the other way.
+- **The Noises window shows the folders and files.** Each perspective of a row
+  has its box, its folder with the number of files and its volume; the **+**
+  of a row lists the folders and files, and under Drawknobs and Couplers
+  which button has which free noise (changeable). A folder dropped from the
+  file manager onto a perspective becomes that perspective's files; dropped
+  elsewhere it is read as new noises.
+
+### Changed
+- *Add folder...* adds to the noises the organ has (it replaced them all).
+
 ## [0.9.128] - 2026-11-24
 
 ### Fixed

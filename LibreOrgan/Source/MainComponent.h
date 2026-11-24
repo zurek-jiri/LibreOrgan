@@ -120,6 +120,9 @@ public:
         double volumeDb = 0.0;
         std::vector<std::pair<juce::String, int>> perspectives;    // name -> its files
         std::map<juce::String, double> perspectiveDb;              // lower-case name -> dB
+        std::map<juce::String, bool> perspectiveOn;                // lower-case name -> its switch (absent = on)
+        std::map<juce::String, juce::StringArray> files;           // lower-case perspective -> "<moment>: <folder>//a.wav|b.wav" texts
+        bool held = false, hasRelease = false;                      // it loops while on; it has a release file
     };
     std::vector<NoiseUnit> noiseUnits() const;
 
@@ -219,6 +222,15 @@ private:
     double noiseButtonVolumesSeen = -1.0;
     std::vector<std::pair<juce::String, juce::String>> noiseLoadedUnits;   // unit key + perspective of every sound the engine holds, in its order
     void setNoiseUnitOn(const juce::String& key, bool on);
+    void setNoiseUnitPerspectiveOn(const juce::String& key, const juce::String& perspective, bool on);
+    void setNoiseUnitFolder(const juce::String& key, const juce::String& perspective, const juce::File& folder);   // a folder dropped on a unit's perspective
+    void setNoiseAssignment(const juce::String& buttonKey, const juce::String& group);   // "<kind>|<ref>" -> a free drawknob noise ("" = dealt anew)
+    void setNoiseFreeRandom(bool random);
+    std::map<juce::String, juce::String> noiseAssignments() const;
+    void pushNoiseOptions();
+    void storeNoiseAssignments(const std::map<juce::String, juce::String>& assigned);
+    int noiseButtonInfoVersion = -1;                               // the noises' version the grid buttons' rows were told (perspectives, loop, release)
+    std::set<juce::String> noiseUnitsUnfolded;                    // the rows of the Noises window that show their folders and files
     void setNoiseUnitVolume(const juce::String& key, const juce::String& perspective, double db);
     void changeNoiseUnit(const juce::String& key, const juce::String& newKind, int newDivision);
     void removeNoiseUnit(const juce::String& key);

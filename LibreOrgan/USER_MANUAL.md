@@ -1410,15 +1410,19 @@ every perspective has its own recording where the sample folders hold one.
 - **Keys.** The noise of the key that is played; a key without a recording
   takes its neighbour's. With several variants of one key they alternate.
   See [Key noises follow the couplers](#key-noises-follow-the-couplers).
-- **Drawknobs.** A stop keeps the noise the definition gives it; a button
-  without one (a transmission, an extension) takes one of the free drawknob
-  noises, always the same.
+- **Drawknobs.** A stop keeps the noise the definition gives it. A button
+  without one (a coupler, a transmission, an extension) gets a free drawknob
+  noise of its own - the next one no other button has - and keeps it.
 - **Tremulant.** The noise of the running tremulant, while it is on.
 - **Buttons of their own.** Blower, zimbelstern and the like stand on the grid
   of their division, under its stops: dragged, MIDI-learned, held by the
-  combinations like a stop. Their voicing row has the Stop volume and the
-  alias. None is on by itself, the blower neither. Tutti leaves them alone;
-  the general cancel leaves a blower running; PANIC switches every one off.
+  combinations like a stop. None is on by itself, the blower neither. Tutti
+  leaves them alone; the general cancel leaves a blower running; PANIC
+  switches every one off. Their voicing row has the alias, the Stop volume,
+  a box per perspective, *One-shot* for a noise that loops (the file once,
+  whole, instead of the loop) and *Release xfade* where the loop has a
+  release. Volume and perspective boxes are the same values as in the
+  Noises window.
 
 ### The Noises window
 
@@ -1430,13 +1434,22 @@ tremulant, the drawknobs, the couplers, each button of its own.
   folder was read wrong.
 - **Volume** - of the noise as a whole. For a button it is the Stop volume of
   its voicing row: one value, shown in both places.
-- **One column per perspective** - the number of its files and its own volume,
-  on top of the noise's.
+- **One column per perspective** - its box (on or off), its folder with the
+  number of files, and its own volume on top of the noise's.
+- **+** at the start of a row - the folders and files of the noise. Under
+  Drawknobs and Couplers also which button has which free noise; choose
+  another there.
+- **A folder dropped from the file manager** onto a perspective of a row
+  becomes that perspective's files; dropped anywhere else it is read as new
+  noises and added.
 - **x** - takes the noise out of the organ (the files stay on the disk).
 - Below: [Noises on](#noises-on), the volume of all
   ([Noises volume](#noises-volume)),
-  [Key noises follow the couplers](#key-noises-follow-the-couplers) and
-  *Add folder...* ([Noises of a folder](#noises-of-a-folder)).
+  [Key noises follow the couplers](#key-noises-follow-the-couplers),
+  *Free drawknob noises: a random one at every press* (instead of each
+  button keeping its own) and *Add folder...*
+  ([Noises of a folder](#noises-of-a-folder)), which adds to the noises the
+  organ has.
 
 Save Voicing and Load Voicing carry these switches and volumes; so do the
 combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)

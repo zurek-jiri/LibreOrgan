@@ -298,6 +298,23 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         const int ia = this->engine.perspectiveOrderIndex(a->perspective), ib = this->engine.perspectiveOrderIndex(b->perspective);
         return ia != ib ? ia < ib : a->perspective.compareNatural(b->perspective) < 0;
     });
+    if (this->stop->container && this->stop->noiseButton != 0)
+    {   // 0.9.129: a noise's button - the perspectives of the NOISE, their switches the same values as in the Noises window
+        rankSources.clear();
+        for (const auto& [name, on] : this->stop->noisePerspectives)
+        {
+            auto* button = rankButtons.add(new juce::ToggleButton(name.isEmpty() ? juce::String("(all)") : name));
+            button->getProperties().set("manualChapter", "The Noises window");
+            button->setToggleState(on, juce::dontSendNotification);
+            button->setTooltip("This perspective of the noise on or off - the same switch as in the Noises window.");
+            const juce::String perspective = name;
+            button->onClick = [this, perspective, button]
+            {
+                if (noisePerspectiveRequest) noisePerspectiveRequest(this->stop, perspective, button->getToggleState());
+            };
+            addAndMakeVisible(button);
+        }
+    }
     for (auto* rank : rankSources)
     {
         auto* button = rankButtons.add(new juce::ToggleButton(rank->perspective));
@@ -358,7 +375,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // in the Temperaments dialog).
     {
         if (stop->container && stop->noiseButton != 0)
-            origText = "A noise of the organ (no pipes). Its perspectives' volumes: the Noises window.";
+            origText = "Noise (no pipes)";
         else if (stop->container)
             origText = juce::String("Stop folder (no pipes of its own). Each subordinate stop in its branch is voiced separately below ")
                 + juce::String(juce::CharPointer_UTF8("\xe2\x86\x93"));
@@ -517,6 +534,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     oneShotToggle.setTooltip("The stop plays each sample once from start to end, whenever the key is released (chimes, harp, celesta). "
         "Set by the One-shot Patterns from the folder's name; this switch overrides them for this stop.");
     oneShotToggle.onClick = [this] { if (oneShotRequest) oneShotRequest(this->stop, oneShotToggle.getToggleState()); };
+    if (this->stop->container && this->stop->noiseButton != 0)
+    {   // 0.9.129: a noise that loops while its button is on - One-shot plays it once, whole, instead
+        oneShotToggle.setToggleState(this->stop->oneShotManual == 1, juce::dontSendNotification);
+        oneShotToggle.setTooltip("Off: the noise sounds as long as its button is on (its loop), and ends with its release. "
+            "On: every switching-on plays the file once, whole, and nothing is held.");
+    }
     addAndMakeVisible(oneShotToggle);
     // Release crossfade (0.9.62, the user: Hildesheim's Glocken need ~1000 ms): the stop's multiplier of
     // the global sustain-release fade-out and fade-in; item id = factor x 10, the stop's own odd value added.
@@ -1015,8 +1038,11 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     const bool stopControls = withPipes && !isTransmission();     // pipe properties: the stop's own row only
     const bool transmissionControls = showVoicing && isTransmission();
     transmissionLabel.setVisible(stopControls);
-    ranksLabel.setVisible(stopControls);
-    for (auto* button : rankButtons) button->setVisible(stopControls);
+    // 0.9.129: the button of a noise has its perspectives' switches (the Noises window's), One-shot when it
+    // loops, Release xfade when it loops AND has a release file - nothing where it would do nothing.
+    const bool noiseRow = showVoicing && !isTransmission() && stop->container && stop->noiseButton != 0;
+    ranksLabel.setVisible(stopControls || (noiseRow && !rankButtons.isEmpty()));
+    for (auto* button : rankButtons) button->setVisible(stopControls || noiseRow);
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
         transmissionBoxes[(size_t)manual].setVisible(stopControls && manual < activeManualCount);
     diapasonLabel.setVisible(showVoicing && !isTransmission());
@@ -1030,8 +1056,8 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())));
     // Its caption "[N]" is set in setChildrenGetter: the getters are null here (0.8.183).
-    oneShotToggle.setVisible(stopControls);
-    releaseFadeBox.setVisible(stopControls);
+    oneShotToggle.setVisible(stopControls || (noiseRow && stop->noiseHeld));
+    releaseFadeBox.setVisible(stopControls || (noiseRow && stop->noiseHeld && stop->noiseRelease));
     // 0.9.127: the button of a noise (blower, zimbelstern ...) has no pipes, but its Stop volume is the noise's
     // volume - the same value the Noises window shows (one value, two ways to it).
     const bool noiseVolume = showVoicing && !isTransmission() && stop->container && stop->noiseButton != 0;
@@ -1716,9 +1742,18 @@ void StopRow::resized()
     }
     else
     {
+        // 0.9.129: a noise's button - One-shot (when it loops) and Release xfade (when it has a release) first,
+        // then its perspectives, as on a stop's row.
+        const bool noiseButtonRow = stop->container && stop->noiseButton != 0;
+        if (noiseButtonRow && stop->noiseHeld)
+        {
+            oneShotToggle.setBounds(x, 13, 92, 23);
+            x += 96;
+            if (stop->noiseRelease) { releaseFadeBox.setBounds(x, 13, 142, 23); x += 150; }
+        }
         // The line's parts sit close together: the rank boxes only when there are
         // pipes, the pitch information as wide as its text.
-        if (!stop->container && !rankButtons.isEmpty())
+        if ((!stop->container || noiseButtonRow) && !rankButtons.isEmpty())
         {
             ranksLabel.setBounds(x, 13, 92, 23);
             x += 92;
@@ -1938,11 +1973,20 @@ void StopRow::updateFromStop()
     stopButton.setButtonText(caption());
     stopButton.setColour(juce::TextButton::buttonColourId,
         stop->enabled ? onColour() : juce::Colours::darkgrey);
+    if (stop->container && stop->noiseButton != 0)
+    {   // 0.9.129: a noise's button - its perspectives' switches as the model has them
+        for (int i = 0; i < rankButtons.size() && i < (int)stop->noisePerspectives.size(); ++i)
+            rankButtons[i]->setToggleState(stop->noisePerspectives[(size_t)i].second, juce::dontSendNotification);
+        oneShotToggle.setToggleState(stop->oneShotManual == 1, juce::dontSendNotification);
+    }
+    else
+    {
     std::vector<Stop*> rankSources{ stop };
     for (auto& rank : stop->ranks) rankSources.push_back(rank.get());
     for (int i = 0; i < rankButtons.size() && i < (int)rankSources.size(); ++i)
         rankButtons[i]->setToggleState(rankSources[(size_t)i]->rankEnabled,
             juce::dontSendNotification);
+    }
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         primaryManualButtons[(size_t)manual].setToggleState(
@@ -3447,6 +3491,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             row->setArrangeHooks(hooksFor(manual, key));
             row->transpositionRequest = [this](Stop* target, int semitones) { if (transpositionRequest) transpositionRequest(target, semitones); };
             row->oneShotRequest = [this](Stop* target, bool on) { if (oneShotRequest) oneShotRequest(target, on); };
+            row->noisePerspectiveRequest = [this](Stop* target, const juce::String& perspective, bool on) { if (noisePerspectiveRequest) noisePerspectiveRequest(target, perspective, on); };
             row->releaseCrossfadeRequest = [this](Stop* target, float factor) { if (releaseCrossfadeRequest) releaseCrossfadeRequest(target, factor); };
             row->setTransmissionRemover([this](Stop* target, int index) { removeTransmission(target, index); });
             row->setChildrenGetter([this](const Stop* master) { return groupChildren(master); },

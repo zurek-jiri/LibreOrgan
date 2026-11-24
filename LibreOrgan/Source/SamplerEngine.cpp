@@ -6211,6 +6211,8 @@ struct SamplerEngine::Impl
         int manual = -1, note = 60;
         float gain = 1.0f;                                          // the level its definition gives it
         float trim = 1.0f;                                          // its unit's volume x its perspective's (0 = off): setNoiseGains
+        bool playOnce = false;                                      // 0.9.129: a held sound played once, whole, instead of looping (its button's One-shot)
+        float releaseCrossfade = 1.0f;                              // 0.9.129: its button's Release xfade (loop -> release file)
         std::vector<std::unique_ptr<Sample>> variants, releases;
         std::unique_ptr<Stop> carrier;                              // what a voice needs as its stop: unity gain, nothing else
         int lastVariant = -1, lastRelease = -1;
@@ -6223,11 +6225,14 @@ struct SamplerEngine::Impl
         std::map<juce::String, std::vector<int>> byRef;            // "<kind>|<edge>|<ref>" -> sounds (one per perspective)
         std::map<juce::String, std::vector<int>> freeOn, freeOff;  // the drawknob noises no stop has: group -> its perspectives
         std::vector<juce::String> freeOnGroups, freeOffGroups;
-        std::map<int, int> heldWanted;                             // the held sounds that are ON (sound -> the division of its trigger): kept sounding
+        std::map<juce::String, juce::String> freeKind;             // group -> "stop" / "coupler" (what the free noise was recorded as)
+        std::map<int, int> heldWanted;                            // the held sounds that are ON (sound -> the division of its trigger): kept sounding
     };
     std::unique_ptr<NoiseSet> noiseSet;
     std::vector<std::unique_ptr<NoiseSet>> retiredNoiseSets;      // replaced sets, kept until no noise voice sounds
     std::map<juce::String, double> lastSwitchNoiseMs;
+    std::map<juce::String, juce::String> noiseAssigned;           // 0.9.129: "<kind>|<ref>" of a button without a noise of its own -> the free noise (group) it has
+    bool noiseAssignedChanged = false;                            // a new one was dealt: the owner takes the map and saves it with the organ
     double noiseBurstStartMs = 0.0, lastHeldCheckMs = 0.0;
     int noiseBurst = 0;
 
@@ -6324,6 +6329,12 @@ struct SamplerEngine::Impl
         }), sound.sounding.end());
         if (on)
         {
+            if (sound.playOnce)
+            {   // One-shot: the file once, whole, no loop - nothing is held, nothing starts again
+                noiseSet->heldWanted.erase(index);
+                if (sound.trim > 0.0f) startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), false, 0.0f, contextManual, false);
+                return;
+            }
             noiseSet->heldWanted[index] = contextManual;
             if (!sound.sounding.empty()) return;   // it runs
             startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), true, 0.0f, contextManual, true);
@@ -6332,13 +6343,14 @@ struct SamplerEngine::Impl
         noiseSet->heldWanted.erase(index);
         // Off: the loop fades into its release file, as a pipe does (without one it just fades).
         const bool hasRelease = !sound.releases.empty();
+        const float crossfade = juce::jlimit(0.25f, 20.0f, sound.releaseCrossfade);
         bool wasSounding = false;
         for (const auto& [idx, order] : sound.sounding)
         {
             Voice& v = voices[idx];
             const auto state = v.state.load(std::memory_order_acquire);
             if (v.creationOrder != order || !v.noise || (state != VoiceActive && state != VoicePending)) continue;
-            v.releaseFadeMsRequested.store(hasRelease ? owner.releaseFadeOutMs.load(std::memory_order_relaxed) : 400.0f, std::memory_order_relaxed);
+            v.releaseFadeMsRequested.store(hasRelease ? owner.releaseFadeOutMs.load(std::memory_order_relaxed) * crossfade : 400.0f, std::memory_order_relaxed);
             v.ctlReleasing = true;
             refreshStealable(v);
             sendCommand(v, CmdRelease);
@@ -6346,7 +6358,7 @@ struct SamplerEngine::Impl
         }
         sound.sounding.clear();
         if (wasSounding && hasRelease)
-            startNoiseVoice(sound, nextOf(sound.releases, sound.lastRelease), false, owner.releaseFadeInMs.load(std::memory_order_relaxed), contextManual, false);
+            startNoiseVoice(sound, nextOf(sound.releases, sound.lastRelease), false, owner.releaseFadeInMs.load(std::memory_order_relaxed) * crossfade, contextManual, false);
     }
     // An event of a switch: "stop" (ref "<division>|<name lower-case>"), "coupler" (its id), "tremulant" /
     // "tremulantRun" (the division), "button" (its name lower-case). The click of that moment and the held sound;
@@ -6367,9 +6379,38 @@ struct SamplerEngine::Impl
         if (any || (kind != "stop" && kind != "coupler")) return;
         const auto& groups = on ? noiseSet->freeOnGroups : noiseSet->freeOffGroups;
         if (groups.empty()) return;
-        const auto& group = groups[(size_t)((juce::uint32)ref.hashCode() % (juce::uint32)groups.size())];
         const auto& map = on ? noiseSet->freeOn : noiseSet->freeOff;
-        if (const auto found = map.find(group); found != map.end())
+        // 0.9.129 (the user: several couplers / transmissions without a noise of their own all clicked alike): every
+        // such button gets a free noise of ITS OWN - the next one no other button has, of its own kind first - and
+        // keeps it (stored with the organ: noiseAssigned). Optionally a random one at every press.
+        juce::String group;
+        if (owner.noiseFreeRandom.load(std::memory_order_relaxed))
+            group = groups[(size_t)tuningRandom.nextInt((int)groups.size())];
+        else
+        {
+            const juce::String key = kind + "|" + ref;
+            const auto& reference = !noiseSet->freeOnGroups.empty() ? noiseSet->freeOnGroups : noiseSet->freeOffGroups;   // one list for both moments: a knob's on and off are one noise
+            const auto assigned = noiseAssigned.find(key);
+            if (assigned != noiseAssigned.end() && std::find(reference.begin(), reference.end(), assigned->second) != reference.end()) group = assigned->second;
+            else
+            {
+                std::map<juce::String, int> uses;
+                for (const auto& [other, taken] : noiseAssigned) ++uses[taken];
+                int best = -1, bestScore = 0;
+                for (int i = 0; i < (int)reference.size(); ++i)
+                {
+                    const auto kindOf = noiseSet->freeKind.find(reference[(size_t)i]);
+                    const int score = uses[reference[(size_t)i]] * 2 + (kindOf != noiseSet->freeKind.end() && kindOf->second == kind ? 0 : 1);   // unused first, its own kind first
+                    if (best < 0 || score < bestScore) { best = i; bestScore = score; }
+                }
+                group = reference[(size_t)juce::jmax(0, best)];
+                noiseAssigned[key] = group;
+                noiseAssignedChanged = true;
+            }
+        }
+        auto found = map.find(group);
+        if (found == map.end()) found = map.find(groups[(size_t)((juce::uint32)ref.hashCode() % (juce::uint32)groups.size())]);   // this moment has no file of that name
+        if (found != map.end())
             for (const int index : found->second) playNoise(index, true, contextManual);
     }
     // A drawknob: a button switched twice within 80 ms (a stop folder's ranks are ONE button) clicks once, and a
@@ -13945,6 +13986,7 @@ juce::String SamplerEngine::loadNoises(const std::vector<NoiseSpec>& specs)
             auto& groups = sound.edge == "off" ? set->freeOffGroups : set->freeOnGroups;
             if (map.find(sound.group) == map.end()) groups.push_back(sound.group);
             map[sound.group].push_back(index);
+            set->freeKind[sound.group] = sound.kind;
         }
         else set->byRef[sound.kind + "|" + sound.edge + "|" + sound.ref].push_back(index);
     }
@@ -14065,6 +14107,46 @@ void SamplerEngine::setNoiseGains(const std::vector<float>& gains)
     for (size_t i = 0; i < impl->noiseSet->sounds.size(); ++i)
         impl->noiseSet->sounds[i]->trim = i < gains.size() ? juce::jlimit(0.0f, 8.0f, gains[i]) : 1.0f;
     impl->refreshHeldNoiseGains();
+}
+
+// 0.9.129: what a noise button's voicing row sets beside its volume - One-shot (the file once instead of the loop)
+// and the Release xfade - per sound, in the order of the sounds.
+void SamplerEngine::setNoiseVoicing(const std::vector<std::pair<bool, float>>& voicing)
+{
+    const juce::ScopedLock sl(controlLock);
+    if (impl->noiseSet == nullptr) return;
+    for (size_t i = 0; i < impl->noiseSet->sounds.size(); ++i)
+    {
+        impl->noiseSet->sounds[i]->playOnce = i < voicing.size() && voicing[i].first;
+        impl->noiseSet->sounds[i]->releaseCrossfade = i < voicing.size() ? voicing[i].second : 1.0f;
+    }
+}
+
+// The free drawknob noises dealt to the buttons without a noise of their own ("<kind>|<ref>" -> the noise's
+// group): set from the organ's file, taken back when the engine dealt a new one, so it is saved with the organ.
+void SamplerEngine::setNoiseAssignments(const std::map<juce::String, juce::String>& assigned)
+{
+    const juce::ScopedLock sl(controlLock);
+    impl->noiseAssigned = assigned;
+    impl->noiseAssignedChanged = false;
+}
+
+bool SamplerEngine::takeNoiseAssignments(std::map<juce::String, juce::String>& assigned)
+{
+    const juce::ScopedLock sl(controlLock);
+    if (!impl->noiseAssignedChanged) return false;
+    impl->noiseAssignedChanged = false;
+    assigned = impl->noiseAssigned;
+    return true;
+}
+
+juce::StringArray SamplerEngine::freeNoiseGroups() const
+{
+    const juce::ScopedLock sl(controlLock);
+    juce::StringArray groups;
+    if (impl->noiseSet != nullptr)
+        for (const auto& group : (!impl->noiseSet->freeOnGroups.empty() ? impl->noiseSet->freeOnGroups : impl->noiseSet->freeOffGroups)) groups.add(group);
+    return groups;
 }
 
 void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bool isRelease, int releaseMaxHoldMs)

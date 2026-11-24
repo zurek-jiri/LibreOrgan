@@ -5433,17 +5433,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   OFF whatever an older model says. (7) `Voicer::placeUnderDivision(manual, keys)` (compactCells = the layout on the
   screen, stored first as a drop does; the keys at lastRow + 2, column by column): the noises' buttons stand UNDER the
   division's stops, a free row between - the user: "nikdy se nesmí integrovat mezi existující ... Ruchy nepatří mezi
-  rejstříky" (the merge's rule for a foreign organ). RULES FOR EVER: a card is never closed with sound in its
+  rejstříky" (the merge's rule for a foreign organ). 0.9.129 (the same evening; I had left three items "for the next
+  version" and the user: "proč jsi to kurva nechal na další verzi??? ... Já tě platím, abys mi dělal" - WHEN HE LISTS
+  THINGS, ALL OF THEM GO INTO THE BUILD, an urgent fix does not excuse the rest; his answer on the free noises: a FIXED
+  assignment, optionally random at every on/off): (a) A NOISE BUTTON'S VOICING ROW: `Stop::noisePerspectives` (name,
+  on), `noiseHeld`, `noiseRelease` set by syncNoiseButtonStops from the unit (`buttonInfo`, read anew when
+  `noiseButtonInfoVersion != noisesVersionWanted`); StopRow builds its rank boxes from them (`noisePerspectiveRequest`
+  -> `setNoiseUnitPerspectiveOn("button|<name>", perspective, on)` = the model's units[].perspectives[].on, the SAME
+  value as the window's box; noiseUnitGain returns 0 for a perspective that is off), One-shot shown when the noise
+  loops (`stop->oneShotManual == 1` -> NoiseSound::playOnce: the file once, whole, nothing held), Release xfade when
+  the loop has a release (`stop->releaseCrossfade` -> NoiseSound::releaseCrossfade on the loop's fade-out and the
+  release's fade-in); `applyNoiseGains` sends both with `engine.setNoiseVoicing`; the text of the row is "Noise (no
+  pipes)". (b) FREE NOISES DEALT: engine `noiseAssigned` ("<kind>|<ref>" -> group = the free noise's file name; the ON
+  groups are the reference list for both moments), a button without one takes the group with the fewest uses, its own
+  kind first (`NoiseSet::freeKind`), `noiseAssignedChanged` -> `takeNoiseAssignments` in noisesTick ->
+  `storeNoiseAssignments` = the model's "assigned": ["key\tgroup"] (an array: the keys are no identifiers);
+  `setNoiseAssignments` from noisesChanged / setNoisesModel (`pushNoiseOptions`); `engine.noiseFreeRandom` = the model's
+  "freeRandom" (the window's box "Free drawknob noises: a random one at every press"); `setNoiseAssignment(key, group)`
+  from the window ("" = dealt anew). (c) THE NOISES WINDOW (placeDialog key "noises3"): per perspective a box, the
+  folder's name with the number of files (all folders in the tooltip) and the volume; "+" of a row
+  (`noiseUnitsUnfolded`) = a read-only list of the folders and files (NoiseUnit::files: "<moment>: <folder>//a|b") and,
+  for Drawknobs / Couplers, a combo per assigned button; the content is a juce::FileDragAndDropTarget: a folder on a
+  perspective cell -> `setNoiseUnitFolder(key, perspective, folder)` (the folder read by noisesVarFromFolder, its sounds
+  given the temporary unit "button|dropped folder" and turned into the unit's kind by changeNoiseUnit; a button's
+  files of one moment and folder joined into one sound), anywhere else -> addNoisesFromFolder, which now ADDS to the
+  model (it replaced it). Hook acts added to ORGAN_TEST_NOISE_UNITS: pon, folder, unfold, random, assigned. Run on the
+  Stralsund Demo: the blower's row pictured (One-shot, Release xfade x1, Diffuse / Direct boxes, Alias, Stop volume),
+  Direct switched off through the window's function and shown off in the row; the couplers unit removed and two
+  couplers clicked: both took "60.wav" - the Demo has ONE free noise (the distinct choice needs the full organ: NOT
+  run); a folder dropped on keys|1 Direct: 128 files there. NOT run: One-shot and Release xfade by ear, a real mouse
+  drop, the random box, a changed assignment through its combo. RULES FOR EVER: a card is never closed with sound in its
   buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
   and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
   by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,
   PANIC -> off and no restart for 35 s, the quit line). NOT verifiable here: that the Fireface is free of the loop
-  (only ears tell); the crash path. STILL OWED from his list of that evening (his answers: couplers and other buttons
-  without a noise of their own = a FIXED assignment, optionally random at every on/off): a noise button's voicing row
-  with the perspective boxes (the same values as the perspectives' switches of the Noises window), One-shot as an
-  override, Release xfade only where a loop + release exists; distinct free drawknob / coupler noises per button (the
-  next unused one, stored with the organ; an option for random at every press); the Noises window showing the folders
-  and files (cells as the Stop List's, unfoldable rows, folders dropped onto a cell / a row / the empty space).
+  (only ears tell); the crash path. The rest of his list of that evening was done in 0.9.129 (above).
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,

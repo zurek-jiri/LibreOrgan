@@ -187,6 +187,10 @@ struct Stop
     // 0.9.127: the button of a NOISE of its own on the grid (blower, zimbelstern, rossignol, calcant ...): a stop
     // without pipes whose switch starts and ends that noise (set by MainComponent::syncNoiseButtonStops after every
     // load). 1 = an effect; 2 = one that runs from the load on (the blower): the general cancel leaves it alone.
+    // 0.9.129: what its voicing row shows (set by the owner from the noises' model): its perspectives with their
+    // switches (the same values as in the Noises window), whether it loops while on and has a release file.
+    std::vector<std::pair<juce::String, bool>> noisePerspectives;
+    bool noiseHeld = false, noiseRelease = false;
     int noiseButton = 0;
     juce::File folder;
     juce::File tree;   // the folder tree this stop was loaded from
@@ -1606,6 +1610,11 @@ public:
     // order of the specs given to loadNoises; a sounding held noise follows at once.
     void setNoiseGains(const std::vector<float>& gains);
     void silenceNoises();                                           // PANIC: every noise ends and none starts again by itself
+    void setNoiseVoicing(const std::vector<std::pair<bool, float>>& voicing);   // per sound: played once instead of looping; the release crossfade factor
+    void setNoiseAssignments(const std::map<juce::String, juce::String>& assigned);   // "<kind>|<ref>" -> the free drawknob noise that button has
+    bool takeNoiseAssignments(std::map<juce::String, juce::String>& assigned);        // true: a new one was dealt since the last call
+    juce::StringArray freeNoiseGroups() const;                      // the free drawknob / coupler noises, by their group (file) names
+    std::atomic<bool> noiseFreeRandom{ false };                     // a button without a noise of its own takes a RANDOM free one at every press
     void setNoisesArmed(bool armed) noexcept { noisesArmed.store(armed, std::memory_order_relaxed); }
     // The footage the stop's caption shows (written in its name or alias, else the
     // measured one that displayName() appends, else the smpl footage): the base

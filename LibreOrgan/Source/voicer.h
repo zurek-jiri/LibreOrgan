@@ -70,6 +70,8 @@ public:
     // The stop's Transposition chosen in the voicing (0.8.158): the owner sets it
     // on the Stop List row and the engine, which loads the stop's samples again.
     std::function<void(Stop*, int)> transpositionRequest;
+    // 0.9.129: a perspective box of a noise's button (the perspective's switch of the Noises window).
+    std::function<void(Stop*, const juce::String&, bool)> noisePerspectiveRequest;
     // The One-shot switch of a stop (0.8.158): on/off, overriding the One-shot Patterns.
     std::function<void(Stop*, bool)> oneShotRequest;
     // The Release crossfade multiplier of a stop (0.9.62): x the global fade-out and fade-in.
@@ -570,6 +572,7 @@ public:
     // folder) there. The owner adds its Stop List row and reloads; the cell is set.
     std::function<void(int manual, int column, int row)> newStopFolderRequest;
     std::function<void(Stop*, int)> transpositionRequest;   // a stop's Transposition chosen in its voicing (0.8.158)
+    std::function<void(Stop*, const juce::String&, bool)> noisePerspectiveRequest;   // 0.9.129: a noise button's perspective box (the Noises window's switch)
     std::function<void(Stop*, bool)> oneShotRequest;        // a stop's One-shot switch (0.8.158)
     std::function<void(Stop*, float)> releaseCrossfadeRequest;   // a stop's Release crossfade multiplier (0.9.62)
     // Arrange mode: a stop folder dropped under a stop (after the question was

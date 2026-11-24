@@ -1428,15 +1428,19 @@ static const char* const kManualText_part7 =
     "- **Keys.** The noise of the key that is played; a key without a recording\n"
     "  takes its neighbour's. With several variants of one key they alternate.\n"
     "  See [Key noises follow the couplers](#key-noises-follow-the-couplers).\n"
-    "- **Drawknobs.** A stop keeps the noise the definition gives it; a button\n"
-    "  without one (a transmission, an extension) takes one of the free drawknob\n"
-    "  noises, always the same.\n"
+    "- **Drawknobs.** A stop keeps the noise the definition gives it. A button\n"
+    "  without one (a coupler, a transmission, an extension) gets a free drawknob\n"
+    "  noise of its own - the next one no other button has - and keeps it.\n"
     "- **Tremulant.** The noise of the running tremulant, while it is on.\n"
     "- **Buttons of their own.** Blower, zimbelstern and the like stand on the grid\n"
     "  of their division, under its stops: dragged, MIDI-learned, held by the\n"
-    "  combinations like a stop. Their voicing row has the Stop volume and the\n"
-    "  alias. None is on by itself, the blower neither. Tutti leaves them alone;\n"
-    "  the general cancel leaves a blower running; PANIC switches every one off.\n"
+    "  combinations like a stop. None is on by itself, the blower neither. Tutti\n"
+    "  leaves them alone; the general cancel leaves a blower running; PANIC\n"
+    "  switches every one off. Their voicing row has the alias, the Stop volume,\n"
+    "  a box per perspective, *One-shot* for a noise that loops (the file once,\n"
+    "  whole, instead of the loop) and *Release xfade* where the loop has a\n"
+    "  release. Volume and perspective boxes are the same values as in the\n"
+    "  Noises window.\n"
     "\n"
     "### The Noises window\n"
     "\n"
@@ -1448,13 +1452,22 @@ static const char* const kManualText_part7 =
     "  folder was read wrong.\n"
     "- **Volume** - of the noise as a whole. For a button it is the Stop volume of\n"
     "  its voicing row: one value, shown in both places.\n"
-    "- **One column per perspective** - the number of its files and its own volume,\n"
-    "  on top of the noise's.\n"
+    "- **One column per perspective** - its box (on or off), its folder with the\n"
+    "  number of files, and its own volume on top of the noise's.\n"
+    "- **+** at the start of a row - the folders and files of the noise. Under\n"
+    "  Drawknobs and Couplers also which button has which free noise; choose\n"
+    "  another there.\n"
+    "- **A folder dropped from the file manager** onto a perspective of a row\n"
+    "  becomes that perspective's files; dropped anywhere else it is read as new\n"
+    "  noises and added.\n"
     "- **x** - takes the noise out of the organ (the files stay on the disk).\n"
     "- Below: [Noises on](#noises-on), the volume of all\n"
     "  ([Noises volume](#noises-volume)),\n"
-    "  [Key noises follow the couplers](#key-noises-follow-the-couplers) and\n"
-    "  *Add folder...* ([Noises of a folder](#noises-of-a-folder)).\n"
+    "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
+    "  *Free drawknob noises: a random one at every press* (instead of each\n"
+    "  button keeping its own) and *Add folder...*\n"
+    "  ([Noises of a folder](#noises-of-a-folder)), which adds to the noises the\n"
+    "  organ has.\n"
     "\n"
     "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
     "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
@@ -1603,6 +1616,8 @@ static const char* const kManualText_part7 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
+    ;
+static const char* const kManualText_part8 =
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
@@ -1616,8 +1631,6 @@ static const char* const kManualText_part7 =
     "stopped offers the same in its box: *Pack what is needed and load the rest*.\n"
     "\n"
     "### Sample rate on loading\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
     "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
@@ -1805,6 +1818,8 @@ static const char* const kManualText_part8 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
@@ -1818,8 +1833,6 @@ static const char* const kManualText_part8 =
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     "strike. [Velocity layers](#35-velocity-layers).\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
@@ -2007,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
@@ -2020,8 +2035,6 @@ static const char* const kManualText_part9 =
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
@@ -2209,6 +2222,8 @@ static const char* const kManualText_part10 =
     "learn. The compass counts after the MIDI transposition; the keyboard drawing\n"
     "of the Divisions dialog shows the keys it takes.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "### Swell pedal controller\n"
     "\n"
     "The controller learned for the swell (right-click the swell bar). Information.\n"
@@ -2222,8 +2237,6 @@ static const char* const kManualText_part10 =
     "\n"
     "How slowly the shutters follow the pedal (50 to 2000 ms, default 300).\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "### Audio and effects\n"
     "\n"
     "*Audio routing...* opens the [Audio routing](#audio-routing): the sound\n"
@@ -2411,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
     "and every release is built there. *About & licences...* shows the program's\n"
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
@@ -2424,8 +2439,6 @@ static const char* const kManualText_part11 =
     "# 10. Technical details\n"
     "\n"
     "The chapters above link here. Nothing in this part is needed to play.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
     "\n"
@@ -2613,6 +2626,8 @@ static const char* const kManualText_part12 =
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
+    ;
+static const char* const kManualText_part13 =
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"
@@ -2626,8 +2641,6 @@ static const char* const kManualText_part12 =
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
-    ;
-static const char* const kManualText_part13 =
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"
