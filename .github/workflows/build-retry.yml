@@ -25,7 +25,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPO: ${{ github.repository }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
+          # 24 Nov 2026: a build cancelled because a NEWER version came (build.yml cancels them) is never started
+          # again - it would wait for the same runners and cancel the newer one in its turn.
+          newest=$(gh api "repos/$REPO/tags?per_page=100" --jq '.[].name' | grep '^v[0-9]' | sort -V | tail -1)
+          case "$TAG" in v[0-9]*) if [ -n "$newest" ] && [ "$TAG" != "$newest" ]; then echo "$TAG is not the newest version ($newest): nothing to retry"; exit 0; fi ;; esac
           jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")
           lost=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "cancelled" and (.steps | length) == 0)] | length')
           broken=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and (.steps | length) > 0 and (.name | test("test build") | not))] | length')

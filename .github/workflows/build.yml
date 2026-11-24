@@ -9,7 +9,35 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 24 Nov 2026 (five versions in one evening, each build waiting for a macOS runner behind the one before): only
+# the NEWEST version is built. A new tag's run cancels the release builds still queued or running (the job
+# "supersede" below does it for runs of any age; the group does it for runs started with this file).
+concurrency:
+  group: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  supersede:
+    name: older builds cancelled
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel the builds of older versions that have not finished
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.run_number }}
+        run: |
+          gh api "repos/$REPO/actions/workflows/build.yml/runs?per_page=40" \
+            --jq ".workflow_runs[] | select(.status != \"completed\" and .run_number < $NUMBER and ((.head_branch // \"\") | startswith(\"v\"))) | \"\(.id) \(.head_branch)\"" |
+          while read -r id tag; do
+            echo "cancelling the build of $tag (run $id)"
+            gh run cancel "$id" --repo "$REPO" || true
+          done
+
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
