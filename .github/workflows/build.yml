@@ -94,7 +94,7 @@ jobs:
             package: LibreOrgan-linux-arm64.tar.gz
             optional: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -118,19 +118,29 @@ jobs:
         if: runner.os != 'macOS'
         continue-on-error: true
         shell: pwsh
+        env:
+          LC_ALL: C.UTF-8
+        # 24 Nov 2026: this step and the next had shown a red cross in EVERY build for weeks ("Process completed
+        # with exit code 1", the step allowed to fail). On Windows the program is a window program: "& exe" does
+        # not wait for it, so the report was looked for before it was written - Start-Process and a wait. And a
+        # step that fails says WHY in an annotation (the job logs cannot be read without a login).
         run: |
           pwsh -File LibreOrgan/Tests/gui/make_vel_test.ps1
           $set = Join-Path ([IO.Path]::GetTempPath()) "vel_test"
           if ($IsWindows) {
-            & "build/LibreOrgan_artefacts/Release/LibreOrgan.exe" --selftest "$set"
             $report = Join-Path $env:APPDATA "LibreOrgan/selftest.txt"
+            $p = Start-Process -FilePath "build/LibreOrgan_artefacts/Release/LibreOrgan.exe" -ArgumentList @('--selftest', "`"$set`"") -PassThru
+            if (-not $p.WaitForExit(600000)) { $p.Kill(); Write-Host "::error title=Self-test::did not end within 10 minutes"; exit 1 }
           } else {
             xvfb-run -a "build/LibreOrgan_artefacts/Release/LibreOrgan" --selftest "$set"
             $report = Join-Path $HOME ".config/LibreOrgan/selftest.txt"
           }
-          if (-not (Test-Path $report)) { throw "no self-test report at $report" }
+          if (-not (Test-Path $report)) { Write-Host "::error title=Self-test::no report at $report"; exit 1 }
           Get-Content $report | Select-String -Pattern 'WRONG|FAIL|COMPLETED'
-          if (-not (Select-String -Path $report -Pattern 'COMPLETED WITHOUT CRASH' -Quiet)) { throw "self-test did not complete" }
+          if (-not (Select-String -Path $report -Pattern 'COMPLETED WITHOUT CRASH' -Quiet)) {
+            Write-Host ("::error title=Self-test::did not complete; its last line: " + (Get-Content $report | Select-Object -Last 1))
+            exit 1
+          }
 
       # The interpolation kernels of the platform against the scalar one (AVX2 and
       # SSE2 on x86-64, NEON on Apple silicon) and their speed. Runs everywhere, the
@@ -138,12 +148,27 @@ jobs:
       - name: Kernel test (SIMD kernels vs scalar, speed)
         continue-on-error: true
         shell: pwsh
+        env:
+          LC_ALL: ${{ runner.os == 'Linux' && 'C.UTF-8' || 'en_US.UTF-8' }}
         run: |
           if ($IsWindows) { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan.exe" }
           elseif ($IsMacOS) { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan.app/Contents/MacOS/LibreOrgan" }
           else { $exe = "build/LibreOrgan_artefacts/Release/LibreOrgan" }
-          if ($IsLinux) { xvfb-run -a $exe --kerneltest } else { & $exe --kerneltest }
-          if ($LASTEXITCODE -ne 0) { throw "kernel test failed with exit code $LASTEXITCODE" }
+          $out = Join-Path ([IO.Path]::GetTempPath()) "kerneltest.txt"
+          if ($IsWindows) {
+            # a window program: waited for, its output taken into a file
+            $p = Start-Process -FilePath $exe -ArgumentList '--kerneltest' -PassThru -NoNewWindow -RedirectStandardOutput $out
+            if (-not $p.WaitForExit(600000)) { $p.Kill(); Write-Host "::error title=Kernel test::did not end within 10 minutes"; exit 1 }
+            $code = $p.ExitCode
+          }
+          elseif ($IsLinux) { xvfb-run -a $exe --kerneltest | Tee-Object -FilePath $out; $code = $LASTEXITCODE }
+          else { & $exe --kerneltest | Tee-Object -FilePath $out; $code = $LASTEXITCODE }
+          if ($IsWindows -and (Test-Path $out)) { Get-Content $out | Select-Object -Last 30 }
+          if ($code -ne 0) {
+            $why = if (Test-Path $out) { (Get-Content $out | Select-String -Pattern 'MISMATCH|WRONG|FAIL' | Select-Object -First 3 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(300, $_.Line.Length)) }) -join ' || ' } else { 'no output' }
+            Write-Host "::error title=Kernel test::exit code $code - $why"
+            exit 1
+          }
 
       # 24 Nov 2026 (#267: a MacBook Air M2 and a Mac mini M4 said the app is "damaged"): the build signs the bundle
       # ad hoc, and CMakeLists.txt then replaces its icon (AppIcon.icns) - the signature's seal over the bundle's
@@ -170,7 +195,7 @@ jobs:
           chmod +x "${{ matrix.path }}"
           tar -czf "${{ matrix.package }}" -C "$(dirname "${{ matrix.path }}")" "$(basename "${{ matrix.path }}")"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.package }}
@@ -182,7 +207,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           path: artifacts
       # Every build is a pre-release for testers until the first release the

@@ -32,7 +32,7 @@ jobs:
       INPUT_ORGAN: ${{ github.event.inputs.organ }}
       INPUT_ACTION: ${{ github.event.inputs.action }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Find the organ, edit FEATURED.txt, write libreorgans/INDEX.md
         shell: bash
         run: |

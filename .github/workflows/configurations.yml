@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Only zipped configurations and their READMEs
         shell: bash
         run: bash .github/scripts/configurations_check.sh
@@ -41,7 +41,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Sort uploads into their folders and write libreorgans/INDEX.md
         shell: bash
         run: |

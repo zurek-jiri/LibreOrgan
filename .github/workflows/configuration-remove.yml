@@ -40,7 +40,7 @@ jobs:
       REPO_OWNER: ${{ github.repository_owner }}
       BY_ISSUE: ${{ github.event_name == 'issues' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Find the organ, remove its folder, write libreorgans/INDEX.md
         shell: bash
         run: |

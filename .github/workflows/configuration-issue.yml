@@ -34,7 +34,7 @@ jobs:
       ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
       REPO_OWNER: ${{ github.repository_owner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Take the files from the issue and check them
         id: files
         shell: bash
