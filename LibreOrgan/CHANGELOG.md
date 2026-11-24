@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.132] - 2026-11-24
+
+### Changed
+- **The button of a noise is a row with a flag of its own**, written when the
+  Noises put it on the grid and saved with the organ - no longer a row
+  recognised by its name and its empty folders. It may be renamed, indented
+  or moved to another division and stays the noise's button. A file saved
+  with 0.9.127 - 0.9.131 gets the flag on its noise rows at the first load.
+
 ## [0.9.131] - 2026-11-24
 
 ### Fixed

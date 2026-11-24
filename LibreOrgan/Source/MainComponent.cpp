@@ -2010,7 +2010,7 @@ MainComponent::MainComponent()
     };
     voicer->noisePerspectiveRequest = [this](Stop* stop, const juce::String& perspective, bool on)
     {
-        if (stop != nullptr) setNoiseUnitPerspectiveOn("button|" + stop->name.toLowerCase(), perspective, on);
+        if (stop != nullptr && stop->noiseKey.isNotEmpty()) setNoiseUnitPerspectiveOn("button|" + stop->noiseKey.toLowerCase(), perspective, on);
     };
     voicer->releaseCrossfadeRequest = [this](Stop* stop, float factor)
     {
@@ -23401,6 +23401,7 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
         entry.name = stop->name;
         entry.alias = stop->alias;
         entry.child = stop->groupMaster.isNotEmpty();
+        entry.noiseKey = stop->noiseKey;   // 0.9.132: a noise's button stays one in a table made from the stops
         entry.sampleOffset = stop->sampleOffset;
         entry.sampleOffsetSet = stop->sampleOffsetSet;
         if (stop->container) { build.entries.push_back(entry); continue; }   // a stop folder without pipes: a row without folders
@@ -25419,6 +25420,7 @@ juce::var MainComponent::stopBuildToVar(const ManualConfig::StopBuild& build)
         item->setProperty("alias", entry.alias);
         item->setProperty("customName", entry.customName);
         item->setProperty("child", entry.child);
+        if (entry.noiseKey.isNotEmpty()) item->setProperty("noise", entry.noiseKey);   // 0.9.132: the row is a noise's button
         if (entry.sampleOffsetSet || entry.sampleOffset != 0) item->setProperty("sampleOffset", entry.sampleOffset);   // present = known (0.8.158)
         juce::Array<juce::var> folders;
         for (const auto& [perspective, ref] : entry.folders)
@@ -25458,6 +25460,7 @@ MainComponent::ManualConfig::StopBuild MainComponent::stopBuildFromVar(const juc
             entry.alias = item.getProperty("alias", "").toString();
             entry.customName = item.getProperty("customName", false);
             entry.child = item.getProperty("child", false);
+            entry.noiseKey = item.getProperty("noise", "").toString();   // 0.9.132
             entry.sampleOffset = juce::jlimit(-48, 48, (int)item.getProperty("sampleOffset", 0));
             entry.sampleOffsetSet = item.hasProperty("sampleOffset");
             if (auto* folders = item.getProperty("folders", juce::var()).getArray())
@@ -26512,7 +26515,7 @@ void MainComponent::showStopBuildingDialog(int)
             grid.addAndMakeVisible(*row->division);
             row->name = std::make_unique<NameCell>();
             row->name->setFont(juce::FontOptions(16.0f));
-            row->name->setEditable(false, !transmission && !isNoiseEntry(entry), false);   // a transmission's caption is not a name; a noise's button is found by its name (its alias is free)
+            row->name->setEditable(false, !transmission, false);   // a transmission's caption is not a name
             row->name->setText(entry.name, juce::dontSendNotification);
             row->name->setColour(juce::Label::backgroundColourId, juce::Colour(0xff2b2b2b));
             row->name->setColour(juce::Label::outlineColourId, juce::Colour(0xff555555));
@@ -26880,12 +26883,12 @@ void MainComponent::showStopBuildingDialog(int)
         }
 
         // A folder dragged from one cell to another: the empty cell takes it, an occupied one swaps.
-        // 0.9.130: a row that is the button of a noise (named as one of the noises' buttons, no folders). 0.9.131 (the
-        // user indented the blower under a stop and the row took folders and transmissions again): INDENTED OR NOT -
-        // a noise's button may stand under a stop, it stays the noise's button.
+        // A row that is the button of a noise: the row's own FLAG (Entry::noiseKey, 0.9.132 - the user: "taková věc má
+        // mít svůj příznak"), set when the Noises put the button on the grid. 0.9.130 / 0.9.131 guessed it from the
+        // name and the empty folders, and an indented row fell through. Renamed, indented, moved: it stays one.
         bool isNoiseEntry(const Build::Entry& entry) const
         {
-            return !entry.isTransmission() && entry.folders.empty() && owner.isNoiseButtonName(entry.name);
+            return !entry.isTransmission() && entry.noiseKey.isNotEmpty();   // 0.9.132: its flag, nothing else
         }
         void moveFolder(size_t fromRow, const juce::String& fromPerspective, size_t toRow, const juce::String& toPerspective)
         {
@@ -37749,7 +37752,7 @@ juce::String MainComponent::noiseUnitKey(const juce::StringArray& fields)
 Stop* MainComponent::noiseButtonStop(const juce::String& name) const
 {
     for (auto* stop : engine.getStops())
-        if (stop != nullptr && stop->noiseButton != 0 && stop->name.equalsIgnoreCase(name)) return stop;
+        if (stop != nullptr && stop->noiseKey.isNotEmpty() && stop->noiseKey.equalsIgnoreCase(name)) return stop;   // 0.9.132: by the noise's key the stop carries, never by its name
     return nullptr;
 }
 
@@ -37943,7 +37946,7 @@ std::vector<MainComponent::NoiseUnit> MainComponent::noiseUnits() const
                     unit.division = stop->primaryManual;                       // where its button stands now
                     unit.volumeDb = stop->db;                                   // the one value
                     unit.oneShot = stop->oneShotManual == 1;
-                    if (stop->alias.isNotEmpty()) unit.name = stop->alias + "  (" + fields[2] + ")";
+                    unit.name = stop->alias.isNotEmpty() ? stop->alias + "  (" + stop->name + ")" : stop->name;   // as its button is called now
                 }
             }
             units.push_back(unit);
@@ -38118,23 +38121,28 @@ void MainComponent::removeNoiseUnit(const juce::String& key)
 
 // THE BUTTONS OF THE NOISES ON THE GRID (the user: "tlačítka musí být na gridu divize jako rejstříky. V okně noises
 // se jen nastavují"): a noise of its own - blower, zimbelstern, rossignol, calcant - is a stop WITHOUT PIPES of its
-// division (Stop::noiseButton), so it has everything a stop has: its cell on the grid, the dragging, MIDI learn, its
-// voicing row (volume, alias), its place in the registrations and the combinations. Its switch starts and ends the
-// noise (SamplerEngine::setStopEnabled). Called twice a second while nothing loads: the flags after a reload, the
-// rows of new buttons, the buttons whose noise is gone taken off. A button that runs from the load (the blower) is
-// switched on when it is made.
+// division, so it has everything a stop has: its cell on the grid, the dragging, MIDI learn, its voicing row, its
+// place in the registrations and the combinations. Its switch starts and ends the noise (SamplerEngine::setStopEnabled).
+// 0.9.132 (the user: "řádek ruchu by se měl poznat strukturálně ... taková věc má mít svůj příznak, protože je z
+// dialogu Noise. Nezaváděj liché a sekundární podmínky pro rozpoznávání čehokoliv"): WHAT MAKES A ROW A NOISE'S
+// BUTTON IS ITS FLAG - StopBuild::Entry::noiseKey, the key of the button in the noises' model, written when the
+// button is put on the grid and saved with the row ("noise"). The stop of such a row carries the same key
+// (Stop::noiseKey) and the noise is found by it. Never the row's name, never "it has no folders": the row may be
+// renamed, indented, moved to another division - it stays what it is. Called at the arming and twice a second while
+// nothing loads: the stops of the flagged rows told what they are (after a reload they are new objects), the rows of
+// new buttons made, the rows whose noise is gone taken off.
 void MainComponent::syncNoiseButtonStops()
 {
     if (activeFolderLoader != nullptr || engine.getStops().isEmpty() || sampleTrees.empty()) return;
-    struct Wanted { juce::String name; int division = 0; bool runs = false, on = false; };
-    std::map<juce::String, Wanted> wanted;
+    struct Wanted { juce::String name; int division = 0; bool runs = false; };
+    std::map<juce::String, Wanted> wanted;   // the noise's key (its button's name in the model, lower case) -> the button
     if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
         for (const auto& prop : buttons->getProperties())
         {
             const juce::String name = prop.value.getProperty("name", "").toString().trim();
             if (name.isEmpty()) continue;
-            // 0.9.130: a button without a division (an older file) goes where its name's mark says - "P." / "Ped." the
-            // pedal, "II." / "2." that manual; anything else the pedal (drag it where it belongs).
+            // 0.9.130: a button without a division (an older file) goes where its name's numeral says - "II." / "2." that
+            // manual; anything else the pedal (drag it where it belongs).
             int division = (int)prop.value.getProperty("division", -1);
             if (division < 0)
             {
@@ -38144,13 +38152,9 @@ void MainComponent::syncNoiseButtonStops()
                     if (mark == romans[manual - 1] || mark == juce::String(manual)) division = manual;
                 if (division > manualCount) division = -1;
             }
-            // "runs" = it runs from the load as its definition has it (the blower); a published file switches "on" off and keeps "runs".
-            wanted[name.toLowerCase()] = { name, juce::jlimit(0, manualCount, juce::jmax(0, division)),
-                                           (bool)prop.value.getProperty("runs", prop.value.getProperty("on", false)), (bool)prop.value.getProperty("on", false) };
+            // "runs" = what the definition starts with (the blower): the general cancel leaves it as it is.
+            wanted[name.toLowerCase()] = { name, juce::jlimit(0, manualCount, juce::jmax(0, division)), (bool)prop.value.getProperty("runs", prop.value.getProperty("on", false)) };
         }
-    std::set<juce::String> present;
-    std::vector<Stop*> gone;
-    bool flagsChanged = false;
     // The buttons' units (their perspectives, loop, release): read anew only when the noises changed.
     static std::map<juce::String, NoiseUnit> buttonInfo;
     if (noiseButtonInfoVersion != noisesVersionWanted)
@@ -38160,80 +38164,130 @@ void MainComponent::syncNoiseButtonStops()
             if (unit.kind == "button") buttonInfo[unit.key.fromFirstOccurrenceOf("|", false, false)] = unit;
         noiseButtonInfoVersion = noisesVersionWanted;
     }
-    for (auto* stop : engine.getStops())
+    const int divisions = juce::jmin(manualCount + 1, SamplerEngine::maxManuals);
+    auto stopOfRow = [this](int manual, const juce::String& name) -> Stop*
     {
-        if (stop == nullptr) continue;
-        const auto key = stop->name.toLowerCase();
-        const auto found = wanted.find(key);
-        if (found != wanted.end() && stop->container && present.count(key) == 0)
-        {
-            const int flag = found->second.runs ? 2 : 1;
-            if (stop->noiseButton != flag) { stop->noiseButton = flag; flagsChanged = true; }
-            present.insert(key);
-            // 0.9.130 (the user: "transmisi zakázat"): the button of a noise has no transmissions - one made before
-            // (it clicked a free drawknob noise, never its own) goes, said in the Messages.
-            if (!stop->transmissions.empty() && voicer != nullptr)
-            {
-                const int count = (int)stop->transmissions.size();
-                for (int index = count; --index >= 0;) voicer->removeTransmission(stop, index);
-                CrashHandler::note("Noise button \"" + stop->name + "\": " + juce::String(count) + " transmission(s) of it removed - a noise's button has none");
-                queueNotice(juce::AlertWindow::InfoIcon, "Noises", "\"" + stop->name + "\" is the button of a noise: its " + juce::String(count)
-                    + " transmission(s) were removed (a noise has one button; move it to the division where you want it).");
-                flagsChanged = true;
-            }
-            // 0.9.129: what its voicing row shows - its perspectives with their switches, loop, release.
-            if (const auto info = buttonInfo.find(key); info != buttonInfo.end())
-            {
-                std::vector<std::pair<juce::String, bool>> perspectives;
-                std::vector<juce::String> names;   // 0.9.130: in the order of the Perspective patterns, as everywhere
-                for (const auto& [name, count] : info->second.perspectives) names.push_back(name);
-                engine.sortPerspectives(names);
-                for (const auto& name : names)
-                {
-                    const auto on = info->second.perspectiveOn.find(name.toLowerCase());
-                    perspectives.push_back({ name, on == info->second.perspectiveOn.end() || on->second });
-                }
-                if (perspectives != stop->noisePerspectives || stop->noiseHeld != info->second.held || stop->noiseRelease != info->second.hasRelease)
-                {
-                    stop->noisePerspectives = perspectives;
-                    stop->noiseHeld = info->second.held;
-                    stop->noiseRelease = info->second.hasRelease;
-                    flagsChanged = true;
-                }
-            }
-        }
-        else if (stop->noiseButton != 0)
-        {
-            stop->noiseButton = 0;
-            if (stop->container) gone.push_back(stop);
-        }
-    }
+        for (auto* stop : engine.getStops())
+            if (stop != nullptr && stop->primaryManual == manual && stop->name == name) return stop;
+        return nullptr;
+    };
+    bool flagsChanged = false, tableChanged = false;
     std::set<int> changed;
     std::map<int, juce::StringArray> placed;   // the new buttons of each division: they go UNDER its stops, never among them
     for (const auto& [key, button] : wanted)
     {
-        if (present.count(key) > 0) continue;
-        bool taken = false;
-        for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals && !taken; ++manual)
-            for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries) if (entry.name.equalsIgnoreCase(button.name)) { taken = true; break; }
-        if (taken) continue;   // a row of that name that is no button of a noise: left as it is
-        auto& config = manualConfigs[(size_t)button.division];
-        if (!config.stopBuild.active) { config.stopBuild = deriveStopBuildFromEngine(button.division); config.stopBuild.active = true; }
-        ManualConfig::StopBuild::Entry entry;
-        entry.name = button.name;
-        entry.customName = true;
-        config.stopBuild.entries.push_back(entry);
-        if (Stop* stop = engine.addContainerStop(button.division, entry.name))
+        // 1. The row that carries this noise's flag.
+        int rowManual = -1;
+        size_t rowIndex = 0;
+        for (int manual = 0; manual < divisions && rowManual < 0; ++manual)
         {
-            stop->noiseButton = button.runs ? 2 : 1;
-            // A new stop is born ON - a noise's button never: nothing sounds by itself, the blower neither (0.9.128, the
-            // user: "Blower by neměl být default on"). From then on its state is the registration's, as a stop's.
-            engine.setStopEnabled(stop, false);
+            const auto& entries = manualConfigs[(size_t)manual].stopBuild.entries;
+            for (size_t i = 0; i < entries.size(); ++i)
+                if (entries[i].noiseKey.equalsIgnoreCase(key)) { rowManual = manual; rowIndex = i; break; }
         }
-        placed[button.division].add(entry.name);
-        changed.insert(button.division);
-        CrashHandler::note("Noise button \"" + button.name + "\" put on the grid of division " + juce::String(button.division));
+        // 2. No row has it, but a stop still carries the key (its row was written anew by a move or an edit): the
+        //    row of that stop gets its flag back.
+        if (rowManual < 0)
+            for (auto* stop : engine.getStops())
+            {
+                if (stop == nullptr || !stop->noiseKey.equalsIgnoreCase(key) || rowManual >= 0) continue;
+                auto& entries = manualConfigs[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, stop->primaryManual)].stopBuild.entries;
+                for (size_t i = 0; i < entries.size(); ++i)
+                    if (!entries[i].isTransmission() && entries[i].name == stop->name)
+                    {
+                        entries[i].noiseKey = key;
+                        rowManual = stop->primaryManual; rowIndex = i; tableChanged = true;
+                        CrashHandler::note("Noise button \"" + button.name + "\": the row \"" + entries[i].name + "\" of division " + juce::String(rowManual) + " has its noise flag again");
+                        break;
+                    }
+            }
+        // 3. A file saved before rows had the flag (0.9.127 - 0.9.131): the row named as the button, without folders,
+        //    takes it - once; from then on only the flag counts.
+        if (rowManual < 0)
+            for (int manual = 0; manual < divisions && rowManual < 0; ++manual)
+            {
+                auto& entries = manualConfigs[(size_t)manual].stopBuild.entries;
+                for (size_t i = 0; i < entries.size(); ++i)
+                    if (!entries[i].isTransmission() && entries[i].folders.empty() && entries[i].noiseKey.isEmpty() && entries[i].name.equalsIgnoreCase(button.name))
+                    {
+                        entries[i].noiseKey = key;
+                        rowManual = manual; rowIndex = i; tableChanged = true;
+                        CrashHandler::note("Noise button \"" + button.name + "\": its row of division " + juce::String(manual) + " (from an older file) flagged as the noise's button");
+                        break;
+                    }
+            }
+        // 4. A new button: its row, with the flag, and its stop - OFF (nothing sounds by itself, the blower neither).
+        if (rowManual < 0)
+        {
+            auto& config = manualConfigs[(size_t)button.division];
+            if (!config.stopBuild.active) { config.stopBuild = deriveStopBuildFromEngine(button.division); config.stopBuild.active = true; }
+            ManualConfig::StopBuild::Entry entry;
+            entry.name = uniqueStopBuildName(config.stopBuild.entries, button.name, nullptr);
+            entry.customName = true;
+            entry.noiseKey = key;
+            config.stopBuild.entries.push_back(entry);
+            if (Stop* stop = engine.addContainerStop(button.division, entry.name))
+            {
+                stop->noiseKey = key;
+                stop->noiseButton = button.runs ? 2 : 1;
+                engine.setStopEnabled(stop, false);   // a new stop is born ON - a noise's button never
+            }
+            placed[button.division].add(entry.name);
+            changed.insert(button.division);
+            CrashHandler::note("Noise button \"" + button.name + "\" put on the grid of division " + juce::String(button.division));
+            continue;
+        }
+        // The stop of the flagged row: told what it is (a reload made it anew) and what its voicing row shows.
+        const auto& row = manualConfigs[(size_t)rowManual].stopBuild.entries[rowIndex];
+        Stop* stop = stopOfRow(rowManual, row.name);
+        if (stop == nullptr) continue;
+        const int flag = button.runs ? 2 : 1;
+        if (stop->noiseButton != flag || !stop->noiseKey.equalsIgnoreCase(key)) { stop->noiseButton = flag; stop->noiseKey = key; flagsChanged = true; }
+        // 0.9.130 (the user: "transmisi zakázat"): the button of a noise has no transmissions - one made before goes, said in the Messages.
+        if (!stop->transmissions.empty() && voicer != nullptr)
+        {
+            const int count = (int)stop->transmissions.size();
+            for (int index = count; --index >= 0;) voicer->removeTransmission(stop, index);
+            CrashHandler::note("Noise button \"" + stop->name + "\": " + juce::String(count) + " transmission(s) of it removed - a noise's button has none");
+            queueNotice(juce::AlertWindow::InfoIcon, "Noises", "\"" + stop->name + "\" is the button of a noise: its " + juce::String(count)
+                + " transmission(s) were removed (a noise has one button; move it to the division where you want it).");
+            flagsChanged = true;
+        }
+        if (const auto info = buttonInfo.find(key); info != buttonInfo.end())
+        {
+            std::vector<std::pair<juce::String, bool>> perspectives;
+            std::vector<juce::String> names;   // in the order of the Perspective patterns, as everywhere
+            for (const auto& [name, count] : info->second.perspectives) names.push_back(name);
+            engine.sortPerspectives(names);
+            for (const auto& name : names)
+            {
+                const auto on = info->second.perspectiveOn.find(name.toLowerCase());
+                perspectives.push_back({ name, on == info->second.perspectiveOn.end() || on->second });
+            }
+            if (perspectives != stop->noisePerspectives || stop->noiseHeld != info->second.held || stop->noiseRelease != info->second.hasRelease)
+            {
+                stop->noisePerspectives = perspectives;
+                stop->noiseHeld = info->second.held;
+                stop->noiseRelease = info->second.hasRelease;
+                flagsChanged = true;
+            }
+        }
     }
+    // The flagged rows whose noise is gone leave the table and the grid; a stop that carries a key no noise has is a
+    // noise's button no more.
+    std::vector<Stop*> gone;
+    for (int manual = 0; manual < divisions; ++manual)
+    {
+        auto& entries = manualConfigs[(size_t)manual].stopBuild.entries;
+        for (size_t i = 0; i < entries.size();)
+        {
+            if (entries[i].noiseKey.isEmpty() || wanted.count(entries[i].noiseKey.toLowerCase()) > 0) { ++i; continue; }
+            if (Stop* stop = stopOfRow(manual, entries[i].name)) { stop->noiseButton = 0; stop->noiseKey.clear(); gone.push_back(stop); ++i; }
+            else { entries.erase(entries.begin() + (long)i); tableChanged = true; }
+        }
+    }
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->noiseKey.isNotEmpty() && wanted.count(stop->noiseKey.toLowerCase()) == 0) { stop->noiseButton = 0; stop->noiseKey.clear(); flagsChanged = true; }
     for (auto* stop : gone)
     {
         CrashHandler::note("Noise button \"" + stop->name + "\" taken off the grid: its noise is gone");
@@ -38241,6 +38295,7 @@ void MainComponent::syncNoiseButtonStops()
     }
     if (voicer != nullptr)
         for (const auto& [division, names] : placed) voicer->placeUnderDivision(division, names);   // 0.9.128: under the last row of the division's stops, a free row between
+    if (tableChanged) { configurationDirty = true; saveSettings(); }
     if (!changed.empty()) { configurationDirty = true; finishInPlaceStopEdit(changed); }   // new rows of the table: saved with the organ
     else if (flagsChanged && gone.empty() && voicer != nullptr) voicer->rebuildUI(stopsContent, stopsViewport);   // the rows of the buttons know now what they are
 }
@@ -38249,7 +38304,7 @@ void MainComponent::syncNoiseButtonStops()
 void MainComponent::applyNoiseButtons()
 {
     for (auto* stop : engine.getStops())
-        if (stop != nullptr && stop->noiseButton != 0 && stop->enabled) engine.noiseEvent("button", stop->name, true, stop->primaryManual);
+        if (stop != nullptr && stop->noiseButton != 0 && stop->noiseKey.isNotEmpty() && stop->enabled) engine.noiseEvent("button", stop->noiseKey, true, stop->primaryManual);
 }
 
 // THE NOISES WINDOW: "a Stop List for the noises" - one row per unit, where it is set, never played: on / off, what

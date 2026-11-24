@@ -562,6 +562,10 @@ private:
             {
                 juce::String name, alias;
                 bool customName = false;                      // typed by the user, not derived from the folders
+                // 0.9.132 (the user: "řádek ruchu se má poznat strukturálně ... taková věc má mít svůj příznak"): the row
+                // is the BUTTON OF A NOISE - the key of that noise's button in the noises' model (never a guess from
+                // the row's name or its empty folders). Saved as "noise"; set when the Noises put the button on the grid.
+                juce::String noiseKey;
                 bool child = false;                           // indented under the previous non-child row (stop folder)
                 int sampleOffset = 0;                         // the stop's transposition: the files' numbers minus the keys they land on (0.8.155; Stop List "Transp.")
                 bool sampleOffsetSet = false;                 // known ("sampleOffset" in the file: a definition, the user, or found before); unset: the loader finds it from the smpl pitches (0.8.158)

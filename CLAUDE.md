@@ -5489,7 +5489,24 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the alias is free), a refused right-button drag is logged. LESSON: a rule that names a kind of row ("the button of
   a noise") is tested in every STATE the dialog can put the row in - plain, indented, with children, in another
   division - before it is delivered; I had pictured the plain row only. Verified with ORGAN_TEST_INDENT (the blower
-  under Ped_Schalmey4) + the Stop List's picture. RULES FOR EVER: a card is never closed with sound in its
+  under Ped_Schalmey4) + the Stop List's picture. 0.9.132 (the user, right: "řádek ruchu by se měl především poznat
+  strukturálně ... taková věc má mít svůj příznak, protože je z dialogu Noise. Kurva!!! Nezaváděj úplně liché a
+  sekundární podmínky pro rozpoznávání čehokoliv"): THE FLAG. `ManualConfig::StopBuild::Entry::noiseKey` (the key of
+  the noise's button in the model = its name there, lower case; JSON "noise" on the stopBuild entry, written and read
+  by the stopBuild var functions, copied by deriveStopBuildFromEngine from `Stop::noiseKey`) - the ONLY thing that makes
+  a row a noise's button. `Stop::noiseKey` on its stop: the engine's setStopEnabled triggers the noise by it,
+  `noiseButtonStop(key)` finds the stop by it, the voicing row's perspective request uses it. syncNoiseButtonStops per
+  noise button of the model: (1) the row with that noiseKey; (2) none, but a stop still carries the key (a move wrote
+  its row anew) -> that stop's row gets the flag back; (3) a file of 0.9.127-0.9.131: the row named as the button,
+  without folders, is flagged ONCE (log "... (from an older file) flagged"); (4) else a new row with the flag
+  (`uniqueStopBuildName`) + its container stop, OFF. Flagged rows whose noise is gone leave; a stop with a key no noise
+  has is unflagged. The Stop List's `isNoiseEntry` = `entry.noiseKey.isNotEmpty()`; the row's name is editable again
+  (the name is no identity). The merge skips added rows by the flag (the name rule only for older files).
+  RULE (his, for ever): WHAT A THING IS, IT CARRIES AS ITS OWN FLAG / ID IN THE MODEL from the moment it is made -
+  never recognise a kind of row, stop or button by secondary signs (its name, empty folders, not indented ...); such
+  a guess is allowed only once, as a migration of an older file, and is logged. Verified: a fresh import saves
+  "noise": "<key>" on four rows (the blower's with child true after ORGAN_TEST_INDENT), the Stop List pictures the
+  indented row as Noise; a file saved by 0.9.131 gets its four rows flagged at the load. RULES FOR EVER: a card is never closed with sound in its
   buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
   and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
   by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,

@@ -483,7 +483,8 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
                 // 0.9.127: the button of a noise (blower, zimbelstern: a row without folders or children) is the
                 // noises' own - they are merged further down and their buttons come onto the grid by themselves.
                 const size_t next = ++entryIndex;
-                if (entry.folders.empty() && !entry.child && addedNoiseButtons.count(entry.name.toLowerCase()) > 0
+                if (entry.noiseKey.isNotEmpty()) continue;   // 0.9.132: by the row's flag
+                if (entry.folders.empty() && !entry.child && addedNoiseButtons.count(entry.name.toLowerCase()) > 0   // a file saved before rows had the flag
                     && (next >= addedBuild.entries.size() || !addedBuild.entries[next].child)) continue;
                 std::map<juce::String, ManualConfig::StopBuild::FolderRef> folders;
                 for (const auto& [perspective, ref] : entry.folders)

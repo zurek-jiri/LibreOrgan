@@ -191,6 +191,7 @@ struct Stop
     // switches (the same values as in the Noises window), whether it loops while on and has a release file.
     std::vector<std::pair<juce::String, bool>> noisePerspectives;
     bool noiseHeld = false, noiseRelease = false;
+    juce::String noiseKey;   // 0.9.132: the key of the noise this stop is the button of (from its table row's flag); the noise is found by it, never by the stop's name
     int noiseButton = 0;
     juce::File folder;
     juce::File tree;   // the folder tree this stop was loaded from

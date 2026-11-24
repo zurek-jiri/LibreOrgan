@@ -12806,7 +12806,7 @@ void SamplerEngine::setStopEnabled(Stop* stop, bool enabled)
     stop->enabled = enabled;
     impl->reclaimFinished();
     if (stop->noiseButton != 0)   // 0.9.127: a noise's own button on the grid - its noise starts / ends
-        impl->noiseTrigger("button", stop->name.toLowerCase(), enabled, stop->primaryManual);
+        impl->noiseTrigger("button", stop->noiseKey.isNotEmpty() ? stop->noiseKey : stop->name.toLowerCase(), enabled, stop->primaryManual);
     else
     {   // the drawknob's noise - the ranks of a stop folder are ONE button (their master's)
         const Stop* button = stop->groupMasterPtr != nullptr ? stop->groupMasterPtr : stop;
