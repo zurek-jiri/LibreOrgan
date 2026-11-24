@@ -184,6 +184,10 @@ struct Stop
     Stop* groupMasterPtr = nullptr;
     int groupChildOrdinal = 0;  // a stop folder's child: its number among the children (1, 2 ...), for the tremulant phase drift; 0 otherwise
     bool container = false;     // a stop folder's master without samples of its own (only its children sound)
+    // 0.9.127: the button of a NOISE of its own on the grid (blower, zimbelstern, rossignol, calcant ...): a stop
+    // without pipes whose switch starts and ends that noise (set by MainComponent::syncNoiseButtonStops after every
+    // load). 1 = an effect; 2 = one that runs from the load on (the blower): the general cancel leaves it alone.
+    int noiseButton = 0;
     juce::File folder;
     juce::File tree;   // the folder tree this stop was loaded from
     // The storage the samples were decoded with (SamplerEngine::storageSignature
@@ -1582,6 +1586,7 @@ public:
     struct NoiseSpec
     {
         juce::String kind, edge, ref, perspective, group;
+        juce::String unit;                                          // the caller's own note (its unit of noise); the engine does not read it
         int manual = -1, note = 60;
         float gainDb = 0.0f;
         juce::StringArray files, releaseFiles;
@@ -1597,6 +1602,9 @@ public:
     void setNoisesEnabled(bool enabled);
     bool getNoisesEnabled() const noexcept { return noisesEnabled.load(std::memory_order_relaxed); }
     void setNoiseVolumeDb(float db) noexcept;
+    // The level of every sound on top of its own (the unit's volume x its perspective's; 0 = the unit is off), in the
+    // order of the specs given to loadNoises; a sounding held noise follows at once.
+    void setNoiseGains(const std::vector<float>& gains);
     void setNoisesArmed(bool armed) noexcept { noisesArmed.store(armed, std::memory_order_relaxed); }
     // The footage the stop's caption shows (written in its name or alias, else the
     // measured one that displayName() appends, else the smpl footage): the base

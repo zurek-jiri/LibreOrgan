@@ -5350,6 +5350,61 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   80 ms deduped; a cap per 100 ms; mute while loading), keys through a call from MainComponent (physical division, or
   every routed note with "Key noises follow the couplers"); a button without a noise of its own takes a free one by the
   hash of its name.
+  THE FINAL DESIGN (24 Nov 2026 evening, the user's GO: "Udělej to všecko a dej rovnou na gitHub ve všech mutacích"; his
+  words: a row of the Noises window is "jakási jednotka určitého druhu ruchu - Manuál I, Pedál, Tremulant II, Zimbelstern,
+  Blower"; "tlačítka musí být na gridu divize jako rejstříky. V okně noises se jen nastavují"; "u tremulantu nepotřebujeme
+  táhlo a jeho zvuk. Ten je současně nahraný v běhu"; the grid button of a noise has its own voicing row whose sliders go
+  "do stejného místa jako volume slider v dialogu Noise ... alias taky ... nesmí duplikovat volby v Noises, jen je to druhá
+  cesta k témuž"; NEVER the word "písty"): (1) UNITS: `MainComponent::noiseUnitKey(fields)` = "keys|<division>",
+  "tremulant|<division>", "drawknobs", "couplers", "button|<name lower>"; the model's "units" [{key, on, volumeDb,
+  perspectives [{name, db}]}]; `noiseUnitGain(key, perspective)` -> `applyNoiseGains()` over `noiseLoadedUnits` (unit +
+  perspective of every loaded sound, in the engine's order = the spec order; `NoiseSpec::unit`) ->
+  `engine.setNoiseGains(gains)` (NoiseSound::trim; 0 = off; held voices follow through `refreshHeldNoiseGains`).
+  `noiseUnits()` (public struct NoiseUnit) feeds the window; `setNoiseUnitOn / setNoiseUnitVolume(key, perspective or "*",
+  dB) / changeNoiseUnit(key, kind, division) / removeNoiseUnit`. (2) GRID BUTTONS: `Stop::noiseButton` (1 a noise's button,
+  2 one that runs from the load = the blower) on a CONTAINER stop without pipes; `syncNoiseButtonStops()` (noisesTick: at
+  arming and twice a second while idle with no modal box) flags the stops named as the model's "buttons", adds missing rows
+  (stopBuild entry customName + `engine.addContainerStop`, switched on when the model says "on"), takes off the buttons whose
+  noise is gone (`removeStopFromGrid`); the engine's `setStopEnabled` starts / ends the noise ("button", name lower);
+  `applyNoiseButtons()` after arming. An empty container is NOT a grid item (Voicer::gridItems) - not counted as a stop,
+  untouched by the measurement. Tutti (`enableAllStops`) skips them, the general cancel skips `noiseButton == 2`, the
+  crescendo's `setRegistrationItem` never switches one; the combinations hold them like stops. A publish keeps "runs" on
+  the button entry and switches "on" off. (3) ONE VOLUME: a button unit's volume IS `stop->db` of its grid stop (the
+  voicing row's Stop volume; `StopRow` shows globalSlider for a noiseButton container, row height expandedControlsHeight);
+  `noiseButtonVolumesCheck()` (every timer tick: a sum over the flagged stops' db) -> applyNoiseGains, so the voicing row,
+  the Noises window, a loaded voicing and a combination all act at once. The alias is the stop's alias. (4) TREMULANT: no
+  drawknob click - noisesVarFromPlan and the folder reading drop kind "tremulant", noiseSpecs / noiseUnits skip it in older
+  files, the engine's setManualTremulant fires "tremulantRun" alone. (5) The top bar's "Noises" button (key "noises", after
+  Stop List) opens `NoiseUnitsContent` (ModelessDialog "Noises", placeDialog key "noises2", F1 -> "The Noises window").
+  (6) Save / Load Voicing ("noiseUnits" in the file) and the combinations with "hold the voicing" (`MemorySlot::noiseUnits`,
+  scene key "noiseUnits"): `noiseUnitsVoicingNow()` / `applyNoiseUnitsVoicing()`. (7) MERGE (MainComponentMerge.cpp before
+  "What stays the base's"): the added organ's sounds join unless the base has the same trigger / moment / perspective /
+  division / key or the same files; stop refs follow `renamed` / `sharedStopNames`; files of another library root by their
+  full path; buttons and units added. Hook `ORGAN_TEST_NOISE_UNITS="<s>|volume|<key>|<perspective or *>|<dB>^<s>|on|<key>|0^
+  <s>|kind|<key>|<kind>|<division>^<s>|remove|<key>^<s>|list"`; `ORGAN_TEST_NOISE_BUTTON="<name>|<seconds>"` presses the
+  GRID stop now. Test script %TEMP%\test_0127b.ps1 [-Odf -Seconds -Env "A=B;C=D" -Match -Tag -KeepConfig].
+  RUN (24 Nov 2026 evening, the Stralsund Jakobi Demo definition, ~200 s a run: the load alone is 100 s): the import puts
+  "Blower On/Off", "Calcant", "P. Pauke" on the pedal's grid and "OW. Cimbelstern" on III, only the blower running;
+  11 units listed; unit volume / perspective volume / unit off / the button's volume (= stop->db) set and read back; key
+  noises per division and perspective; a drawknob's own noise; a coupler's noise by ORGAN_TEST_MOUSE "II/P|click"
+  (ORGAN_TEST_CLICK does NOT work on a header's coupler button: they act on the mouse, not on onClick); Tutti and X leave
+  the noise buttons alone; Save / Load Voicing bring a unit's volume back; the saved configuration loads with its button
+  rows (nothing "put on the grid" again); kind change button -> tremulant takes the button off the grid; a unit removed;
+  the organ merged into itself: "0 stop(s) added ... the noises of the added organ are the loaded organ's already";
+  kerneltest OK, self-test 0 WRONG; pictured: the Noises window, the Editor's Noises section (Plug-ins header in its
+  place), the grid with the buttons, the Cimbelstern's voicing row (text, Alias, Stop volume). FOUR FAULTS FOUND BY THE
+  RUNS: (a) `engine.addContainerStop` makes a stop that is ON - every new noise button sounded at once (now
+  setStopEnabled(stop, the model's "on")); (b) a console noise had no division (-1 -> everything on the pedal): the
+  plan gives a button `divisionIndexByPrefix(switchName)`, else the division of the STOPS carrying the same mark ("OW."
+  beside "OW. Principal 8" - Stralsund's divisions are called GO / Positif / Recit, the marks are UW / HW / OW); (c) the
+  Noises window showed a button's old volume after the voicing row moved it - a 4 Hz timer of the window reads the
+  stops (`Callbacks::buttonVolume`); (d) the merge added the other organ's noise-button ROWS as stop folders "Blower
+  On/Off (2)" - `addedNoiseButtons` skips them (a row without folders or children named as a button). SEEN, test only:
+  after a portable load the default-card search moves every route and the blower's held voices are dropped and started
+  again four times in three seconds (keepHeldNoises) - not so on a configuration of this computer. NOT RUN: a merge of
+  ANOTHER organ's noises (other library root, renamed stops), the folder reading's elimination rule, the combinations
+  that hold the voicing with noise units, a noise button dragged to another division by the mouse, the alias typed in
+  its voicing row, Linux / macOS (CI compiles them for the first time with this push).
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,

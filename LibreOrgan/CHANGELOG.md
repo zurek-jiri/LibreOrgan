@@ -16,11 +16,22 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 
 ### Added
 - **Noises.** The mechanical sounds of the organ: the keys (press and release,
-  with their variants in turn), the drawknobs, the couplers, the tremulant's
-  knob and its running, the blower, and the effects with a button of their own
+  with their variants in turn), the drawknobs, the couplers, a running
+  tremulant, the blower, and the effects with a button of their own
   (calcant bell, rossignol, zimbelstern, drum ...). A noise is played as its
   file is - never tuned, never touched by wind, tremulant or swell - through
   the route of its division and perspective.
+  - **The Noises window** (the top bar's *Noises* button, beside Stop List):
+    one row per noise - the keys of a keyboard, a tremulant, the drawknobs,
+    the couplers, each button of its own - with its switch, its kind and
+    division, its volume and the volume of each of its perspectives.
+  - **Buttons on the grid.** Blower, zimbelstern and the like stand on the grid
+    of their division among the stops (dragging, MIDI learn, combinations).
+    Their voicing row has the Stop volume - the same value the Noises window
+    shows - and the alias. Tutti leaves them alone, the general cancel leaves
+    a blower running, the crescendo never touches them.
+  - Save / Load Voicing carry the noises' switches and volumes; so do the
+    combinations that hold the voicing. Merging another organ adds its noises.
   - An organ made from a Hauptwerk definition takes its noises with it. The
     definition is not loaded: as with the pipes, it is read for where the
     samples lie and what they belong to.
@@ -33,9 +44,8 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   - A key without a recording takes its neighbour's. A button without a
     drawknob noise of its own (a transmission, an extension) takes one of the
     free ones.
-  - *Noise buttons* (a window that stays open), *Noises on*, *Noises volume*,
-    *Key noises follow the couplers*. A published configuration opens with
-    every noise button off.
+  - *Noises on*, *Noises volume*, *Key noises follow the couplers*. A
+    published configuration opens with every noise button off.
 - **The polyphony limit belongs to the organ.** Every organ keeps its own limit
   on this computer; it is taken back when the organ is loaded. It never
   travels in a configuration file.

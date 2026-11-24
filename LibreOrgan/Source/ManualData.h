@@ -1411,14 +1411,13 @@ static const char* const kManualText_part6 =
     "## 6.6 Noises\n"
     "\n"
     "The mechanical sounds of the organ: the keys (press and release), the\n"
-    "drawknobs, the couplers, the tremulant's knob and its running, the blower, and\n"
-    "the effects with a button of their own (calcant bell, rossignol, zimbelstern,\n"
-    "drum ...). A noise is played as its file is - never tuned, never touched by\n"
+    "drawknobs, the couplers, a running tremulant, the blower, and the effects with\n"
+    "a button of their own (calcant bell, rossignol, zimbelstern, drum ...). A noise\n"
+    "is played as its file is - never tuned, never touched by the wind, the\n"
     ;
 static const char* const kManualText_part7 =
-    "the wind, the tremulant or the swell - through the route of its division and\n"
-    "perspective, so every perspective has its own recording where the sample\n"
-    "folders hold one.\n"
+    "tremulant or the swell - through the route of its division and perspective, so\n"
+    "every perspective has its own recording where the sample folders hold one.\n"
     "\n"
     "- **Where they come from.** An organ made from a Hauptwerk definition takes its\n"
     "  noises with it. An organ you already have gets them by\n"
@@ -1432,11 +1431,35 @@ static const char* const kManualText_part7 =
     "- **Drawknobs.** A stop keeps the noise the definition gives it; a button\n"
     "  without one (a transmission, an extension) takes one of the free drawknob\n"
     "  noises, always the same.\n"
-    "- **Buttons of their own.** *Configuration Editor > Noises >\n"
-    "  [Noise buttons](#noise-buttons)*: a window that stays open while you play.\n"
-    "  Their state is saved with the organ; a published configuration opens with\n"
-    "  all of them off.\n"
-    "- **Level.** [Noises on](#noises-on) and [Noises volume](#noises-volume).\n"
+    "- **Tremulant.** The noise of the running tremulant, while it is on.\n"
+    "- **Buttons of their own.** Blower, zimbelstern and the like stand on the grid\n"
+    "  of their division among the stops: dragged, MIDI-learned, held by the\n"
+    "  combinations like a stop. Their voicing row has the Stop volume and the\n"
+    "  alias. Tutti leaves them alone; the general cancel leaves a blower running.\n"
+    "  A published configuration opens with all of them off.\n"
+    "\n"
+    "### The Noises window\n"
+    "\n"
+    "The top bar's **Noises** button: one row per noise - the keys of a keyboard, a\n"
+    "tremulant, the drawknobs, the couplers, each button of its own.\n"
+    "\n"
+    "- **On** - the noise on or off.\n"
+    "- **Kind** and **Division** - what starts it and where; change them when a\n"
+    "  folder was read wrong.\n"
+    "- **Volume** - of the noise as a whole. For a button it is the Stop volume of\n"
+    "  its voicing row: one value, shown in both places.\n"
+    "- **One column per perspective** - the number of its files and its own volume,\n"
+    "  on top of the noise's.\n"
+    "- **x** - takes the noise out of the organ (the files stay on the disk).\n"
+    "- Below: [Noises on](#noises-on), the volume of all\n"
+    "  ([Noises volume](#noises-volume)),\n"
+    "  [Key noises follow the couplers](#key-noises-follow-the-couplers) and\n"
+    "  *Add folder...* ([Noises of a folder](#noises-of-a-folder)).\n"
+    "\n"
+    "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
+    "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
+    "is on. Merging another organ adds its noises; only what the loaded organ\n"
+    "already has is left out.\n"
     "\n"
     "Nothing clicks while an organ loads.\n"
     "\n"
@@ -1593,6 +1616,8 @@ static const char* const kManualText_part7 =
     "stopped offers the same in its box: *Pack what is needed and load the rest*.\n"
     "\n"
     "### Sample rate on loading\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
     "high-quality filter. *36 kHz* / *32 kHz*: what lies above 17 or 15 kHz goes -\n"
@@ -1616,8 +1641,6 @@ static const char* const kManualText_part7 =
     "\n"
     "What the reverbs cost now. Information.\n"
     "\n"
-    ;
-static const char* const kManualText_part8 =
     "### Maximum polyphony\n"
     "\n"
     "The voices that may sound at once (64 to 500 000, default 30 000); the oldest\n"
@@ -1795,6 +1818,8 @@ static const char* const kManualText_part8 =
     "A gentle stroke on a stop without velocity layers starts with this fade-in at\n"
     "the lowest velocity (default 100 ms), shrinking to nothing at the full\n"
     "strike. [Velocity layers](#35-velocity-layers).\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "### Key velocity: treble cut on the attack at the lowest velocity\n"
     "\n"
@@ -1818,8 +1843,6 @@ static const char* const kManualText_part8 =
     "\n"
     "### Celeste beats: top of compass vs bottom\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
     "\n"
@@ -1997,6 +2020,8 @@ static const char* const kManualText_part9 =
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
@@ -2020,8 +2045,6 @@ static const char* const kManualText_part9 =
     "Off by default: a piston that holds nothing changes nothing. On: it is a\n"
     "general cancel, like *X*.\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "### Show the Tutti button\n"
     "\n"
     "On by default. Hidden, its MIDI assignment still works.\n"
@@ -2199,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "How slowly the shutters follow the pedal (50 to 2000 ms, default 300).\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "### Audio and effects\n"
     "\n"
     "*Audio routing...* opens the [Audio routing](#audio-routing): the sound\n"
@@ -2222,8 +2247,6 @@ static const char* const kManualText_part10 =
     "### Tremulant depth\n"
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
-    ;
-static const char* const kManualText_part11 =
     "60 and 100 % of it.\n"
     "\n"
     "### Tremulant phase drift between ranks\n"
@@ -2316,17 +2339,17 @@ static const char* const kManualText_part11 =
     "Off (default): a key's noise is heard once, on the keyboard that is played.\n"
     "On: every division a coupler reaches adds the noise of its own key.\n"
     "\n"
-    "### Noise buttons\n"
+    "### Noises window\n"
     "\n"
-    "Opens the window with the master switch, the volume and the organ's noise\n"
-    "buttons (blower, calcant, rossignol, zimbelstern ...).\n"
+    "Opens [The Noises window](#the-noises-window), as the top bar's Noises button\n"
+    "does.\n"
     "\n"
     "### Noises of a Hauptwerk definition\n"
     "\n"
     "Adds the noises of the organ's Hauptwerk definition to the loaded organ.\n"
     "LibreOrgan Sampler does not load the definition: as with the pipes, it is read\n"
     "for where the samples lie and what they belong to - here a key, a drawknob, a\n"
-    "coupler, the tremulant or a button of its own. A drawknob's noise finds its stop by the\n"
+    "coupler, a running tremulant or a button of its own. A drawknob's noise finds its stop by the\n"
     "sample folder the stop plays, so renamed and rearranged stops keep theirs.\n"
     "Stops, transmissions, voicing and the grid stay as they are. Save the\n"
     "configuration afterwards.\n"
@@ -2336,8 +2359,9 @@ static const char* const kManualText_part11 =
     "Without a definition: reads a folder of noises by the names of its folders -\n"
     "the perspective, the moment (atk / rel, on / off, down / up, pull / push), the\n"
     "kind (keys, drawknobs, couplers, tremulant; anything else becomes a button\n"
-    "named after its folder) and the division. It is a guess; what the names do not\n"
-    "tell is missed. Drawknob noises are given to the buttons at random.\n"
+    "named after its folder) and the division. It is a guess; what the names did\n"
+    "not tell is put right in [The Noises window](#the-noises-window). Drawknob\n"
+    "noises are given to the buttons at random.\n"
     "\n"
     "### Noises of this organ\n"
     "\n"
@@ -2400,6 +2424,8 @@ static const char* const kManualText_part11 =
     "# 10. Technical details\n"
     "\n"
     "The chapters above link here. Nothing in this part is needed to play.\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "## 10.1 The smpl chunk and the file names\n"
     "\n"
@@ -2424,8 +2450,6 @@ static const char* const kManualText_part11 =
     "up to 500 ms, `rel1500` up to 1.5 s, plain `rel` (= `rel99999`) for the rest,\n"
     "files named like the attacks.\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "Folder names: the stop's label is built from the folder path; a folder nested\n"
     "inside a folder of the same name (perspective prefix, footage and an L/R mark\n"
     "aside: \"02-direct-HW_Bl.Flute\" inside \"HW_Bl.Flute2\") adds nothing. A single\n"
@@ -2602,6 +2626,8 @@ static const char* const kManualText_part12 =
     "| 16-bit | 48 kHz | full rate | off | 49 GB |\n"
     "| 16-bit | 48 kHz | full rate | on | 15 GB |\n"
     "| 16-bit | 48 kHz | half the rate | off | 32 GB |\n"
+    ;
+static const char* const kManualText_part13 =
     "| 16-bit | 48 kHz | half the rate | on | 12 GB |\n"
     "| 16-bit | 32 kHz | half the rate | on | 8 GB |\n"
     "\n"
@@ -2626,8 +2652,6 @@ static const char* const kManualText_part12 =
     "*Measurement limit of DSP power* and the driver never called late; the first\n"
     "breakup narrowed down by keys, by rate and finally by the share of stops\n"
     "engaged, so that the result is what the computer renders, not the last\n"
-    ;
-static const char* const kManualText_part13 =
     "coarse step. Below 1000 voices the result is taken as measured. When all\n"
     "keys at the fastest rate produce no more voices and the sound stays clean,\n"
     "the organ itself is the limit. Afterwards the level glides up at 26 dB/s\n"

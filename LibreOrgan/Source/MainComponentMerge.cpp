@@ -318,6 +318,9 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         return (int)mergedPool.size() - 1;
     };
 
+    std::set<juce::String> addedNoiseButtons;   // 0.9.127: the names of the added organ's noise buttons (their rows are not stops)
+    if (auto* list = added.getProperty("noises", juce::var()).getProperty("buttons", juce::var()).getDynamicObject())
+        for (const auto& prop : list->getProperties()) addedNoiseButtons.insert(prop.value.getProperty("name", "").toString().toLowerCase());
     auto addedManuals = added.getProperty("manualKeyboards", juce::var());
     auto baseManuals = base.getProperty("manualKeyboards", juce::var());
     auto* addedArray = addedManuals.getArray();
@@ -474,8 +477,14 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         std::vector<ManualConfig::StopBuild::Entry> addedEntries;   // with tree = merged pool index
         if (addedBuild.active)
         {
+            size_t entryIndex = 0;
             for (auto entry : addedBuild.entries)
             {
+                // 0.9.127: the button of a noise (blower, zimbelstern: a row without folders or children) is the
+                // noises' own - they are merged further down and their buttons come onto the grid by themselves.
+                const size_t next = ++entryIndex;
+                if (entry.folders.empty() && !entry.child && addedNoiseButtons.count(entry.name.toLowerCase()) > 0
+                    && (next >= addedBuild.entries.size() || !addedBuild.entries[next].child)) continue;
                 std::map<juce::String, ManualConfig::StopBuild::FolderRef> folders;
                 for (const auto& [perspective, ref] : entry.folders)
                 {
@@ -1174,6 +1183,115 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
             }
         voicing->setProperty("stopGrid", juce::var(grid.get()));
         baseRoot->setProperty("voicingSettings", juce::var(voicing.get()));
+    }
+
+    //--------------------------------------------------------------------------
+    // 0.9.127 THE NOISES of the added organ join the loaded organ's (the user: "pokud jsou tam nová rejstříková
+    // táhla, musí je přidat. Také nové klaviatury nebo zimbelstejny ... Zahodit může pouze to, co by se dublovalo"):
+    // a sound the base has already (the same trigger, moment, perspective, division and key - or the same file) is
+    // left out, everything else is added; the drawknob noises follow their stops' new names; the buttons and the
+    // units' volumes of the added organ come along. The files of another library root are named by their full path.
+    if (const auto* addedSounds = added.getProperty("noises", juce::var()).getProperty("sounds", juce::var()).getArray())
+    {
+        juce::File addedLibrary;
+        for (size_t i = 0; i < addedPool.size() && addedLibrary == juce::File(); ++i)
+        {
+            if (addedPool[i] == juce::File() || juce::File::isAbsolutePath(addedPoolKeys[i])) continue;
+            const auto parts = juce::StringArray::fromTokens(addedPoolKeys[i], "/\\", "");
+            juce::File walk = addedPool[i];
+            bool fits = true;
+            for (int part = parts.size(); --part >= 0 && fits;)
+            {
+                if (parts[part].isEmpty()) continue;
+                fits = walk.getFileName().equalsIgnoreCase(parts[part]);
+                walk = walk.getParentDirectory();
+            }
+            if (fits) addedLibrary = walk;
+        }
+        const juce::File baseLibrary = libraryRootOnThisComputer();
+        const bool sameLibrary = addedLibrary != juce::File() && baseLibrary != juce::File() && pathKey(addedLibrary.getFullPathName()) == pathKey(baseLibrary.getFullPathName());
+        auto filesHere = [&](const juce::String& text) -> juce::String
+        {
+            const auto folder = text.upToFirstOccurrenceOf("//", false, false);
+            if (text.isEmpty() || sameLibrary || addedLibrary == juce::File() || juce::File::isAbsolutePath(folder)) return text;
+            return addedLibrary.getChildFile(folder).getFullPathName() + "//" + text.fromFirstOccurrenceOf("//", false, false);
+        };
+        juce::var baseNoises = baseRoot->getProperty("noises");
+        if (!baseNoises.isObject())
+        {
+            juce::DynamicObject::Ptr fresh = new juce::DynamicObject();
+            fresh->setProperty("enabled", added.getProperty("noises", juce::var()).getProperty("enabled", true));
+            fresh->setProperty("volumeDb", added.getProperty("noises", juce::var()).getProperty("volumeDb", 0.0));
+            baseNoises = juce::var(fresh.get());
+        }
+        auto* noisesObject = baseNoises.getDynamicObject();
+        juce::Array<juce::var> sounds;
+        if (const auto* baseSounds = baseNoises.getProperty("sounds", juce::var()).getArray()) sounds = *baseSounds;
+        std::set<juce::String> have;
+        auto identityOf = [](const juce::StringArray& fields) { return (fields[0] + "\t" + fields[1] + "\t" + fields[2] + "\t" + fields[3] + "\t" + fields[4] + "\t" + fields[5]).toLowerCase(); };
+        for (const auto& text : sounds)
+        {
+            auto fields = juce::StringArray::fromTokens(text.toString(), "\t", "");
+            if (fields.size() < 10) continue;
+            if (fields[2].isNotEmpty() || fields[0] == "keys") have.insert(identityOf(fields));
+            have.insert((fields[0] + "\t" + fields[1] + "\tfiles\t" + fields[8]).toLowerCase());
+        }
+        int noisesAdded = 0, noisesThere = 0;
+        for (const auto& text : *addedSounds)
+        {
+            auto fields = juce::StringArray::fromTokens(text.toString(), "\t", "");
+            if (fields.size() < 10 || fields[0] == "tremulant") continue;
+            const int division = fields[4].getIntValue();
+            if (division > mergedCount) continue;   // a division the merged organ does not have
+            if (fields[0] == "stop" && fields[2].isNotEmpty())
+            {   // "<division>|<row name>": the row as it is called here now
+                const int manual = fields[2].upToFirstOccurrenceOf("|", false, false).getIntValue();
+                const auto name = fields[2].fromFirstOccurrenceOf("|", false, false);
+                juce::String here = name;
+                for (const auto& [key, newName] : renamed)
+                    if (key.upToFirstOccurrenceOf("|", false, false).getIntValue() == manual && key.fromFirstOccurrenceOf("|", false, false).equalsIgnoreCase(name)) here = newName;
+                if (const auto shared = sharedStopNames.find(juce::String(manual) + "|" + stopBuildKey(name)); shared != sharedStopNames.end()) here = shared->second;
+                fields.set(2, juce::String(manual) + "|" + here);
+            }
+            fields.set(8, filesHere(fields[8]));
+            fields.set(9, filesHere(fields[9]));
+            const auto identity = identityOf(fields);
+            const auto byFiles = (fields[0] + "\t" + fields[1] + "\tfiles\t" + fields[8]).toLowerCase();
+            if (((fields[2].isNotEmpty() || fields[0] == "keys") && have.count(identity) > 0) || have.count(byFiles) > 0) { ++noisesThere; continue; }
+            have.insert(identity);
+            have.insert(byFiles);
+            sounds.add(fields.joinIntoString("\t"));
+            ++noisesAdded;
+        }
+        // The buttons of their own and the units' settings the base does not have yet.
+        juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+        std::set<juce::String> buttonNames;
+        int buttonIndex = 0, buttonsAdded = 0;
+        for (const bool fromAdded : { false, true })
+            if (auto* list = (fromAdded ? added.getProperty("noises", juce::var()) : baseNoises).getProperty("buttons", juce::var()).getDynamicObject())
+                for (const auto& prop : list->getProperties())
+                {
+                    const auto name = prop.value.getProperty("name", "").toString();
+                    if (name.isEmpty() || !buttonNames.insert(name.toLowerCase()).second) continue;
+                    buttons->setProperty(juce::Identifier("b" + juce::String(++buttonIndex)), fromAdded ? prop.value.clone() : prop.value);
+                    if (fromAdded) ++buttonsAdded;
+                }
+        juce::Array<juce::var> units;
+        std::set<juce::String> unitKeys;
+        for (const bool fromAdded : { false, true })
+            if (const auto* list = (fromAdded ? added.getProperty("noises", juce::var()) : baseNoises).getProperty("units", juce::var()).getArray())
+                for (const auto& unit : *list)
+                    if (unitKeys.insert(unit.getProperty("key", "").toString()).second) units.add(fromAdded ? unit.clone() : unit);
+        if (noisesAdded > 0 || buttonsAdded > 0)
+        {
+            noisesObject->setProperty("sounds", sounds);
+            noisesObject->setProperty("buttons", juce::var(buttons.get()));
+            if (!units.isEmpty()) noisesObject->setProperty("units", units);
+            baseRoot->setProperty("noises", baseNoises);
+            done.add(juce::String(noisesAdded) + " noise sound(s) of the added organ added" + (buttonsAdded > 0 ? " with " + juce::String(buttonsAdded) + " button(s) of their own" : juce::String())
+                + (noisesThere > 0 ? "; " + juce::String(noisesThere) + " left out: the loaded organ has them" : juce::String()));
+        }
+        else if (noisesThere > 0) done.add("the noises of the added organ are the loaded organ's already (" + juce::String(noisesThere) + " sound(s))");
     }
 
     //--------------------------------------------------------------------------

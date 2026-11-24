@@ -357,7 +357,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // Recorded diapason of the stop (the 440 Hz normalisation is a global switch
     // in the Temperaments dialog).
     {
-        if (stop->container)
+        if (stop->container && stop->noiseButton != 0)
+            origText = "A noise of the organ (no pipes). Its perspectives' volumes: the Noises window.";
+        else if (stop->container)
             origText = juce::String("Stop folder (no pipes of its own). Each subordinate stop in its branch is voiced separately below ")
                 + juce::String(juce::CharPointer_UTF8("\xe2\x86\x93"));
         else if (!stop->tuningInfoAvailable) origText = "Orig. Pitch: no pitch data in the samples";
@@ -1030,7 +1032,10 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // Its caption "[N]" is set in setChildrenGetter: the getters are null here (0.8.183).
     oneShotToggle.setVisible(stopControls);
     releaseFadeBox.setVisible(stopControls);
-    globalSlider.setVisible(withPipes); globalLabel.setVisible(withPipes);
+    // 0.9.127: the button of a noise (blower, zimbelstern ...) has no pipes, but its Stop volume is the noise's
+    // volume - the same value the Noises window shows (one value, two ways to it).
+    const bool noiseVolume = showVoicing && !isTransmission() && stop->container && stop->noiseButton != 0;
+    globalSlider.setVisible(withPipes || noiseVolume); globalLabel.setVisible(withPipes || noiseVolume);
     gainSlider.setVisible(stopControls); gainLabel.setVisible(stopControls);
     attackSlider.setVisible(stopControls); attackLabel.setVisible(stopControls);
     attackDelaySlider.setVisible(false); attackDelayLabel.setVisible(false);   // 0.9.79: replaced by the "Attack per key" row (#228)
@@ -3484,7 +3489,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             // is a stop that seems loaded. Its row stays in the Stop List. Only after
             // such a load (0.8.153): the rule hid every NEW stop folder created on the
             // grid - empty until the user puts something into it (#77).
-            if (stop->container && groupChildren(stop).empty() && groupChildTransmissions(stop).empty()
+            if (stop->container && stop->noiseButton == 0 && groupChildren(stop).empty() && groupChildTransmissions(stop).empty()
                 && engine.lastLoadWasMemoryLimited()) continue;
             items.push_back({ stop, false, stop->name });
         }

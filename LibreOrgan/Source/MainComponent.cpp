@@ -1380,6 +1380,10 @@ MainComponent::MainComponent()
     stopListButton.setTooltip("The stop list of the whole organ: every division's stops, their sample folders per "
         "perspective, transmissions and stop folders; loads and unloads sample folders.");
     stopListButton.onClick = [this] { showStopBuildingDialog(-1); };
+    addAndMakeVisible(noisesButton);
+    noisesButton.setTooltip("The noises of the organ - key action, drawknobs, couplers, tremulants, blower, zimbelstern and the like: each on or off, "
+        "what it is, its volume and the volume of each of its perspectives. Their own buttons stand on the grid among the stops.");
+    noisesButton.onClick = [this] { showNoisesWindow(); };
     addChildComponent(guidedTourButton);   // visible on a teaching organ only (0.8.206)
     guidedTourButton.setTooltip("A tour of the console: what the stops, the stop folders, the transmissions, the couplers and the Stop List are, step by step, with the manual chapter of each.");
     guidedTourButton.onClick = [this] { startGuidedTour(); };
@@ -13439,6 +13443,7 @@ namespace
     {
         MemorySlot result;
         result.globalSliders = memory.globalSliders;   // 0.9.119: there only when the piston was stored with that option
+        result.noiseUnits = memory.noiseUnits;         // 0.9.127: the same for the noises' units ("hold the voicing")
         for (const auto& stopObj : memory.stopData)
         {
             if (!stopObj.isObject()) continue;
@@ -13639,7 +13644,7 @@ void MainComponent::setRegistrationItem(const std::string& key, bool on)
     }
     auto* stop = findStopForKey(engine.getStops(), fields);
     if (stop == nullptr) return;
-    if (fields[0] == "stop") engine.setStopEnabled(stop, on);
+    if (fields[0] == "stop") { if (stop->noiseButton == 0) engine.setStopEnabled(stop, on); }   // the crescendo never touches a noise's button (blower, zimbelstern)
     else if (fields[0] == "trans" && fields.size() >= 5)
     {
         const int index = fields[4].startsWith("id") ? stop->transmissionIndexOfId(fields[4].substring(2).getIntValue())   // 0.9.7
@@ -14748,6 +14753,7 @@ void MainComponent::saveVoicingToFile(const juce::File& file)
             }
 
             root->setProperty(juce::Identifier("stops"), stopsArray);
+            if (const auto units = noiseUnitsVoicingNow(); units.isArray() && units.size() > 0) root->setProperty("noiseUnits", units);   // 0.9.127: the noises' switches and volumes
             file.replaceWithText(juce::JSON::toString(root.get(), true));
             DBG("Stop settings saved to: " << file.getFullPathName());
             if (file.existsAsFile())
@@ -14978,6 +14984,7 @@ void MainComponent::loadVoicingFromFile(const juce::File& file)
 
             for (const auto& [stop, offset] : transpositions) setStopSampleOffset(stop, offset);
             voicer->updateStopStates();
+            applyNoiseUnitsVoicing(parsed.getProperty("noiseUnits", juce::var()));   // 0.9.127: the noises this organ has; a file without the key changes none
             repaint();
             DBG("Stop settings loaded from: " << file.getFullPathName());
             CrashHandler::note("Voicing loaded: " + file.getFullPathName() + " - " + juce::String(stopsSet) + " stop(s) and " + juce::String(transmissionsSet)
@@ -15025,6 +15032,7 @@ juce::var MainComponent::combinationsToVar() const
         scene->setProperty("couplers", memory.couplerData);
         scene->setProperty("tremulants", memory.tremulantData);
         if (memory.globalSliders.isObject()) scene->setProperty("sliders", memory.globalSliders);   // 0.9.119
+        if (memory.noiseUnits.isArray()) scene->setProperty("noiseUnits", memory.noiseUnits);       // 0.9.127
         scenes.add(juce::var(scene.get()));
     }
 
@@ -15070,6 +15078,7 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
 
         MemorySlot memory;
         memory.globalSliders = scene.getProperty("sliders", juce::var());   // 0.9.119: a piston stored with the top row's sliders
+        memory.noiseUnits = scene.getProperty("noiseUnits", juce::var());   // 0.9.127: ... with the noises' units
 
         auto stopsArray = scene.getProperty("stops", juce::var());
         if (stopsArray.isArray())
@@ -16419,7 +16428,11 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             juce::var noises = root->getProperty("noises").clone();
             if (auto* buttons = noises.getProperty("buttons", juce::var()).getDynamicObject())
                 for (const auto& prop : buttons->getProperties())
-                    if (auto* button = prop.value.getDynamicObject()) button->setProperty("on", false);
+                    if (auto* button = prop.value.getDynamicObject())
+                    {
+                        if (!button->hasProperty("runs")) button->setProperty("runs", (bool)button->getProperty("on"));   // it stays "the blower": a general cancel leaves it alone
+                        button->setProperty("on", false);
+                    }
             root->setProperty("noises", noises);
         }
     }
@@ -20334,6 +20347,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::builtInHeaderButtons
     return {
         { &panicButton, 110, "panic", "PANIC", true }, { &recordButton, 55, "record", "Record", true },
         { &stopListButton, 120, "stopList", "Stop List", true },
+        { &noisesButton, 95, "noises", "Noises", true },   // 0.9.127: beside the Stop List (the user)
         { &guidedTourButton, 115, "guidedTour", "Guided tour", true },   // shown on a teaching organ only (0.8.206; isHeaderButtonShown)
         { &messagesButton, 130, "messages", "Messages", true },   // shown while messages are unread (0.9.39; isHeaderButtonShown)
         { &couplersButton, 125, "couplers", "Couplers", true }, { &temperamentsButton, 145, "temperaments", "Temperaments", true },
@@ -29998,6 +30012,7 @@ void MainComponent::storeCombination(int piston)
     if (piston < 0 || piston >= pistonCount) return;
     auto slot = onOffSlot(captureCurrentState());   // 0.9.118: ON / OFF alone ...
     if (combinationsHoldVoicing) addVoicingToSlot(slot);   // 0.9.119: ... unless Console > Combinations says more
+    if (combinationsHoldVoicing) slot.noiseUnits = noiseUnitsVoicingNow();   // 0.9.127: the noises' volumes are voicing too
     if (combinationsHoldSliders) slot.globalSliders = globalSlidersNow();
     combinations[combinationKey(currentBank, piston)] = std::move(slot);
     activePiston = piston;
@@ -30023,6 +30038,7 @@ void MainComponent::restoreCombination(int piston)
     }
     applyRegistrationState(found->second, false, true);   // 0.9.118: a piston switches on and off - no master volume, no voicing
     if (combinationsHoldVoicing) applySlotVoicing(found->second);   // 0.9.119: what the piston was stored with, when the option is on
+    if (combinationsHoldVoicing) applyNoiseUnitsVoicing(found->second.noiseUnits);   // 0.9.127
     if (combinationsHoldSliders) applySlotSliders(found->second);
     activePiston = piston;
     if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
@@ -30995,6 +31011,7 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
         if (key == "record") return "Recording";
         if (key == "messages") return "Messages";   // 0.9.39: the top bar's Messages button
         if (key == "stopList") return "The Stop List";
+        if (key == "noises") return "The Noises window";
         if (key == "couplers") return "Couplers";
         if (key == "temperaments") return "Temperaments";
         if (key == "voicing") return "The voicing row";
@@ -31039,7 +31056,7 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
     struct Pair { const char* titleStart; const char* chapter; };
     static const Pair pairs[]{
         { "Audio routing", "Audio routing" },   // 0.9.79 (#236)
-        { "Couplers", "Couplers" }, { "Noises", "Noises" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
+        { "Couplers", "Couplers" }, { "Noises", "The Noises window" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
         { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
         { "Report a problem", "Report a problem" }, { "IR reverb settings", "IR reverb" }, { "Set for all", "Audio routing" }, { "Effects", "Effects" },   // 0.9.89: the Effects dialog, the audio tabs are gone
         { "Measuring the maximum polyphony", "Measure the maximum polyphony" }, { "Maximum polyphony measured", "Measure the maximum polyphony" },
@@ -34138,6 +34155,7 @@ void MainComponent::enableAllStops()
 {
     for (auto* s : engine.getStops())
     {
+        if (s->noiseButton != 0) continue;   // Tutti is the pipes: no zimbelstern, no birds
         engine.setStopEnabled(s, true);
         for (int index = 0; index < (int)s->transmissions.size(); ++index)
             engine.setTransmissionEnabled(s, index, true);
@@ -34151,6 +34169,7 @@ void MainComponent::disableAllStops()
     // General cancel: every stop, transmission, coupler and tremulant off.
     for (auto* s : engine.getStops())
     {
+        if (s->noiseButton == 2) continue;   // the blower runs on: the general cancel is the registration's
         engine.setStopEnabled(s, false);
         for (int index = 0; index < (int)s->transmissions.size(); ++index)
             engine.setTransmissionEnabled(s, index, false);
@@ -36068,9 +36087,10 @@ void MainComponent::showConfigurationEditor()
                     "Off (default): a key's noise is heard on the keyboard that is played, once, whatever the couplers do. "
                     "On: every division a coupler reaches adds the noise of its own key, as the trackers of a mechanical organ move the coupled keys.",
                     "Key noises follow the couplers");
-                addButton("Noise buttons", "Show...", [&o] { o.showNoisesWindow(); },
-                    "The window with the organ's noise buttons (blower, calcant, rossignol, zimbelstern ...), the master switch and the volume - stays open while you play.",
-                    "Noise buttons");
+                addButton("Noises window", "Show...", [&o] { o.showNoisesWindow(); },
+                    "The table of the organ's noises (the top bar's Noises button): each on or off, what it is, its volume and the volume of each of its perspectives. "
+                    "The noises' own buttons (blower, zimbelstern ...) stand on the grid among the stops.",
+                    "Noises window");
                 addButtonWithNote("Noises of a Hauptwerk definition", "Add...", juce::String(soundCount) + " noise sound(s) in this organ", [&o]
                     {
                         auto chooser = std::make_shared<juce::FileChooser>("The organ's Hauptwerk definition", o.lastSettingsDirectory, "*.Organ_Hauptwerk_xml", true);
@@ -36856,7 +36876,8 @@ juce::var MainComponent::noisesVarFromPlan(const HauptwerkOdf::Plan& plan, const
         juce::String ref;
         if (p.kind == "stop") ref = p.stopId > 0 ? refOfStop(p.stopId) : juce::String();   // a stop without a row of ours (an extension): a free drawknob noise
         else if (p.kind == "coupler") ref = p.couplerId;
-        else if (p.kind == "tremulant" || p.kind == "tremulantRun") { if (p.division < 0) continue; ref = juce::String(p.division); }
+        else if (p.kind == "tremulant") continue;   // the click of a tremulant's drawknob: not wanted - it is in the recording of the running tremulant (the user)
+        else if (p.kind == "tremulantRun") { if (p.division < 0) continue; ref = juce::String(p.division); }
         else if (p.kind == "button")
         {
             ref = p.name.trim();
@@ -36910,8 +36931,9 @@ std::vector<SamplerEngine::NoiseSpec> MainComponent::noiseSpecs(int& unresolved)
     {
         juce::StringArray fields;
         fields.addTokens(text.toString(), "\t", "");
-        if (fields.size() < 10) continue;
+        if (fields.size() < 10 || fields[0] == "tremulant") continue;   // a tremulant's drawknob click (older files): not played
         SamplerEngine::NoiseSpec spec;
+        spec.unit = noiseUnitKey(fields);
         spec.kind = fields[0]; spec.edge = fields[1]; spec.ref = fields[2]; spec.perspective = fields[3];
         spec.manual = fields[4].getIntValue(); spec.note = fields[5].getIntValue();
         spec.gainDb = fields[6].getFloatValue();
@@ -36935,6 +36957,7 @@ std::vector<SamplerEngine::NoiseSpec> MainComponent::noiseSpecs(int& unresolved)
 void MainComponent::noisesTick()
 {
     const double now = juce::Time::getMillisecondCounterHiRes();
+    noiseButtonVolumesCheck();                  // a noise button's Stop volume moved: heard at once
     if (now - noisesTickAtMs < 500.0) return;   // twice a second is plenty (the caller's timer is faster)
     noisesTickAtMs = now;
     engine.noiseHousekeeping();
@@ -36958,7 +36981,9 @@ void MainComponent::noisesTick()
         if (specs.empty())
         {
             engine.clearNoises();
+            noiseLoadedUnits.clear();
             noisesVersionLoaded = version;
+            syncNoiseButtonStops();   // the buttons of noises that are gone leave the grid
             if (unresolved > 0)
             {
                 CrashHandler::note("Noises: " + juce::String(unresolved) + " sound(s) of the configuration not found - the library root is not known on this computer");
@@ -36970,12 +36995,17 @@ void MainComponent::noisesTick()
         juce::Component::SafePointer<MainComponent> safeThis(this);
         SamplerEngine* enginePointer = &engine;
         std::atomic<bool>* loadingFlag = &noisesLoading;
-        juce::Thread::launch([safeThis, enginePointer, loadingFlag, version, unresolved, specs = std::move(specs)]
+        std::vector<std::pair<juce::String, juce::String>> units;   // the unit and perspective of every sound, in the engine's order
+        units.reserve(specs.size());
+        for (const auto& spec : specs) units.push_back({ spec.unit, spec.perspective });
+        juce::Thread::launch([safeThis, enginePointer, loadingFlag, version, unresolved, units = std::move(units), specs = std::move(specs)]
         {
             const juce::String summary = enginePointer->loadNoises(specs);
-            juce::MessageManager::callAsync([safeThis, version, unresolved, summary]
+            juce::MessageManager::callAsync([safeThis, version, unresolved, summary, units]
             {
                 if (safeThis == nullptr) return;
+                safeThis->noiseLoadedUnits = units;
+                safeThis->applyNoiseGains();   // the units' volumes and switches, before anything sounds
                 safeThis->noisesVersionLoaded = version;
                 safeThis->noisesArmAtMs = juce::Time::getMillisecondCounterHiRes() + 1200.0;
                 if (summary.contains("NOT FOUND") || unresolved > 0)
@@ -36987,10 +37017,13 @@ void MainComponent::noisesTick()
         return;
     }
     if (noisesArmAtMs < 0.0) noisesArmAtMs = now + 1200.0;
+    if (noisesArmAtMs == 0.0 && juce::ModalComponentManager::getInstance()->getNumModalComponents() == 0) syncNoiseButtonStops();   // idle: the grid's noise buttons kept as the model has them
     if (noisesArmAtMs > 0.0 && now >= noisesArmAtMs)
     {
         noisesArmAtMs = 0.0;
+        syncNoiseButtonStops();
         engine.setNoisesArmed(true);
+        applyNoiseGains();
         applyNoiseButtons();
         {   // Tests (0.9.127): ORGAN_TEST_NOISE_FOLDER=<folder> logs what the folder reading makes of it;
             // ORGAN_TEST_NOISE_ODF=<definition> adds a definition's noises to the loaded organ; both once.
@@ -37005,8 +37038,49 @@ void MainComponent::noisesTick()
                 juce::Component::SafePointer<MainComponent> safeThis(this);
                 const juce::String name = parts[0];
                 const int seconds = juce::jmax(1, parts[1].getIntValue());
-                juce::Timer::callAfterDelay(2000, [safeThis, name] { if (safeThis != nullptr) { CrashHandler::note("ORGAN_TEST_NOISE_BUTTON: " + name + " on"); safeThis->setNoiseButton(name, true); } });
-                juce::Timer::callAfterDelay(2000 + seconds * 1000, [safeThis, name] { if (safeThis != nullptr) { CrashHandler::note("ORGAN_TEST_NOISE_BUTTON: " + name + " off"); safeThis->setNoiseButton(name, false); } });
+                auto pressButton = [safeThis, name](bool on)
+                {
+                    if (safeThis == nullptr) return;
+                    Stop* stop = safeThis->noiseButtonStop(name);
+                    CrashHandler::note("ORGAN_TEST_NOISE_BUTTON: " + name + (on ? " on" : " off") + (stop == nullptr ? " - NO such button on the grid" : " (division " + juce::String(stop->primaryManual) + ", stop volume " + juce::String(stop->db, 1) + " dB)"));
+                    if (stop == nullptr) return;
+                    safeThis->engine.setStopEnabled(stop, on);
+                    if (safeThis->voicer != nullptr) safeThis->voicer->updateStopStates();
+                };
+                juce::Timer::callAfterDelay(2000, [pressButton] { pressButton(true); });
+                juce::Timer::callAfterDelay(2000 + seconds * 1000, [pressButton] { pressButton(false); });
+            }
+            // ORGAN_TEST_NOISE_UNITS="<seconds>|volume|<unit key>|<perspective or *>|<dB>^<seconds>|on|<key>|0 or 1^<seconds>|kind|<key>|<kind>|<division>^<seconds>|remove|<key>^<seconds>|list":
+            // the Noises window's acts by their functions, the units logged.
+            static bool unitsDone = false;
+            if (const char* acts = std::getenv("ORGAN_TEST_NOISE_UNITS"); acts != nullptr && !unitsDone)
+            {
+                unitsDone = true;
+                juce::Component::SafePointer<MainComponent> safeThis(this);
+                for (const auto& act : juce::StringArray::fromTokens(juce::String::fromUTF8(acts), "^", ""))
+                {
+                    const auto parts = juce::StringArray::fromTokens(act, "|", "");
+                    juce::Timer::callAfterDelay(juce::jmax(1, parts[0].getIntValue()) * 1000, [safeThis, parts]
+                    {
+                        if (safeThis == nullptr) return;
+                        if (parts[1] == "volume") safeThis->setNoiseUnitVolume(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], parts[parts.size() - 1].getDoubleValue());
+                        else if (parts[1] == "on") safeThis->setNoiseUnitOn(parts[2] + (parts.size() > 4 ? "|" + parts[3] : juce::String()), parts[parts.size() - 1].getIntValue() != 0);
+                        else if (parts[1] == "kind") safeThis->changeNoiseUnit(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], parts[parts.size() - 1].getIntValue());
+                        else if (parts[1] == "remove") safeThis->removeNoiseUnit(parts[2] + (parts.size() > 3 ? "|" + parts[3] : juce::String()));
+                        juce::StringArray lines;
+                        for (const auto& unit : safeThis->noiseUnits())
+                        {
+                            juce::StringArray perspectives;
+                            for (const auto& [name, count] : unit.perspectives)
+                            {
+                                const auto db = unit.perspectiveDb.find(name.toLowerCase());
+                                perspectives.add((name.isEmpty() ? juce::String("-") : name) + " " + juce::String(count) + " file(s) " + juce::String(db != unit.perspectiveDb.end() ? db->second : 0.0, 1) + " dB");
+                            }
+                            lines.add(unit.key + " = \"" + unit.name + "\" " + unit.kind + " division " + juce::String(unit.division) + (unit.on ? " ON " : " OFF ") + juce::String(unit.volumeDb, 1) + " dB [" + perspectives.joinIntoString("; ") + "]");
+                        }
+                        CrashHandler::note("ORGAN_TEST_NOISE_UNITS " + parts.joinIntoString("|") + " -> " + juce::String(lines.size()) + " unit(s): " + lines.joinIntoString(" || "));
+                    });
+                }
             }
             if (const char* folder = std::getenv("ORGAN_TEST_NOISE_FOLDER"); folder != nullptr && !folderDone && !engine.getStops().isEmpty())
             {
@@ -37035,36 +37109,6 @@ void MainComponent::noisesTick()
         }    }
 }
 
-// The buttons of their own (blower, calcant, rossignol ...): their state is in the model; told to the engine.
-void MainComponent::applyNoiseButtons()
-{
-    if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
-        for (const auto& prop : buttons->getProperties())
-        {
-            const juce::String name = prop.value.getProperty("name", "").toString();
-            if (name.isEmpty() || !(bool)prop.value.getProperty("on", false)) continue;
-            engine.noiseEvent("button", name, true, juce::jmax(0, (int)prop.value.getProperty("division", 0)));
-        }
-}
-
-void MainComponent::setNoiseButton(const juce::String& name, bool on)
-{
-    auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject();
-    if (buttons == nullptr) return;
-    for (const auto& prop : buttons->getProperties())
-        if (prop.value.getProperty("name", "").toString().equalsIgnoreCase(name))
-        {
-            if (auto* button = prop.value.getDynamicObject())
-            {
-                if ((bool)button->getProperty("on") == on) return;
-                button->setProperty("on", on);
-                engine.noiseEvent("button", name, on, juce::jmax(0, (int)button->getProperty("division")));
-                configurationDirty = true;
-                saveSettings();
-            }
-            return;
-        }
-}
 // The model replaced (an import of noises, a folder read, "Remove"): saved with the organ, loaded by noisesTick.
 void MainComponent::setNoisesModel(const juce::var& noises, const juce::String& why)
 {
@@ -37412,7 +37456,9 @@ juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::Str
             if (!held) releaseFiles.clear();
             const juce::String edge = held ? "held" : leaf.edge == "off" ? "off" : "on";
             if (leaf.kind == "tremulant")
-                addSound(held ? "tremulantRun" : "tremulant", edge, juce::String(juce::jmax(0, leaf.division)), perspective, juce::jmax(0, leaf.division), 60, files, releaseFiles);
+            {   // the running noise alone: a tremulant's drawknob click is not wanted (it is in that recording)
+                if (held) addSound("tremulantRun", edge, juce::String(juce::jmax(0, leaf.division)), perspective, juce::jmax(0, leaf.division), 60, files, releaseFiles);
+            }
             else
             {
                 addSound("button", edge, leaf.name, perspective, leaf.division, 60, files, releaseFiles);
@@ -37446,83 +37492,699 @@ void MainComponent::addNoisesFromFolder(const juce::File& folder)
         + ". Drawknob and coupler noises are given to the buttons at random; what the names did not tell can be read from the organ's definition instead.");
 }
 
-// The window of the noises: the master switch, the volume and the buttons of their own (blower, calcant, rossignol,
-// zimbelstern ...) - big toggle buttons, modeless, to be played while playing.
+
+// A UNIT of noise (the user: "řádek je jakási jednotka určitého druhu ruchu - Manuál I, Pedál, Tremulant II,
+// Zimbelstern, Blower"): the key noises of one keyboard, the running noise of one tremulant, every drawknob noise of
+// the organ, every coupler noise, or one button of its own. A unit has its volume and one more per perspective, on
+// top of the level the definition gives each sample; the settings live in the model's "units" [{key, on, volumeDb,
+// perspectives [{name, db}]}] and reach the engine as one gain per sound, at once. A BUTTON's volume is its grid
+// stop's own "Stop volume" (one value, two ways to it: the voicing row and the Noises window - the user's rule).
+juce::String MainComponent::noiseUnitKey(const juce::StringArray& fields)
+{
+    if (fields[0] == "keys") return "keys|" + fields[4];
+    if (fields[0] == "stop") return "drawknobs";
+    if (fields[0] == "coupler") return "couplers";
+    if (fields[0] == "tremulantRun" || fields[0] == "tremulant") return "tremulant|" + fields[4];
+    return "button|" + fields[2].toLowerCase();
+}
+
+Stop* MainComponent::noiseButtonStop(const juce::String& name) const
+{
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->noiseButton != 0 && stop->name.equalsIgnoreCase(name)) return stop;
+    return nullptr;
+}
+
+juce::DynamicObject* MainComponent::noiseUnitObject(const juce::String& key, bool create)
+{
+    auto* model = noisesVar.getDynamicObject();
+    if (model == nullptr) return nullptr;
+    if (!model->getProperty("units").isArray()) { if (!create) return nullptr; model->setProperty("units", juce::Array<juce::var>()); }
+    auto* units = model->getProperty("units").getArray();
+    for (auto& unit : *units)
+        if (unit.getProperty("key", "").toString() == key) return unit.getDynamicObject();
+    if (!create) return nullptr;
+    juce::DynamicObject::Ptr unit = new juce::DynamicObject();
+    unit->setProperty("key", key);
+    unit->setProperty("on", true);
+    unit->setProperty("volumeDb", 0.0);
+    units->add(juce::var(unit.get()));
+    return unit.get();
+}
+
+float MainComponent::noiseUnitGain(const juce::String& key, const juce::String& perspective) const
+{
+    // A button's own volume is the Stop volume of its stop on the grid (one value: the voicing row and this window).
+    double db = 0.0;
+    const bool button = key.startsWith("button|");
+    if (button)
+        if (const Stop* stop = noiseButtonStop(key.fromFirstOccurrenceOf("|", false, false))) db = stop->db;
+    if (const auto* units = noisesVar.getProperty("units", juce::var()).getArray())
+        for (const auto& unit : *units)
+            if (unit.getProperty("key", "").toString() == key)
+            {
+                if (!(bool)unit.getProperty("on", true)) return 0.0f;
+                if (!button) db = (double)unit.getProperty("volumeDb", 0.0);
+                if (const auto* list = unit.getProperty("perspectives", juce::var()).getArray())
+                    for (const auto& p : *list)
+                        if (p.getProperty("name", "").toString().equalsIgnoreCase(perspective)) db += (double)p.getProperty("db", 0.0);
+                break;
+            }
+    return juce::Decibels::decibelsToGain((float)juce::jlimit(-60.0, 24.0, db));
+}
+
+// The volumes of the noise buttons' stops (moved in a voicing row, by a combination that holds the voicing, by a
+// loaded voicing file): when any changed, the noises take it at once. Looked at from the timer - a few numbers.
+void MainComponent::noiseButtonVolumesCheck()
+{
+    double sum = 0.0;
+    int count = 0;
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->noiseButton != 0) { sum += (double)stop->db * (double)(++count); }
+    const double signature = sum + 1000.0 * count;
+    if (signature == noiseButtonVolumesSeen) return;
+    noiseButtonVolumesSeen = signature;
+    applyNoiseGains();
+}
+
+void MainComponent::applyNoiseGains()
+{
+    std::vector<float> gains;
+    gains.reserve(noiseLoadedUnits.size());
+    for (const auto& [key, perspective] : noiseLoadedUnits) gains.push_back(noiseUnitGain(key, perspective));
+    engine.setNoiseGains(gains);
+}
+
+void MainComponent::setNoiseUnitOn(const juce::String& key, bool on)
+{
+    if (auto* unit = noiseUnitObject(key, true)) unit->setProperty("on", on);
+    applyNoiseGains();
+    configurationDirty = true;
+    saveSettings();
+}
+
+void MainComponent::setNoiseUnitVolume(const juce::String& key, const juce::String& perspective, double db)
+{
+    if (perspective == "*" && key.startsWith("button|"))
+    {
+        // The button's volume IS its stop's volume (the voicing row's "Stop volume").
+        if (Stop* stop = noiseButtonStop(key.fromFirstOccurrenceOf("|", false, false)))
+        {
+            stop->setDb((float)db);
+            if (voicer != nullptr) voicer->updateStopStates();
+            voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
+            noiseButtonVolumesCheck();
+        }
+        return;
+    }
+    auto* unit = noiseUnitObject(key, true);
+    if (unit == nullptr) return;
+    if (perspective == "*") unit->setProperty("volumeDb", db);
+    else
+    {
+        if (!unit->getProperty("perspectives").isArray()) unit->setProperty("perspectives", juce::Array<juce::var>());
+        auto* list = unit->getProperty("perspectives").getArray();
+        bool found = false;
+        for (auto& p : *list)
+            if (p.getProperty("name", "").toString().equalsIgnoreCase(perspective))
+                if (auto* object = p.getDynamicObject()) { object->setProperty("db", db); found = true; }
+        if (!found)
+        {
+            juce::DynamicObject::Ptr entry = new juce::DynamicObject();
+            entry->setProperty("name", perspective);
+            entry->setProperty("db", db);
+            list->add(juce::var(entry.get()));
+        }
+    }
+    applyNoiseGains();
+    configurationDirty = true;
+    saveSettings();
+}
+
+// The units of the model, for the window: what each is, where, and its files per perspective.
+std::vector<MainComponent::NoiseUnit> MainComponent::noiseUnits() const
+{
+    std::vector<NoiseUnit> units;
+    const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
+    if (sounds == nullptr) return units;
+    auto divisionName = [](int division) { return division <= 0 ? juce::String("Pedal") : "Manual " + juce::String(division); };
+    for (const auto& text : *sounds)
+    {
+        juce::StringArray fields;
+        fields.addTokens(text.toString(), "\t", "");
+        if (fields.size() < 10 || fields[0] == "tremulant") continue;   // a tremulant's drawknob click (older files) is not played
+        const auto key = noiseUnitKey(fields);
+        auto found = std::find_if(units.begin(), units.end(), [&](const NoiseUnit& unit) { return unit.key == key; });
+        if (found == units.end())
+        {
+            NoiseUnit unit;
+            unit.key = key;
+            unit.kind = fields[0] == "stop" ? "drawknobs" : fields[0] == "coupler" ? "couplers" : fields[0] == "tremulantRun" || fields[0] == "tremulant" ? "tremulant" : fields[0];
+            unit.division = fields[4].getIntValue();
+            unit.name = unit.kind == "keys" ? divisionName(unit.division) : unit.kind == "tremulant" ? "Tremulant " + divisionName(unit.division)
+                : unit.kind == "drawknobs" ? juce::String("Drawknobs") : unit.kind == "couplers" ? juce::String("Couplers") : fields[2];
+            if (unit.kind == "button")
+            {
+                if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
+                    for (const auto& prop : buttons->getProperties())
+                        if (prop.value.getProperty("name", "").toString().equalsIgnoreCase(fields[2])) unit.division = (int)prop.value.getProperty("division", -1);
+                if (const Stop* stop = noiseButtonStop(fields[2]))
+                {
+                    unit.division = stop->primaryManual;                       // where its button stands now
+                    unit.volumeDb = stop->db;                                   // the one value
+                    if (stop->alias.isNotEmpty()) unit.name = stop->alias + "  (" + fields[2] + ")";
+                }
+            }
+            units.push_back(unit);
+            found = units.end() - 1;
+        }
+        const int files = juce::StringArray::fromTokens(fields[8].fromFirstOccurrenceOf("//", false, false), "|", "").size();
+        bool known = false;
+        for (auto& [name, count] : found->perspectives) if (name.equalsIgnoreCase(fields[3])) { count += files; known = true; }
+        if (!known) found->perspectives.push_back({ fields[3], files });
+    }
+    for (auto& unit : units)
+        if (const auto* object = const_cast<MainComponent*>(this)->noiseUnitObject(unit.key, false))
+        {
+            unit.on = (bool)object->getProperty("on");
+            if (unit.kind != "button") unit.volumeDb = (double)object->getProperty("volumeDb");
+            if (const auto* list = object->getProperty("perspectives").getArray())
+                for (const auto& p : *list) unit.perspectiveDb[p.getProperty("name", "").toString().toLowerCase()] = (double)p.getProperty("db", 0.0);
+        }
+    // The keyboards first (the pedal, then the manuals), the tremulants, drawknobs, couplers, then the buttons.
+    auto rank = [](const NoiseUnit& unit) { return (unit.kind == "keys" ? 0 : unit.kind == "tremulant" ? 100 : unit.kind == "drawknobs" ? 200 : unit.kind == "couplers" ? 300 : 400) + juce::jmax(0, unit.division); };
+    std::stable_sort(units.begin(), units.end(), [&](const NoiseUnit& a, const NoiseUnit& b) { return rank(a) < rank(b); });
+    return units;
+}
+
+// A unit given another kind or division (what the folder reading did not understand is put right by hand): its
+// sounds are written anew - keys by the key number at the start of each file's name, drawknobs and couplers one
+// file a sound, a tremulant or a button every file of a perspective as its variants.
+void MainComponent::changeNoiseUnit(const juce::String& key, const juce::String& newKind, int newDivision)
+{
+    auto* model = noisesVar.getDynamicObject();
+    auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
+    if (model == nullptr || sounds == nullptr) return;
+    struct Part { juce::String edge, perspective, level, folder, releaseFolder; juce::StringArray files, releases; };
+    std::vector<Part> parts;
+    juce::Array<juce::var> kept;
+    juce::String name;
+    for (const auto& text : *sounds)
+    {
+        juce::StringArray fields;
+        fields.addTokens(text.toString(), "\t", "");
+        if (fields.size() < 10 || noiseUnitKey(fields) != key) { kept.add(text); continue; }
+        if (fields[0] == "button") name = fields[2];
+        Part part;
+        part.edge = fields[1]; part.perspective = fields[3]; part.level = fields[6];
+        part.folder = fields[8].upToFirstOccurrenceOf("//", false, false);
+        part.files.addTokens(fields[8].fromFirstOccurrenceOf("//", false, false), "|", "");
+        part.releaseFolder = fields[9].upToFirstOccurrenceOf("//", false, false);
+        part.releases.addTokens(fields[9].fromFirstOccurrenceOf("//", false, false), "|", "");
+        parts.push_back(part);
+    }
+    if (parts.empty()) return;
+    if (name.isEmpty()) name = parts.front().folder.fromLastOccurrenceOf("/", false, false);
+    if (name.isEmpty()) name = "Noise";
+    const int division = juce::jlimit(0, manualCount, newDivision);
+    auto emit = [&](const juce::String& kind, const juce::String& edge, const juce::String& ref, const juce::String& perspective, int soundDivision, int note,
+                    const juce::String& level, const juce::String& files, const juce::String& releases)
+    {
+        juce::StringArray fields;
+        fields.add(kind); fields.add(edge); fields.add(ref); fields.add(perspective); fields.add(juce::String(soundDivision)); fields.add(juce::String(note));
+        fields.add(level); fields.add("0"); fields.add(files); fields.add(releases);
+        kept.add(fields.joinIntoString("\t"));
+    };
+    for (const auto& part : parts)
+    {
+        const juce::String click = part.edge == "off" ? "off" : "on";
+        if (newKind == "keys")
+        {
+            std::map<int, juce::StringArray> byKey;
+            for (const auto& file : part.files)
+                if (file.length() >= 3 && file.substring(0, 3).containsOnly("0123456789")) byKey[file.substring(0, 3).getIntValue()].add(file);
+            for (const auto& [note, files] : byKey)
+                if (note >= 0 && note <= 127) emit("keys", click, {}, part.perspective, division, note, part.level, part.folder + "//" + files.joinIntoString("|"), {});
+        }
+        else if (newKind == "drawknobs" || newKind == "couplers")
+        {
+            for (const auto& file : part.files) emit(newKind == "drawknobs" ? "stop" : "coupler", click, {}, part.perspective, -1, 60, part.level, part.folder + "//" + file, {});
+        }
+        else
+        {
+            const juce::String files = part.folder + "//" + part.files.joinIntoString("|");
+            const juce::String releases = part.releases.isEmpty() ? juce::String() : part.releaseFolder + "//" + part.releases.joinIntoString("|");
+            if (newKind == "tremulant") emit("tremulantRun", "held", juce::String(division), part.perspective, division, 60, part.level, files, releases);
+            else emit("button", part.edge, name, part.perspective, division, 60, part.level, files, releases);
+        }
+    }
+    // The button's entry: made for a new button, moved with its division, dropped when the unit is a button no more.
+    juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+    int index = 0;
+    bool listed = false;
+    if (auto* old = model->getProperty("buttons").getDynamicObject())
+        for (const auto& prop : old->getProperties())
+        {
+            const bool mine = prop.value.getProperty("name", "").toString().equalsIgnoreCase(name);
+            if (mine && newKind != "button") continue;
+            if (mine) { listed = true; if (auto* object = prop.value.getDynamicObject()) object->setProperty("division", division); }
+            buttons->setProperty(juce::Identifier("b" + juce::String(++index)), prop.value);
+        }
+    if (newKind == "button" && !listed)
+    {
+        juce::DynamicObject::Ptr button = new juce::DynamicObject();
+        button->setProperty("name", name);
+        button->setProperty("on", false);
+        button->setProperty("division", division);
+        buttons->setProperty(juce::Identifier("b" + juce::String(++index)), juce::var(button.get()));
+    }
+    model->setProperty("buttons", juce::var(buttons.get()));
+    model->setProperty("sounds", kept);
+    // A button moved to another division: its stop goes there with everything it has.
+    if (newKind == "button")
+        if (Stop* stop = noiseButtonStop(name); stop != nullptr && stop->primaryManual != division) moveStopToDivision(stop, division);
+    // Its volumes go with it.
+    const juce::String newKey = newKind == "keys" ? "keys|" + juce::String(division) : newKind == "tremulant" ? "tremulant|" + juce::String(division)
+        : newKind == "drawknobs" ? juce::String("drawknobs") : newKind == "couplers" ? juce::String("couplers") : "button|" + name.toLowerCase();
+    if (newKey != key)
+        if (auto* unit = noiseUnitObject(key, false))
+        {
+            if (noiseUnitObject(newKey, false) == nullptr) unit->setProperty("key", newKey);
+            else if (auto* units = model->getProperty("units").getArray())
+                units->removeIf([&](const juce::var& entry) { return entry.getProperty("key", "").toString() == key; });
+        }
+    setNoisesModel(noisesVar, "the unit \"" + key + "\" is now " + newKind + " of division " + juce::String(division));
+}
+
+void MainComponent::removeNoiseUnit(const juce::String& key)
+{
+    auto* model = noisesVar.getDynamicObject();
+    auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
+    if (model == nullptr || sounds == nullptr) return;
+    juce::Array<juce::var> kept;
+    for (const auto& text : *sounds)
+    {
+        juce::StringArray fields;
+        fields.addTokens(text.toString(), "\t", "");
+        if (fields.size() >= 10 && noiseUnitKey(fields) == key) continue;
+        kept.add(text);
+    }
+    model->setProperty("sounds", kept);
+    if (key.startsWith("button|"))
+    {
+        juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+        int index = 0;
+        if (auto* old = model->getProperty("buttons").getDynamicObject())
+            for (const auto& prop : old->getProperties())
+                if (prop.value.getProperty("name", "").toString().toLowerCase() != key.fromFirstOccurrenceOf("|", false, false))
+                    buttons->setProperty(juce::Identifier("b" + juce::String(++index)), prop.value);
+        model->setProperty("buttons", juce::var(buttons.get()));
+    }
+    if (auto* units = model->getProperty("units").getArray())
+        units->removeIf([&](const juce::var& entry) { return entry.getProperty("key", "").toString() == key; });
+    setNoisesModel(kept.isEmpty() ? juce::var() : noisesVar, "the unit \"" + key + "\" removed");
+}
+
+// THE BUTTONS OF THE NOISES ON THE GRID (the user: "tlačítka musí být na gridu divize jako rejstříky. V okně noises
+// se jen nastavují"): a noise of its own - blower, zimbelstern, rossignol, calcant - is a stop WITHOUT PIPES of its
+// division (Stop::noiseButton), so it has everything a stop has: its cell on the grid, the dragging, MIDI learn, its
+// voicing row (volume, alias), its place in the registrations and the combinations. Its switch starts and ends the
+// noise (SamplerEngine::setStopEnabled). Called twice a second while nothing loads: the flags after a reload, the
+// rows of new buttons, the buttons whose noise is gone taken off. A button that runs from the load (the blower) is
+// switched on when it is made.
+void MainComponent::syncNoiseButtonStops()
+{
+    if (activeFolderLoader != nullptr || engine.getStops().isEmpty() || sampleTrees.empty()) return;
+    struct Wanted { juce::String name; int division = 0; bool runs = false, on = false; };
+    std::map<juce::String, Wanted> wanted;
+    if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
+        for (const auto& prop : buttons->getProperties())
+        {
+            const juce::String name = prop.value.getProperty("name", "").toString().trim();
+            if (name.isEmpty()) continue;
+            // "runs" = it runs from the load as its definition has it (the blower); a published file switches "on" off and keeps "runs".
+            wanted[name.toLowerCase()] = { name, juce::jlimit(0, manualCount, juce::jmax(0, (int)prop.value.getProperty("division", 0))),
+                                           (bool)prop.value.getProperty("runs", prop.value.getProperty("on", false)), (bool)prop.value.getProperty("on", false) };
+        }
+    std::set<juce::String> present;
+    std::vector<Stop*> gone;
+    bool flagsChanged = false;
+    for (auto* stop : engine.getStops())
+    {
+        if (stop == nullptr) continue;
+        const auto key = stop->name.toLowerCase();
+        const auto found = wanted.find(key);
+        if (found != wanted.end() && stop->container && present.count(key) == 0)
+        {
+            const int flag = found->second.runs ? 2 : 1;
+            if (stop->noiseButton != flag) { stop->noiseButton = flag; flagsChanged = true; }
+            present.insert(key);
+        }
+        else if (stop->noiseButton != 0)
+        {
+            stop->noiseButton = 0;
+            if (stop->container) gone.push_back(stop);
+        }
+    }
+    std::set<int> changed;
+    for (const auto& [key, button] : wanted)
+    {
+        if (present.count(key) > 0) continue;
+        bool taken = false;
+        for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals && !taken; ++manual)
+            for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries) if (entry.name.equalsIgnoreCase(button.name)) { taken = true; break; }
+        if (taken) continue;   // a row of that name that is no button of a noise: left as it is
+        auto& config = manualConfigs[(size_t)button.division];
+        if (!config.stopBuild.active) { config.stopBuild = deriveStopBuildFromEngine(button.division); config.stopBuild.active = true; }
+        ManualConfig::StopBuild::Entry entry;
+        entry.name = button.name;
+        entry.customName = true;
+        config.stopBuild.entries.push_back(entry);
+        if (Stop* stop = engine.addContainerStop(button.division, entry.name))
+        {
+            stop->noiseButton = button.runs ? 2 : 1;
+            engine.setStopEnabled(stop, button.on);   // a new stop is born ON: as the definition has it - the blower runs from the load, the others wait
+            stop->enabled = button.on;
+        }
+        changed.insert(button.division);
+        CrashHandler::note("Noise button \"" + button.name + "\" put on the grid of division " + juce::String(button.division));
+    }
+    for (auto* stop : gone)
+    {
+        CrashHandler::note("Noise button \"" + stop->name + "\" taken off the grid: its noise is gone");
+        removeStopFromGrid(stop);
+    }
+    if (!changed.empty()) { configurationDirty = true; finishInPlaceStopEdit(changed); }   // new rows of the table: saved with the organ
+    else if (flagsChanged && gone.empty() && voicer != nullptr) voicer->rebuildUI(stopsContent, stopsViewport);   // the rows of the buttons know now what they are
+}
+
+// The noise buttons that are ON start their noises (after a load: the engine was not armed when they were set).
+void MainComponent::applyNoiseButtons()
+{
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->noiseButton != 0 && stop->enabled) engine.noiseEvent("button", stop->name, true, stop->primaryManual);
+}
+
+// THE NOISES WINDOW: "a Stop List for the noises" - one row per unit, where it is set, never played: on / off, what
+// it is (kind, division), its volume and the volume of each of its perspectives. Modeless; the top bar's Noises button.
 namespace
 {
-    struct NoiseButtonsContent final : public juce::Component
+    struct NoiseUnitsContent final : public juce::Component, private juce::Timer
     {
-        explicit NoiseButtonsContent(MainComponent& ownerIn, std::function<void(const juce::String&, bool)> pressed,
-                                     std::function<void(bool)> master, std::function<void(double)> volumeChanged,
-                                     const juce::var& model) : owner(ownerIn)
+        struct Callbacks
         {
-            masterBox.setButtonText("Noises on");
-            masterBox.setToggleState((bool)model.getProperty("enabled", true), juce::dontSendNotification);
-            masterBox.setTooltip("Every noise of the organ on or off: key action, drawknobs, couplers, tremulant, blower and the buttons below.");
-            masterBox.onClick = [this, master] { master(masterBox.getToggleState()); };
-            addAndMakeVisible(masterBox);
-            volumeLabel.setText("Noises volume", juce::dontSendNotification);
-            addAndMakeVisible(volumeLabel);
-            volume.setSliderStyle(juce::Slider::LinearHorizontal);
-            volume.setTextBoxStyle(juce::Slider::TextBoxRight, false, 70, 22);
-            volume.setRange(-30.0, 12.0, 0.5);
-            volume.setTextValueSuffix(" dB");
-            volume.setDoubleClickReturnValue(true, 0.0);
-            volume.setValue((double)model.getProperty("volumeDb", 0.0), juce::dontSendNotification);
-            volume.setTooltip("The level of every noise against the pipes, on top of the levels the organ's definition gives each of them.");
-            volume.onValueChange = [this, volumeChanged] { volumeChanged(volume.getValue()); };
-            addAndMakeVisible(volume);
-            if (auto* list = model.getProperty("buttons", juce::var()).getDynamicObject())
-                for (const auto& prop : list->getProperties())
-                {
-                    const juce::String name = prop.value.getProperty("name", "").toString();
-                    if (name.isEmpty()) continue;
-                    auto* button = buttons.add(new juce::TextButton(name));
-                    button->setClickingTogglesState(true);
-                    button->setToggleState((bool)prop.value.getProperty("on", false), juce::dontSendNotification);
-                    button->setColour(juce::TextButton::buttonOnColourId, onColour());
-                    button->setTooltip("A noise of its own: on / off. Its state is saved with the organ.");
-                    button->onClick = [button, name, pressed] { pressed(name, button->getToggleState()); };
-                    addAndMakeVisible(button);
-                }
-            info.setText(buttons.isEmpty() ? "This organ has no noise buttons of its own." : "", juce::dontSendNotification);
-            info.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-            addAndMakeVisible(info);
-            setSize(560, 96 + ((buttons.size() + 2) / 3) * 44 + (buttons.isEmpty() ? 30 : 0));
+            std::function<double(const juce::String&)> buttonVolume;   // a button's Stop volume as it is now (its voicing row moves it too)
+            std::function<void(const juce::String&, bool)> on;
+            std::function<void(const juce::String&, const juce::String&, double)> volume;
+            std::function<void(const juce::String&, const juce::String&, int)> change;
+            std::function<void(const juce::String&)> remove;
+            std::function<void(bool)> master, follow;
+            std::function<void(double)> masterVolume;
+            std::function<void()> addFolder;
+        };
+        struct RowControls
+        {
+            juce::ToggleButton on;
+            juce::Label name;
+            juce::ComboBox kind, division;
+            juce::Slider volume;
+            juce::OwnedArray<juce::Slider> perspectiveVolumes;
+            juce::OwnedArray<juce::Label> perspectiveCounts;
+            juce::TextButton remove{ "x" };
+            juce::String key;
+        };
+        // A button's volume is its stop's: moved in the voicing row (or by a combination), it shows here at once.
+        void timerCallback() override
+        {
+            if (!callbacks.buttonVolume) return;
+            for (auto* row : rows)
+                if (row->key.startsWith("button|") && !row->volume.isMouseButtonDown(true))
+                    if (const double now = callbacks.buttonVolume(row->key); std::abs(now - row->volume.getValue()) > 0.01)
+                        row->volume.setValue(now, juce::dontSendNotification);
         }
+        static void setupVolume(juce::Slider& slider, double value, int box)
+        {
+            slider.setSliderStyle(juce::Slider::LinearHorizontal);
+            slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, box, 22);
+            slider.setRange(-30.0, 12.0, 0.5);
+            slider.setTextValueSuffix(" dB");
+            slider.setDoubleClickReturnValue(true, 0.0);
+            slider.setValue(value, juce::dontSendNotification);
+        }
+        NoiseUnitsContent(const std::vector<MainComponent::NoiseUnit>& units, const juce::StringArray& perspectivesIn, int manualCount,
+                          bool masterOn, double masterDb, bool followCouplers, Callbacks callbacksIn)
+            : callbacks(std::move(callbacksIn)), perspectives(perspectivesIn)
+        {
+            auto addHeader = [this](const juce::String& text)
+            {
+                auto* label = headers.add(new juce::Label({}, text));
+                label->setFont(juce::FontOptions(14.0f, juce::Font::bold));
+                label->setColour(juce::Label::textColourId, onColour());
+                addAndMakeVisible(label);
+            };
+            addHeader("On"); addHeader("Noise"); addHeader("Kind"); addHeader("Division"); addHeader("Volume");
+            for (const auto& perspective : perspectives) addHeader(perspective.isEmpty() ? juce::String("(one for all)") : perspective);
+            for (const auto& unit : units)
+            {
+                auto* row = rows.add(new RowControls());
+                const juce::String key = unit.key;
+                row->key = key;
+                row->on.setToggleState(unit.on, juce::dontSendNotification);
+                row->on.setTooltip("This noise on or off.");
+                row->on.onClick = [this, row, key] { if (callbacks.on) callbacks.on(key, row->on.getToggleState()); };
+                row->name.setText(unit.name, juce::dontSendNotification);
+                row->name.setTooltip(unit.kind == "button" ? "A noise with a button of its own on the grid of its division. Its alias is typed in the button's voicing row." : unit.name);
+                for (const char* kind : { "Keys", "Tremulant", "Drawknobs", "Couplers", "Button" }) row->kind.addItem(kind, row->kind.getNumItems() + 1);
+                row->kind.setSelectedId(unit.kind == "keys" ? 1 : unit.kind == "tremulant" ? 2 : unit.kind == "drawknobs" ? 3 : unit.kind == "couplers" ? 4 : 5, juce::dontSendNotification);
+                row->kind.setTooltip("What starts this noise: the keys of a keyboard, a running tremulant, the stops' drawknobs, the couplers' drawknobs, or a button of its own on the grid.");
+                row->division.addItem("Pedal", 1);
+                for (int manual = 1; manual <= manualCount; ++manual) row->division.addItem("Manual " + juce::String(manual), manual + 1);
+                const bool placed = unit.kind == "keys" || unit.kind == "tremulant" || unit.kind == "button";
+                row->division.setSelectedId(placed ? juce::jlimit(0, manualCount, juce::jmax(0, unit.division)) + 1 : 0, juce::dontSendNotification);
+                row->division.setEnabled(placed);
+                row->division.setTooltip("The keyboard whose keys make it, the division whose tremulant it is, or the division on whose grid its button stands.");
+                auto changed = [this, row, key]
+                {
+                    static const char* const kinds[] = { "keys", "tremulant", "drawknobs", "couplers", "button" };
+                    if (callbacks.change) callbacks.change(key, kinds[juce::jlimit(0, 4, row->kind.getSelectedId() - 1)], juce::jmax(0, row->division.getSelectedId() - 1));
+                };
+                row->kind.onChange = changed;
+                row->division.onChange = changed;
+                setupVolume(row->volume, unit.volumeDb, 66);
+                row->volume.setTooltip(unit.kind == "button" ? "The volume of this noise: the same value as the Stop volume of its button's voicing row."
+                    : "The volume of this noise as a whole, on top of the level its definition gives every file.");
+                row->volume.onValueChange = [this, row, key] { if (callbacks.volume) callbacks.volume(key, "*", row->volume.getValue()); };
+                for (const auto& perspective : perspectives)
+                {
+                    int files = -1;
+                    for (const auto& [name, count] : unit.perspectives) if (name.equalsIgnoreCase(perspective)) files = count;
+                    auto* count = row->perspectiveCounts.add(new juce::Label({}, files < 0 ? juce::String() : juce::String(files) + (files == 1 ? " file" : " files")));
+                    count->setFont(juce::FontOptions(12.0f));
+                    count->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+                    auto* slider = row->perspectiveVolumes.add(new juce::Slider());
+                    const auto stored = unit.perspectiveDb.find(perspective.toLowerCase());
+                    setupVolume(*slider, stored != unit.perspectiveDb.end() ? stored->second : 0.0, 60);
+                    slider->setTooltip("The volume of this noise in this perspective, on top of the noise's own volume.");
+                    slider->onValueChange = [this, slider, key, perspective] { if (callbacks.volume) callbacks.volume(key, perspective, slider->getValue()); };
+                    addAndMakeVisible(count);
+                    addChildComponent(slider);
+                    slider->setVisible(files >= 0);
+                }
+                row->remove.setTooltip("Takes this noise out of the organ (its files stay on the disk).");
+                row->remove.onClick = [this, key] { if (callbacks.remove) callbacks.remove(key); };
+                addAndMakeVisible(row->on); addAndMakeVisible(row->name); addAndMakeVisible(row->kind); addAndMakeVisible(row->division);
+                addAndMakeVisible(row->volume); addAndMakeVisible(row->remove);
+            }
+            empty.setText(units.empty() ? "This organ has no noises. They come with an organ made from its Hauptwerk definition; a folder of noises can be read by Add folder..." : "",
+                juce::dontSendNotification);
+            empty.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+            addAndMakeVisible(empty);
+            masterBox.setButtonText("Noises on");
+            masterBox.setToggleState(masterOn, juce::dontSendNotification);
+            masterBox.setTooltip("Every noise of the organ on or off.");
+            masterBox.onClick = [this] { if (callbacks.master) callbacks.master(masterBox.getToggleState()); };
+            addAndMakeVisible(masterBox);
+            masterLabel.setText("Volume of all", juce::dontSendNotification);
+            addAndMakeVisible(masterLabel);
+            setupVolume(masterVolume, masterDb, 70);
+            masterVolume.setTooltip("The level of all noises against the pipes.");
+            masterVolume.onValueChange = [this] { if (callbacks.masterVolume) callbacks.masterVolume(masterVolume.getValue()); };
+            addAndMakeVisible(masterVolume);
+            followBox.setButtonText("Key noises follow the couplers");
+            followBox.setToggleState(followCouplers, juce::dontSendNotification);
+            followBox.setTooltip("Off: a key's noise is heard once, on the keyboard that is played. On: every division a coupler reaches adds the noise of its own key.");
+            followBox.onClick = [this] { if (callbacks.follow) callbacks.follow(followBox.getToggleState()); };
+            addAndMakeVisible(followBox);
+            addFolderButton.setButtonText("Add folder...");
+            addFolderButton.setTooltip("Reads a folder of noises by the names of its folders (no definition needed).");
+            addFolderButton.onClick = [this] { if (callbacks.addFolder) callbacks.addFolder(); };
+            addAndMakeVisible(addFolderButton);
+            setSize(juce::jmax(900, columnsLeft() + perspectives.size() * perspectiveWidth + 60), 46 + juce::jmax(1, rows.size()) * rowHeight + 70);
+            startTimerHz(4);
+        }
+        ~NoiseUnitsContent() override { stopTimer(); }
+        static constexpr int rowHeight = 34, perspectiveWidth = 196;
+        static int columnsLeft() { return 12 + 34 + 220 + 116 + 116 + 206; }
         void resized() override
         {
-            auto area = getLocalBounds().reduced(12);
-            auto top = area.removeFromTop(30);
-            masterBox.setBounds(top.removeFromLeft(130));
-            volumeLabel.setBounds(top.removeFromLeft(110));
-            volume.setBounds(top);
-            area.removeFromTop(12);
-            if (buttons.isEmpty()) info.setBounds(area.removeFromTop(26));
-            const int width = (area.getWidth() - 16) / 3;
-            for (int i = 0; i < buttons.size(); ++i)
-                buttons[i]->setBounds(area.getX() + (i % 3) * (width + 8), area.getY() + (i / 3) * 44, width, 36);
+            const int left = 12;
+            int x = left;
+            const int widths[] = { 34, 220, 116, 116, 206 };
+            for (int i = 0; i < headers.size(); ++i)
+            {
+                const int width = i < 5 ? widths[i] : perspectiveWidth;
+                headers[i]->setBounds(x, 8, width - 6, 24);
+                x += width;
+            }
+            int y = 40;
+            for (auto* row : rows)
+            {
+                x = left;
+                row->on.setBounds(x + 2, y + 4, 28, 26); x += widths[0];
+                row->name.setBounds(x, y + 2, widths[1] - 6, 30); x += widths[1];
+                row->kind.setBounds(x, y + 4, widths[2] - 8, 26); x += widths[2];
+                row->division.setBounds(x, y + 4, widths[3] - 8, 26); x += widths[3];
+                row->volume.setBounds(x, y + 4, widths[4] - 10, 26); x += widths[4];
+                for (int i = 0; i < row->perspectiveVolumes.size(); ++i)
+                {
+                    row->perspectiveCounts[i]->setBounds(x, y + 4, 52, 26);
+                    row->perspectiveVolumes[i]->setBounds(x + 52, y + 4, perspectiveWidth - 62, 26);
+                    x += perspectiveWidth;
+                }
+                row->remove.setBounds(x + 4, y + 5, 26, 24);
+                y += rowHeight;
+            }
+            if (rows.isEmpty()) { empty.setBounds(left, y, getWidth() - 2 * left, 28); y += rowHeight; }
+            y += 14;
+            masterBox.setBounds(left, y, 110, 28);
+            masterLabel.setBounds(left + 116, y, 96, 28);
+            masterVolume.setBounds(left + 212, y, 250, 28);
+            followBox.setBounds(left + 480, y, 250, 28);
+            addFolderButton.setBounds(getWidth() - 132, y, 120, 30);
         }
-        MainComponent& owner;
-        juce::ToggleButton masterBox;
-        juce::Label volumeLabel, info;
-        juce::Slider volume;
-        juce::OwnedArray<juce::TextButton> buttons;
+        Callbacks callbacks;
+        juce::StringArray perspectives;
+        juce::OwnedArray<juce::Label> headers;
+        juce::OwnedArray<RowControls> rows;
+        juce::Label empty, masterLabel;
+        juce::ToggleButton masterBox, followBox;
+        juce::Slider masterVolume;
+        juce::TextButton addFolderButton;
     };
 }
 
 void MainComponent::showNoisesWindow()
 {
     juce::Component::SafePointer<MainComponent> safeThis(this);
-    juce::var model = noisesVar;
-    if (!model.isObject()) { juce::DynamicObject::Ptr empty = new juce::DynamicObject(); model = juce::var(empty.get()); }
-    auto* content = new NoiseButtonsContent(*this,
-        [safeThis](const juce::String& name, bool on) { if (safeThis != nullptr) safeThis->setNoiseButton(name, on); },
-        [safeThis](bool on) { if (safeThis != nullptr) safeThis->setNoisesMaster(on); },
-        [safeThis](double db) { if (safeThis != nullptr) safeThis->setNoisesVolume(db); }, model);
+    const auto units = noiseUnits();
+    // The perspective columns: the organ's own order, then whatever else the noises name; "" = one recording for all.
+    juce::StringArray columns;
+    std::vector<juce::String> ordered;
+    for (const auto& unit : units) for (const auto& [name, count] : unit.perspectives) if (std::find(ordered.begin(), ordered.end(), name) == ordered.end()) ordered.push_back(name);
+    engine.sortPerspectives(ordered);
+    for (const auto& name : ordered) columns.add(name);
+    NoiseUnitsContent::Callbacks callbacks;
+    callbacks.buttonVolume = [safeThis](const juce::String& key) -> double
+    {
+        if (safeThis == nullptr) return 0.0;
+        const Stop* stop = safeThis->noiseButtonStop(key.fromFirstOccurrenceOf("|", false, false));
+        return stop != nullptr ? (double)stop->db : 0.0;
+    };
+    callbacks.on =[safeThis](const juce::String& key, bool on) { if (safeThis != nullptr) safeThis->setNoiseUnitOn(key, on); };
+    callbacks.volume = [safeThis](const juce::String& key, const juce::String& perspective, double db) { if (safeThis != nullptr) safeThis->setNoiseUnitVolume(key, perspective, db); };
+    callbacks.change = [safeThis](const juce::String& key, const juce::String& kind, int division)
+    {
+        juce::MessageManager::callAsync([safeThis, key, kind, division] { if (safeThis != nullptr) safeThis->changeNoiseUnit(key, kind, division); });   // the window is rebuilt: never from its own box's callback
+    };
+    callbacks.remove = [safeThis](const juce::String& key)
+    {
+        juce::MessageManager::callAsync([safeThis, key] { if (safeThis != nullptr) safeThis->removeNoiseUnit(key); });
+    };
+    callbacks.master = [safeThis](bool on) { if (safeThis != nullptr) safeThis->setNoisesMaster(on); };
+    callbacks.masterVolume = [safeThis](double db) { if (safeThis != nullptr) safeThis->setNoisesVolume(db); };
+    callbacks.follow = [safeThis](bool on)
+    {
+        if (safeThis == nullptr) return;
+        safeThis->keyNoisesFollowCouplers.store(on);
+        safeThis->configurationDirty = true;
+        safeThis->saveSettings();
+    };
+    callbacks.addFolder = [safeThis]
+    {
+        if (safeThis == nullptr) return;
+        auto chooser = std::make_shared<juce::FileChooser>("The folder with the organ's noises", safeThis->lastSampleFolderDirectory, juce::String(), true);
+        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [safeThis, chooser](const juce::FileChooser& fc)
+        {
+            if (safeThis != nullptr && fc.getResult().isDirectory()) safeThis->addNoisesFromFolder(fc.getResult());
+        });
+    };
+    auto* content = new NoiseUnitsContent(units, columns, manualCount, noisesVar.isObject() ? (bool)noisesVar.getProperty("enabled", true) : true,
+        noisesVar.isObject() ? (double)noisesVar.getProperty("volumeDb", 0.0) : 0.0, keyNoisesFollowCouplers.load(), std::move(callbacks));
     const int width = content->getWidth(), height = content->getHeight();
-    noisesWindow = std::make_unique<ModelessDialog>("Noises", content, true);
-    placeDialog(*noisesWindow, "noises", width, height + 40);
+    noisesWindow = std::make_unique<ModelessDialog>("Noises", new ScrollableContent(content), true);
+    placeDialog(*noisesWindow, "noises2", juce::jmin(width, 1500), juce::jmin(height, 760) + 40);
     noisesWindow->setVisible(true);
     noisesWindow->toFront(true);
+}
+
+// The units' settings as a voicing carries them (Save Voicing, a combination that holds the voicing): every unit of
+// this organ with its switch, its volume and its perspectives' volumes. A button's volume is not here - it is its
+// stop's Stop volume, which the voicing has among the stops.
+juce::var MainComponent::noiseUnitsVoicingNow() const
+{
+    juce::Array<juce::var> list;
+    for (const auto& unit : noiseUnits())
+    {
+        juce::DynamicObject::Ptr entry = new juce::DynamicObject();
+        entry->setProperty("key", unit.key);
+        entry->setProperty("on", unit.on);
+        if (unit.kind != "button") entry->setProperty("volumeDb", unit.volumeDb);
+        juce::Array<juce::var> perspectives;
+        for (const auto& [name, db] : unit.perspectiveDb)
+        {
+            juce::DynamicObject::Ptr p = new juce::DynamicObject();
+            p->setProperty("name", name);
+            p->setProperty("db", db);
+            perspectives.add(juce::var(p.get()));
+        }
+        entry->setProperty("perspectives", perspectives);
+        list.add(juce::var(entry.get()));
+    }
+    return list;
+}
+
+// ... and taken back: the units this organ has get the stored switch and volumes; a unit the organ does not have
+// is passed over, a unit the list does not name stays as it is.
+void MainComponent::applyNoiseUnitsVoicing(const juce::var& units)
+{
+    const auto* list = units.getArray();
+    if (list == nullptr || !noisesVar.isObject()) return;
+    std::set<juce::String> here;
+    for (const auto& unit : noiseUnits()) here.insert(unit.key);
+    int applied = 0;
+    for (const auto& entry : *list)
+    {
+        const auto key = entry.getProperty("key", "").toString();
+        if (here.count(key) == 0) continue;
+        auto* unit = noiseUnitObject(key, true);
+        if (unit == nullptr) continue;
+        unit->setProperty("on", (bool)entry.getProperty("on", true));
+        if (!key.startsWith("button|")) unit->setProperty("volumeDb", (double)entry.getProperty("volumeDb", 0.0));
+        juce::Array<juce::var> perspectives;
+        if (const auto* stored = entry.getProperty("perspectives", juce::var()).getArray())
+            for (const auto& p : *stored)
+            {
+                juce::DynamicObject::Ptr copy = new juce::DynamicObject();
+                copy->setProperty("name", p.getProperty("name", "").toString());
+                copy->setProperty("db", (double)p.getProperty("db", 0.0));
+                perspectives.add(juce::var(copy.get()));
+            }
+        unit->setProperty("perspectives", perspectives);
+        ++applied;
+    }
+    if (applied == 0) return;
+    applyNoiseGains();
+    configurationDirty = true;
+    saveSettings();
+    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow();
 }

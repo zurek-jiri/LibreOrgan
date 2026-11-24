@@ -22,6 +22,7 @@ struct MemorySlot
     juce::Array<juce::var> couplerData;
     juce::Array<juce::var> tremulantData; // { manual, enabled } per division
     juce::var globalSliders;              // 0.9.119: { name: value } of the top row's sliders - a piston stored with that option on
+    juce::var noiseUnits;                 // 0.9.127: the noises' units (on, volume, per perspective) - a piston stored with "hold the voicing" on
 };
 
 // A step of "Compiling the Stop List" in the loading dialog: its text, the
@@ -110,6 +111,17 @@ public:
     void showMainWindow(juce::ResizableWindow& window);   // right after setVisible(true): the first paint at once (0.8.170)
    #endif
     void setUiScalePercent(int percent);   // the interface size (UIScale.h): applied to every open window, saved
+    // 0.9.127: a unit of noise as the Noises window shows it (public: the window's content is no member).
+    struct NoiseUnit
+    {
+        juce::String key, name, kind;                               // kind: keys / tremulant / drawknobs / couplers / button
+        int division = -1;
+        bool on = true;
+        double volumeDb = 0.0;
+        std::vector<std::pair<juce::String, int>> perspectives;    // name -> its files
+        std::map<juce::String, double> perspectiveDb;              // lower-case name -> dB
+    };
+    std::vector<NoiseUnit> noiseUnits() const;
 
 private:
     class DivisionAudioCallback;
@@ -142,6 +154,7 @@ private:
     LeftOnlyTextButton temperamentsButton{ "Temperaments" };
     LeftOnlyTextButton configurationEditorButton{ "Configuration Editor" };
     LeftOnlyTextButton stopListButton{ "Stop List" };   // the table of every division's stops, folders and transmissions
+    LeftOnlyTextButton noisesButton{ "Noises" };        // 0.9.127: the table of the organ's noises (their units, volumes per perspective)
     LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
     LeftOnlyTextButton audioRoutingButton{ "Audio routing" };   // 0.9.79 (#236)
     LeftOnlyTextButton messagesButton{ "Messages" };   // 0.9.39: shown while messages are unread (the top bar's bell; no timer of its own)
@@ -194,7 +207,25 @@ private:
     std::vector<SamplerEngine::NoiseSpec> noiseSpecs(int& unresolved) const;
     void noisesTick();
     void applyNoiseButtons();
-    void setNoiseButton(const juce::String& name, bool on);
+    // The UNITS of noise (the keys of one keyboard, the running noise of one tremulant, all drawknobs, all couplers,
+    // one button of its own): each on / off, its volume and one more per perspective - the model's "units". A
+    // button's volume is the Stop volume of its stop on the grid (Stop::noiseButton), never a second value.
+    static juce::String noiseUnitKey(const juce::StringArray& fields);
+    Stop* noiseButtonStop(const juce::String& name) const;
+    juce::DynamicObject* noiseUnitObject(const juce::String& key, bool create);
+    float noiseUnitGain(const juce::String& key, const juce::String& perspective) const;
+    void applyNoiseGains();
+    void noiseButtonVolumesCheck();
+    double noiseButtonVolumesSeen = -1.0;
+    std::vector<std::pair<juce::String, juce::String>> noiseLoadedUnits;   // unit key + perspective of every sound the engine holds, in its order
+    void setNoiseUnitOn(const juce::String& key, bool on);
+    void setNoiseUnitVolume(const juce::String& key, const juce::String& perspective, double db);
+    void changeNoiseUnit(const juce::String& key, const juce::String& newKind, int newDivision);
+    void removeNoiseUnit(const juce::String& key);
+    void syncNoiseButtonStops();
+    // The units' settings as a voicing file and a combination that holds the voicing carry them ("noiseUnits").
+    juce::var noiseUnitsVoicingNow() const;
+    void applyNoiseUnitsVoicing(const juce::var& units);
     std::unique_ptr<juce::DialogWindow> noisesWindow;
     void setNoisesModel(const juce::var& noises, const juce::String& why);
     void setNoisesMaster(bool enabled);

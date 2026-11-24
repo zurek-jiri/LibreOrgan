@@ -1395,12 +1395,11 @@ folder by default).
 ## 6.6 Noises
 
 The mechanical sounds of the organ: the keys (press and release), the
-drawknobs, the couplers, the tremulant's knob and its running, the blower, and
-the effects with a button of their own (calcant bell, rossignol, zimbelstern,
-drum ...). A noise is played as its file is - never tuned, never touched by
-the wind, the tremulant or the swell - through the route of its division and
-perspective, so every perspective has its own recording where the sample
-folders hold one.
+drawknobs, the couplers, a running tremulant, the blower, and the effects with
+a button of their own (calcant bell, rossignol, zimbelstern, drum ...). A noise
+is played as its file is - never tuned, never touched by the wind, the
+tremulant or the swell - through the route of its division and perspective, so
+every perspective has its own recording where the sample folders hold one.
 
 - **Where they come from.** An organ made from a Hauptwerk definition takes its
   noises with it. An organ you already have gets them by
@@ -1414,11 +1413,35 @@ folders hold one.
 - **Drawknobs.** A stop keeps the noise the definition gives it; a button
   without one (a transmission, an extension) takes one of the free drawknob
   noises, always the same.
-- **Buttons of their own.** *Configuration Editor > Noises >
-  [Noise buttons](#noise-buttons)*: a window that stays open while you play.
-  Their state is saved with the organ; a published configuration opens with
-  all of them off.
-- **Level.** [Noises on](#noises-on) and [Noises volume](#noises-volume).
+- **Tremulant.** The noise of the running tremulant, while it is on.
+- **Buttons of their own.** Blower, zimbelstern and the like stand on the grid
+  of their division among the stops: dragged, MIDI-learned, held by the
+  combinations like a stop. Their voicing row has the Stop volume and the
+  alias. Tutti leaves them alone; the general cancel leaves a blower running.
+  A published configuration opens with all of them off.
+
+### The Noises window
+
+The top bar's **Noises** button: one row per noise - the keys of a keyboard, a
+tremulant, the drawknobs, the couplers, each button of its own.
+
+- **On** - the noise on or off.
+- **Kind** and **Division** - what starts it and where; change them when a
+  folder was read wrong.
+- **Volume** - of the noise as a whole. For a button it is the Stop volume of
+  its voicing row: one value, shown in both places.
+- **One column per perspective** - the number of its files and its own volume,
+  on top of the noise's.
+- **x** - takes the noise out of the organ (the files stay on the disk).
+- Below: [Noises on](#noises-on), the volume of all
+  ([Noises volume](#noises-volume)),
+  [Key noises follow the couplers](#key-noises-follow-the-couplers) and
+  *Add folder...* ([Noises of a folder](#noises-of-a-folder)).
+
+Save Voicing and Load Voicing carry these switches and volumes; so do the
+combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)
+is on. Merging another organ adds its noises; only what the loaded organ
+already has is left out.
 
 Nothing clicks while an organ loads.
 
@@ -2290,17 +2313,17 @@ the definition gives each of them. Travels with the organ.
 Off (default): a key's noise is heard once, on the keyboard that is played.
 On: every division a coupler reaches adds the noise of its own key.
 
-### Noise buttons
+### Noises window
 
-Opens the window with the master switch, the volume and the organ's noise
-buttons (blower, calcant, rossignol, zimbelstern ...).
+Opens [The Noises window](#the-noises-window), as the top bar's Noises button
+does.
 
 ### Noises of a Hauptwerk definition
 
 Adds the noises of the organ's Hauptwerk definition to the loaded organ.
 LibreOrgan Sampler does not load the definition: as with the pipes, it is read
 for where the samples lie and what they belong to - here a key, a drawknob, a
-coupler, the tremulant or a button of its own. A drawknob's noise finds its stop by the
+coupler, a running tremulant or a button of its own. A drawknob's noise finds its stop by the
 sample folder the stop plays, so renamed and rearranged stops keep theirs.
 Stops, transmissions, voicing and the grid stay as they are. Save the
 configuration afterwards.
@@ -2310,8 +2333,9 @@ configuration afterwards.
 Without a definition: reads a folder of noises by the names of its folders -
 the perspective, the moment (atk / rel, on / off, down / up, pull / push), the
 kind (keys, drawknobs, couplers, tremulant; anything else becomes a button
-named after its folder) and the division. It is a guess; what the names do not
-tell is missed. Drawknob noises are given to the buttons at random.
+named after its folder) and the division. It is a guess; what the names did
+not tell is put right in [The Noises window](#the-noises-window). Drawknob
+noises are given to the buttons at random.
 
 ### Noises of this organ
 

@@ -228,7 +228,8 @@ public:
     static int expandedHeightFor(const Stop* stop, int transmissionIndex, int rowWidth = 1 << 30, bool folder = false) noexcept
     {
         if (stop == nullptr) return containerExpandedHeight;
-        if (transmissionIndex < 0 && stop->container) return containerExpandedHeight;
+        if (transmissionIndex < 0 && stop->container)
+            return stop->noiseButton != 0 ? expandedControlsHeight : containerExpandedHeight;   // 0.9.127: a noise's button has its Stop volume on line 2
         bool volume = stop->volumeKeysExpanded, tone = stop->toneKeysExpanded;
         const bool attackRow = transmissionIndex < 0;   // 0.9.79: the stop's own row has the "Attack per key" header
         const bool attack = attackRow && stop->attackKeysExpanded;

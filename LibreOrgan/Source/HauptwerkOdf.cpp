@@ -2262,6 +2262,20 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
             else
             {
                 p.kind = "button"; p.name = n.switchName; p.defaultOn = n.defaultOn;
+                p.division = divisionIndexByPrefix(n.switchName);   // "OW. Cimbelstern", "P. Pauke": its button stands on that division's grid (none named: the pedal's)
+                if (p.division < 0)
+                {   // ... or the mark as the STOPS carry it ("OW. Cimbelstern" beside "OW. Principal 8"), whatever the division is called
+                    const auto mark = n.switchName.trim().upToFirstOccurrenceOf(" ", false, false);
+                    if (mark.length() >= 2 && (mark.endsWithChar('.') || mark.endsWithChar(':')))
+                    {
+                        std::map<int, int> votes;
+                        for (const auto& [stopId, stop] : stops)
+                            if (stop.name.trim().startsWithIgnoreCase(mark + " "))
+                                if (const int index = indexOfDivision(stop.divisionId); index >= 0) ++votes[index];
+                        int best = 0;
+                        for (const auto& [index, count] : votes) if (count > best) { best = count; p.division = index; }
+                    }
+                }
             }
             if (p.kind == "keys" && p.division < 0) { ++withoutDivision; continue; }
             if (p.files.empty()) continue;

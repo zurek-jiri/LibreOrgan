@@ -6209,7 +6209,8 @@ struct SamplerEngine::Impl
     {
         juce::String kind, edge, ref, perspective, group;
         int manual = -1, note = 60;
-        float gain = 1.0f;
+        float gain = 1.0f;                                          // the level its definition gives it
+        float trim = 1.0f;                                          // its unit's volume x its perspective's (0 = off): setNoiseGains
         std::vector<std::unique_ptr<Sample>> variants, releases;
         std::unique_ptr<Stop> carrier;                              // what a voice needs as its stop: unity gain, nothing else
         int lastVariant = -1, lastRelease = -1;
@@ -6288,7 +6289,7 @@ struct SamplerEngine::Impl
         v.tempMode.store(0, std::memory_order_relaxed);
         v.couplingUsed = false; v.coupledPitchCents = 0.0f; v.couplingTotalSamples = 1;
         v.couplingRetarget.store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);
-        v.routeGainTarget.store(sound.gain * owner.noiseVolumeGain.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        v.routeGainTarget.store(sound.gain * sound.trim * owner.noiseVolumeGain.load(std::memory_order_relaxed), std::memory_order_relaxed);
         v.toneTarget.store(0.0f, std::memory_order_relaxed);
         v.loopEnabled = loop; v.detachedRelease = false; v.startFrozen = false;
         v.initialFrozenExpr = 1.0f; v.initialWindGain = 1.0f;
@@ -6311,7 +6312,7 @@ struct SamplerEngine::Impl
         NoiseSound& sound = *noiseSet->sounds[(size_t)index];
         if (sound.edge != "held")
         {
-            if (on) startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), false, 0.0f, contextManual, false);   // the whole file, as it is
+            if (on && sound.trim > 0.0f) startNoiseVoice(sound, nextOf(sound.variants, sound.lastVariant), false, 0.0f, contextManual, false);   // the whole file, as it is
             return;
         }
         // The voices of it that still sound (a panic, a reload of the organ ends them behind our back).
@@ -6419,6 +6420,18 @@ struct SamplerEngine::Impl
             }
             else if (voices[idx].noise) return;
         retiredNoiseSets.clear();
+    }
+    // The levels changed (a unit's volume, the master): the held noises that sound follow at once (the route gain glides).
+    void refreshHeldNoiseGains() noexcept
+    {
+        if (noiseSet == nullptr) return;
+        const float master = owner.noiseVolumeGain.load(std::memory_order_relaxed);
+        for (const auto& sound : noiseSet->sounds)
+            for (const auto& [idx, order] : sound->sounding)
+            {
+                Voice& v = voices[idx];
+                if (v.creationOrder == order && v.noise && !v.ctlReleasing) v.routeGainTarget.store(sound->gain * sound->trim * master, std::memory_order_relaxed);
+            }
     }
     // Once a second: a held sound that is on but no longer sounds (a panic or a reload ended it) starts again.
     void keepHeldNoises() noexcept
@@ -12675,10 +12688,9 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
 {
     if (manualIndex < 0 || manualIndex >= maxManuals) return;
     auto& t = impl->trem[(size_t)manualIndex];
-    if (t.enabled.exchange(enabled) != enabled)   // 0.9.127: the tremulant's drawknob, and its noise while it runs
+    if (t.enabled.exchange(enabled) != enabled)   // 0.9.127: the tremulant's noise while it runs (no drawknob click: it is in that recording)
     {
         const juce::ScopedLock sl(controlLock);
-        impl->switchNoise("tremulant", juce::String(manualIndex), enabled, manualIndex);
         impl->noiseTrigger("tremulantRun", juce::String(manualIndex), enabled, manualIndex);
     }
     t.rateHz.store(juce::jlimit(2.0f, 11.0f, rateHz));
@@ -12752,7 +12764,10 @@ void SamplerEngine::setStopEnabled(Stop* stop, bool enabled)
     if (stop->enabled == enabled) return;
     stop->enabled = enabled;
     impl->reclaimFinished();
-    {   // 0.9.127: the drawknob's noise - the ranks of a stop folder are ONE button (their master's)
+    if (stop->noiseButton != 0)   // 0.9.127: a noise's own button on the grid - its noise starts / ends
+        impl->noiseTrigger("button", stop->name.toLowerCase(), enabled, stop->primaryManual);
+    else
+    {   // the drawknob's noise - the ranks of a stop folder are ONE button (their master's)
         const Stop* button = stop->groupMasterPtr != nullptr ? stop->groupMasterPtr : stop;
         impl->switchNoise("stop", juce::String(button->primaryManual) + "|" + button->name.toLowerCase(), enabled, button->primaryManual);
     }
@@ -14025,6 +14040,17 @@ void SamplerEngine::setNoisesEnabled(bool enabled)
 void SamplerEngine::setNoiseVolumeDb(float db) noexcept
 {
     noiseVolumeGain.store(juce::Decibels::decibelsToGain(juce::jlimit(-40.0f, 20.0f, db)), std::memory_order_relaxed);
+    const juce::ScopedLock sl(controlLock);
+    impl->refreshHeldNoiseGains();
+}
+
+void SamplerEngine::setNoiseGains(const std::vector<float>& gains)
+{
+    const juce::ScopedLock sl(controlLock);
+    if (impl->noiseSet == nullptr) return;
+    for (size_t i = 0; i < impl->noiseSet->sounds.size(); ++i)
+        impl->noiseSet->sounds[i]->trim = i < gains.size() ? juce::jlimit(0.0f, 8.0f, gains[i]) : 1.0f;
+    impl->refreshHeldNoiseGains();
 }
 
 void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bool isRelease, int releaseMaxHoldMs)
