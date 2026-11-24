@@ -5506,7 +5506,28 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   never recognise a kind of row, stop or button by secondary signs (its name, empty folders, not indented ...); such
   a guess is allowed only once, as a migration of an older file, and is logged. Verified: a fresh import saves
   "noise": "<key>" on four rows (the blower's with child true after ORGAN_TEST_INDENT), the Stop List pictures the
-  indented row as Noise; a file saved by 0.9.131 gets its four rows flagged at the load. RULES FOR EVER: a card is never closed with sound in its
+  indented row as Noise; a file saved by 0.9.131 gets its four rows flagged at the load.
+  CI THAT EVENING (seven versions in four hours; the user: "proč nezrušit build 131 a rovnou dělat 132 ... bude to
+  zase čekat celou věčnost"): every tag's Build waited for a macOS runner behind the one before. build.yml now has
+  `concurrency` (group "release" for v* tags, cancel-in-progress) and a first job `supersede` ("older builds
+  cancelled": ubuntu, `permissions: actions: write`, `gh run cancel` of every Build run of a v* ref that is not
+  completed and has a LOWER run_number) - a new version's run cancels the older ones, whatever workflow file they
+  started with. build-retry.yml retries only the NEWEST version and only the commit its tag stands on NOW
+  (`gh api repos/.../commits/<tag>` .sha against workflow_run.head_sha). LESSON: I moved the tag v0.9.132 twice (onto
+  the workflow change, then onto the mac fix) - three runs carried ONE tag name, the retry (which compared names)
+  kept starting the cancelled ones again and they cancelled one another (runs 729-731, attempts 2-3). NEVER move a
+  tag to start a build while runs of that tag exist - a fix after a tag is a NEW version number (0.9.133); v0.9.132
+  was deleted from origin and never released. The token for an API cancel is not available to me (the tool refused
+  reading git's stored credential): cancelling is done by the workflow itself. API without a token = 60 requests an
+  hour for the IP - two watchers polling burnt it; read GitHub's HTML pages (actions/workflows/build.yml,
+  /releases) for a state check instead.
+  #267 (Christedge, MacBook Air M2 + Mac mini M4, 0.9.130: "damaged binary"): JUCE's CMake signs the app bundle ad hoc
+  at the build and OUR CMakeLists then replaces AppIcon.icns in it - the signature's seal over the resources no longer
+  fits, and Apple silicon calls a downloaded app with a broken signature "damaged" (the user's Intel Macs never
+  minded). build.yml: a step "Sign the app bundle ad hoc" (`codesign --force --deep --sign -` + `--verify --deep
+  --strict`) right before the zip, both macOS jobs. The app is still NOT notarised: release body, README and site say
+  "System Settings > Privacy & Security > Open Anyway (older macOS: right-click > Open)" - "right-click > Open" alone
+  no longer works on current macOS. NOT verified on a Mac (none here): the reporter's next try tells. RULES FOR EVER: a card is never closed with sound in its
   buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
   and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
   by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,
