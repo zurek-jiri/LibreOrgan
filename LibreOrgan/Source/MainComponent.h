@@ -187,7 +187,7 @@ private:
     std::atomic<bool> keyNoisesFollowCouplers{ false };   // configuration key: the key noises of every division a coupler reaches (off: the played keys alone)
     std::atomic<bool> noisesLoading{ false };
     int noisesVersionWanted = 0, noisesVersionLoaded = 0;
-    double noisesArmAtMs = 0.0, noisesQuietSinceMs = 0.0;
+    double noisesArmAtMs = 0.0, noisesQuietSinceMs = 0.0, noisesTickAtMs = 0.0;
     static juce::var noisesVarFromPlan(const HauptwerkOdf::Plan& plan, const std::function<juce::String(int)>& refOfStop);
     juce::File libraryRootOnThisComputer() const;
     void noisesChanged(const juce::var& noises, bool followCouplers);

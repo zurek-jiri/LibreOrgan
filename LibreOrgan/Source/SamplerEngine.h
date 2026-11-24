@@ -1833,6 +1833,7 @@ private:
     std::atomic<float> undulationBeatRatio{ 12.0f };
     juce::String lastLoadError;
     std::atomic<double> defaultSampleRate{ 48000.0 };
+    std::atomic<bool> noisesPresent{ false };   // a set with sounds is in force (the keys ask nothing of the queue without one)
     std::atomic<bool> noisesEnabled{ true }, noisesArmed{ false };   // 0.9.127: the noises' master switch; armed = events make sound (never while loading)
     std::atomic<float> noiseVolumeGain{ 1.0f };
     std::atomic<float> releaseFadeOutMs{ 110.0f };   // 0.8.215: the GUI's defaults (110 ms), so the self-test renders the same join

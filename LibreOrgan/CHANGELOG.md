@@ -21,9 +21,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   (calcant bell, rossignol, zimbelstern, drum ...). A noise is played as its
   file is - never tuned, never touched by wind, tremulant or swell - through
   the route of its division and perspective.
-  - An organ made from a Hauptwerk definition takes its noises with it: the
-    definition is read for where the noise files are and what starts each of
-    them. LibreOrgan Sampler does not load the definition.
+  - An organ made from a Hauptwerk definition takes its noises with it. The
+    definition is not loaded: as with the pipes, it is read for where the
+    samples lie and what they belong to.
   - *Configuration Editor > Noises > Noises of a Hauptwerk definition* adds
     the noises to an organ you already have; nothing else of the
     configuration is touched. A drawknob's noise finds its stop by the sample

@@ -2298,9 +2298,9 @@ buttons (blower, calcant, rossignol, zimbelstern ...).
 ### Noises of a Hauptwerk definition
 
 Adds the noises of the organ's Hauptwerk definition to the loaded organ.
-LibreOrgan Sampler does not load the definition: it is read for where the
-noise files are and what starts each of them - a key, a drawknob, a coupler,
-the tremulant, a button of its own. A drawknob's noise finds its stop by the
+LibreOrgan Sampler does not load the definition: as with the pipes, it is read
+for where the samples lie and what they belong to - here a key, a drawknob, a
+coupler, the tremulant or a button of its own. A drawknob's noise finds its stop by the
 sample folder the stop plays, so renamed and rearranged stops keep theirs.
 Stops, transmissions, voicing and the grid stay as they are. Save the
 configuration afterwards.

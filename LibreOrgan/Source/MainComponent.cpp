@@ -36080,9 +36080,9 @@ void MainComponent::showConfigurationEditor()
                             if (safeThis != nullptr && fc.getResult().existsAsFile()) safeThis->addNoisesFromDefinition(fc.getResult());
                         });
                     },
-                    "Adds the noises of the organ's Hauptwerk definition to the LOADED organ: the definition is read for the noises alone - where their "
-                    "files are and what starts each of them (a key, a drawknob, a coupler, the tremulant, a button of its own). LibreOrgan Sampler does not load the "
-                    "definition; nothing else of your configuration is touched - stops, transmissions, voicing and the grid stay as they are. Save the configuration afterwards.",
+                    "Adds the noises of the organ's Hauptwerk definition to the LOADED organ. LibreOrgan Sampler does not load the definition: as with the pipes, it is "
+                    "read for where the samples lie and what they belong to - here a key, a drawknob, a coupler, the tremulant or a button of its own. "
+                    "Nothing else of your configuration is touched - stops, transmissions, voicing and the grid stay as they are. Save the configuration afterwards.",
                     "Noises of a Hauptwerk definition");
                 addButton("Noises of a folder", "Add...", [&o]
                     {
@@ -36100,7 +36100,8 @@ void MainComponent::showConfigurationEditor()
                     "Takes every noise out of the configuration (the files stay on the disk).", "Noises of this organ");
             }
 
-            //---------------------------------------------------------------- Plug-ins (0.9.102), then the Console            addSection("Plug-ins (VST3)", true, true);
+            //---------------------------------------------------------------- Plug-ins (0.9.102), then the Console
+            addSection("Plug-ins (VST3)", true, true);
             {
                 const auto found = PluginHost::effects().size();
                 const auto refused = PluginHost::refusedLines().size();
@@ -36933,8 +36934,10 @@ std::vector<SamplerEngine::NoiseSpec> MainComponent::noiseSpecs(int& unresolved)
 // a moment later the noises are armed and the buttons that are on (the blower) start.
 void MainComponent::noisesTick()
 {
-    engine.noiseHousekeeping();
     const double now = juce::Time::getMillisecondCounterHiRes();
+    if (now - noisesTickAtMs < 500.0) return;   // twice a second is plenty (the caller's timer is faster)
+    noisesTickAtMs = now;
+    engine.noiseHousekeeping();
     if (activeFolderLoader != nullptr || searchingSampleFolders)
     {
         engine.setNoisesArmed(false);

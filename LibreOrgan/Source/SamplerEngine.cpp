@@ -13955,6 +13955,7 @@ juce::String SamplerEngine::loadNoises(const std::vector<NoiseSpec>& specs)
         const juce::ScopedLock sl(controlLock);
         impl->retireNoiseSet();
         impl->noiseSet = std::move(set);
+        noisesPresent.store(usable > 0, std::memory_order_relaxed);
     }
     const juce::String summary = juce::String(usable) + " noise sound(s) of " + juce::String((int)specs.size()) + ", " + juce::String((int)jobs.size() - missing.load() - leftForMemory.load()) + " file(s), "
         + juce::String((double)bytes.load() / 1048576.0, 1) + " MB in " + juce::String((nowMs() - startMs) / 1000.0, 1) + " s"
@@ -13973,6 +13974,7 @@ void SamplerEngine::clearNoises()
 {
     const juce::ScopedLock sl(controlLock);
     impl->retireNoiseSet();
+    noisesPresent.store(false, std::memory_order_relaxed);
 }
 
 void SamplerEngine::noiseHousekeeping()
@@ -14000,7 +14002,7 @@ bool SamplerEngine::hasNoiseFor(const juce::String& kind, const juce::String& re
 void SamplerEngine::keyNoise(int manualIndex, int midiNote, bool down) noexcept
 {
     if (midiNote < 0 || midiNote >= 128 || manualIndex < 0 || manualIndex >= maxManuals) return;
-    if (!noisesEnabled.load(std::memory_order_relaxed) || !noisesArmed.load(std::memory_order_relaxed)) return;
+    if (!noisesPresent.load(std::memory_order_relaxed) || !noisesEnabled.load(std::memory_order_relaxed) || !noisesArmed.load(std::memory_order_relaxed)) return;
     impl->pushMidi({ (uint8_t)midiNote, 0, (int8_t)manualIndex, down, 1 });
 }
 

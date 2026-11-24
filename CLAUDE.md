@@ -5327,6 +5327,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   configuration's); the website / README / 1.5 / 10.4 still say the definition is read for TWO things - the noises are
   a third, the wording is the user's rule to change; Linux / macOS not compiled (no push); the uncompacted-definition
   fix was run on St. Guilhem Surround by --hauptwerk only, not by a whole import.
+  A REGRESSION OF MY OWN IN 7c00e1e, FOUND BY THE USER ("Proč se ti Noises sekce smíchala se sekcí Plugins ... regres jako
+  sviňa! Jaké další regresy udělals?"): the Editor's "Plug-ins (VST3)" header was GONE - my PowerShell replacement took
+  the comment line WITH its newline and put a here-string back that ended with that comment and NO newline, so the next
+  line, `addSection("Plug-ins (VST3)", true, true);`, became part of the comment (the build passes: it is a comment).
+  RULES: (1) a scripted replacement never ends on a `//` comment line - end it with the newline or with code; (2) after a
+  commit made by scripted edits, list EVERY removed line (`git diff <c>~1 <c> -U0 -- Source | grep '^-[^-]'`) and account
+  for each (22 here: 21 meant, this one not); (3) an Editor change is PICTURED before delivery (ORGAN_TEST_EDITOR_SECTION
+  + ORGAN_TEST_DIALOG_SNAPSHOT with ORGAN_TEST_CLICK "Configuration Editor") - the 0.8.183 rule, skipped here; (4) an
+  import change is run through %TEMP%\hw_compare2.ps1 -Old <previous exe> (the plans of 25 published organs, the noise
+  lines left out). HIS OTHER ORDERS OF THAT MESSAGE: one volume for all noises is WRONG - every noise its own, and every
+  perspective of it its own (a keyboard: one per perspective of that keyboard), on top of the level the definition gives
+  each sample; a MERGE must ADD the other organ's noises (new drawknobs, keyboards, zimbelsterns), dropping only what
+  would be doubled; the noises are NOT a third thing the definition is read for - in Hauptwerk they are pipes and ranks,
+  "prostě čteme, kde jsou uložené znějící samply": never write them as a new purpose (texts changed to "as with the
+  pipes, read for where the samples lie and what they belong to"); a top-bar button "Noises" beside Stop List opening a
+  "Stop List for the noises" (what is where, editable) - asked for, to be designed with him.
   THE ENGINE DESIGN CHOSEN: `Voice::noise` (render: no cents at all, wind / tremulant / swell gains 1, no dynamic shelf), a
   carrier Stop per sound for the gain, sounds kept OUTSIDE `stops`; specs by REF from MainComponent {kind, edge, ref,
   perspective, manual, note, gainDb, files, releaseFiles}; commands through the MIDI queue; hooks in the engine for the
