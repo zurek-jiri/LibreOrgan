@@ -1605,6 +1605,7 @@ public:
     // The level of every sound on top of its own (the unit's volume x its perspective's; 0 = the unit is off), in the
     // order of the specs given to loadNoises; a sounding held noise follows at once.
     void setNoiseGains(const std::vector<float>& gains);
+    void silenceNoises();                                           // PANIC: every noise ends and none starts again by itself
     void setNoisesArmed(bool armed) noexcept { noisesArmed.store(armed, std::memory_order_relaxed); }
     // The footage the stop's caption shows (written in its name or alias, else the
     // measured one that displayName() appends, else the smpl footage): the base

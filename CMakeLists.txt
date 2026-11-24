@@ -9,7 +9,7 @@
 # what the GitHub Actions workflow and the macOS/Linux builds use. Both compile
 # the same sources with the same defines.
 cmake_minimum_required(VERSION 3.22)
-project(LibreOrgan VERSION 0.9.127 LANGUAGES C CXX)
+project(LibreOrgan VERSION 0.9.128 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,6 +43,25 @@ if(EXISTS "${_juce_midi_windows}")
         endif()
         file(WRITE "${_juce_midi_windows}" "${_juce_midi_new}")
         message(STATUS "JUCE corrected: juce_Midi_windows.cpp joins its queue thread only when it runs")
+    endif()
+endif()
+# 0.9.128: JUCE's ASIO device (juce_ASIO_windows.cpp, close()) stops the driver with the LAST BLOCK OF SOUND still in
+# the driver's buffers (it holds the callback lock from the moment the callback is taken away, so no silence is
+# ever written). Some drivers (RME Fireface USB) then repeat that block for ever on those outputs whenever
+# anything makes the card run again - a short harmonic buzz nothing of the program can stop, heard after a quit
+# with a sounding organ (24 Nov 2026: "zničí uši, zničí výškáče"). One line is corrected at configure time: both
+# halves of every output buffer are cleared and played for three periods before the driver is stopped.
+set(_juce_asio_windows "${CMAKE_CURRENT_SOURCE_DIR}/JUCE/modules/juce_audio_devices/native/juce_ASIO_windows.cpp")
+if(EXISTS "${_juce_asio_windows}")
+    file(READ "${_juce_asio_windows}" _juce_asio_text)
+    string(FIND "${_juce_asio_text}" "libreOrganChannel" _juce_asio_fixed)
+    if(_juce_asio_fixed EQUAL -1)
+        string(REPLACE "JUCE_ASIO_LOG (\"stopping\");" "JUCE_ASIO_LOG (\"stopping\"); for (int libreOrganChannel = 0; libreOrganChannel < numActiveOutputChans; ++libreOrganChannel) for (auto* libreOrganBuffer : bufferInfos[numActiveInputChans + libreOrganChannel].buffers) if (libreOrganBuffer != nullptr) outputFormat[libreOrganChannel].clear (libreOrganBuffer, currentBlockSizeSamples); Thread::sleep (jlimit (30, 250, currentSampleRate > 0.0 ? roundToInt (3000.0 * currentBlockSizeSamples / currentSampleRate) : 30));" _juce_asio_new "${_juce_asio_text}")
+        if(_juce_asio_new STREQUAL _juce_asio_text)
+            message(FATAL_ERROR "JUCE's juce_ASIO_windows.cpp has no 'JUCE_ASIO_LOG (\"stopping\");' any more: look at its close() and adapt this correction (silence into the driver's buffers before ASIOStop).")
+        endif()
+        file(WRITE "${_juce_asio_windows}" "${_juce_asio_new}")
+        message(STATUS "JUCE corrected: juce_ASIO_windows.cpp writes silence into the driver's buffers before it stops the driver")
     endif()
 endif()
 add_subdirectory(JUCE)

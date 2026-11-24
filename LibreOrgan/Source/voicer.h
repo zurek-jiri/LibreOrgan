@@ -581,6 +581,11 @@ public:
         const juce::StringArray& children, const juce::String& targetName);
     // Arrange mode: the grid cell an item of a division will take at the next layout.
     void setGridCell(int manual, const juce::String& key, int column, int row) { stopCells[manual][key] = { column, row }; }
+    // 0.9.128 (the user: the buttons of the noises "nikdy se nesmí integrovat mezi existující ... vždy pod existující
+    // rejstříky, aby byly jasně oddělené"): the keys get cells UNDER the last row of the division's items as they
+    // stand on the screen, a free row between - never a free cell among the stops. The visible layout is stored
+    // first (as a drop does), so nothing else moves. False: no layout yet (nothing placed).
+    bool placeUnderDivision(int manual, const juce::StringArray& keys);
     // The next loadState reads the saved state of (name, from) as belonging to
     // division 'to' (a stop moved between divisions keeps its voicing).
     void retargetSavedStop(const juce::String& name, int from, int to) { stateRetargets.push_back({ name, from, to, {} }); }

@@ -5409,6 +5409,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   tag v0.9.127 on 0b1d627, CI green at the first attempt on all five (Linux, Linux arm64, macOS, Intel macOS, Windows),
   Intel mac "late symbols: 0", the Windows exe without VC runtime DLLs, the CI exe deployed as
   C:\LibreOrgan\LibreOrgan_0.9.127.exe. The stages list above ("IN WORK", "NOT pushed") is history now.
+  0.9.128 (24 Nov 2026 evening, THE STUCK LOOP - the user: "extrémní bug ... zničí uši, zničí výškáče", "nikdy nesmíš své
+  testy ukončovat abruptně"): after my 0.9.127 test runs he started the program and a very short harmonic buzz played for
+  ever on Fireface outputs 1+2 (where my tests had played through ASIO; his own routes were on 7+8), untouched by PANIC,
+  Global Reset or the recorder. NOT our render: JUCE's ASIOAudioIODevice::close() (juce_ASIO_windows.cpp) takes the
+  callback lock right after the callback is taken away, sleeps 20 ms and calls ASIOStop - the driver's double buffers
+  still hold the LAST BLOCK OF SOUND; RME's driver then repeats that block on those outputs whenever anything makes the
+  card run again (another client, the next start). Never noticed before because at a quit nothing sounded; the blower
+  noise (on from the load in 0.9.127) sounded at every quit of my tests - and of his own session. No test was killed:
+  each ended by ORGAN_TEST_QUIT, a quit "in order" that closed the card with sound in it. FIXES: (1) JUCE corrected at
+  configure time (CMakeLists.txt, marker "libreOrganChannel", FATAL_ERROR when 'JUCE_ASIO_LOG ("stopping");' is gone)
+  and in C:\JUCE9 by hand: both halves of every output buffer cleared and played for three periods (30-250 ms) before
+  ASIOStop - every ASIO close of the program, at run time too. (2) ~MainComponent: `engine.setNoisesArmed(false)`,
+  `noteOffAll()` (the 300 ms kill fade), 380 ms, `audioMuted = true`, 260 ms, THEN the callbacks go and the cards
+  close; log "Quit: every voice ended, the cards got silence ...". (3) `CrashHandler::detail::silenceOutputs()` +
+  `silenceOutputsNow()` (the flag + 160 ms) first thing in the crash, terminate and abort handlers; every audio
+  callback writes zeros while it is set (beside audioMuted). What a driver does after the process is dead cannot be
+  ruled. (4) `MainComponent::panic()` switches every noise button off and calls `engine.silenceNoises()` (heldWanted
+  cleared, noise voices killed) - a held noise restarted itself a second after a PANIC before (keepHeldNoises), and
+  Global Reset calls panic(). (5) The clean start calls `noisesChanged({}, ...)`: the last organ's noises were loaded
+  and armed on the EMPTY console ("Noises loaded: 1554" right after "Started without a configuration"). (6) No noise is
+  on by itself: the plan writes button "on": false + "runs": defaultOn, and syncNoiseButtonStops creates every button
+  OFF whatever an older model says. (7) `Voicer::placeUnderDivision(manual, keys)` (compactCells = the layout on the
+  screen, stored first as a drop does; the keys at lastRow + 2, column by column): the noises' buttons stand UNDER the
+  division's stops, a free row between - the user: "nikdy se nesmí integrovat mezi existující ... Ruchy nepatří mezi
+  rejstříky" (the merge's rule for a foreign organ). RULES FOR EVER: a card is never closed with sound in its
+  buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
+  and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
+  by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,
+  PANIC -> off and no restart for 35 s, the quit line). NOT verifiable here: that the Fireface is free of the loop
+  (only ears tell); the crash path. STILL OWED from his list of that evening (his answers: couplers and other buttons
+  without a noise of their own = a FIXED assignment, optionally random at every on/off): a noise button's voicing row
+  with the perspective boxes (the same values as the perspectives' switches of the Noises window), One-shot as an
+  override, Release xfade only where a loop + release exists; distinct free drawknob / coupler noises per button (the
+  next unused one, stored with the organ; an option for random at every press); the Noises window showing the folders
+  and files (cells as the Stop List's, unfoldable rows, folders dropped onto a cell / a row / the empty space).
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,

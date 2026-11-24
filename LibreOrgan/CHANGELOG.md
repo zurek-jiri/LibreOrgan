@@ -12,6 +12,29 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.128] - 2026-11-24
+
+### Fixed
+- **A short loop of sound left in the sound card after the program ended.**
+  When the program was closed (or a card was closed) while something still
+  sounded - a blower noise was enough - the ASIO driver was stopped with the
+  last block of sound in its buffers, and some cards (RME Fireface) then
+  repeated that block as a short buzz on those outputs whenever the card ran
+  again; nothing in the program could stop it. Now every voice ends with its
+  fade and the cards get silence before they are closed; the ASIO driver's
+  buffers are cleared before the driver is stopped; and when the program
+  crashes, the audio callbacks write silence from that moment on.
+- **PANIC and Global Reset silence the noises too**: every noise button goes
+  off and nothing starts again by itself.
+- **A start without a configuration no longer loads the noises of the last
+  organ.**
+
+### Changed
+- **No noise is on by itself** - the blower neither. Its button is switched on
+  by hand (or by a combination).
+- **The buttons of the noises stand under the stops of their division**, a free
+  row between - never in free cells among the stops.
+
 ## [0.9.127] - 2026-11-24
 
 ### Added

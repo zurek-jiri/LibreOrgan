@@ -337,6 +337,22 @@ namespace CrashHandler
         }
        #endif
 
+        // 0.9.128 (the user: a short loop of the last block went on in the sound card's driver - "zničí uši, zničí
+        // výškáče"): when the program dies, the audio callbacks that still run write SILENCE from this moment on,
+        // so the last thing a driver holds is zeros. Read by every audio callback (MainComponent.cpp).
+        inline std::atomic<bool>& silenceOutputs() { static std::atomic<bool> silence{ false }; return silence; }
+        inline void silenceOutputsNow()
+        {
+            if (silenceOutputs().exchange(true)) return;
+           #if JUCE_WINDOWS
+            Sleep(160);   // several periods of every card: their buffers hold zeros before anything else happens
+           #else
+            struct timespec duration{};
+            duration.tv_nsec = 160000000;
+            nanosleep(&duration, nullptr);
+           #endif
+        }
+
         inline void juceCrashHandler(void* platformInfo)
         {
            #if JUCE_WINDOWS
@@ -349,11 +365,13 @@ namespace CrashHandler
                 for (;;) Sleep(INFINITE);         // this thread never runs again
             }
            #endif
+            silenceOutputsNow();   // first of all: nothing of the sound stays in a driver's buffer
             writeReport("Unhandled exception", platformInfo);
         }
 
         inline void terminateHandler()
         {
+            silenceOutputsNow();
             juce::String reason = "std::terminate";
             if (auto current = std::current_exception())
             {
@@ -367,6 +385,7 @@ namespace CrashHandler
 
         inline void abortSignalHandler(int)
         {
+            silenceOutputsNow();
             writeReport("SIGABRT", nullptr);
         }
 

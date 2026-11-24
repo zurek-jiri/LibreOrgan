@@ -14044,6 +14044,20 @@ void SamplerEngine::setNoiseVolumeDb(float db) noexcept
     impl->refreshHeldNoiseGains();
 }
 
+// PANIC: every noise that sounds ends (the kill fade) and none of the held ones is wanted any more - nothing starts
+// again by itself until its button or its tremulant is switched on anew.
+void SamplerEngine::silenceNoises()
+{
+    const juce::ScopedLock sl(controlLock);
+    if (impl->noiseSet != nullptr)
+    {
+        impl->noiseSet->heldWanted.clear();
+        for (auto& sound : impl->noiseSet->sounds) sound->sounding.clear();
+    }
+    for (const uint32_t idx : impl->controlActive)
+        if (impl->voices[idx].noise) impl->sendCommand(impl->voices[idx], CmdKill);
+}
+
 void SamplerEngine::setNoiseGains(const std::vector<float>& gains)
 {
     const juce::ScopedLock sl(controlLock);

@@ -1415,10 +1415,10 @@ every perspective has its own recording where the sample folders hold one.
   noises, always the same.
 - **Tremulant.** The noise of the running tremulant, while it is on.
 - **Buttons of their own.** Blower, zimbelstern and the like stand on the grid
-  of their division among the stops: dragged, MIDI-learned, held by the
+  of their division, under its stops: dragged, MIDI-learned, held by the
   combinations like a stop. Their voicing row has the Stop volume and the
-  alias. Tutti leaves them alone; the general cancel leaves a blower running.
-  A published configuration opens with all of them off.
+  alias. None is on by itself, the blower neither. Tutti leaves them alone;
+  the general cancel leaves a blower running; PANIC switches every one off.
 
 ### The Noises window
 

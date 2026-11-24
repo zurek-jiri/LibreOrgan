@@ -763,7 +763,7 @@ public:
         }
         scratch.setSize(juce::jmax(1, numOutputs), numSamples, false, false, true);
         scratch.clear();
-        if (owner.audioMuted.load())
+        if (owner.audioMuted.load() || CrashHandler::detail::silenceOutputs().load(std::memory_order_relaxed))   // 0.9.128: the program is dying - zeros, nothing else
         {
             for (int channel = 0; channel < numOutputs; ++channel)
                 if (outputs[channel] != nullptr)
@@ -2143,6 +2143,7 @@ MainComponent::MainComponent()
             crescendoFromVar(juce::var(empty.get()));
         }
         CrashHandler::note("Started without a configuration: the sample library starts empty, the pistons and the crescendo too");
+        noisesChanged(juce::var(), keyNoisesFollowCouplers.load());   // 0.9.128: the last organ's noises went with it (they were loaded and armed on the empty console)
         treeStorage.clear();   // 0.9.125: the last organ's trees with a storage of their own went with it
         syncTreeStorageToEngine();
     }
@@ -3476,6 +3477,16 @@ MainComponent::~MainComponent()
     PluginHost::sessionEndedInOrder();
     if (noticeOwner == this) noticeOwner = nullptr;
     engine.stopRecording();
+    // 0.9.128 (the user: after a quit with something sounding, a short loop of the LAST BLOCK went on in the sound
+    // card's driver - on the outputs the program had played to, heard as soon as anything made the card run again;
+    // "zničí uši, zničí výškáče"): the program never closes a card with sound in its buffers. Every voice ends with
+    // its fade, then every callback writes silence for several periods, and only then the cards are closed.
+    engine.setNoisesArmed(false);   // nothing starts again by itself
+    engine.noteOffAll();
+    juce::Thread::sleep(380);       // the 300 ms kill fade, heard to its end
+    audioMuted.store(true);
+    juce::Thread::sleep(260);       // zeros in every card's buffers (several periods of the largest buffer)
+    CrashHandler::note("Quit: every voice ended, the cards got silence for 260 ms before they are closed");
     if (quietTestManager != nullptr)
         quietTestManager->removeAudioCallback(&quietTestPlayer);
     quietTestPlayer.setSource(nullptr);
@@ -4630,6 +4641,13 @@ void MainComponent::startRouteTestTone(int manual, const juce::String& perspecti
 
 void MainComponent::panic()
 {
+    // 0.9.128: PANIC is silence, the noises too (the user: "Panic ani Global reset nezabírá") - every noise's
+    // button goes off, a running tremulant's noise ends, and nothing of it starts again by itself.
+    bool noiseButtonsOff = false;
+    for (auto* stop : engine.getStops())
+        if (stop != nullptr && stop->noiseButton != 0 && stop->enabled) { engine.setStopEnabled(stop, false); noiseButtonsOff = true; }
+    engine.silenceNoises();
+    if (noiseButtonsOff && voicer != nullptr) voicer->updateStopStates();
     // Zastavíme hlasy přímo, bez fade-outu a bez spuštění release samplů.
     engine.noteOffAll();
     {
@@ -36886,7 +36904,8 @@ juce::var MainComponent::noisesVarFromPlan(const HauptwerkOdf::Plan& plan, const
             {
                 juce::DynamicObject::Ptr button = new juce::DynamicObject();
                 button->setProperty("name", ref);
-                button->setProperty("on", p.defaultOn);
+                button->setProperty("on", false);          // 0.9.128: nothing sounds by itself, the blower neither (the user)
+                button->setProperty("runs", p.defaultOn);  // what the definition starts with (the blower): the general cancel leaves it as it is
                 button->setProperty("division", p.division);
                 buttons->setProperty(juce::Identifier("b" + juce::String((int)buttonNames.size())), juce::var(button.get()));
             }
@@ -37847,6 +37866,7 @@ void MainComponent::syncNoiseButtonStops()
         }
     }
     std::set<int> changed;
+    std::map<int, juce::StringArray> placed;   // the new buttons of each division: they go UNDER its stops, never among them
     for (const auto& [key, button] : wanted)
     {
         if (present.count(key) > 0) continue;
@@ -37863,9 +37883,11 @@ void MainComponent::syncNoiseButtonStops()
         if (Stop* stop = engine.addContainerStop(button.division, entry.name))
         {
             stop->noiseButton = button.runs ? 2 : 1;
-            engine.setStopEnabled(stop, button.on);   // a new stop is born ON: as the definition has it - the blower runs from the load, the others wait
-            stop->enabled = button.on;
+            // A new stop is born ON - a noise's button never: nothing sounds by itself, the blower neither (0.9.128, the
+            // user: "Blower by neměl být default on"). From then on its state is the registration's, as a stop's.
+            engine.setStopEnabled(stop, false);
         }
+        placed[button.division].add(entry.name);
         changed.insert(button.division);
         CrashHandler::note("Noise button \"" + button.name + "\" put on the grid of division " + juce::String(button.division));
     }
@@ -37874,6 +37896,8 @@ void MainComponent::syncNoiseButtonStops()
         CrashHandler::note("Noise button \"" + stop->name + "\" taken off the grid: its noise is gone");
         removeStopFromGrid(stop);
     }
+    if (voicer != nullptr)
+        for (const auto& [division, names] : placed) voicer->placeUnderDivision(division, names);   // 0.9.128: under the last row of the division's stops, a free row between
     if (!changed.empty()) { configurationDirty = true; finishInPlaceStopEdit(changed); }   // new rows of the table: saved with the organ
     else if (flagsChanged && gone.empty() && voicer != nullptr) voicer->rebuildUI(stopsContent, stopsViewport);   // the rows of the buttons know now what they are
 }

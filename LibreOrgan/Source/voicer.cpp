@@ -4058,6 +4058,30 @@ void Voicer::updateIndentIndicator(int manual, const juce::String& key, juce::Po
     showMarker(candidate, dwell.armed);
 }
 
+bool Voicer::placeUnderDivision(int manual, const juce::StringArray& keys)
+{
+    int lastRow = -1, columns = 1;
+    bool any = false;
+    for (const auto& cell : compactCells)
+    {
+        if (cell.manual != manual) continue;
+        any = true;
+        columns = juce::jmax(columns, cell.column + 1);
+        if (cell.key.isEmpty() || keys.contains(cell.key)) continue;
+        stopCells[manual][cell.key] = { cell.column, cell.row };   // the layout on the screen, kept as it is
+        lastRow = juce::jmax(lastRow, cell.row);
+    }
+    if (!any || lastRow < 0) return false;
+    int index = 0;
+    for (const auto& key : keys)
+    {
+        stopCells[manual][key] = { index % columns, lastRow + 2 + index / columns };
+        ++index;
+    }
+    CrashHandler::note("Grid of division " + juce::String(manual) + ": " + keys.joinIntoString(", ") + " placed under the last row (" + juce::String(lastRow) + "), a free row between");
+    return true;
+}
+
 void Voicer::flipDivisionUpsideDown(int manual)
 {
     // 0.9.27: every item of the division's grid (the stops, the transmissions, the stop folders with a sound)
