@@ -145,6 +145,16 @@ jobs:
           if ($IsLinux) { xvfb-run -a $exe --kerneltest } else { & $exe --kerneltest }
           if ($LASTEXITCODE -ne 0) { throw "kernel test failed with exit code $LASTEXITCODE" }
 
+      # 24 Nov 2026 (#267: a MacBook Air M2 and a Mac mini M4 said the app is "damaged"): the build signs the bundle
+      # ad hoc, and CMakeLists.txt then replaces its icon (AppIcon.icns) - the signature's seal over the bundle's
+      # resources no longer fits, and on Apple silicon macOS calls a downloaded app with a broken signature damaged.
+      # The bundle is signed again here, when nothing of it changes any more, and the signature is checked.
+      - name: Sign the app bundle ad hoc (macOS - after the last change to it)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep --sign - "${{ matrix.path }}"
+          codesign --verify --deep --strict --verbose=2 "${{ matrix.path }}"
+
       - name: Package (macOS - zip of the app bundle)
         if: runner.os == 'macOS'
         run: ditto -c -k --keepParent "${{ matrix.path }}" "${{ matrix.package }}"
@@ -187,8 +197,8 @@ jobs:
             **One program, no installation: download the archive of your system below, unpack it, start the program.**
 
             - **Windows 10/11 (64-bit):** `LibreOrgan-windows.zip` - `LibreOrgan.exe` inside.
-            - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `LibreOrgan-macos.zip` - the app inside. Unsigned: right-click > Open the first time.
-            - **macOS, Intel (macOS 10.11 El Capitan or newer):** `LibreOrgan-macos-10.11-intel.zip` - the app inside. Unsigned: right-click > Open the first time. Untested by the project.
+            - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `LibreOrgan-macos.zip` - the app inside. Not notarised by Apple: macOS blocks the first start - allow it in System Settings > Privacy & Security > **Open Anyway** (older macOS: right-click > Open).
+            - **macOS, Intel (macOS 10.11 El Capitan or newer):** `LibreOrgan-macos-10.11-intel.zip` - the app inside. Not notarised by Apple: right-click > Open the first time (newer macOS: System Settings > Privacy & Security > **Open Anyway**).
             - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `LibreOrgan-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
             - **Linux arm64 - Raspberry Pi 4/5 with a 64-bit OS (Raspberry Pi OS Bookworm or newer, glibc 2.35+):** `LibreOrgan-linux-arm64.tar.gz` - `tar xzf` it. A test build, not yet tried on real hardware by the project.
             - The two *Source code* entries are added by GitHub to every release: not needed for playing.

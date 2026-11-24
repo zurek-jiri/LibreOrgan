@@ -157,7 +157,7 @@ folders (Windows and Linux) and uploads the packaged builds as artifacts - the
 native archive of each system: a zip with `LibreOrgan.exe` on Windows, a zip
 of the app bundle on macOS, a tar.gz on Linux (it keeps the executable bit).
 A tag `v*` also attaches them to a GitHub release. The macOS and Linux builds
-are not signed: macOS asks for confirmation the first time (right-click > Open).
+are not notarised by Apple: macOS blocks the first start - allow it in System
 
 ## Self-test
 
