@@ -123,6 +123,7 @@ public:
         std::map<juce::String, bool> perspectiveOn;                // lower-case name -> its switch (absent = on)
         std::map<juce::String, juce::StringArray> files;           // lower-case perspective -> "<moment>: <folder>//a.wav|b.wav" texts
         bool held = false, hasRelease = false;                      // it loops while on; it has a release file
+        bool oneShot = false;                                       // a button: its loop is played once instead (the stop's One-shot)
     };
     std::vector<NoiseUnit> noiseUnits() const;
 
@@ -215,6 +216,7 @@ private:
     // button's volume is the Stop volume of its stop on the grid (Stop::noiseButton), never a second value.
     static juce::String noiseUnitKey(const juce::StringArray& fields);
     Stop* noiseButtonStop(const juce::String& name) const;
+    bool isNoiseButtonName(const juce::String& name) const;       // one of the noises' buttons (the Stop List marks its row "Noise")
     juce::DynamicObject* noiseUnitObject(const juce::String& key, bool create);
     float noiseUnitGain(const juce::String& key, const juce::String& perspective) const;
     void applyNoiseGains();

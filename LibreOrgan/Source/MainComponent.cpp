@@ -26685,6 +26685,31 @@ void MainComponent::showStopBuildingDialog(int)
                 rows.push_back(std::move(row));
                 return;
             }
+            if (isNoiseEntry(entry))
+            {
+                // 0.9.130 (the user): the button of a noise - "Noise" where the transmissions are, no folder cells at
+                // all (its files are the Noises window's), not removed here; stops can still be indented under it.
+                row->remove->setEnabled(false);
+                row->remove->setTooltip("The button of a noise: it goes when the noise is removed in the Noises window.");
+                row->transmissions = std::make_unique<juce::TextButton>("Noise");
+                row->transmissions->setEnabled(false);
+                row->transmissions->setTooltip("The button of a noise of the organ (set in the Noises window): no pipes, no folders, no transmissions. "
+                    "Stops and transmissions can be indented under it - its button then switches them with the noise.");
+                grid.addAndMakeVisible(*row->transmissions);
+                for (size_t p = 0; p < perspectives.size(); ++p)
+                {
+                    Cell cell;
+                    cell.button = std::make_unique<CellButton>();
+                    cell.button->setEnabled(false);
+                    grid.addChildComponent(*cell.button);
+                    cell.freeButton = std::make_unique<juce::TextButton>("x");
+                    cell.freeButton->setEnabled(false);
+                    grid.addChildComponent(*cell.freeButton);
+                    row->cells.push_back(std::move(cell));
+                }
+                rows.push_back(std::move(row));
+                return;
+            }
             row->transmissions = std::make_unique<juce::TextButton>(transmissionsText(manual, entry));
             row->transmissions->setTooltip("Transmissions: extra buttons of this stop in other divisions (or its own). Click "
                 "to add or remove one; transposition and voicing of each are in its own voicing row.");
@@ -26855,6 +26880,11 @@ void MainComponent::showStopBuildingDialog(int)
         }
 
         // A folder dragged from one cell to another: the empty cell takes it, an occupied one swaps.
+        // 0.9.130: a row that is the button of a noise (named as one of the noises' buttons, no folders, no child).
+        bool isNoiseEntry(const Build::Entry& entry) const
+        {
+            return !entry.isTransmission() && entry.folders.empty() && !entry.child && owner.isNoiseButtonName(entry.name);
+        }
         void moveFolder(size_t fromRow, const juce::String& fromPerspective, size_t toRow, const juce::String& toPerspective)
         {
             commitEditors();
@@ -26862,6 +26892,12 @@ void MainComponent::showStopBuildingDialog(int)
             auto* target = entryOf(toRow);
             if (source == nullptr || target == nullptr) return;
             if (source == target && fromPerspective == toPerspective) return;
+            if (isNoiseEntry(*target))
+            {   // 0.9.130: a noise's button takes no folders (with pipes it stopped being the noise's button: the blower fell silent)
+                info.setText("\"" + target->name + "\" is the button of a noise: it takes no folders. Its files are set in the Noises window.", juce::dontSendNotification);
+                rebuildGrid();
+                return;
+            }
             const auto sourceFound = source->folders.find(fromPerspective);
             if (sourceFound == source->folders.end()) return;
             const int m1 = rows[fromRow]->manual, m2 = rows[toRow]->manual;
@@ -27183,7 +27219,7 @@ void MainComponent::showStopBuildingDialog(int)
                 auto& entries = drafts[(size_t)m].entries;
                 for (size_t i = 0; i < entries.size();)
                 {
-                    const bool empty = !entries[i].isTransmission() && entries[i].folders.empty()
+                    const bool empty = !entries[i].isTransmission() && entries[i].folders.empty() && !isNoiseEntry(entries[i])   // 0.9.130: a noise's button is no empty stop
                         && !(!entries[i].child && i + 1 < entries.size() && entries[i + 1].child);
                     if (!empty) { ++i; continue; }
                     removed.add("\"" + entries[i].name + "\" (" + shortNames()[m] + ")");
@@ -36720,6 +36756,13 @@ void MainComponent::perspectiveOrderChanged()
 {
     if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);   // the voicing rows' perspective boxes in the new order
     if (audioTabsReorder) audioTabsReorder();                      // the open Divisions dialog's tabs
+    // 0.9.130: the Noises window's columns and the noise buttons' boxes follow the same order, at once - never one of their own.
+    noiseButtonInfoVersion = -1;
+    if (noisesWindow != nullptr && noisesWindow->isVisible())
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr && safeThis->noisesWindow != nullptr && safeThis->noisesWindow->isVisible()) safeThis->showNoisesWindow(); });
+    }
 }
 
 void MainComponent::editFolderPatterns(bool perspectives)
@@ -37708,6 +37751,14 @@ Stop* MainComponent::noiseButtonStop(const juce::String& name) const
     return nullptr;
 }
 
+bool MainComponent::isNoiseButtonName(const juce::String& name) const
+{
+    if (auto* buttons = noisesVar.getProperty("buttons", juce::var()).getDynamicObject())
+        for (const auto& prop : buttons->getProperties())
+            if (prop.value.getProperty("name", "").toString().trim().equalsIgnoreCase(name.trim())) return true;
+    return false;
+}
+
 juce::DynamicObject* MainComponent::noiseUnitObject(const juce::String& key, bool create)
 {
     auto* model = noisesVar.getDynamicObject();
@@ -37889,6 +37940,7 @@ std::vector<MainComponent::NoiseUnit> MainComponent::noiseUnits() const
                 {
                     unit.division = stop->primaryManual;                       // where its button stands now
                     unit.volumeDb = stop->db;                                   // the one value
+                    unit.oneShot = stop->oneShotManual == 1;
                     if (stop->alias.isNotEmpty()) unit.name = stop->alias + "  (" + fields[2] + ")";
                 }
             }
@@ -38079,8 +38131,19 @@ void MainComponent::syncNoiseButtonStops()
         {
             const juce::String name = prop.value.getProperty("name", "").toString().trim();
             if (name.isEmpty()) continue;
+            // 0.9.130: a button without a division (an older file) goes where its name's mark says - "P." / "Ped." the
+            // pedal, "II." / "2." that manual; anything else the pedal (drag it where it belongs).
+            int division = (int)prop.value.getProperty("division", -1);
+            if (division < 0)
+            {
+                const auto mark = name.upToFirstOccurrenceOf(" ", false, false).trimCharactersAtEnd(".:").toLowerCase();
+                static const char* const romans[] = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+                for (int manual = 1; manual <= 7; ++manual)
+                    if (mark == romans[manual - 1] || mark == juce::String(manual)) division = manual;
+                if (division > manualCount) division = -1;
+            }
             // "runs" = it runs from the load as its definition has it (the blower); a published file switches "on" off and keeps "runs".
-            wanted[name.toLowerCase()] = { name, juce::jlimit(0, manualCount, juce::jmax(0, (int)prop.value.getProperty("division", 0))),
+            wanted[name.toLowerCase()] = { name, juce::jlimit(0, manualCount, juce::jmax(0, division)),
                                            (bool)prop.value.getProperty("runs", prop.value.getProperty("on", false)), (bool)prop.value.getProperty("on", false) };
         }
     std::set<juce::String> present;
@@ -38105,11 +38168,25 @@ void MainComponent::syncNoiseButtonStops()
             const int flag = found->second.runs ? 2 : 1;
             if (stop->noiseButton != flag) { stop->noiseButton = flag; flagsChanged = true; }
             present.insert(key);
+            // 0.9.130 (the user: "transmisi zakázat"): the button of a noise has no transmissions - one made before
+            // (it clicked a free drawknob noise, never its own) goes, said in the Messages.
+            if (!stop->transmissions.empty() && voicer != nullptr)
+            {
+                const int count = (int)stop->transmissions.size();
+                for (int index = count; --index >= 0;) voicer->removeTransmission(stop, index);
+                CrashHandler::note("Noise button \"" + stop->name + "\": " + juce::String(count) + " transmission(s) of it removed - a noise's button has none");
+                queueNotice(juce::AlertWindow::InfoIcon, "Noises", "\"" + stop->name + "\" is the button of a noise: its " + juce::String(count)
+                    + " transmission(s) were removed (a noise has one button; move it to the division where you want it).");
+                flagsChanged = true;
+            }
             // 0.9.129: what its voicing row shows - its perspectives with their switches, loop, release.
             if (const auto info = buttonInfo.find(key); info != buttonInfo.end())
             {
                 std::vector<std::pair<juce::String, bool>> perspectives;
-                for (const auto& [name, count] : info->second.perspectives)
+                std::vector<juce::String> names;   // 0.9.130: in the order of the Perspective patterns, as everywhere
+                for (const auto& [name, count] : info->second.perspectives) names.push_back(name);
+                engine.sortPerspectives(names);
+                for (const auto& name : names)
                 {
                     const auto on = info->second.perspectiveOn.find(name.toLowerCase());
                     perspectives.push_back({ name, on == info->second.perspectiveOn.end() || on->second });
@@ -38191,6 +38268,7 @@ namespace
             std::function<void(const juce::String&, const juce::String&, int)> change;
             std::function<void(const juce::String&)> remove;
             std::function<void(const juce::String&, bool)> unfold;
+            std::function<void(const juce::String&, bool)> oneShot;   // a button's noise that loops: the file once instead
             std::function<void(const juce::String&, const juce::String&, const juce::String&)> dropFolder;   // unit key ("" = none), perspective, folder
             std::function<void(const juce::String&, const juce::String&)> assign;                              // "<kind>|<ref>", group ("" = anew)
             std::function<void(bool)> master, follow, freeRandom;
@@ -38222,9 +38300,21 @@ namespace
             juce::OwnedArray<juce::Label> assignLabels;    // unfolded (drawknobs, couplers): button -> its free noise
             juce::OwnedArray<juce::ComboBox> assignBoxes;
             juce::String key;
-            bool unfolded = false;
+            juce::ToggleButton oneShot;
+            bool unfolded = false, hasOneShot = false;
             int detailsHeight = 0, top = 0, bottom = 0;
         };
+        // 0.9.130: a thin line before every perspective's block (box, folder, volume) - the blocks read apart.
+        void paint(juce::Graphics& g) override
+        {
+            g.setColour(juce::Colours::white.withAlpha(0.22f));
+            for (int i = 0; i <= perspectives.size(); ++i)
+            {
+                const int x = perspectiveLeft + i * perspectiveWidth - 5;
+                g.fillRect(x, 8, 1, 24);
+                for (auto* row : rows) g.fillRect(x, row->top + 2, 1, rowHeight - 4);
+            }
+        }
         // A button's volume is its stop's: moved in the voicing row (or by a combination), it shows here at once.
         void timerCallback() override
         {
@@ -38298,8 +38388,15 @@ namespace
                     for (const auto& [name, count] : unit.perspectives) if (name.equalsIgnoreCase(perspective)) files = count;
                     // The folder(s) of this perspective: the first one's name with the number of files; all of them in the tooltip.
                     juce::String cell, tip;
-                    if (const auto texts = unit.files.find(perspective.toLowerCase()); texts != unit.files.end() && !texts->second.isEmpty())
+                    if (const auto found = unit.files.find(perspective.toLowerCase()); found != unit.files.end() && !found->second.isEmpty())
                     {
+                        // 0.9.130 (the user: "mělo by to především ukazovat na atak adresář, ne na rel"): the attack
+                        // (on / loop) first, then off, the release last - in the cell and in the unfolded list.
+                        struct Ordered { juce::StringArray second; } sorted;
+                        for (const char* moment : { "on: ", "loop: ", "off: ", "release: " })
+                            for (const auto& text : found->second) if (text.startsWith(moment)) sorted.second.add(text);
+                        for (const auto& text : found->second) sorted.second.addIfNotAlreadyThere(text);
+                        const auto* texts = &sorted;
                         const auto first = texts->second[0].fromFirstOccurrenceOf(": ", false, false).upToFirstOccurrenceOf("//", false, false);
                         cell = first.fromLastOccurrenceOf("/", false, false).fromLastOccurrenceOf("\\", false, false) + " (" + juce::String(files) + ")";
                         if (texts->second.size() > 1) cell << " +" << juce::String(texts->second.size() - 1);
@@ -38352,6 +38449,15 @@ namespace
                     row->details.setText(detailLines.joinIntoString("\n"), false);
                     row->detailsHeight = juce::jlimit(44, 260, 12 + detailLines.size() * 17);
                     addAndMakeVisible(row->details);
+                    // 0.9.130: One-shot of a noise that loops - here, not in its button's voicing row (pressed by mistake there).
+                    if (unit.kind == "button" && unit.held)
+                    {
+                        row->hasOneShot = true;
+                        row->oneShot.setButtonText("One-shot: every switching-on plays the file once, whole, instead of looping while the button is on");
+                        row->oneShot.setToggleState(unit.oneShot, juce::dontSendNotification);
+                        row->oneShot.onClick = [this, row, key] { if (callbacks.oneShot) callbacks.oneShot(key, row->oneShot.getToggleState()); };
+                        addAndMakeVisible(row->oneShot);
+                    }
                     // The drawknobs and couplers: which button without a noise of its own has which free noise.
                     if (unit.kind == "drawknobs" || unit.kind == "couplers")
                         for (const auto& [button, group] : options.assigned)
@@ -38413,7 +38519,7 @@ namespace
             hint.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
             addAndMakeVisible(hint);
             int height = 46;
-            for (auto* row : rows) height += rowHeight + (row->unfolded ? row->detailsHeight + 6 + ((row->assignBoxes.size() + 1) / 2) * 28 : 0);
+            for (auto* row : rows) height += rowHeight + (row->unfolded ? row->detailsHeight + 6 + (row->hasOneShot ? 28 : 0) + ((row->assignBoxes.size() + 1) / 2) * 28 : 0);
             if (rows.isEmpty()) height += rowHeight;
             setSize(juce::jmax(1100, columnsLeft() + perspectives.size() * perspectiveWidth + 60), height + 104);
             startTimerHz(4);
@@ -38446,9 +38552,10 @@ namespace
                 row->volume.setBounds(x, y + 4, widths[5] - 10, 26); x += widths[5];
                 for (int i = 0; i < row->perspectiveVolumes.size(); ++i)
                 {
+                    // one block: its box, its folder, its volume close together; the next perspective begins after a gap and a line
                     row->perspectiveBoxes[i]->setBounds(x, y + 4, 24, 26);
-                    row->perspectiveFolders[i]->setBounds(x + 24, y + 4, 160, 26);
-                    row->perspectiveVolumes[i]->setBounds(x + 186, y + 4, perspectiveWidth - 196, 26);
+                    row->perspectiveFolders[i]->setBounds(x + 24, y + 4, 156, 26);
+                    row->perspectiveVolumes[i]->setBounds(x + 180, y + 4, perspectiveWidth - 196, 26);
                     x += perspectiveWidth;
                 }
                 row->remove.setBounds(x + 4, y + 5, 26, 24);
@@ -38457,6 +38564,7 @@ namespace
                 {
                     row->details.setBounds(left + 30, y, getWidth() - left - 60, row->detailsHeight);
                     y += row->detailsHeight + 6;
+                    if (row->hasOneShot) { row->oneShot.setBounds(left + 30, y, 760, 24); y += 28; }
                     for (int i = 0; i < row->assignBoxes.size(); ++i)
                     {
                         const int column = i % 2, line = i / 2;
@@ -38566,6 +38674,17 @@ void MainComponent::showNoisesWindow()
             if (key.isEmpty()) safeThis->addNoisesFromFolder(juce::File(path));
             else safeThis->setNoiseUnitFolder(key, perspective, juce::File(path));
         });
+    };
+    callbacks.oneShot = [safeThis](const juce::String& key, bool on)
+    {
+        if (safeThis == nullptr) return;
+        if (Stop* stop = safeThis->noiseButtonStop(key.fromFirstOccurrenceOf("|", false, false)))
+        {
+            stop->oneShotManual = on ? 1 : 0;   // kept with the voicing state of its button
+            safeThis->applyNoiseGains();
+            safeThis->voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
+            CrashHandler::note("Noises: \"" + stop->name + "\" " + (on ? "is played once at every switching-on (One-shot)" : "loops while its button is on"));
+        }
     };
     callbacks.assign = [safeThis](const juce::String& buttonKey, const juce::String& group)
     {

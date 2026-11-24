@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.130] - 2026-11-24
+
+### Changed
+- **A noise's button takes no folders and has no transmissions.** In the Stop
+  List its row reads *Noise* and has no folder cells; folders dragged onto it
+  are refused (with pipes on it the row stopped being the noise's button and
+  the noise fell silent). A right-button drag of it makes no transmission;
+  one made before is removed, said in the Messages. Stops can still be
+  indented under it.
+- **One-shot of a noise** left its button's voicing row (pressed by mistake
+  there) for the unfolded row of the Noises window.
+- **The Noises window:** every perspective is one block - box, folder, volume -
+  with a line before it; a cell shows the attack (or loop) folder, the release
+  only in the list; the columns follow the Perspective patterns at once when
+  their order changes, and so do the boxes of a noise button's voicing row.
+- A noise button of an older file without a division goes to the manual its
+  name's numeral says ("II. ..."), else to the pedal.
+
 ## [0.9.129] - 2026-11-24
 
 ### Added

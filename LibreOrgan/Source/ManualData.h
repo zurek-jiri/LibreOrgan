@@ -1437,10 +1437,11 @@ static const char* const kManualText_part7 =
     "  combinations like a stop. None is on by itself, the blower neither. Tutti\n"
     "  leaves them alone; the general cancel leaves a blower running; PANIC\n"
     "  switches every one off. Their voicing row has the alias, the Stop volume,\n"
-    "  a box per perspective, *One-shot* for a noise that loops (the file once,\n"
-    "  whole, instead of the loop) and *Release xfade* where the loop has a\n"
-    "  release. Volume and perspective boxes are the same values as in the\n"
-    "  Noises window.\n"
+    "  a box per perspective and *Release xfade* where the loop has a release.\n"
+    "  Volume and perspective boxes are the same values as in the Noises window.\n"
+    "  A noise's button has no pipes: it takes no folders and has no\n"
+    "  transmissions (the Stop List shows its row as *Noise*); stops can be\n"
+    "  indented under it.\n"
     "\n"
     "### The Noises window\n"
     "\n"
@@ -1452,11 +1453,13 @@ static const char* const kManualText_part7 =
     "  folder was read wrong.\n"
     "- **Volume** - of the noise as a whole. For a button it is the Stop volume of\n"
     "  its voicing row: one value, shown in both places.\n"
-    "- **One column per perspective** - its box (on or off), its folder with the\n"
-    "  number of files, and its own volume on top of the noise's.\n"
+    "- **One block per perspective**, in the order of the Perspective patterns -\n"
+    "  its box (on or off), its folder with the number of files, and its own\n"
+    "  volume on top of the noise's.\n"
     "- **+** at the start of a row - the folders and files of the noise. Under\n"
     "  Drawknobs and Couplers also which button has which free noise; choose\n"
-    "  another there.\n"
+    "  another there. Under a button that loops: *One-shot* (the file once,\n"
+    "  whole, instead of the loop).\n"
     "- **A folder dropped from the file manager** onto a perspective of a row\n"
     "  becomes that perspective's files; dropped anywhere else it is read as new\n"
     "  noises and added.\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "### Compress samples in RAM (lossless)\n"
     "\n"
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
+    ;
+static const char* const kManualText_part8 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
-    ;
-static const char* const kManualText_part8 =
     "block, so about half the polyphony goes (a big organ: two thirds), and the\n"
     "load takes about 2.5 times as long. Use it when an organ does not fit the\n"
     "memory otherwise.\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "### Tremulant: harmonic filter phase\n"
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
+    ;
+static const char* const kManualText_part9 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
     "### Program windows\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Melody/bass couplers: new extreme key only\n"
     "\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "compass are filled from neighbouring pipes. Keys outside it play nothing on\n"
     "this division - they are free for another division on the same MIDI channel\n"
     "(two divisions with different compasses split one keyboard) or for MIDI\n"
+    ;
+static const char* const kManualText_part11 =
     "learn. The compass counts after the MIDI transposition; the keyboard drawing\n"
     "of the Divisions dialog shows the keys it takes.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "### Swell pedal controller\n"
     "\n"
     "The controller learned for the swell (right-click the swell bar). Information.\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "the zip a report gives nothing to work from. A free GitHub account is\n"
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
     "*Open the GitHub form* in the program's message opens the form again.\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "LibreOrgan Sampler is free software under the GNU GPL v3; the source is on GitHub\n"
     "and every release is built there. *About & licences...* shows the program's\n"
     "licence and those of the software it contains: JUCE (AGPLv3), the Steinberg\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "load is never refused.\n"
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
+    ;
+static const char* const kManualText_part13 =
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"
-    ;
-static const char* const kManualText_part13 =
     "\n"
     "## 10.7 RAM: the storage options measured\n"
     "\n"

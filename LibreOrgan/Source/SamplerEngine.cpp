@@ -12915,6 +12915,7 @@ void SamplerEngine::setTransmissionShift(Stop* stop, int index, int semitones)
 int SamplerEngine::addTransmission(Stop* stop, int manual, int shift)
 {
     if (stop == nullptr || manual < 0 || manual >= maxManuals) return -1;
+    if (stop->noiseButton != 0) return -1;   // 0.9.130: the button of a noise has no transmissions (it has no pipes; its noise has ONE button)
     int index = -1;
     {
         const juce::ScopedLock sl(controlLock);

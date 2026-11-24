@@ -1419,10 +1419,11 @@ every perspective has its own recording where the sample folders hold one.
   combinations like a stop. None is on by itself, the blower neither. Tutti
   leaves them alone; the general cancel leaves a blower running; PANIC
   switches every one off. Their voicing row has the alias, the Stop volume,
-  a box per perspective, *One-shot* for a noise that loops (the file once,
-  whole, instead of the loop) and *Release xfade* where the loop has a
-  release. Volume and perspective boxes are the same values as in the
-  Noises window.
+  a box per perspective and *Release xfade* where the loop has a release.
+  Volume and perspective boxes are the same values as in the Noises window.
+  A noise's button has no pipes: it takes no folders and has no
+  transmissions (the Stop List shows its row as *Noise*); stops can be
+  indented under it.
 
 ### The Noises window
 
@@ -1434,11 +1435,13 @@ tremulant, the drawknobs, the couplers, each button of its own.
   folder was read wrong.
 - **Volume** - of the noise as a whole. For a button it is the Stop volume of
   its voicing row: one value, shown in both places.
-- **One column per perspective** - its box (on or off), its folder with the
-  number of files, and its own volume on top of the noise's.
+- **One block per perspective**, in the order of the Perspective patterns -
+  its box (on or off), its folder with the number of files, and its own
+  volume on top of the noise's.
 - **+** at the start of a row - the folders and files of the noise. Under
   Drawknobs and Couplers also which button has which free noise; choose
-  another there.
+  another there. Under a button that loops: *One-shot* (the file once,
+  whole, instead of the loop).
 - **A folder dropped from the file manager** onto a perspective of a row
   becomes that perspective's files; dropped anywhere else it is read as new
   noises and added.

@@ -5462,7 +5462,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Direct switched off through the window's function and shown off in the row; the couplers unit removed and two
   couplers clicked: both took "60.wav" - the Demo has ONE free noise (the distinct choice needs the full organ: NOT
   run); a folder dropped on keys|1 Direct: 128 files there. NOT run: One-shot and Release xfade by ear, a real mouse
-  drop, the random box, a changed assignment through its combo. RULES FOR EVER: a card is never closed with sound in its
+  drop, the random box, a changed assignment through its combo. 0.9.130 (the same night, the user's remarks on
+  0.9.129 with his log read first; his decisions: no folders onto a noise's row, the transmission of a noise's button
+  FORBIDDEN, One-shot into the unfolded row of the Noises window): WHAT HIS LOG SHOWED - Stop List, the Schalmey's
+  folders moved onto "Blower On/Off" (20:21:08 "Tuning Blower On/Off [Diffuse] ... footage 4'"): the row became a pipe
+  stop, and as a noise's button is recognised as a row WITHOUT pipes the blower's noise fell silent though the Noises
+  window still listed it; two right-button drags of "Calcant" made transmissions of a stop without pipes (they clicked
+  a free drawknob noise). NOW: `MainComponent::isNoiseButtonName(name)` (the model's buttons); the Stop List's
+  `isNoiseEntry(entry)` (no folders, no child, named so): its row shows a disabled "Noise" where the transmissions are,
+  NO folder cells (hidden Cell buttons keep the row's cell count), its "x" disabled, `moveFolder` onto it refused with
+  a line in the info text, "Remove empty stops" leaves it; indenting stops under it stays. `SamplerEngine::
+  addTransmission` returns -1 for a `noiseButton` stop (every caller checks the index); syncNoiseButtonStops removes
+  transmissions a noise button has (`voicer->removeTransmission`, a Messages note). One-shot is gone from the voicing
+  row (`oneShotToggle` never visible for a noise) - `NoiseUnit::oneShot` + the unfolded row's box of the Noises window
+  (`Callbacks::oneShot` sets `stop->oneShotManual`). Window: `paint` draws a line before every perspective block, the
+  cell shows the on / loop folder first (texts ordered on, loop, off, release), `perspectiveOrderChanged` rebuilds
+  the open window and resets `noiseButtonInfoVersion`; the buttons' boxes sorted by `engine.sortPerspectives`. A button
+  of an older file without a division: the numeral of its name ("II." / "2.") -> that manual, else the pedal.
+  Pictured: the Stop List with three "Noise" rows, the window with the blower unfolded. NOT run: the refusal of a
+  folder dragged onto a noise row, the removal of an existing transmission (his file was not loaded by me), a
+  right-button drag. RULES FOR EVER: a card is never closed with sound in its
   buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
   and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
   by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,

@@ -1056,7 +1056,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())));
     // Its caption "[N]" is set in setChildrenGetter: the getters are null here (0.8.183).
-    oneShotToggle.setVisible(stopControls || (noiseRow && stop->noiseHeld));
+    oneShotToggle.setVisible(stopControls);   // 0.9.130: never on a noise's button (pressed by mistake; it is in the Noises window's unfolded row)
     releaseFadeBox.setVisible(stopControls || (noiseRow && stop->noiseHeld && stop->noiseRelease));
     // 0.9.127: the button of a noise (blower, zimbelstern ...) has no pipes, but its Stop volume is the noise's
     // volume - the same value the Noises window shows (one value, two ways to it).
@@ -1745,12 +1745,7 @@ void StopRow::resized()
         // 0.9.129: a noise's button - One-shot (when it loops) and Release xfade (when it has a release) first,
         // then its perspectives, as on a stop's row.
         const bool noiseButtonRow = stop->container && stop->noiseButton != 0;
-        if (noiseButtonRow && stop->noiseHeld)
-        {
-            oneShotToggle.setBounds(x, 13, 92, 23);
-            x += 96;
-            if (stop->noiseRelease) { releaseFadeBox.setBounds(x, 13, 142, 23); x += 150; }
-        }
+        if (noiseButtonRow && stop->noiseHeld && stop->noiseRelease) { releaseFadeBox.setBounds(x, 13, 142, 23); x += 150; }
         // The line's parts sit close together: the rank boxes only when there are
         // pipes, the pitch information as wide as its text.
         if ((!stop->container || noiseButtonRow) && !rankButtons.isEmpty())
