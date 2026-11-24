@@ -12,6 +12,15 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.131] - 2026-11-24
+
+### Fixed
+- **A noise's button indented under a stop stayed a noise's button on the
+  grid, but the Stop List took it for an ordinary row again** - transmissions
+  and folder cells came back and folders moved onto it silenced the noise.
+  Indented or not, its row reads *Noise*, takes no folders, has no
+  transmissions and keeps its name (the alias is free).
+
 ## [0.9.130] - 2026-11-24
 
 ### Changed

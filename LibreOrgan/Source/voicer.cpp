@@ -4456,6 +4456,8 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
         // division included), with the transposition of a dragged transmission.
         const int shift = sourceIndex >= 0 ? source->transmissions[(size_t)sourceIndex].shift : 0;
         const int index = engine.addTransmission(source, target->manual, shift);
+        if (index < 0 && source->noiseButton != 0)   // 0.9.131: said, not silent
+            CrashHandler::note("Grid: no transmission of \"" + source->name + "\" - the button of a noise has none (move the button itself where you want it)");
         if (index >= 0)
         {
             if (sourceIndex >= 0)

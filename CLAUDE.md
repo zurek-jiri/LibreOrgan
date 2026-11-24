@@ -5481,7 +5481,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   of an older file without a division: the numeral of its name ("II." / "2.") -> that manual, else the pedal.
   Pictured: the Stop List with three "Noise" rows, the window with the blower unfolded. NOT run: the refusal of a
   folder dragged onto a noise row, the removal of an existing transmission (his file was not loaded by me), a
-  right-button drag. RULES FOR EVER: a card is never closed with sound in its
+  right-button drag. 0.9.131 (minutes later, the user: "jakmile ve stop list dialogu posunu blower doprava ... objeví
+  se mu možnost transmisí i přidání adresářů! Tohle nemáš domyšlené!"; his log: 21:00:23 the blower indented, 21:01:02
+  the Schalmey's folders on it again): `isNoiseEntry` had `!entry.child` - an INDENTED noise row was an ordinary row
+  for the dialog. The condition is gone (a noise's button may stand under a stop and stays what it is), the "empty
+  folder row goes" branch of the indent gesture keeps a noise row, its name is not editable (it is found by its name;
+  the alias is free), a refused right-button drag is logged. LESSON: a rule that names a kind of row ("the button of
+  a noise") is tested in every STATE the dialog can put the row in - plain, indented, with children, in another
+  division - before it is delivered; I had pictured the plain row only. Verified with ORGAN_TEST_INDENT (the blower
+  under Ped_Schalmey4) + the Stop List's picture. RULES FOR EVER: a card is never closed with sound in its
   buffers - silence first, then the close; a test ends with noises off, a panic, a second of silence, then the quit,
   and never while something sounds; PANIC silences EVERYTHING and nothing may restart by itself after it. Verified
   by one run (Stralsund Demo: no noises at the empty start, buttons under the stops and off, blower on by the hook,

@@ -26512,7 +26512,7 @@ void MainComponent::showStopBuildingDialog(int)
             grid.addAndMakeVisible(*row->division);
             row->name = std::make_unique<NameCell>();
             row->name->setFont(juce::FontOptions(16.0f));
-            row->name->setEditable(false, !transmission, false);   // a transmission's caption is not a name
+            row->name->setEditable(false, !transmission && !isNoiseEntry(entry), false);   // a transmission's caption is not a name; a noise's button is found by its name (its alias is free)
             row->name->setText(entry.name, juce::dontSendNotification);
             row->name->setColour(juce::Label::backgroundColourId, juce::Colour(0xff2b2b2b));
             row->name->setColour(juce::Label::outlineColourId, juce::Colour(0xff555555));
@@ -26597,7 +26597,7 @@ void MainComponent::showStopBuildingDialog(int)
                             const size_t index = rows[i]->index;
                             auto& entries = drafts[(size_t)m].entries;
                             const juce::String folderName = entry->name, masterName = master->name;
-                            const bool hasPipes = !entry->folders.empty();
+                            const bool hasPipes = !entry->folders.empty() || isNoiseEntry(*entry);   // 0.9.131: a noise's button is never "an empty folder row" that goes
                             if (hasPipes) entry->child = true;
                             else if (index < entries.size()) entries.erase(entries.begin() + (long)index);   // 'entry' is gone now
                             orderChanged.insert(m);
@@ -26880,10 +26880,12 @@ void MainComponent::showStopBuildingDialog(int)
         }
 
         // A folder dragged from one cell to another: the empty cell takes it, an occupied one swaps.
-        // 0.9.130: a row that is the button of a noise (named as one of the noises' buttons, no folders, no child).
+        // 0.9.130: a row that is the button of a noise (named as one of the noises' buttons, no folders). 0.9.131 (the
+        // user indented the blower under a stop and the row took folders and transmissions again): INDENTED OR NOT -
+        // a noise's button may stand under a stop, it stays the noise's button.
         bool isNoiseEntry(const Build::Entry& entry) const
         {
-            return !entry.isTransmission() && entry.folders.empty() && !entry.child && owner.isNoiseButtonName(entry.name);
+            return !entry.isTransmission() && entry.folders.empty() && owner.isNoiseButtonName(entry.name);
         }
         void moveFolder(size_t fromRow, const juce::String& fromPerspective, size_t toRow, const juce::String& toPerspective)
         {
