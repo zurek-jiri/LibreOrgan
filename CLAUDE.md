@@ -5405,6 +5405,10 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ANOTHER organ's noises (other library root, renamed stops), the folder reading's elimination rule, the combinations
   that hold the voicing with noise units, a noise button dragged to another division by the mouse, the alias typed in
   its voicing row, Linux / macOS (CI compiles them for the first time with this push).
+  RELEASED (24 Nov 2026, 18:05): commit 4a48e19 + the merge 0b1d627 (origin had the user's Stralsund publish, PR #263),
+  tag v0.9.127 on 0b1d627, CI green at the first attempt on all five (Linux, Linux arm64, macOS, Intel macOS, Windows),
+  Intel mac "late symbols: 0", the Windows exe without VC runtime DLLs, the CI exe deployed as
+  C:\LibreOrgan\LibreOrgan_0.9.127.exe. The stages list above ("IN WORK", "NOT pushed") is history now.
 - DONE in 0.9.125 (kept for the reasoning; delete next time): TO-DO (the user, 22 Nov 2026, "Musí se dát udělat. Zapiš si to ... A nezapomeň na to"): the window "Reading the archives"
   (`indexArchivesThen`, the ThreadWithProgressWindow that builds the RAR indexes; also the same index step inside the
   "Searching for the sample folders" job of 0.9.44) has NO CANCEL - it must have one: the walk stops, nothing is loaded,
