@@ -1490,7 +1490,7 @@ works like the Stop List.
 - **A folder dropped from the file manager** onto a perspective of a row
   becomes that perspective's files; dropped anywhere else it is read as new
   noises and added.
-- Below: [Noises on](#noises-on), the volume of all
+- Below, on one row with the **?** (this chapter): [Noises on](#noises-on), the volume of all
   ([Noises volume](#noises-volume)),
   [Key noises follow the couplers](#key-noises-follow-the-couplers),
   *Free drawknob noises: a random one at every press* (instead of each
@@ -2103,6 +2103,20 @@ combinations only.
 
 Off by default: the golden halo of the instruction video on every pressed
 button and dragged stop.
+
+### Hide the top rows
+
+Off by default. On: the top bar and the sliders' row leave the window, so
+the combinations and the divisions have their room. A strip with a tab stays
+at the top edge: the mouse on it slides the rows out over the console, and
+they go again when the mouse has left them; a click on the tab keeps them
+out. PANIC and the display stand in the combination row meanwhile.
+
+### Top buttons and sliders in one row when they fit
+
+Off by default: the buttons have a row of their own and the sliders theirs.
+On: both share one row whenever they fit the window - switch off the
+buttons and sliders you do not use.
 
 
 ### LibreOrgans folder

@@ -1248,6 +1248,21 @@ MainComponent::MainComponent()
     panicButton.setTooltip("Silences every sounding pipe at once. Right-click: MIDI learn.");
     addAndMakeVisible(panicButton);
     panicButton.onClick = [this] { panic(); };
+    // 0.9.135: the top rows hidden behind a tab at the top edge (the setting "Hide the top rows").
+    addChildComponent(topRowsBackdrop);
+    addChildComponent(topRowsTab);
+    topRowsTab.setTooltip("The top rows are hidden (Configuration Editor > Console). The mouse here slides them out over the console; "
+        "a click keeps them out until the next click.");
+    topRowsTab.getProperties().set("testName", "topRowsTab");
+    topRowsTab.onEnter = [this] { if (hideTopRows && !topRowsOut) setTopRowsOut(true); };
+    topRowsTab.onClick = [this]
+    {
+        topRowsPinned = !topRowsPinned;
+        topRowsOut = !topRowsPinned;   // (so that the call below acts)
+        setTopRowsOut(topRowsPinned);
+    };
+    topRowsWatch.owner = this;
+    addMouseListener(&topRowsWatch, true);
     panicButton.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
     panicButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 
@@ -3603,6 +3618,62 @@ void MainComponent::paint(juce::Graphics& g)
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 }
 
+// 0.9.135 THE TOP ROWS HIDDEN ("Hide the top rows"): resized() lays the two rows out where they always stand and
+// notes their controls in topRowParts; hidden, the rest of the window begins at the top instead and the rows are
+// shown OVER it only while topRowsOut - by visibility alone (never by another resized(): that rebuilds the grid).
+void MainComponent::applyTopRowsVisibility()
+{
+    const bool hidden = hideTopRows;
+    const bool out = !hidden || topRowsOut;
+    topRowsTab.setVisible(hidden);
+    topRowsTab.out = topRowsOut;
+    topRowsTab.pinned = topRowsPinned;
+    topRowsBackdrop.setVisible(hidden && topRowsOut);
+    for (auto& [component, shown] : topRowParts)
+        if (component != nullptr) component->setVisible(shown && out);
+    if (hidden && topRowsOut)
+    {
+        topRowsBackdrop.toFront(false);
+        for (auto& [component, shown] : topRowParts)
+            if (component != nullptr && shown) component->toFront(false);
+    }
+    // PANIC: in the combination row while the rows are in; the rows slid out cover that row, so it stands at its
+    // usual place in the top bar meanwhile - never out of reach.
+    if (hidden && isHeaderButtonShown("panic") && !panicInBounds.isEmpty())
+    {
+        panicButton.setVisible(true);
+        panicButton.setBounds(topRowsOut ? panicOutBounds : panicInBounds);
+        if (topRowsOut) panicButton.toFront(false);
+    }
+    if (hidden) topRowsTab.toFront(false);
+    glowLayer.toFront(false);
+    if (headerArranger != nullptr) headerArranger->toFront(false);
+    topRowsTab.repaint();
+}
+
+void MainComponent::setTopRowsOut(bool out)
+{
+    if (topRowsOut == out) return;
+    topRowsOut = out;
+    topRowsLeaveAtMs = -1.0;
+    applyTopRowsVisibility();
+}
+
+// From the main timer: the rows that slid out go in again 450 ms after the mouse left them - not while a mouse
+// button is held (a slider dragged beyond them), a value is being typed, a list or a menu of theirs is open, or the
+// tab keeps them (a click on it).
+void MainComponent::watchTopRows()
+{
+    if (!hideTopRows || !topRowsOut || topRowsPinned) return;
+    const bool busy = juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown() || barValueTyping.isOpen() || manualCountBox.isPopupActive()
+        || juce::ModalComponentManager::getInstance()->getNumModalComponents() > 0 || headerArranger != nullptr;
+    const bool over = topRowsWatch.inside && topRowsWatch.y < topRowsBottom + 14;
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (over || busy) { topRowsLeaveAtMs = -1.0; return; }
+    if (topRowsLeaveAtMs < 0.0) topRowsLeaveAtMs = now + 450.0;
+    else if (now >= topRowsLeaveAtMs) setTopRowsOut(false);
+}
+
 void MainComponent::resized()
 {
     glowLayer.setBounds(getLocalBounds());
@@ -3621,33 +3692,57 @@ void MainComponent::resized()
         windowResizeSaveAt = juce::Time::getMillisecondCounterHiRes() + 500.0;
     }
     auto bounds = getLocalBounds().reduced(16);
+    const auto boundsBeforeTopRows = bounds;   // 0.9.135: with the top rows hidden the rest of the window begins here
+    topRowParts.clear();
 
-    auto topRow = bounds.removeFromTop(40);
-    const int divisionLabelWidth = juce::jmin(80, juce::jmax(55, topRow.getWidth() / 20));
-    const int divisionBoxWidth = juce::jmin(110, juce::jmax(80, topRow.getWidth() / 15));
-    manualCountLabel.setBounds(topRow.removeFromLeft(divisionLabelWidth));
-    manualCountBox.setBounds(topRow.removeFromLeft(divisionBoxWidth).reduced(4));
-    selectFolderButton.setBounds({});
-    keyboardsButton.setBounds({});
     // The top bar: every button can be switched off (Configuration Editor >
     // Console); the shown ones share the width by their weights.
     auto headerItems = headerButtons();
-    int remainingWeight = 0;
+    int remainingWeight = 0, buttonsNatural = 0;
     for (auto& item : headerItems)
     {
+        // Hidden top rows: PANIC stands in the combination row (the user), so it is always at hand - and, while the
+        // rows are slid out over that row, at its usual place in the top bar (applyTopRowsVisibility moves it: the
+        // bar keeps its slot).
         const bool shown = isHeaderButtonShown(item.key);
         item.button->setVisible(shown);
-        if (shown) remainingWeight += item.weight;
+        if (item.button != &panicButton || !hideTopRows) topRowParts.push_back({ item.button, shown });
+        if (shown)
+        {
+            remainingWeight += item.weight;
+            buttonsNatural += (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), item.button->getButtonText())) + 34;
+        }
     }
+    // 0.9.135 (the user: buttons and sliders each in a row of their own whenever there is room; "jenom když si
+    // uživatel bude přát vše do jednoho řádku, tak by se mu mělo vyhovět, pokud to jde"): the setting "Top buttons
+    // and sliders in one row when they fit" puts both into ONE row when every button at its text's width, every
+    // shown slider at 150 px and the display fit the window; else the two rows as ever.
+    int slidersShownNow = 0;
+    for (int i = 0; i < gsCount; ++i) if (globalSliderShown[(size_t)i]) ++slidersShownNow;
+    const int divisionLabelWidth = juce::jmin(80, juce::jmax(55, bounds.getWidth() / 20));
+    const int divisionBoxWidth = juce::jmin(110, juce::jmax(80, bounds.getWidth() / 15));
+    const int buttonsPartWidth = divisionLabelWidth + divisionBoxWidth + buttonsNatural;
+    const bool oneRow = topRowsInOneRow && slidersShownNow > 0 && buttonsPartWidth + slidersShownNow * 150 + 330 <= bounds.getWidth();
+    juce::Rectangle<int> oneRowArea;
+    if (oneRow) oneRowArea = bounds.removeFromTop(62);
+    auto topRow = oneRow ? oneRowArea.removeFromLeft(buttonsPartWidth).withSizeKeepingCentre(buttonsPartWidth, 52) : bounds.removeFromTop(40);
+    manualCountLabel.setBounds(topRow.removeFromLeft(divisionLabelWidth));
+    manualCountBox.setBounds(topRow.removeFromLeft(divisionBoxWidth).reduced(4, oneRow ? 10 : 4));
+    topRowParts.push_back({ &manualCountLabel, true });
+    topRowParts.push_back({ &manualCountBox, true });
+    selectFolderButton.setBounds({});
+    keyboardsButton.setBounds({});
     for (auto& item : headerItems)
     {
         if (!item.button->isVisible()) continue;
-        const int width = remainingWeight == item.weight ? topRow.getWidth()
+        const int natural = (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), item.button->getButtonText())) + 34;
+        const int width = oneRow ? natural : remainingWeight == item.weight ? topRow.getWidth()
             : juce::jmax(1, juce::roundToInt((double)topRow.getWidth()
                 * item.weight / remainingWeight));
         item.button->setBounds(topRow.removeFromLeft(width).reduced(3));
         remainingWeight -= item.weight;
     }
+    panicOutBounds = panicButton.getBounds();
     // ========== NOVÉ TLAČÍTKO V LAYOUTU ==========
     // Positioned by the adaptive header layout above.
     // ========== KONEC NOVÉ ČÁSTI ==========
@@ -3666,6 +3761,7 @@ void MainComponent::resized()
     for (int i = 0; i < gsCount; ++i)
     {
         sliders[i]->setVisible(globalSliderShown[(size_t)i]);
+        topRowParts.push_back({ sliders[i], globalSliderShown[(size_t)i] });
         sliderLabels[i]->setVisible(false);   // 0.9.134: the name and the value are written in the slider's bar
         if (globalSliderShown[(size_t)i]) ++shownCount;
     }
@@ -3676,8 +3772,9 @@ void MainComponent::resized()
         // 0.9.134 (the user's choice B1): ONE organic row - the sliders' bars and the display the same height (46 px);
         // the display keeps the width it needs to show every cell (it was squeezed to "CL.., RA.." in a narrow window).
         constexpr int rowBarHeight = 46;
-        auto controlsRow = bounds.removeFromTop(rowBarHeight + 16);
-        const int polyphonyWidth = juce::jlimit(juce::jmin(330, controlsRow.getWidth() / 3), 420, controlsRow.getWidth() / 6);
+        auto controlsRow = oneRow ? oneRowArea : bounds.removeFromTop(rowBarHeight + 16);
+        // (hidden top rows: the display stands in the combination row, always in sight - the sliders take the row)
+        const int polyphonyWidth = hideTopRows ? 0 : juce::jlimit(juce::jmin(330, controlsRow.getWidth() / 3), 420, controlsRow.getWidth() / 6);
         auto polyphonyArea = controlsRow.removeFromRight(polyphonyWidth);
         const int cellWidth = controlsRow.getWidth() / shownCount;
         const int cellPad = juce::jlimit(3, 10, cellWidth / 20);
@@ -3692,28 +3789,49 @@ void MainComponent::resized()
         // lines (the user: it jumped to two lines far too early); two lines with the short names only when the full
         // ones do not fit either. The whole row takes the same form.
         auto widthOf = [](const juce::Font& font, const juce::String& text) { return (int)std::ceil(juce::GlyphArrangement::getStringWidth(font, text)); };
-        const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold));
+        // 0.9.135 (the user: "proč jsou nápisy ve sliderech menší než nápisy na buttonech nad nimi? To je nesmyslné"):
+        // the texts begin at the size of the top bar's button texts (16 px) and shrink only as far as the width asks.
+        auto valueWidthsAt = [&](float size, int* widths)
+        {
+            const juce::Font valueFont(juce::FontOptions(size, juce::Font::bold));
+            for (int i = 0; i < gsCount; ++i)
+            {
+                widths[i] = 0;
+                if (globalSliderShown[(size_t)i])
+                    for (const double value : { sliders[i]->getMinimum(), sliders[i]->getMaximum(), sliders[i]->getValue() })
+                        widths[i] = juce::jmax(widths[i], widthOf(valueFont, sliders[i]->getTextFromValue(value)));
+            }
+        };
         int valueWidths[gsCount]{};
-        for (int i = 0; i < gsCount; ++i)
-            if (globalSliderShown[(size_t)i])
-                for (const double value : { sliders[i]->getMinimum(), sliders[i]->getMaximum(), sliders[i]->getValue() })
-                    valueWidths[i] = juce::jmax(valueWidths[i], widthOf(valueFont, sliders[i]->getTextFromValue(value)));
         int lines = 2;
-        double nameSize = 13.0;
-        for (const float size : { 13.0f, 12.0f, 11.0f })
+        double nameSize = 13.0, valueSize = 13.0, smallNameSize = 13.0;
+        for (const float size : { 16.0f, 15.0f, 14.0f, 13.0f, 12.0f, 11.0f })
         {
             const juce::Font nameFont{ juce::FontOptions(size) };
+            const float valueAt = juce::jmax(13.0f, size);
+            valueWidthsAt(valueAt, valueWidths);
             bool fits = true;
             for (int i = 0; i < gsCount; ++i)
                 if (globalSliderShown[(size_t)i] && widthOf(nameFont, names[i]) + valueWidths[i] + 14 + 8 > barWidth) fits = false;
-            if (fits) { lines = 1; nameSize = size; break; }
+            if (fits) { lines = 1; nameSize = size; valueSize = valueAt; break; }
         }
         bool useShort = false;
         if (lines == 2)
         {
-            const juce::Font smallFont{ juce::FontOptions(11.0f) };
-            for (int i = 0; i < gsCount; ++i)
-                if (globalSliderShown[(size_t)i] && juce::jmax(widthOf(smallFont, names[i]), valueWidths[i]) + 14 > barWidth) useShort = true;
+            // two lines: the name 13 px above the value 15 px while the names fit, the short names (11 px when even
+            // those do not fit at 13) otherwise
+            valueSize = 15.0;
+            valueWidthsAt(15.0f, valueWidths);
+            auto namesFit = [&](float size, const char* const* texts)
+            {
+                const juce::Font font{ juce::FontOptions(size) };
+                for (int i = 0; i < gsCount; ++i)
+                    if (globalSliderShown[(size_t)i] && juce::jmax(widthOf(font, texts[i]), valueWidths[i]) + 14 > barWidth) return false;
+                return true;
+            };
+            if (namesFit(13.0f, names)) smallNameSize = 13.0;
+            else if (namesFit(11.0f, names)) smallNameSize = 11.0;
+            else { useShort = true; smallNameSize = namesFit(13.0f, shortNames) ? 13.0 : 11.0; }
         }
         const int barHeight = rowBarHeight;
         for (const GlobalSlider which : kGlobalSliderOrder)
@@ -3727,14 +3845,22 @@ void MainComponent::resized()
             properties.set("barLines", lines);
             properties.set("barUseShort", useShort);
             properties.set("barNameSize", nameSize);
+            properties.set("barValueSize", valueSize);
+            properties.set("barSmallNameSize", smallNameSize);
             properties.set("barHeight", barHeight);
             sliders[i]->setBounds(cell.getX(), cell.getCentreY() - barHeight / 2, cell.getWidth(), barHeight);
             sliders[i]->resized();   // the bar's area follows the properties when the bounds stayed
             sliders[i]->repaint();
         }
-        if (polyphonyDisplay != nullptr)
+        if (polyphonyDisplay != nullptr && !hideTopRows)
             polyphonyDisplay->setBounds(polyphonyArea.reduced(5, 0).withSizeKeepingCentre(polyphonyArea.getWidth() - 10, rowBarHeight));
     }
+    // 0.9.135: the top rows hidden - they keep their place on top (shown over the console while slid out), the strip
+    // with the tab stands at the window's top edge and everything below begins where the rows would.
+    topRowsBottom = bounds.getY();
+    topRowsTab.setBounds(0, 0, getWidth(), 12);
+    topRowsBackdrop.setBounds(0, 0, getWidth(), topRowsBottom + 4);
+    if (hideTopRows) bounds = boundsBeforeTopRows;
 
     if (audioSettings)
         audioSettings->setBounds({});
@@ -3746,13 +3872,18 @@ void MainComponent::resized()
     // gaps and the padding around the buttons - by one common factor down to
     // per-item minimum widths, so that all of it stays visible as long as
     // possible. Only when even the minima do not fit do the pistons give way.
-    const bool polyphonyHere = !anyGlobalSliderShown() && polyphonyDisplay != nullptr;
+    const bool polyphonyHere = (!anyGlobalSliderShown() || hideTopRows) && polyphonyDisplay != nullptr;
     struct RowItem { juce::Component* component; int natural, minimum; bool tall; };
-    std::vector<RowItem> items{
+    std::vector<RowItem> items;
+    // 0.9.135: with the top rows hidden PANIC stands here, first in the row.
+    const bool panicHere = hideTopRows && isHeaderButtonShown("panic");
+    if (panicHere) { panicButton.setVisible(true); items.push_back({ &panicButton, 86, 60, false }); items.push_back({ nullptr, 10, 4, false }); }
+    const size_t rowStart = items.size();
+    for (const RowItem& item : std::initializer_list<RowItem>{
         { &combinationSetButton, 90, 46, false }, { &bankDownButton, 78, 44, false },
         { &bankLabel, 176, 50, false }, { &bankUpButton, 78, 44, false },   // 0.9.81: a black display (file / bank + note), its editors inside
         { &combinationDisplay, 88, 58, false }, { &pistonCountLabel, 70, 48, false },
-        { &pistonCountBox, 58, 46, false } };
+        { &pistonCountBox, 58, 46, false } }) items.push_back(item);
     for (int i = 0; i < pistonCount; ++i) items.push_back({ pistonButtons[i], 74, 40, false });
     items.push_back({ &previousCombinationButton, 58, 40, false });
     items.push_back({ &nextCombinationButton, 58, 40, false });
@@ -3765,11 +3896,13 @@ void MainComponent::resized()
     items.push_back({ &loadCombinationsButton, 64, 44, false });
     items.push_back({ nullptr, 12, 4, false });
     items.push_back({ &crescendoButton, 64, 58, false });   // "Cresc." keeps its width almost to the end
-    items.push_back({ crescendoDisplay.get(), 240, 110, true });
+    items.push_back({ crescendoDisplay.get(), 240, polyphonyHere ? 80 : 110, true });
     if (polyphonyHere)
     {
+        // 0.9.135: the display keeps the width its cells need (at 150 px it read "RA..." and "000" for the limit);
+        // the crescendo bar gives way instead.
         items.push_back({ nullptr, 12, 4, false });
-        items.push_back({ polyphonyDisplay.get(), 300, 150, true });
+        items.push_back({ polyphonyDisplay.get(), 330, 250, true });
     }
     int naturalTotal = 0, minimumTotal = 0;
     for (const auto& item : items) { naturalTotal += item.natural; minimumTotal += item.minimum; }
@@ -3800,14 +3933,14 @@ void MainComponent::resized()
         // Even the minima do not fit: the pistons shrink further (down to nothing).
         const int overflow = total - available;
         const int perPiston = (overflow + pistonCount - 1) / pistonCount;
-        for (size_t i = 7; i < 7 + (size_t)pistonCount; ++i) widths[i] = juce::jmax(0, widths[i] - perPiston);
+        for (size_t i = rowStart + 7; i < rowStart + 7 + (size_t)pistonCount; ++i) widths[i] = juce::jmax(0, widths[i] - perPiston);
     }
     const int pad = factor >= 1.0f ? 3 : 1 + juce::roundToInt(2.0f * factor);   // padding around the buttons
     // 0.9.135 (the user's choice): a bank button too narrow for "Bank" and its arrow on one line shows the arrow
     // alone - never two lines in a button (the tooltip names it).
     {
         const juce::String down = juce::String(juce::CharPointer_UTF8("\xe2\x96\xbc")), up = juce::String(juce::CharPointer_UTF8("\xe2\x96\xb2"));
-        const bool arrowsOnly = widths[1] - 2 * pad < 64;
+        const bool arrowsOnly = widths[rowStart + 1] - 2 * pad < 64;
         bankDownButton.setButtonText(arrowsOnly ? down : "Bank " + down);
         bankUpButton.setButtonText(arrowsOnly ? up : "Bank " + up);
     }
@@ -3820,6 +3953,8 @@ void MainComponent::resized()
     }
     for (int i = pistonCount; i < maxPistons; ++i)
         if (auto* button = pistonButtons[i]) button->setBounds({});
+    panicInBounds = panicHere ? panicButton.getBounds() : juce::Rectangle<int>();
+    applyTopRowsVisibility();   // 0.9.135: here, when both places of PANIC are known
     couplerRailLabel.setBounds({});
     couplerViewport.setBounds({});
     {   // 0.9.81: the bank display's editors (shown while editing: the number left, the note right) and the list button in its corner
@@ -16471,7 +16606,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize", "defaultCard" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "hideTopRows", "topRowsInOneRow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize", "defaultCard" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -26149,7 +26284,21 @@ void MainComponent::showStopBuildingDialog(int)
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
-            intro.setBounds(area.removeFromTop(80));
+            {
+                // 0.9.135 (the text ran past the window's right edge): the table may be wider than the window - the
+                // intro is wrapped to what is VISIBLE and takes the lines it needs.
+                int visible = getWidth();
+                if (auto* viewport = findParentComponentOfClass<juce::Viewport>()) visible = juce::jmin(visible, juce::jmax(300, viewport->getMaximumVisibleWidth()));
+                const int introWidth = juce::jmax(200, visible - 24);
+                juce::AttributedString text;
+                text.append(intro.getText(), intro.getFont());
+                juce::TextLayout layout;
+                layout.createLayout(text, (float)introWidth - 8.0f);
+                const int introHeight = juce::jlimit(34, 220, (int)std::ceil(layout.getHeight()) + 8);
+                intro.setMinimumHorizontalScale(1.0f);
+                intro.setBounds(area.getX(), area.getY(), introWidth, introHeight);
+                area.removeFromTop(introHeight);
+            }
             // 0.9.6: the buttons need about 1 525 px in one row; in a narrower window the folder buttons
             // and Show Trsm. go on a second row (Show Trsm. was the last in line and the first to vanish).
             const int oneRowWidth = 96 + 150 + 150 + 160 + 12 + 120 + 130 + 140 + 12 + 120 + 190 + 150 + 170 + 100;
@@ -28551,6 +28700,8 @@ void MainComponent::loadSettings()
     headerButtonOrder.clear();
     if (auto* order = parsed.getProperty("headerButtonOrder", juce::var()).getArray())
         for (const auto& key : *order) headerButtonOrder.addIfNotAlreadyThere(key.toString());
+    hideTopRows = parsed.getProperty("hideTopRows", false);           // 0.9.135
+    topRowsInOneRow = parsed.getProperty("topRowsInOneRow", false);
     consoleGlow = parsed.getProperty("consoleGlow", false);   // 0.8.206: the glow of a pressed button / a dragged stop; off by default since 0.8.213
     glowLayer.enabled = consoleGlow;
     // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file -> file) and
@@ -29502,6 +29653,8 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("copyCacheEnabled", copyCacheEnabled);
     obj->setProperty("copyCacheFolder", copyCacheFolder);
     obj->setProperty("consoleGlow", consoleGlow);
+    obj->setProperty("hideTopRows", hideTopRows);
+    obj->setProperty("topRowsInOneRow", topRowsInOneRow);
     {
         juce::Array<juce::var> folders;
         for (const auto& folder : pluginFolders) folders.add(folder);
@@ -31377,6 +31530,7 @@ void MainComponent::timerCallback()
     }
     // 0.9.29: every half second; 0.9.104: and at once when the last box has gone (the dialog behind it comes back).
     if (++lostModalDivider >= 20 || (gModalBoxesSeen && juce::ModalComponentManager::getInstance()->getNumModalComponents() == 0)) { lostModalDivider = 0; bringLostModalsToFront(); }
+    watchTopRows();   // 0.9.135: the hidden top rows go in again when the mouse has left them
     if (editorMeasureButton != nullptr)   // 0.9.48: the Editor's Measure... follows the loader like the Divisions dialog's (setEnabled with the same value is a no-op)
     {
         const bool can = canMeasurePolyphony();
@@ -36853,6 +37007,16 @@ void MainComponent::showConfigurationEditor()
                 { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
                 "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
                 "and every stop being dragged glows for a moment. Off: the console as it was.");
+            // 0.9.135 (the user: "musíme mít možnost ty první dvě řady úplně skrýt ... na nějaký checkbox v nastavení").
+            addToggle("Hide the top rows", o.hideTopRows, [&o](bool state)
+                { o.hideTopRows = state; o.topRowsOut = false; o.topRowsPinned = false; o.saveSettings(); o.resized(); },
+                "The top bar and the sliders' row are taken out of the window: the combinations and the divisions get their room. "
+                "A strip with a tab stays at the top edge - the mouse on it slides the rows out over the console, and they go again "
+                "when the mouse has left them; a click on the tab keeps them out. PANIC and the display stand in the combination row meanwhile.");
+            addToggle("Top buttons and sliders in one row when they fit", o.topRowsInOneRow, [&o](bool state)
+                { o.topRowsInOneRow = state; o.saveSettings(); o.resized(); },
+                "On: the top bar's buttons, the sliders and the display share ONE row whenever they fit the window (switch off the "
+                "buttons and sliders you do not use, below). Off, or when they do not fit: buttons in a row of their own, sliders in theirs.");
             // Where the configurations and the samples live (0.8.190).
             addButtonWithNote("LibreOrgans folder", "Choose...", o.configurationsDirectory().getFullPathName(), [&o]
                 {
@@ -39186,7 +39350,7 @@ namespace
             std::function<void(const juce::String&, const juce::String&)> assign;                              // "<kind>|<ref>", group ("" = anew)
             std::function<void(bool)> master, follow, freeRandom;
             std::function<void(double)> masterVolume;
-            std::function<void()> addFolder;
+            std::function<void()> addFolder, help;
         };
         struct Options
         {
@@ -39478,7 +39642,7 @@ namespace
             followBox.setTooltip("Off: a key's noise is heard once, on the keyboard that is played. On: every division a coupler reaches adds the noise of its own key.");
             followBox.onClick = [this] { if (callbacks.follow) callbacks.follow(followBox.getToggleState()); };
             addAndMakeVisible(followBox);
-            randomBox.setButtonText("Free drawknob noises: a random one at every press");
+            randomBox.setButtonText("Free drawknob noises: random at every press");
             randomBox.setToggleState(options.freeRandom, juce::dontSendNotification);
             randomBox.setTooltip("A coupler, transmission or stop without a drawknob noise of its own takes one of the free ones. Off: each button its own, always the same "
                 "(unfold Drawknobs to see or change them). On: a random one at every switching on and off.");
@@ -39488,14 +39652,17 @@ namespace
             addFolderButton.setTooltip("Reads a folder of noises by the names of its folders (no definition needed) and adds them. A folder can be dropped onto this window too.");
             addFolderButton.onClick = [this] { if (callbacks.addFolder) callbacks.addFolder(); };
             addAndMakeVisible(addFolderButton);
-            hint.setText("A folder dropped from the file manager: on a perspective of a row = that perspective's files; anywhere else = read as new noises.", juce::dontSendNotification);
-            hint.setFont(juce::FontOptions(12.5f));
-            hint.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-            addAndMakeVisible(hint);
+            // 0.9.135 (the user took the proposal): the controls on ONE row right under the table, the window ends under
+            // them; the help is a "?" as in Audio routing and the patterns dialogs (its text in the tooltip, the manual behind it).
+            helpButton.setButtonText("?");
+            helpButton.setTooltip("A folder dropped from the file manager: on a perspective of a row = that perspective's files; anywhere else = read as new noises. "
+                "A click on a folder unfolds the row. Click: the manual.");
+            helpButton.onClick = [this] { if (callbacks.help) callbacks.help(); };
+            addAndMakeVisible(helpButton);
             int height = headerHeight + 8;
             for (auto* row : rows) height += rowHeight + (row->unfolded ? row->detailsHeight + 6 + (row->hasOneShot ? 28 : 0) + ((row->assignBoxes.size() + 1) / 2) * 28 : 0);
             if (rows.isEmpty()) height += rowHeight;
-            setSize(juce::jmax(1100, columnsLeft() + perspectives.size() * perspectiveWidth + 24), height + 104);
+            setSize(juce::jmax(1220, columnsLeft() + perspectives.size() * perspectiveWidth + 24), height + 58);
             startTimerHz(4);
         }
         ~NoiseUnitsContent() override { stopTimer(); }
@@ -39554,14 +39721,13 @@ namespace
                 row->bottom = y;
             }
             if (rows.isEmpty()) { empty.setBounds(left, y, getWidth() - 2 * left, 28); y += rowHeight; }
-            y += 14;
+            y += 12;
             masterBox.setBounds(left, y, 110, 28);
             masterVolume.setBounds(left + 116, y, 250, 28);
             followBox.setBounds(left + 384, y, 250, 28);
-            addFolderButton.setBounds(getWidth() - 132, y, 120, 30);
-            y += 34;
-            randomBox.setBounds(left, y, 420, 26);
-            hint.setBounds(left + 440, y, getWidth() - left - 452, 26);
+            randomBox.setBounds(left + 644, y, 350, 28);
+            helpButton.setBounds(getWidth() - 12 - 36, y - 1, 36, 30);
+            addFolderButton.setBounds(getWidth() - 12 - 36 - 8 - 120, y - 1, 120, 30);
         }
         // A folder dropped from the file manager: on a perspective cell of a row = that perspective of the unit;
         // anywhere else = read as new noises.
@@ -39588,10 +39754,10 @@ namespace
         juce::OwnedArray<juce::Label> headers;
         juce::OwnedArray<PerspectiveHeader> perspectiveHeaders;
         juce::OwnedArray<RowControls> rows;
-        juce::Label empty, hint;
+        juce::Label empty;
         juce::ToggleButton masterBox, followBox, randomBox;
         juce::Slider masterVolume;
-        juce::TextButton addFolderButton;
+        juce::TextButton addFolderButton, helpButton;
         int perspectiveLeft = 0;
     };
 }
@@ -39707,6 +39873,7 @@ void MainComponent::showNoisesWindow(bool bringToFront)
         safeThis->saveSettings();
     };
     callbacks.freeRandom = [safeThis](bool random) { if (safeThis != nullptr) safeThis->setNoiseFreeRandom(random); };
+    callbacks.help = [safeThis] { if (safeThis != nullptr) safeThis->showManualSection("The Noises window"); };
     callbacks.addFolder = [safeThis]
     {
         if (safeThis == nullptr) return;
@@ -39726,7 +39893,7 @@ void MainComponent::showNoisesWindow(bool bringToFront)
         return;
     }
     noisesWindow = std::make_unique<ModelessDialog>("Noises", new ScrollableContent(content), true);
-    placeDialog(*noisesWindow, "noises4", juce::jmin(width, 2300), juce::jmin(height, 860) + 40);
+    placeDialog(*noisesWindow, "noises6", juce::jmin(width, 2300), juce::jmin(height, 860) + 6);
     noisesWindow->setVisible(true);
     noisesWindow->toFront(true);
 }

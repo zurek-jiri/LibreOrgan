@@ -6332,6 +6332,55 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   `put` case in resized, nothing else. `sliderWidth` 22 (his wish). Pictured on Rural: the pedal with Volume per key
   open 790 px (was ~1300 and stretched), a 61-key manual 1374 px = its keys, folded 760 px. RULE: after a change of a
   size, picture every state the size takes part in - here the open pedal AND the open manual AND the folded voicing.
+- v0.9.134 PUSHED 25 Nov 2026 evening (main 469038b, tag v0.9.134 on it, the user's word "dej to konečně na gitHub"):
+  run 45645548401 - every build green on the second attempt (the first lost a macOS runner, build-retry restarted
+  it), the RELEASE job failed: softprops/action-gh-release@v2 "Too many retries" (GitHub's side; nothing of ours
+  changed there) -> NO release yet. I cannot rerun it (no token, no gh on Windows): the user clicks "Re-run failed
+  jobs" on https://github.com/zurek-jiri/LibreOrgan/actions/runs/45645548401; then: the release's five assets, the
+  Intel mac "late symbols: 0" check, the CI exe to C:\LibreOrgan\LibreOrgan_0.9.134.exe (the local build of 16:25
+  stands there now). The FIRST CI ANNOTATIONS of the test steps: Intel macOS "Kernel test: exit code 2 - Stop name
+  capitals ... 26 cases -> 2 MISMATCH" (the others clean) = juce::CharacterFunctions (iswalpha / towupper) know ASCII
+  alone in the "C" locale of macOS - "Réc. hautbois" was left as it came.
+  LOCAL COMMIT d6edb89 ON TOP (NOT pushed, no version yet - material for 0.9.135): StopNames.h letters by their CODE
+  (isLatinLetter / isLowerLetter / isUpperLetter / upperOf: Latin-1 + Latin Extended-A); the combination row hides the
+  "Pistons:" label and count box FIRST when the natural widths do not fit (the user: the pistons must stay) and the
+  bank buttons show the arrow alone when narrower than 64 px (never two lines in a button); build-retry.yml reruns a
+  run whose builds are green and whose release job failed.
+  THE USER'S RULINGS ON MY "UGLY THINGS" LIST (navrh7): NEVER wrap the top bar or anything onto a second line as a
+  rule ("V žádném případě nechceme dvojřádkový první řádek ... žádné takové společné pravidlo nechci"); the Editor's
+  bars stay as they are (no. 6 refused); the bank arrow and "the count box hides first" accepted (done, d6edb89);
+  nos. 3-5 (Stop List intro wrapped to the window, numbers under the per-key bars without frames, the Noises
+  window's bottom on one line with a "?") ACCEPTED later ("beru body 3-5, čísla bez boxů"). He is unhappy with this
+  session's quality: fewer rounds, picture every state before delivery, save tokens.
+- 0.9.135 (25 Nov 2026 evening; "134 ani nevydávej, když to neprošlo ... udělej si na gitHubu pořádek"): v0.9.134 was
+  NEVER released (softprops/action-gh-release "Too many retries" twice, his rerun hung in download-artifact); its
+  remote tag is deleted, 0.9.135 carries it whole. CI: (1) build.yml's release step = `gh release create --verify-tag
+  --prerelease` with the reason of a failure in an `::error title=Release::` annotation (readable without a login),
+  an earlier attempt's release / v* draft of the tag deleted first, `timeout-minutes: 20` on the job; (2) THE BRANCH
+  `ci-check` builds every platform WITHOUT a release: `git push origin main:ci-check` FIRST, watch it, tag only when
+  green - RULE from now on for every release (most failed release builds were compile errors only clang / GCC see).
+  PROGRAM: `hideTopRows` (machine key; Editor > Console "Hide the top rows"): resized() lays the two rows out as ever
+  and notes their controls in `topRowParts`, the rest of the window begins at the top; `TopRowsTab` (12 px strip +
+  tab, testName "topRowsTab": mouseEnter slides out, a click pins), `TopRowsBackdrop`, `TopRowsWatch` (the mouse's
+  place from the window's mouse EVENTS, never asked from the system), `applyTopRowsVisibility()` (visibility + Z
+  order only - NEVER resized() for show / hide: it rebuilds the grid), `watchTopRows()` in the timer (in again
+  450 ms after the mouse left; not while a button is down, a value is typed, a modal box / the header arranger is
+  up, or pinned). PANIC: `panicInBounds` (first in the combination row) / `panicOutBounds` (its slot in the top bar,
+  which it takes while the rows are out - they cover the combination row); the polyphony display stands in the
+  combination row (natural 330, minimum 250 - at 150 it read "RA..." / "000"; the crescendo bar's minimum 80 then).
+  `topRowsInOneRow` (machine key, off; "Top buttons and sliders in one row when they fit"): one row of 62 px when the
+  buttons at their texts' width + 150 px a slider + 330 fit; HIS RULING: buttons and sliders in rows of their own
+  whenever there is room ("návrh A vypadá debilně") - the one row only as this option. TOP ROW SLIDER TEXTS = THE
+  BUTTONS' SIZE (the user: "proč jsou nápisy ve sliderech menší než nápisy na buttonech nad nimi? ... nedbalost"):
+  16 px, shrinking 16..11 only as the width asks (properties "barNameSize", "barValueSize", "barSmallNameSize" =
+  the two-line name, 13 else 11). RULE: a text beside other texts takes THEIR size - compare with the neighbours
+  before delivery. Per-key numbers: label property "plainNumber" (no box, 9 px bold, zero greyed, frame only while
+  typed). Stop List intro wrapped to the VISIBLE width (ScrollableContent calls content->resized() when the content
+  kept its size). Noises window: bottom controls on one row + "?" (placeDialog "noises6", content height + 6).
+  TEST LESSON: `headerButtons` and `globalSlidersShown` TRAVEL WITH THE ORGAN - a test changes a COPY of the
+  configuration (%TEMP%\make_rural_onerow.py), not the settings; test_0127b.ps1 -Settings takes JSON values ({...},
+  [...]) now. NOT run: the slide-out by a real mouse on the strip and the going-in after it left (hooks cannot
+  move the mouse), Linux / macOS.
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)

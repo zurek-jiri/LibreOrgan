@@ -175,8 +175,11 @@ public:
         const int bar = viewport.getScrollBarThickness();
         const bool vertical = designHeight > getHeight();
         const bool horizontal = designWidth > getWidth() - (vertical ? bar : 0);
+        const auto before = content->getBounds();
         content->setSize(juce::jmax(designWidth, getWidth() - (vertical ? bar : 0)),
                          juce::jmax(designHeight, getHeight() - (horizontal ? bar : 0)));
+        // The window changed and the content kept its size: what follows the VISIBLE width (a text wrapped to it) is laid out again.
+        if (content->getBounds() == before) content->resized();
     }
     juce::Component& inner() noexcept { return *content; }
     int getDesignWidth() const noexcept { return designWidth; }
@@ -304,6 +307,66 @@ public:
         if (state == dead || locked || !getLocalBounds().contains(event.getPosition()) || !onChoose) return;
         const int place = juce::jlimit(0, 2, event.x * 3 / juce::jmax(1, getWidth()));
         if (state > 1 || place != state) onChoose(place);   // the present place does nothing; in the mixed state every place acts
+    }
+};
+
+// 0.9.135 THE TOP ROWS HIDDEN (the user: "musíme mít možnost ty první dvě řady úplně skrýt, aby se jen vysunovaly v
+// případě potřeby ... nikoli zvětšovat tyhle pomocné řady, ale naopak se jich zbavovat"): with the setting on, the
+// top bar and the sliders' row are not laid into the window - a strip with a tab stands at the top edge; the mouse
+// on it (or a click on the tab, which keeps them) slides the rows out OVER the console, and they go again when the
+// mouse has left them. TopRowsTab = the strip, TopRowsBackdrop = the ground under the rows while out, TopRowsWatch =
+// where the mouse is, from the mouse EVENTS of the window (never asked from the system: 0.9.39).
+class TopRowsTab final : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    bool out = false, pinned = false;
+    std::function<void()> onEnter, onClick;
+    void paint(juce::Graphics& g) override
+    {
+        const auto area = getLocalBounds().toFloat();
+        g.setColour(juce::Colours::white.withAlpha(0.10f));
+        g.fillRect(area.withHeight(3.0f));
+        const auto tab = area.withSizeKeepingCentre(84.0f, area.getHeight());
+        g.setColour(pinned ? onColour() : findColour(juce::TextButton::buttonColourId).brighter(0.25f));
+        g.fillRoundedRectangle(tab.withY(-6.0f).withHeight(area.getHeight() + 6.0f), 6.0f);
+        g.setColour(juce::Colours::white.withAlpha(0.85f));
+        juce::Path arrow;
+        const float cx = tab.getCentreX(), cy = tab.getCentreY() - 0.5f, s = 3.5f;
+        if (out) arrow.addTriangle(cx - s * 1.6f, cy + s * 0.7f, cx + s * 1.6f, cy + s * 0.7f, cx, cy - s * 0.8f);
+        else arrow.addTriangle(cx - s * 1.6f, cy - s * 0.7f, cx + s * 1.6f, cy - s * 0.7f, cx, cy + s * 0.8f);
+        g.fillPath(arrow);
+    }
+    void mouseEnter(const juce::MouseEvent&) override { if (onEnter) onEnter(); }   // (not on a move: after a click that sends the rows in, the mouse still rests here)
+    void mouseUp(const juce::MouseEvent& event) override { if (onClick && getLocalBounds().contains(event.getPosition())) onClick(); }
+};
+class TopRowsBackdrop final : public juce::Component
+{
+public:
+    void paint(juce::Graphics& g) override
+    {
+        g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId).brighter(0.06f));
+        g.setColour(onColour());
+        g.fillRect(0, getHeight() - 2, getWidth(), 2);
+    }
+    void mouseDown(const juce::MouseEvent&) override {}   // a click beside the controls does not reach the console under them
+};
+class TopRowsWatch final : public juce::MouseListener
+{
+public:
+    juce::Component* owner = nullptr;
+    int y = 1 << 20;
+    bool inside = false;
+    void mouseMove(const juce::MouseEvent& event) override { take(event); }
+    void mouseDrag(const juce::MouseEvent& event) override { take(event); }
+    void mouseEnter(const juce::MouseEvent& event) override { take(event); }
+    void mouseExit(const juce::MouseEvent& event) override { take(event); }
+private:
+    void take(const juce::MouseEvent& event)
+    {
+        if (owner == nullptr) return;
+        const auto p = event.getEventRelativeTo(owner).getPosition();
+        y = p.y;
+        inside = owner->getLocalBounds().contains(p);
     }
 };
 

@@ -177,7 +177,7 @@ namespace UIScale
             target = &slider;
             startText = slider.getTextFromValue(slider.getValue());
             editor = std::make_unique<juce::TextEditor>();
-            editor->setFont(juce::FontOptions(13.0f, juce::Font::bold));
+            editor->setFont(juce::FontOptions(juce::jlimit(9.0f, 16.0f, (float)(double)slider.getProperties().getWithDefault("barValueSize", 13.0)), juce::Font::bold));
             editor->setJustification(juce::Justification::centred);
             editor->setColour(juce::TextEditor::outlineColourId, juce::Colour(0xffffa500));
             editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xffffa500));
@@ -294,8 +294,13 @@ namespace UIScale
             if ((bool)properties.getWithDefault("barUseShort", false) && properties.contains("barShort")) name = properties["barShort"].toString();
             const juce::String value = slider.getTextFromValue(slider.getValue());
             const auto text = slider.findColour(juce::Slider::textBoxTextColourId).withMultipliedAlpha(alpha);
-            const float nameSize = twoLines ? 11.0f : juce::jlimit(9.0f, 15.0f, (float)(double)properties.getWithDefault("barNameSize", 13.0));
-            const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold)), nameFont{ juce::FontOptions(nameSize) };
+            // The sizes: 13 px by default; a row beside buttons asks for the buttons' size ("barNameSize",
+            // "barValueSize"; two lines: "barSmallNameSize" above the value) - the user: the texts of the top row's
+            // sliders must not be smaller than the texts of the buttons above them.
+            const float nameSize = twoLines ? juce::jlimit(9.0f, 13.0f, (float)(double)properties.getWithDefault("barSmallNameSize", 11.0))
+                                            : juce::jlimit(9.0f, 16.0f, (float)(double)properties.getWithDefault("barNameSize", 13.0));
+            const float valueSize = juce::jlimit(9.0f, 16.0f, (float)(double)properties.getWithDefault("barValueSize", 13.0));
+            const juce::Font valueFont(juce::FontOptions(valueSize, juce::Font::bold)), nameFont{ juce::FontOptions(nameSize) };
             const auto inner = area.reduced(7.0f, 0.0f).toNearestInt();
             const int valueWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(valueFont, value));
             const int nameWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(nameFont, name));
@@ -309,7 +314,7 @@ namespace UIScale
             const auto crosses = [lineX](juce::Range<int> span) { return !span.isEmpty() && lineX + 2.5f > (float)span.getStart() - 2.0f && lineX < (float)span.getEnd() + 2.0f; };
             // Two lines stand close together in the middle of the bar (the name 12 px, the value 15 px).
             const int centreY = inner.getCentreY();
-            const float textBlock = twoLines ? 27.0f : 15.0f;
+            const float textBlock = twoLines ? 27.0f : valueSize + 2.0f;
             g.setColour(thumb.withMultipliedAlpha(alpha));
             if (!typing && (crosses(valueSpan) || crosses(nameSpan)))
             {
@@ -341,16 +346,18 @@ namespace UIScale
         // A bar has the corners of the buttons and the displays beside it (the user: 3 px, the text boxes' corners,
         // was a mistake - "zaoblení rohů musí být stejné").
         static constexpr float barCorner = 6.0f;
-        // A slider with the property "smallTextBox" gets an 8 px value box without side margins: the per-key sliders
-        // of the voicing stand 21 px apart and "-300" (Attack per key) must fit.
+        // A slider with the property "smallTextBox" - the per-key sliders of the voicing, 22 px apart - has a plain
+        // number under it, no box (0.9.135, the user's choice): 9 px bold, a zero greyed so the set values stand out
+        // (drawLabel below); the frame comes only while the number is typed.
         juce::Label* createSliderTextBox(juce::Slider& slider) override
         {
             auto* label = juce::LookAndFeel_V4::createSliderTextBox(slider);
             if (slider.getProperties().contains("smallTextBox"))
             {
-                label->setFont(juce::FontOptions(8.0f));
+                label->setFont(juce::FontOptions(9.0f, juce::Font::bold));
                 label->setBorderSize(juce::BorderSize<int>(1, 0, 1, 0));
-                label->setMinimumHorizontalScale(0.75f);
+                label->setMinimumHorizontalScale(0.7f);
+                label->getProperties().set("plainNumber", true);
             }
             return label;
         }
@@ -359,6 +366,16 @@ namespace UIScale
         static constexpr float boxCorner = 3.0f;
         void drawLabel(juce::Graphics& g, juce::Label& label) override
         {
+            if (label.getProperties().contains("plainNumber"))
+            {
+                if (label.isBeingEdited()) return;   // its editor draws itself (with its frame)
+                const juce::String text = label.getText();
+                const bool zero = text.containsOnly("-+0., ") && text.containsAnyOf("0");
+                g.setColour(label.findColour(juce::Label::textColourId).withMultipliedAlpha(!label.isEnabled() ? 0.3f : zero ? 0.42f : 1.0f));
+                g.setFont(getLabelFont(label));
+                g.drawFittedText(text, label.getLocalBounds(), juce::Justification::centred, 1, label.getMinimumHorizontalScale());
+                return;
+            }
             const auto bounds = label.getLocalBounds().toFloat();
             g.setColour(label.findColour(juce::Label::backgroundColourId));
             g.fillRoundedRectangle(bounds, boxCorner);

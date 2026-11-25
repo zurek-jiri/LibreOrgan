@@ -12,6 +12,40 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.135] - 2026-11-25
+
+0.9.134 was built for every system but never released (its release step failed); this version carries it whole.
+
+### Added
+- **Hide the top rows** (Configuration Editor > Console): the top bar and the
+  sliders' row leave the window and the combinations and divisions take their
+  room. A strip with a tab stays at the top edge - the mouse on it slides the
+  rows out over the console, they go again when the mouse has left them, a
+  click on the tab keeps them out. PANIC and the display stand in the
+  combination row meanwhile (PANIC at its usual place in the top bar while the
+  rows are out).
+- **Top buttons and sliders in one row when they fit** (the same section, off
+  by default): for those who show only a few of them.
+
+### Changed
+- **The sliders of the top row** have their texts at the size of the buttons
+  above them (16 px); they shrink only as far as the window's width asks.
+- **Combination row in a narrow window**: the "Pistons:" count box goes first,
+  the pistons stay; the bank buttons show their arrow alone instead of a
+  second line.
+- **Numbers under the per-key sliders** have no boxes (9 px, bold, a zero
+  greyed); the frame comes while a number is typed.
+- **Stop List**: the introduction is wrapped to the window, not to the table.
+- **Noises window**: its controls on one row under the table, the help behind
+  a "?".
+
+### Fixed
+- **Stop names on macOS (and Linux without a UTF-8 locale)**: "Réc. hautbois"
+  did not get its capital - letters are told by their code now, not by the
+  system's locale.
+- **Releases**: the release is made by GitHub's own tool with the reason of a
+  failure in sight, a failed release step is tried again by itself, and a
+  version can be built for every system before its tag (branch ci-check).
 ## [0.9.134] - 2026-11-25
 
 ### Added

@@ -1508,7 +1508,7 @@ static const char* const kManualText_part7 =
     "- **A folder dropped from the file manager** onto a perspective of a row\n"
     "  becomes that perspective's files; dropped anywhere else it is read as new\n"
     "  noises and added.\n"
-    "- Below: [Noises on](#noises-on), the volume of all\n"
+    "- Below, on one row with the **?** (this chapter): [Noises on](#noises-on), the volume of all\n"
     "  ([Noises volume](#noises-volume)),\n"
     "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
     "  *Free drawknob noises: a random one at every press* (instead of each\n"
@@ -2128,6 +2128,20 @@ static const char* const kManualText_part10 =
     "Off by default: the golden halo of the instruction video on every pressed\n"
     "button and dragged stop.\n"
     "\n"
+    "### Hide the top rows\n"
+    "\n"
+    "Off by default. On: the top bar and the sliders' row leave the window, so\n"
+    "the combinations and the divisions have their room. A strip with a tab stays\n"
+    "at the top edge: the mouse on it slides the rows out over the console, and\n"
+    "they go again when the mouse has left them; a click on the tab keeps them\n"
+    "out. PANIC and the display stand in the combination row meanwhile.\n"
+    "\n"
+    "### Top buttons and sliders in one row when they fit\n"
+    "\n"
+    "Off by default: the buttons have a row of their own and the sliders theirs.\n"
+    "On: both share one row whenever they fit the window - switch off the\n"
+    "buttons and sliders you do not use.\n"
+    "\n"
     "\n"
     "### LibreOrgans folder\n"
     "\n"
@@ -2208,6 +2222,8 @@ static const char* const kManualText_part10 =
     "reorder them here, or drag a column header in the Stop List. Prefixes found\n"
     "in a set are added by themselves (prefix by prefix, your own lines are never\n"
     "replaced; a prefix that means another perspective in this computer's list is\n"
+    ;
+static const char* const kManualText_part11 =
     "noted in Messages and the organ's own line applies); a perspective renamed in\n"
     "the Stop List (double-click the column header) renames the line. A Hauptwerk\n"
     "definition's ranks without a perspective in their names take these prefixes\n"
@@ -2222,8 +2238,6 @@ static const char* const kManualText_part10 =
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
     "Stop List.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "### Shown in window\n"
     "\n"
@@ -2410,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "Opens [The Noises window](#the-noises-window), as the top bar's Noises button\n"
     "does.\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "### Noises of a Hauptwerk definition\n"
     "\n"
@@ -2424,8 +2440,6 @@ static const char* const kManualText_part11 =
     "### Noises of a folder\n"
     "\n"
     "Without a definition: reads a folder of noises by the names of its folders -\n"
-    ;
-static const char* const kManualText_part12 =
     "the perspective, the moment (atk / rel, on / off, down / up, pull / push), the\n"
     "kind (keys, drawknobs, couplers, tremulant; anything else becomes a button\n"
     "named after its folder) and the division. It is a guess; what the names did\n"
@@ -2612,6 +2626,8 @@ static const char* const kManualText_part12 =
     "from, with that shift (\"P. Tuba 4\" = the Tuba 16' shifted). A folder is never\n"
     "loaded twice. A stop with several ranks in one perspective (a left and a\n"
     "right component) becomes a stop folder with one child per rank. Ranks\n"
+    ;
+static const char* const kManualText_part13 =
     "without release samples make a one-shot stop; a stop whose release crossfade\n"
     "lengths (around A4) are 1.5 times the organ's usual or more gets the voicing's\n"
     "[Release crossfade](#release-crossfade) multiplier. Tremmed ranks and the noise\n"
@@ -2626,8 +2642,6 @@ static const char* const kManualText_part12 =
     "import named with the prefix is renamed the same way when it loads, every\n"
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
-    ;
-static const char* const kManualText_part13 =
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
     "Transpositions come from the definition's pipe notes against the file names\n"
     "(\"024\" on key 36 gives -12). The configuration goes into the LibreOrgans\n"
@@ -2814,6 +2828,8 @@ static const char* const kManualText_part13 =
     "between jobs and join the large ones only. And when a job does not close\n"
     "within 0.6 ms of its last voice being taken - the thread that holds it has\n"
     "lost its processor - the idle workers stop waiting and sleep, so that it\n"
+    ;
+static const char* const kManualText_part14 =
     "gets one back at once. The polyphony measurement judges a driver that hands\n"
     "its blocks over in bursts (ReaRoute behind a program on the Windows sound\n"
     "system) by the cycle of the bursts, heard in its two idle seconds. The kernels: AVX2 (eight frames a step), SSE2 and NEON (four), scalar;\n"
@@ -2828,8 +2844,6 @@ static const char* const kManualText_part13 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
-    ;
-static const char* const kManualText_part14 =
     "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
     "encrypted archives are refused. Archives packed with PPMd or old filters go\n"

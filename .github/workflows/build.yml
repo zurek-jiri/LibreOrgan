@@ -6,6 +6,10 @@ on:
     # beside the tag's run and held the few macOS runners - the release comes
     # from the tag alone; "Run workflow" below builds any branch on demand.
     tags: [ 'v*' ]
+    # 25 Nov 2026 (the user: "proč nám to furt neprochází?" - of the failed release builds most were compile errors
+    # only clang or GCC see, found AFTER the tag): the branch "ci-check" builds every platform WITHOUT a release.
+    # A version is pushed there first (git push origin main:ci-check); the tag follows when that build is green.
+    branches: [ 'ci-check' ]
   pull_request:
   workflow_dispatch:
 
@@ -204,6 +208,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
+    # a download or an upload that hangs (v0.9.134, third attempt) ends here, not after six hours
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -212,23 +218,42 @@ jobs:
           path: artifacts
       # Every build is a pre-release for testers until the first release the
       # project is satisfied with; the badge says so on the releases page.
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/**/*
-          prerelease: true
-          body: |
-            Pre-release build for testers - not an official release yet.
+      # 25 Nov 2026 (v0.9.134: every build green, softprops/action-gh-release failed three attempts with "Too many
+      # retries" and nothing to read without a login): the release is made by GitHub's own gh here - a draft with
+      # the archives, published when they are all up - and a failure says WHY in an annotation. A release or draft
+      # of this tag left by an earlier attempt is replaced, so the job can be run again.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          mapfile -t files < <(find artifacts -type f | sort)
+          echo "archives: ${#files[@]}"; printf '  %s\n' "${files[@]}"
+          if [ "${#files[@]}" -lt 4 ]; then echo "::error title=Release::only ${#files[@]} archive(s) came from the builds"; exit 1; fi
+          cat > notes.md <<'NOTES'
+          Pre-release build for testers - not an official release yet.
 
-            **One program, no installation: download the archive of your system below, unpack it, start the program.**
+          **One program, no installation: download the archive of your system below, unpack it, start the program.**
 
-            - **Windows 10/11 (64-bit):** `LibreOrgan-windows.zip` - `LibreOrgan.exe` inside.
-            - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `LibreOrgan-macos.zip` - the app inside. Not notarised by Apple: macOS blocks the first start - allow it in System Settings > Privacy & Security > **Open Anyway** (older macOS: right-click > Open).
-            - **macOS, Intel (macOS 10.11 El Capitan or newer):** `LibreOrgan-macos-10.11-intel.zip` - the app inside. Not notarised by Apple: right-click > Open the first time (newer macOS: System Settings > Privacy & Security > **Open Anyway**).
-            - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `LibreOrgan-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
-            - **Linux arm64 - Raspberry Pi 4/5 with a 64-bit OS (Raspberry Pi OS Bookworm or newer, glibc 2.35+):** `LibreOrgan-linux-arm64.tar.gz` - `tar xzf` it. A test build, not yet tried on real hardware by the project.
-            - The two *Source code* entries are added by GitHub to every release: not needed for playing.
+          - **Windows 10/11 (64-bit):** `LibreOrgan-windows.zip` - `LibreOrgan.exe` inside.
+          - **macOS, Apple silicon (macOS 11 Big Sur or newer):** `LibreOrgan-macos.zip` - the app inside. Not notarised by Apple: macOS blocks the first start - allow it in System Settings > Privacy & Security > **Open Anyway** (older macOS: right-click > Open).
+          - **macOS, Intel (macOS 10.11 El Capitan or newer):** `LibreOrgan-macos-10.11-intel.zip` - the app inside. Not notarised by Apple: right-click > Open the first time (newer macOS: System Settings > Privacy & Security > **Open Anyway**).
+          - **Linux x86-64 (glibc 2.38 or newer: Ubuntu 24.04, Mint 22, Debian 13, Fedora 39 and newer):** `LibreOrgan-linux-x86_64.tar.gz` - `tar xzf` it; the program is executable as it comes.
+          - **Linux arm64 - Raspberry Pi 4/5 with a 64-bit OS (Raspberry Pi OS Bookworm or newer, glibc 2.35+):** `LibreOrgan-linux-arm64.tar.gz` - `tar xzf` it. A test build, not yet tried on real hardware by the project.
+          - The two *Source code* entries are added by GitHub to every release: not needed for playing.
 
-            **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/LibreOrgan/releases/tag/rural-organ-0.8) brings its own sample folders.
+          **Organs to play: [Configurations, Organs](https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/INDEX.md)** - ready-made configurations for sample folders in wave format from [Sonus Paradisi](https://www.sonusparadisi.cz/en/organs.html) ([free material](https://www.sonusparadisi.cz/en/free-stuff.html)); to start at once, [the Rural Organ demo](https://github.com/zurek-jiri/LibreOrgan/releases/tag/rural-organ-0.8) brings its own sample folders.
+          NOTES
+          for old in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft --jq '.[] | select((.isDraft and (.tagName | startswith("v"))) or .tagName == "'"$tag"'") | .tagName' | awk '!seen[$0]++'); do
+            echo "an earlier attempt's release $old goes first"
+            gh release delete "$old" --repo "$GITHUB_REPOSITORY" --yes || true
+          done
+          if ! out=$(gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$tag" --notes-file notes.md 2>&1); then
+            echo "$out"
+            echo "::error title=Release::$(echo "$out" | tail -n 3 | tr '\n' ' ' | cut -c1-400)"
+            exit 1
+          fi
+          echo "$out"
       # 0.9.101 (the user: "na GitHubu tentokrát nechej i starou verzi, kdyby tato s VST kulhala ... pak ji časem zase
       # zrušíme"): the release named in `keep` below stays beside the current one while the plug-in hosting is new.
       # Empty `keep` = one release again.
