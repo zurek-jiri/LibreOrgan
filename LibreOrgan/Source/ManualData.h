@@ -609,11 +609,13 @@ static const char* const kManualText_part2 =
     ;
 static const char* const kManualText_part3 =
     "\n"
-    "Open it with the corner button. The first line: transposition, perspectives,\n"
-    "velocity layers, pitch information, alias and switches; the second line the\n"
-    "sliders; under them two folding rows of per-key sliders. With both per-key\n"
-    "rows folded the voicing takes half the width and its controls wrap onto more\n"
-    "lines; unfold a per-key row and it widens.\n"
+    "Open it with the corner button. Beside the button: transposition, alias,\n"
+    "switches and perspectives; under it the pitch information on a line of its\n"
+    "own, then the sliders and the velocity layers; under them the folding rows\n"
+    "of per-key sliders. The voicing is never wider than it must be: with a\n"
+    "per-key row unfolded it is as wide as that row's keys, with all of them\n"
+    "folded it is narrow - the controls above wrap onto as many lines as that\n"
+    "width needs.\n"
     "\n"
     "### Transposition\n"
     "\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "  **NOT FOUND on this computer: replace \"...\" with a folder on this\n"
     "  computer...** ([Sample folders not found](#sample-folders-not-found)).\n"
     "  A folder holding the sample files themselves is loaded as a tree of that\n"
-    "  one stop. Folders or archives dragged from the file manager onto a\n"
-    "  division's column on the console are loaded there the same way (a folder\n"
     ;
 static const char* const kManualText_part4 =
+    "  one stop. Folders or archives dragged from the file manager onto a\n"
+    "  division's column on the console are loaded there the same way (a folder\n"
     "  without sample folders is refused with a message).\n"
     "- **Unload folder...** removes one tree from the whole organ; the rows that\n"
     "  had folders of that tree only go with it, a row with a folder of another\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "bar turns orange - it works, but costs polyphony; drag one of the two cards by\n"
     "its title onto the other and every cable plays through one driver. Only an\n"
     "exclusive-mode driver keeps a card to itself there. An ASIO card whose\n"
-    "device is not connected is listed all the same (Windows lists the driver):\n"
-    "it is **grey**, with the driver's reason in its tooltip, and takes no\n"
     ;
 static const char* const kManualText_part5 =
+    "device is not connected is listed all the same (Windows lists the driver):\n"
+    "it is **grey**, with the driver's reason in its tooltip, and takes no\n"
     "cable. The program asks the cards itself - when the dialog first opens and\n"
     "whenever Windows reports a device coming or going: connect the device and\n"
     "the card becomes active, unplug a card in use and it turns grey within a\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "  perspectives stay together;\n"
     "- a plug-in switched on or off, added or removed glides in and out (it works\n"
     "  unheard for a tenth of a second first), so the switch is no click;\n"
-    "- a plug-in that needs more time than the audio buffer allows, block after\n"
-    "  block, is switched OFF and a message says so;\n"
     ;
 static const char* const kManualText_part6 =
+    "- a plug-in that needs more time than the audio buffer allows, block after\n"
+    "  block, is switched OFF and a message says so;\n"
     "- a plug-in's **window** is tried in a process of its own before it is first\n"
     "  opened (once for each plug-in; a slow one takes a while): one whose window\n"
     "  crashes or hangs there is not opened in the program - the plug-in keeps\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "  recorded. Every temperament is MIDI-learnable.\n"
     "- **Two organs merged**, each recorded in its own temperament: nothing to do.\n"
     "  The retune works rank by rank - every rank's own recorded deviations are\n"
-    "  taken out and the target's put in - so both organs play the target\n"
-    "  temperament in tune with each other. The base temperament shown is the one\n"
     ;
 static const char* const kManualText_part7 =
+    "  taken out and the target's put in - so both organs play the target\n"
+    "  temperament in tune with each other. The base temperament shown is the one\n"
     "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
     "\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "room for other programs. A hybrid processor (performance and efficiency\n"
     "cores) offers *Performance cores only*. The workers run at audio priority on\n"
     "every system ([The render pool and the threads](#1011-the-render-pool-and-the-threads)).\n"
-    "\n"
-    "### Interpolation kernel\n"
     ;
 static const char* const kManualText_part8 =
+    "\n"
+    "### Interpolation kernel\n"
     "\n"
     "The code that renders every pipe. *Automatic* takes the best this processor\n"
     "runs: AVX2 (current x86-64), SSE2 (older x86-64 - on a Core 2 Duo Mac 2500\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "(default 4 dB).\n"
     "\n"
     "### Wind: volume change per cent of sag\n"
-    "\n"
-    "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
+    "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
     "default 0.2).\n"
     "\n"
     "### Wind: sag ratio per octave\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "Heard at once.\n"
     "\n"
     "### Filled pipes: loop crossfade\n"
-    "\n"
-    "The splice of the copies' loops as a share of each loop (0 to 100 %, default\n"
     ;
 static const char* const kManualText_part10 =
+    "\n"
+    "The splice of the copies' loops as a share of each loop (0 to 100 %, default\n"
     "40): a longer blend hides a seam that is not quite periodic. Raise it when a\n"
     "held extension pipe bumps at every repeat.\n"
     "\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "\n"
     "The folder trees of this division and *Stop building...*, which opens the\n"
     "Stop List.\n"
-    "\n"
-    "### Shown in window\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
+    "### Shown in window\n"
     "\n"
     "Which program window shows this division; *Window 2* opens the second window\n"
     "when it is not open yet.\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "### Noises of a folder\n"
     "\n"
     "Without a definition: reads a folder of noises by the names of its folders -\n"
-    "the perspective, the moment (atk / rel, on / off, down / up, pull / push), the\n"
-    "kind (keys, drawknobs, couplers, tremulant; anything else becomes a button\n"
     ;
 static const char* const kManualText_part12 =
+    "the perspective, the moment (atk / rel, on / off, down / up, pull / push), the\n"
+    "kind (keys, drawknobs, couplers, tremulant; anything else becomes a button\n"
     "named after its folder) and the division. It is a guess; what the names did\n"
     "not tell is put right in [The Noises window](#the-noises-window). Drawknob\n"
     "noises are given to the buttons at random.\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "import named with the prefix is renamed the same way when it loads, every\n"
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
-    "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
-    "Transpositions come from the definition's pipe notes against the file names\n"
     ;
 static const char* const kManualText_part13 =
+    "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
+    "Transpositions come from the definition's pipe notes against the file names\n"
     "(\"024\" on key 36 gives -12). The configuration goes into the LibreOrgans\n"
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
-    "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
-    "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
     ;
 static const char* const kManualText_part14 =
+    "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
+    "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
     "encrypted archives are refused. Archives packed with PPMd or old filters go\n"
     "through a second reader (unarr) after the first fails, logged once. A\n"
     "configuration never names an archive: every path is a disk path, and a folder\n"

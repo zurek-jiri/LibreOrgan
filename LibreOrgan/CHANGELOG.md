@@ -29,9 +29,15 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   display: bars and display the same height, the display always wide enough
   for its cells; its sliders keep one line as long as the names fit (they
   shrink first), then all show the name above the value. The per-key sliders
-  of the voicing are the same bars upright, 21 px apart instead of 30 (a
-  61-key row is a third narrower); a sounding key is orange, a replaced pipe
+  of the voicing are the same bars upright, 22 px apart instead of 30 (a
+  61-key row is a quarter narrower); a sounding key is orange, a replaced pipe
   keeps its green line. Bars, buttons and displays share one rounding.
+- **A voicing is never wider than it must be**: with a per-key row unfolded
+  it is as wide as that row's keys (a pedal's about 790 px), with all of them
+  folded 760 px; the controls above wrap onto as many lines as that needs and
+  the pitch information has a line of its own, uncut. Before, an unfolded
+  row put all controls on two lines of some 1300 px and the column took the
+  whole free width of the window.
 - **Apply without a reload when the table only takes away**: rows, folders,
   perspectives removed or switched to *not loaded* are freed at once - nothing
   is read, no loading window, and the routes of the perspectives that stay

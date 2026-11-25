@@ -1698,8 +1698,10 @@ void StopRow::resized()
     const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
     int keyAreaTop = 0;
-    if (isExpanded() && !stop->container && !volumeRowShown() && !toneRowShown() && !attackRowShown())
-    {   // 0.9.88: the attack row counts as a key row too - the compact controls under an open attack row pushed the
+    if (isExpanded() && !stop->container)
+    {   // 0.9.134: ALWAYS the wrapping walk for an open voicing (its per-key rows folded or not): the row is as wide
+        // as its keys and the controls wrap to that. (0.9.36 had it for folded rows only.)
+        // 0.9.88: the attack row counts as a key row too - the compact controls under an open attack row pushed the
         // sliders below the row's height (expandedHeightFor takes the full layout for it): "spodní okýnka uřízlá"
         // 0.9.36: both per-key rows folded - the compact layout (voicer.h compactControlsLayout:
         // the same walk gave the owner the row's height), the controls wrapped onto more lines.
@@ -1716,12 +1718,14 @@ void StopRow::resized()
                     case Control::transposition: transpositionLabel.setBounds(x, y, 100, 23); shiftBox.setBounds(x + 104, y, 250, 23); break;
                     case Control::oneShot: oneShotToggle.setBounds(x, y, 92, 23); break;
                     case Control::releaseFade: releaseFadeBox.setBounds(x, y, 142, 23); break;
-                    case Control::source: sourceLabel.setBounds(x, y, 520, 23); break;
+                    case Control::source: sourceLabel.setBounds(x, y, juce::jmax(60, w - 8), 23); break;
                     case Control::ranksLabel: ranksLabel.setBounds(x, y, 92, 23); break;
                     case Control::rankBox: if (i < rankButtons.size()) rankButtons[i]->setBounds(x, y, 80, 23); break;
-                    case Control::diapason:
-                        diapasonLabel.setBounds(x, y, w, 23);
-                        diapasonLabel.setTooltip(w < textWidth + 12 ? diapasonLabel.getText() : juce::String());   // the whole text when cut
+                    case Control::diapason:   // i = the lines the walk kept for it (two in a narrow row)
+                        diapasonLabel.setMinimumHorizontalScale(1.0f);   // it wraps, never squeezes
+                        diapasonLabel.setJustificationType(juce::Justification::topLeft);
+                        diapasonLabel.setBounds(x, y, w, juce::jmax(1, i) * compactPitchLineHeight + 2);
+                        diapasonLabel.setTooltip(w * juce::jmax(1, i) < textWidth + 12 * juce::jmax(1, i) ? diapasonLabel.getText() : juce::String());   // the whole text when still cut
                         break;
                     case Control::alias: aliasLabel.setBounds(x, y, 46, 23); aliasBox.setBounds(x + 48, y, 190, 23); break;
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
@@ -1736,7 +1740,7 @@ void StopRow::resized()
                         if (isTransmission()) add(formantSlider, formantLabel);
                         add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
                         if (!isTransmission()) add(formantSlider, formantLabel);
-                        if (i < n) sliders[i]->setBounds(x, y + 8, w, 28);   // 0.9.134: one bar, its name inside (labels[] are not shown)
+                        if (i < n) sliders[i]->setBounds(x, y + 2, w, 28);   // 0.9.134: one bar, its name inside (labels[] are not shown)
                         break;
                     }
                     case Control::velocityLabel: velocityLabel.setBounds(x, y, 100, 26); break;
@@ -3348,54 +3352,42 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             }
     }
     const int narrowWidth = 335;
-    const int availableExpanded = viewWidth - margin * 2
-        - narrowWidth * juce::jmax(0, columnsHere - 1);
-    // 0.9.36: a division whose open voicings all have their per-key rows folded takes HALF the
-    // width (the compact layout of StopRow wraps the controls); the other columns share the rest.
-    std::array<bool, SamplerEngine::maxManuals> manualKeyRowsOpen{};
-    for (auto* stop : engine.getStops())
-    {
-        if (stop->voicingExpanded && stop->primaryManual >= 0 && stop->primaryManual < SamplerEngine::maxManuals && !StopRow::keyRowsFolded(stop, -1))
-            manualKeyRowsOpen[(size_t)stop->primaryManual] = true;
-        for (int i = 0; i < (int)stop->transmissions.size(); ++i)
-            if (stop->transmissions[(size_t)i].voicingExpanded && stop->transmissions[(size_t)i].manual >= 0 && stop->transmissions[(size_t)i].manual < SamplerEngine::maxManuals
-                && !StopRow::keyRowsFolded(stop, i))
-                manualKeyRowsOpen[(size_t)stop->transmissions[(size_t)i].manual] = true;
-    }
-    const int usableWidth = viewWidth - margin * (columnsHere + 1);   // a margin before every column and after the last
-    const int compactWidth = juce::jlimit(juce::jmin(700, usableWidth), juce::jmax(700, usableWidth - narrowWidth * (columnsHere - 1)), usableWidth / 2);
-    const int otherWidthBesideCompact = columnsHere > 1 ? juce::jmax(narrowWidth, (usableWidth - compactWidth) / (columnsHere - 1)) : narrowWidth;
-    int widestRankCount = 1;
-    for (auto* stop : engine.getStops())
-        if (stop->voicingExpanded)
-            widestRankCount = juce::jmax(widestRankCount, 1 + (int)stop->ranks.size());
-    // Two lines of controls: the wider one decides the expanded width. Line 1 as
-    // StopRow::resized lays it out (0.8.201: the old sum dated from before the
-    // Transposition box, the One-shot switch and the Rank count switch, so a
-    // division with a small compass - a pedal - cut the Alias box and everything
-    // after it off): button, transposition label + box, One-shot, "Ranks" + the
-    // rank boxes, the pitch text at its minimum (it shrinks to what is left, the
-    // tooltip keeps the whole), "Alias" + its box, the Rank count switch.
-    const int line1Width = margin + 200 + 8 + 104 + 258 + 96 + 150 + 92 + widestRankCount * 82 + 8 + 120 + 10 + 48 + 196 + 146 + margin;   // + 150: the Release crossfade box (0.9.62)
-    const int line2Width = margin + 150 + 8 + 210 + 8 + 210 + 8 + 210 + 8 + 230 + 8 + 250 + margin;
-    const int topControlsWidth = juce::jmax(line1Width, line2Width);
-    int widestCompass = noteMax - noteMin + 1;
+    // 0.9.134 THE WIDTH OF A COLUMN WITH AN OPEN VOICING (the user: "nesmí to být širší než nejširší rozbalená sekce
+    // vertikálních sliderů ... my nechceme voicing roztahovat doprava"): as wide as the widest UNFOLDED per-key row
+    // among its open voicings needs (the "All" slider + the keys of that row), never less than the widest single
+    // control (StopRow::minVoicingWidth); with every per-key row folded it is narrow (StopRow::foldedVoicingWidth).
+    // The controls above the keys wrap to that width (StopRow's one layout). Before, a second "full" layout put them
+    // on two lines of some 1300 px and the column took the whole free width of the window on top.
+    std::array<int, SamplerEngine::maxManuals> voicingColumnWidth{};
     for (const int manual : manuals)
     {
+        if (!manualHasExpanded[(size_t)manual]) continue;
         const auto compass = compassOf(manual);
-        widestCompass = juce::jmax(widestCompass, compass.second - compass.first + 1);
-        // ... and the keys beyond it that a stop's folder holds (its rows show them).
+        int keysWidth = 0;
         for (auto* stop : engine.getStops())
-            if (stop != nullptr && stop->primaryManual == manual)
+        {
+            if (stop == nullptr) continue;
+            // A row of a stop folder's own pipes steps right of the tree lines (26 px); a child's row is indented.
+            const int extra = 26 + (stop->groupMaster.isNotEmpty() ? 30 : 0);
+            if (stop->primaryManual == manual && stop->voicingExpanded && !stop->container && !StopRow::keyRowsFolded(stop, -1))
             {
-                int first = compass.first, last = compass.second;
+                int first = compass.first, last = compass.second;   // the row's keys: the compass and every key the folder holds
                 for (int note = 0; note < 128; ++note)
                     if (stop->hasNoteInAnyRank(note)) { first = juce::jmin(first, note); last = juce::jmax(last, note); }
-                widestCompass = juce::jmax(widestCompass, last - first + 1);
+                keysWidth = juce::jmax(keysWidth, margin * 2 + extra + StopRow::allControlSpace(sliderWidth) + (last - first + 1) * sliderWidth);
             }
+            for (int i = 0; i < (int)stop->transmissions.size(); ++i)
+                if (stop->transmissions[(size_t)i].manual == manual && stop->transmissions[(size_t)i].voicingExpanded && !StopRow::keyRowsFolded(stop, i))
+                    keysWidth = juce::jmax(keysWidth, margin * 2 + extra + StopRow::allControlSpace(sliderWidth) + (compass.second - compass.first + 1) * sliderWidth);
+        }
+        voicingColumnWidth[(size_t)manual] = keysWidth > 0 ? juce::jmax(StopRow::minVoicingWidth, keysWidth) : StopRow::foldedVoicingWidth;
     }
-    const int voicingWidth = juce::jmax(topControlsWidth, margin * 2 + StopRow::allControlSpace(sliderWidth) + widestCompass * sliderWidth);   // 0.9.126: the "All" slider before the keys
-    const int wideWidth = juce::jmax(availableExpanded, voicingWidth);
+    const int usableWidth = viewWidth - margin * (columnsHere + 1);   // a margin before every column and after the last
+    // The columns without an open voicing share what the open ones leave, never less than the narrow width.
+    int voicingColumns = 0, voicingColumnsWidth = 0;
+    for (const int manual : manuals)
+        if (manualHasExpanded[(size_t)manual]) { ++voicingColumns; voicingColumnsWidth += voicingColumnWidth[(size_t)manual]; }
+    const int otherColumnWidth = columnsHere > voicingColumns ? juce::jmax(narrowWidth, (usableWidth - voicingColumnsWidth) / (columnsHere - voicingColumns)) : narrowWidth;
     std::array<int, SamplerEngine::maxManuals> configuredWidths{};
     float totalColumnWeight = 0.0f;
     for (const int manual : manuals)
@@ -3425,11 +3417,8 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     std::array<int, SamplerEngine::maxManuals> usedWidths{};   // the widths actually laid out (dividers sit between them)
     for (const int manual : manuals)
     {
-        bool anyKeyRowsOpenHere = false;
-        for (const int m : manuals) anyKeyRowsOpenHere = anyKeyRowsOpenHere || manualKeyRowsOpen[(size_t)m];
         const int columnWidth = !anyExpanded ? configuredWidths[(size_t)manual]
-            : anyKeyRowsOpenHere ? (manualHasExpanded[(size_t)manual] ? wideWidth : narrowWidth)
-            : (manualHasExpanded[(size_t)manual] ? compactWidth : otherWidthBesideCompact);
+            : manualHasExpanded[(size_t)manual] ? voicingColumnWidth[(size_t)manual] : otherColumnWidth;
         usedWidths[(size_t)manual] = columnWidth;
         columnBounds[(size_t)manual] = juce::Rectangle<int>(x, 0, columnWidth, 1 << 20);   // the wheel test only needs the x range
         columnHasVoicing[(size_t)manual] = manualHasExpanded[(size_t)manual];

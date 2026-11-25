@@ -161,7 +161,12 @@ public:
     // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
     // return value is the bottom of the control lines (the key headers follow it).
     enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox };
-    static constexpr int compactLineStep = 27, compactSliderLineStep = 47, compactVelocityLineHeight = 30;
+    static constexpr int compactLineStep = 27, compactSliderLineStep = 36, compactVelocityLineHeight = 30, compactPitchLineHeight = 19;
+    // 0.9.134 THE WIDTH OF AN OPEN VOICING (the user: "nesmí to být širší než nejširší rozbalená sekce vertikálních
+    // sliderů ... když budou všecky per key řádky sbalené, tak to taky musí být ultra úzké"): with a per-key row
+    // unfolded the row is as wide as its keys, never less than its widest single control needs (the button and the
+    // Transposition box); with every per-key row folded it has the folded width. The controls above WRAP to that.
+    static constexpr int minVoicingWidth = 590, foldedVoicingWidth = 760;
     static bool keyRowsFolded(const Stop* stop, int transmissionIndex) noexcept
     {
         if (stop == nullptr) return true;
@@ -185,7 +190,7 @@ public:
         item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
         if (!trsm) item(Control::oneShot, 0, 96);
         if (!trsm) item(Control::releaseFade, 0, 150);   // 0.9.62: the Release crossfade box
-        if (trsm) item(Control::source, 0, 528);
+        if (trsm) item(Control::source, 0, juce::jmin(528, right - x0));
         else
         {
             const int boxes = 1 + (int)stop->ranks.size();
@@ -195,11 +200,19 @@ public:
             x += 8;
         }
         if (!trsm && folder) item(Control::rankCount, 0, 146);
-        if (!trsm) { newline(); put(Control::diapason, 0, x0, y, right - x0); }
         y += compactLineStep;
-        // The sliders: caption above, slider below (47 px a line), wrapped when the line is full.
-        int sy = juce::jmax(y + 4, 54);
         const int sx0 = 5 + inset;
+        if (!trsm)
+        {
+            // 0.9.134: the pitch text ("Orig. Pitch: ...") on a line of its own UNDER the button, in the row's whole
+            // width and the normal font; a narrow row keeps two lines for it, so nothing of it is cut or squeezed.
+            const int lines = right - sx0 < 900 ? 2 : 1;
+            y = juce::jmax(y, 54);
+            put(Control::diapason, lines, sx0, y, right - sx0);
+            y += lines * compactPitchLineHeight + 4;
+        }
+        // The sliders: one bar each (its name inside), wrapped when the line is full.
+        int sy = juce::jmax(y + 2, 54);
         x = sx0;
         // The full layout's order: global, [formant], gain, attack, random pitch, undulation, [formant] (0.9.79: the
         // per-stop attack delay slider of 0.9.77 is gone - "Attack per key" is a per-key row, #228).
@@ -218,7 +231,7 @@ public:
             if (layers > 0)
             {
                 const int needed = 104 + 66 * (layers + 1);
-                int vy = sy + 17;   // beside the sliders' bars
+                int vy = sy + 3;   // beside the sliders' bars
                 if (x + needed > right) { x = sx0; vy = sy + compactSliderLineStep; bottom = vy + compactVelocityLineHeight; }
                 put(Control::velocityLabel, 0, x, vy, 100); x += 104;
                 for (int i = 0; i <= layers; ++i) { put(Control::velocityBox, i, x, vy, 62); x += 66; }
@@ -241,14 +254,11 @@ public:
             volume = stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded;
             tone = stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
         }
-        if (!volume && !tone && !attack)
-        {
-            const int inset = folder ? 26 : 0;
-            const int bottom = compactControlsLayout(stop, transmissionIndex, rowWidth, folder, inset, [](Control, int, int, int, int) {});
-            return bottom + 4 + keyAreaHeight(false, false, attackRow, false) + 4;
-        }
-        const int velocityLine = transmissionIndex < 0 && velocityRowWraps(stop, rowWidth) ? velocityLineHeight : 0;
-        return expandedControlsHeight + velocityLine + 4 + keyAreaHeight(volume, tone, attackRow, attack) + 4;
+        // 0.9.134: ONE layout for every open voicing - the wrapping walk - whether its per-key rows are folded or not
+        // (the second, "full" layout put everything on two lines of some 1300 px over a row of keys of 750).
+        const int inset = folder ? 26 : 0;
+        const int bottom = compactControlsLayout(stop, transmissionIndex, rowWidth, folder, inset, [](Control, int, int, int, int) {});
+        return bottom + 4 + keyAreaHeight(volume, tone, attackRow, attack) + 4;
     }
     // Appends the recorded temperament to the "Orig.: a1 = ..." caption.
     void setTemperamentText(const juce::String& text)
@@ -757,7 +767,7 @@ public:
     juce::OwnedArray<StopRow> stopRows;   // stops and transmissions alike
     juce::OwnedArray<juce::Component> sectionDividers;
     int noteMin = 128, noteMax = 0;
-    int sliderWidth = 21;               // 0.9.134 (the user: 21 px, the numbers 8 px - the voicing as narrow as it goes; 30 before)
+    int sliderWidth = 22;               // 0.9.134 (the user: 21 px, the numbers 8 px - the voicing as narrow as it goes; 30 before)
     // Folding of the per-key rows in every expanded voicing (remembered by the owner).
     int stopRowTopHeight = 50;
     int stopRowBottomHeight = 180;      // sliders only (labels are on top of them)

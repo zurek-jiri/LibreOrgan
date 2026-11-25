@@ -599,11 +599,13 @@ Stop List ([The table](#42-the-table)).
 
 ## 3.3 The voicing row
 
-Open it with the corner button. The first line: transposition, perspectives,
-velocity layers, pitch information, alias and switches; the second line the
-sliders; under them two folding rows of per-key sliders. With both per-key
-rows folded the voicing takes half the width and its controls wrap onto more
-lines; unfold a per-key row and it widens.
+Open it with the corner button. Beside the button: transposition, alias,
+switches and perspectives; under it the pitch information on a line of its
+own, then the sliders and the velocity layers; under them the folding rows
+of per-key sliders. The voicing is never wider than it must be: with a
+per-key row unfolded it is as wide as that row's keys, with all of them
+folded it is narrow - the controls above wrap onto as many lines as that
+width needs.
 
 ### Transposition
 

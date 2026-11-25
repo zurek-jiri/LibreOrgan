@@ -6313,6 +6313,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   drops the stop it was reading whole and skips the rest - stops whose perspectives lie in several packages may be left
   with those of the trees already read (dimmed cells, Apply reads them); a noise cannot be switched on in a perspective
   the Stop List has not loaded because it plays through that perspective's route, which does not exist then.
+- 0.9.134, SIXTH ROUND (25 Nov 2026 evening, the user on the 21 px columns: "takhle voicing být nemůže ... ostatní
+  políčka skočí jen do dvou řádků, takže se to roztáhne doprava ... nesmí to být širší než nejširší rozbalená sekce
+  vertikálních sliderů ... když budou všecky per key řádky sbalené, tak to taky musí být ultra úzké"): THE VOICING HAD
+  TWO LAYOUTS - the wrapping walk (0.9.36) for folded per-key rows only, and a "full" one (everything on two lines,
+  ~1300 px, and the column took max(the whole free width, that)) as soon as a per-key row was unfolded; narrowing the
+  key columns left the top lines wider than the keys. I had the picture and did not see it. NOW ONE LAYOUT:
+  `StopRow::resized` and `expandedHeightFor` use `compactControlsLayout` for EVERY open voicing of a stop with pipes
+  (containers / noise buttons keep the old line); the pitch text (Control::diapason, its `index` = the lines kept:
+  two when the row is < 900 px inside, never squeezed - minimumHorizontalScale 1, topLeft) on a line of its own UNDER
+  the button from the left margin; slider lines 36 px apart (bars at y + 2); Control::source as wide as the row
+  allows. `Voicer::rebuildUI`: `voicingColumnWidth[manual]` = the widest UNFOLDED per-key row among the manual's open
+  voicings (margins + 26 + 30 for a child + allControlSpace + keys x sliderWidth, the keys = the compass and every
+  key the folder holds - as makeStopRow), at least `StopRow::minVoicingWidth` 590, or `foldedVoicingWidth` 760 when
+  every per-key row is folded; the columns without an open voicing share the rest (>= 335). wideWidth / compactWidth /
+  line1Width / topControlsWidth are GONE - the 0.8.201 and 0.9.36 rules "a new control goes into both layouts and
+  line1Width" are replaced by: a new control of the voicing's top goes into compactControlsLayout (voicer.h) and its
+  `put` case in resized, nothing else. `sliderWidth` 22 (his wish). Pictured on Rural: the pedal with Volume per key
+  open 790 px (was ~1300 and stretched), a 61-key manual 1374 px = its keys, folded 760 px. RULE: after a change of a
+  size, picture every state the size takes part in - here the open pedal AND the open manual AND the folded voicing.
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)
