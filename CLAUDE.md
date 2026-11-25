@@ -6191,6 +6191,41 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   NOT run: a merge with perspectives unticked for the added organ (file or ODF), a real mouse on the step buttons, his
   "a grey perspective cannot be replaced by dragging cells" (no block found in moveFolder - a folder dragged onto an
   unloaded place now takes that place's state), Linux / macOS.
+- 0.9.134, THIRD ROUND (25 Nov 2026 afternoon; local commits bff2447 + the one after, NOT pushed): (1) THE STEP BUTTONS
+  WERE REFUSED ("to je paskvil! Tam se zobrazuje a mizí tlačítko! Někdy jsou dvě vedle sebe") - RULE: a control never
+  appears, disappears or changes its width with the state. Now `StateSwitch` (Stop List dialog class: ONE component of
+  fixed size, three places - left a dot = loaded, middle a DASH = kept in the table but not loaded, right an x = removed;
+  the knob in the sliders' thumb colour on the present place, grey in the middle, between the two for a column of which
+  some folders are loaded = state 2; state 3 = an empty cell, dim and dead; `onChoose(place)`), beside every folder cell
+  (`Cell::stateSwitch`, cellWidth 284, switchWidth 62) and every perspective's name (`HeaderCell::stateSwitch`, testName
+  "switch <P>": ORGAN_TEST_MOUSE "switch Rear|click" clicks its middle = unload). His choice among three drawn variants
+  was not explicit ("jinak se mi to docela líbí") - variant 1 (blue knob) taken; the knob's colours are two lines of
+  paint(). DESIGN QUESTIONS GO WITH A PICTURE: %TEMP%\mock_stoplist.py / mock_stoplist2.py (PIL, Python39) drew the
+  proposals into F:\temp\navrh*.png, opened for him with Start-Process - an ASCII preview in a question was "nechápu to".
+  (2) THE RIGHT-CLICK MERGE SHOWS THE LOAD BOX: `loadBoxForMerge` (set before askLoadOptions; no "this file" and no
+  "load or merge" combo, title "Merge into the loaded organ: X", button "Merge") in mergeConfigurationFile and at the
+  ODF merge (importHauptwerkOdf's merge branch); skipped when the ordinary box already chose the merge
+  (mergeStorageChoice set) and under ORGAN_MERGE_CONFIGURATION. NOT run through the GUI (a native file chooser comes
+  first). (3) NOISES AFTER A MERGE: his log "Noises: 1568 sound(s) of the configuration not found - the library root is
+  not known on this computer" - a merged organ's trees are absolute, treeRelativePaths empty, so
+  libraryRootOnThisComputer() gave nothing and EVERY noise of both organs fell silent with nothing said in the Noises
+  window. Fallback: the folder above the first part of a noise's relative folder, found in the path of a loaded tree and
+  verified. Reproduced by ORGAN_MERGE_CONFIGURATION + Cancel: "Noises loaded: 1563 noise sound(s) of 1563". SEEN, NOT
+  FIXED: the merged organ's noise buttons land on division 0 ("OW. Cimbelstern put on the grid of division 0").
+  (4) NOISES FOLLOW THE LOADED PERSPECTIVES: `loadedPerspectiveNames()`; noiseSpecs leaves out the sounds of a
+  perspective without a route (log "N sound(s) of perspectives that are not loaded are left out"), noisesTick reads the
+  noises anew when that set changes (`noisePerspectivesAtLoad`); `NoiseUnit::state` per perspective (1 = its perspective
+  is not loaded, 2 = its files were not found) -> the folder label dimmed / orange with the reason in the tooltip.
+  (5) PENDING HIS WORD (asked twice with pictures, he wants it "domyšlené globálně"): the Noises window in the Stop
+  List's look - x at the left, Division, name (the SAME component and colour as the Stop List's stop name - my mock drew
+  it otherwise and he saw it at once), Kind, Volume, per perspective the folder cell with "(160) +1", the StateSwitch
+  and the perspective's volume as a BAR with its value (juce::Slider::LinearBar) in a row of the Stop List's height. His
+  thoughts: such bars could replace every slider (they save the value box; they resemble the swell and crescendo
+  DISPLAYS - "pozitivní, ale vzhled nesmí být stejný, protože jedno je displej, druhé je posuvník"); the vertical
+  per-key sliders cannot hold a text. My advice given: bars in tables only, the other sliders as they are, a global
+  change as its own step with pictures first. TEST HYGIENE: the hook ORGAN_MERGE_CONFIGURATION SAVES the merged organ
+  into the test's configuration copy - the next test loaded 106 GB instead of 52; copy the user's original again before
+  every run that follows a merge test.
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)

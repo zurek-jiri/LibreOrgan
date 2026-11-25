@@ -25806,8 +25806,8 @@ void MainComponent::showStopBuildingDialog(int)
             }
 
             intro.setText("One row per stop of the whole organ: its division, transmissions, name, alias and the sample "
-                "folder of every perspective. Beside a folder (and a perspective's name): \"-\" unloads it - it stays in the table, dimmed, and leaves the memory; "
-                "then \"+\" loads it again and \"x\" takes it out. Dimmed = not in the memory. Click a folder cell to pick one of the free folders, or drag "
+                "folder of every perspective. Beside a folder (and a perspective's name) stands a switch - left: loaded; middle: it stays in the table but is NOT loaded; right (x): taken out. "
+                "Dimmed = not in the memory. Click a folder cell to pick one of the free folders, or drag "
                 "a folder cell onto another cell (empty: it moves, occupied: they swap). Drag a name up or down to reorder "
                 "or to move the stop into another division; drag it a little to the right to indent it under the stop "
                 "above (a stop folder: the master's button switches its children too), to the left to make it a stop of "
@@ -25994,7 +25994,7 @@ void MainComponent::showStopBuildingDialog(int)
 
     private:
         enum : int { rowHeight = 32, headerHeight = 30, removeWidth = 26, divisionWidth = 74, nameWidth = 240, aliasWidth = 150, offsetWidth = 92,
-            transmissionWidth = 180, cellWidth = 250, freeWidth = 24, indent = 28, pathTailLength = 30, sidewaysDrag = 40 };
+            transmissionWidth = 180, cellWidth = 284, freeWidth = 24, switchWidth = 62, indent = 28, pathTailLength = 30, sidewaysDrag = 40 };
 
         // The stop name: double-click edits it, dragging it moves the row (up/down:
         // order and division, sideways: stop folder).
@@ -26045,29 +26045,50 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
-        // 0.9.134: the small step buttons of a cell and of a column ("+" load, "-" unload, "x" take out): the sign is
-        // DRAWN, centred - a "+" as text did not fit a 20 px TextButton and came out as "...".
-        class StepButton final : public juce::TextButton
+        // 0.9.134 (the user's choice after two tries of mine: no button that comes and goes, no menu): ONE switch with
+        // three places, always the same size and in the same place, beside every folder cell and every perspective's
+        // name. Left = loaded, middle (a dash) = kept in the table but not loaded, right (x) = removed. A click on a
+        // place chooses it; the knob stands on the present one (state 2 = between left and middle: a perspective of
+        // which some folders are loaded; state 3 = nothing there: an empty cell, drawn dim and dead).
+        class StateSwitch final : public juce::Component, public juce::SettableTooltipClient
         {
         public:
-            explicit StepButton(const juce::String& sign) : juce::TextButton(sign) {}
-            void paintButton(juce::Graphics& g, bool over, bool down) override
+            int state = 0;
+            std::function<void(int)> onChoose;   // 0 load, 1 unload, 2 remove
+            void paint(juce::Graphics& g) override
             {
-                getLookAndFeel().drawButtonBackground(g, *this, findColour(juce::TextButton::buttonColourId), over, down);
-                const auto sign = getButtonText();
-                const auto centre = getLocalBounds().toFloat().getCentre();
-                const float r = juce::jmin(getWidth(), getHeight()) * 0.22f;
-                g.setColour(findColour(juce::TextButton::textColourOffId).withMultipliedAlpha(isEnabled() ? 1.0f : 0.35f));
-                if (sign == "x")
+                const auto area = getLocalBounds().toFloat().reduced(0.5f);
+                const float h = area.getHeight(), third = area.getWidth() / 3.0f, cy = area.getCentreY();
+                const bool dead = state == 3;
+                g.setColour(juce::Colour(0xff1c2428).withAlpha(dead ? 0.5f : 1.0f));
+                g.fillRoundedRectangle(area, h * 0.5f);
+                g.setColour(findColour(juce::ComboBox::outlineColourId).withAlpha(dead ? 0.35f : 1.0f));
+                g.drawRoundedRectangle(area, h * 0.5f, 1.0f);
+                const float knob = h * 0.5f - 1.5f, r = h * 0.2f;
+                auto centre = [&](float place) { return area.getX() + third * (place + 0.5f); };
+                const juce::Colour blue = findColour(juce::Slider::thumbColourId), dim = juce::Colours::white.withAlpha(0.32f);
+                if (!dead)
                 {
-                    g.drawLine(centre.x - r, centre.y - r, centre.x + r, centre.y + r, 1.6f);
-                    g.drawLine(centre.x - r, centre.y + r, centre.x + r, centre.y - r, 1.6f);
+                    const float at = state == 0 ? 0.0f : state == 1 ? 1.0f : 0.5f;
+                    g.setColour(state == 0 ? blue : state == 1 ? juce::Colours::grey : blue.interpolatedWith(juce::Colours::grey, 0.5f));
+                    g.fillEllipse(centre(at) - knob, cy - knob, knob * 2.0f, knob * 2.0f);
                 }
-                else
+                auto sign = [&](int place, juce::Colour colour)
                 {
-                    g.drawLine(centre.x - r * 1.3f, centre.y, centre.x + r * 1.3f, centre.y, 1.8f);
-                    if (sign == "+") g.drawLine(centre.x, centre.y - r * 1.3f, centre.x, centre.y + r * 1.3f, 1.8f);
-                }
+                    const float cx = centre((float)place);
+                    g.setColour(colour);
+                    if (place == 0) g.fillEllipse(cx - r * 0.8f, cy - r * 0.8f, r * 1.6f, r * 1.6f);
+                    else if (place == 1) g.drawLine(cx - r * 1.2f, cy, cx + r * 1.2f, cy, 1.8f);
+                    else { g.drawLine(cx - r, cy - r, cx + r, cy + r, 1.6f); g.drawLine(cx - r, cy + r, cx + r, cy - r, 1.6f); }
+                };
+                for (int place = 0; place < 3; ++place)
+                    sign(place, dead ? dim.withMultipliedAlpha(0.5f) : place == state ? juce::Colours::white : dim);
+            }
+            void mouseUp(const juce::MouseEvent& event) override
+            {
+                if (state == 3 || !getLocalBounds().contains(event.getPosition()) || !onChoose) return;
+                const int place = juce::jlimit(0, 2, event.x * 3 / juce::jmax(1, getWidth()));
+                if (place != state) onChoose(place);
             }
         };
         class GridArea final : public juce::Component
@@ -26096,7 +26117,7 @@ void MainComponent::showStopBuildingDialog(int)
             std::vector<juce::File> folders;
             std::map<juce::String, SamplerEngine::FolderAssignment> automatic;   // lower-case full path -> automatic rule
         };
-        struct Cell { std::unique_ptr<CellButton> button; std::unique_ptr<juce::TextButton> freeButton, loadButton; };
+        struct Cell { std::unique_ptr<CellButton> button; std::unique_ptr<juce::TextButton> freeButton; std::unique_ptr<StateSwitch> stateSwitch; };
         struct Row
         {
             int manual = 0;
@@ -26134,7 +26155,7 @@ void MainComponent::showStopBuildingDialog(int)
         // column's name show the steps that can be taken, never a menu: "-" unloads (the folder stays, dimmed),
         // "+" loads it again, "x" takes it out of the row (the column: removes it) - "x" only once it is unloaded.
         // A draft like the rest of the table: "Apply and reload" frees or reads the samples.
-        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove, unload, load; };
+        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<StateSwitch> stateSwitch; };
         std::set<juce::String> loadedPlaces;   // the folders the ENGINE holds now (lower-case full paths) - a cell's colour tells the truth
         std::set<juce::String> pooledPlaces;   // ... and those of stops whose samples were released on purpose (off the grid): dimmed, never "waiting"
         void readLoadedPlaces()
@@ -26728,24 +26749,19 @@ void MainComponent::showStopBuildingDialog(int)
                                 if (loadedPlaces.count(resolve(m, found->second).getFullPathName().toLowerCase()) != 0) ++inMemory;
                             }
                     if (inMemory == 0 && wanted + waiting > 0) cell.label->setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.4f));
-                    cell.unload = std::make_unique<StepButton>("-");
-                    cell.unload->setTooltip("Unload the perspective \"" + name + "\": its folders stay in the table (dimmed) and leave the memory with \"Apply and reload\"; it has no cable in the Audio routing meanwhile.");
-                    cell.unload->onClick = [this, name] { later([name](StopListDialog& d) { d.setPerspectiveUnloaded(name, true); }); };
-                    cell.unload->getProperties().set("testName", "unload " + name);   // ORGAN_TEST_MOUSE finds them
-                    cell.load = std::make_unique<StepButton>("+");
-                    cell.load->setTooltip("Load the perspective \"" + name + "\" again: every folder of it, with \"Apply and reload\" (the rest of the organ stays in the memory).");
-                    cell.load->onClick = [this, name] { later([name](StopListDialog& d) { d.setPerspectiveUnloaded(name, false); }); };
-                    cell.load->getProperties().set("testName", "load " + name);
-                    cell.remove = std::make_unique<StepButton>("x");
-                    cell.remove->setTooltip("Remove this perspective column (its folders become free)");
-                    cell.remove->onClick = [this, p] { later([p](StopListDialog& d) { d.removePerspective(p); }); };
-                    grid.addChildComponent(*cell.unload);
-                    grid.addChildComponent(*cell.load);
-                    grid.addChildComponent(*cell.remove);
+                    // The same three-way switch for the whole perspective: left = every folder of it loaded, middle = none
+                    // (kept in the table), between the two = some; right (x) = the column removed.
+                    cell.stateSwitch = std::make_unique<StateSwitch>();
+                    cell.stateSwitch->state = wanted + waiting == 0 ? 3 : waiting == 0 ? 0 : wanted == 0 ? 1 : 2;
+                    cell.stateSwitch->setTooltip("The whole perspective \"" + name + "\". Left: loaded. Middle: its folders stay in the table but are NOT loaded (dimmed; no cable in the Audio routing). Right (x): the column is removed. Acts with \"Apply and reload\".");
+                    cell.stateSwitch->getProperties().set("testName", "switch " + name);   // ORGAN_TEST_SWITCH finds it
+                    cell.stateSwitch->onChoose = [this, name, p](int place)
+                    {
+                        later([name, p, place](StopListDialog& d) { if (place < 2) d.setPerspectiveUnloaded(name, place == 1); else d.removePerspective(p); });
+                    };
+                    grid.addChildComponent(*cell.stateSwitch);
                     cell.label->setVisible(anyRows);
-                    cell.unload->setVisible(anyRows && wanted > 0);                        // something of it is to be loaded: it can be unloaded
-                    cell.load->setVisible(anyRows && waiting > 0);                         // something of it waits: it can be loaded
-                    cell.remove->setVisible(anyRows && wanted == 0);                       // nothing of it is to be loaded (or it is empty): it can go
+                    cell.stateSwitch->setVisible(anyRows);
                 }
                 headers.push_back(std::move(cell));
             }
@@ -27082,37 +27098,26 @@ void MainComponent::showStopBuildingDialog(int)
                     moveFolder(i, perspective, (size_t)row, perspectives[(size_t)column]);
                 };
                 grid.addAndMakeVisible(*cell.button);
-                // 0.9.134: the steps of the cell. Loaded (or to be loaded): "-" = unload, the folder stays in the row.
-                // Unloaded: "+" = load it again, "x" = take it out of the row (the folder becomes free).
-                const bool unloadedCell = assigned && entry.folders.at(perspective).unloaded;
-                cell.freeButton = std::make_unique<StepButton>(unloadedCell || !assigned ? "x" : "-");
-                cell.freeButton->setTooltip(!assigned ? juce::String()
-                    : unloadedCell ? juce::String("Take this folder out of the row (the cell becomes empty, the folder can be used elsewhere)")
-                                   : juce::String("Unload this folder: it stays in the row (dimmed) and leaves the memory with \"Apply and reload\". Then \"+\" loads it again, \"x\" takes it out of the row."));
-                cell.freeButton->setEnabled(assigned);
-                if (unloadedCell)
-                    cell.freeButton->onClick = [this, i, perspective]
-                    {
-                        later([i, perspective](StopListDialog& d)
-                        {
-                            d.commitEditors();
-                            auto* e = d.entryOf(i);
-                            if (e == nullptr) return;
-                            e->folders.erase(perspective);
-                            d.refreshName(d.rows[i]->manual, *e);
-                            d.rebuildGrid();
-                        });
-                    };
-                else
-                    cell.freeButton->onClick = [this, i, perspective] { later([i, perspective](StopListDialog& d) { d.setCellUnloaded(i, perspective, true); }); };
-                grid.addAndMakeVisible(*cell.freeButton);
-                if (unloadedCell)
+                // 0.9.134 (the user: no button that comes and goes, no menu): ONE switch with three places, always there -
+                // left = loaded, middle = kept in the row but not loaded (dimmed), right (x) = taken out of the row.
+                cell.stateSwitch = std::make_unique<StateSwitch>();
+                cell.stateSwitch->state = !assigned ? 3 : entry.folders.at(perspective).unloaded ? 1 : 0;
+                cell.stateSwitch->setTooltip(!assigned ? juce::String()
+                    : juce::String("Left: loaded. Middle: the folder stays in the row but is NOT loaded (dimmed; it leaves the memory with \"Apply and reload\"). Right (x): the folder is taken out of the row and can be used elsewhere."));
+                cell.stateSwitch->onChoose = [this, i, perspective](int place)
                 {
-                    cell.loadButton = std::make_unique<StepButton>("+");
-                    cell.loadButton->setTooltip("Load this folder again (with \"Apply and reload\"; the rest of the organ stays in the memory)");
-                    cell.loadButton->onClick = [this, i, perspective] { later([i, perspective](StopListDialog& d) { d.setCellUnloaded(i, perspective, false); }); };
-                    grid.addAndMakeVisible(*cell.loadButton);
-                }
+                    later([i, perspective, place](StopListDialog& d)
+                    {
+                        if (place < 2) { d.setCellUnloaded(i, perspective, place == 1); return; }
+                        d.commitEditors();
+                        auto* e = d.entryOf(i);
+                        if (e == nullptr) return;
+                        e->folders.erase(perspective);
+                        d.refreshName(d.rows[i]->manual, *e);
+                        d.rebuildGrid();
+                    });
+                };
+                grid.addAndMakeVisible(*cell.stateSwitch);
                 row->cells.push_back(std::move(cell));
             }
             rows.push_back(std::move(row));
@@ -27136,11 +27141,9 @@ void MainComponent::showStopBuildingDialog(int)
                 // The name and its "x" together (0.8.160): the button right after the
                 // text, not at the far edge of the column.
                 const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(header.label->getFont(), header.label->getText())) + 8;
-                const int labelWidth = juce::jlimit(20, cellWidth - 2 * freeWidth - 6, textWidth);
+                const int labelWidth = juce::jlimit(20, cellWidth - switchWidth - 10, textWidth);
                 header.label->setBounds(x + 2, 0, labelWidth, headerHeight);
-                int buttonX = x + 2 + labelWidth + 2;   // 0.9.134: the steps that can be taken, in the order + - x
-                for (auto* button : { header.load.get(), header.unload.get(), header.remove.get() })
-                    if (button != nullptr && button->isVisible()) { button->setBounds(buttonX, 4, freeWidth - 4, headerHeight - 8); buttonX += freeWidth - 2; }
+                if (header.stateSwitch != nullptr) header.stateSwitch->setBounds(x + 2 + labelWidth + 4, (headerHeight - (rowHeight - 10)) / 2, switchWidth - 4, rowHeight - 10);
                 x += cellWidth;
             }
             int y = headerHeight;
@@ -27158,11 +27161,10 @@ void MainComponent::showStopBuildingDialog(int)
                 x += offsetWidth;
                 for (auto& cell : row->cells)
                 {
-                    // 0.9.134: an unloaded cell has two steps ("+" and "x") - its folder button gives them the room.
-                    const int steps = cell.loadButton != nullptr ? 2 : 1;
-                    cell.button->setBounds(x, y + 2, cellWidth - steps * freeWidth - 4 + (steps - 1) * 2, rowHeight - 4);
-                    if (cell.loadButton != nullptr) cell.loadButton->setBounds(x + cellWidth - 2 * freeWidth + 2, y + 4, freeWidth - 4, rowHeight - 8);
-                    cell.freeButton->setBounds(x + cellWidth - freeWidth, y + 4, freeWidth - 4, rowHeight - 8);
+                    // 0.9.134: the folder and, in a place of its own that never moves, the three-way switch of the cell.
+                    cell.button->setBounds(x, y + 2, cellWidth - switchWidth - 6, rowHeight - 4);
+                    if (cell.stateSwitch != nullptr) cell.stateSwitch->setBounds(x + cellWidth - switchWidth - 2, y + 5, switchWidth - 4, rowHeight - 10);
+                    if (cell.freeButton != nullptr) cell.freeButton->setBounds(x + cellWidth - freeWidth, y + 4, freeWidth - 4, rowHeight - 8);
                     x += cellWidth;
                 }
                 y += rowHeight;
