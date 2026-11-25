@@ -140,8 +140,9 @@ public:
         // Columns NOW, PEAK, DSP (peak hold), RAM (the program's memory), LIMIT (editable, wider for typing).
         const int column = columnWidth();
         const int limitWidth = getWidth() - meterWidth() - 4 * column;
-        limitEditor.setFont(juce::FontOptions(limitWidth < 90 ? 14.0f : 17.0f, juce::Font::bold));
-        limitEditor.setBounds(meterWidth() + 4 * column + 4, getHeight() - 27, limitWidth - 8, 24);
+        const bool low = getHeight() < 56;   // 0.9.134: the display as tall as the sliders' bars beside it (46 px)
+        limitEditor.setFont(juce::FontOptions(limitWidth < 90 || low ? 14.0f : 17.0f, juce::Font::bold));
+        limitEditor.setBounds(meterWidth() + 4 * column + 4, getHeight() - (low ? 26 : 27), limitWidth - 8, low ? 22 : 24);
     }
     int meterWidth() const noexcept { return juce::jlimit(38, 60, getWidth() * 13 / 100); }   // 0.9.79 (#229): the audio meter's cell at the left
     int columnWidth() const noexcept { return juce::jmax(1, (getWidth() - meterWidth()) * 18 / 100); }   // LIMIT gets the rest (28 %)
@@ -174,11 +175,12 @@ public:
         // Same look as the combination display: black, lime digits.
         auto r = getLocalBounds().toFloat().reduced(1.0f);
         g.setColour(juce::Colours::black);
-        g.fillRoundedRectangle(r, 3.0f);
+        g.fillRoundedRectangle(r, 6.0f);   // 0.9.134: one rounding for buttons, bars and displays (the user)
         g.setColour(juce::Colours::darkgrey);
-        g.drawRoundedRectangle(r, 3.0f, 1.0f);
+        g.drawRoundedRectangle(r, 6.0f, 1.0f);
         const int column = columnWidth();
         const int meter = meterWidth();
+        const bool low = getHeight() < 56;
         // 0.9.79 (#229): the audio meter - the painting is MainComponent::paintOutputMeter since 0.9.89 (the Audio
         // routing dialog shows the same meter from the same state).
         MainComponent::paintOutputMeter(g, juce::Rectangle<int>(0, 0, meter, getHeight()), meterDb, clipNow, clipLatched);
@@ -192,15 +194,15 @@ public:
         {
             const juce::Rectangle<int> cell(meter + i * column, 0, i < 4 ? column : getWidth() - meter - 4 * column, getHeight());
             g.setColour(juce::Colours::lightgrey);
-            g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
-            g.drawText(labels[i], cell.withHeight(20).translated(0, 3), juce::Justification::centred);
+            g.setFont(juce::FontOptions(low || column < 62 ? 10.0f : 12.0f, juce::Font::bold));
+            g.drawFittedText(labels[i], cell.withHeight(low ? 14 : 20).translated(0, 3).reduced(2, 0), juce::Justification::centred, 1, 0.75f);
             if (i < 4)
             {
                 const bool warn = (i == 2 && (loadPeak > 0.85f || glitches || silent)) || (i == 3 && ramTight);
                 g.setColour(warn ? onColour() : juce::Colours::lime);
                 g.setFont(juce::FontOptions(valueFont, juce::Font::bold));
                 // Digits must always fit the column: shrink rather than clip.
-                g.drawFittedText(values[i], cell.withTrimmedTop(21).reduced(2, 0), juce::Justification::centred, 1, 0.5f);
+                g.drawFittedText(values[i], cell.withTrimmedTop(low ? 17 : 21).reduced(2, 0), juce::Justification::centred, 1, 0.5f);
             }
             {
                 g.setColour(juce::Colours::darkgrey.withAlpha(0.6f));
@@ -3671,8 +3673,11 @@ void MainComponent::resized()
     {
         // The shown sliders share the row evenly with the polyphony display, which
         // keeps a fixed share of the width; fewer sliders make each one longer.
-        auto controlsRow = bounds.removeFromTop(80);
-        const int polyphonyWidth = juce::jlimit(180, 420, controlsRow.getWidth() / 6);
+        // 0.9.134 (the user's choice B1): ONE organic row - the sliders' bars and the display the same height (46 px);
+        // the display keeps the width it needs to show every cell (it was squeezed to "CL.., RA.." in a narrow window).
+        constexpr int rowBarHeight = 46;
+        auto controlsRow = bounds.removeFromTop(rowBarHeight + 16);
+        const int polyphonyWidth = juce::jlimit(juce::jmin(330, controlsRow.getWidth() / 3), 420, controlsRow.getWidth() / 6);
         auto polyphonyArea = controlsRow.removeFromRight(polyphonyWidth);
         const int cellWidth = controlsRow.getWidth() / shownCount;
         const int cellPad = juce::jlimit(3, 10, cellWidth / 20);
@@ -3683,9 +3688,34 @@ void MainComponent::resized()
             "Release scaling", "Pitch", "Master", "Release cut", "Release from" };
         static const char* const shortNames[gsCount]{ "Att. delay", "Att. time", "Sus. fade", "Rel. fade", "Rel. scale", "Pitch", "Master", "Rel. cut", "Rel. from" };
         const int barWidth = cellWidth - 2 * cellPad;
-        const int lines = barWidth >= 205 ? 1 : 2;
-        const bool useShort = barWidth < 112;
-        const int barHeight = lines == 1 ? 28 : 44;
+        // One line as long as it goes: the names shrink from 13 px to the small 11 px before the row turns to two
+        // lines (the user: it jumped to two lines far too early); two lines with the short names only when the full
+        // ones do not fit either. The whole row takes the same form.
+        auto widthOf = [](const juce::Font& font, const juce::String& text) { return (int)std::ceil(juce::GlyphArrangement::getStringWidth(font, text)); };
+        const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold));
+        int valueWidths[gsCount]{};
+        for (int i = 0; i < gsCount; ++i)
+            if (globalSliderShown[(size_t)i])
+                for (const double value : { sliders[i]->getMinimum(), sliders[i]->getMaximum(), sliders[i]->getValue() })
+                    valueWidths[i] = juce::jmax(valueWidths[i], widthOf(valueFont, sliders[i]->getTextFromValue(value)));
+        int lines = 2;
+        double nameSize = 13.0;
+        for (const float size : { 13.0f, 12.0f, 11.0f })
+        {
+            const juce::Font nameFont{ juce::FontOptions(size) };
+            bool fits = true;
+            for (int i = 0; i < gsCount; ++i)
+                if (globalSliderShown[(size_t)i] && widthOf(nameFont, names[i]) + valueWidths[i] + 14 + 8 > barWidth) fits = false;
+            if (fits) { lines = 1; nameSize = size; break; }
+        }
+        bool useShort = false;
+        if (lines == 2)
+        {
+            const juce::Font smallFont{ juce::FontOptions(11.0f) };
+            for (int i = 0; i < gsCount; ++i)
+                if (globalSliderShown[(size_t)i] && juce::jmax(widthOf(smallFont, names[i]), valueWidths[i]) + 14 > barWidth) useShort = true;
+        }
+        const int barHeight = rowBarHeight;
         for (const GlobalSlider which : kGlobalSliderOrder)
         {
             const int i = (int)which;
@@ -3696,11 +3726,14 @@ void MainComponent::resized()
             properties.set("barShort", shortNames[i]);
             properties.set("barLines", lines);
             properties.set("barUseShort", useShort);
+            properties.set("barNameSize", nameSize);
+            properties.set("barHeight", barHeight);
             sliders[i]->setBounds(cell.getX(), cell.getCentreY() - barHeight / 2, cell.getWidth(), barHeight);
+            sliders[i]->resized();   // the bar's area follows the properties when the bounds stayed
             sliders[i]->repaint();
         }
         if (polyphonyDisplay != nullptr)
-            polyphonyDisplay->setBounds(polyphonyArea.reduced(5, 5));
+            polyphonyDisplay->setBounds(polyphonyArea.reduced(5, 0).withSizeKeepingCentre(polyphonyArea.getWidth() - 10, rowBarHeight));
     }
 
     if (audioSettings)
@@ -6504,19 +6537,21 @@ void MainComponent::paintOutputMeter(juce::Graphics& g, juce::Rectangle<int> are
     // 3 orange to -3 dB, one red while the limiter works), 1 s peak hold - the console's display and, since 0.9.89,
     // the Audio routing dialog paint it alike (one painting, one state: outputMeterState).
     const int x = area.getX(), y = area.getY(), w = area.getWidth();
+    const bool low = area.getHeight() < 56;   // 0.9.134: the display at the height of the sliders' bars - a smaller CLIP, narrower steps
     g.setColour(juce::Colours::lightgrey);
-    g.setFont(juce::FontOptions(12.0f, juce::Font::bold));   // 0.9.89: the same font as NOW / PEAK (the user)
-    g.drawText("CLIP", juce::Rectangle<int>(x + 3, y + 3, w - 14, 16), juce::Justification::centredLeft);
+    g.setFont(juce::FontOptions(low ? 10.0f : 12.0f, juce::Font::bold));   // 0.9.89: the same font as NOW / PEAK (the user)
+    g.drawText("CLIP", juce::Rectangle<int>(x + 4, y + 3, w - 14, low ? 12 : 16), juce::Justification::centredLeft);
     g.setColour(clipLatched ? juce::Colours::red : juce::Colours::darkred.withAlpha(0.5f));
-    g.fillEllipse((float)(x + w) - 11.0f, (float)y + 7.0f, 7.0f, 7.0f);
-    const int top = y + 21, bottom = area.getBottom() - 4;
+    if (low) g.fillEllipse((float)(x + w) - 10.0f, (float)y + 6.0f, 6.0f, 6.0f);
+    else g.fillEllipse((float)(x + w) - 11.0f, (float)y + 7.0f, 7.0f, 7.0f);
+    const int top = y + (low ? 17 : 21), bottom = area.getBottom() - 4;
     constexpr int segments = MeterStyle::kSegments;   // the thresholds and the colours: MeterStyle (the rows' miniature reads the same)
     const float segmentHeight = (float)(bottom - top) / (float)segments;
     for (int s = 0; s < segments; ++s)
     {
         g.setColour(MeterStyle::segmentPaint(s, meterDb, clipNow));
         const float sy = (float)bottom - (float)(s + 1) * segmentHeight;
-        g.fillRect(juce::Rectangle<float>((float)x + 8.0f, sy + 1.0f, (float)w - 16.0f, juce::jmax(1.0f, segmentHeight - 2.0f)));
+        g.fillRect(juce::Rectangle<float>((float)x + 8.0f, sy + (low ? 0.5f : 1.0f), (float)w - 16.0f, juce::jmax(1.0f, segmentHeight - (low ? 1.0f : 2.0f))));
     }
 }
 
@@ -7937,7 +7972,7 @@ void MainComponent::detachRouteAudioQuietly(int manualIndex, const juce::String&
     pruneUnusedAsioHosts();   // a driver nobody plays through any more is released
 }
 
-void MainComponent::removePerspectiveAudioRoutesForManual(int manualIndex)
+void MainComponent::removePerspectiveAudioRoutesForManual(int manualIndex, const std::set<juce::String>* keepLowerCase)
 {
     // Nothing may keep pointing at a route that is about to go: the Divisions
     // dialog of that division is closed (its audio tabs show these routes'
@@ -7949,6 +7984,7 @@ void MainComponent::removePerspectiveAudioRoutesForManual(int manualIndex)
     {
         auto& route = *it->second;
         if (route.manual != manualIndex) { ++it; continue; }
+        if (keepLowerCase != nullptr && keepLowerCase->count(route.perspective.toLowerCase()) != 0) { ++it; continue; }   // 0.9.134: a route that stays plays on
         if (route.managerInUse != nullptr && route.callback != nullptr)
             route.managerInUse->removeAudioCallback(route.callback.get());
         if (route.manager != nullptr)
@@ -24443,7 +24479,7 @@ void MainComponent::applyTableAliasesToStops(const std::vector<int>& manuals)
 }
 
 void MainComponent::applyStopLists(const std::array<ManualConfig::StopBuild, SamplerEngine::maxManuals>& builds,
-    const std::set<int>& changed, const std::set<int>& arrangeGrid)
+    const std::set<int>& changed, const std::set<int>& arrangeGrid, bool removalOnly)
 {
     // The Stop List: every division's table at once; only the changed divisions
     // are loaded again (one loader for all of them, every tree once).
@@ -24474,7 +24510,7 @@ void MainComponent::applyStopLists(const std::array<ManualConfig::StopBuild, Sam
     syncDivisionTreeLists();
     applyTableAliasesToStops(reload);   // 0.9.64: the table's aliases onto the stops before the save syncs the table from them
     saveSettings();
-    if (!reload.empty()) reloadDivisions(reload);
+    if (!reload.empty()) reloadDivisions(reload, {}, removalOnly);
 }
 
 void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
@@ -25319,7 +25355,7 @@ void MainComponent::reloadDivisionTrees(int manual)
     reloadDivisions({ manual });
 }
 
-void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juce::String& onlyTree)
+void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juce::String& onlyTree, bool nothingToRead)
 {
     if (activeFolderLoader != nullptr) return;
     std::vector<int> manuals;
@@ -25327,6 +25363,45 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
         if (manual >= 0 && manual <= manualCount && std::find(manuals.begin(), manuals.end(), manual) == manuals.end())
             manuals.push_back(manual);
     if (manuals.empty()) return;
+    // 0.9.134: "nothing to read" is believed only when the ENGINE holds every folder the tables of these divisions
+    // want in the memory (the quick way decodes on this thread, without a window - it must have nothing to decode).
+    if (nothingToRead)
+    {
+        std::set<juce::String> held;   // ... and the folders of stops in the pool (their samples released on purpose: never read by a reload)
+        auto add = [&held](const Stop* rank)
+        {
+            if (rank == nullptr || rank->container || rank->folder == juce::File()) return;
+            if (rank->samplesUnloaded) { held.insert(rank->folder.getFullPathName().toLowerCase()); return; }
+            for (const auto& variants : rank->samplesByNote) if (!variants.empty()) { held.insert(rank->folder.getFullPathName().toLowerCase()); return; }
+        };
+        for (auto* stop : engine.getStops()) { add(stop); for (const auto& rank : stop->ranks) add(rank.get()); }
+        juce::String missing;
+        for (int manual : manuals)
+        {
+            const auto& build = manualConfigs[(size_t)manual].stopBuild;
+            if (!build.active) { missing = "division " + juce::String(manual) + " has no table"; break; }
+            for (const auto& entry : build.entries)
+                for (const auto& [perspective, ref] : entry.folders)
+                {
+                    if (ref.unloaded || !missing.isEmpty()) continue;
+                    if (ref.tree < 0 || ref.tree >= (int)sampleTrees.size()) { missing = entry.name + " / " + perspective; continue; }
+                    const juce::File tree(sampleTrees[(size_t)ref.tree]);
+                    juce::StringArray paths(ref.relativePath);
+                    for (const auto& more : ref.morePaths) paths.add(more);
+                    for (const auto& path : paths)
+                    {
+                        const auto relative = juce::String(path).replaceCharacter('/', juce::File::getSeparatorChar());
+                        const auto place = (relative.isEmpty() || relative == "." ? tree : tree.getChildFile(relative)).getFullPathName().toLowerCase();
+                        if (held.count(place) == 0) missing = entry.name + " / " + perspective;
+                    }
+                }
+        }
+        if (missing.isNotEmpty())
+        {
+            CrashHandler::note("Stop List: not a mere reduction after all (" + missing + " is not in the memory) - the ordinary reload");
+            nothingToRead = false;
+        }
+    }
     // One job per pool tree the divisions use (a tree is loaded once, its
     // folders go to their divisions); divisions without a table keep the old
     // per-division way.
@@ -25380,7 +25455,7 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
         if (stopBuildWindow != nullptr) stopBuildWindow.reset();
         if (onlyTree.isEmpty())
         {
-            removePerspectiveAudioRoutesForManual(manual);
+            if (!nothingToRead) removePerspectiveAudioRoutesForManual(manual);   // 0.9.134: a table that only takes away keeps its routes playing
             replacing->insert(manual);
         }
     }
@@ -25393,12 +25468,10 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
     }
     for (auto& job : jobs) job.replacing = replacing;
     if (voicer) voicer->setActiveManualCount(manualCount + 1);
-    auto loader = std::make_unique<StartupFolderLoader>(engine, std::move(jobs), currentSampleRate,
-        [this, manuals](bool cancelled) { if (cancelled) finishDivisionsLoad(manuals); else finishDivisionsLoadEnd(manuals); }, this);
     // The commit retires the old stops of the reloaded divisions: the grid's rows
     // (and the drag state of the arrange mode) must not point at them when the
     // next paint comes - rebuilt at once, before the loading dialog's next step.
-    loader->afterCommit = [this, manuals]
+    auto afterCommit = [this, manuals]
     {
         // 0.9.32: the table's aliases go onto the new stops HERE, the moment they exist - the routes phase that
         // follows saves the settings, and saveSettings syncs the table FROM the stops (0.8.201): a stop still
@@ -25423,6 +25496,39 @@ void MainComponent::reloadDivisions(const std::vector<int>& manualsIn, const juc
         voicer->dropStopReferences();
         voicer->rebuildUI(stopsContent, stopsViewport);
     };
+    // 0.9.134 NOTHING TO READ (the user: "pokud pouze ubírám existující, proč reload? ... musí pouze uvolnit zrušené z
+    // paměti"): a table that only takes away what is loaded - rows, folders, perspectives, folders switched to "not
+    // loaded" - goes the same proven way (new stops that ADOPT the samples in the memory at the commit; what no new
+    // stop adopts is freed), but at once, here: no loading window, and the routes of the perspectives that stay are
+    // not closed and opened again - only the routes of a perspective that is gone leave.
+    if (nothingToRead)
+    {
+        const double startMs = juce::Time::getMillisecondCounterHiRes();
+        const juce::int64 bytesBefore = engine.bytesReadByLoads();
+        const juce::int64 heldBefore = (juce::int64)processMemoryBytes();
+        for (auto& job : jobs)
+            engine.loadManualFolder(job.folder, juce::jmax(0, job.manual), currentSampleRate, [](double) {}, job.append, job.map.get(), job.replacing.get());
+        engine.holdCopyBuilds();   // released by finishDivisionsLoadEnd (launchCopyBuilds)
+        engine.commitPendingDivisions();
+        if (const auto error = engine.takeLastLoadError(); error.isNotEmpty()) memoryStopNotice(error);
+        afterCommit();
+        syncConfiguredPerspectives();
+        for (int manual : manuals)
+        {
+            std::set<juce::String> live;
+            for (const auto& perspective : engine.getPerspectivesForManual(manual)) live.insert(perspective.toLowerCase());
+            removePerspectiveAudioRoutesForManual(manual, &live);
+        }
+        finishDivisionsLoad(manuals);
+        const juce::int64 read = engine.bytesReadByLoads() - bytesBefore;
+        CrashHandler::note("Stop List: division(s) " + list + " reduced in place, no loading window - " + juce::String((double)read / 1.0e6, 1) + " MB read, "
+            + juce::String((double)(heldBefore - (juce::int64)processMemoryBytes()) / 1073741824.0, 1) + " GB given back so far, "
+            + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - startMs)) + " ms");
+        return;
+    }
+    auto loader = std::make_unique<StartupFolderLoader>(engine, std::move(jobs), currentSampleRate,
+        [this, manuals](bool cancelled) { if (cancelled) finishDivisionsLoad(manuals); else finishDivisionsLoadEnd(manuals); }, this);
+    loader->afterCommit = afterCommit;
     loader->phases =
     {
         { "Compiling the Stop List: audio routes", 0.1, [this, manuals]
@@ -26205,15 +26311,78 @@ void MainComponent::showStopBuildingDialog(int)
             if (entry == nullptr) return;
             const auto found = entry->folders.find(perspective);
             if (found != entry->folders.end()) found->second.unloaded = unloaded;
+            CrashHandler::note("Stop List: the switch of \"" + entry->name + "\" / " + perspective + " set to " + (unloaded ? "not loaded" : "loaded") + " (a draft until Apply)");
             rebuildGrid();
+        }
+        // The folders of one perspective as the table had them when the dialog opened ("<division>|<row name>" -> not
+        // loaded), and whether that was a MIX of loaded and not loaded ones.
+        std::map<juce::String, bool> openingPattern(const juce::String& perspective, bool& mixed) const
+        {
+            std::map<juce::String, bool> pattern;
+            int loaded = 0, notLoaded = 0;
+            for (int m = 0; m < kDivisions; ++m)
+                for (const auto& entry : originalDrafts[(size_t)m].entries)
+                    if (const auto found = entry.folders.find(perspective); found != entry.folders.end())
+                    {
+                        pattern[juce::String(m) + "|" + entry.name] = found->second.unloaded;
+                        ++(found->second.unloaded ? notLoaded : loaded);
+                    }
+            mixed = loaded > 0 && notLoaded > 0;
+            return pattern;
         }
         void setPerspectiveUnloaded(const juce::String& perspective, bool unloaded)
         {
             commitEditors();
-            for (auto& draft : drafts)
-                for (auto& entry : draft.entries)
-                    if (const auto found = entry.folders.find(perspective); found != entry.folders.end()) found->second.unloaded = unloaded;
+            // 0.9.134 (the user switched a column that was a MIX - one organ's folders loaded, the other's not - off and
+            // on again and every folder ended "loaded": 14 GB read that he had unloaded on purpose): the first click on
+            // "loaded" puts the column back as it was when the dialog opened; only a second one loads everything.
+            bool mixedAtOpening = false;
+            const auto pattern = openingPattern(perspective, mixedAtOpening);
+            bool asOpened = true;
+            for (int m = 0; m < kDivisions; ++m)
+                for (const auto& entry : drafts[(size_t)m].entries)
+                    if (const auto found = entry.folders.find(perspective); found != entry.folders.end())
+                        if (const auto was = pattern.find(juce::String(m) + "|" + entry.name); was == pattern.end() || was->second != found->second.unloaded) asOpened = false;
+            const bool restore = !unloaded && mixedAtOpening && !asOpened;
+            for (int m = 0; m < kDivisions; ++m)
+                for (auto& entry : drafts[(size_t)m].entries)
+                    if (const auto found = entry.folders.find(perspective); found != entry.folders.end())
+                    {
+                        const auto was = pattern.find(juce::String(m) + "|" + entry.name);
+                        found->second.unloaded = restore ? (was != pattern.end() && was->second) : unloaded;
+                    }
+            CrashHandler::note("Stop List: the switch of the perspective \"" + perspective + "\" set to "
+                + (restore ? "as it was when the dialog opened (some folders loaded, some not; a second click loads them all)" : unloaded ? "not loaded" : "loaded") + " (a draft until Apply)");
+            if (restore) info.setText("\"" + perspective + "\" is back as it was when the dialog opened: some of its folders loaded, some not. Click "
+                "the left place once more to load all of them.", juce::dontSendNotification);
             rebuildGrid();
+        }
+        // 0.9.134: does the table only TAKE AWAY from what was applied - rows, folders, whole perspectives, folders
+        // switched to "not loaded" - with nothing new to read? Then Apply frees what went and reads nothing: no loader.
+        bool removalOnly(const std::set<int>& changed) const
+        {
+            if (changed.empty() || pendingCells > 0) return false;
+            for (int m : changed)
+            {
+                const auto now = stopEntries(drafts[(size_t)m]);
+                const auto before = stopEntries(originalDrafts[(size_t)m]);
+                size_t j = 0;
+                for (const auto& a : now)
+                {
+                    while (j < before.size() && before[j].name != a.name) ++j;   // the rows that stay keep their order
+                    if (j >= before.size()) return false;
+                    const auto& b = before[j++];
+                    if (a.alias != b.alias || a.customName != b.customName || a.child != b.child || a.sampleOffset != b.sampleOffset || a.sampleOffsetSet != b.sampleOffsetSet) return false;
+                    for (const auto& [perspective, ref] : a.folders)
+                    {
+                        if (ref.unloaded) continue;   // not wanted in the memory: nothing to read
+                        const auto found = b.folders.find(perspective);
+                        if (found == b.folders.end() || found->second.unloaded || found->second.tree != ref.tree
+                            || found->second.relativePath != ref.relativePath || found->second.morePaths != ref.morePaths) return false;
+                    }
+                }
+            }
+            return true;
         }
 
         MainComponent& owner;
@@ -26769,7 +26938,7 @@ void MainComponent::showStopBuildingDialog(int)
                     // (kept in the table), between the two = some; right (x) = the column removed.
                     cell.stateSwitch = std::make_unique<StateSwitch>();
                     cell.stateSwitch->state = wanted + waiting == 0 ? 3 : waiting == 0 ? 0 : wanted == 0 ? 1 : 2;
-                    cell.stateSwitch->setTooltip("The whole perspective \"" + name + "\". Left: loaded. Middle: its folders stay in the table but are NOT loaded (dimmed; no cable in the Audio routing). Right (x): the column is removed. Acts with \"Apply and reload\".");
+                    cell.stateSwitch->setTooltip("The whole perspective \"" + name + "\". Left: loaded. Middle: its folders stay in the table but are NOT loaded (dimmed; no cable in the Audio routing). Right (x): the column is removed. A column that was a mix of both when the dialog opened comes back so at the first click on the left; a second click loads all of it. Acts with \"Apply and reload\" (taking away only: at once, nothing is read).");
                     cell.stateSwitch->getProperties().set("testName", "switch " + name);   // ORGAN_TEST_SWITCH finds it
                     cell.stateSwitch->onChoose = [this, name, p](int place)
                     {
@@ -27783,9 +27952,10 @@ void MainComponent::showStopBuildingDialog(int)
             std::set<int> reordered;
             for (int m : orderChanged) if (changed.count(m) != 0 || trChanged) reordered.insert(m);
             juce::Component::SafePointer<StopListDialog> safeThis(this);
-            auto run = [&o, builds, changed, plan, rowOrder, trChanged](std::set<int> arrange)
+            const bool reduce = removalOnly(changed);   // 0.9.134: only taking away - freed in place, nothing read, no loader
+            auto run = [&o, builds, changed, plan, rowOrder, trChanged, reduce](std::set<int> arrange)
             {
-                juce::MessageManager::callAsync([&o, builds, changed, plan, rowOrder, trChanged, arrange]() mutable
+                juce::MessageManager::callAsync([&o, builds, changed, plan, rowOrder, trChanged, arrange, reduce]() mutable
                 {
                     o.stopBuildWindow.reset();
                     auto planNow = plan;   // GCC 11 (arm64 CI) takes the nested capture for const; applyTransmissionPlan fills newKey
@@ -27801,7 +27971,7 @@ void MainComponent::showStopBuildingDialog(int)
                             }
                             o.voicer->setArrangeOrder(m, keys);
                         }
-                    if (!changed.empty()) { o.applyStopLists(builds, changed, arrange); return; }
+                    if (!changed.empty()) { o.applyStopLists(builds, changed, arrange, reduce); return; }
                     // Transmissions only: no reload, the console follows at once.
                     if (o.voicer != nullptr)
                     {

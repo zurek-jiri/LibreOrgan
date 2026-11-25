@@ -6276,6 +6276,43 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   kerneltest OK. LESSONS: MainComponent.cpp and MainComponent.h are CRLF, voicer.*,
   UIScale.h and UIControls.h LF - a scripted insertion must use the file's own line ending (check for bare LF
   after); a test process without the focus loses a typing field at once (openFor of the hook keeps it).
+- 0.9.134, FIFTH ROUND (25 Nov 2026 late afternoon; his try of the fourth round + the picture F:\temp\navrh5_rada_a_svisle.png
+  made by %TEMP%\mock_bars3.py; his answers: "Čisté ubírání bez loaderu", the header remembers the mix, B1, fill no. 3,
+  the vertical ones 21 px with 8 px numbers and ORANGE, the cancelled load and the locked noise switches stay as they
+  are): (1) APPLY THAT ONLY TAKES AWAY ("když načtu perspektivy, pak jednu vyškrtnu ... on to fakt reloaduje! ... musí
+  pouze uvolnit zrušené z paměti"). HIS LOG: 14:52:32 Rear unloaded alone - nothing was read ("90 rank(s) kept"), but the
+  whole machinery ran: loading window, every route of the four divisions closed and opened again, 3 s of silence. Now
+  `StopListDialog::removalOnly(changed)` (pendingCells == 0; every row of the table now is a row of the original drafts
+  in the same order with the same alias / child / transposition, and every folder it wants loaded was loaded and is the
+  same folder) -> `applyStopLists(..., removalOnly)` -> `reloadDivisions(manuals, {}, nothingToRead)`: the SAME proven
+  way (loadManualFolder builds new stops that adopt the samples at commitPendingDivisions; what nobody adopts is freed)
+  but synchronously on the message thread - no StartupFolderLoader, no window - and `removePerspectiveAudioRoutesForManual
+  (manual, &keep)` only for the routes of perspectives that are gone; then finishDivisionsLoad. reloadDivisions checks
+  for itself that the ENGINE holds every folder the tables want (else "not a mere reduction after all ..." and the
+  ordinary reload) - the quick way must never have anything to decode on the message thread. Log "Stop List:
+  division(s) ... reduced in place, no loading window - 0.0 MB read, N GB given back so far, T ms". MEASURED: Schorndorf
+  Direct + Organist, Organist's header switch to the middle, Apply: 0.0 MB read, 9.2 GB back, 877 ms, no "Audio device
+  started" line for Direct, no loading window. (2) THE HEADER REMEMBERS A MIX: 15:03:15 of his log read 14 GB of
+  Schorndorf he had unloaded - after the merge the Rear column was a mix (Schorndorf not loaded, Stralsund loaded) and
+  header clicks "off, on" set every row alike (not proven: the clicks were not logged - they are now, "Stop List: the
+  switch of ... set to ..."). `openingPattern(perspective, mixed)` from originalDrafts; `setPerspectiveUnloaded(..., false)`
+  on a column that was a mix and is not as opened -> the opening pattern back (info line says so), a second click loads
+  all. NOT run (ORGAN_TEST_MOUSE clicks a switch's middle only). (3) TOP ROW B1: `rowBarHeight` 46 for the bars AND the
+  display (controlsRow 62 px, was 80); one line while the names fit at 13 / 12 / 11 px ("barNameSize"), then two lines
+  (name 13 px box + value 16 px box around the centre), then the short names; the display's width jlimit(min(330, w/3),
+  420, w/6); PolyphonyDisplay / paintOutputMeter have a `low` form under 56 px (10 px labels, CLIP smaller, steps 1 px
+  apart). "barHeight" property = a row's own bar height (barAreaOf). (4) ONE ROUNDING: `barCorner` 6 for the bars,
+  DisplayLabel and PolyphonyDisplay 6 (were 3; the buttons are JUCE's 6, the swell bar was 6) - text boxes and combos
+  keep `boxCorner` 3. (5) FILL = the look's own thumb blue x saturation 0.8 x brightness 0.50 (no. 3 of the swatches),
+  never the slider's own thumb colour (a replaced pipe's green is its LINE alone). The split marks are as long as the
+  bar allows: (height - text block) / 2 - 2.5. (6) PER-KEY SLIDERS: `Voicer::sliderWidth` 21 (was 30), bar width
+  jlimit(8, 22, width - 5), every per-key slider and "All" has "smallTextBox" = an 8 px value box without side margins,
+  note names and MIDI numbers 8 px with no Label border; a SOUNDING key = trackColourId onColour() -> the bar's ground
+  tinted (ground.interpolatedWith(track, 0.45)) and a 2 px frame, so it shows at the default value too (the green
+  frame alone did not); grey track = pipe off, the same way. HIS QUESTIONS ANSWERED, nothing coded: a cancelled load
+  drops the stop it was reading whole and skips the rest - stops whose perspectives lie in several packages may be left
+  with those of the trees already read (dimmed cells, Apply reads them); a noise cannot be switched on in a perspective
+  the Stop List has not loaded because it plays through that perspective's route, which does not exist then.
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)

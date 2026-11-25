@@ -757,7 +757,7 @@ public:
     juce::OwnedArray<StopRow> stopRows;   // stops and transmissions alike
     juce::OwnedArray<juce::Component> sectionDividers;
     int noteMin = 128, noteMax = 0;
-    int sliderWidth = 30;               // per-key sliders sit close together; "-9.0" still fits the value box
+    int sliderWidth = 21;               // 0.9.134 (the user: 21 px, the numbers 8 px - the voicing as narrow as it goes; 30 before)
     // Folding of the per-key rows in every expanded voicing (remembered by the owner).
     int stopRowTopHeight = 50;
     int stopRowBottomHeight = 180;      // sliders only (labels are on top of them)

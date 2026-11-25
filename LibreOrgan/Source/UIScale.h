@@ -124,7 +124,9 @@ namespace UIScale
     {
         const bool twoLines = (int)slider.getProperties().getWithDefault("barLines", 1) == 2;
         const auto bounds = slider.getLocalBounds();
-        return bounds.withSizeKeepingCentre(bounds.getWidth(), juce::jmin(bounds.getHeight(), twoLines ? 44 : 28));
+        // "barHeight": a row that wants its bars as tall as its neighbours (the top row: the height of the display).
+        const int tall = (int)slider.getProperties().getWithDefault("barHeight", twoLines ? 44 : 28);
+        return bounds.withSizeKeepingCentre(bounds.getWidth(), juce::jmin(bounds.getHeight(), tall));
     }
 
     // The value typed into the bar itself: ONE left click without a drag opens a field over the bar once the
@@ -247,35 +249,44 @@ namespace UIScale
             const bool hasDefault = slider.isDoubleClickReturnEnabled() && slider.getDoubleClickReturnValue() >= slider.getMinimum() && slider.getDoubleClickReturnValue() <= slider.getMaximum();
             // The fill starts at the default; a slider without one: at zero when its range has both signs, else at its minimum.
             const double from = hasDefault ? slider.getDoubleClickReturnValue() : slider.getMinimum() < 0.0 && slider.getMaximum() > 0.0 ? 0.0 : slider.getMinimum();
+            // The fill - how far the value stands from the default - is dark and quiet (the user chose it for the
+            // texts it runs under); the bright line alone is the value.
+            // Always the look's own blue: a slider's own thumb colour (green = a replaced pipe) colours its LINE alone.
+            const juce::Colour fillColour = findColour(juce::Slider::thumbColourId).withMultipliedSaturation(0.8f).withMultipliedBrightness(0.50f).withMultipliedAlpha(alpha);
             if (upright)
             {
-                const float w = juce::jmin((float)width, 22.0f);
+                // A per-key slider: a narrow bar (the column is 21 px), the value in the box below it. A track colour
+                // set by the program - the key SOUNDS (orange, the program's "on"), the pipe is off (grey) - tints the
+                // whole bar and frames it, so it shows at the default value too; the colour of the line is the thumb's
+                // (green: a pipe replaced by its neighbour).
+                const float w = juce::jlimit(8.0f, 22.0f, (float)width - 5.0f);
+                const float corner = juce::jmin(barCorner, w / 3.0f);
                 const juce::Rectangle<float> box((float)x + ((float)width - w) * 0.5f, (float)y, w, (float)height);
-                g.setColour(ground.withMultipliedAlpha(alpha));
-                g.fillRoundedRectangle(box, boxCorner);
+                g.setColour((ownTrack ? ground.interpolatedWith(track, 0.45f) : ground).withMultipliedAlpha(alpha));
+                g.fillRoundedRectangle(box, corner);
                 const float zero = (float)y + (float)height * (1.0f - (float)slider.valueToProportionOfLength(from));
-                const juce::Colour fill = (ownTrack ? track : thumb.withMultipliedSaturation(0.8f).withMultipliedBrightness(0.62f)).withMultipliedAlpha(alpha);
-                g.setColour(fill);
+                g.setColour(fillColour);
                 if (std::abs(sliderPos - zero) > 1.0f) g.fillRect(juce::Rectangle<float>(box.getX() + 2.0f, juce::jmin(sliderPos, zero), w - 4.0f, std::abs(sliderPos - zero)));
                 g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * 0.6f));
                 g.fillRect(juce::Rectangle<float>(box.getRight() - 4.0f, zero - 0.5f, 3.0f, 1.0f));   // where the default lies
                 g.setColour((ownTrack ? track : slider.findColour(juce::ComboBox::outlineColourId)).withMultipliedAlpha(alpha));
-                g.drawRoundedRectangle(box.reduced(0.5f), boxCorner, ownTrack ? 1.5f : 1.0f);
+                g.drawRoundedRectangle(box.reduced(ownTrack ? 1.0f : 0.5f), corner, ownTrack ? 2.0f : 1.0f);
                 g.setColour(thumb.withMultipliedAlpha(alpha));
                 g.fillRect(juce::Rectangle<float>(box.getX() + 1.5f, juce::jlimit((float)y + 1.0f, (float)(y + height) - 3.5f, sliderPos - 1.25f), w - 3.0f, 2.5f));
                 return;
             }
             const auto area = barAreaOf(slider).toFloat();
             g.setColour(ground.withMultipliedAlpha(alpha));
-            g.fillRoundedRectangle(area, boxCorner);
+            g.fillRoundedRectangle(area, barCorner);
             const float zero = (float)x + (float)width * (float)slider.valueToProportionOfLength(from);
-            g.setColour(thumb.withMultipliedSaturation(0.8f).withMultipliedBrightness(0.62f).withMultipliedAlpha(alpha));
+            g.setColour(fillColour);
             if (std::abs(sliderPos - zero) > 1.0f)
                 g.fillRect(juce::Rectangle<float>(juce::jmin(sliderPos, zero), area.getY() + 2.0f, std::abs(sliderPos - zero), area.getHeight() - 4.0f));
             g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * (slider.isMouseOverOrDragging() ? 1.0f : 0.75f)));
-            g.drawRoundedRectangle(area.reduced(0.5f), boxCorner, 1.0f);
+            g.drawRoundedRectangle(area.reduced(0.5f), barCorner, 1.0f);
             // The texts: the name and the value (never cut). The bright line of the value is drawn whole where it
-            // crosses no text, else as two short marks at the bar's edges - a text is never struck through.
+            // crosses no text, else as two marks above and below the text, as long as the bar's height allows - a
+            // text is never struck through.
             const bool typing = slider.getProperties().contains("barTyping");   // the value is being typed over the bar: no texts
             const auto& properties = slider.getProperties();
             const bool twoLines = (int)properties.getWithDefault("barLines", 1) == 2;
@@ -283,7 +294,8 @@ namespace UIScale
             if ((bool)properties.getWithDefault("barUseShort", false) && properties.contains("barShort")) name = properties["barShort"].toString();
             const juce::String value = slider.getTextFromValue(slider.getValue());
             const auto text = slider.findColour(juce::Slider::textBoxTextColourId).withMultipliedAlpha(alpha);
-            const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold)), nameFont(juce::FontOptions(twoLines ? 11.0f : 13.0f));
+            const float nameSize = twoLines ? 11.0f : juce::jlimit(9.0f, 15.0f, (float)(double)properties.getWithDefault("barNameSize", 13.0));
+            const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold)), nameFont{ juce::FontOptions(nameSize) };
             const auto inner = area.reduced(7.0f, 0.0f).toNearestInt();
             const int valueWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(valueFont, value));
             const int nameWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(nameFont, name));
@@ -292,13 +304,16 @@ namespace UIScale
                                                 : juce::Range<int>(inner.getRight() - valueWidth, inner.getRight());
             const auto nameSpan = name.isEmpty() ? juce::Range<int>()
                 : twoLines ? juce::Range<int>(inner.getCentreX() - juce::jmin(nameWidth, inner.getWidth()) / 2, inner.getCentreX() + (juce::jmin(nameWidth, inner.getWidth()) + 1) / 2)
-                           : juce::Range<int>(inner.getX(), inner.getX() + juce::jmin(nameWidth, inner.getWidth() - valueWidth - 10));
+                           : juce::Range<int>(inner.getX(), inner.getX() + juce::jmin(nameWidth, inner.getWidth() - valueWidth - 8));
             const float lineX = juce::jlimit(area.getX() + 1.0f, area.getRight() - 3.5f, sliderPos - 1.25f);
             const auto crosses = [lineX](juce::Range<int> span) { return !span.isEmpty() && lineX + 2.5f > (float)span.getStart() - 2.0f && lineX < (float)span.getEnd() + 2.0f; };
+            // Two lines stand close together in the middle of the bar (the name 12 px, the value 15 px).
+            const int centreY = inner.getCentreY();
+            const float textBlock = twoLines ? 27.0f : 15.0f;
             g.setColour(thumb.withMultipliedAlpha(alpha));
             if (!typing && (crosses(valueSpan) || crosses(nameSpan)))
             {
-                const float mark = twoLines ? 3.0f : 5.0f;
+                const float mark = juce::jmax(3.0f, (area.getHeight() - textBlock) * 0.5f - 2.5f);
                 g.fillRect(juce::Rectangle<float>(lineX, area.getY() + 1.5f, 2.5f, mark));
                 g.fillRect(juce::Rectangle<float>(lineX, area.getBottom() - 1.5f - mark, 2.5f, mark));
             }
@@ -307,11 +322,11 @@ namespace UIScale
             if (twoLines)
             {
                 g.setFont(nameFont);
-                g.setColour(text.withMultipliedAlpha(0.72f));
-                g.drawText(name, inner.withHeight(inner.getHeight() / 2).translated(0, 2), juce::Justification::centred, true);
+                g.setColour(text.withMultipliedAlpha(0.78f));
+                g.drawText(name, juce::Rectangle<int>(inner.getX(), centreY - 14, inner.getWidth(), 13), juce::Justification::centred, true);
                 g.setFont(valueFont);
                 g.setColour(text);
-                g.drawText(value, inner.withTrimmedTop(inner.getHeight() / 2).translated(0, -2), juce::Justification::centred, false);
+                g.drawText(value, juce::Rectangle<int>(inner.getX(), centreY - 2, inner.getWidth(), 16), juce::Justification::centred, false);
                 return;
             }
             g.setFont(valueFont);
@@ -320,15 +335,23 @@ namespace UIScale
             if (name.isNotEmpty())
             {
                 g.setFont(nameFont);
-                g.drawText(name, inner.withTrimmedRight(valueWidth + 10), juce::Justification::centredLeft, true);
+                g.drawText(name, inner.withTrimmedRight(valueWidth + 8), juce::Justification::centredLeft, true);
             }
         }
-        // 0.9.81: a slider with the property "smallTextBox" gets a 9 px value box - the per-key "Attack per key"
-        // sliders show "-300" in a 30 px column (the default font cut it to "-3...").
+        // A bar has the corners of the buttons and the displays beside it (the user: 3 px, the text boxes' corners,
+        // was a mistake - "zaoblení rohů musí být stejné").
+        static constexpr float barCorner = 6.0f;
+        // A slider with the property "smallTextBox" gets an 8 px value box without side margins: the per-key sliders
+        // of the voicing stand 21 px apart and "-300" (Attack per key) must fit.
         juce::Label* createSliderTextBox(juce::Slider& slider) override
         {
             auto* label = juce::LookAndFeel_V4::createSliderTextBox(slider);
-            if (slider.getProperties().contains("smallTextBox")) label->setFont(juce::FontOptions(9.0f));
+            if (slider.getProperties().contains("smallTextBox"))
+            {
+                label->setFont(juce::FontOptions(8.0f));
+                label->setBorderSize(juce::BorderSize<int>(1, 0, 1, 0));
+                label->setMinimumHorizontalScale(0.75f);
+            }
             return label;
         }
         // 0.9.91 (the user: "why has a combo box round corners and a text box square ones?"): every text box - the

@@ -400,9 +400,9 @@ public:
     {
         auto r = getLocalBounds().toFloat().reduced(1.0f);
         g.setColour(juce::Colours::black);
-        g.fillRoundedRectangle(r, 3.0f);
+        g.fillRoundedRectangle(r, 6.0f);   // 0.9.134: the rounding of the buttons and the bar sliders
         g.setColour(juce::Colours::darkgrey);
-        g.drawRoundedRectangle(r, 3.0f, 1.0f);
+        g.drawRoundedRectangle(r, 6.0f, 1.0f);
         g.setColour(findColour(juce::Label::textColourId));
         g.setFont(getFont());
         g.drawFittedText(getText(), getLocalBounds().reduced(4, 2), getJustificationType(), maxLines, maxLines > 1 ? 1.0f : 0.6f);

@@ -772,6 +772,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         slider->setScrollWheelEnabled(true);
         slider->setDoubleClickReturnValue(true, 0.0);
         slider->addMouseListener(this, false);
+        slider->getProperties().set("smallTextBox", true);   // 0.9.134: the columns are 21 px - an 8 px value box (UIScale::LookAndFeel)
         slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
         slider->onValueChange = [this, note, slider] {
             keySliderChanged(note, (float)slider->getValue());
@@ -788,6 +789,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         tone->setScrollWheelEnabled(true);
         tone->setDoubleClickReturnValue(true, 0.0);
         tone->addMouseListener(this, false);
+        tone->getProperties().set("smallTextBox", true);
         tone->setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
         tone->onValueChange = [this, note, tone] { toneSliderChanged(note, (float)tone->getValue()); };
         toneSliders.add(tone);
@@ -812,13 +814,15 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             auto* attackNameLabel = new juce::Label();
             attackNameLabel->setText(juce::MidiMessage::getMidiNoteName(note, true, true, 3).upToFirstOccurrenceOf(" ", false, false), juce::dontSendNotification);
             attackNameLabel->setJustificationType(juce::Justification::centred);
-            attackNameLabel->setFont(juce::FontOptions(10.0f));
+            attackNameLabel->setFont(juce::FontOptions(8.0f));
+            attackNameLabel->setBorderSize(juce::BorderSize<int>(0)); attackNameLabel->setMinimumHorizontalScale(0.7f);
             attackNameLabels.add(attackNameLabel);
             addAndMakeVisible(attackNameLabel);
             auto* attackNumLabel = new juce::Label();   // 0.9.134: the MIDI number above the note name, as in the volume row
             attackNumLabel->setText(juce::String(note), juce::dontSendNotification);
             attackNumLabel->setJustificationType(juce::Justification::centred);
-            attackNumLabel->setFont(juce::FontOptions(9.0f));
+            attackNumLabel->setFont(juce::FontOptions(8.0f));
+            attackNumLabel->setBorderSize(juce::BorderSize<int>(0)); attackNumLabel->setMinimumHorizontalScale(0.7f);
             attackNumLabels.add(attackNumLabel);
             addAndMakeVisible(attackNumLabel);
         }
@@ -829,19 +833,22 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         auto* nameLabel = new juce::Label();
         nameLabel->setText(noteName, juce::dontSendNotification);
         nameLabel->setJustificationType(juce::Justification::centred);
-        nameLabel->setFont(juce::FontOptions(10.0f));
+        nameLabel->setFont(juce::FontOptions(8.0f));   // 0.9.134: 21 px columns (the user: the voicing as narrow as it goes)
+        nameLabel->setBorderSize(juce::BorderSize<int>(0)); nameLabel->setMinimumHorizontalScale(0.7f);
         noteNameLabels.add(nameLabel);
         addAndMakeVisible(nameLabel);
         auto* toneNameLabel = new juce::Label();
         toneNameLabel->setText(noteName, juce::dontSendNotification);
         toneNameLabel->setJustificationType(juce::Justification::centred);
-        toneNameLabel->setFont(juce::FontOptions(10.0f));
+        toneNameLabel->setFont(juce::FontOptions(8.0f));
+        toneNameLabel->setBorderSize(juce::BorderSize<int>(0)); toneNameLabel->setMinimumHorizontalScale(0.7f);
         toneNameLabels.add(toneNameLabel);
         addAndMakeVisible(toneNameLabel);
         auto* toneNumLabel = new juce::Label();   // 0.9.134: the MIDI number above the note name, as in the volume row
         toneNumLabel->setText(juce::String(note), juce::dontSendNotification);
         toneNumLabel->setJustificationType(juce::Justification::centred);
-        toneNumLabel->setFont(juce::FontOptions(9.0f));
+        toneNumLabel->setFont(juce::FontOptions(8.0f));
+        toneNumLabel->setBorderSize(juce::BorderSize<int>(0)); toneNumLabel->setMinimumHorizontalScale(0.7f);
         toneNumLabels.add(toneNumLabel);
         addAndMakeVisible(toneNumLabel);
 
@@ -849,7 +856,8 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         auto* numLabel = new juce::Label();
         numLabel->setText(juce::String(note), juce::dontSendNotification);
         numLabel->setJustificationType(juce::Justification::centred);
-        numLabel->setFont(juce::FontOptions(9.0f));
+        numLabel->setFont(juce::FontOptions(8.0f));
+        numLabel->setBorderSize(juce::BorderSize<int>(0)); numLabel->setMinimumHorizontalScale(0.7f);
         midiNumLabels.add(numLabel);
         addAndMakeVisible(numLabel);
         // 0.9.134 (the user: the attack row's thumb stayed blue on a replaced pipe, its names never turned orange or
@@ -1439,7 +1447,7 @@ void StopRow::makeAllControl(int row)
     slider.setValue(0.0, juce::dontSendNotification);
     slider.setScrollWheelEnabled(true);
     slider.setDoubleClickReturnValue(false, 0.0);
-    if (attack) slider.getProperties().set("smallTextBox", true);
+    slider.getProperties().set("smallTextBox", true);
     slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, sliderWidth, 18);
     slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff1f5aa6));   // a darker blue than the keys' thumbs
     slider.getProperties().set("manualChapter", attack ? "Attack per key" : "Volume per key and Treble per key");
@@ -2103,7 +2111,7 @@ void StopRow::setNoteActive(int note, bool active)
             // First activation: highlight (the original colours are in originalTrackColours)
             for (auto* s : { slider, tone, attack })
                 if (s != nullptr && originalTrackColours.find(s) != originalTrackColours.end())
-                    s->setColour(juce::Slider::trackColourId, juce::Colours::lightgreen);
+                    s->setColour(juce::Slider::trackColourId, onColour());   // 0.9.134: a sounding key is ORANGE (the program's "on"; green is the replaced pipe's line)
         }
         ++count;
     }

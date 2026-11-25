@@ -497,9 +497,10 @@ static const char* const kManualText_part2 =
     "line marks the value. Drag left or right (the value moves from where it\n"
     "is - a click alone changes nothing), turn the wheel, **double-click** for\n"
     "the default, **click once** to type the value (Enter takes it, Esc leaves\n"
-    "it), right-click for MIDI learn. A row short of room shows all its sliders\n"
-    "in two lines, the name above the value. The per-key sliders of a voicing row\n"
-    "are the same bars upright, their value under them.\n"
+    "it), right-click for MIDI learn. The top row keeps one line as long as the\n"
+    "names fit (they shrink first); short of room, all its sliders show the name\n"
+    "above the value. The per-key sliders of a voicing row are the same bars\n"
+    "upright, their value under them.\n"
     "\n"
     "\n"
     "The polyphony display begins with the **audio meter**: a vertical bargraph of\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "Stop List ([The table](#42-the-table)).\n"
     "\n"
     "## 3.3 The voicing row\n"
-    "\n"
     ;
 static const char* const kManualText_part3 =
+    "\n"
     "Open it with the corner button. The first line: transposition, perspectives,\n"
     "velocity layers, pitch information, alias and switches; the second line the\n"
     "sliders; under them two folding rows of per-key sliders. With both per-key\n"
@@ -716,8 +717,8 @@ static const char* const kManualText_part3 =
     "row. The **All** slider before the first key (darker blue; in the *Attack per\n"
     "key* row too) moves every slider of its row by the same amount on top of what\n"
     "each one has, and springs back to 0 when released - the keys keep their\n"
-    "values. The sliders light while the key sounds (the keys the couplers play too, in\n"
-    "the division where they sound); a **green thumb** marks a filled\n"
+    "values. A slider turns **orange** while its key sounds (the keys the couplers play too, in\n"
+    "the division where they sound); a **green line** marks a filled\n"
     "pipe (hover it for its source), an **orange note name** a sample without\n"
     "loop points, a **grey slider** no pipe at all.\n"
     "\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "  A folder holding the sample files themselves is loaded as a tree of that\n"
     "  one stop. Folders or archives dragged from the file manager onto a\n"
     "  division's column on the console are loaded there the same way (a folder\n"
-    "  without sample folders is refused with a message).\n"
     ;
 static const char* const kManualText_part4 =
+    "  without sample folders is refused with a message).\n"
     "- **Unload folder...** removes one tree from the whole organ; the rows that\n"
     "  had folders of that tree only go with it, a row with a folder of another\n"
     "  tree stays. A tree not on this computer is marked NOT FOUND here, so a\n"
@@ -880,7 +881,9 @@ static const char* const kManualText_part4 =
     "**middle** (the dash) = the folder stays in the table but is not loaded\n"
     "(dimmed; it leaves the memory), **right** (x) = taken out of the row (the\n"
     "column: removed). A perspective's switch stands between left and middle when\n"
-    "only some of its folders are loaded. Dimmed always\n"
+    "only some of its folders are loaded; switched off and on again, such a\n"
+    "column first comes back as it was when the dialog opened (a second click on\n"
+    "the left loads all of it). Dimmed always\n"
     "means *not in the memory* - also a folder a cancelled load did not reach.\n"
     "*Apply and reload* frees and reads what changed; the rest of the organ\n"
     "stays in the memory. A perspective of which nothing is loaded has no row in\n"
@@ -903,7 +906,10 @@ static const char* const kManualText_part4 =
     "*Apply and reload* (grey while the table equals what is loaded) saves the\n"
     "table and loads the changed divisions. Stops whose folders are loaded keep\n"
     "their samples and copies; only new folders are read, only missing copies\n"
-    "built; folders left out of the table are freed. Moving rows between\n"
+    "built; folders left out of the table are freed. A table that only takes\n"
+    "away - rows, folders, perspectives, folders switched to *not loaded* - is\n"
+    "applied at once: the memory is freed, nothing is read, no loading window,\n"
+    "and the perspectives that stay play on through their routes. Moving rows between\n"
     "divisions or into a stop folder reloads nothing. A stop with transmissions\n"
     "cannot be removed or renamed without a warning. Closing the window with\n"
     "changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What\n"
@@ -1004,14 +1010,14 @@ static const char* const kManualText_part4 =
     "exclusive-mode driver keeps a card to itself there. An ASIO card whose\n"
     "device is not connected is listed all the same (Windows lists the driver):\n"
     "it is **grey**, with the driver's reason in its tooltip, and takes no\n"
+    ;
+static const char* const kManualText_part5 =
     "cable. The program asks the cards itself - when the dialog first opens and\n"
     "whenever Windows reports a device coming or going: connect the device and\n"
     "the card becomes active, unplug a card in use and it turns grey within a\n"
     "few seconds, its cables waiting until it is back (a click on a grey card\n"
     "asks at once). On Linux a card open\n"
     "through another driver is grey; it takes a drop only when the drop moves\n"
-    ;
-static const char* const kManualText_part5 =
     "every route off that other card. A card whose driver fails while the program\n"
     "runs (some do when their output goes away - headphones pulled out) is stopped\n"
     "and grey until it answers again, the other cards play on; a second failure\n"
@@ -1206,14 +1212,14 @@ static const char* const kManualText_part5 =
     "  unheard for a tenth of a second first), so the switch is no click;\n"
     "- a plug-in that needs more time than the audio buffer allows, block after\n"
     "  block, is switched OFF and a message says so;\n"
+    ;
+static const char* const kManualText_part6 =
     "- a plug-in's **window** is tried in a process of its own before it is first\n"
     "  opened (once for each plug-in; a slow one takes a while): one whose window\n"
     "  crashes or hangs there is not opened in the program - the plug-in keeps\n"
     "  working on the sound with the setting it has;\n"
     "- on Windows a plug-in that fails inside its own code while it is loaded or\n"
     "  while it works on the sound is caught: it is switched OFF, the organ plays\n"
-    ;
-static const char* const kManualText_part6 =
     "  on, and a message asks you to start the program again before using it;\n"
     "- after a start that follows a crash with plug-ins loaded - or with **Shift**\n"
     "  held at the start - every plug-in is OFF and not loaded; switch them ON one\n"
@@ -1408,14 +1414,14 @@ static const char* const kManualText_part6 =
     "  The retune works rank by rank - every rank's own recorded deviations are\n"
     "  taken out and the target's put in - so both organs play the target\n"
     "  temperament in tune with each other. The base temperament shown is the one\n"
+    ;
+static const char* const kManualText_part7 =
     "  that prevails among the ranks; a rank whose recording could not be\n"
     "  measured takes that one.\n"
     "\n"
     "**Set diapason a1 = 440 Hz (all stops)** retunes every pipe from its recorded\n"
     "pitch to a1 = 440 Hz, so\n"
     "that the stops of different organs (recorded at 435, 440, 442, 465 Hz ...)\n"
-    ;
-static const char* const kManualText_part7 =
     "agree, and celeste beats and the global *Pitch* mean what they say; the\n"
     "merge switches it on. A large retune is applied to the mixed output of every\n"
     "route with a proper resampler, so the pipes keep their recorded speed\n"
@@ -1610,14 +1616,14 @@ static const char* const kManualText_part7 =
     "every system ([The render pool and the threads](#1011-the-render-pool-and-the-threads)).\n"
     "\n"
     "### Interpolation kernel\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "The code that renders every pipe. *Automatic* takes the best this processor\n"
     "runs: AVX2 (current x86-64), SSE2 (older x86-64 - on a Core 2 Duo Mac 2500\n"
     "voices against 1700 scalar), NEON (Apple silicon, Linux arm64). Pick one to\n"
     "compare; the change takes effect at once and the measurement report names\n"
     "the kernel it ran with.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "### Currently active\n"
     "\n"
@@ -1812,14 +1818,14 @@ static const char* const kManualText_part8 =
     "### Wind: volume change per cent of sag\n"
     "\n"
     "How much quieter a pipe gets per cent the sag lowers its pitch (0 to 0.6 dB,\n"
+    ;
+static const char* const kManualText_part9 =
     "default 0.2).\n"
     "\n"
     "### Wind: sag ratio per octave\n"
     "\n"
     "How much more the pipes of a key an octave higher follow the sag - in pitch,\n"
     "level and tone - counted from c1 of the keyboard (1 to 2, default 1.3: the\n"
-    ;
-static const char* const kManualText_part9 =
     "pipes of the lowest C follow about half as much as those of c1, c3 about 1.7\n"
     "times as much). 1 makes every key follow alike. The sag itself still comes from the low keys and the\n"
     "stops drawn.\n"
@@ -2014,14 +2020,14 @@ static const char* const kManualText_part9 =
     "### Filled pipes: loop crossfade\n"
     "\n"
     "The splice of the copies' loops as a share of each loop (0 to 100 %, default\n"
+    ;
+static const char* const kManualText_part10 =
     "40): a longer blend hides a seam that is not quite periodic. Raise it when a\n"
     "held extension pipe bumps at every repeat.\n"
     "\n"
     "### Filled pipes: release level matched to the source\n"
     "\n"
     "On: a release copy plays at the level relation the source's release has to\n"
-    ;
-static const char* const kManualText_part10 =
     "its sustain. Off (default): at its own level.\n"
     "\n"
     "### Filled pipes: loudness kept when pitch shifting\n"
@@ -2216,14 +2222,14 @@ static const char* const kManualText_part10 =
     "Stop List.\n"
     "\n"
     "### Shown in window\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "Which program window shows this division; *Window 2* opens the second window\n"
     "when it is not open yet.\n"
     "\n"
     "### Division alias\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "The division's own name beside its numeral (\"I. Hauptwerk\"); empty = the\n"
     "numeral alone. The same field stands beside the numeral in the Divisions\n"
     "dialog, and a double-click on the name in the division header edits it.\n"
@@ -2418,14 +2424,14 @@ static const char* const kManualText_part11 =
     "Without a definition: reads a folder of noises by the names of its folders -\n"
     "the perspective, the moment (atk / rel, on / off, down / up, pull / push), the\n"
     "kind (keys, drawknobs, couplers, tremulant; anything else becomes a button\n"
+    ;
+static const char* const kManualText_part12 =
     "named after its folder) and the division. It is a guess; what the names did\n"
     "not tell is put right in [The Noises window](#the-noises-window). Drawknob\n"
     "noises are given to the buttons at random.\n"
     "\n"
     "### Noises of this organ\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "*Remove* takes every noise out of the configuration. The files stay on the\n"
     "disk.\n"
     "\n"
@@ -2620,14 +2626,14 @@ static const char* const kManualText_part12 =
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
     "Transpositions come from the definition's pipe notes against the file names\n"
+    ;
+static const char* const kManualText_part13 =
     "(\"024\" on key 36 gives -12). The configuration goes into the LibreOrgans\n"
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
     "decided is written to `ImportReports` in the settings folder.\n"
     "\n"
     "## 10.5 The tuning gate of a perspective join\n"
-    ;
-static const char* const kManualText_part13 =
     "\n"
     "Two folders are the same pipes in two perspectives only when their files\n"
     "carry the same tuning: the smpl chunks (unity note and fraction) of the\n"
@@ -2822,14 +2828,14 @@ static const char* const kManualText_part13 =
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
     "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
+    ;
+static const char* const kManualText_part14 =
     "encrypted archives are refused. Archives packed with PPMd or old filters go\n"
     "through a second reader (unarr) after the first fails, logged once. A\n"
     "configuration never names an archive: every path is a disk path, and a folder\n"
     "that is also on the disk wins over the archive.\n"
     "\n"
     "## 10.13 Files written by the program\n"
-    ;
-static const char* const kManualText_part14 =
     "\n"
     "In the settings folder ([Where the files are](#14-where-the-files-are)): `settings.json` (this\n"
     "computer: devices, MIDI, the editor's machine settings, the last\n"

@@ -25,9 +25,22 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   value - instead of a caption, a track with a thumb and a value box. A drag
   moves the value from where it is (a click alone changes nothing), the wheel
   steps, a double click gives the default, ONE click opens the value for
-  typing, the right button is MIDI learn. The top row shows all its sliders
-  in one form: one line, or - short of room - the name above the value. The
-  per-key sliders of the voicing are the same bars upright.
+  typing, the right button is MIDI learn. The top row is one row with the
+  display: bars and display the same height, the display always wide enough
+  for its cells; its sliders keep one line as long as the names fit (they
+  shrink first), then all show the name above the value. The per-key sliders
+  of the voicing are the same bars upright, 21 px apart instead of 30 (a
+  61-key row is a third narrower); a sounding key is orange, a replaced pipe
+  keeps its green line. Bars, buttons and displays share one rounding.
+- **Apply without a reload when the table only takes away**: rows, folders,
+  perspectives removed or switched to *not loaded* are freed at once - nothing
+  is read, no loading window, and the routes of the perspectives that stay
+  are not closed and opened again. (It went through the whole reload before:
+  three seconds of loading window and silence to free one perspective.)
+- **A perspective's switch remembers a mixed column**: a column with some
+  folders loaded and some not, switched off and on again, comes back as it
+  was when the dialog opened; a second click loads all of it. Every click on
+  a switch is written to the log.
 - **Stop List: loaded, unloaded, taken out**. Beside every folder and every
   perspective's name stands one switch with three places: left = loaded,
   middle = kept in the table but not loaded (dimmed; it leaves the memory),

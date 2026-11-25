@@ -874,7 +874,7 @@ private:
     void applyTableAliasesToStops(const std::vector<int>& manuals);
     // The Stop List applies the tables of several divisions at once (one reload).
     void applyStopLists(const std::array<ManualConfig::StopBuild, SamplerEngine::maxManuals>& builds,
-        const std::set<int>& changed, const std::set<int>& arrangeGrid);
+        const std::set<int>& changed, const std::set<int>& arrangeGrid, bool removalOnly = false);   // removalOnly: the table only takes away what is loaded - nothing read, no loader (0.9.134)
     void resetStopBuild(int manual);
     // Arrange mode: a click on a free grid cell makes a new empty stop (a stop
     // folder) there; its Stop List row is added and the division reloads.
@@ -944,7 +944,7 @@ private:
     void applyStopGroups();   // Stop::groupMaster of every stop from the tables' indented rows
     void reloadDivisionTrees(int manual);   // unloads the division and loads its trees again (with the map when active)
     // onlyTree: load just that pool tree into the divisions (nothing is unloaded first).
-    void reloadDivisions(const std::vector<int>& manuals, const juce::String& onlyTree = {});
+    void reloadDivisions(const std::vector<int>& manuals, const juce::String& onlyTree = {}, bool nothingToRead = false);
     void finishDivisionLoad(int manual);    // routes, voicing, buttons after the division's stops changed
     void finishDivisionsLoad(const std::vector<int>& manuals);
     // Its three parts, run as the phases of the loading dialog ("Compiling the Stop List" with a percentage).
@@ -2004,7 +2004,7 @@ private:
     // The ASIO driver a route will ask for (empty: none) and its saved state, for opening the driver as its own loading step.
     std::unique_ptr<juce::XmlElement> requestedAsioStateForRoute(int manual, const juce::String& perspective, juce::String& driverName);
     void buildPerspectiveAudioRoute(int manual, const juce::String& perspective);   // one route (its device opened)
-    void removePerspectiveAudioRoutesForManual(int manualIndex);
+    void removePerspectiveAudioRoutesForManual(int manualIndex, const std::set<juce::String>* keepLowerCase = nullptr);   // keep: the routes of these perspectives stay as they are
     void installAudioTypeInterceptor(juce::AudioDeviceSelectorComponent&, int manualIndex,
         const juce::String& perspective);
     void switchRouteAudioType(int manualIndex, const juce::String& perspective,

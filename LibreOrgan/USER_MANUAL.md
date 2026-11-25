@@ -489,9 +489,10 @@ written in it, the fill runs from the default to the value and the bright
 line marks the value. Drag left or right (the value moves from where it
 is - a click alone changes nothing), turn the wheel, **double-click** for
 the default, **click once** to type the value (Enter takes it, Esc leaves
-it), right-click for MIDI learn. A row short of room shows all its sliders
-in two lines, the name above the value. The per-key sliders of a voicing row
-are the same bars upright, their value under them.
+it), right-click for MIDI learn. The top row keeps one line as long as the
+names fit (they shrink first); short of room, all its sliders show the name
+above the value. The per-key sliders of a voicing row are the same bars
+upright, their value under them.
 
 
 The polyphony display begins with the **audio meter**: a vertical bargraph of
@@ -706,8 +707,8 @@ each header; dragging with the right mouse button paints one value across a
 row. The **All** slider before the first key (darker blue; in the *Attack per
 key* row too) moves every slider of its row by the same amount on top of what
 each one has, and springs back to 0 when released - the keys keep their
-values. The sliders light while the key sounds (the keys the couplers play too, in
-the division where they sound); a **green thumb** marks a filled
+values. A slider turns **orange** while its key sounds (the keys the couplers play too, in
+the division where they sound); a **green line** marks a filled
 pipe (hover it for its source), an **orange note name** a sample without
 loop points, a **grey slider** no pipe at all.
 
@@ -868,7 +869,9 @@ perspective's name stands a switch with three places: **left** = loaded,
 **middle** (the dash) = the folder stays in the table but is not loaded
 (dimmed; it leaves the memory), **right** (x) = taken out of the row (the
 column: removed). A perspective's switch stands between left and middle when
-only some of its folders are loaded. Dimmed always
+only some of its folders are loaded; switched off and on again, such a
+column first comes back as it was when the dialog opened (a second click on
+the left loads all of it). Dimmed always
 means *not in the memory* - also a folder a cancelled load did not reach.
 *Apply and reload* frees and reads what changed; the rest of the organ
 stays in the memory. A perspective of which nothing is loaded has no row in
@@ -891,7 +894,10 @@ every load.
 *Apply and reload* (grey while the table equals what is loaded) saves the
 table and loads the changed divisions. Stops whose folders are loaded keep
 their samples and copies; only new folders are read, only missing copies
-built; folders left out of the table are freed. Moving rows between
+built; folders left out of the table are freed. A table that only takes
+away - rows, folders, perspectives, folders switched to *not loaded* - is
+applied at once: the memory is freed, nothing is read, no loading window,
+and the perspectives that stay play on through their routes. Moving rows between
 divisions or into a stop folder reloads nothing. A stop with transmissions
 cannot be removed or renamed without a warning. Closing the window with
 changes not applied asks: *Apply and reload*, *Discard* or *Cancel*. What
