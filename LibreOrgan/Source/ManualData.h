@@ -259,8 +259,10 @@ static const char* const kManualText_part1 =
     "merged into it. A configuration with unsaved changes asks at quit or at the next\n"
     "load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks\n"
     "how they are to be held in RAM (storage, packing, rate -\n"
-    "[Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with\n"
-    "the configuration. For an organ this computer has loaded before, the box also\n"
+    "[Sample storage in RAM](#sample-storage-in-ram)) and, for an organ with\n"
+    "several perspectives, which of them to load (all ticked at first; an unticked\n"
+    "one costs no memory and no loading time - [4.3 Perspectives](#43-perspectives));\n"
+    "the choice is saved with the configuration. For an organ this computer has loaded before, the box also\n"
     "says how much memory the choice takes and how much can be used.\n"
     "\n"
     "### The loading window\n"
@@ -402,10 +404,10 @@ static const char* const kManualText_part1 =
     "\n"
     "---\n"
     "\n"
-    "# 2. The main window\n"
-    "\n"
     ;
 static const char* const kManualText_part2 =
+    "# 2. The main window\n"
+    "\n"
     "From top to bottom: the top bar of buttons, the combination row, the global\n"
     "sound sliders with the polyphony display, and the workspace - one column per\n"
     "division with its header and its stop grid. A button *Messages: N new* appears in\n"
@@ -604,10 +606,10 @@ static const char* const kManualText_part2 =
     "The stop's transposition against its sample files on their own numbers (the\n"
     "file \"036\" on key 36): every semitone from -24 to +24, each as a pure\n"
     "interval with the footage it gives - \"0 -> 8' (as the original)\", \"-12 ->\n"
-    "16'\", \"+7 -> 5 1/3'\", \"+3 -> 6 2/3'\" (octaves bold). The button's footage\n"
-    "follows it, and so do the stop's transmissions. A change reloads the stop's\n"
     ;
 static const char* const kManualText_part3 =
+    "16'\", \"+7 -> 5 1/3'\", \"+3 -> 6 2/3'\" (octaves bold). The button's footage\n"
+    "follows it, and so do the stop's transmissions. A change reloads the stop's\n"
     "samples at once. The program sets it by itself where it can: from a\n"
     "Hauptwerk definition, or from the samples' pitch against the footage in the\n"
     "folder's name (\"quintaton 16\" whose files sound 8' on their numbers gets\n"
@@ -806,10 +808,10 @@ static const char* const kManualText_part3 =
     "  missing.\n"
     "\n"
     "## 4.2 The table\n"
-    "\n"
-    "- **Order:** the rows open in the order of the grid (row by row, left to\n"
     ;
 static const char* const kManualText_part4 =
+    "\n"
+    "- **Order:** the rows open in the order of the grid (row by row, left to\n"
     "  right). Drag a stop name up or down to change it; *Apply* asks whether the\n"
     "  grid should follow.\n"
     "- **Division:** drag a row into another division's block, or choose it in\n"
@@ -860,6 +862,12 @@ static const char* const kManualText_part4 =
     "left or right** to change it: the lines take the new order, saved with the\n"
     "configuration, and the voicing boxes and the routing rows follow at once;\n"
     "nothing is reloaded.\n"
+    "\n"
+    "**A perspective that is not loaded.** The tick box before a column's name\n"
+    "(the load box has the same boxes): unticked, the perspective is not loaded -\n"
+    "its folders stay in the table, dimmed, and it has no row in Audio routing.\n"
+    "Tick it and *Apply and reload*: that perspective alone is read, the rest of\n"
+    "the organ stays in the memory.\n"
     "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
@@ -1002,6 +1010,8 @@ static const char* const kManualText_part4 =
     "output and the pair partner glow orange and the label under the cursor says\n"
     "what will land there (\"7+8\"); let go and that stereo pair replaces the\n"
     "route's channels, with **Shift** the pair is *added* (a multi-channel output\n"
+    ;
+static const char* const kManualText_part5 =
     "of a division: the pipes alternate between the pairs by key, C side / C#\n"
     "side), with **Alt** a single channel is taken (mono). Press a **cable** and it is yours: it\n"
     "leaves its output and follows the mouse - let go on another output (or\n"
@@ -1010,8 +1020,6 @@ static const char* const kManualText_part4 =
     "gone, the source is silent. Several cables into the same outputs stripe the\n"
     "output in all their colours and clamp it one ring outside the other. The\n"
     "channels of a route may be any number: the pipes are spread over them by key,\n"
-    ;
-static const char* const kManualText_part5 =
     "so a chord spreads across the speakers like pipes across a windchest (a mono\n"
     "sample to one channel in turn, a stereo sample to a pair).\n"
     "\n"
@@ -1204,6 +1212,8 @@ static const char* const kManualText_part5 =
     "separation and IR.\n"
     "\n"
     "**What it is for:** a dry set gets a second room - the auxiliary route on the\n"
+    ;
+static const char* const kManualText_part6 =
     "rear speakers with another IR is a \"Rear\" perspective the set never had. Or\n"
     "monitoring: headphones, a control room.\n"
     "\n"
@@ -1212,8 +1222,6 @@ static const char* const kManualText_part5 =
     "many pipes sounding. The measured limit itself counts voices and stays the\n"
     "same. Without a cable the route costs nothing.\n"
     "\n"
-    ;
-static const char* const kManualText_part6 =
     "Leave it without a cable unless you need the mixdown - a set with several\n"
     "perspectives rarely does - and never send it to the outputs of one of the\n"
     "perspectives: they would only sound twice.\n"
@@ -1406,6 +1414,8 @@ static const char* const kManualText_part6 =
     "*Record* in the top bar records the stereo mix to a WAV file; click again to\n"
     "stop (a short fade ends it). The file dialog starts in *Recordings folder*\n"
     "(Configuration Editor > Console; `LibreRecordings` beside the LibreOrgans\n"
+    ;
+static const char* const kManualText_part7 =
     "folder by default).\n"
     "\n"
     "## 6.6 Noises\n"
@@ -1414,10 +1424,11 @@ static const char* const kManualText_part6 =
     "drawknobs, the couplers, a running tremulant, the blower, and the effects with\n"
     "a button of their own (calcant bell, rossignol, zimbelstern, drum ...). A noise\n"
     "is played as its file is - never tuned, never touched by the wind, the\n"
-    ;
-static const char* const kManualText_part7 =
     "tremulant or the swell - through the route of its division and perspective, so\n"
     "every perspective has its own recording where the sample folders hold one.\n"
+    "An organ whose noises are one recording for all (older sample folders) plays\n"
+    "them through a route of their own, **Noises**: a row of Audio routing like a\n"
+    "perspective, with its own cable, volume and effects.\n"
     "\n"
     "- **Where they come from.** An organ made from a Hauptwerk definition takes its\n"
     "  noises with it. An organ you already have gets them by\n"
@@ -1453,9 +1464,10 @@ static const char* const kManualText_part7 =
     "  folder was read wrong.\n"
     "- **Volume** - of the noise as a whole. For a button it is the Stop volume of\n"
     "  its voicing row: one value, shown in both places.\n"
-    "- **One block per perspective**, in the order of the Perspective patterns -\n"
-    "  its box (on or off), its folder with the number of files, and its own\n"
-    "  volume on top of the noise's.\n"
+    "- **One block per perspective** - the organ's own perspectives, as the Stop\n"
+    "  List has them and in the same order (or the one block *Noises* when the\n"
+    "  noises have no perspectives): its box (on or off), its folder with the\n"
+    "  number of files, and its own volume on top of the noise's.\n"
     "- **+** at the start of a row - the folders and files of the noise. Under\n"
     "  Drawknobs and Couplers also which button has which free noise; choose\n"
     "  another there. Under a button that loops: *One-shot* (the file once,\n"
@@ -1604,6 +1616,8 @@ static const char* const kManualText_part7 =
     "routes lanes.\n"
     "\n"
     "### Sample storage in RAM\n"
+    ;
+static const char* const kManualText_part8 =
     "\n"
     "*32-bit float* keeps the samples as read; *16-bit* halves the RAM\n"
     "with a little hiss; *16-bit, releases at half the rate* stores the\n"
@@ -1616,8 +1630,6 @@ static const char* const kManualText_part7 =
     "### Compress samples in RAM (lossless)\n"
     "\n"
     "Off by default. The samples are packed in RAM like FLAC packs a file: every\n"
-    ;
-static const char* const kManualText_part8 =
     "frame comes back exactly and a set takes a third less RAM; float storage is\n"
     "packed as 24-bit integers (a 32-bit float file is rounded to 24 bits - half\n"
     "a step at most). The price: every voice unpacks what it plays before every\n"
@@ -1806,6 +1818,8 @@ static const char* const kManualText_part8 =
     "gradually.\n"
     "\n"
     "### Wind: maximum wind model effect\n"
+    ;
+static const char* const kManualText_part9 =
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
@@ -1818,8 +1832,6 @@ static const char* const kManualText_part8 =
     "### Tremulant: harmonic filter phase\n"
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
-    ;
-static const char* const kManualText_part9 =
     "default 90).\n"
     "\n"
     "### Tremulant: volume change per cent of pitch\n"
@@ -1885,7 +1897,9 @@ static const char* const kManualText_part9 =
     "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
     "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
     "and filled from its neighbours; its thumb turns green and the tooltip says\n"
-    "so. Travels with the organ.\n"
+    "so. Travels with the organ. The same limit holds for a release or a velocity\n"
+    "layer whose file names another pitch than the pipe's plain attack: it is\n"
+    "tuned to the attack by its own value up to this limit, beyond it left as it is.\n"
     "\n"
     "### Pipe coupling: detune left after the pull\n"
     "\n"
@@ -2006,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "### Interface size\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "Every window, button and text in per cent of the design size (50 to 300 %),\n"
     "estimated from the screen at the first start; applied when the slider is\n"
     "released.\n"
@@ -2020,8 +2036,6 @@ static const char* const kManualText_part9 =
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
     "### Program windows\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
@@ -2208,6 +2222,8 @@ static const char* const kManualText_part10 =
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
+    ;
+static const char* const kManualText_part11 =
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
     "\n"
@@ -2222,8 +2238,6 @@ static const char* const kManualText_part10 =
     "compass are filled from neighbouring pipes. Keys outside it play nothing on\n"
     "this division - they are free for another division on the same MIDI channel\n"
     "(two divisions with different compasses split one keyboard) or for MIDI\n"
-    ;
-static const char* const kManualText_part11 =
     "learn. The compass counts after the MIDI transposition; the keyboard drawing\n"
     "of the Divisions dialog shows the keys it takes.\n"
     "\n"
@@ -2410,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
     "happened - a few words are enough. *Create the report and open GitHub*\n"
+    ;
+static const char* const kManualText_part12 =
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
@@ -2424,8 +2440,6 @@ static const char* const kManualText_part11 =
     "the zip a report gives nothing to work from. A free GitHub account is\n"
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
     "*Open the GitHub form* in the program's message opens the form again.\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "## 9.4 Free software, licences, platforms\n"
     "\n"
@@ -2612,6 +2626,8 @@ static const char* const kManualText_part12 =
     "programs held when the load began, plus the reserve), the program swapped out\n"
     "by more than 256 MB since the load began (on macOS the compressor growing that\n"
     "much while less than twice the reserve is free; on Windows 1 GB of the program\n"
+    ;
+static const char* const kManualText_part13 =
     "taken out of its working set), the macOS kernel reporting memory pressure, or\n"
     "on Windows the commit limit (RAM and page file together) nearly reached. The\n"
     "samples never count on the page file: the loading ends while they are all in\n"
@@ -2626,8 +2642,6 @@ static const char* const kManualText_part12 =
     "load is never refused.\n"
     "\n"
     "The \"free\" figure: Windows' available physical memory, Linux's MemAvailable,\n"
-    ;
-static const char* const kManualText_part13 =
     "macOS's free and inactive pages. The *RAM GB* cell and the figures of a\n"
     "portable save are the process (Windows: the larger of working set and\n"
     "private bytes; macOS: the physical footprint; Linux: resident + swapped).\n"

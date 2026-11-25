@@ -81,6 +81,11 @@ struct Sample
     float measuredPitch = std::numeric_limits<float>::quiet_NaN();
     float smplPitchInFile = std::numeric_limits<float>::quiet_NaN();
     uint8_t pitchSource = 0;
+    // 0.9.134: a velocity layer or a release whose smpl chunk names another pitch than the pipe's reference file
+    // (the plain attack): the cents that bring THIS sample to the reference's pitch, added to the voice's tuning
+    // (Hauptwerk tunes every sample by its own smpl; one correction per pipe left Schorndorf's Siebenquart with
+    // releases up to 66 cents above their fine-tuned attacks). 0 for the reference itself and where the smpl agree.
+    float layerCents = 0.0f;
     // A pitch-shifted copy: the "formants follow" share it was built with, in
     // per cent (-1 = not a pitch-shifted copy). Lets a build and the cache tell
     // a copy made for another setting of its stop.
@@ -243,6 +248,7 @@ struct Stop
         VelocityLayer& operator=(VelocityLayer&&) noexcept = default;
 
         int maxVelocity = 127;
+        std::array<float, 128> layerCents{};   // 0.9.134: per note, what brings this layer's sample to the pitch of the pipe's plain attack (Sample::layerCents)
         std::array<std::vector<std::unique_ptr<Sample>>, 128> samplesByNote;
         std::array<uint8_t, 128> nextSampleIndex{};
         // Anti-alias copies of this layer's samples for filled pipes (like the
@@ -328,6 +334,7 @@ struct Stop
 
         int maxHoldMs = 99999;
         int maxVelocity = -1;
+        std::array<float, 128> layerCents{};   // 0.9.134: per note, what brings this release to the pitch of the pipe's plain attack
         std::array<std::vector<std::unique_ptr<Sample>>, 128> samplesByNote;
         std::array<uint8_t, 128> nextSampleIndex{};
         // Pitch-shifted copies for filled pipes (transposition method "pitch shift,
@@ -372,7 +379,7 @@ struct Stop
     // copyPipe >= 0: the pitch-shifted release copy of that filled pipe is preferred
     // (usedCopy tells whether one was found) - the transposition method "pitch shift".
     const Sample* getNextReleaseSample(int note, double holdMs, int velocity = 127,
-        const std::bitset<128>* disabledVelocityLayers = nullptr, int copyPipe = -1, bool* usedCopy = nullptr) noexcept
+        const std::bitset<128>* disabledVelocityLayers = nullptr, int copyPipe = -1, bool* usedCopy = nullptr, float* layerCentsOut = nullptr) noexcept
     {
         if (usedCopy != nullptr) *usedCopy = false;
         if (releaseLayers.empty() || note < 0 || note >= 128) return nullptr;
@@ -397,6 +404,7 @@ struct Stop
                 for (auto& layer : releaseLayers)
                     if (layer.maxHoldMs == holdMsOfGroup && layer.maxVelocity < 0 && !layer.samplesByNote[(size_t)note].empty()) chosen = &layer;
             if (chosen == nullptr) return nullptr;
+            if (layerCentsOut != nullptr) *layerCentsOut = chosen->layerCents[(size_t)note];
             if (copyPipe >= 0)
                 if (const Sample* copy = chosen->nextAliasFree(copyPipe))
                 {
@@ -1040,6 +1048,9 @@ public:
     // its perspectives (each pipe is rendered once more into it), with its own
     // device, channels, volume and IR (rear channels with another IR, for example).
     static const char* auxiliaryPerspectiveName() noexcept { return "auxiliary"; }
+    // 0.9.134: the route of the noises of an organ whose noises carry no perspective (the old sets: one recording
+    // for all) - a perspective of every division like any other (Audio routing: its own cable, volume, effects).
+    static const char* noisesPerspectiveName() noexcept { return "Noises"; }
     // IR reverb of one route (the audio stream sent to this perspective's device):
     // a WAV impulse response (mono, stereo or true stereo = 4 channels LL LR RL RR)
     // convolved with each output pair of the route, mixed dry/wet (0..1). An empty

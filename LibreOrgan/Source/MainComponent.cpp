@@ -2156,6 +2156,7 @@ MainComponent::MainComponent()
         }
         CrashHandler::note("Started without a configuration: the sample library starts empty, the pistons and the crescendo too");
         noisesChanged(juce::var(), keyNoisesFollowCouplers.load());   // 0.9.128: the last organ's noises went with it (they were loaded and armed on the empty console)
+        perspectivesNotLoaded.clear();   // 0.9.134: the last organ's choice of perspectives went with it
         treeStorage.clear();   // 0.9.125: the last organ's trees with a storage of their own went with it
         syncTreeStorageToEngine();
     }
@@ -4780,8 +4781,11 @@ void MainComponent::syncConfiguredPerspectives()
                 if (!entry.isTransmission())
                     for (const auto& [label, ref] : entry.folders)
                         if (label.isNotEmpty() && (ref.relativePath.isNotEmpty() || !ref.morePaths.isEmpty())
+                            && !perspectivesNotLoaded.contains(label, true)   // 0.9.134: a perspective that is not loaded has no route
                             && std::none_of(names.begin(), names.end(), [&](const juce::String& n) { return n.equalsIgnoreCase(label); }))
                             names.push_back(label);
+        // 0.9.134: noises without a perspective (the old sets) play through a route of their own in every division.
+        if (noisesOwnRoute && manual <= manualCount) names.push_back(SamplerEngine::noisesPerspectiveName());
         engine.setConfiguredPerspectives(manual, std::move(names));
     }
 }
@@ -4854,6 +4858,9 @@ void MainComponent::closeHiddenRoutes()
             auto& entry = it->second;
             const bool hasSettings = entry.reverbIrPath.isNotEmpty() || std::abs(entry.reverbWet - 0.3f) > 1.0e-4f
                 || std::abs(entry.volumeDb) > 1.0e-4f || std::abs(entry.channelSeparation - 1.0f) > 1.0e-4f;
+            // 0.9.134 (#265): a perspective that is only NOT LOADED now keeps its route's settings (cable, volume,
+            // effects) for the day it is loaded again.
+            if (!isLive && perspectivesNotLoaded.contains(perspective, true)) { ++it; continue; }
             if (!isLive)
             {
                 if (hasSettings)
@@ -4889,6 +4896,7 @@ std::vector<LoadStep> MainComponent::audioRouteSteps(double first, double last, 
     // dialog paints between them, so its text names the route being opened.
     ignoreDeviceRestartsUntil.store(juce::Time::getMillisecondCounterHiRes() + 6000.0);
     static const juce::String names[8]{ "Pedal", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+    syncConfiguredPerspectives();   // 0.9.134: the routes of the tables' perspectives and of the noises ("Noises") are opened here too, not at some later rebuild
     const auto missing = missingPerspectiveRoutes();
     std::vector<LoadStep> steps;
     // The ASIO drivers first, each as its own step: opening one takes
@@ -6549,6 +6557,23 @@ void MainComponent::ensureCardChecker()
     if (cardChecker.onResult == nullptr) cardChecker.onResult = [this](const CardCheck::Result& result) { cardAnswered(result); };
 }
 
+// 0.9.134: this computer's default card is looked for a few seconds after the START (the routes of the start have
+// opened by then; the cards are asked in the helper process) - not only after the first organ of the session was
+// loaded, which opened it on Windows' default output first and moved it to the ASIO card afterwards.
+void MainComponent::startDefaultCardSearchIfDue()
+{
+   #if JUCE_WINDOWS
+    if (defaultCardSearchedAtStart) return;
+    if (!applicationReady.load() || activeFolderLoader != nullptr || searchingSampleFolders || applyAllRunning || defaultCardSearch.running) return;
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    if (defaultCardStartQuietSinceMs <= 0.0) { defaultCardStartQuietSinceMs = now; return; }
+    if (now - defaultCardStartQuietSinceMs < 3000.0) return;
+    defaultCardSearchedAtStart = true;
+    if (defaultRoutingFile().existsAsFile()) return;   // "Use as default for new organs" names the cards itself
+    startDefaultCardSearch("the program started", false);
+   #endif
+}
+
 void MainComponent::startDefaultCardSearch(const juce::String& why, bool moveRoutes)
 {
    #if JUCE_WINDOWS
@@ -6601,6 +6626,7 @@ void MainComponent::askNextDefaultCandidate()
     // No card of this computer opens.
     search.running = false;
     preferredDefaultType.clear(); preferredDefaultName.clear();
+    if (rememberedDefaultCard.isNotEmpty()) { rememberedDefaultCard.clear(); saveSettings(); }
     CrashHandler::note("Default sound card: NO card of this computer opens - " + (search.refusals.isEmpty() ? juce::String("none is listed") : search.refusals.joinIntoString("; ")));
     if (search.moveRoutes)
     {
@@ -6621,6 +6647,7 @@ void MainComponent::defaultCardFound(const juce::String& type, const juce::Strin
     search.running = false;
     search.lookAgainOnChange = false;
     preferredDefaultType = type; preferredDefaultName = name;
+    if (rememberedDefaultCard != type + "|" + name) { rememberedDefaultCard = type + "|" + name; saveSettings(); }   // 0.9.134: the next start has it at once
     CrashHandler::note("Default sound card: " + name + " (" + type + ")" + (search.refusals.isEmpty() ? juce::String() : " - asked before it in vain: " + search.refusals.joinIntoString("; ")));
     if (!search.moveRoutes) return;
     search.moveRoutes = false;
@@ -15963,6 +15990,12 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             root->setProperty("compressSamples", juce::String(packing) == "on");
             root->setProperty("compressAutomatic", juce::String(packing) == "automatic");
         }
+        if (const char* off = std::getenv("ORGAN_TEST_PERSPECTIVES_OFF"))   // 0.9.134: "Rear;Diffuse" = the box's unticked perspectives
+        {
+            juce::Array<juce::var> list;
+            for (const auto& name : juce::StringArray::fromTokens(off, ";", "")) if (name.trim().isNotEmpty()) list.add(name.trim());
+            root->setProperty("perspectivesNotLoaded", list);
+        }
         if (const char* storage = std::getenv("ORGAN_TEST_STORAGE"))
         {
             root->setProperty("sampleStorageFloat", juce::String(storage) == "float");
@@ -16098,15 +16131,90 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         window->getComboBoxComponent("action")->setSelectedItemIndex(testAction != nullptr && juce::String(testAction) == "merge" ? 1 : 0, juce::dontSendNotification);
         window->getComboBoxComponent("action")->onChange = updateMemoryLine;
     }
+    // 0.9.134 (#265, the user: in THIS box, no further one; all on by default): the perspectives of the file as tick
+    // boxes - an unticked one is not loaded (its folders stay in the Stop List, where it can be loaded later).
+    struct PerspectiveTicks final : public juce::Component
+    {
+        juce::Label caption;
+        juce::OwnedArray<juce::ToggleButton> boxes;
+        void resized() override
+        {
+            caption.setBounds(0, 0, 168, 24);
+            int x = 172, y = 0;
+            for (auto* box : boxes)
+            {
+                const int width = 34 + (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), box->getButtonText()));
+                if (x + width > getWidth() && x > 172) { x = 172; y += 26; }
+                box->setBounds(x, y, width, 24);
+                x += width + 8;
+            }
+        }
+        int heightFor(int width)
+        {
+            int x = 172, y = 0;
+            for (auto* box : boxes)
+            {
+                const int w = 34 + (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), box->getButtonText()));
+                if (x + w > width && x > 172) { x = 172; y += 26; }
+                x += w + 8;
+            }
+            return y + 24;
+        }
+    };
+    std::shared_ptr<PerspectiveTicks> ticks;
+    {
+        juce::StringArray names, order;
+        if (const auto* lines = root->getProperty("perspectivePatterns").getArray())
+            for (const auto& line : *lines) order.add(line.toString().upToFirstOccurrenceOf(";", false, false).trim());
+        if (const auto* divisions = root->getProperty("manualKeyboards").getArray())
+            for (const auto& division : *divisions)
+                if (const auto* entries = division.getProperty("stopBuild", juce::var()).getProperty("entries", juce::var()).getArray())
+                    for (const auto& entry : *entries)
+                        if (const auto* folders = entry.getProperty("folders", juce::var()).getArray())
+                            for (const auto& folder : *folders)
+                                if (const auto name = folder.getProperty("perspective", "").toString(); name.isNotEmpty()) names.addIfNotAlreadyThere(name, true);
+        juce::StringArray sorted;
+        for (const auto& name : order) if (names.contains(name, true) && !sorted.contains(name, true)) sorted.add(name);
+        for (const auto& name : names) if (!sorted.contains(name, true)) sorted.add(name);
+        juce::StringArray off;
+        if (const auto* list = root->getProperty("perspectivesNotLoaded").getArray()) for (const auto& name : *list) off.add(name.toString());
+        if (sorted.size() >= 2)
+        {
+            ticks = std::make_shared<PerspectiveTicks>();
+            ticks->caption.setText("Perspectives to load:", juce::dontSendNotification);
+            ticks->caption.setFont(juce::Font(juce::FontOptions(15.0f)));
+            ticks->caption.setBorderSize(juce::BorderSize<int>(0));
+            ticks->addAndMakeVisible(ticks->caption);
+            for (const auto& name : sorted)
+            {
+                auto* box = ticks->boxes.add(new juce::ToggleButton(name));
+                box->setToggleState(!off.contains(name, true), juce::dontSendNotification);
+                box->setTooltip("Unticked: this perspective is not loaded - less memory, a shorter load. Its folders stay in the Stop List; tick its column there (or here at the next load) to load it.");
+                ticks->addAndMakeVisible(box);
+            }
+            ticks->setSize(640, ticks->heightFor(640));
+            window->addCustomComponent(ticks.get());
+        }
+    }
     updateMemoryLine();
     window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::Component::SafePointer<juce::AlertWindow> box(window);
-    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds, organLoaded](int result) mutable
+    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds, organLoaded, ticks](int result) mutable
     {
         if (safeThis == nullptr || box == nullptr) return;
         if (result != 1) { CrashHandler::note("Load Configuration \"" + what + "\": cancelled at the sample storage choices"); return; }
+        if (ticks != nullptr)
+            if (auto* r = configuration.getDynamicObject())
+            {
+                juce::Array<juce::var> off;
+                juce::StringArray names;
+                for (auto* tick : ticks->boxes) if (!tick->getToggleState()) { off.add(tick->getButtonText()); names.add(tick->getButtonText()); }
+                if (off.size() == ticks->boxes.size()) { off.clear(); names.clear(); }   // nothing ticked: no organ - every perspective then
+                if (off.isEmpty()) r->removeProperty("perspectivesNotLoaded"); else r->setProperty("perspectivesNotLoaded", off);
+                if (!names.isEmpty()) CrashHandler::note("Load Configuration \"" + what + "\": perspective(s) NOT loaded - " + names.joinIntoString(", "));
+            }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
@@ -16185,7 +16293,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize", "defaultCard" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -20917,6 +21025,7 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
         }
         for (const auto& [perspective, ref] : entry.folders)
         {
+            if (perspectivesNotLoaded.contains(perspective, true)) continue;   // 0.9.134 (#265): a perspective left out of the load - its folders wait in the table
             const auto folder = resolveStopBuildFolder(manual, ref);
             if (folder == juce::File()) continue;
             map->push_back({ folder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
@@ -25606,6 +25715,7 @@ void MainComponent::showStopBuildingDialog(int)
                 + juce::String(juce::Time::getMillisecondCounterHiRes() - startMs, 0) + " ms");
             showTransmissions = owner.stopListShowTransmissions;
             rebuildPerspectiveUnion();
+            notLoaded = originalNotLoaded = owner.perspectivesNotLoaded;
             originalDrafts = drafts;   // 0.8.231: AFTER the union - its sorting of the perspective lists made every division
                                        // "changed" at every opening (an orange Apply that reloaded the whole organ for nothing)
             // Development (0.9.64): ORGAN_TEST_TABLE_ALIAS="<manual>|<row name>|<alias>" edits the alias in the
@@ -25921,7 +26031,16 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
-        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove; };
+        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove; std::unique_ptr<juce::ToggleButton> load; };
+        // 0.9.134 (#265): the perspectives that are not loaded - the tick box in each column's header (the load box
+        // has the same boxes: one value). A draft like the table: "Apply and reload" loads or frees the perspective.
+        juce::StringArray notLoaded, originalNotLoaded;
+        void setPerspectiveLoaded(const juce::String& perspective, bool loaded)
+        {
+            if (loaded) notLoaded.removeString(perspective, true); else notLoaded.addIfNotAlreadyThere(perspective, true);
+            juce::Component::SafePointer<StopListDialog> safeThis(this);
+            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->rebuildGrid(); });   // never from inside the box's own click
+        }
 
         MainComponent& owner;
         std::array<Build, kDivisions> drafts, originalDrafts;
@@ -25973,6 +26092,10 @@ void MainComponent::showStopBuildingDialog(int)
                 bool same = a.size() == b.size()
                     && drafts[(size_t)m].perspectives == originalDrafts[(size_t)m].perspectives && owner.manualConfigs[(size_t)m].stopBuild.active;
                 for (size_t i = 0; same && i < a.size(); ++i) same = sameEntry(a[i], b[i]);
+                // 0.9.134: a perspective ticked or unticked for loading changes every division that has folders in it.
+                for (size_t i = 0; same && i < a.size(); ++i)
+                    for (const auto& [perspective, ref] : a[i].folders)
+                        if (notLoaded.contains(perspective, true) != originalNotLoaded.contains(perspective, true)) same = false;
                 if (!same && (!a.empty() || !b.empty())) changed.insert(m);
             }
             return changed;
@@ -26450,6 +26573,18 @@ void MainComponent::showStopBuildingDialog(int)
                     cell.label->dropAt = [this, p](juce::Point<int> screen) { columnDrop(p, screen); };
                 }
                 grid.addAndMakeVisible(*cell.label);
+                cell.load = std::make_unique<juce::ToggleButton>();
+                cell.load->setToggleState(!notLoaded.contains(perspectives[p], true), juce::dontSendNotification);
+                cell.load->setTooltip("Ticked: the perspective \"" + perspectives[p] + "\" is loaded. Unticked: it is not - less memory, a shorter load; its folders wait in the table "
+                    "(dimmed) and it has no cable in the Audio routing. \"Apply and reload\" loads or frees it; the rest of the organ stays in the memory. The load box has the same boxes.");
+                {
+                    auto* box = cell.load.get();
+                    const juce::String name = perspectives[p];
+                    cell.load->onClick = [this, box, name] { setPerspectiveLoaded(name, box->getToggleState()); };
+                    cell.load->getProperties().set("testName", "load " + name);   // ORGAN_TEST_MOUSE finds it
+                }
+                grid.addAndMakeVisible(*cell.load);
+                cell.load->setVisible(anyRows);
                 cell.remove = std::make_unique<juce::TextButton>("x");
                 cell.remove->setTooltip("Remove this perspective column (its folders become free)");
                 cell.remove->onClick = [this, p] { removePerspective(p); };
@@ -26739,6 +26874,13 @@ void MainComponent::showStopBuildingDialog(int)
                         ? "NOT FOUND on this computer: " + tailText(pool[(size_t)juce::jmax(0, ref.tree)]) + juce::File::getSeparatorString() + ref.relativePath.replaceCharacter('/', juce::File::getSeparatorChar())
                         : folder.getFullPathName();
                     if (missing) cell.button->setColour(juce::TextButton::textColourOffId, onColour());
+                    else if (notLoaded.contains(perspective, true))
+                    {
+                        // 0.9.134 (the user): a folder that waits - its perspective is not loaded - reads apart from the loaded ones.
+                        cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.4f));
+                        cell.button->setColour(juce::TextButton::buttonColourId, juce::Colours::black.withAlpha(0.25f));
+                        cellPaths[cell.button.get()] = "Not loaded (the perspective \"" + perspective + "\" is unticked): " + folder.getFullPathName();
+                    }
                     cell.button->addMouseListener(this, false);
                 }
                 else
@@ -26817,9 +26959,11 @@ void MainComponent::showStopBuildingDialog(int)
                 // The name and its "x" together (0.8.160): the button right after the
                 // text, not at the far edge of the column.
                 const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(header.label->getFont(), header.label->getText())) + 8;
-                const int labelWidth = juce::jlimit(20, cellWidth - freeWidth - 6, textWidth);
-                header.label->setBounds(x + 2, 0, labelWidth, headerHeight);
-                header.remove->setBounds(x + 2 + labelWidth + 2, 4, freeWidth - 4, headerHeight - 8);
+                const int tick = 24;   // 0.9.134: the "loaded" tick box before the name
+                const int labelWidth = juce::jlimit(20, cellWidth - freeWidth - 6 - tick, textWidth);
+                if (header.load != nullptr) header.load->setBounds(x + 2, (headerHeight - 22) / 2, tick, 22);
+                header.label->setBounds(x + 2 + tick, 0, labelWidth, headerHeight);
+                header.remove->setBounds(x + 2 + tick + labelWidth + 2, 4, freeWidth - 4, headerHeight - 8);
                 x += cellWidth;
             }
             int y = headerHeight;
@@ -26945,6 +27089,11 @@ void MainComponent::showStopBuildingDialog(int)
                     menu.addSubMenu(tree.folder.getFileName() + "  (" + juce::String(sub.getNumItems()) + " free)", sub, sub.getNumItems() > 0);
             }
             if (!anyFree) menu.addItem(-1, "All folders are used. Free one first (the x beside a cell) to use it here.", false);
+            if (notLoaded.contains(perspective, true))   // 0.9.134: the same as the tick box of its column
+            {
+                menu.addSeparator();
+                menu.addItem(900000, "Load the perspective \"" + perspective + "\" (not loaded now) - with \"Apply and reload\"");
+            }
             juce::Component* target = nullptr;
             for (size_t p = 0; p < perspectives.size() && p < rows[rowIndex]->cells.size(); ++p)
                 if (perspectives[p] == perspective) target = rows[rowIndex]->cells[p].button.get();
@@ -26953,6 +27102,7 @@ void MainComponent::showStopBuildingDialog(int)
                 [safeThis, rowIndex, perspective, byId](int result)
                 {
                     if (safeThis == nullptr || result <= 0) return;
+                    if (result == 900000) { safeThis->setPerspectiveLoaded(perspective, true); return; }
                     const auto found = byId.find(result);
                     auto* entry = safeThis->entryOf(rowIndex);
                     if (found == byId.end() || entry == nullptr) return;
@@ -27134,11 +27284,13 @@ void MainComponent::showStopBuildingDialog(int)
             commitEditors();
             const auto newName = newNameIn.trim();
             if (index >= perspectives.size() || newName.isEmpty() || newName.equalsIgnoreCase("default")
-                || newName.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName())) { rebuildGrid(); return; }
+                || newName.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName()) || newName.equalsIgnoreCase(SamplerEngine::noisesPerspectiveName())) { rebuildGrid(); return; }
             const auto oldName = perspectives[index];
             if (newName == oldName) return;
             for (const auto& existing : perspectives)
                 if (existing.equalsIgnoreCase(newName)) { rebuildGrid(); return; }
+            for (auto* list : { &notLoaded, &originalNotLoaded })   // 0.9.134: a perspective that is not loaded keeps that under its new name
+                for (int i = 0; i < list->size(); ++i) if ((*list)[i].equalsIgnoreCase(oldName)) list->set(i, newName);
             for (int manual = 0; manual < kDivisions; ++manual)
             {
                 auto& draft = drafts[(size_t)manual];
@@ -27400,6 +27552,12 @@ void MainComponent::showStopBuildingDialog(int)
             auto plan = transmissionPlan();
             const bool trChanged = transmissionsChanged();
             if (changed.empty() && !trChanged) { updateApplyState(); return; }
+            if (notLoaded != originalNotLoaded)   // 0.9.134: the reload below reads it (stopBuildMap, the routes)
+            {
+                owner.perspectivesNotLoaded = notLoaded;
+                owner.configurationDirty = true;
+                CrashHandler::note("Stop List: perspective(s) not loaded from now on - " + (notLoaded.isEmpty() ? juce::String("none (every perspective is loaded)") : notLoaded.joinIntoString(", ")));
+            }
             juce::StringArray losing;
             dropCandidates.clear();
             for (int m : changed)
@@ -28052,6 +28210,19 @@ void MainComponent::loadSettings()
         for (const auto& type : *expanded) if (type.toString().isNotEmpty()) audioRoutingExpanded.addIfNotAlreadyThere(type.toString());
     }
     audioRoutingButtonSize = juce::jlimit(0, 3, (int)parsed.getProperty("audioRoutingButtonSize", 1));   // 0.9.93: 3 = compact
+   #if JUCE_WINDOWS
+    // 0.9.134 (the user: an organ was opened on Windows' default output and moved to the ASIO card only after its
+    // load): the default card found in an earlier session is taken from the start; the search right after the
+    // start (startDefaultCardSearchIfDue) confirms it or finds another. Not with a saved "default for new organs":
+    // that file names the cards itself.
+    rememberedDefaultCard = parsed.getProperty("defaultCard", "").toString();
+    if (preferredDefaultType.isEmpty() && rememberedDefaultCard.containsChar('|') && !defaultCardSearchedAtStart && !defaultRoutingFile().existsAsFile())
+    {
+        preferredDefaultType = rememberedDefaultCard.upToFirstOccurrenceOf("|", false, false);
+        preferredDefaultName = rememberedDefaultCard.fromFirstOccurrenceOf("|", false, false);
+        CrashHandler::note("Default sound card: " + preferredDefaultName + " (" + preferredDefaultType + ") remembered from an earlier session - confirmed in a moment");
+    }
+   #endif
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
     if (auto* folded = parsed.getProperty("configEditorCollapsed", juce::var()).getDynamicObject())
@@ -28088,6 +28259,11 @@ void MainComponent::loadSettings()
     velocityFullFrom = juce::jlimit(2, 127, (int)parsed.getProperty("velocityFullFrom", 80));   // 0.8.196
     engine.setVelocityFullFrom(velocityFullFrom);
     velocityPlainStrict = (bool)parsed.getProperty("velocityPlainStrict", false);   // 0.8.192
+    // 0.9.134 (#265): the perspectives of this organ that are NOT loaded (the load box's and the Stop List's tick
+    // boxes) - their folders stay in the tables. A file without the key loads every perspective.
+    perspectivesNotLoaded.clear();
+    if (const auto* list = parsed.getProperty("perspectivesNotLoaded", juce::var()).getArray())
+        for (const auto& name : *list) if (name.toString().isNotEmpty()) perspectivesNotLoaded.addIfNotAlreadyThere(name.toString(), true);
     engine.setVelocityPlainStrict(velocityPlainStrict);
     measurePipePitch = (bool)parsed.getProperty("measurePipePitch", true);   // 0.9.70
     engine.setMeasurePipePitch(measurePipePitch);
@@ -29001,6 +29177,7 @@ void MainComponent::saveSettingsNow()
         obj->setProperty("audioRoutingCardCells", cells);
         if (audioRoutingExpandedSet) obj->setProperty("audioRoutingExpanded", expanded);
         obj->setProperty("audioRoutingButtonSize", audioRoutingButtonSize);
+        if (rememberedDefaultCard.isNotEmpty()) obj->setProperty("defaultCard", rememberedDefaultCard);
     }
     {
         juce::DynamicObject::Ptr folded = new juce::DynamicObject();
@@ -29048,6 +29225,12 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
     obj->setProperty("velocityFullFrom", velocityFullFrom);
     obj->setProperty("velocityPlainStrict", velocityPlainStrict);
+    if (!perspectivesNotLoaded.isEmpty())
+    {
+        juce::Array<juce::var> list;
+        for (const auto& name : perspectivesNotLoaded) list.add(name);
+        obj->setProperty("perspectivesNotLoaded", list);
+    }
     obj->setProperty("measurePipePitch", measurePipePitch);   // 0.9.70
     obj->setProperty("velocityShelfDb", velocityShelfDb);
     obj->setProperty("velocityShelfMs", velocityShelfMs);
@@ -29385,7 +29568,7 @@ void MainComponent::saveSettingsNow()
         // properties in insertion order, so the string compares reliably.
         juce::DynamicObject::Ptr essential = new juce::DynamicObject();
         static const std::set<juce::String> volatileKeys{ "windowWidth", "windowHeight", "windowX", "windowY",
-            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName", "organMemory", "organPolyphony" };
+            "windowMaximised", "secondWindowMaximised", "dialogBounds", "configurationFile", "configurationName", "organMemory", "organPolyphony", "defaultCard" };
         for (const auto& property : obj->getProperties())
             if (volatileKeys.count(property.name.toString()) == 0) essential->setProperty(property.name, property.value);
         // Opening a voicing or unfolding its key rows is not a change worth asking about.
@@ -30856,6 +31039,7 @@ void MainComponent::timerCallback()
     showSafeStartNoticeIfDue();
     showPortableNoticeIfDue();
     applyDefaultRoutingIfDue();
+    startDefaultCardSearchIfDue();
     updateEmptyHint();
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
@@ -32236,6 +32420,7 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
                 self.voicer->rebuildUI(self.stopsContent, self.stopsViewport);
             }
             CrashHandler::note("Global reset: everything unloaded, the instrument is empty (the samples are freed in the background)");
+            self.perspectivesNotLoaded.clear();   // 0.9.134
             self.treeStorage.clear();   // 0.9.125
             self.syncTreeStorageToEngine();
             self.globalResetStatus("Resetting the controls and divisions ...");
@@ -36708,6 +36893,8 @@ void MainComponent::ensurePerspectivePatternLine(const juce::String& label)
 // Perspective patterns line is relabelled; the routes themselves follow at Apply.
 void MainComponent::renamePerspectiveSettings(const juce::String& oldName, const juce::String& newName)
 {
+    for (int i = 0; i < perspectivesNotLoaded.size(); ++i)   // 0.9.134
+        if (perspectivesNotLoaded[i].equalsIgnoreCase(oldName)) perspectivesNotLoaded.set(i, newName);
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         auto& audio = manualConfigs[(size_t)manual].perspectiveAudio;
@@ -36766,7 +36953,7 @@ void MainComponent::perspectiveOrderChanged()
     if (noisesWindow != nullptr && noisesWindow->isVisible())
     {
         juce::Component::SafePointer<MainComponent> safeThis(this);
-        juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr && safeThis->noisesWindow != nullptr && safeThis->noisesWindow->isVisible()) safeThis->showNoisesWindow(); });
+        juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->refreshNoisesWindow(); });
     }
 }
 
@@ -36993,6 +37180,18 @@ juce::File MainComponent::libraryRootOnThisComputer() const
 void MainComponent::noisesChanged(const juce::var& noises, bool followCouplers)
 {
     noisesVar = noises.isObject() ? noises : juce::var();
+    // 0.9.134: the route "Noises" is wanted from the start for a file whose noises name no perspective at all (so its
+    // saved cable and volume are not dropped as "a route that does not exist"); settleNoisePerspectives has the last word.
+    {
+        int named = 0, without = 0;
+        if (const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray())
+            for (const auto& text : *sounds)
+            {
+                const auto fields = juce::StringArray::fromTokens(text.toString(), "\t", "");
+                if (fields.size() >= 10 && fields[0] != "tremulant") { if (fields[3].isEmpty()) ++without; else ++named; }
+            }
+        noisesOwnRoute = named == 0 && without > 0;
+    }
     keyNoisesFollowCouplers.store(followCouplers);
     engine.setNoisesEnabled(noisesVar.isObject() ? (bool)noisesVar.getProperty("enabled", true) : true);
     engine.setNoiseVolumeDb(noisesVar.isObject() ? (float)(double)noisesVar.getProperty("volumeDb", 0.0) : 0.0f);
@@ -37040,7 +37239,7 @@ void MainComponent::setNoiseAssignment(const juce::String& buttonKey, const juce
     storeNoiseAssignments(assigned);
     engine.setNoiseAssignments(assigned);
     CrashHandler::note("Noises: " + (buttonKey.isEmpty() ? juce::String("every free drawknob noise is dealt anew") : buttonKey + (group.isEmpty() ? " takes a free noise anew" : " takes the noise " + group)));
-    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow();
+    refreshNoisesWindow();
 }
 
 void MainComponent::setNoiseFreeRandom(bool random)
@@ -37109,6 +37308,7 @@ void MainComponent::noisesTick()
     if (noisesVersionLoaded != noisesVersionWanted)
     {
         if (now - noisesQuietSinceMs < 1500.0) return;
+        settleNoisePerspectives();   // 0.9.134: the organ is loaded - its perspectives and patterns are known now
         const int version = noisesVersionWanted;
         int unresolved = 0;
         auto specs = noiseSpecs(unresolved);
@@ -37198,7 +37398,23 @@ void MainComponent::noisesTick()
                     juce::Timer::callAfterDelay(juce::jmax(1, parts[0].getIntValue()) * 1000, [safeThis, parts]
                     {
                         if (safeThis == nullptr) return;
-                        if (parts[1] == "volume") safeThis->setNoiseUnitVolume(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], parts[parts.size() - 1].getDoubleValue());
+                        // 0.9.134: "<s>|order" = what a column dragged in the Stop List does to the open Noises window
+                        // (perspectiveOrderChanged); the windows are logged back to front before and after - the order must stay.
+                        if (parts[1] == "order")
+                        {
+                            auto stack = []
+                            {
+                                juce::StringArray names;
+                                auto& desktop = juce::Desktop::getInstance();
+                                for (int i = 0; i < desktop.getNumComponents(); ++i)
+                                    if (auto* c = desktop.getComponent(i); c != nullptr && c->isVisible() && c->getName().isNotEmpty()) names.add(c->getName());
+                                return names.joinIntoString(" < ");
+                            };
+                            const juce::String before = stack();
+                            safeThis->perspectiveOrderChanged();
+                            juce::Timer::callAfterDelay(700, [before, stack] { CrashHandler::note("ORGAN_TEST_NOISE_UNITS order: the windows back to front before - " + before + "; after - " + stack()); });
+                        }
+                        else if (parts[1] == "volume") safeThis->setNoiseUnitVolume(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], parts[parts.size() - 1].getDoubleValue());
                         else if (parts[1] == "on") safeThis->setNoiseUnitOn(parts[2] + (parts.size() > 4 ? "|" + parts[3] : juce::String()), parts[parts.size() - 1].getIntValue() != 0);
                         else if (parts[1] == "kind") safeThis->changeNoiseUnit(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], parts[parts.size() - 1].getIntValue());
                         else if (parts[1] == "remove") safeThis->removeNoiseUnit(parts[2] + (parts.size() > 3 ? "|" + parts[3] : juce::String()));
@@ -37269,7 +37485,7 @@ void MainComponent::setNoisesModel(const juce::var& noises, const juce::String& 
     configurationDirty = true;
     saveSettings();
     CrashHandler::note("Noises: " + why);
-    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow();
+    refreshNoisesWindow();
     refreshConfigurationEditor();
 }
 
@@ -37370,10 +37586,39 @@ void MainComponent::addNoisesFromDefinition(const juce::File& odfFile)
 // on / off, down / up, pull / push, in / out), the kind (keys, drawknobs, couplers, tremulant; anything else is a
 // button of its own, named after its folder), the division (a number, "ped", a division's name or alias). What it
 // misses is set by hand. The drawknobs of a folder cannot be told apart: they are free ones, given to the buttons.
-juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::String& summary) const
+// 0.9.134: the perspectives of the ORGAN - what the Stop List's tables name (never "default", the auxiliary or the
+// noises' own route), in the order of the Perspective Patterns. The Noises window has exactly these columns.
+juce::StringArray MainComponent::organPerspectiveNames() const
 {
-    const juce::File root = libraryRootOnThisComputer();
-    // The perspectives: label -> the words that name it (its pattern prefixes, the label itself, its first letters).
+    std::vector<juce::String> names;
+    auto add = [&names](const juce::String& name)
+    {
+        if (name.isNotEmpty() && !name.equalsIgnoreCase("default") && !name.equalsIgnoreCase("auxiliary") && !name.equalsIgnoreCase(SamplerEngine::noisesPerspectiveName())
+            && std::none_of(names.begin(), names.end(), [&](const juce::String& n) { return n.equalsIgnoreCase(name); }))
+            names.push_back(name);
+    };
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+    {
+        // The tables' columns (a perspective that is not loaded is the organ's all the same), then what the engine holds (an organ without tables).
+        const auto& build = manualConfigs[(size_t)manual].stopBuild;
+        if (build.active)
+            for (const auto& entry : build.entries)
+                if (!entry.isTransmission())
+                    for (const auto& [label, ref] : entry.folders)
+                        if (ref.relativePath.isNotEmpty() || !ref.morePaths.isEmpty()) add(label);
+        for (const auto& name : engine.getPerspectivesForManual(manual)) add(name);
+    }
+    engine.sortPerspectives(names);
+    juce::StringArray result;
+    for (const auto& name : names) result.add(name);
+    return result;
+}
+
+// The perspectives a noise's folder or file may name: label -> the words that name it (its pattern prefixes' letters,
+// the label itself, its first three letters) - only the perspectives THIS organ has (the patterns hold every organ's:
+// "Distant" of another one must not take a folder of this one - its sounds would have no route).
+std::vector<std::pair<juce::String, juce::StringArray>> MainComponent::noisePerspectiveWords() const
+{
     std::vector<std::pair<juce::String, juce::StringArray>> perspectives;
     for (const auto& line : engine.getPerspectivePatterns())
     {
@@ -37391,12 +37636,7 @@ juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::Str
         if (label.length() >= 3) words.addIfNotAlreadyThere(label.substring(0, 3));
         perspectives.push_back({ parts[0].trim(), words });
     }
-    // Only the perspectives THIS organ has (the patterns hold every organ's: "Distant" of another one must not take
-    // a folder of this one - its sounds would have no route).
-    juce::StringArray organPerspectives;
-    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
-        for (const auto& name : engine.getPerspectivesForManual(manual))
-            if (!name.equalsIgnoreCase("default") && !name.equalsIgnoreCase("auxiliary")) organPerspectives.addIfNotAlreadyThere(name, true);
+    const juce::StringArray organPerspectives = organPerspectiveNames();
     if (!organPerspectives.isEmpty())
         perspectives.erase(std::remove_if(perspectives.begin(), perspectives.end(), [&](const std::pair<juce::String, juce::StringArray>& entry)
             { return !organPerspectives.contains(entry.first, true); }), perspectives.end());
@@ -37410,6 +37650,110 @@ juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::Str
         if (name.length() >= 3) words.add(name.toLowerCase().substring(0, 3));
         perspectives.push_back({ name, words });
     }
+    return perspectives;
+}
+
+juce::String MainComponent::noisePerspectiveOfName(const std::vector<std::pair<juce::String, juce::StringArray>>& perspectives, const juce::String& name)
+{
+    juce::StringArray tokens;
+    juce::String token;
+    for (const auto c : name.toLowerCase())
+    {
+        if (juce::CharacterFunctions::isLetter(c)) token << c;
+        else { if (token.isNotEmpty()) tokens.add(token); token.clear(); }
+    }
+    if (token.isNotEmpty()) tokens.add(token);
+    for (const auto& [label, words] : perspectives)
+        for (const auto& t : tokens)
+            for (const auto& word : words)
+                if (t == word || (word.length() >= 3 && t.startsWith(word))) return label;
+    return {};
+}
+
+// 0.9.134 (the user's rules): the noises of an organ EITHER copy its perspectives OR have none at all (the old sets:
+// one recording, played through the route "Noises" of its own) - never both. A sound without a perspective in an
+// organ whose noises have them is given one: by the names of its file and folders (the Perspective Patterns), else
+// the perspective its sisters of the same trigger leave free, else the first. Run when the organ is loaded (the
+// tables and the patterns are known then); an older file is put right at every load until it is saved.
+void MainComponent::settleNoisePerspectives()
+{
+    auto* model = noisesVar.getDynamicObject();
+    auto* sounds = model != nullptr ? model->getProperty("sounds").getArray() : nullptr;
+    const bool hadOwnRoute = noisesOwnRoute;
+    if (sounds == nullptr) { noisesOwnRoute = false; if (hadOwnRoute) rebuildPerspectiveAudioRoutes(); return; }
+    const juce::StringArray organ = organPerspectiveNames();
+    const auto words = noisePerspectiveWords();
+    auto fieldsOf = [](const juce::var& text) { juce::StringArray fields; fields.addTokens(text.toString(), "\t", ""); return fields; };
+    int named = 0, without = 0, byName = 0, byRest = 0;
+    juce::StringArray examples;
+    for (auto& text : *sounds)
+    {
+        auto fields = fieldsOf(text);
+        if (fields.size() < 10 || fields[0] == "tremulant") continue;
+        if (fields[3].isEmpty() && !organ.isEmpty())
+        {
+            // The file's own name first ("06-varhSenn.wav"), then its folders from the innermost outwards.
+            const auto folder = fields[8].upToFirstOccurrenceOf("//", false, false);
+            const auto firstFile = fields[8].fromFirstOccurrenceOf("//", false, false).upToFirstOccurrenceOf("|", false, false);
+            juce::String label = noisePerspectiveOfName(words, firstFile.upToLastOccurrenceOf(".", false, false));
+            auto parts = juce::StringArray::fromTokens(folder, "/\\", "");
+            for (int i = parts.size() - 1; i >= 0 && label.isEmpty(); --i) label = noisePerspectiveOfName(words, parts[i]);
+            if (label.isNotEmpty())
+            {
+                fields.set(3, label);
+                text = fields.joinIntoString("\t");
+                ++byName;
+                if (examples.size() < 4) examples.add(firstFile + " -> " + label);
+            }
+        }
+        if (fields[3].isEmpty()) ++without; else ++named;
+    }
+    if (named > 0 && without > 0 && !organ.isEmpty())
+    {
+        auto groupOf = [](const juce::StringArray& f) { return f[0] + "|" + f[1] + "|" + f[2] + "|" + f[4] + "|" + f[5]; };
+        std::map<juce::String, juce::StringArray> used;
+        for (const auto& text : *sounds)
+        {
+            const auto fields = fieldsOf(text);
+            if (fields.size() >= 10 && fields[3].isNotEmpty()) used[groupOf(fields)].addIfNotAlreadyThere(fields[3], true);
+        }
+        for (auto& text : *sounds)
+        {
+            auto fields = fieldsOf(text);
+            if (fields.size() < 10 || fields[0] == "tremulant" || fields[3].isNotEmpty()) continue;
+            auto& taken = used[groupOf(fields)];
+            juce::String label = organ[0];
+            for (const auto& name : organ) if (!taken.contains(name, true)) { label = name; break; }
+            taken.addIfNotAlreadyThere(label, true);
+            fields.set(3, label);
+            text = fields.joinIntoString("\t");
+            ++byRest;
+            if (examples.size() < 4) examples.add(fields[8].fromFirstOccurrenceOf("//", false, false).upToFirstOccurrenceOf("|", false, false) + " -> " + label);
+        }
+        without = 0;
+    }
+    noisesOwnRoute = named == 0 && without > 0;
+    if (byName + byRest > 0)
+    {
+        const juce::String what = juce::String(byName + byRest) + " noise(s) had no perspective: " + juce::String(byName) + " given one by the names of their files and folders, "
+            + juce::String(byRest) + " the one their sisters left free (" + examples.joinIntoString(", ") + ")";
+        CrashHandler::note("Noises: " + what);
+        if (byRest > 0) noteMessage("Noises", what + ". Put a wrong one right in the Noises window: drop its folder on the perspective it belongs to.");
+    }
+    if (noisesOwnRoute != hadOwnRoute)
+    {
+        CrashHandler::note(noisesOwnRoute ? "Noises: this organ's noises have no perspectives - they play through the route \"Noises\" of their own (Audio routing)"
+                                          : "Noises: the route \"Noises\" is not needed any more");
+        rebuildPerspectiveAudioRoutes();
+    }
+}
+
+juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::String& summary) const
+{
+    const juce::File root = libraryRootOnThisComputer();
+    // The perspectives: label -> the words that name it (its pattern prefixes, the label itself, its first letters).
+    std::vector<std::pair<juce::String, juce::StringArray>> perspectives = noisePerspectiveWords();
+    const juce::StringArray organPerspectives = organPerspectiveNames();
     auto lettersOf = [](const juce::String& text)
     {
         juce::StringArray tokens;
@@ -38261,6 +38605,7 @@ void MainComponent::syncNoiseButtonStops()
             engine.sortPerspectives(names);
             for (const auto& name : names)
             {
+                if (name.isEmpty()) continue;   // 0.9.134: no perspective (the route "Noises") - no box to tick
                 const auto on = info->second.perspectiveOn.find(name.toLowerCase());
                 perspectives.push_back({ name, on == info->second.perspectiveOn.end() || on->second });
             }
@@ -38361,16 +38706,14 @@ namespace
             bool unfolded = false, hasOneShot = false;
             int detailsHeight = 0, top = 0, bottom = 0;
         };
-        // 0.9.130: a thin line before every perspective's block (box, folder, volume) - the blocks read apart.
+        // A line before every perspective's block (box, folder, volume) - the blocks read apart. 0.9.134 (the user):
+        // the divider between the divisions of the main window - 2 px, the same grey, one line from top to bottom.
         void paint(juce::Graphics& g) override
         {
-            g.setColour(juce::Colours::white.withAlpha(0.22f));
+            g.setColour(juce::Colours::grey.withAlpha(0.65f));
+            const int bottom = rows.isEmpty() ? 32 : rows.getLast()->top + rowHeight;
             for (int i = 0; i <= perspectives.size(); ++i)
-            {
-                const int x = perspectiveLeft + i * perspectiveWidth - 5;
-                g.fillRect(x, 8, 1, 24);
-                for (auto* row : rows) g.fillRect(x, row->top + 2, 1, rowHeight - 4);
-            }
+                g.fillRect(perspectiveLeft + i * perspectiveWidth - 6, 8, 2, bottom - 8);
         }
         // A button's volume is its stop's: moved in the voicing row (or by a combination), it shows here at once.
         void timerCallback() override
@@ -38401,7 +38744,7 @@ namespace
                 addAndMakeVisible(label);
             };
             addHeader(""); addHeader("On"); addHeader("Noise"); addHeader("Kind"); addHeader("Division"); addHeader("Volume");
-            for (const auto& perspective : perspectives) addHeader(perspective.isEmpty() ? juce::String("(one for all)") : perspective);
+            for (const auto& perspective : perspectives) addHeader(perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective);
             bool couplersUnit = false;
             for (const auto& unit : units) couplersUnit = couplersUnit || unit.kind == "couplers";
             for (const auto& unit : units)
@@ -38457,7 +38800,7 @@ namespace
                         const auto first = texts->second[0].fromFirstOccurrenceOf(": ", false, false).upToFirstOccurrenceOf("//", false, false);
                         cell = first.fromLastOccurrenceOf("/", false, false).fromLastOccurrenceOf("\\", false, false) + " (" + juce::String(files) + ")";
                         if (texts->second.size() > 1) cell << " +" << juce::String(texts->second.size() - 1);
-                        detailLines.add((perspective.isEmpty() ? juce::String("(one for all)") : perspective) + ":");
+                        detailLines.add((perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective) + ":");
                         for (const auto& text : texts->second)
                         {
                             const auto moment = text.upToFirstOccurrenceOf(": ", true, false);
@@ -38676,16 +39019,24 @@ namespace
     };
 }
 
-void MainComponent::showNoisesWindow()
+void MainComponent::refreshNoisesWindow()
+{
+    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow(noisesWindow->isActiveWindow());
+}
+
+void MainComponent::showNoisesWindow(bool bringToFront)
 {
     juce::Component::SafePointer<MainComponent> safeThis(this);
     const auto units = noiseUnits();
     NoiseUnitsContent::Options options;
-    // The perspective columns: the organ's own order, then whatever else the noises name; "" = one recording for all.
-    std::vector<juce::String> ordered;
-    for (const auto& unit : units) for (const auto& [name, count] : unit.perspectives) if (std::find(ordered.begin(), ordered.end(), name) == ordered.end()) ordered.push_back(name);
-    engine.sortPerspectives(ordered);
-    for (const auto& name : ordered) options.perspectives.add(name);
+    // The perspective columns (0.9.134, the user: "Noises must mirror the Stop List exactly"): the ORGAN's perspectives,
+    // in their order, whether a noise has files there or not - or, for an organ whose noises name none (the old sets),
+    // the one column of their own route, "Noises". A name outside both (a file from before) is shown after them.
+    if (noisesOwnRoute) options.perspectives.add(juce::String());
+    else options.perspectives = organPerspectiveNames();
+    for (const auto& unit : units)
+        for (const auto& [name, count] : unit.perspectives)
+            if (!options.perspectives.contains(name, true) && (name.isNotEmpty() || options.perspectives.isEmpty())) options.perspectives.add(name);
     options.freeGroups = engine.freeNoiseGroups();
     options.manualCount = manualCount;
     options.masterOn = noisesVar.isObject() ? (bool)noisesVar.getProperty("enabled", true) : true;
@@ -38720,7 +39071,7 @@ void MainComponent::showNoisesWindow()
         {
             if (safeThis == nullptr) return;
             if (unfolded) safeThis->noiseUnitsUnfolded.insert(key); else safeThis->noiseUnitsUnfolded.erase(key);
-            safeThis->showNoisesWindow();
+            safeThis->refreshNoisesWindow();
         });
     };
     callbacks.dropFolder = [safeThis](const juce::String& key, const juce::String& perspective, const juce::String& path)
@@ -38768,6 +39119,13 @@ void MainComponent::showNoisesWindow()
     };
     auto* content = new NoiseUnitsContent(units, options, std::move(callbacks));
     const int width = content->getWidth(), height = content->getHeight();
+    // 0.9.134 (the user): rebuilt because ANOTHER dialog changed it (the Stop List's perspective order, a loaded
+    // voicing) - its content alone is replaced; the window keeps its place and the dialog in use stays in front.
+    if (!bringToFront && noisesWindow != nullptr && noisesWindow->isVisible())
+    {
+        noisesWindow->setContentOwned(new ScrollableContent(content), false);
+        return;
+    }
     noisesWindow = std::make_unique<ModelessDialog>("Noises", new ScrollableContent(content), true);
     placeDialog(*noisesWindow, "noises3", juce::jmin(width, 1700), juce::jmin(height, 860) + 40);
     noisesWindow->setVisible(true);
@@ -38837,5 +39195,5 @@ void MainComponent::applyNoiseUnitsVoicing(const juce::var& units)
     noiseButtonInfoVersion = -1;   // the buttons' voicing rows show the perspectives' switches
     configurationDirty = true;
     saveSettings();
-    if (noisesWindow != nullptr && noisesWindow->isVisible()) showNoisesWindow();
+    refreshNoisesWindow();
 }

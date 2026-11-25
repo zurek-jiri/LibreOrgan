@@ -248,7 +248,13 @@ private:
     void addNoisesFromDefinition(const juce::File& odfFile);
     juce::var noisesVarFromFolder(const juce::File& folder, juce::String& summary) const;
     void addNoisesFromFolder(const juce::File& folder);
-    void showNoisesWindow();
+    void showNoisesWindow(bool bringToFront = true);   // false: its content rebuilt where it stands (another dialog changed it - the user stays in that one)
+    void refreshNoisesWindow();                         // the open window rebuilt; in front only when the user works in it
+    juce::StringArray organPerspectiveNames() const;
+    std::vector<std::pair<juce::String, juce::StringArray>> noisePerspectiveWords() const;
+    static juce::String noisePerspectiveOfName(const std::vector<std::pair<juce::String, juce::StringArray>>& perspectives, const juce::String& name);
+    void settleNoisePerspectives();
+    bool noisesOwnRoute = false;                        // the noises carry no perspective: every division has the route "Noises" for them
     void rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value);
     juce::String organMemoryOf(const juce::String& organ, const juce::String& key) const;
     static juce::String storageChoiceKey(bool asFloat, bool halfRate, bool packed, bool resample, double rate, bool automatic = false);
@@ -1339,6 +1345,10 @@ private:
     juce::StringArray defaultCardsRefused;   // "type|name": answered the helper but did not open in the program - not taken again until Windows reports a device
     DefaultCardSearch defaultCardSearch;
     static juce::String preferredDefaultType, preferredDefaultName;
+    juce::String rememberedDefaultCard;               // 0.9.134, machine key "defaultCard": "<type>|<name>" of the default card found (Windows)
+    bool defaultCardSearchedAtStart = false;
+    double defaultCardStartQuietSinceMs = 0.0;
+    void startDefaultCardSearchIfDue();
     static bool isSoftwareAsioDriver(const juce::String& name);
     void ensureCardChecker();
     void startDefaultCardSearch(const juce::String& why, bool moveRoutes);
@@ -1569,6 +1579,7 @@ private:
     float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
     int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)
     bool measurePipePitch = true;               // 0.9.70: the pitch of every pipe measured from its sound at the load (the smpl chunk checked / supplied)
+    juce::StringArray perspectivesNotLoaded;    // 0.9.134 (#265), configuration key: the perspectives left out of the load (folders kept in the tables, no route)
     bool velocityPlainStrict = false;           // velocity layers: an unticked "_128" never plays (0.8.192; off = the plain files fill the gaps)
     float velocityShelfDb = 9.0f;               // ... and the high-shelf cut on the attack at the lowest velocity (the chiff blunted)
     float velocityShelfMs = 180.0f;             // ... opening to nothing over this time (0.8.196: 180 ms, was 80)

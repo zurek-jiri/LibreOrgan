@@ -12,6 +12,40 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.134] - 2026-11-25
+
+### Added
+- **Perspectives to load** (#265): the load box lists the organ's perspectives
+  as tick boxes, all on. An unticked perspective is not loaded - no memory, no
+  loading time, no row in Audio routing; its folders stay in the Stop List,
+  dimmed. The same tick box stands before every column's name in the Stop
+  List: tick it and *Apply and reload* reads that perspective alone.
+- **Every sample tuned by its own pitch**: a release or a velocity layer whose
+  file names another pitch than the pipe's plain attack is tuned to the
+  attack (as Hauptwerk does), up to *Replace pipes off by more than*. Before,
+  one correction per pipe served all its samples - a set whose attacks were
+  fine-tuned afterwards played its releases up to two thirds of a semitone
+  off.
+- **The route "Noises"**: an organ whose noises are one recording for all
+  plays them through a route of their own, shown in Audio routing with its
+  cable, volume and effects (before: through whichever route of the division
+  came first).
+
+### Fixed
+- **Noises without their perspective**: the noises of a Hauptwerk definition
+  whose perspective is named by a word of its own ("Organist") came in
+  without it and the Noises window showed a column "(one for all)" beside the
+  organ's perspectives. They take the perspective their stops take; a
+  configuration saved so is put right at its load. The Noises window has
+  exactly the Stop List's perspectives, in the same order.
+- **The Noises window came to the front** when another dialog changed it (the
+  Stop List's perspective order): its content is rebuilt where it stands.
+- **Windows: the default sound card at once**. The card found is remembered
+  and looked for a few seconds after the start - an organ was opened on
+  Windows' default output first and moved to the ASIO card after its load.
+- The lines between the perspectives of the Noises window are the divider of
+  the main window's divisions.
+
 ## [0.9.133] - 2026-11-24
 
 ### Fixed

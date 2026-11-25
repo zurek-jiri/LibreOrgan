@@ -253,8 +253,10 @@ organ loaded, the load box also asks whether the file replaces it or is
 merged into it. A configuration with unsaved changes asks at quit or at the next
 load: *Save*, *Don't Save* or *Cancel*. Before the samples load, a box asks
 how they are to be held in RAM (storage, packing, rate -
-[Sample storage in RAM](#sample-storage-in-ram)); the choice is saved with
-the configuration. For an organ this computer has loaded before, the box also
+[Sample storage in RAM](#sample-storage-in-ram)) and, for an organ with
+several perspectives, which of them to load (all ticked at first; an unticked
+one costs no memory and no loading time - [4.3 Perspectives](#43-perspectives));
+the choice is saved with the configuration. For an organ this computer has loaded before, the box also
 says how much memory the choice takes and how much can be used.
 
 ### The loading window
@@ -849,6 +851,12 @@ left or right** to change it: the lines take the new order, saved with the
 configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.
 
+**A perspective that is not loaded.** The tick box before a column's name
+(the load box has the same boxes): unticked, the perspective is not loaded -
+its folders stay in the table, dimmed, and it has no row in Audio routing.
+Tick it and *Apply and reload*: that perspective alone is read, the rest of
+the organ stays in the memory.
+
 ## 4.4 Ignored and one-shot patterns
 
 *Ignored Patterns...* and *One-shot Patterns...* (top bar, or the
@@ -1400,6 +1408,9 @@ a button of their own (calcant bell, rossignol, zimbelstern, drum ...). A noise
 is played as its file is - never tuned, never touched by the wind, the
 tremulant or the swell - through the route of its division and perspective, so
 every perspective has its own recording where the sample folders hold one.
+An organ whose noises are one recording for all (older sample folders) plays
+them through a route of their own, **Noises**: a row of Audio routing like a
+perspective, with its own cable, volume and effects.
 
 - **Where they come from.** An organ made from a Hauptwerk definition takes its
   noises with it. An organ you already have gets them by
@@ -1435,9 +1446,10 @@ tremulant, the drawknobs, the couplers, each button of its own.
   folder was read wrong.
 - **Volume** - of the noise as a whole. For a button it is the Stop volume of
   its voicing row: one value, shown in both places.
-- **One block per perspective**, in the order of the Perspective patterns -
-  its box (on or off), its folder with the number of files, and its own
-  volume on top of the noise's.
+- **One block per perspective** - the organ's own perspectives, as the Stop
+  List has them and in the same order (or the one block *Noises* when the
+  noises have no perspectives): its box (on or off), its folder with the
+  number of files, and its own volume on top of the noise's.
 - **+** at the start of a row - the folders and files of the noise. Under
   Drawknobs and Couplers also which button has which free noise; choose
   another there. Under a button that loops: *One-shot* (the file once,
@@ -1863,7 +1875,9 @@ says so. Travels with the organ.
 How far a pipe's recorded pitch may lie from its key before the pipe counts
 as a faulty sample (default 200 cents). Beyond it the pipe is switched off
 and filled from its neighbours; its thumb turns green and the tooltip says
-so. Travels with the organ.
+so. Travels with the organ. The same limit holds for a release or a velocity
+layer whose file names another pitch than the pipe's plain attack: it is
+tuned to the attack by its own value up to this limit, beyond it left as it is.
 
 ### Pipe coupling: detune left after the pull
 

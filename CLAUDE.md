@@ -6096,6 +6096,97 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
 - Issue form: the "Operating system" field is a text field filled by the program (now with the version); fine.
 - GitHub's issue list hides the number in its new UI (the user asked why "#27" is not in the row): nothing of ours.
 
+- 25 Nov 2026, v0.9.133 RELEASED (run 732 green). CI commit f5ce137 on main (no tag): the Self-test / Kernel test steps
+  (continue-on-error) had shown red crosses in EVERY build for weeks (0.9.124 too) - on Windows `& exe` did not wait for the
+  GUI program; now Start-Process + WaitForExit, a failure prints `::error title=Self-test::<reason>` (job logs need a login,
+  annotations do not: `commits/<sha>/check-runs` + `<check-run>/annotations`); actions on Node 24 (checkout@v5,
+  upload/download-artifact@v6, configure-pages@v6, upload-pages-artifact@v5, deploy-pages@v5). At the NEXT build read the
+  annotations of the two test steps on macOS / Linux (cause unknown) and fix what they say.
+- 0.9.134 (25 Nov 2026, the user's "ano" to the proposals of the next note + three additions; LOCAL COMMIT, NOT pushed -
+  his word): (1) PER-SAMPLE TUNING: `Sample::layerCents`, `VelocityLayer/ReleaseLayer::layerCents[128]` set at the top of
+  computeTuning440 per rank (reference = the plain attack's `smplPitchInFile` - set for releases too now; a layer whose
+  chunks nobody filled - every value a whole note, or one pitch on every key - gives 0), `Voice::layerCents` added to
+  `tuningCents` at the four places through `layerCentsWithin(cents, retuneLimitCents)`: THE BOUND IS THE SLIDER "Replace
+  pipes off by more than" (his rule: no figure of my own - I had said 100 c); getNextReleaseSample has the out-parameter.
+  Log "Tuning <rank> [p]: N velocity-layer / release sample(s) ... tuned to it by their own chunk (up to X c ...)".
+  MEASURED by ORGAN_TEST_RECORD (%TEMP%\rec_peaks.py <wav> "1540,2090"): Siebenquart key 57 held 1525.0 / 2069.7 Hz,
+  after the release 1555.2 / 2069.9 = +34 c / 0 c (was +66 / +32). (2) NOISES: HauptwerkOdf `Noise::rankId`, the noise
+  takes its RANK's perspective after the rank rules ran; `organPerspectiveNames()` (the TABLES' columns incl. the ones
+  not loaded + the engine's, sorted), `noisePerspectiveWords()` / `noisePerspectiveOfName` (the folder reading's word
+  rule made members), `settleNoisePerspectives()` in noisesTick before noiseSpecs (a '' sound of an organ whose noises
+  have perspectives: by the file / folder names, else the one its sisters of the same trigger leave free, else the
+  first + Messages; heals an older file at every load until saved), `noisesOwnRoute` (no sound names a perspective):
+  `SamplerEngine::noisesPerspectiveName()` "Noises" pushed into configuredPerspectives of every division <= manualCount
+  (syncConfiguredPerspectives; set preliminarily in noisesChanged so the saved cable is not dropped), order index
+  INT_MAX - 1 (before the auxiliary), noiseRoute prefers it for a '' sound; `audioRouteSteps` now calls
+  syncConfiguredPerspectives first (the loader's route steps did not know the configured perspectives - the route came
+  only at some later rebuild). The Noises window: columns = organPerspectiveNames() (or the one "Noises"), dividers
+  2 px grey 0.65 continuous. A fresh "Noises" route opens like any new perspective's (the division's host / the default
+  card). (3) NEVER TO THE FRONT: `refreshNoisesWindow()` = showNoisesWindow(noisesWindow->isActiveWindow());
+  showNoisesWindow(false) replaces the content with setContentOwned (window, place, Z order kept). The other dialogs
+  refresh in place already (Editor: configEditorRefresh; Audio routing: its signature timer). Hook act
+  ORGAN_TEST_NOISE_UNITS "<s>|order" = perspectiveOrderChanged + the desktop windows back to front before / after.
+  (4) DEFAULT CARD: machine key "defaultCard" ("<type>|<name>", volatile for the dirty fingerprint) set in
+  defaultCardFound, read in loadSettings into preferredDefaultType/Name (not with a DefaultRouting.json),
+  `startDefaultCardSearchIfDue()` from the timer 3 s after the start is quiet (once). With it a portable organ's routes
+  attach to ASIO at the load ("every route of the organ plays through ASIO Fireface USB already"). A test hook load
+  starts before the search: put "defaultCard" into the test's settings (test_0127b.ps1 -Settings "defaultCard=ASIO|ASIO
+  Fireface USB") or the routes are moved DURING an ORGAN_TEST_RECORD and the recording is silent. (5) #265:
+  `perspectivesNotLoaded` (configuration key; cleared at a clean start and at Global Reset's unload; a missing key =
+  all loaded): stopBuildMap skips those folders, syncConfiguredPerspectives gives them no route, closeHiddenRoutes KEEPS
+  their route settings; the load box's `PerspectiveTicks` custom component (>= 2 perspectives; names from the var's
+  stopBuild folders, order of its perspectivePatterns; nothing ticked = all), hook ORGAN_TEST_PERSPECTIVES_OFF="A;B";
+  Stop List: `notLoaded/originalNotLoaded`, the tick box `HeaderCell::load` before each column's name, dimmed cells,
+  the cell menu item 900000, changedDivisions counts a toggled perspective, apply() writes owner.perspectivesNotLoaded;
+  rename follows. Schorndorf with Direct alone: 7 s, 9.8 GB (all four: ~37 GB). NOT done: the box's memory line does
+  not follow the ticks; a Hauptwerk import's route volume of a perspective not loaded at the import is lost; the
+  ticks are ignored by a merge. (6) An alias with a compound footage is shown as typed ("Terznone 1 3/5' + 8/9'",
+  checked by the Stop List dump). TEST SCRIPT LESSONS: a script with `param()` and no CmdletBinding takes an UNKNOWN
+  named parameter silently into $args (my -Settings did nothing for two runs); a tool call whose command holds a
+  blocked Remove-Item is rejected WHOLE - nothing of it ran; ORGAN_TEST_NOISE_FOLDER fires at the arming only, i.e.
+  never for an organ without noises (craft the "noises" block: %TEMP%\make_rural_noises.py); ORGAN_TEST_CLICK toggles a
+  ToggleButton by its text (the load box's ticks: "zzz|zzz|Diffuse|Organist|Rear|zzz|Load", %TEMP%\test_0134_box.ps1).
+  The Stop List's tick + Apply and reload RUN (ORGAN_TEST_MOUSE "load Diffuse|click" - the tick box's testName is
+  "load <perspective>" - then ORGAN_TEST_CLICK "Apply and reload": "Commit: 138 rank(s) kept their samples", Diffuse
+  read alone in 30 s, its routes started). NOT run: a real column drag in the Stop List with the Noises window open
+  (the hook calls the same function), unticking a LOADED perspective + Apply, Linux / macOS. test_0127b.ps1's -Env
+  splits at ";" - a value with ";" (ORGAN_TEST_PERSPECTIVES_OFF=A;B) keeps its first part only.
+- 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
+  (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
+  "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)
+  relabels the STOPS' ranks only, the noise ranks kept "" (the saved file: button/tremulantRun sounds with perspective ''
+  whose file is 06-varhSenn.wav, pattern "Organist;06-varhSenn-"); the Noises window drew '' as a column "(one for all)";
+  the engine's noiseRoute plays a '' noise through the FIRST route of the division it finds (default first, else any) -
+  once, into an arbitrary perspective's outputs, no row in the Audio routing. HIS RULES: the Noises window mirrors the
+  Stop List's perspectives exactly (same names, same order); noises EITHER copy the organ's perspectives OR are all
+  without one (old sets) - never both in one organ; for the old sets a perspective "Noises" of its own that shows in the
+  Audio routing like any perspective (never played 4 x into 4 perspectives); noises must respect the Perspective patterns
+  (file / folder names); the separator lines of the Noises window = the divisions' divider of the main window (voicer.cpp
+  ~2600: 2 px, juce::Colours::grey.withAlpha(0.65f), continuous) - mine was 1 px white 22 %, broken per row.
+  (2) SIEBENQUART, MEASURED (%TEMP%\sieben.py <perspective folder> <keys>: smpl + spectral peaks of both attack layers and
+  the three release folders; %TEMP%\smpl_layers.py <pipe folder> [04-direct] [stop]: smpl of plain vs _070 vs release over
+  every stop): the PLAIN files (= _128, "fine-tuned mixtures") are PROCESSED - both ranks moved so that they are pure to
+  each other (9.5 : 7 exactly on keys 57 and 69) and the smpl is measured on the non-existent 8' base (1525.4 / 7 = 217.9 Hz
+  = the smpl's -16.4 c): honest; the _070 layer and ALL releases are the original recording with a GENERIC smpl (+15.7 c =
+  444 Hz on every key, 9 distinct values in the stop). Key 57 at a1 = 444 (pure 1554.0 / 2109.0 Hz): plain 1525.4 / 2070.2
+  (both -32 c), _070 and releases 1585 / 2109 (the 1 1/7' rank +34 c, the other exact) -> attack to release +66 c on the
+  1 1/7' rank = his "half a tone". 34 of 58 keys differ by 5-39 c in the smpl; the other stops: Pos_Unruh 8 keys (<= 14 c),
+  HW_Quintadena16 2 (18 c), Ped_Hintersatz 2 (13 c), the rest 0. WHY HAUPTWERK COPES: it retunes every SAMPLE (each attack
+  layer, each release) by its OWN smpl; WE take one correction per pipe from the plain file and give it to every sample of
+  the pipe ("releases follow their attack", SamplerEngine.cpp ~7596) - so "Retune pipes off by more than" moves attack and
+  release together and the gap stays (his "nezabírá"). PROPOSED: a per-sample offset = (the pipe's reference smpl AS IN THE
+  FILE - this sample's smpl as in the file) x 100 c, set at the load for velocity layers and releases, added at the voice
+  start; like with like (never the 0.9.70 measured pitch against a file's smpl: Kdousov's generic smpl would shift its
+  releases), ignored beyond +-100 c or without a smpl.
+  (3) Footage of repeating aliquots (Terznone, Terzian: the button shows the lowest sounding footage; the builder writes
+  1 3/5' + 8/9'): the definition's stop names carry no footage; the way is the ALIAS with the footage typed (0.9.50 rule) -
+  to be verified that "1 3/5' + 8/9'" is shown as typed. (4) ASIO DEFAULT: `preferredDefaultType/Name` live in memory
+  only and the search starts after the first load of a session (applyDefaultRoutingIfDue) - proposed: remember the found
+  card (machine key) and search right after the start-up routes have opened. (5) #265 (hoofdwerk): tick boxes of the
+  perspectives to load, all on by default - proposed in the LOAD BOX (it comes after the parse on every path), a
+  configuration key of the perspectives left out (their folders stay in the table, no route, the Stop List column says
+  "not loaded"); the definition chooser would have to parse every definition (seconds each) - not there.
+
 ## Pending for the next Linux session (delete when done)
 - LESSON 0.8.147: the two
   checkouts are two git repositories on the SAME sources - after a Linux session the Windows checkout `F:` is behind

@@ -113,7 +113,8 @@ struct HauptwerkOdf
         int keyboardId = 0, divisionId = 0, note = 0;       // key / divisionInput
         int stopId = 0, couplerSwitchId = 0, tremulantId = 0;
         int switchId = 0; juce::String switchName; bool defaultOn = false;   // console: the switch, its name, on from the load
-        juce::String rankName, perspective;                  // perspective: empty = every perspective (the old sets' "Special: ...")
+        juce::String rankName, perspective;                  // perspective: empty = none (the old sets' "Special: ...": the organ's noises have a route of their own)
+        int rankId = 0;                                      // 0.9.134: its rank - the perspective is the RANK's, as settled for the stops' ranks
         float levelDb = 0.0f;
         int packageId = 0;
         juce::StringArray files, releaseFiles;               // the variants of the sound and of its release, relative to the package

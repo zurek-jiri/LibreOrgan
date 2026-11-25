@@ -911,6 +911,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             if (const auto rank = odf.ranks.find(pipe.rankId); rank != odf.ranks.end())
             {
                 n.rankName = rank->second.name;
+                n.rankId = pipe.rankId;
                 n.perspective = perspectiveOfRankName(rank->second.name);
             }
             n.levelDb = layers[layer->second].levelDb;
@@ -1239,6 +1240,19 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             for (const auto& [label, n] : byLabel)
                 CrashHandler::note("Hauptwerk ODF: " + juce::String(n) + " rank(s) without a perspective in their names took \"" + label + "\" from the Perspective Patterns in force (their folder's prefix)");
         }
+    }
+    // 0.9.134 (the user's Schorndorf: "Organist: Blower noise" came without a perspective while every stop had
+    // "Organist" - the Noises window showed a column of its own for it): a noise's perspective is its RANK's as
+    // settled above (the 0.9.49 / 0.9.65 rules worked on the ranks after the noises had been listed).
+    {
+        int taken = 0;
+        for (auto& noise : odf.noises)
+            if (const auto rank = odf.ranks.find(noise.rankId); rank != odf.ranks.end() && noise.perspective != rank->second.perspective)
+            {
+                noise.perspective = rank->second.perspective;
+                ++taken;
+            }
+        if (taken > 0) CrashHandler::note("Hauptwerk ODF: " + juce::String(taken) + " noise(s) took the perspective their rank was given with the stops' ranks");
     }
     // Ranks of one stop that landed in ONE perspective label although their
     // folders carry different prefixes ("02-dir22-", "04-dis2h-", "05-reaSen-"
