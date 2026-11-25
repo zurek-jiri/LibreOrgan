@@ -122,6 +122,7 @@ public:
         std::map<juce::String, double> perspectiveDb;              // lower-case name -> dB
         std::map<juce::String, bool> perspectiveOn;                // lower-case name -> its switch (absent = on)
         std::map<juce::String, juce::StringArray> files;           // lower-case perspective -> "<moment>: <folder>//a.wav|b.wav" texts
+        std::map<juce::String, int> state;                         // 0.9.134, lower-case perspective -> 0 loaded, 1 its perspective is not loaded, 2 its files were not found
         bool held = false, hasRelease = false;                      // it loops while on; it has a release file
         bool oneShot = false;                                       // a button: its loop is played once instead (the stop's One-shot)
     };
@@ -254,6 +255,9 @@ private:
     std::vector<std::pair<juce::String, juce::StringArray>> noisePerspectiveWords() const;
     static juce::String noisePerspectiveOfName(const std::vector<std::pair<juce::String, juce::StringArray>>& perspectives, const juce::String& name);
     void settleNoisePerspectives();
+    juce::StringArray loadedPerspectiveNames() const;   // 0.9.134: the perspectives that have a route now
+    mutable int noiseSoundsOfUnloadedPerspectives = 0;
+    juce::String noisePerspectivesAtLoad;               // what was loaded when the noises were read (a change reads them anew)
     bool noisesOwnRoute = false;                        // the noises carry no perspective: every division has the route "Noises" for them
     void rememberOrganMemory(const juce::String& organ, const juce::String& key, const juce::String& value);
     juce::String organMemoryOf(const juce::String& organ, const juce::String& key) const;
@@ -1638,6 +1642,7 @@ private:
     // (sampleStorageFloat ...). settings.json "treeStorage" (by path); a configuration file carries
     // "treeStorageByTree" (by the tree's key in sampleTrees). The engine gets them by syncTreeStorageToEngine.
     std::map<juce::String, juce::String> treeStorage;
+    bool loadBoxForMerge = false;   // 0.9.134: the next askLoadOptions is the box of a merge (no file choice, no load-or-merge choice)
     juce::var mergeStorageChoice;   // the load box's choices for an organ being merged in; taken (and cleared) by mergeConfiguration
     static juce::String treeStorageText(bool asFloat, bool halfRate, bool packed, bool resample, double rate);
     static bool treeStorageFromText(const juce::String& text, SamplerEngine::TreeStorage& storage);

@@ -15998,6 +15998,10 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     auto* root = configuration.getDynamicObject();
     if (root == nullptr) return;
     mergeStorageChoice = juce::var();   // 0.9.125: set by this box when a merge is chosen
+    // 0.9.134 (the user: the right-click merge asked nothing - no storage, no perspectives to choose): the same box
+    // for a merge that did not come through it - no "this file" and no "load or merge" choice, the rest as ever.
+    const bool forMerge = loadBoxForMerge;
+    loadBoxForMerge = false;
     const bool fromFile = root->hasProperty("sampleStorageFloat");
     const bool asFloat = fromFile ? (bool)root->getProperty("sampleStorageFloat") : sampleStorageFloat;
     const bool halfRate = root->hasProperty("releaseHalfRate") ? (bool)root->getProperty("releaseHalfRate") : releaseHalfRate;
@@ -16014,7 +16018,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     const bool outside = file != juce::File() && file.getParentDirectory() != configurationsDirectory();
     const juce::File existing = file != juce::File() ? configurationsCopyOf(file) : juce::File();
     const bool exists = existing != juce::File() && existing.existsAsFile();
-    const bool offerChoice = importing ? exists : outside;
+    const bool offerChoice = !forMerge && (importing ? exists : outside);
     if (std::getenv("ORGAN_LOAD_CONFIGURATION") != nullptr || std::getenv("ORGAN_MERGE_ON_START") != nullptr)
     {
         // The tests: an import replaces; a file from elsewhere is copied/replaces with
@@ -16041,7 +16045,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         proceed(configuration);
         return;
     }
-    auto* window = new juce::AlertWindow("Load Configuration: " + what,
+    auto* window = new juce::AlertWindow((forMerge ? "Merge into the loaded organ: " : "Load Configuration: ") + what,
         "How the samples of this organ are held in RAM - the choices decide what loads, so they are made here, before the loading starts. "
         + juce::String(fromFile ? "They come from the configuration file; " : "The file carries none, these are this computer's last choices; ")
         + "what you choose is saved with the configuration. The same choices are in the Configuration Editor (Engine) for the next load.",
@@ -16073,7 +16077,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         juce::Component::SafePointer<juce::AlertWindow> boxOfLine(window);
         juce::Component::SafePointer<MainComponent> self(this);
         const bool organLoadedNow = !engine.getStops().isEmpty();
-        updateMemoryLine = [memoryLine, boxOfLine, self, what, wavRecord, organLoadedNow]
+        updateMemoryLine = [memoryLine, boxOfLine, self, what, wavRecord, organLoadedNow, forMerge]
         {
             if (boxOfLine == nullptr || self == nullptr) return;
             const int storage = boxOfLine->getComboBoxComponent("storage")->getSelectedItemIndex();
@@ -16085,7 +16089,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             const auto gb = [](double b) { const double g = b / 1073741824.0; return (g < 10.0 ? juce::String(g, 1) : juce::String(juce::roundToInt(g))) + " GB"; };
             // What can be used: the free memory less the reserve, and what the loaded organ gives back when it is closed.
             auto* action = boxOfLine->getComboBoxComponent("action");
-            const bool merging = action != nullptr && action->getSelectedItemIndex() == 1;
+            const bool merging = forMerge || (action != nullptr && action->getSelectedItemIndex() == 1);
             double usable = (double)(MainComponent::availablePhysicalMemoryBytes() - MemoryInfo::reserveBytes());
             if (organLoadedNow && !merging) usable += (double)juce::jmax((juce::int64)0, MainComponent::processMemoryBytes() - (juce::int64)1024 * 1024 * 1024);
             usable = juce::jmax(0.0, usable);
@@ -16160,7 +16164,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     // 0.9.18 (the user): with an organ loaded the box also asks whether this file replaces it or is merged
     // into it - the merge of the right click on Load Configuration as a choice of the normal dialog.
     const bool organLoaded = !engine.getStops().isEmpty();
-    if (organLoaded)
+    if (organLoaded && !forMerge)
     {
         window->addComboBox("action", { "Load it as a new organ  [default]  (the loaded organ is closed)",
             "Merge it into the loaded organ  (its stops are added with the choices above; the loaded organ stays as it is)" }, "An organ is loaded now");
@@ -16239,11 +16243,11 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         }
     }
     updateMemoryLine();
-    window->addButton("Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    window->addButton(forMerge ? "Merge" : "Load", 1, juce::KeyPress(juce::KeyPress::returnKey));
     window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     juce::Component::SafePointer<MainComponent> safeThis(this);
     juce::Component::SafePointer<juce::AlertWindow> box(window);
-    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds, organLoaded, ticks](int result) mutable
+    window->enterModalState(true, juce::ModalCallbackFunction::create([safeThis, box, configuration, what, proceed, choiceIds, organLoaded, ticks, forMerge](int result) mutable
     {
         if (safeThis == nullptr || box == nullptr) return;
         if (result != 1) { CrashHandler::note("Load Configuration \"" + what + "\": cancelled at the sample storage choices"); return; }
@@ -16270,8 +16274,9 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
         const int rateIndex = box->getComboBoxComponent("rate")->getSelectedItemIndex();
-        const bool mergeChosen = organLoaded && box->getComboBoxComponent("action")->getSelectedItemIndex() == 1;
-        if (mergeChosen)
+        auto* actionBox = box->getComboBoxComponent("action");
+        const bool mergeChosen = forMerge || (organLoaded && actionBox != nullptr && actionBox->getSelectedItemIndex() == 1);
+        if (mergeChosen && !forMerge)
             if (auto* r = configuration.getDynamicObject()) { r->setProperty("mergeIntoLoaded", true); CrashHandler::note("Load Configuration \"" + what + "\": to be merged into the loaded organ (the box's choice)"); }
         if (!choiceIds.isEmpty())
             if (auto* r = configuration.getDynamicObject())
@@ -17545,8 +17550,17 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             // added stops follows once the folders are loaded, nothing is written
             // into the installation package.
             safeThis->hauptwerkImport = odf;
-            safeThis->mergeConfiguration(configuration, plan.configurationFile, plan.organName + " (Hauptwerk)",
-                [safeThis, odf] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, {}, {}, false); });
+            const auto configurationFile = plan.configurationFile;
+            const auto organName = plan.organName;
+            auto doMerge = [safeThis, odf, configurationFile, organName](juce::var chosen)
+            {
+                if (safeThis == nullptr) return;
+                safeThis->mergeConfiguration(chosen, configurationFile, organName + " (Hauptwerk)",
+                    [safeThis, odf] { if (safeThis != nullptr) safeThis->applyHauptwerkVoicing(odf, {}, {}, false); });
+            };
+            // 0.9.134: the load box for a merge that did not come through it (the right click on Load Configuration).
+            if (safeThis->mergeStorageChoice.isObject() || std::getenv("ORGAN_MERGE_CONFIGURATION") != nullptr) doMerge(configuration);
+            else { safeThis->loadBoxForMerge = true; safeThis->askLoadOptions(configuration, organName, doMerge, {}, false); }
             return;
         }
         // Written into THE LibreOrgans folder of this computer (0.8.190; 0.8.158
@@ -37323,6 +37337,29 @@ juce::File MainComponent::libraryRootOnThisComputer() const
 {
     for (const auto& [absoluteTree, relativeTree] : treeRelativePaths)
         if (const auto root = rootFromKnownRelative(absoluteTree, relativeTree); root != juce::File()) return root;
+    // 0.9.134 (the user's merge of Stralsund into Schorndorf: "1568 sound(s) of the configuration not found - the
+    // library root is not known", every noise of BOTH organs silent): a merged organ's trees are absolute and say
+    // nothing of the root - it is then the folder above the first part of a noise's own path, found in the path
+    // of a loaded tree ("002733/ruchy/mech" and the tree "...\OrganInstallationPackages\002733\pipe\PE").
+    if (const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray())
+    {
+        juce::StringArray tried;
+        for (const auto& text : *sounds)
+        {
+            const auto fields = juce::StringArray::fromTokens(text.toString(), "\t", "");
+            if (fields.size() < 10) continue;
+            const auto folderText = fields[8].upToFirstOccurrenceOf("//", false, false);
+            if (folderText.isEmpty() || juce::File::isAbsolutePath(folderText)) continue;
+            const auto first = folderText.replaceCharacter('\\', '/').upToFirstOccurrenceOf("/", false, false);
+            if (first.isEmpty() || tried.contains(first, true)) continue;
+            tried.add(first);
+            for (const auto& tree : sampleTrees)
+                for (juce::File at(tree); at != at.getParentDirectory(); at = at.getParentDirectory())
+                    if (at.getFileName().equalsIgnoreCase(first) && SampleFiles::isDirectory(at.getParentDirectory().getChildFile(folderText)))
+                        return at.getParentDirectory();
+            if (tried.size() >= 12) break;
+        }
+    }
     return {};
 }
 
@@ -37399,18 +37436,31 @@ void MainComponent::setNoiseFreeRandom(bool random)
     saveSettings();
 }
 
+// 0.9.134: the perspectives that have a route now - a noise of a perspective that is not loaded (the load box, the
+// Stop List) is not loaded either: it would have nowhere to sound.
+juce::StringArray MainComponent::loadedPerspectiveNames() const
+{
+    juce::StringArray names;
+    for (int manual = 0; manual <= manualCount && manual < SamplerEngine::maxManuals; ++manual)
+        for (const auto& name : engine.getPerspectivesForManual(manual)) names.addIfNotAlreadyThere(name, true);
+    return names;
+}
+
 std::vector<SamplerEngine::NoiseSpec> MainComponent::noiseSpecs(int& unresolved) const
 {
     std::vector<SamplerEngine::NoiseSpec> specs;
     unresolved = 0;
+    noiseSoundsOfUnloadedPerspectives = 0;
     const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
     if (sounds == nullptr) return specs;
     const juce::File root = libraryRootOnThisComputer();
+    const juce::StringArray loadedPerspectives = loadedPerspectiveNames();
     for (const auto& text : *sounds)
     {
         juce::StringArray fields;
         fields.addTokens(text.toString(), "\t", "");
         if (fields.size() < 10 || fields[0] == "tremulant") continue;   // a tremulant's drawknob click (older files): not played
+        if (fields[3].isNotEmpty() && !loadedPerspectives.contains(fields[3], true)) { ++noiseSoundsOfUnloadedPerspectives; continue; }   // 0.9.134
         SamplerEngine::NoiseSpec spec;
         spec.unit = noiseUnitKey(fields);
         spec.kind = fields[0]; spec.edge = fields[1]; spec.ref = fields[2]; spec.perspective = fields[3];
@@ -37454,6 +37504,9 @@ void MainComponent::noisesTick()
     }
     if (noisesQuietSinceMs <= 0.0) noisesQuietSinceMs = now;
     if (noisesLoading.load()) return;
+    // 0.9.134: a perspective loaded or unloaded since the noises were read - they are read anew (its noises come or go).
+    if (noisesVersionLoaded == noisesVersionWanted && noisesVar.isObject()
+        && noisePerspectivesAtLoad != loadedPerspectiveNames().joinIntoString("|").toLowerCase()) ++noisesVersionWanted;
     if (noisesVersionLoaded != noisesVersionWanted)
     {
         if (now - noisesQuietSinceMs < 1500.0) return;
@@ -37461,6 +37514,9 @@ void MainComponent::noisesTick()
         const int version = noisesVersionWanted;
         int unresolved = 0;
         auto specs = noiseSpecs(unresolved);
+        noisePerspectivesAtLoad = loadedPerspectiveNames().joinIntoString("|").toLowerCase();
+        if (noiseSoundsOfUnloadedPerspectives > 0)
+            CrashHandler::note("Noises: " + juce::String(noiseSoundsOfUnloadedPerspectives) + " sound(s) of perspectives that are not loaded are left out (they come with their perspective)");
         engine.setNoisesArmed(false);
         if (specs.empty())
         {
@@ -38414,6 +38470,8 @@ std::vector<MainComponent::NoiseUnit> MainComponent::noiseUnits() const
     const auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
     if (sounds == nullptr) return units;
     auto divisionName = [](int division) { return division <= 0 ? juce::String("Pedal") : "Manual " + juce::String(division); };
+    const juce::StringArray loadedNow = loadedPerspectiveNames();
+    const juce::File rootNow = libraryRootOnThisComputer();
     for (const auto& text : *sounds)
     {
         juce::StringArray fields;
@@ -38465,6 +38523,13 @@ std::vector<MainComponent::NoiseUnit> MainComponent::noiseUnits() const
         bool known = false;
         for (auto& [name, count] : found->perspectives) if (name.equalsIgnoreCase(fields[3])) { count += files; known = true; }
         if (!known) found->perspectives.push_back({ fields[3], files });
+        // 0.9.134 (the user: nothing told that the noises were not loaded): the truth of every perspective of the unit -
+        // 1 = its perspective is not loaded (no route: it does not sound), 2 = its files were not found.
+        if (auto& state = found->state[fields[3].toLowerCase()]; state == 0)
+        {
+            if (fields[3].isNotEmpty() && !loadedNow.contains(fields[3], true)) state = 1;
+            else if (const auto resolved = noiseFilesOf(fields[8], rootNow); resolved.isEmpty() || !SampleFiles::existsAsFile(juce::File(resolved[0]))) state = 2;
+        }
     }
     for (auto& unit : units)
         if (const auto* object = const_cast<MainComponent*>(this)->noiseUnitObject(unit.key, false))
@@ -38971,6 +39036,13 @@ namespace
                     folderLabel->setFont(juce::FontOptions(12.5f));
                     folderLabel->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
                     folderLabel->setMinimumHorizontalScale(1.0f);
+                    // 0.9.134: the Stop List's colours - dimmed = not in the memory (its perspective is not loaded), orange = not found.
+                    const auto stateFound = unit.state.find(perspective.toLowerCase());
+                    const int state = cell.isEmpty() ? 0 : stateFound != unit.state.end() ? stateFound->second : 0;
+                    if (state == 1) folderLabel->setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.4f));
+                    if (state == 2) folderLabel->setColour(juce::Label::textColourId, onColour());
+                    if (state == 1) tip = "NOT LOADED: the perspective \"" + perspective + "\" is not loaded (Stop List), so this noise does not sound in it.\n" + tip;
+                    if (state == 2) tip = "NOT FOUND on this computer - this noise does not sound in this perspective.\n" + tip;
                     folderLabel->setTooltip(tip.isEmpty() ? juce::String("No files of this noise in this perspective - drop a folder here to give it some.")
                         : tip + "\nDrop a folder from the file manager here: its files become this perspective of the noise.");
                     auto* slider = row->perspectiveVolumes.add(new juce::Slider());

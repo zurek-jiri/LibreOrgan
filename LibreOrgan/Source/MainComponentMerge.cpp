@@ -242,7 +242,16 @@ void MainComponent::mergeConfigurationFile(const juce::File& file)
             "Merge configuration", "The selected file is not a valid LibreOrgan Sampler configuration.");
         return;
     }
-    mergeConfiguration(configuration, file, file.getFileNameWithoutExtension(), {});
+    // 0.9.134 (the user: "když dám load - merge, tak se mě to nezeptá na load dialog"): the load box of the ADDED
+    // organ - its storage and the perspectives to load - also for the merge of the right click (the box's own "Merge
+    // it into the loaded organ" comes here with the choice made: no second box). The test hook merges as it did.
+    if (mergeStorageChoice.isObject() || std::getenv("ORGAN_MERGE_CONFIGURATION") != nullptr) { mergeConfiguration(configuration, file, file.getFileNameWithoutExtension(), {}); return; }
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    loadBoxForMerge = true;
+    askLoadOptions(configuration, file.getFileNameWithoutExtension(), [safeThis, file](juce::var chosen)
+    {
+        if (safeThis != nullptr) safeThis->mergeConfiguration(chosen, file, file.getFileNameWithoutExtension(), {});
+    }, {}, false);
 }
 
 void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedFile, const juce::String& addedName, std::function<void()> afterLoad)
