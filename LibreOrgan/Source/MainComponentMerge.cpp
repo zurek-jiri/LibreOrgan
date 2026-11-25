@@ -371,6 +371,15 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
     // the sample storage of the ADDED organ - the load box's choices for it, else its file's, else this
     // computer's - goes to its new folder trees alone; the loaded organ's trees keep theirs.
     const juce::var storageSource = mergeStorageChoice.isObject() ? mergeStorageChoice : added;
+    if (mergeStorageChoice.isObject())
+    {
+        // 0.9.134 (#265): the perspectives the load box left out for the ADDED organ - its folders are marked
+        // "unloaded" in its tables (the loaded organ's rows are not touched: each organ keeps its own choice).
+        auto namesOf = [this](const char* key) { juce::StringArray names; if (const auto* list = mergeStorageChoice.getProperty(key, juce::var()).getArray()) for (const auto& n : *list) names.add(n.toString()); return names; };
+        const auto off = namesOf("perspectivesOffChoice"), on = namesOf("perspectivesOnChoice");
+        setPerspectivesUnloadedInVar(added, off, on);
+        if (!off.isEmpty()) CrashHandler::note("Merge: perspective(s) of the added organ NOT loaded - " + off.joinIntoString(", "));
+    }
     mergeStorageChoice = juce::var();
     const auto storageFlag = [&storageSource](const char* key, bool fallback) { return storageSource.hasProperty(key) ? (bool)storageSource.getProperty(key, fallback) : fallback; };
     const juce::String addedStorage = treeStorageText(storageFlag("sampleStorageFloat", sampleStorageFloat), storageFlag("releaseHalfRate", releaseHalfRate),

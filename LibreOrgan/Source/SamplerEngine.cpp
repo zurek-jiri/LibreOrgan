@@ -249,9 +249,6 @@ namespace
     // the interpolation kernels, and the tone/shelf post-processing. Thread-local
     // sums, folded into the pool's statistics after every chunk. Off: one load.
     std::atomic<bool> gVoiceProfiling{ false };
-    // 0.9.134: a sample's own offset to its pipe's plain attack counts up to "Replace pipes off by more than" (the
-    // user's rule: the slider is the bound, no figure of its own) - beyond it the chunk is taken for one nobody filled.
-    inline float layerCentsWithin(float cents, float limit) noexcept { return std::abs(cents) <= limit ? cents : 0.0f; }
     std::atomic<float> gRetuneLimitCents{ 200.0f };   // the retune limit (0.8.165) for the static tuning analysis; set with SamplerEngine::retuneLimitCents
     std::atomic<float> gMistuneCorrectCents{ 50.0f }; // 0.9.10: a pipe off its rank by more than this is pulled to its key without the 440 mode (0 = never)
     struct VoiceProfile { int64_t header = 0, spans = 0, kernel = 0, post = 0, unpack = 0; int64_t voices = 0; };
@@ -7170,7 +7167,7 @@ struct SamplerEngine::Impl
                     const float randomEff = effectiveRandomCents(stop, devRank, devNote, pipe);
                     v.randomPitchCents.store(randomEff, std::memory_order_relaxed);
                     v.layerCents = attackLayerCents;
-                    v.tuningCents.store(rank->tuningCentsFor(sampleNote, stop->tuneTo440) + layerCentsWithin(v.layerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+                    v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, owner.mistuneCorrectCents.load(std::memory_order_relaxed), owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
                     v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
                     // COUPLING TO A PARTNER (0.9.55): an octave or double octave of this rank already sounding is
                     // the reference - the new pipe is pulled towards the PURE octave with it, the recorded detune
@@ -7606,7 +7603,7 @@ struct SamplerEngine::Impl
             v.velocityGain = 1.0f;
             v.randomPitchCents.store(releasePitchCents, std::memory_order_relaxed);
             v.layerCents = releaseLayerCents;
-            v.tuningCents.store(rank->tuningCentsFor(sampleNote, stop->tuneTo440) + layerCentsWithin(v.layerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);   // releases follow their attack
+            v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, owner.mistuneCorrectCents.load(std::memory_order_relaxed), owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);   // releases follow their attack
             v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
             v.couplingUsed = false;
             v.coupledPitchCents = 0.0f;
@@ -16013,7 +16010,7 @@ void SamplerEngine::setStopTuneTo440(Stop* stop, bool enabled)
         auto& v = impl->voices[idx];
         if (v.stop == stop && v.rank != nullptr)
         {
-            v.tuningCents.store(v.rank->tuningCentsFor((int)v.sampleNote, enabled) + layerCentsWithin(v.layerCents, retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, enabled, v.layerCents, mistuneCorrectCents.load(std::memory_order_relaxed), retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
             v.tempMode.store(enabled ? 1 : (v.rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
             if (v.shift != 0 || v.sampleNote != v.note)   // the pure-interval correction depends on the mode
                 v.shiftCents.store(Impl::transpositionCents(stop, v.rank, v.shift, (int)v.note, (int)v.sampleNote),
@@ -16034,7 +16031,7 @@ void SamplerEngine::setStopUndulation(Stop* stop, float beatsAtA1)
     {
         auto& v = impl->voices[idx];
         if (v.stop == stop && v.rank != nullptr)
-            v.tuningCents.store(v.rank->tuningCentsFor((int)v.sampleNote, stop->tuneTo440) + layerCentsWithin(v.layerCents, retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, stop->tuneTo440, v.layerCents, mistuneCorrectCents.load(std::memory_order_relaxed), retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
     }
 }
 
@@ -16244,7 +16241,8 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
             if (moved > 0)
                 CrashHandler::note("Tuning " + rank->name + (rank->perspective.isNotEmpty() ? " [" + rank->perspective + "]" : juce::String())
                     + ": " + juce::String(moved) + " velocity-layer / release sample(s) whose smpl chunk names another pitch than the pipe's plain attack"
-                      " - tuned to it by their own chunk (up to " + juce::String(juce::roundToInt(largest)) + " c; none beyond \"Replace pipes off by more than\")");
+                      " (up to " + juce::String(juce::roundToInt(largest)) + " c): each is tuned by its own chunk - always with \"Equal at 440 Hz\", else only where it is off the"
+                      " rank by more than \"Retune pipes off by more than\"; an offset beyond \"Replace pipes off by more than\" is not believed");
         }
         RankData rd{ rank, {}, false };
         for (int note = 0; note < 128; ++note)

@@ -563,6 +563,7 @@ private:
             {
                 int tree = 0; juce::String relativePath;   // tree 0 = folderPath, 1.. = extraFolderPaths
                 juce::StringArray morePaths;               // further folders of the same perspective in the same tree: the L and R halves of a stereo stop (0.8.160)
+                bool unloaded = false;                     // 0.9.134 (#265): kept in the table but NOT loaded (the load box's perspectives, the Stop List's "-"); saved as "unloaded"
             };
             struct Entry
             {
@@ -1579,7 +1580,6 @@ private:
     float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
     int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)
     bool measurePipePitch = true;               // 0.9.70: the pitch of every pipe measured from its sound at the load (the smpl chunk checked / supplied)
-    juce::StringArray perspectivesNotLoaded;    // 0.9.134 (#265), configuration key: the perspectives left out of the load (folders kept in the tables, no route)
     bool velocityPlainStrict = false;           // velocity layers: an unticked "_128" never plays (0.8.192; off = the plain files fill the gaps)
     float velocityShelfDb = 9.0f;               // ... and the high-shelf cut on the attack at the lowest velocity (the chiff blunted)
     float velocityShelfMs = 180.0f;             // ... opening to nothing over this time (0.8.196: 180 ms, was 80)
@@ -1785,6 +1785,7 @@ private:
     void askLoadOptions(juce::var configuration, const juce::String& what, std::function<void(juce::var)> proceed, const juce::File& file = {}, bool importing = false);
     void adoptCopyInConfigurationsFolder(const juce::File& original, const juce::String& textFromZip = {});   // the copy becomes the open file; the original stays (a zip: its .json text)
     juce::File configurationsCopyOf(const juce::File& file) const;   // the file's place in the LibreOrgans folder, ".portable" dropped (0.8.201)
+    static void setPerspectivesUnloadedInVar(const juce::var& configuration, const juce::StringArray& off, const juce::StringArray& on);   // 0.9.134
     static void copyLoadOptions(const juce::var& from, juce::var& to);   // the five storage choices of the load box
     void chooseConfigurationToLoad();
     // portable: for another computer - no MIDI, no audio devices or channels,

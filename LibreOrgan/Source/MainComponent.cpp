@@ -2156,7 +2156,7 @@ MainComponent::MainComponent()
         }
         CrashHandler::note("Started without a configuration: the sample library starts empty, the pistons and the crescendo too");
         noisesChanged(juce::var(), keyNoisesFollowCouplers.load());   // 0.9.128: the last organ's noises went with it (they were loaded and armed on the empty console)
-        perspectivesNotLoaded.clear();   // 0.9.134: the last organ's choice of perspectives went with it
+
         treeStorage.clear();   // 0.9.125: the last organ's trees with a storage of their own went with it
         syncTreeStorageToEngine();
     }
@@ -4781,7 +4781,7 @@ void MainComponent::syncConfiguredPerspectives()
                 if (!entry.isTransmission())
                     for (const auto& [label, ref] : entry.folders)
                         if (label.isNotEmpty() && (ref.relativePath.isNotEmpty() || !ref.morePaths.isEmpty())
-                            && !perspectivesNotLoaded.contains(label, true)   // 0.9.134: a perspective that is not loaded has no route
+                            && !ref.unloaded   // 0.9.134: a perspective of which nothing is loaded has no route
                             && std::none_of(names.begin(), names.end(), [&](const juce::String& n) { return n.equalsIgnoreCase(label); }))
                             names.push_back(label);
         // 0.9.134: noises without a perspective (the old sets) play through a route of their own in every division.
@@ -4860,7 +4860,13 @@ void MainComponent::closeHiddenRoutes()
                 || std::abs(entry.volumeDb) > 1.0e-4f || std::abs(entry.channelSeparation - 1.0f) > 1.0e-4f;
             // 0.9.134 (#265): a perspective that is only NOT LOADED now keeps its route's settings (cable, volume,
             // effects) for the day it is loaded again.
-            if (!isLive && perspectivesNotLoaded.contains(perspective, true)) { ++it; continue; }
+            if (!isLive && manual <= manualCount)
+            {
+                bool inTable = false;
+                for (const auto& row : manualConfigs[(size_t)manual].stopBuild.entries)
+                    for (const auto& [label, ref] : row.folders) if (label.equalsIgnoreCase(perspective) && ref.unloaded) inTable = true;
+                if (inTable) { ++it; continue; }
+            }
             if (!isLive)
             {
                 if (hasSettings)
@@ -6602,6 +6608,13 @@ void MainComponent::startDefaultCardSearch(const juce::String& why, bool moveRou
             if (index >= 0 && index < names.size()) { search.windowsDefault = names[index]; if (!defaultCardsRefused.contains("Windows Audio|" + names[index])) search.candidates.push_back({ "Windows Audio", names[index] }); }
             for (const auto& name : names) if (name != search.windowsDefault && !defaultCardsRefused.contains("Windows Audio|" + name)) search.candidates.push_back({ "Windows Audio", name });
         }
+    // 0.9.134: the card found in an earlier session is asked first (it is the one that worked here last).
+    if (rememberedDefaultCard.containsChar('|'))
+    {
+        const auto type = rememberedDefaultCard.upToFirstOccurrenceOf("|", false, false), name = rememberedDefaultCard.fromFirstOccurrenceOf("|", false, false);
+        const auto found = std::find_if(search.candidates.begin(), search.candidates.end(), [&](const std::pair<juce::String, juce::String>& c) { return c.first == type && c.second == name; });
+        if (found != search.candidates.end()) std::rotate(search.candidates.begin(), found, found + 1);
+    }
     juce::StringArray list;
     for (const auto& candidate : search.candidates) list.add(candidate.second + " (" + candidate.first + ")");
     CrashHandler::note("Default sound card (" + why + "): asked in this order until one opens - " + list.joinIntoString(", ")
@@ -15753,6 +15766,30 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
     if (target == nullptr) return;
     for (const auto* key : { "sampleStorageFloat", "releaseHalfRate", "compressSamples", "compressAutomatic", "resampleOnLoad", "storageSampleRate" })
         if (from.hasProperty(key)) target->setProperty(key, from.getProperty(key, juce::var()));
+    // 0.9.134: ... and its choice of the perspectives to load (the box set it on the var it was shown for).
+    auto namesOf = [&from](const char* key) { juce::StringArray names; if (const auto* list = from.getProperty(key, juce::var()).getArray()) for (const auto& n : *list) names.add(n.toString()); return names; };
+    setPerspectivesUnloadedInVar(to, namesOf("perspectivesOffChoice"), namesOf("perspectivesOnChoice"));
+}
+
+// 0.9.134 (#265): "not loaded" is a property of every folder of the Stop List tables ("unloaded": true on the
+// folder of a row; saved with the configuration). The load box's tick boxes act on a whole perspective: every
+// folder of the perspectives in 'off' is marked, of those in 'on' unmarked - in the var the box was shown for
+// (for a merge: the ADDED organ's var alone, so each organ keeps its own choice).
+void MainComponent::setPerspectivesUnloadedInVar(const juce::var& configuration, const juce::StringArray& off, const juce::StringArray& on)
+{
+    if (off.isEmpty() && on.isEmpty()) return;
+    if (const auto* divisions = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+        for (const auto& division : *divisions)
+            if (const auto* entries = division.getProperty("stopBuild", juce::var()).getProperty("entries", juce::var()).getArray())
+                for (const auto& entry : *entries)
+                    if (const auto* folders = entry.getProperty("folders", juce::var()).getArray())
+                        for (const auto& folder : *folders)
+                            if (auto* object = folder.getDynamicObject())
+                            {
+                                const auto name = object->getProperty("perspective").toString();
+                                if (off.contains(name, true)) object->setProperty("unloaded", true);
+                                else if (on.contains(name, true)) object->removeProperty("unloaded");
+                            }
 }
 
 juce::File MainComponent::configurationsCopyOf(const juce::File& file) const
@@ -15992,9 +16029,9 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         }
         if (const char* off = std::getenv("ORGAN_TEST_PERSPECTIVES_OFF"))   // 0.9.134: "Rear;Diffuse" = the box's unticked perspectives
         {
-            juce::Array<juce::var> list;
-            for (const auto& name : juce::StringArray::fromTokens(off, ";", "")) if (name.trim().isNotEmpty()) list.add(name.trim());
-            root->setProperty("perspectivesNotLoaded", list);
+            juce::StringArray names;
+            for (const auto& name : juce::StringArray::fromTokens(juce::String(off).replaceCharacter(',', ';'), ";", "")) if (name.trim().isNotEmpty()) names.add(name.trim());
+            setPerspectivesUnloadedInVar(configuration, names, {});
         }
         if (const char* storage = std::getenv("ORGAN_TEST_STORAGE"))
         {
@@ -16163,7 +16200,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     };
     std::shared_ptr<PerspectiveTicks> ticks;
     {
-        juce::StringArray names, order;
+        juce::StringArray names, order, wanted;   // wanted: a perspective with at least one folder that is to be loaded
         if (const auto* lines = root->getProperty("perspectivePatterns").getArray())
             for (const auto& line : *lines) order.add(line.toString().upToFirstOccurrenceOf(";", false, false).trim());
         if (const auto* divisions = root->getProperty("manualKeyboards").getArray())
@@ -16172,12 +16209,16 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
                     for (const auto& entry : *entries)
                         if (const auto* folders = entry.getProperty("folders", juce::var()).getArray())
                             for (const auto& folder : *folders)
-                                if (const auto name = folder.getProperty("perspective", "").toString(); name.isNotEmpty()) names.addIfNotAlreadyThere(name, true);
+                                if (const auto name = folder.getProperty("perspective", "").toString(); name.isNotEmpty())
+                                {
+                                    names.addIfNotAlreadyThere(name, true);
+                                    if (!(bool)folder.getProperty("unloaded", false)) wanted.addIfNotAlreadyThere(name, true);
+                                }
         juce::StringArray sorted;
         for (const auto& name : order) if (names.contains(name, true) && !sorted.contains(name, true)) sorted.add(name);
         for (const auto& name : names) if (!sorted.contains(name, true)) sorted.add(name);
         juce::StringArray off;
-        if (const auto* list = root->getProperty("perspectivesNotLoaded").getArray()) for (const auto& name : *list) off.add(name.toString());
+        for (const auto& name : names) if (!wanted.contains(name, true)) off.add(name);
         if (sorted.size() >= 2)
         {
             ticks = std::make_shared<PerspectiveTicks>();
@@ -16189,7 +16230,8 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             {
                 auto* box = ticks->boxes.add(new juce::ToggleButton(name));
                 box->setToggleState(!off.contains(name, true), juce::dontSendNotification);
-                box->setTooltip("Unticked: this perspective is not loaded - less memory, a shorter load. Its folders stay in the Stop List; tick its column there (or here at the next load) to load it.");
+                box->getProperties().set("tickedAtFirst", !off.contains(name, true));
+                box->setTooltip("Unticked: this perspective is not loaded - less memory, a shorter load. Its folders stay in the Stop List, dimmed, and can be loaded there later (or here at the next load).");
                 ticks->addAndMakeVisible(box);
             }
             ticks->setSize(640, ticks->heightFor(640));
@@ -16208,12 +16250,22 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         if (ticks != nullptr)
             if (auto* r = configuration.getDynamicObject())
             {
-                juce::Array<juce::var> off;
-                juce::StringArray names;
-                for (auto* tick : ticks->boxes) if (!tick->getToggleState()) { off.add(tick->getButtonText()); names.add(tick->getButtonText()); }
-                if (off.size() == ticks->boxes.size()) { off.clear(); names.clear(); }   // nothing ticked: no organ - every perspective then
-                if (off.isEmpty()) r->removeProperty("perspectivesNotLoaded"); else r->setProperty("perspectivesNotLoaded", off);
-                if (!names.isEmpty()) CrashHandler::note("Load Configuration \"" + what + "\": perspective(s) NOT loaded - " + names.joinIntoString(", "));
+                // Only what the user CHANGED acts (a perspective of which single folders are unloaded in the Stop
+                // List keeps them while its tick stays as it came): unticked now = every folder of it waits,
+                // ticked now = every folder of it is loaded. Nothing ticked at all = no organ: taken as all.
+                juce::StringArray off, on, notLoaded;
+                for (auto* tick : ticks->boxes)
+                {
+                    const bool before = (bool)tick->getProperties()["tickedAtFirst"];
+                    if (!tick->getToggleState()) notLoaded.add(tick->getButtonText());
+                    if (tick->getToggleState() != before) (tick->getToggleState() ? on : off).add(tick->getButtonText());
+                }
+                if (notLoaded.size() == ticks->boxes.size()) { off.clear(); notLoaded.clear(); for (auto* tick : ticks->boxes) on.add(tick->getButtonText()); }
+                setPerspectivesUnloadedInVar(configuration, off, on);
+                auto listOf = [](const juce::StringArray& names) { juce::Array<juce::var> list; for (const auto& n : names) list.add(n); return list; };
+                r->setProperty("perspectivesOffChoice", listOf(off));   // for the var loaded instead of this one (keepExisting) and for a merge
+                r->setProperty("perspectivesOnChoice", listOf(on));
+                if (!notLoaded.isEmpty()) CrashHandler::note("Load Configuration \"" + what + "\": perspective(s) NOT loaded - " + notLoaded.joinIntoString(", "));
             }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
         const int packing = box->getComboBoxComponent("packing")->getSelectedItemIndex();
@@ -16243,6 +16295,10 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             choice->setProperty("compressSamples", packing == 1);
             choice->setProperty("resampleOnLoad", rateIndex != 3);
             choice->setProperty("storageSampleRate", rateIndex == 1 ? 36000.0 : rateIndex == 2 ? 32000.0 : 48000.0);
+            // 0.9.134 (the user: "pro nový mergovaný nástroj se nesmí ignorovat"): the perspectives chosen for the ADDED
+            // organ travel with it - a definition is read anew on the merge path, so the var of this box is not its var.
+            choice->setProperty("perspectivesOffChoice", configuration.getProperty("perspectivesOffChoice", juce::var()));
+            choice->setProperty("perspectivesOnChoice", configuration.getProperty("perspectivesOnChoice", juce::var()));
             o.mergeStorageChoice = juce::var(choice.get());
             if (packing == 2 && !o.compressSamples && !o.compressAutomatic)
             {
@@ -21025,7 +21081,7 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
         }
         for (const auto& [perspective, ref] : entry.folders)
         {
-            if (perspectivesNotLoaded.contains(perspective, true)) continue;   // 0.9.134 (#265): a perspective left out of the load - its folders wait in the table
+            if (ref.unloaded) continue;   // 0.9.134 (#265): a folder left out of the load - it waits in the table
             const auto folder = resolveStopBuildFolder(manual, ref);
             if (folder == juce::File()) continue;
             map->push_back({ folder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
@@ -25544,6 +25600,7 @@ juce::var MainComponent::stopBuildToVar(const ManualConfig::StopBuild& build)
                 for (const auto& p : ref.morePaths) more.add(slashes(p));
                 folder->setProperty("morePaths", more);
             }
+            if (ref.unloaded) folder->setProperty("unloaded", true);   // 0.9.134 (#265): in the table, not in the memory
             folders.add(juce::var(folder.get()));
         }
         item->setProperty("folders", folders);
@@ -25580,6 +25637,7 @@ MainComponent::ManualConfig::StopBuild MainComponent::stopBuildFromVar(const juc
                     ref = { (int)folder.getProperty("tree", 0), slashes(folder.getProperty("path", "").toString()) };
                     if (auto* more = folder.getProperty("morePaths", juce::var()).getArray())   // the other halves of a stereo stop (0.8.160)
                         for (const auto& p : *more) if (p.toString().isNotEmpty()) ref.morePaths.addIfNotAlreadyThere(slashes(p.toString()));
+                    ref.unloaded = (bool)folder.getProperty("unloaded", false);   // 0.9.134
                 }
             build.entries.push_back(entry);
         }
@@ -25715,7 +25773,7 @@ void MainComponent::showStopBuildingDialog(int)
                 + juce::String(juce::Time::getMillisecondCounterHiRes() - startMs, 0) + " ms");
             showTransmissions = owner.stopListShowTransmissions;
             rebuildPerspectiveUnion();
-            notLoaded = originalNotLoaded = owner.perspectivesNotLoaded;
+
             originalDrafts = drafts;   // 0.8.231: AFTER the union - its sorting of the perspective lists made every division
                                        // "changed" at every opening (an orange Apply that reloaded the whole organ for nothing)
             // Development (0.9.64): ORGAN_TEST_TABLE_ALIAS="<manual>|<row name>|<alias>" edits the alias in the
@@ -25734,7 +25792,8 @@ void MainComponent::showStopBuildingDialog(int)
             }
 
             intro.setText("One row per stop of the whole organ: its division, transmissions, name, alias and the sample "
-                "folder of every perspective. Click a folder cell to pick one of the free folders (the x frees it), or drag "
+                "folder of every perspective. Beside a folder (and a perspective's name): \"-\" unloads it - it stays in the table, dimmed, and leaves the memory; "
+                "then \"+\" loads it again and \"x\" takes it out. Dimmed = not in the memory. Click a folder cell to pick one of the free folders, or drag "
                 "a folder cell onto another cell (empty: it moves, occupied: they swap). Drag a name up or down to reorder "
                 "or to move the stop into another division; drag it a little to the right to indent it under the stop "
                 "above (a stop folder: the master's button switches its children too), to the left to make it a stop of "
@@ -25972,6 +26031,31 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
+        // 0.9.134: the small step buttons of a cell and of a column ("+" load, "-" unload, "x" take out): the sign is
+        // DRAWN, centred - a "+" as text did not fit a 20 px TextButton and came out as "...".
+        class StepButton final : public juce::TextButton
+        {
+        public:
+            explicit StepButton(const juce::String& sign) : juce::TextButton(sign) {}
+            void paintButton(juce::Graphics& g, bool over, bool down) override
+            {
+                getLookAndFeel().drawButtonBackground(g, *this, findColour(juce::TextButton::buttonColourId), over, down);
+                const auto sign = getButtonText();
+                const auto centre = getLocalBounds().toFloat().getCentre();
+                const float r = juce::jmin(getWidth(), getHeight()) * 0.22f;
+                g.setColour(findColour(juce::TextButton::textColourOffId).withMultipliedAlpha(isEnabled() ? 1.0f : 0.35f));
+                if (sign == "x")
+                {
+                    g.drawLine(centre.x - r, centre.y - r, centre.x + r, centre.y + r, 1.6f);
+                    g.drawLine(centre.x - r, centre.y + r, centre.x + r, centre.y - r, 1.6f);
+                }
+                else
+                {
+                    g.drawLine(centre.x - r * 1.3f, centre.y, centre.x + r * 1.3f, centre.y, 1.8f);
+                    if (sign == "+") g.drawLine(centre.x, centre.y - r * 1.3f, centre.x, centre.y + r * 1.3f, 1.8f);
+                }
+            }
+        };
         class GridArea final : public juce::Component
         {
         public:
@@ -25998,7 +26082,7 @@ void MainComponent::showStopBuildingDialog(int)
             std::vector<juce::File> folders;
             std::map<juce::String, SamplerEngine::FolderAssignment> automatic;   // lower-case full path -> automatic rule
         };
-        struct Cell { std::unique_ptr<CellButton> button; std::unique_ptr<juce::TextButton> freeButton; };
+        struct Cell { std::unique_ptr<CellButton> button; std::unique_ptr<juce::TextButton> freeButton, loadButton; };
         struct Row
         {
             int manual = 0;
@@ -26031,15 +26115,54 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
-        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove; std::unique_ptr<juce::ToggleButton> load; };
-        // 0.9.134 (#265): the perspectives that are not loaded - the tick box in each column's header (the load box
-        // has the same boxes: one value). A draft like the table: "Apply and reload" loads or frees the perspective.
-        juce::StringArray notLoaded, originalNotLoaded;
-        void setPerspectiveLoaded(const juce::String& perspective, bool loaded)
+        // 0.9.134 (#265, the user's "krokové tlačítko"): a folder of the table is loaded, or kept in the table but NOT
+        // loaded (FolderRef::unloaded - dimmed), or taken out of the row. The small buttons beside a cell and beside a
+        // column's name show the steps that can be taken, never a menu: "-" unloads (the folder stays, dimmed),
+        // "+" loads it again, "x" takes it out of the row (the column: removes it) - "x" only once it is unloaded.
+        // A draft like the rest of the table: "Apply and reload" frees or reads the samples.
+        struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<juce::TextButton> remove, unload, load; };
+        std::set<juce::String> loadedPlaces;   // the folders the ENGINE holds now (lower-case full paths) - a cell's colour tells the truth
+        std::set<juce::String> pooledPlaces;   // ... and those of stops whose samples were released on purpose (off the grid): dimmed, never "waiting"
+        void readLoadedPlaces()
         {
-            if (loaded) notLoaded.removeString(perspective, true); else notLoaded.addIfNotAlreadyThere(perspective, true);
+            loadedPlaces.clear();
+            pooledPlaces.clear();
+            auto add = [this](const Stop* rank)
+            {
+                if (rank == nullptr || rank->container || rank->folder == juce::File()) return;
+                const auto place = rank->folder.getFullPathName().toLowerCase();
+                if (rank->samplesUnloaded) { pooledPlaces.insert(place); return; }
+                for (const auto& variants : rank->samplesByNote) if (!variants.empty()) { loadedPlaces.insert(place); return; }
+            };
+            for (auto* stop : owner.engine.getStops())
+            {
+                add(stop);
+                for (const auto& rank : stop->ranks) add(rank.get());
+            }
+        }
+        int pendingCells = 0;                  // folders that are to be loaded and are not in the memory (a cancelled or memory-limited load)
+        std::set<int> pendingDivisions;
+        void later(std::function<void(StopListDialog&)> action)   // a button never rebuilds the grid from inside its own click
+        {
             juce::Component::SafePointer<StopListDialog> safeThis(this);
-            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->rebuildGrid(); });   // never from inside the box's own click
+            juce::MessageManager::callAsync([safeThis, action] { if (safeThis != nullptr) action(*safeThis); });
+        }
+        void setCellUnloaded(size_t rowIndex, const juce::String& perspective, bool unloaded)
+        {
+            commitEditors();
+            auto* entry = entryOf(rowIndex);
+            if (entry == nullptr) return;
+            const auto found = entry->folders.find(perspective);
+            if (found != entry->folders.end()) found->second.unloaded = unloaded;
+            rebuildGrid();
+        }
+        void setPerspectiveUnloaded(const juce::String& perspective, bool unloaded)
+        {
+            commitEditors();
+            for (auto& draft : drafts)
+                for (auto& entry : draft.entries)
+                    if (const auto found = entry.folders.find(perspective); found != entry.folders.end()) found->second.unloaded = unloaded;
+            rebuildGrid();
         }
 
         MainComponent& owner;
@@ -26080,7 +26203,8 @@ void MainComponent::showStopBuildingDialog(int)
                 for (const auto& [perspective, ref] : a.folders)
                 {
                     const auto found = b.folders.find(perspective);
-                    if (found == b.folders.end() || found->second.tree != ref.tree || found->second.relativePath != ref.relativePath || found->second.morePaths != ref.morePaths) return false;
+                    if (found == b.folders.end() || found->second.tree != ref.tree || found->second.relativePath != ref.relativePath || found->second.morePaths != ref.morePaths
+                        || found->second.unloaded != ref.unloaded) return false;   // 0.9.134: loaded / not loaded is a change of the table too
                 }
                 return true;
             };
@@ -26092,10 +26216,7 @@ void MainComponent::showStopBuildingDialog(int)
                 bool same = a.size() == b.size()
                     && drafts[(size_t)m].perspectives == originalDrafts[(size_t)m].perspectives && owner.manualConfigs[(size_t)m].stopBuild.active;
                 for (size_t i = 0; same && i < a.size(); ++i) same = sameEntry(a[i], b[i]);
-                // 0.9.134: a perspective ticked or unticked for loading changes every division that has folders in it.
-                for (size_t i = 0; same && i < a.size(); ++i)
-                    for (const auto& [perspective, ref] : a[i].folders)
-                        if (notLoaded.contains(perspective, true) != originalNotLoaded.contains(perspective, true)) same = false;
+
                 if (!same && (!a.empty() || !b.empty())) changed.insert(m);
             }
             return changed;
@@ -26182,12 +26303,17 @@ void MainComponent::showStopBuildingDialog(int)
             // The button looks like the others until something needs applying: then it turns orange.
             // Also without any tree (0.8.160): after "Unload all folder trees" the rows
             // removed with "Remove empty stops" must be applied too - the button stayed grey.
-            const bool changes = !changedDivisions().empty() || transmissionsChanged();
+            // 0.9.134: ... and for folders that are to be loaded but are not in the memory (a cancelled or memory-limited
+            // load: the rows looked loaded and nothing could read them short of loading the organ again).
+            const bool tableChanges = !changedDivisions().empty() || transmissionsChanged();
+            const bool changes = tableChanges || pendingCells > 0;
             applyButton.setEnabled(changes);
             if (changes) applyButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkorange);
             else applyButton.removeColour(juce::TextButton::buttonColourId);
-            applyButton.setTooltip(changes ? "Saves the table and loads the changed divisions again. Folders left out of the "
-                "table are not loaded (they leave the RAM)." : "Nothing to apply: the table is what is loaded. Transmissions act at once.");
+            applyButton.setTooltip(tableChanges ? "Saves the table and loads the changed divisions again. Folders left out of the "
+                "table, or unloaded with \"-\", are not loaded (they leave the RAM)."
+                : pendingCells > 0 ? juce::String(pendingCells) + " folder(s) of the table are not in the memory (dimmed): reads them - what is loaded stays."
+                : "Nothing to apply: the table is what is loaded. Transmissions act at once.");
         }
         juce::Label divisionHeader, nameHeader, aliasHeader, offsetHeader, transmissionHeader;
         std::vector<HeaderCell> headers;
@@ -26540,6 +26666,9 @@ void MainComponent::showStopBuildingDialog(int)
             grid.insertMarker = -1;
             grid.dropTarget = {};
             grid.removeAllChildren();
+            readLoadedPlaces();   // 0.9.134: what the engine holds - the cells' colours and the waiting folders
+            pendingCells = 0;
+            pendingDivisions.clear();
             const bool anyRows = std::any_of(drafts.begin(), drafts.end(), [](const Build& b) { return !b.entries.empty(); });
             auto header = [this, anyRows](juce::Label& label, const juce::String& text)
             {
@@ -26573,24 +26702,37 @@ void MainComponent::showStopBuildingDialog(int)
                     cell.label->dropAt = [this, p](juce::Point<int> screen) { columnDrop(p, screen); };
                 }
                 grid.addAndMakeVisible(*cell.label);
-                cell.load = std::make_unique<juce::ToggleButton>();
-                cell.load->setToggleState(!notLoaded.contains(perspectives[p], true), juce::dontSendNotification);
-                cell.load->setTooltip("Ticked: the perspective \"" + perspectives[p] + "\" is loaded. Unticked: it is not - less memory, a shorter load; its folders wait in the table "
-                    "(dimmed) and it has no cable in the Audio routing. \"Apply and reload\" loads or frees it; the rest of the organ stays in the memory. The load box has the same boxes.");
                 {
-                    auto* box = cell.load.get();
+                    // The steps of the whole column: what is wanted of it and what is in the memory.
                     const juce::String name = perspectives[p];
-                    cell.load->onClick = [this, box, name] { setPerspectiveLoaded(name, box->getToggleState()); };
-                    cell.load->getProperties().set("testName", "load " + name);   // ORGAN_TEST_MOUSE finds it
+                    int wanted = 0, waiting = 0, inMemory = 0;
+                    for (int m = 0; m <= owner.manualCount && m < kDivisions; ++m)
+                        for (const auto& entry : drafts[(size_t)m].entries)
+                            if (const auto found = entry.folders.find(name); found != entry.folders.end())
+                            {
+                                if (found->second.unloaded) ++waiting; else ++wanted;
+                                if (loadedPlaces.count(resolve(m, found->second).getFullPathName().toLowerCase()) != 0) ++inMemory;
+                            }
+                    if (inMemory == 0 && wanted + waiting > 0) cell.label->setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.4f));
+                    cell.unload = std::make_unique<StepButton>("-");
+                    cell.unload->setTooltip("Unload the perspective \"" + name + "\": its folders stay in the table (dimmed) and leave the memory with \"Apply and reload\"; it has no cable in the Audio routing meanwhile.");
+                    cell.unload->onClick = [this, name] { later([name](StopListDialog& d) { d.setPerspectiveUnloaded(name, true); }); };
+                    cell.unload->getProperties().set("testName", "unload " + name);   // ORGAN_TEST_MOUSE finds them
+                    cell.load = std::make_unique<StepButton>("+");
+                    cell.load->setTooltip("Load the perspective \"" + name + "\" again: every folder of it, with \"Apply and reload\" (the rest of the organ stays in the memory).");
+                    cell.load->onClick = [this, name] { later([name](StopListDialog& d) { d.setPerspectiveUnloaded(name, false); }); };
+                    cell.load->getProperties().set("testName", "load " + name);
+                    cell.remove = std::make_unique<StepButton>("x");
+                    cell.remove->setTooltip("Remove this perspective column (its folders become free)");
+                    cell.remove->onClick = [this, p] { later([p](StopListDialog& d) { d.removePerspective(p); }); };
+                    grid.addChildComponent(*cell.unload);
+                    grid.addChildComponent(*cell.load);
+                    grid.addChildComponent(*cell.remove);
+                    cell.label->setVisible(anyRows);
+                    cell.unload->setVisible(anyRows && wanted > 0);                        // something of it is to be loaded: it can be unloaded
+                    cell.load->setVisible(anyRows && waiting > 0);                         // something of it waits: it can be loaded
+                    cell.remove->setVisible(anyRows && wanted == 0);                       // nothing of it is to be loaded (or it is empty): it can go
                 }
-                grid.addAndMakeVisible(*cell.load);
-                cell.load->setVisible(anyRows);
-                cell.remove = std::make_unique<juce::TextButton>("x");
-                cell.remove->setTooltip("Remove this perspective column (its folders become free)");
-                cell.remove->onClick = [this, p] { removePerspective(p); };
-                grid.addAndMakeVisible(*cell.remove);
-                cell.label->setVisible(anyRows);
-                cell.remove->setVisible(anyRows);
                 headers.push_back(std::move(cell));
             }
             for (int manual = 0; manual <= owner.manualCount && manual < kDivisions; ++manual)
@@ -26610,7 +26752,8 @@ void MainComponent::showStopBuildingDialog(int)
                 info.setText("Sample folders in the loaded trees: " + juce::String(total) + ", used in the table: " + juce::String(used)
                     + ", free: " + juce::String(juce::jmax(0, total - used)) + "   |   folder trees: " + juce::String((int)pool.size())
                     + (missingTrees > 0 ? ", " + juce::String(missingTrees) + " NOT FOUND on this computer (orange cells; replace them in \"Load folder...\", drop them in \"Unload folder...\")" : juce::String())
-                    + "   |   stops: " + juce::String(stops), juce::dontSendNotification);
+                    + "   |   stops: " + juce::String(stops)
+                    + (pendingCells > 0 ? "   |   " + juce::String(pendingCells) + " folder(s) NOT in the memory yet (dimmed): \"Apply and reload\" reads them" : juce::String()), juce::dontSendNotification);
             }
             unloadFolderButton.setEnabled(!treeInfos.empty());
             swapButton.setEnabled(owner.manualCount >= 1);
@@ -26874,12 +27017,14 @@ void MainComponent::showStopBuildingDialog(int)
                         ? "NOT FOUND on this computer: " + tailText(pool[(size_t)juce::jmax(0, ref.tree)]) + juce::File::getSeparatorString() + ref.relativePath.replaceCharacter('/', juce::File::getSeparatorChar())
                         : folder.getFullPathName();
                     if (missing) cell.button->setColour(juce::TextButton::textColourOffId, onColour());
-                    else if (notLoaded.contains(perspective, true))
+                    else if (loadedPlaces.count(folder.getFullPathName().toLowerCase()) == 0)
                     {
-                        // 0.9.134 (the user): a folder that waits - its perspective is not loaded - reads apart from the loaded ones.
+                        // 0.9.134 (the user: after a cancelled load every row looked loaded): a folder that is NOT in the
+                        // memory reads apart from the loaded ones - unloaded on purpose, or one a load did not reach.
                         cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.4f));
-                        cell.button->setColour(juce::TextButton::buttonColourId, juce::Colours::black.withAlpha(0.25f));
-                        cellPaths[cell.button.get()] = "Not loaded (the perspective \"" + perspective + "\" is unticked): " + folder.getFullPathName();
+                        cellPaths[cell.button.get()] = (ref.unloaded ? juce::String("Not loaded (unloaded with \"-\"; \"+\" loads it again): ")
+                                                                     : juce::String("Not in the memory yet - \"Apply and reload\" reads it: ")) + folder.getFullPathName();
+                        if (!ref.unloaded && pooledPlaces.count(folder.getFullPathName().toLowerCase()) == 0) { ++pendingCells; pendingDivisions.insert(manual); }
                     }
                     cell.button->addMouseListener(this, false);
                 }
@@ -26923,19 +27068,37 @@ void MainComponent::showStopBuildingDialog(int)
                     moveFolder(i, perspective, (size_t)row, perspectives[(size_t)column]);
                 };
                 grid.addAndMakeVisible(*cell.button);
-                cell.freeButton = std::make_unique<juce::TextButton>("x");
-                cell.freeButton->setTooltip("Free this folder (the cell becomes empty, the folder can be used elsewhere)");
+                // 0.9.134: the steps of the cell. Loaded (or to be loaded): "-" = unload, the folder stays in the row.
+                // Unloaded: "+" = load it again, "x" = take it out of the row (the folder becomes free).
+                const bool unloadedCell = assigned && entry.folders.at(perspective).unloaded;
+                cell.freeButton = std::make_unique<StepButton>(unloadedCell || !assigned ? "x" : "-");
+                cell.freeButton->setTooltip(!assigned ? juce::String()
+                    : unloadedCell ? juce::String("Take this folder out of the row (the cell becomes empty, the folder can be used elsewhere)")
+                                   : juce::String("Unload this folder: it stays in the row (dimmed) and leaves the memory with \"Apply and reload\". Then \"+\" loads it again, \"x\" takes it out of the row."));
                 cell.freeButton->setEnabled(assigned);
-                cell.freeButton->onClick = [this, i, perspective]
-                {
-                    commitEditors();
-                    auto* e = entryOf(i);
-                    if (e == nullptr) return;
-                    e->folders.erase(perspective);
-                    refreshName(rows[i]->manual, *e);
-                    rebuildGrid();
-                };
+                if (unloadedCell)
+                    cell.freeButton->onClick = [this, i, perspective]
+                    {
+                        later([i, perspective](StopListDialog& d)
+                        {
+                            d.commitEditors();
+                            auto* e = d.entryOf(i);
+                            if (e == nullptr) return;
+                            e->folders.erase(perspective);
+                            d.refreshName(d.rows[i]->manual, *e);
+                            d.rebuildGrid();
+                        });
+                    };
+                else
+                    cell.freeButton->onClick = [this, i, perspective] { later([i, perspective](StopListDialog& d) { d.setCellUnloaded(i, perspective, true); }); };
                 grid.addAndMakeVisible(*cell.freeButton);
+                if (unloadedCell)
+                {
+                    cell.loadButton = std::make_unique<StepButton>("+");
+                    cell.loadButton->setTooltip("Load this folder again (with \"Apply and reload\"; the rest of the organ stays in the memory)");
+                    cell.loadButton->onClick = [this, i, perspective] { later([i, perspective](StopListDialog& d) { d.setCellUnloaded(i, perspective, false); }); };
+                    grid.addAndMakeVisible(*cell.loadButton);
+                }
                 row->cells.push_back(std::move(cell));
             }
             rows.push_back(std::move(row));
@@ -26959,11 +27122,11 @@ void MainComponent::showStopBuildingDialog(int)
                 // The name and its "x" together (0.8.160): the button right after the
                 // text, not at the far edge of the column.
                 const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(header.label->getFont(), header.label->getText())) + 8;
-                const int tick = 24;   // 0.9.134: the "loaded" tick box before the name
-                const int labelWidth = juce::jlimit(20, cellWidth - freeWidth - 6 - tick, textWidth);
-                if (header.load != nullptr) header.load->setBounds(x + 2, (headerHeight - 22) / 2, tick, 22);
-                header.label->setBounds(x + 2 + tick, 0, labelWidth, headerHeight);
-                header.remove->setBounds(x + 2 + tick + labelWidth + 2, 4, freeWidth - 4, headerHeight - 8);
+                const int labelWidth = juce::jlimit(20, cellWidth - 2 * freeWidth - 6, textWidth);
+                header.label->setBounds(x + 2, 0, labelWidth, headerHeight);
+                int buttonX = x + 2 + labelWidth + 2;   // 0.9.134: the steps that can be taken, in the order + - x
+                for (auto* button : { header.load.get(), header.unload.get(), header.remove.get() })
+                    if (button != nullptr && button->isVisible()) { button->setBounds(buttonX, 4, freeWidth - 4, headerHeight - 8); buttonX += freeWidth - 2; }
                 x += cellWidth;
             }
             int y = headerHeight;
@@ -26981,7 +27144,10 @@ void MainComponent::showStopBuildingDialog(int)
                 x += offsetWidth;
                 for (auto& cell : row->cells)
                 {
-                    cell.button->setBounds(x, y + 2, cellWidth - freeWidth - 4, rowHeight - 4);
+                    // 0.9.134: an unloaded cell has two steps ("+" and "x") - its folder button gives them the room.
+                    const int steps = cell.loadButton != nullptr ? 2 : 1;
+                    cell.button->setBounds(x, y + 2, cellWidth - steps * freeWidth - 4 + (steps - 1) * 2, rowHeight - 4);
+                    if (cell.loadButton != nullptr) cell.loadButton->setBounds(x + cellWidth - 2 * freeWidth + 2, y + 4, freeWidth - 4, rowHeight - 8);
                     cell.freeButton->setBounds(x + cellWidth - freeWidth, y + 4, freeWidth - 4, rowHeight - 8);
                     x += cellWidth;
                 }
@@ -27054,9 +27220,14 @@ void MainComponent::showStopBuildingDialog(int)
             const auto targetFound = target->folders.find(toPerspective);
             const bool targetAssigned = targetFound != target->folders.end();
             const juce::File targetFolder = targetAssigned ? resolve(m2, targetFound->second) : juce::File();
+            // 0.9.134: loaded / unloaded belongs to the PLACE in the table - a folder dragged onto a cell takes that
+            // cell's state (onto an empty cell: its own), the one swapped back takes the place it comes to.
+            const bool sourceUnloaded = sourceFound->second.unloaded;
+            const bool targetUnloaded = targetAssigned ? targetFound->second.unloaded : sourceUnloaded;
             source->folders.erase(fromPerspective);
-            if (targetAssigned) source->folders[fromPerspective] = refFor(m1, targetFolder);
+            if (targetAssigned) { source->folders[fromPerspective] = refFor(m1, targetFolder); source->folders[fromPerspective].unloaded = sourceUnloaded; }
             target->folders[toPerspective] = refFor(m2, sourceFolder);
+            target->folders[toPerspective].unloaded = targetUnloaded;
             refreshName(m1, *source);
             refreshName(m2, *target);
             rebuildGrid();
@@ -27089,11 +27260,7 @@ void MainComponent::showStopBuildingDialog(int)
                     menu.addSubMenu(tree.folder.getFileName() + "  (" + juce::String(sub.getNumItems()) + " free)", sub, sub.getNumItems() > 0);
             }
             if (!anyFree) menu.addItem(-1, "All folders are used. Free one first (the x beside a cell) to use it here.", false);
-            if (notLoaded.contains(perspective, true))   // 0.9.134: the same as the tick box of its column
-            {
-                menu.addSeparator();
-                menu.addItem(900000, "Load the perspective \"" + perspective + "\" (not loaded now) - with \"Apply and reload\"");
-            }
+
             juce::Component* target = nullptr;
             for (size_t p = 0; p < perspectives.size() && p < rows[rowIndex]->cells.size(); ++p)
                 if (perspectives[p] == perspective) target = rows[rowIndex]->cells[p].button.get();
@@ -27102,7 +27269,7 @@ void MainComponent::showStopBuildingDialog(int)
                 [safeThis, rowIndex, perspective, byId](int result)
                 {
                     if (safeThis == nullptr || result <= 0) return;
-                    if (result == 900000) { safeThis->setPerspectiveLoaded(perspective, true); return; }
+
                     const auto found = byId.find(result);
                     auto* entry = safeThis->entryOf(rowIndex);
                     if (found == byId.end() || entry == nullptr) return;
@@ -27289,8 +27456,7 @@ void MainComponent::showStopBuildingDialog(int)
             if (newName == oldName) return;
             for (const auto& existing : perspectives)
                 if (existing.equalsIgnoreCase(newName)) { rebuildGrid(); return; }
-            for (auto* list : { &notLoaded, &originalNotLoaded })   // 0.9.134: a perspective that is not loaded keeps that under its new name
-                for (int i = 0; i < list->size(); ++i) if ((*list)[i].equalsIgnoreCase(oldName)) list->set(i, newName);
+
             for (int manual = 0; manual < kDivisions; ++manual)
             {
                 auto& draft = drafts[(size_t)manual];
@@ -27548,16 +27714,12 @@ void MainComponent::showStopBuildingDialog(int)
             dropIgnoredFolders();
             // Which divisions changed (table or trees): only those are loaded again.
             // Transmission rows are applied to the engine on their own, without a reload.
-            const std::set<int> changed = changedDivisions();
+            std::set<int> changed = changedDivisions();
+            changed.insert(pendingDivisions.begin(), pendingDivisions.end());   // 0.9.134: divisions with folders a load did not reach
             auto plan = transmissionPlan();
             const bool trChanged = transmissionsChanged();
             if (changed.empty() && !trChanged) { updateApplyState(); return; }
-            if (notLoaded != originalNotLoaded)   // 0.9.134: the reload below reads it (stopBuildMap, the routes)
-            {
-                owner.perspectivesNotLoaded = notLoaded;
-                owner.configurationDirty = true;
-                CrashHandler::note("Stop List: perspective(s) not loaded from now on - " + (notLoaded.isEmpty() ? juce::String("none (every perspective is loaded)") : notLoaded.joinIntoString(", ")));
-            }
+
             juce::StringArray losing;
             dropCandidates.clear();
             for (int m : changed)
@@ -28215,13 +28377,10 @@ void MainComponent::loadSettings()
     // load): the default card found in an earlier session is taken from the start; the search right after the
     // start (startDefaultCardSearchIfDue) confirms it or finds another. Not with a saved "default for new organs":
     // that file names the cards itself.
+    // NEVER used unasked (the first build took it at once: with the card switched off every route of the start
+    // went to it and the box "Audio devices not available" came up on an empty console) - it is the FIRST card the
+    // search after the start asks, in the helper process; until it answers the default is Windows' own, as before.
     rememberedDefaultCard = parsed.getProperty("defaultCard", "").toString();
-    if (preferredDefaultType.isEmpty() && rememberedDefaultCard.containsChar('|') && !defaultCardSearchedAtStart && !defaultRoutingFile().existsAsFile())
-    {
-        preferredDefaultType = rememberedDefaultCard.upToFirstOccurrenceOf("|", false, false);
-        preferredDefaultName = rememberedDefaultCard.fromFirstOccurrenceOf("|", false, false);
-        CrashHandler::note("Default sound card: " + preferredDefaultName + " (" + preferredDefaultType + ") remembered from an earlier session - confirmed in a moment");
-    }
    #endif
     // Remembered folding of the Configuration Editor sections and the Division dialog groups.
     configEditorCollapsed.clear();
@@ -28259,11 +28418,7 @@ void MainComponent::loadSettings()
     velocityFullFrom = juce::jlimit(2, 127, (int)parsed.getProperty("velocityFullFrom", 80));   // 0.8.196
     engine.setVelocityFullFrom(velocityFullFrom);
     velocityPlainStrict = (bool)parsed.getProperty("velocityPlainStrict", false);   // 0.8.192
-    // 0.9.134 (#265): the perspectives of this organ that are NOT loaded (the load box's and the Stop List's tick
-    // boxes) - their folders stay in the tables. A file without the key loads every perspective.
-    perspectivesNotLoaded.clear();
-    if (const auto* list = parsed.getProperty("perspectivesNotLoaded", juce::var()).getArray())
-        for (const auto& name : *list) if (name.toString().isNotEmpty()) perspectivesNotLoaded.addIfNotAlreadyThere(name.toString(), true);
+
     engine.setVelocityPlainStrict(velocityPlainStrict);
     measurePipePitch = (bool)parsed.getProperty("measurePipePitch", true);   // 0.9.70
     engine.setMeasurePipePitch(measurePipePitch);
@@ -29225,12 +29380,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
     obj->setProperty("velocityFullFrom", velocityFullFrom);
     obj->setProperty("velocityPlainStrict", velocityPlainStrict);
-    if (!perspectivesNotLoaded.isEmpty())
-    {
-        juce::Array<juce::var> list;
-        for (const auto& name : perspectivesNotLoaded) list.add(name);
-        obj->setProperty("perspectivesNotLoaded", list);
-    }
+
     obj->setProperty("measurePipePitch", measurePipePitch);   // 0.9.70
     obj->setProperty("velocityShelfDb", velocityShelfDb);
     obj->setProperty("velocityShelfMs", velocityShelfMs);
@@ -32420,7 +32570,7 @@ void MainComponent::executeGlobalReset(bool clearMidiLearn, bool resetAudioOutpu
                 self.voicer->rebuildUI(self.stopsContent, self.stopsViewport);
             }
             CrashHandler::note("Global reset: everything unloaded, the instrument is empty (the samples are freed in the background)");
-            self.perspectivesNotLoaded.clear();   // 0.9.134
+
             self.treeStorage.clear();   // 0.9.125
             self.syncTreeStorageToEngine();
             self.globalResetStatus("Resetting the controls and divisions ...");
@@ -36893,8 +37043,7 @@ void MainComponent::ensurePerspectivePatternLine(const juce::String& label)
 // Perspective patterns line is relabelled; the routes themselves follow at Apply.
 void MainComponent::renamePerspectiveSettings(const juce::String& oldName, const juce::String& newName)
 {
-    for (int i = 0; i < perspectivesNotLoaded.size(); ++i)   // 0.9.134
-        if (perspectivesNotLoaded[i].equalsIgnoreCase(oldName)) perspectivesNotLoaded.set(i, newName);
+
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         auto& audio = manualConfigs[(size_t)manual].perspectiveAudio;

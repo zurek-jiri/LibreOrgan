@@ -863,11 +863,15 @@ static const char* const kManualText_part4 =
     "configuration, and the voicing boxes and the routing rows follow at once;\n"
     "nothing is reloaded.\n"
     "\n"
-    "**A perspective that is not loaded.** The tick box before a column's name\n"
-    "(the load box has the same boxes): unticked, the perspective is not loaded -\n"
-    "its folders stay in the table, dimmed, and it has no row in Audio routing.\n"
-    "Tick it and *Apply and reload*: that perspective alone is read, the rest of\n"
-    "the organ stays in the memory.\n"
+    "**Loaded, unloaded, taken out.** The small buttons beside every folder and\n"
+    "beside every perspective's name are steps: **-** unloads (the folder stays\n"
+    "in the table, dimmed, and leaves the memory), then **+** loads it again\n"
+    "and **x** takes it out of the row (the column: removes it). Dimmed always\n"
+    "means *not in the memory* - also a folder a cancelled load did not reach.\n"
+    "*Apply and reload* frees and reads what changed; the rest of the organ\n"
+    "stays in the memory. A perspective of which nothing is loaded has no row in\n"
+    "Audio routing. The load box's perspective boxes set the same thing for a\n"
+    "whole perspective; it is saved with the configuration.\n"
     "\n"
     "## 4.4 Ignored and one-shot patterns\n"
     "\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "the dashed strip under the last row makes a new row; the cables run in the\n"
     "aisles between the rows, never across a card.\n"
     "\n"
+    ;
+static const char* const kManualText_part5 =
     "**Drag a perspective onto an output**: while the mouse is over a card its\n"
     "output and the pair partner glow orange and the label under the cursor says\n"
     "what will land there (\"7+8\"); let go and that stereo pair replaces the\n"
     "route's channels, with **Shift** the pair is *added* (a multi-channel output\n"
-    ;
-static const char* const kManualText_part5 =
     "of a division: the pipes alternate between the pairs by key, C side / C#\n"
     "side), with **Alt** a single channel is taken (mono). Press a **cable** and it is yours: it\n"
     "leaves its output and follows the mouse - let go on another output (or\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "## 5.4 The auxiliary route\n"
     "\n"
     "One more route per division: a mixdown of everything the division plays -\n"
+    ;
+static const char* const kManualText_part6 =
     "all its perspectives together - with its own sound card, outputs, volume,\n"
     "separation and IR.\n"
     "\n"
     "**What it is for:** a dry set gets a second room - the auxiliary route on the\n"
-    ;
-static const char* const kManualText_part6 =
     "rear speakers with another IR is a \"Rear\" perspective the set never had. Or\n"
     "monitoring: headphones, a control room.\n"
     "\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "the header). The bindings are part of the configuration.\n"
     "\n"
     "## 6.5 Recording\n"
+    ;
+static const char* const kManualText_part7 =
     "\n"
     "*Record* in the top bar records the stereo mix to a WAV file; click again to\n"
     "stop (a short fade ends it). The file dialog starts in *Recordings folder*\n"
     "(Configuration Editor > Console; `LibreRecordings` beside the LibreOrgans\n"
-    ;
-static const char* const kManualText_part7 =
     "folder by default).\n"
     "\n"
     "## 6.6 Noises\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "Windows. The threads of a route on the Aggregated WASAPI device. Every such\n"
     "route is a stream with its own thread, so ten routes render on ten threads\n"
     "already: the default 1 is right for that. Raise it when one or two routes\n"
+    ;
+static const char* const kManualText_part8 =
     "carry the whole organ. A route never gets more than cores / aggregated\n"
     "routes lanes.\n"
     "\n"
     "### Sample storage in RAM\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "*32-bit float* keeps the samples as read; *16-bit* halves the RAM\n"
     "with a little hiss; *16-bit, releases at half the rate* stores the\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "\n"
     "### Wind: two pipes' share of the full sag\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "The sag with two keys held (default 50 %); from three keys on the rest closes\n"
     "gradually.\n"
     "\n"
     "### Wind: maximum wind model effect\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "The strength of the whole wind model, 0 to 100 % (default 100); every key\n"
     "stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.\n"
@@ -1890,16 +1894,21 @@ static const char* const kManualText_part9 =
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
     "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
-    "says so. Travels with the organ.\n"
+    "says so. Travels with the organ. The rule holds for every sample of a pipe\n"
+    "by its own recorded pitch: a release or a velocity layer that is off the\n"
+    "rank by more than this is pulled to the key too, one that is within it is\n"
+    "left as recorded. (With *Equal at 440 Hz* on every sample is tuned by its\n"
+    "own pitch anyway.) Lower it for sample folders whose attacks were tuned\n"
+    "afterwards and no longer meet their releases.\n"
     "\n"
     "### Replace pipes off by more than\n"
     "\n"
     "How far a pipe's recorded pitch may lie from its key before the pipe counts\n"
     "as a faulty sample (default 200 cents). Beyond it the pipe is switched off\n"
     "and filled from its neighbours; its thumb turns green and the tooltip says\n"
-    "so. Travels with the organ. The same limit holds for a release or a velocity\n"
-    "layer whose file names another pitch than the pipe's plain attack: it is\n"
-    "tuned to the attack by its own value up to this limit, beyond it left as it is.\n"
+    "so. Travels with the organ. A release or a velocity layer whose recorded\n"
+    "pitch lies further than this from its pipe's attack is not believed: it is\n"
+    "tuned like the attack.\n"
     "\n"
     "### Pipe coupling: detune left after the pull\n"
     "\n"
@@ -2011,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "*Remove them* deletes the files of ranks not loaded now; the loaded organ's\n"
     "stay.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Filled pipes cache folder\n"
     "\n"
@@ -2020,8 +2031,6 @@ static const char* const kManualText_part9 =
     "\n"
     "### Interface size\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "Every window, button and text in per cent of the design size (50 to 300 %),\n"
     "estimated from the screen at the first start; applied when the slider is\n"
     "released.\n"
@@ -2213,6 +2222,8 @@ static const char* const kManualText_part10 =
     "want to play by touch.\n"
     "\n"
     "### Bass octave layout\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "*Standard*, *Short octave* (E sounds C, F# D, G# E), *C D D# ...*, *C D E\n"
     "...* for historic bass octaves.\n"
@@ -2222,8 +2233,6 @@ static const char* const kManualText_part10 =
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
-    ;
-static const char* const kManualText_part11 =
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
     "\n"
@@ -2415,6 +2424,8 @@ static const char* const kManualText_part11 =
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
+    ;
+static const char* const kManualText_part12 =
     "answers nothing for eight seconds records where it was waiting.\n"
     "`settings.json` is the state of the program, `settings-<date>.json` the\n"
     "snapshot of each of the last seven days; if the program crashes at every\n"
@@ -2424,8 +2435,6 @@ static const char* const kManualText_part11 =
     "\n"
     "*Report a problem...* at the top of the Configuration Editor asks what\n"
     "happened - a few words are enough. *Create the report and open GitHub*\n"
-    ;
-static const char* const kManualText_part12 =
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
@@ -2617,6 +2626,8 @@ static const char* const kManualText_part12 =
     "or \"Ped_\" is a division mark and never becomes a perspective.\n"
     "\n"
     "## 10.6 Memory and the loading stop\n"
+    ;
+static const char* const kManualText_part13 =
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
     "the memory and stops when any sign says it is short: less free than the\n"
@@ -2626,8 +2637,6 @@ static const char* const kManualText_part12 =
     "programs held when the load began, plus the reserve), the program swapped out\n"
     "by more than 256 MB since the load began (on macOS the compressor growing that\n"
     "much while less than twice the reserve is free; on Windows 1 GB of the program\n"
-    ;
-static const char* const kManualText_part13 =
     "taken out of its working set), the macOS kernel reporting memory pressure, or\n"
     "on Windows the commit limit (RAM and page file together) nearly reached. The\n"
     "samples never count on the page file: the loading ends while they are all in\n"

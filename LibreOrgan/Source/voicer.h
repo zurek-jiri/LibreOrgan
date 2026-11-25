@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <JuceHeader.h>
 #include "SamplerEngine.h"
@@ -120,7 +120,7 @@ public:
     // Height of the per-key area below them: the "Volume per key" and "Treble per
     // key" headers and, when unfolded, their rows of vertical sliders.
     // Volume row labels: MIDI number, note name and the pipe on/off checkbox.
-    static constexpr int keyHeaderHeight = 22, keySliderHeight = 180, keyLabelsHeight = 40, toneLabelsHeight = 12;
+    static constexpr int keyHeaderHeight = 22, keySliderHeight = 180, keyLabelsHeight = 40, toneLabelsHeight = 24;   // 0.9.134: the tone and attack rows carry the MIDI number above the note name too
     // 0.9.79 (#228): a third row "Attack per key" (the stop's own row only, never a transmission's).
     static int keyAreaHeight(bool volumeExpanded, bool toneExpanded, bool attackRow = false, bool attackExpanded = false) noexcept
     {
@@ -381,6 +381,7 @@ private:
     // Second row of per-key sliders: the tone (high shelf, -9..9 dB) per key.
     juce::OwnedArray<LearnableSlider> toneSliders;
     juce::OwnedArray<juce::Label> toneNameLabels;
+    juce::OwnedArray<juce::Label> toneNumLabels, attackNumLabels;   // 0.9.134: the MIDI numbers of the tone and attack rows (the volume row's: midiNumLabels)
     SectionHeaderLabel volumeHeader, toneHeader;          // "Volume per key" / "Treble per key"
     juce::TextButton volumeReset{ "Reset to 0 dB" }, toneReset{ "Reset to 0 dB" };
     std::function<void(int)> toggleSection;

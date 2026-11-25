@@ -813,6 +813,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             attackNameLabel->setFont(juce::FontOptions(10.0f));
             attackNameLabels.add(attackNameLabel);
             addAndMakeVisible(attackNameLabel);
+            auto* attackNumLabel = new juce::Label();   // 0.9.134: the MIDI number above the note name, as in the volume row
+            attackNumLabel->setText(juce::String(note), juce::dontSendNotification);
+            attackNumLabel->setJustificationType(juce::Justification::centred);
+            attackNumLabel->setFont(juce::FontOptions(9.0f));
+            attackNumLabels.add(attackNumLabel);
+            addAndMakeVisible(attackNumLabel);
         }
 
         // Note name label (above slider)
@@ -830,6 +836,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         toneNameLabel->setFont(juce::FontOptions(10.0f));
         toneNameLabels.add(toneNameLabel);
         addAndMakeVisible(toneNameLabel);
+        auto* toneNumLabel = new juce::Label();   // 0.9.134: the MIDI number above the note name, as in the volume row
+        toneNumLabel->setText(juce::String(note), juce::dontSendNotification);
+        toneNumLabel->setJustificationType(juce::Justification::centred);
+        toneNumLabel->setFont(juce::FontOptions(9.0f));
+        toneNumLabels.add(toneNumLabel);
+        addAndMakeVisible(toneNumLabel);
 
         // MIDI number label (above note name)
         auto* numLabel = new juce::Label();
@@ -838,6 +850,14 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         numLabel->setFont(juce::FontOptions(9.0f));
         midiNumLabels.add(numLabel);
         addAndMakeVisible(numLabel);
+        // 0.9.134 (the user: the attack row's thumb stayed blue on a replaced pipe, its names never turned orange or
+        // red): whatever tells the state of a key is set on EVERY per-key row - the three rows' sliders and labels.
+        auto* attackSlider = attackSliders[note - noteMin];
+        auto* attackName = attackNameLabels[note - noteMin];
+        auto* attackNum = attackNumLabels[note - noteMin];
+        const std::vector<juce::Slider*> rowSliders{ slider, tone, attackSlider };
+        const std::vector<juce::Label*> rowNames{ nameLabel, toneNameLabel, attackName };
+        const std::vector<juce::Label*> rowNumbers{ numLabel, toneNumLabel, attackNum };
 
         // Disable slider if the stop has no sample for this key's pipe (a
         // transmission's key plays the pipe shifted by its transposition). A pipe
@@ -900,11 +920,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         const juce::Colour green(0xff4cd964);
         if (!usable)
         {
-            slider->setColour(juce::Slider::trackColourId, juce::Colours::grey);
-            tone->setColour(juce::Slider::trackColourId, juce::Colours::grey);
-            nameLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
-            toneNameLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
-            numLabel->setColour(juce::Label::textColourId, juce::Colours::grey);
+            for (auto* s : rowSliders) if (s != nullptr) s->setColour(juce::Slider::trackColourId, juce::Colours::grey);
+            for (auto* l : rowNames) if (l != nullptr) l->setColour(juce::Label::textColourId, juce::Colours::grey);
+            for (auto* l : rowNumbers) if (l != nullptr) l->setColour(juce::Label::textColourId, juce::Colours::grey);
         }
         else
         {
@@ -919,8 +937,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 const Stop* filledRank = nullptr;
                 for (const auto* rank : rankSources)
                     if (rank->isFilled(pipe)) { source = rank->sourceNoteFor(pipe); filledRank = rank; break; }
-                slider->setColour(juce::Slider::thumbColourId, green);
-                tone->setColour(juce::Slider::thumbColourId, green);
+                for (auto* s : rowSliders) if (s != nullptr) s->setColour(juce::Slider::thumbColourId, green);
                 // What sounds here: the parent stop, the file of the sample used, the
                 // shift - and the key of this very row that plays that sample itself,
                 // when the row has it: "HW Tromp 16', sample 039-D#.wav, -12 st (from key 51)".
@@ -944,11 +961,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                         << juce::String(-filledRank->rawTuningCents[(size_t)pipe], 0) << " cents off its key, beyond the retune limit ("
                         << juce::String(engine.getRetuneLimitCents(), 0) << " cents, Configuration Editor) - switched off and taken from the neighbour";
                 }
-                slider->setTooltip(tip);
-                tone->setTooltip(tip);
-                nameLabel->setTooltip(tip);
-                toneNameLabel->setTooltip(tip);
-                numLabel->setTooltip(tip);
+                for (auto* s : rowSliders) if (s != nullptr) s->setTooltip(tip);
+                for (auto* l : rowNames) if (l != nullptr) l->setTooltip(tip);
+                for (auto* l : rowNumbers) if (l != nullptr) l->setTooltip(tip);
             }
             else
             {
@@ -974,11 +989,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                                 << juce::String(std::abs(c), 0) << " cents " << (c > 0 ? "below" : "above") << " its key (\"Retune pipes off by more than\", Configuration Editor)";
                             break;
                         }
-                    slider->setTooltip(tip);
-                    tone->setTooltip(tip);
-                    nameLabel->setTooltip(tip);
-                    toneNameLabel->setTooltip(tip);
-                    numLabel->setTooltip(tip);
+                    for (auto* s : rowSliders) if (s != nullptr) s->setTooltip(tip);
+                    for (auto* l : rowNames) if (l != nullptr) l->setTooltip(tip);
+                    for (auto* l : rowNumbers) if (l != nullptr) l->setTooltip(tip);
                 }
             }
             // 0.9.70: a RED note name - the pitch of the sample that sounds here does not come from an agreeing
@@ -992,19 +1005,23 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 else if (u->pitchSource == 2) why = "No smpl chunk in this sample: the pitch measured from the sound, " + cents(u->measuredPitch);
                 else why = "No smpl chunk in this sample and no measurement (\"Measure the pitch of every pipe from its sound\" is off, or the sound gave nothing): the file number taken as the pitch";
                 if (!stop->noteHasLoopInAnyRank(source)) why << "; no loop in the smpl chunk either";
-                nameLabel->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));   // 0.9.77: a lighter red - pure red was unreadable on the grey
-                nameLabel->setTooltip(why);
-                toneNameLabel->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));
-                toneNameLabel->setTooltip(why);
+                for (auto* l : rowNames)
+                    if (l != nullptr)
+                    {
+                        l->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));   // 0.9.77: a lighter red - pure red was unreadable on the grey
+                        l->setTooltip(why);
+                    }
             }
             // An orange note name (the shade of every emphasised text): the sample
             // that sounds here has no loop in its smpl chunk.
             else if (!stop->noteHasLoopInAnyRank(source))
             {
-                nameLabel->setColour(juce::Label::textColourId, onColour());
-                nameLabel->setTooltip("No loop in the smpl chunk of this sample");
-                toneNameLabel->setColour(juce::Label::textColourId, onColour());
-                toneNameLabel->setTooltip("No loop in the smpl chunk of this sample");
+                for (auto* l : rowNames)
+                    if (l != nullptr)
+                    {
+                        l->setColour(juce::Label::textColourId, onColour());
+                        l->setTooltip("No loop in the smpl chunk of this sample");
+                    }
             }
         }
     }
@@ -1025,6 +1042,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     toneReset.setVisible(showToneRow);
     for (auto* s : toneSliders) s->setVisible(showToneRow);
     for (auto* label : toneNameLabels) label->setVisible(showToneRow);
+    for (auto* label : toneNumLabels) label->setVisible(showToneRow);
     {   // 0.9.79: the "Attack per key" row (the stop's own row only)
         const bool attackRow = withPipes && !isTransmission();
         const bool showAttackRow = attackRow && attackRowShown();
@@ -1034,6 +1052,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         attackRandomizeBox.setVisible(showAttackRow);
         for (auto* s : attackSliders) s->setVisible(showAttackRow);
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
+        for (auto* label : attackNumLabels) label->setVisible(showAttackRow);
     }
     const bool stopControls = withPipes && !isTransmission();     // pipe properties: the stop's own row only
     const bool transmissionControls = showVoicing && isTransmission();
@@ -1841,12 +1860,14 @@ void StopRow::resized()
         for (auto* box : pipeBoxes) box->setVisible(showVolumeRow);
         for (auto* slider : toneSliders) slider->setVisible(showToneRow);
         for (auto* label : toneNameLabels) label->setVisible(showToneRow);
+        for (auto* label : toneNumLabels) label->setVisible(showToneRow);
         const bool attackRow = showVoicing && !isTransmission();   // 0.9.79
         const bool showAttackRow = attackRow && attackRowShown();
         attackHeader.setSection("Attack per key", attackRowShown());
         attackHeader.setVisible(attackRow); attackReset.setVisible(showAttackRow); attackRandomizeBox.setVisible(showAttackRow);
         for (auto* slider : attackSliders) slider->setVisible(showAttackRow);
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
+        for (auto* label : attackNumLabels) label->setVisible(showAttackRow);
         // 0.9.126: the "All" slider of each row shows with its row.
         const bool allShown[3] = { showVolumeRow, showToneRow, showAttackRow };
         for (int row = 0; row < 3; ++row)
@@ -1890,7 +1911,7 @@ void StopRow::resized()
     y += keyHeaderHeight;
     if (toneRowShown())
     {
-        placeAll(1, y, y + toneLabelsHeight);
+        placeAll(1, y + 12, y + toneLabelsHeight);
         x = keysLeft;
         for (int note = noteMin; note <= noteMax; ++note)
         {
@@ -1898,7 +1919,8 @@ void StopRow::resized()
             if (auto* slider = toneSliders[idx])
             {
                 slider->setBounds(x, y + toneLabelsHeight, sliderWidth, keySliderHeight);
-                if (auto* nameLabel = toneNameLabels[idx]) nameLabel->setBounds(x, y, sliderWidth, 12);
+                if (auto* numLabel = toneNumLabels[idx]) numLabel->setBounds(x, y, sliderWidth, 12);
+                if (auto* nameLabel = toneNameLabels[idx]) nameLabel->setBounds(x, y + 12, sliderWidth, 12);
             }
             x += sliderWidth;
         }
@@ -1912,7 +1934,7 @@ void StopRow::resized()
         y += keyHeaderHeight;
         if (attackRowShown())
         {
-            placeAll(2, y, y + toneLabelsHeight);
+            placeAll(2, y + 12, y + toneLabelsHeight);
             x = keysLeft;
             for (int note = noteMin; note <= noteMax; ++note)
             {
@@ -1920,7 +1942,8 @@ void StopRow::resized()
                 if (auto* slider = attackSliders[idx])
                 {
                     slider->setBounds(x, y + toneLabelsHeight, sliderWidth, keySliderHeight);
-                    if (auto* nameLabel = attackNameLabels[idx]) nameLabel->setBounds(x, y, sliderWidth, 12);
+                    if (auto* numLabel = attackNumLabels[idx]) numLabel->setBounds(x, y, sliderWidth, 12);
+                    if (auto* nameLabel = attackNameLabels[idx]) nameLabel->setBounds(x, y + 12, sliderWidth, 12);
                 }
                 x += sliderWidth;
             }
@@ -2514,7 +2537,11 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
                     auto step = std::make_shared<std::function<void()>>();
                     *step = [eng, manual, key, velocity, seconds, file, prefix, noTune, step]
                     {
-                        if (eng->pendingBackgroundWorkers() > 0) { juce::Timer::callAfterDelay(500, [step] { if (*step) (*step)(); }); return; }
+                        // ORGAN_TEST_RECORD_DELAY=<seconds> (0.9.134): the recording waits that long after the load - a portable
+                        // organ's routes are moved to this computer's default card right after it, and a key played meanwhile is lost.
+                        static const double startAfter = juce::Time::getMillisecondCounterHiRes()
+                            + (std::getenv("ORGAN_TEST_RECORD_DELAY") != nullptr ? juce::String(std::getenv("ORGAN_TEST_RECORD_DELAY")).getDoubleValue() * 1000.0 : 0.0);
+                        if (eng->pendingBackgroundWorkers() > 0 || juce::Time::getMillisecondCounterHiRes() < startAfter) { juce::Timer::callAfterDelay(500, [step] { if (*step) (*step)(); }); return; }
                         int on = 0;
                         for (auto* stop : eng->getStops())
                         {

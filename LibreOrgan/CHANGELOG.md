@@ -18,14 +18,23 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 - **Perspectives to load** (#265): the load box lists the organ's perspectives
   as tick boxes, all on. An unticked perspective is not loaded - no memory, no
   loading time, no row in Audio routing; its folders stay in the Stop List,
-  dimmed. The same tick box stands before every column's name in the Stop
-  List: tick it and *Apply and reload* reads that perspective alone.
+  dimmed. The choice is saved with the configuration; an organ merged in
+  keeps its own.
+- **Stop List: loaded, unloaded, taken out**. The small buttons beside every
+  folder and every perspective's name are steps: **-** unloads (the folder
+  stays, dimmed, and leaves the memory), **+** loads it again, **x** takes it
+  out. Dimmed means *not in the memory* - also after a cancelled load, whose
+  missing folders *Apply and reload* now reads (every row looked loaded
+  before and only a new load of the organ brought them).
 - **Every sample tuned by its own pitch**: a release or a velocity layer whose
-  file names another pitch than the pipe's plain attack is tuned to the
-  attack (as Hauptwerk does), up to *Replace pipes off by more than*. Before,
-  one correction per pipe served all its samples - a set whose attacks were
-  fine-tuned afterwards played its releases up to two thirds of a semitone
-  off.
+  file names another pitch than the pipe's plain attack follows the two
+  tuning settings by its own pitch, as a pipe does: with *Equal at 440 Hz*
+  it is tuned by its own value; without it, it is pulled to its key when off
+  the rank by more than *Retune pipes off by more than*; a difference beyond
+  *Replace pipes off by more than* is not believed. Before, one correction
+  per pipe served all its samples - sample folders whose attacks were tuned
+  afterwards played their releases up to two thirds of a semitone off, and
+  lowering *Retune pipes off by more than* could not help.
 - **The route "Noises"**: an organ whose noises are one recording for all
   plays them through a route of their own, shown in Audio routing with its
   cable, volume and effects (before: through whichever route of the division
@@ -43,6 +52,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 - **Windows: the default sound card at once**. The card found is remembered
   and looked for a few seconds after the start - an organ was opened on
   Windows' default output first and moved to the ASIO card after its load.
+- **Voicing, per-key rows**: the Treble and Attack rows carry the MIDI numbers
+  like the Volume row; a replaced pipe's green thumb and the orange (no loop)
+  and red (no pitch) note names show in the Attack row too.
 - The lines between the perspectives of the Noises window are the divider of
   the main window's divisions.
 

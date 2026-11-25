@@ -851,11 +851,15 @@ left or right** to change it: the lines take the new order, saved with the
 configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.
 
-**A perspective that is not loaded.** The tick box before a column's name
-(the load box has the same boxes): unticked, the perspective is not loaded -
-its folders stay in the table, dimmed, and it has no row in Audio routing.
-Tick it and *Apply and reload*: that perspective alone is read, the rest of
-the organ stays in the memory.
+**Loaded, unloaded, taken out.** The small buttons beside every folder and
+beside every perspective's name are steps: **-** unloads (the folder stays
+in the table, dimmed, and leaves the memory), then **+** loads it again
+and **x** takes it out of the row (the column: removes it). Dimmed always
+means *not in the memory* - also a folder a cancelled load did not reach.
+*Apply and reload* frees and reads what changed; the rest of the organ
+stays in the memory. A perspective of which nothing is loaded has no row in
+Audio routing. The load box's perspective boxes set the same thing for a
+whole perspective; it is saved with the configuration.
 
 ## 4.4 Ignored and one-shot patterns
 
@@ -1868,16 +1872,21 @@ or two longer on a large organ.
 
 A pipe further off its own rank's tuning than this is pulled to its key even
 with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip
-says so. Travels with the organ.
+says so. Travels with the organ. The rule holds for every sample of a pipe
+by its own recorded pitch: a release or a velocity layer that is off the
+rank by more than this is pulled to the key too, one that is within it is
+left as recorded. (With *Equal at 440 Hz* on every sample is tuned by its
+own pitch anyway.) Lower it for sample folders whose attacks were tuned
+afterwards and no longer meet their releases.
 
 ### Replace pipes off by more than
 
 How far a pipe's recorded pitch may lie from its key before the pipe counts
 as a faulty sample (default 200 cents). Beyond it the pipe is switched off
 and filled from its neighbours; its thumb turns green and the tooltip says
-so. Travels with the organ. The same limit holds for a release or a velocity
-layer whose file names another pitch than the pipe's plain attack: it is
-tuned to the attack by its own value up to this limit, beyond it left as it is.
+so. Travels with the organ. A release or a velocity layer whose recorded
+pitch lies further than this from its pipe's attack is not believed: it is
+tuned like the attack.
 
 ### Pipe coupling: detune left after the pull
 

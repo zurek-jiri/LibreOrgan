@@ -677,6 +677,20 @@ struct Stop
         if (!tuned) return mistuneCents[(size_t)note];   // 0.9.10: as recorded, but a pipe far off its rank is pulled to its key
         return tuning440Cents[(size_t)note] + undulationCents[(size_t)note];
     }
+    // 0.9.134: the tuning of ONE SAMPLE of the pipe - a velocity layer or a release whose smpl chunk names another
+    // pitch than the pipe's plain attack (layerCents = what brings it to that attack). The user's rule: the two
+    // sliders act on a sample as they act on a pipe. With "Equal at 440 Hz" the sample is tuned by its own chunk
+    // (the pipe's correction + its own offset). Without it the sample is left as recorded unless ITS OWN deviation
+    // from the rank exceeds "Retune pipes off by more than" - then it is pulled to its key, like a pipe. An offset
+    // beyond "Replace pipes off by more than" is no tuning but a chunk nobody filled: the sample follows its pipe.
+    float tuningCentsForSample(int note, bool tuned, float layerCents, float retuneAbove, float replaceAbove) const noexcept
+    {
+        if (note < 0 || note >= 128) return 0.0f;
+        if (layerCents == 0.0f || std::abs(layerCents) > replaceAbove) return tuningCentsFor(note, tuned);
+        if (tuned) return tuning440Cents[(size_t)note] + undulationCents[(size_t)note] + layerCents;
+        const float own = rankDeviationCents[(size_t)note] - layerCents;   // this sample's deviation from the rank's tuning
+        return retuneAbove > 0.0f && std::abs(own) > retuneAbove ? -own : 0.0f;
+    }
     // Additional perspective ranks belonging to this logical stop. The Stop
     // itself is the first rank.
     std::vector<std::unique_ptr<Stop>> ranks;

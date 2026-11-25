@@ -6151,6 +6151,46 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   read alone in 30 s, its routes started). NOT run: a real column drag in the Stop List with the Noises window open
   (the hook calls the same function), unticking a LOADED perspective + Apply, Linux / macOS. test_0127b.ps1's -Env
   splits at ";" - a value with ";" (ORGAN_TEST_PERSPECTIVES_OFF=A;B) keeps its first part only.
+- 0.9.134 REWORKED THE SAME DAY (the user on the first build: "nechtěl jsem posuvník replace pipes, ale retune pipes
+  off by more than ... druhý posuvník má také být v akci"; "pro nový mergovaný nástroj se nesmí ignorovat"; "chtěl jsem
+  to pro každý rejstřík zvlášť ... při canceled loading zůstávají všecky řádky jako načtené"; "jeden checkbox, druhý
+  tmavší křížek, to je na hovno"; second local commit, still NOT pushed). WHAT REPLACES THE NOTE ABOVE: (1) TUNING OF A
+  SAMPLE = THE TWO SLIDERS AS FOR A PIPE: `Stop::tuningCentsForSample(note, tuned, layerCents, retuneAbove, replaceAbove)`
+  (SamplerEngine.h): |layerCents| > "Replace pipes off by more than" -> not believed, the sample follows its pipe; with
+  "Equal at 440 Hz" -> tuning440 + undulation + layerCents; else the sample's OWN deviation from the rank
+  (rankDeviationCents - layerCents) is pulled to the key only when it exceeds "Retune pipes off by more than" (0 = never).
+  So at the DEFAULT 50 c nothing changes anywhere (measured: Siebenquart 57 release +67 / +32 c as before); at 10 c: held
+  1545.7 / 2097.7, release 1582.4 / 2104.7 = +41 / +6 c (the releases sit 5.6 c off the rank: inside the slider - at 5 c
+  they are pulled too). `layerCentsWithin` is gone. (2) "NOT LOADED" IS A FLAG OF EVERY FOLDER OF THE TABLES:
+  `FolderRef::unloaded` (JSON "unloaded": true on the folder object; saved with the configuration), stopBuildMap skips it,
+  a perspective has a route when any folder of it is to be loaded, closeHiddenRoutes keeps the route settings of a
+  perspective whose folders are all unloaded. `perspectivesNotLoaded` (the name list) is GONE.
+  `setPerspectivesUnloadedInVar(var, off, on)` (static) marks the folder objects of a var: used by the load box (only
+  the perspectives whose tick the user CHANGED; nothing ticked = all), by copyLoadOptions (transient
+  "perspectivesOffChoice"/"perspectivesOnChoice" for a kept file) and by mergeConfiguration through mergeStorageChoice -
+  on the ADDED organ's var alone (an ODF is read anew on the merge path). Hook ORGAN_TEST_PERSPECTIVES_OFF takes "A,B"
+  or "A;B". (3) STOP LIST STEPS (his choice "krokové tlačítko", without menus, both ways visible): `StepButton` (the
+  sign DRAWN - a "+" as text did not fit 20 px and showed "..."): a folder to be loaded has "-" (unload: stays, dimmed),
+  an unloaded one "+" (load again) and "x" (take out of the row); a column's name the same ("-" when anything of it is
+  to be loaded, "+" when anything waits, "x" when nothing is to be loaded); every click through `later()` (callAsync).
+  The header tick box and the cell menu item are gone (the column drag's landing line stands right again).
+  (4) THE TRUTH OF THE MEMORY: `readLoadedPlaces()` (the folders of the engine's ranks that hold samples; pooled =
+  samplesUnloaded apart) - a cell whose folder is not in the memory is DIMMED whatever the table says;
+  `pendingCells/pendingDivisions` (to be loaded, on the disk, not in the memory, not pooled) enable "Apply and reload"
+  (apply() adds those divisions; hasUnappliedChanges - the close question - counts table drafts only) and the info line
+  names them. A cancelled load: 19 stops left out -> Apply read them, "16 rank(s) kept". Unload of a loaded perspective +
+  Apply: process 19.0 -> 9.9 GB. moveFolder keeps loaded / unloaded with the PLACE. (5) THE DEFAULT CARD IS NEVER TAKEN
+  UNASKED: the first build set preferredDefault* from the remembered key in loadSettings - with the Fireface switched
+  off (it was, during my tests: "hdspf init failed") every route of the start went to it and "Audio devices not
+  available" came up on an empty console. Now the remembered card is only the FIRST candidate of the search after the
+  start (helper process); until it answers the default is Windows' own. RULE: a remembered device is asked before it is
+  used. (6) Voicing per-key rows: `toneNumLabels/attackNumLabels` (MIDI numbers, toneLabelsHeight 24), the state of a key
+  (grey, green thumb, red / orange name, tooltips) set on all three rows through rowSliders/rowNames/rowNumbers - a NEW
+  per-key row joins those three vectors. Hook ORGAN_TEST_RECORD_DELAY=<s> (a portable organ's routes are moved right
+  after its load: a key recorded meanwhile is silent). Stop List testNames "load <P>" / "unload <P>" (ORGAN_TEST_MOUSE).
+  NOT run: a merge with perspectives unticked for the added organ (file or ODF), a real mouse on the step buttons, his
+  "a grey perspective cannot be replaced by dragging cells" (no block found in moveFolder - a folder dragged onto an
+  unloaded place now takes that place's state), Linux / macOS.
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)
