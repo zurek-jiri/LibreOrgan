@@ -5238,14 +5238,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   loop per route (the re-run of processPending skips pipes already speaking, so per-pipe delays work), StopRow's third
   per-key row for a transmission (keyAreaHeight, the "All" control row 2, setNoteActive, rowSliders / rowNames /
   rowNumbers), the four voicing places (createState, loadState, saveStopSettings, loadStopSettings) and the pistons
-  that hold the voicing. TO SETTLE WITH HIM before coding: whether the transmission's value ADDS to the parent's value
-  of the sounding PIPE (as its volume is relative to the parent - my advice) or stands alone.
-  (2) "Report a problem" dialog: "What happened" is still demanded ("Say what happened first ...", MainComponent.cpp
-  ~9012) - the GitHub form no longer requires it (below); make the dialog's text optional too.
+  that hold the voicing. SETTLED (the user, 25 Nov 2026: "ano přičítat, ale dej to pouze do to-do, dnes nekóduj"): the
+  transmission's value ADDS to the parent's value of the sounding PIPE (key + shift), as its volume is relative to
+  the parent - a lazy pipe stays corrected on every route, the transmission only trims its own. NOT coded yet.
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
-  .zip from different computers onto an internet computer ... We learn everything from the log anyway"):
-  `.github/ISSUE_TEMPLATE/bug_report.yml` requires the Logs field ALONE (version, system, audio, what happened are
-  optional; the title is GitHub's own requirement, prefilled "[Bug] "). RULE: never make another field required.
+  .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
+  happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO
+  fields - Logs and "What happened" ("A few words are enough") - the rest is optional (version, system, audio; the
+  title is GitHub's own requirement, prefilled "[Bug] "). The program's "Report a problem" dialog demands "What
+  happened" too - that STAYS. RULE: never make another field required.
 - 0.9.127 IN WORK (24 Nov 2026, the user's GO for the noises: "ano ... To, co říká ODF, zachovat pevné přiřazení. Nezapomeň
   na ty drobné opravy pro Pásztora"; ALL of it in ONE version). HIS DECISIONS: (1) published configurations open with
   everything off as before; else the state as the definition says (the blower mostly on), a master switch + volume

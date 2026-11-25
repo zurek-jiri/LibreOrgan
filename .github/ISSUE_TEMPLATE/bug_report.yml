@@ -39,7 +39,9 @@ body:
     id: what
     attributes:
       label: What happened
-      description: What you saw or heard, and what you expected instead.
+      description: A few words are enough - what you saw or heard.
+    validations:
+      required: true
   - type: textarea
     id: steps
     attributes:
