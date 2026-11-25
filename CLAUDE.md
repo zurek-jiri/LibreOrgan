@@ -5230,6 +5230,22 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   FALSE FRIENDS of a word match: "cimbel" (a mixture stop), "nachthorn", "glockenton", "(tremmed)" ranks, "gross...".
   THE PROGRAM'S OWN IMPORT: does HauptwerkOdf.cpp read the lower-case uncompacted files? NOT CHECKED.
 ## Pending for the next session (delete when done)
+- TO-DO LIST (25 Nov 2026 evening, the user: "for to-do"; all of it into ONE build when he says so):
+  (1) ATTACK PER KEY FOR TRANSMISSIONS TOO. Today (startNote ~7015) `stop->getNoteAttackMs(midiNote)` is read by the
+  played KEY and decides for EVERY route of the stop on that key (`continue` before the shift loop): a transmission has
+  no row of its own and takes the parent's value of the KEY, not of the pipe it sounds (shift +12: key 48 plays pipe 60
+  with key 48's value). To do: `Transmission::attackKeyMs[128]` + randomize, the delay / cut decided INSIDE the shift
+  loop per route (the re-run of processPending skips pipes already speaking, so per-pipe delays work), StopRow's third
+  per-key row for a transmission (keyAreaHeight, the "All" control row 2, setNoteActive, rowSliders / rowNames /
+  rowNumbers), the four voicing places (createState, loadState, saveStopSettings, loadStopSettings) and the pistons
+  that hold the voicing. TO SETTLE WITH HIM before coding: whether the transmission's value ADDS to the parent's value
+  of the sounding PIPE (as its volume is relative to the parent - my advice) or stands alone.
+  (2) "Report a problem" dialog: "What happened" is still demanded ("Say what happened first ...", MainComponent.cpp
+  ~9012) - the GitHub form no longer requires it (below); make the dialog's text optional too.
+- BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
+  .zip from different computers onto an internet computer ... We learn everything from the log anyway"):
+  `.github/ISSUE_TEMPLATE/bug_report.yml` requires the Logs field ALONE (version, system, audio, what happened are
+  optional; the title is GitHub's own requirement, prefilled "[Bug] "). RULE: never make another field required.
 - 0.9.127 IN WORK (24 Nov 2026, the user's GO for the noises: "ano ... To, co říká ODF, zachovat pevné přiřazení. Nezapomeň
   na ty drobné opravy pro Pásztora"; ALL of it in ONE version). HIS DECISIONS: (1) published configurations open with
   everything off as before; else the state as the definition says (the blower mostly on), a master switch + volume

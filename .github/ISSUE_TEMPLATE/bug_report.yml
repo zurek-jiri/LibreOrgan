@@ -17,24 +17,18 @@ body:
       label: LibreOrgan Sampler version
       description: Shown in the window title and in Configuration Editor > About & licences.
       placeholder: "0.8.50"
-    validations:
-      required: true
   - type: input
     id: os
     attributes:
       label: Operating system
       description: Filled in by "Report a problem" (GitHub does not take a dropdown value from the link, a text field it does). Windows 10/11, macOS with its version, or the Linux distribution.
       placeholder: "Windows 11 / macOS 14.5 / Linux Mint 22"
-    validations:
-      required: true
   - type: input
     id: audio
     attributes:
       label: Audio driver and device
       description: Filled in by "Report a problem" (the driver and device of the routes; see them in the Audio routing).
       placeholder: "ASIO, RME Fireface UCX, buffer 256 at 48 kHz"
-    validations:
-      required: true
   - type: input
     id: samples
     attributes:
@@ -46,8 +40,6 @@ body:
     attributes:
       label: What happened
       description: What you saw or heard, and what you expected instead.
-    validations:
-      required: true
   - type: textarea
     id: steps
     attributes:
