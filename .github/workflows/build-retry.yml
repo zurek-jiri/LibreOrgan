@@ -41,9 +41,12 @@ jobs:
           esac
           jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")
           lost=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "cancelled" and (.steps | length) == 0)] | length')
-          broken=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and (.steps | length) > 0 and (.name | test("test build") | not))] | length')
-          echo "jobs without a runner: $lost, jobs that ran and failed: $broken"
-          if [ "$lost" -gt 0 ] && [ "$broken" -eq 0 ]; then
+          # 25 Nov 2026 (v0.9.134: every build green, the release job failed with "Too many retries" of the release
+          # action - GitHub's side): a failed RELEASE job with every build done is tried again too; nothing is rebuilt.
+          broken=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and (.steps | length) > 0 and .name != "release" and (.name | test("test build") | not))] | length')
+          release=$(echo "$jobs" | jq '[.jobs[] | select(.conclusion == "failure" and .name == "release")] | length')
+          echo "jobs without a runner: $lost, build jobs that ran and failed: $broken, the release job failed: $release"
+          if { [ "$lost" -gt 0 ] || [ "$release" -gt 0 ]; } && [ "$broken" -eq 0 ]; then
             gh run rerun "$RUN_ID" --repo "$REPO" --failed
             echo "run $RUN_ID started again (its failed and cancelled jobs)"
           else

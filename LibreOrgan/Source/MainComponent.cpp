@@ -3774,6 +3774,16 @@ void MainComponent::resized()
     int naturalTotal = 0, minimumTotal = 0;
     for (const auto& item : items) { naturalTotal += item.natural; minimumTotal += item.minimum; }
     const int available = memRow.getWidth();
+    // 0.9.135 (the user: "box pístů by se měl skrýt jako první ... jednotlivé kombinace musí zůstat přístupné"): short
+    // of room, the "Pistons:" label and its count box go FIRST (the count is in the Configuration Editor too) - before
+    // anything shrinks; the pistons themselves stay.
+    const bool countShown = naturalTotal <= available;
+    if (!countShown)
+        for (auto& item : items)
+            if (item.component == &pistonCountLabel || item.component == &pistonCountBox)
+            { naturalTotal -= item.natural; minimumTotal -= item.minimum; item.natural = 0; item.minimum = 0; }
+    pistonCountLabel.setVisible(countShown);
+    pistonCountBox.setVisible(countShown);
     float factor = 1.0f;
     if (naturalTotal > available)
         factor = naturalTotal > minimumTotal
@@ -3793,6 +3803,14 @@ void MainComponent::resized()
         for (size_t i = 7; i < 7 + (size_t)pistonCount; ++i) widths[i] = juce::jmax(0, widths[i] - perPiston);
     }
     const int pad = factor >= 1.0f ? 3 : 1 + juce::roundToInt(2.0f * factor);   // padding around the buttons
+    // 0.9.135 (the user's choice): a bank button too narrow for "Bank" and its arrow on one line shows the arrow
+    // alone - never two lines in a button (the tooltip names it).
+    {
+        const juce::String down = juce::String(juce::CharPointer_UTF8("\xe2\x96\xbc")), up = juce::String(juce::CharPointer_UTF8("\xe2\x96\xb2"));
+        const bool arrowsOnly = widths[1] - 2 * pad < 64;
+        bankDownButton.setButtonText(arrowsOnly ? down : "Bank " + down);
+        bankUpButton.setButtonText(arrowsOnly ? up : "Bank " + up);
+    }
     for (size_t i = 0; i < items.size(); ++i)
     {
         auto cell = memRow.removeFromLeft(juce::jmin(widths[i], juce::jmax(0, memRow.getWidth())));

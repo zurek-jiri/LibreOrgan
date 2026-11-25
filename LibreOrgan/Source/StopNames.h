@@ -21,6 +21,33 @@ namespace StopNames
     // "i první písmeno označující stroj by mělo být vždy velké, ped > Ped"): the
     // mark's own first letter is a capital too, every piece of a chain ("g.o."
     // -> "G.O."), a roman numeral as a whole ("ii." -> "II.").
+    // Letters by their CODE, never by the C library (0.9.135): juce::CharacterFunctions asks iswalpha / towupper,
+    // which know ASCII alone in the "C" locale of macOS and of a Linux without a UTF-8 locale - "Réc. hautbois" was
+    // left as it came there (the CI's kernel test on Intel macOS: 2 MISMATCH). Latin-1 and Latin Extended-A.
+    inline bool isLatinLetter(juce::juce_wchar c) noexcept
+    {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= 0xC0 && c <= 0x17F && c != 0xD7 && c != 0xF7);
+    }
+    inline bool isLowerLetter(juce::juce_wchar c) noexcept
+    {
+        if (c >= 'a' && c <= 'z') return true;
+        if (c >= 0xDF && c <= 0xFF) return c != 0xF7;
+        if (c >= 0x100 && c <= 0x137) return (c & 1) != 0;
+        if (c == 0x138 || c == 0x149 || c == 0x17F) return true;
+        if (c >= 0x139 && c <= 0x148) return (c & 1) == 0;
+        if (c >= 0x14A && c <= 0x177) return (c & 1) != 0;
+        if (c >= 0x179 && c <= 0x17E) return (c & 1) == 0;
+        return false;
+    }
+    inline bool isUpperLetter(juce::juce_wchar c) noexcept { return isLatinLetter(c) && !isLowerLetter(c); }
+    inline juce::juce_wchar upperOf(juce::juce_wchar c) noexcept
+    {
+        if (c >= 'a' && c <= 'z') return c - 32;
+        if (c >= 0xE0 && c <= 0xFE && c != 0xF7) return c - 32;
+        if (c == 0xFF) return 0x178;
+        if (c == 0xDF || c == 0x138 || c == 0x149 || c == 0x17F) return c;   // no single capital
+        return isLowerLetter(c) ? c - 1 : c;                                 // Latin Extended-A: the capital stands right before
+    }
     inline juce::String capitaliseAfterDivisionPrefix(juce::String name)
     {
         const int length = name.length();
@@ -33,7 +60,7 @@ namespace StopNames
         for (;;)
         {
             const int start = i;
-            while (i < length && juce::CharacterFunctions::isLetterOrDigit(name[i])) ++i;
+            while (i < length && (isLatinLetter(name[i]) || (name[i] >= '0' && name[i] <= '9'))) ++i;
             stem = name.substring(start, i);
             if (stem.isEmpty() || stem.length() > 5) return name;
             if (pieces < 8) { pieceStart[pieces] = start; pieceEnd[pieces] = i; ++pieces; }
@@ -41,7 +68,7 @@ namespace StopNames
             {
                 marked = true;
                 ++i;
-                if (i < length && juce::CharacterFunctions::isLetter(name[i])) continue;   // "G.O." - the next piece
+                if (i < length && isLatinLetter(name[i])) continue;   // "G.O." - the next piece
             }
             break;
         }
@@ -53,7 +80,7 @@ namespace StopNames
             const bool roman = lower.containsOnly("ivx") && lower.length() <= 4;
             bool capitals = stem.length() >= 2;
             for (int c = 0; c < stem.length() && capitals; ++c)
-                if (!juce::CharacterFunctions::isUpperCase(stem[c])) capitals = false;
+                if (!isUpperLetter(stem[c])) capitals = false;
             static const char* const words[] = { "pos", "rec", "r\xc3\xa9" "c", "ped", "pd", "man", "gr", "gt", "go", "hw", "ow", "uw", "bw", "rw", "sw", "ch", "bp", "rp", "pedal", "recit", "r\xc3\xa9" "cit", "swell", "great", "choir", "solo", "echo", "positif" };
             bool word = false;
             for (const char* w : words) if (lower == juce::String::fromUTF8(w)) { word = true; break; }
@@ -68,12 +95,12 @@ namespace StopNames
             const auto lower = piece.toLowerCase();
             if (lower.containsOnly("ivx") && lower.length() <= 4)
                 result = result.substring(0, pieceStart[p]) + piece.toUpperCase() + result.substring(pieceEnd[p]);
-            else if (juce::CharacterFunctions::isLowerCase(piece[0]))
-                result = result.substring(0, pieceStart[p]) + juce::String::charToString(juce::CharacterFunctions::toUpperCase(piece[0])) + result.substring(pieceStart[p] + 1);
+            else if (isLowerLetter(piece[0]))
+                result = result.substring(0, pieceStart[p]) + juce::String::charToString(upperOf(piece[0])) + result.substring(pieceStart[p] + 1);
         }
         const juce::juce_wchar c = name[i];
-        if (juce::CharacterFunctions::isLowerCase(c))
-            result = result.substring(0, i) + juce::String::charToString(juce::CharacterFunctions::toUpperCase(c)) + result.substring(i + 1);
+        if (isLowerLetter(c))
+            result = result.substring(0, i) + juce::String::charToString(upperOf(c)) + result.substring(i + 1);
         return result;
     }
 
