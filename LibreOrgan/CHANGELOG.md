@@ -20,12 +20,31 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   loading time, no row in Audio routing; its folders stay in the Stop List,
   dimmed. The choice is saved with the configuration; an organ merged in
   keeps its own.
-- **Stop List: loaded, unloaded, taken out**. The small buttons beside every
-  folder and every perspective's name are steps: **-** unloads (the folder
-  stays, dimmed, and leaves the memory), **+** loads it again, **x** takes it
-  out. Dimmed means *not in the memory* - also after a cancelled load, whose
-  missing folders *Apply and reload* now reads (every row looked loaded
-  before and only a new load of the organ brought them).
+- **Sliders are bars**: every slider is one element - its name and its value
+  written in it, the fill from the default to the value, a bright line at the
+  value - instead of a caption, a track with a thumb and a value box. A drag
+  moves the value from where it is (a click alone changes nothing), the wheel
+  steps, a double click gives the default, ONE click opens the value for
+  typing, the right button is MIDI learn. The top row shows all its sliders
+  in one form: one line, or - short of room - the name above the value. The
+  per-key sliders of the voicing are the same bars upright.
+- **Stop List: loaded, unloaded, taken out**. Beside every folder and every
+  perspective's name stands one switch with three places: left = loaded,
+  middle = kept in the table but not loaded (dimmed; it leaves the memory),
+  right (x) = taken out. Dimmed means *not in the memory* - also after a
+  cancelled load, whose missing folders *Apply and reload* now reads (every
+  row looked loaded before and only a new load of the organ brought them).
+- **The Noises window in the Stop List's look**: the same rows, name field,
+  folder cells and three-way switch - at the start of a row for the noise (on,
+  off, taken out), in every perspective beside the folder ("TremPE (1) +1" =
+  its files and further folders) with the volume as a bar, and after every
+  perspective's name for that perspective of all noises. A click on a folder
+  unfolds the row. White = sounds, dimmed = its perspective is not loaded or
+  switched off, orange = not found.
+- **Merge shows the load box**: the right-click merge asks for the added
+  organ's storage and perspectives like a load does.
+- **Noises follow the loaded perspectives**: the noises of a perspective that
+  is not loaded are not read and the Noises window shows them dimmed.
 - **Every sample tuned by its own pitch**: a release or a velocity layer whose
   file names another pitch than the pipe's plain attack follows the two
   tuning settings by its own pitch, as a pipe does: with *Equal at 440 Hz*
@@ -57,6 +76,8 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   and red (no pitch) note names show in the Attack row too.
 - The lines between the perspectives of the Noises window are the divider of
   the main window's divisions.
+- **Noises silent after a merge**: the merged organ's noises (and the loaded
+  organ's with them) were not found - "the library root is not known".
 
 ## [0.9.133] - 2026-11-24
 

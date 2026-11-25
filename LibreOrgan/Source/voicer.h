@@ -144,7 +144,7 @@ public:
     }
     static constexpr int slidersRowWidth() noexcept   // margin, the widest inset and the six sliders as resized() places them
     {
-        return 5 + 26 + 134 + gainSliderWidth + attackSliderWidth
+        return 5 + 26 + stopVolumeSliderWidth + gainSliderWidth + attackSliderWidth
             + randomPitchSliderWidth + undulationSliderWidth + formantSliderWidth + 6 * voicingSliderGap;   // 0.9.79: no per-stop attack delay slider
     }
     static bool velocityRowWraps(const Stop* stop, int rowWidth) noexcept
@@ -203,12 +203,13 @@ public:
         x = sx0;
         // The full layout's order: global, [formant], gain, attack, random pitch, undulation, [formant] (0.9.79: the
         // per-stop attack delay slider of 0.9.77 is gone - "Attack per key" is a per-key row, #228).
-        const int widths[] = { 134, trsm ? 170 : 194, 194, trsm ? 194 : 214, trsm ? 214 : 234, trsm ? 234 : 170 };
+        const int widths[] = { trsm ? transmissionVolumeSliderWidth : stopVolumeSliderWidth, trsm ? formantSliderWidth : gainSliderWidth, trsm ? gainSliderWidth : attackSliderWidth,
+            trsm ? attackSliderWidth : randomPitchSliderWidth, trsm ? randomPitchSliderWidth : undulationSliderWidth, trsm ? undulationSliderWidth : formantSliderWidth };
         for (int i = 0; i < 6; ++i)
         {
             if (x != sx0 && x + widths[i] > right) { x = sx0; sy += compactSliderLineStep; }
             put(Control::slider, i, x, sy, widths[i]);
-            x += widths[i] + 27;
+            x += widths[i] + voicingSliderGap;
         }
         int bottom = sy + compactSliderLineStep;
         if (!trsm)
@@ -306,7 +307,7 @@ private:
     // Layout constants
     int margin = 5;
     int buttonWidth = 200;
-    int globalSliderWidth = 134;
+    int globalSliderWidth = stopVolumeSliderWidth;   // a transmission's is wider (its name is longer): set in the constructor
     int topRowHeight = 50;
     int sliderHeight = 180;
     int labelHeight = 32;
@@ -314,14 +315,17 @@ private:
     // New constants for the attack‑envelope sliders
     // Voicing sliders: caption above, slider below (value box right of it),
     // slightly shorter than before so that the gaps between them are wider.
-    static constexpr int gainSliderWidth = 194;
-    static constexpr int attackSliderWidth = 194;
+    // 0.9.134 BARS: a voicing slider is one bar with its name and its value inside - each as wide as its name, its
+    // longest value and the margins need (never cut), the gap between the bars small.
+    static constexpr int stopVolumeSliderWidth = 176, transmissionVolumeSliderWidth = 248;
+    static constexpr int gainSliderWidth = 162;
+    static constexpr int attackSliderWidth = 164;
     static constexpr int attackDelaySliderWidth = 150;   // 0.9.77
-    static constexpr int randomPitchSliderWidth = 214;
-    static constexpr int undulationSliderWidth = 234;
-    static constexpr int formantSliderWidth = 170;
+    static constexpr int randomPitchSliderWidth = 238;
+    static constexpr int undulationSliderWidth = 238;
+    static constexpr int formantSliderWidth = 232;
     static constexpr int sliderSpacing = 8;
-    static constexpr int voicingSliderGap = 27;
+    static constexpr int voicingSliderGap = 12;
 
     // UI elements
     LeftOnlyTextButton stopButton;

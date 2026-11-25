@@ -411,7 +411,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     undulationSlider.setDoubleClickReturnValue(true, 0.0);
     undulationSlider.setScrollWheelEnabled(true);
     undulationSlider.addMouseListener(this, false);   // right-click: MIDI Learn like the other voicing sliders
-    undulationSlider.setAlpha(engine.getTuneAllTo440() ? 1.0f : 0.4f);   // greyed out until the 440 Hz diapason is on
     undulationSlider.setTooltip("Celeste: beats per second against an in-tune rank at a1 (negative = flat). "
         "Beats grow with pitch; how much faster the top of the compass beats than the bottom is set in "
         "Configuration Editor > Advanced global audio (Celeste beats).");
@@ -428,7 +427,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     undulationLabel.setFont(juce::FontOptions(12.5f));
     undulationLabel.setJustificationType(juce::Justification::centredLeft);
     undulationLabel.setVisible(stop->voicingExpanded);
-    addAndMakeVisible(undulationLabel);
     refreshUndulationLabel();
 
     // Transposition: a transmission's shift (its pipes borrowed from the source
@@ -619,7 +617,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(globalSlider);
     globalLabel.setText(isTransmission() ? "Volume vs. parent stop" : "Stop volume", juce::dontSendNotification);
     globalLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(globalLabel);
 
     // Attack gain slider (boost)
     gainSlider.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -635,7 +632,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(gainSlider);
     gainLabel.setText("Attack Gain", juce::dontSendNotification);
     gainLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(gainLabel);
 
     // Attack time slider
     attackSlider.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -654,7 +650,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(attackSlider);
     attackLabel.setText("Attack Time", juce::dontSendNotification);
     attackLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(attackLabel);
 
     // 0.9.77: the stop's own attack delay, added to the global "Attack min. delay".
     attackDelaySlider.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -671,7 +666,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(attackDelaySlider);
     attackDelayLabel.setText("Attack delay", juce::dontSendNotification);
     attackDelayLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(attackDelayLabel);
 
     randomPitchSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     randomPitchSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 56, 18);
@@ -686,7 +680,6 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(randomPitchSlider);
     randomPitchLabel.setText("Random pitch error", juce::dontSendNotification);
     randomPitchLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(randomPitchLabel);
 
     // Pitch shift of the filled pipes: how far their spectral envelope follows the
     // shift. Per stop; a transmission has its own for the pipes only it asks for.
@@ -712,7 +705,16 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     addAndMakeVisible(formantSlider);
     formantLabel.setText("Formants (filled pipes)", juce::dontSendNotification);
     formantLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(formantLabel);
+
+    // 0.9.134: every slider of the row is ONE bar with its name and its value inside (UIScale.h); the Label objects
+    // above are no longer shown - their texts are the names.
+    if (isTransmission()) globalSliderWidth = transmissionVolumeSliderWidth;
+    globalSlider.getProperties().set("barLabel", globalLabel.getText());
+    gainSlider.getProperties().set("barLabel", gainLabel.getText());
+    attackSlider.getProperties().set("barLabel", attackLabel.getText());
+    attackDelaySlider.getProperties().set("barLabel", attackDelayLabel.getText());
+    randomPitchSlider.getProperties().set("barLabel", randomPitchLabel.getText());
+    formantSlider.getProperties().set("barLabel", formantLabel.getText());
 
     // Headers of the two per-key rows (fold like the Configuration Editor's
     // sections) with a small "Reset to 0 dB" beside each.
@@ -1622,25 +1624,28 @@ void StopRow::refreshUndulationLabel()
     undulationLabel.setColour(juce::Label::textColourId,
         stop->tuneTo440 ? juce::Colours::lightgrey : juce::Colours::grey);
     undulationSlider.setEnabled(stop->tuneTo440);
-    undulationSlider.setAlpha(stop->tuneTo440 ? 1.0f : 0.4f);
-    if (!stop->tuneTo440)
+    // 0.9.134: the slider is a bar with its name inside (a disabled bar is drawn dimmed); what the label said beside
+    // the name - the cents at the bottom and the top of the compass - is the first line of the tooltip now.
+    static const juce::String help("Celeste: beats per second against an in-tune rank at a1 (negative = flat). "
+        "Beats grow with pitch; how much faster the top of the compass beats than the bottom is set in "
+        "Configuration Editor > Advanced global audio (Celeste beats).");
+    auto show = [this](const juce::String& name, const juce::String& detail)
     {
-        undulationLabel.setText("Undulation (beats/s at a1) - needs 440 Hz", juce::dontSendNotification);
-        return;
-    }
-    if (std::abs(stop->undulationBeats) < 1.0e-3f)
-    {
-        undulationLabel.setText("Undulation (beats/s at a1): off", juce::dontSendNotification);
-        return;
-    }
+        undulationLabel.setText(detail.isEmpty() ? name : name + ": " + detail, juce::dontSendNotification);
+        undulationSlider.getProperties().set("barLabel", name);
+        undulationSlider.setTooltip(detail.isEmpty() ? help : detail + ".\n" + help);
+        undulationSlider.repaint();
+    };
+    if (!stop->tuneTo440) { show("Undulation - needs 440 Hz", {}); return; }
+    if (std::abs(stop->undulationBeats) < 1.0e-3f) { show("Undulation (beats/s at a1)", "off"); return; }
     int lowest = 128, highest = -1;
     for (int note = 0; note < 128; ++note)
         if (stop->hasNote(note)) { lowest = juce::jmin(lowest, note); highest = juce::jmax(highest, note); }
-    juce::String text = "Undulation (beats/s at a1)";
+    juce::String detail;
     if (highest >= 0)
-        text << ": " << juce::String(stop->undulationCents[(size_t)lowest], 1) << " c bottom, "
-             << juce::String(stop->undulationCents[(size_t)highest], 1) << " c top";
-    undulationLabel.setText(text, juce::dontSendNotification);
+        detail << juce::String(stop->undulationCents[(size_t)lowest], 1) << " c bottom, "
+               << juce::String(stop->undulationCents[(size_t)highest], 1) << " c top";
+    show("Undulation (beats/s at a1)", detail);
 }
 
 void StopRow::refreshEnabledColour()
@@ -1723,7 +1728,7 @@ void StopRow::resized()
                         if (isTransmission()) add(formantSlider, formantLabel);
                         add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
                         if (!isTransmission()) add(formantSlider, formantLabel);
-                        if (i < n) { labels[i]->setBounds(x, y, w, 16); sliders[i]->setBounds(x, y + 17, w, 26); }
+                        if (i < n) sliders[i]->setBounds(x, y + 8, w, 28);   // 0.9.134: one bar, its name inside (labels[] are not shown)
                         break;
                     }
                     case Control::velocityLabel: velocityLabel.setBounds(x, y, 100, 26); break;
@@ -1809,8 +1814,8 @@ void StopRow::resized()
     x = margin + inset;
     auto placeSlider = [&](juce::Slider& slider, juce::Label& label, int width)
     {
-        label.setBounds(x, line2, width, 16);
-        slider.setBounds(x, line2 + 17, width, 26);
+        juce::ignoreUnused(label);   // 0.9.134: the name is written in the slider's bar
+        slider.setBounds(x, line2 + 8, width, 28);
         x += width + voicingSliderGap;
     };
     placeSlider(globalSlider, globalLabel, globalSliderWidth);

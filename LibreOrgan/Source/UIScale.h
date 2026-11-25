@@ -107,8 +107,222 @@ namespace UIScale
         float getDesktopScaleFactor() const override { return factor(); }
     };
 
+    // 0.9.134 BAR SLIDERS (the user: a track with a thumb and "a text frame somewhere beside it" looked poor; "one
+    // element instead of three"). Every HORIZONTAL slider of the program is one bar: its name on the left (the
+    // property "barLabel"; without it the value alone, centred - a table's column header or a label beside it names
+    // it), its value on the right, the fill running from the slider's default (its double-click value; without one:
+    // from the minimum) to the value, and a bright line where the value is - the "thumb" that tells a slider from a
+    // display. A row too narrow for that sets "barLines" = 2 on ALL its sliders alike (the name small above the
+    // value) and "barUseShort" for the short name ("barShort"). VERTICAL sliders are the same bar upright, without
+    // text (their value box stays below them). The gestures: BarValueTyping in UIControls.h.
+    inline bool isBarSlider(const juce::Slider& slider) noexcept
+    {
+        const auto style = slider.getSliderStyle();
+        return style == juce::Slider::LinearHorizontal || style == juce::Slider::LinearBar;
+    }
+    inline juce::Rectangle<int> barAreaOf(const juce::Slider& slider) noexcept
+    {
+        const bool twoLines = (int)slider.getProperties().getWithDefault("barLines", 1) == 2;
+        const auto bounds = slider.getLocalBounds();
+        return bounds.withSizeKeepingCentre(bounds.getWidth(), juce::jmin(bounds.getHeight(), twoLines ? 44 : 28));
+    }
+
+    // The value typed into the bar itself: ONE left click without a drag opens a field over the bar once the
+    // double-click time has passed (so a double click still puts the default back); Enter or a click elsewhere takes
+    // the value, Escape leaves it. One object for the whole program (a member of MainComponent): it listens to the
+    // mouse of every window.
+    class BarValueTyping final : public juce::MouseListener, private juce::Timer
+    {
+    public:
+        BarValueTyping() { juce::Desktop::getInstance().addGlobalMouseListener(this); }
+        ~BarValueTyping() override
+        {
+            juce::Desktop::getInstance().removeGlobalMouseListener(this);
+            stopTimer();
+            if (editor != nullptr) { editor->onFocusLost = nullptr; editor.reset(); }
+        }
+        void mouseDown(const juce::MouseEvent& event) override
+        {
+            stopTimer();
+            pending = nullptr;
+            if (editor != nullptr && event.eventComponent != editor.get() && !editor->isParentOf(event.eventComponent)) finish(true);
+        }
+        void mouseUp(const juce::MouseEvent& event) override
+        {
+            auto* slider = dynamic_cast<juce::Slider*>(event.eventComponent);
+            if (slider == nullptr || !isBarSlider(*slider) || !slider->isEnabled() || !slider->isTextBoxEditable()) return;
+            if (!event.mods.isLeftButtonDown() || event.mods.isPopupMenu() || event.mods.isAnyModifierKeyDown()) return;
+            if (!event.mouseWasClicked() || event.getNumberOfClicks() != 1) return;
+            if (slider->getProperties().contains("barNoTyping")) return;
+            pending = slider;
+            startTimer(juce::MouseEvent::getDoubleClickTimeout() + 40);
+        }
+        // For a test hook: the field of this slider now (what the click does after its wait).
+        void openFor(juce::Slider& slider) { stopTimer(); pending = nullptr; open(slider); if (editor != nullptr) editor->onFocusLost = nullptr; }   // a test's window has no focus: the field stays
+        bool isOpen() const noexcept { return editor != nullptr; }
+        void typeForTest(const juce::String& text) { if (editor != nullptr) { editor->setText(text, false); finish(true); } }   // ... and Enter
+
+    private:
+        void timerCallback() override
+        {
+            stopTimer();
+            if (auto* slider = pending.getComponent(); slider != nullptr && slider->isShowing() && slider->isEnabled()) open(*slider);
+            pending = nullptr;
+        }
+        void open(juce::Slider& slider)
+        {
+            finish(true);
+            target = &slider;
+            startText = slider.getTextFromValue(slider.getValue());
+            editor = std::make_unique<juce::TextEditor>();
+            editor->setFont(juce::FontOptions(13.0f, juce::Font::bold));
+            editor->setJustification(juce::Justification::centred);
+            editor->setColour(juce::TextEditor::outlineColourId, juce::Colour(0xffffa500));
+            editor->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xffffa500));
+            editor->setText(startText, false);
+            editor->setBounds(barAreaOf(slider).reduced(1));
+            slider.getProperties().set("barTyping", true);
+            slider.addAndMakeVisible(*editor);
+            editor->onReturnKey = [this] { finish(true); };
+            editor->onEscapeKey = [this] { finish(false); };
+            editor->onFocusLost = [this] { finish(true); };
+            editor->selectAll();
+            editor->grabKeyboardFocus();
+            slider.repaint();
+        }
+        void finish(bool take)
+        {
+            if (editor == nullptr) return;
+            // The field goes first (its own callbacks may have called this): hidden now, deleted after the event.
+            std::shared_ptr<juce::TextEditor> old(std::move(editor));
+            old->onReturnKey = nullptr; old->onEscapeKey = nullptr; old->onFocusLost = nullptr;
+            const juce::String text = old->getText();
+            juce::Component::SafePointer<juce::Slider> slider = target;
+            target = nullptr;
+            if (slider != nullptr)
+            {
+                slider->getProperties().remove("barTyping");
+                slider->removeChildComponent(old.get());
+            }
+            juce::MessageManager::callAsync([old] { juce::ignoreUnused(old); });
+            if (take && slider != nullptr && text.trim().isNotEmpty() && text != startText)
+            {
+                const double value = slider->getValueFromText(text);
+                if (std::isfinite(value) && value != slider->getValue())
+                {
+                    // As the value box did: a typed value is a drag of its own (start, value, end).
+                    if (slider->onDragStart) slider->onDragStart();
+                    if (slider != nullptr) slider->setValue(value, juce::sendNotificationSync);
+                    if (slider != nullptr && slider->onDragEnd) slider->onDragEnd();
+                }
+            }
+            if (slider != nullptr) slider->repaint();
+        }
+        juce::Component::SafePointer<juce::Slider> pending, target;
+        std::unique_ptr<juce::TextEditor> editor;
+        juce::String startText;
+    };
+
     struct LookAndFeel final : public juce::LookAndFeel_V4
     {
+        juce::Slider::SliderLayout getSliderLayout(juce::Slider& slider) override
+        {
+            if (!isBarSlider(slider)) return juce::LookAndFeel_V4::getSliderLayout(slider);
+            slider.setSliderSnapsToMousePosition(false);   // a drag moves the value from where it is; a click alone changes nothing
+            juce::Slider::SliderLayout layout;
+            layout.sliderBounds = barAreaOf(slider).reduced(3, 0);   // no value box: the value is written in the bar
+            slider.setMouseDragSensitivity(juce::jmax(120, layout.sliderBounds.getWidth()));   // the bright line follows the mouse
+            return layout;
+        }
+        void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos, float maxSliderPos,
+                              juce::Slider::SliderStyle style, juce::Slider& slider) override
+        {
+            const bool upright = style == juce::Slider::LinearVertical;
+            if (!upright && !isBarSlider(slider)) { juce::LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider); return; }
+            const float alpha = slider.isEnabled() ? 1.0f : 0.45f;
+            const auto ground = slider.findColour(juce::ComboBox::backgroundColourId);
+            const auto thumb = slider.findColour(juce::Slider::thumbColourId);
+            const auto track = slider.findColour(juce::Slider::trackColourId);
+            const bool ownTrack = track != findColour(juce::Slider::trackColourId);   // set by the program: a sounding key (green), a pipe that is off (grey)
+            const bool hasDefault = slider.isDoubleClickReturnEnabled() && slider.getDoubleClickReturnValue() >= slider.getMinimum() && slider.getDoubleClickReturnValue() <= slider.getMaximum();
+            // The fill starts at the default; a slider without one: at zero when its range has both signs, else at its minimum.
+            const double from = hasDefault ? slider.getDoubleClickReturnValue() : slider.getMinimum() < 0.0 && slider.getMaximum() > 0.0 ? 0.0 : slider.getMinimum();
+            if (upright)
+            {
+                const float w = juce::jmin((float)width, 22.0f);
+                const juce::Rectangle<float> box((float)x + ((float)width - w) * 0.5f, (float)y, w, (float)height);
+                g.setColour(ground.withMultipliedAlpha(alpha));
+                g.fillRoundedRectangle(box, boxCorner);
+                const float zero = (float)y + (float)height * (1.0f - (float)slider.valueToProportionOfLength(from));
+                const juce::Colour fill = (ownTrack ? track : thumb.withMultipliedSaturation(0.8f).withMultipliedBrightness(0.62f)).withMultipliedAlpha(alpha);
+                g.setColour(fill);
+                if (std::abs(sliderPos - zero) > 1.0f) g.fillRect(juce::Rectangle<float>(box.getX() + 2.0f, juce::jmin(sliderPos, zero), w - 4.0f, std::abs(sliderPos - zero)));
+                g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * 0.6f));
+                g.fillRect(juce::Rectangle<float>(box.getRight() - 4.0f, zero - 0.5f, 3.0f, 1.0f));   // where the default lies
+                g.setColour((ownTrack ? track : slider.findColour(juce::ComboBox::outlineColourId)).withMultipliedAlpha(alpha));
+                g.drawRoundedRectangle(box.reduced(0.5f), boxCorner, ownTrack ? 1.5f : 1.0f);
+                g.setColour(thumb.withMultipliedAlpha(alpha));
+                g.fillRect(juce::Rectangle<float>(box.getX() + 1.5f, juce::jlimit((float)y + 1.0f, (float)(y + height) - 3.5f, sliderPos - 1.25f), w - 3.0f, 2.5f));
+                return;
+            }
+            const auto area = barAreaOf(slider).toFloat();
+            g.setColour(ground.withMultipliedAlpha(alpha));
+            g.fillRoundedRectangle(area, boxCorner);
+            const float zero = (float)x + (float)width * (float)slider.valueToProportionOfLength(from);
+            g.setColour(thumb.withMultipliedSaturation(0.8f).withMultipliedBrightness(0.62f).withMultipliedAlpha(alpha));
+            if (std::abs(sliderPos - zero) > 1.0f)
+                g.fillRect(juce::Rectangle<float>(juce::jmin(sliderPos, zero), area.getY() + 2.0f, std::abs(sliderPos - zero), area.getHeight() - 4.0f));
+            g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * (slider.isMouseOverOrDragging() ? 1.0f : 0.75f)));
+            g.drawRoundedRectangle(area.reduced(0.5f), boxCorner, 1.0f);
+            // The texts: the name and the value (never cut). The bright line of the value is drawn whole where it
+            // crosses no text, else as two short marks at the bar's edges - a text is never struck through.
+            const bool typing = slider.getProperties().contains("barTyping");   // the value is being typed over the bar: no texts
+            const auto& properties = slider.getProperties();
+            const bool twoLines = (int)properties.getWithDefault("barLines", 1) == 2;
+            juce::String name = properties.getWithDefault("barLabel", juce::String()).toString();
+            if ((bool)properties.getWithDefault("barUseShort", false) && properties.contains("barShort")) name = properties["barShort"].toString();
+            const juce::String value = slider.getTextFromValue(slider.getValue());
+            const auto text = slider.findColour(juce::Slider::textBoxTextColourId).withMultipliedAlpha(alpha);
+            const juce::Font valueFont(juce::FontOptions(13.0f, juce::Font::bold)), nameFont(juce::FontOptions(twoLines ? 11.0f : 13.0f));
+            const auto inner = area.reduced(7.0f, 0.0f).toNearestInt();
+            const int valueWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(valueFont, value));
+            const int nameWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(nameFont, name));
+            const bool centredValue = twoLines || name.isEmpty();
+            const auto valueSpan = centredValue ? juce::Range<int>(inner.getCentreX() - valueWidth / 2, inner.getCentreX() + (valueWidth + 1) / 2)
+                                                : juce::Range<int>(inner.getRight() - valueWidth, inner.getRight());
+            const auto nameSpan = name.isEmpty() ? juce::Range<int>()
+                : twoLines ? juce::Range<int>(inner.getCentreX() - juce::jmin(nameWidth, inner.getWidth()) / 2, inner.getCentreX() + (juce::jmin(nameWidth, inner.getWidth()) + 1) / 2)
+                           : juce::Range<int>(inner.getX(), inner.getX() + juce::jmin(nameWidth, inner.getWidth() - valueWidth - 10));
+            const float lineX = juce::jlimit(area.getX() + 1.0f, area.getRight() - 3.5f, sliderPos - 1.25f);
+            const auto crosses = [lineX](juce::Range<int> span) { return !span.isEmpty() && lineX + 2.5f > (float)span.getStart() - 2.0f && lineX < (float)span.getEnd() + 2.0f; };
+            g.setColour(thumb.withMultipliedAlpha(alpha));
+            if (!typing && (crosses(valueSpan) || crosses(nameSpan)))
+            {
+                const float mark = twoLines ? 3.0f : 5.0f;
+                g.fillRect(juce::Rectangle<float>(lineX, area.getY() + 1.5f, 2.5f, mark));
+                g.fillRect(juce::Rectangle<float>(lineX, area.getBottom() - 1.5f - mark, 2.5f, mark));
+            }
+            else g.fillRect(juce::Rectangle<float>(lineX, area.getY() + 1.5f, 2.5f, area.getHeight() - 3.0f));
+            if (typing) return;
+            if (twoLines)
+            {
+                g.setFont(nameFont);
+                g.setColour(text.withMultipliedAlpha(0.72f));
+                g.drawText(name, inner.withHeight(inner.getHeight() / 2).translated(0, 2), juce::Justification::centred, true);
+                g.setFont(valueFont);
+                g.setColour(text);
+                g.drawText(value, inner.withTrimmedTop(inner.getHeight() / 2).translated(0, -2), juce::Justification::centred, false);
+                return;
+            }
+            g.setFont(valueFont);
+            g.setColour(text);
+            g.drawText(value, inner, centredValue ? juce::Justification::centred : juce::Justification::centredRight, false);
+            if (name.isNotEmpty())
+            {
+                g.setFont(nameFont);
+                g.drawText(name, inner.withTrimmedRight(valueWidth + 10), juce::Justification::centredLeft, true);
+            }
+        }
         // 0.9.81: a slider with the property "smallTextBox" gets a 9 px value box - the per-key "Attack per key"
         // sliders show "-300" in a 30 px column (the default font cut it to "-3...").
         juce::Label* createSliderTextBox(juce::Slider& slider) override

@@ -483,6 +483,17 @@ difference: a chord held through the crescendo never restarts.
 
 The sliders of *Configuration Editor > Global sound* can each be shown on the
 main panel (the checkbox beside them in the editor); all are MIDI-learnable.
+
+**Every slider of the program is one bar**: its name and its value are
+written in it, the fill runs from the default to the value and the bright
+line marks the value. Drag left or right (the value moves from where it
+is - a click alone changes nothing), turn the wheel, **double-click** for
+the default, **click once** to type the value (Enter takes it, Esc leaves
+it), right-click for MIDI learn. A row short of room shows all its sliders
+in two lines, the name above the value. The per-key sliders of a voicing row
+are the same bars upright, their value under them.
+
+
 The polyphony display begins with the **audio meter**: a vertical bargraph of
 the highest sample that goes to a sound card - the sum of all routes playing
 into the same output - measured before the limiter (green to -12 dB, orange
@@ -668,9 +679,10 @@ rank at a1 (negative = flat). A rank recorded sharp or flat throughout is
 recognised as a celeste when the detune shrinks towards the treble or the
 stop's name says celeste (Unda Maris, Voix céleste, Vox angelica, Schwebung
 ...), and starts with its recorded undulation; the tuning log says why a
-rank was not taken for one. The line
+rank was not taken for one. The slider
 reads "needs 440 Hz" until the organ is retuned to a1 = 440 Hz
-([Temperaments](#63-temperaments)).
+([Temperaments](#63-temperaments)); its tooltip tells the cents at the
+bottom and the top of the compass.
 
 ### Formants (filled pipes)
 
@@ -837,8 +849,8 @@ can be done here as well, and this is where the organ is built from folders.
 
 Every perspective is a column of the table and an audio route of every
 division. **Add perspective...** adds a column (a known name or a new one)
-and writes its line into *Perspective prefixes*; the x after the name in the
-column header removes the column. **To rename a perspective, double-click
+and writes its line into *Perspective prefixes*; the x of the switch after
+the name in the column header removes the column. **To rename a perspective, double-click
 its name in the column header** and type the new one: the column, the
 patterns line, the routes and the saved voicing follow after *Apply and
 reload*. "default" is the route of folders without a perspective prefix.
@@ -851,10 +863,12 @@ left or right** to change it: the lines take the new order, saved with the
 configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.
 
-**Loaded, unloaded, taken out.** The small buttons beside every folder and
-beside every perspective's name are steps: **-** unloads (the folder stays
-in the table, dimmed, and leaves the memory), then **+** loads it again
-and **x** takes it out of the row (the column: removes it). Dimmed always
+**Loaded, unloaded, taken out.** Beside every folder and beside every
+perspective's name stands a switch with three places: **left** = loaded,
+**middle** (the dash) = the folder stays in the table but is not loaded
+(dimmed; it leaves the memory), **right** (x) = taken out of the row (the
+column: removed). A perspective's switch stands between left and middle when
+only some of its folders are loaded. Dimmed always
 means *not in the memory* - also a folder a cancelled load did not reach.
 *Apply and reload* frees and reads what changed; the rest of the organ
 stays in the memory. A perspective of which nothing is loaded has no row in
@@ -1443,25 +1457,31 @@ perspective, with its own cable, volume and effects.
 ### The Noises window
 
 The top bar's **Noises** button: one row per noise - the keys of a keyboard, a
-tremulant, the drawknobs, the couplers, each button of its own.
+tremulant, the drawknobs, the couplers, each button of its own. It looks and
+works like the Stop List.
 
-- **On** - the noise on or off.
-- **Kind** and **Division** - what starts it and where; change them when a
-  folder was read wrong.
+- **The switch at the start of a row** - the Stop List's three places:
+  left = the noise is on, middle = off, right (x) = taken out of the organ
+  (the files stay on the disk).
+- **Division** and **Kind** - where it is and what starts it; change them
+  when a folder was read wrong.
 - **Volume** - of the noise as a whole. For a button it is the Stop volume of
   its voicing row: one value, shown in both places.
 - **One block per perspective** - the organ's own perspectives, as the Stop
   List has them and in the same order (or the one block *Noises* when the
-  noises have no perspectives): its box (on or off), its folder with the
-  number of files, and its own volume on top of the noise's.
-- **+** at the start of a row - the folders and files of the noise. Under
-  Drawknobs and Couplers also which button has which free noise; choose
-  another there. Under a button that loops: *One-shot* (the file once,
-  whole, instead of the loop).
+  noises have no perspectives): the folder with the number of its files
+  ("+1" = one more folder), the switch of this perspective of the noise
+  (on, off, its files taken out) and its volume on top of the noise's.
+  White = it sounds, dimmed = its perspective is not loaded or it is switched
+  off, orange = not found on this computer. The switch after a perspective's
+  name sets that perspective of every noise.
+- **A click on a folder** unfolds the row: the folders and files of the
+  noise. Under Drawknobs and Couplers also which button has which free
+  noise; choose another there. Under a button that loops: *One-shot* (the
+  file once, whole, instead of the loop).
 - **A folder dropped from the file manager** onto a perspective of a row
   becomes that perspective's files; dropped anywhere else it is read as new
   noises and added.
-- **x** - takes the noise out of the organ (the files stay on the disk).
 - Below: [Noises on](#noises-on), the volume of all
   ([Noises volume](#noises-volume)),
   [Key noises follow the couplers](#key-noises-follow-the-couplers),

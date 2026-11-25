@@ -5,6 +5,7 @@
 #include "voicer.h"
 #include "HauptwerkOdf.h"
 #include "UIControls.h"
+#include "UIScale.h"
 #include "CardCheck.h"
 #include <thread>
 #include <array>
@@ -167,6 +168,7 @@ private:
     double compileDoneMs = 0.0;    // 0.9.39: when "Compiling the Stop List: done" was logged (the loader's release is timed against it)
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
+    UIScale::BarValueTyping barValueTyping;   // 0.9.134: a click on a bar slider (any window) opens a field for its value
     bool consoleGlow = false;   // 0.8.213: off by default (the user)
     // 0.9.79 (#232): the combinations file last loaded or saved with each organ (configuration file path ->
     // combinations file path; machine-specific) and the Editor switch that reads it again after the organ loads.
@@ -237,6 +239,8 @@ private:
     void setNoiseUnitVolume(const juce::String& key, const juce::String& perspective, double db);
     void changeNoiseUnit(const juce::String& key, const juce::String& newKind, int newDivision);
     void removeNoiseUnit(const juce::String& key);
+    void removeNoiseUnitPerspective(const juce::String& key, const juce::String& perspective);   // 0.9.134: key "*" = that perspective of every noise
+    void setNoisePerspectiveOnEverywhere(const juce::String& perspective, bool on);              // ... the perspective's switch of every noise that has files in it
     void syncNoiseButtonStops();
     // The units' settings as a voicing file and a combination that holds the voicing carry them ("noiseUnits").
     juce::var noiseUnitsVoicingNow() const;

@@ -6226,6 +6226,56 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   change as its own step with pictures first. TEST HYGIENE: the hook ORGAN_MERGE_CONFIGURATION SAVES the merged organ
   into the test's configuration copy - the next test loaded 106 GB instead of 52; copy the user's original again before
   every run that follows a merge test.
+- 0.9.134, FOURTH ROUND (25 Nov 2026 afternoon, his "ano, ano, ano - všecko kladně" to the pictures navrh2-4 + "všecky
+  posuvníky by musely reagovat stejně, ne aby jeden byl dvojřádkový, jiný jednořádkový"; local commit, NOT pushed):
+  (1) BAR SLIDERS = THE LOOK OF EVERY SLIDER, in ONE place: `UIScale::LookAndFeel::getSliderLayout` (horizontal: no
+  value box, `setSliderSnapsToMousePosition(false)` = a drag moves the value from where it is and a click alone changes
+  nothing, `setMouseDragSensitivity(max(120, width))` = the line follows the mouse) + `drawLinearSlider` (the box in
+  the combo's colours, the fill from the double-click default - without one: from 0 when the range has both signs,
+  else the minimum - to the value, a 2.5 px line in the thumb colour; the line is drawn as two short marks where it
+  would strike through a text; a slider with a track colour of its own - a sounding key green, a pipe off grey -
+  keeps it as fill and frame). Properties: "barLabel" (the name, left; without it the value alone, centred),
+  "barLines" 2 (the name small above the value, bar 44 px; one line 28 px), "barShort" + "barUseShort", "barTyping"
+  (set while the field is open), "barNoTyping". `UIScale::isBarSlider / barAreaOf`. VERTICAL sliders: the same bar
+  upright (22 px wide at most), their value box below stays. (2) TYPING: `UIScale::BarValueTyping` (ONE object,
+  MainComponent::barValueTyping; a GLOBAL mouse listener): a left click without drag, modifiers or popup on a bar ->
+  after `MouseEvent::getDoubleClickTimeout() + 40` ms a TextEditor child over the bar (orange frame), Enter / a click
+  elsewhere / focus lost = taken (onDragStart, setValue sync, onDragEnd - as the old value box), Esc = left; the
+  second mouseDown of a double click cancels the pending field. The editor is deleted by callAsync (never inside its
+  own callback). (3) TOP ROW: the Label objects are hidden for good, names in the bars; ONE form for the row by the
+  bar's width: >= 205 px one line, >= 112 two lines, below that two lines with the short names (resized()).
+  (4) VOICING ROW: labels not added to the row any more (their texts are the names), widths by the texts
+  (`stopVolumeSliderWidth` 176, `transmissionVolumeSliderWidth` 248, gain 162, attack 164, random 238, undulation 238,
+  formant 232, `voicingSliderGap` 12 - the 0.9.36 rule: constants, slidersRowWidth and the compact walk's widths[]
+  together), a bar at line + 8, 28 high; the undulation's "c bottom / c top" detail moved into its TOOLTIP, its name
+  "Undulation - needs 440 Hz" without 440 (no setAlpha any more: a disabled bar is drawn dimmed). (5) `StateSwitch`
+  lives in UIControls.h (enum mixed = 2, dead = 3): in the mixed state every place acts (the x did nothing before:
+  code 2 was also "the right place"). (6) NOISES WINDOW REBUILT (`NoiseUnitsContent`, placeDialog key "noises4"): the
+  Stop List's measures (rows 32, headers 30, switch 62, name field 16 px on 0xff2b2b2b), columns = switch (on / off /
+  remove) | Division (P., I. ...) | Noise | Kind | Volume bar | per perspective: folder TextButton ("TremPE (1) +1",
+  a click unfolds the row - the "+" button is gone), StateSwitch (on / off / files out), volume bar; header per
+  perspective = name + StateSwitch for every noise (testName "noises <P>"; x asks first). New:
+  `removeNoiseUnitPerspective(key or "*", perspective)`, `setNoisePerspectiveOnEverywhere(perspective, on)`; hook acts
+  ORGAN_TEST_NOISE_UNITS "<s>|pall|<perspective>|0 or 1", "<s>|premove|<key or *>|<perspective>". (7) HOOKS:
+  `ORGAN_TEST_BAR="<s>|<name in the bar>|open|type|<text>|dblclick|value|drag|<px>^..."`,
+  `ORGAN_TEST_SNAPSHOT_KEEP=1` (the dialog snapshots of every ORGAN_TEST_CLICK kept as "cNN-<w>-<title>.png");
+  test_0127b.ps1 -Settings "windowWidth=1500;windowHeight=900;windowMaximised=false" gives a narrow window.
+  RUN: Rural (top row one line at 2442 px, two lines at 1500 px; typing -12 dB into Master and -3.5 dB into Stop
+  volume; a press 10 px from the left end leaves the value, a drag of 40 px = 11 dB of Master's 72 on 261 px; the
+  per-key row pictured), Schorndorf with Direct alone (the Noises window: dimmed perspectives, the Stop List beside
+  it), Divisions / Wind / Tremulant / Crescendo / Audio routing / Editor pictured. NOT run: a real mouse (the click
+  that opens the field goes through the global listener - synthetic events bypass it), the wheel, the header
+  switches of the Noises window and a folder's x by a click (their functions were run by the hook acts pall / premove /
+  pon: Direct off for 5 noises, Rear out of one, Organist out of all), the Effects dialog's EQ sliders, Linux / macOS.
+  THE USER FOUND TWO DIFFERENCES TO THE STOP LIST AT ONCE ("proč je vypnutá perspektiva jinak vypadající než v dialogu
+  StopList?", "u stoplistu se objevuje slůvko none ... proč si nepamatuješ kontext?"): a perspective the Stop List has
+  not loaded showed the noise's OWN switch (blue, left) - now `StateSwitch::locked` (the Stop List's look exactly: the
+  knob in the middle; it takes no click, the tooltip sends to the Stop List), its volume bar disabled, in the header
+  too; an empty cell reads the grey "(none)" of the Stop List's cellText. RULE: "in the look of X" = pictured beside X
+  in EVERY state (not loaded, empty, off, not found) before delivery. Self-test 0 WRONG (81 lines, 35 OK as 0.9.124),
+  kerneltest OK. LESSONS: MainComponent.cpp and MainComponent.h are CRLF, voicer.*,
+  UIScale.h and UIControls.h LF - a scripted insertion must use the file's own line ending (check for bare LF
+  after); a test process without the focus loses a typing field at once (openFor of the hook keeps it).
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)

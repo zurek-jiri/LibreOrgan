@@ -2777,6 +2777,55 @@ MainComponent::MainComponent()
                 }
             });
     }
+    // 0.9.134: ORGAN_TEST_BAR="<seconds>|<name in the bar>|<act>[|<text>]^..." - a bar slider found by its name
+    // ("barLabel") in every window: "open" = the typing field as the single click opens it, "type" = that text typed
+    // and Enter, "dblclick" = the default back, "value" = its value logged.
+    if (const char* env = std::getenv("ORGAN_TEST_BAR"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 3) continue;
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                std::function<juce::Slider*(juce::Component*)> find = [&find, &parts](juce::Component* c) -> juce::Slider*
+                {
+                    if (auto* slider = dynamic_cast<juce::Slider*>(c); slider != nullptr && slider->isShowing()
+                        && slider->getProperties().getWithDefault("barLabel", {}).toString() == parts[1]) return slider;
+                    for (int i = 0; i < c->getNumChildComponents(); ++i)
+                        if (auto* found = find(c->getChildComponent(i))) return found;
+                    return nullptr;
+                };
+                juce::Slider* slider = nullptr;
+                for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && slider == nullptr;)
+                    slider = find(juce::Desktop::getInstance().getComponent(w));
+                if (slider == nullptr) { CrashHandler::note("ORGAN_TEST_BAR: no bar \"" + parts[1] + "\""); return; }
+                if (parts[2] == "open") safeThis->barValueTyping.openFor(*slider);
+                else if (parts[2] == "type") { if (!safeThis->barValueTyping.isOpen()) safeThis->barValueTyping.openFor(*slider); safeThis->barValueTyping.typeForTest(parts[3]); }
+                else if (parts[2] == "dblclick" && slider->isDoubleClickReturnEnabled()) slider->setValue(slider->getDoubleClickReturnValue(), juce::sendNotificationSync);
+                else if (parts[2] == "drag")
+                {
+                    // "drag|<pixels>": a press 10 px from the bar's left end (far from the value's line - a slider that
+                    // snapped to the mouse would jump there) and a drag by that many pixels, as the mouse gives them.
+                    auto source = juce::Desktop::getInstance().getMainMouseSource();
+                    const juce::Point<float> at(10.0f, (float)slider->getHeight() * 0.5f), to(10.0f + parts[3].getFloatValue(), (float)slider->getHeight() * 0.5f);
+                    const juce::ModifierKeys mods(juce::ModifierKeys::leftButtonModifier);
+                    const auto now = juce::Time::getCurrentTime();
+                    const juce::String before = slider->getTextFromValue(slider->getValue());
+                    slider->mouseDown(juce::MouseEvent(source, at, mods, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, slider, slider, now, at, now, 1, false));
+                    const juce::String pressed = slider->getTextFromValue(slider->getValue());
+                    const juce::MouseEvent moved(source, to, mods, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, slider, slider, now, at, now, 1, true);
+                    slider->mouseDrag(moved);
+                    slider->mouseUp(moved);
+                    CrashHandler::note("ORGAN_TEST_BAR: drag of \"" + parts[1] + "\": " + before + " -> pressed " + pressed + " -> dragged " + parts[3] + " px");
+                }
+                CrashHandler::note("ORGAN_TEST_BAR: " + parts[2] + " on \"" + parts[1] + "\" -> " + slider->getTextFromValue(slider->getValue())
+                    + ", bounds " + slider->getBounds().toString() + ", lines " + slider->getProperties().getWithDefault("barLines", 1).toString());
+            });
+        }
+    }
     // 0.9.82: ORGAN_TEST_SWAP="<a>|<b>[|<seconds>]" swaps two divisions whole (swapDivisionStops) and logs what each
     // division carries before and after (alias, tremulant, swell, wind, volume, outputs, device, couplers).
     if (const char* env = std::getenv("ORGAN_TEST_SWAP"))
@@ -3000,7 +3049,7 @@ MainComponent::MainComponent()
         juce::Component::SafePointer<MainComponent> safeThis(this);
         const int firstMs = std::getenv("ORGAN_TEST_CLICK_AT") != nullptr ? juce::jmax(1, juce::String(std::getenv("ORGAN_TEST_CLICK_AT")).getIntValue()) * 1000 : 3000;   // the first click's moment in seconds (0.8.185)
         for (int i = 0; i < names.size(); ++i)
-            juce::Timer::callAfterDelay(firstMs + 2000 * i, [safeThis, name = names[i]]
+            juce::Timer::callAfterDelay(firstMs + 2000 * i, [safeThis, name = names[i], i]
             {
                 if (safeThis == nullptr) return;
                 // Every window on the desktop, every button inside (0.8.183: the console's
@@ -3024,9 +3073,11 @@ MainComponent::MainComponent()
                 // ORGAN_TEST_DIALOG_SNAPSHOT=<folder>: 1.2 s later every window but the main
                 // one is pictured (<n>-<title>.png, the window's own paint - no screen capture).
                 if (const char* folder = std::getenv("ORGAN_TEST_DIALOG_SNAPSHOT"))
-                    juce::Timer::callAfterDelay(1200, [safeThis, dir = juce::File(juce::String::fromUTF8(folder))]
+                    juce::Timer::callAfterDelay(1200, [safeThis, i, dir = juce::File(juce::String::fromUTF8(folder))]
                     {
                         dir.createDirectory();
+                        // ORGAN_TEST_SNAPSHOT_KEEP=1 (0.9.134): the pictures of every click are kept ("c03-..."), not overwritten.
+                        const juce::String step = std::getenv("ORGAN_TEST_SNAPSHOT_KEEP") != nullptr ? "c" + juce::String(i).paddedLeft('0', 2) + "-" : juce::String();
                         auto* main = safeThis != nullptr ? safeThis->getTopLevelComponent() : nullptr;
                         for (int w = 0; w < juce::Desktop::getInstance().getNumComponents(); ++w)
                         {
@@ -3034,7 +3085,7 @@ MainComponent::MainComponent()
                             if (window == nullptr || !window->isVisible()) continue;
                             // 0.9.79: the main window too ("<n>-main.png") - the top panel's display and the headers.
                             const juce::Image image = window->createComponentSnapshot(window->getLocalBounds(), false, 1.0f);
-                            const juce::File file = dir.getChildFile(juce::String(w) + "-" + (window == main ? juce::String("main") : juce::File::createLegalFileName(window->getName())) + ".png");
+                            const juce::File file = dir.getChildFile(step + juce::String(w) + "-" + (window == main ? juce::String("main") : juce::File::createLegalFileName(window->getName())) + ".png");
                             file.deleteFile();
                             juce::FileOutputStream stream(file);
                             if (stream.openedOk()) juce::PNGImageFormat().writeImageToStream(image, stream);
@@ -3613,9 +3664,7 @@ void MainComponent::resized()
     for (int i = 0; i < gsCount; ++i)
     {
         sliders[i]->setVisible(globalSliderShown[(size_t)i]);
-        sliders[i]->setTextBoxStyle(juce::Slider::TextBoxRight, false, 64, 20);   // value box after the slider
-        sliderLabels[i]->setVisible(globalSliderShown[(size_t)i]);
-        sliderLabels[i]->setJustificationType(juce::Justification::centredLeft); // aligned with the slider's left end
+        sliderLabels[i]->setVisible(false);   // 0.9.134: the name and the value are written in the slider's bar
         if (globalSliderShown[(size_t)i]) ++shownCount;
     }
     if (shownCount > 0)
@@ -3626,15 +3675,29 @@ void MainComponent::resized()
         const int polyphonyWidth = juce::jlimit(180, 420, controlsRow.getWidth() / 6);
         auto polyphonyArea = controlsRow.removeFromRight(polyphonyWidth);
         const int cellWidth = controlsRow.getWidth() / shownCount;
-        const int cellPad = juce::jlimit(6, 40, cellWidth / 12);
+        const int cellPad = juce::jlimit(3, 10, cellWidth / 20);
+        // 0.9.134 bars (the user: "všecky posuvníky by musely reagovat stejně, ne aby jeden byl dvojřádkový, jiný
+        // jednořádkový"): ONE form for the whole row, by the width a slider gets - one line (name left, value
+        // right), two lines (the name small above the value), two lines with the short name.
+        static const char* const names[gsCount]{ "Attack min. delay", "Attack min. time", "Sustain fade-out", "Release fade-in",
+            "Release scaling", "Pitch", "Master", "Release cut", "Release from" };
+        static const char* const shortNames[gsCount]{ "Att. delay", "Att. time", "Sus. fade", "Rel. fade", "Rel. scale", "Pitch", "Master", "Rel. cut", "Rel. from" };
+        const int barWidth = cellWidth - 2 * cellPad;
+        const int lines = barWidth >= 205 ? 1 : 2;
+        const bool useShort = barWidth < 112;
+        const int barHeight = lines == 1 ? 28 : 44;
         for (const GlobalSlider which : kGlobalSliderOrder)
         {
             const int i = (int)which;
             if (!globalSliderShown[(size_t)i]) continue;
-            // Caption above, slider below it, value box right of the slider.
             auto cell = controlsRow.removeFromLeft(cellWidth).reduced(cellPad, 0);
-            sliderLabels[i]->setBounds(cell.getX(), cell.getY() + 8, cell.getWidth(), 18);
-            sliders[i]->setBounds(cell.getX(), cell.getY() + 28, cell.getWidth(), 26);
+            auto& properties = sliders[i]->getProperties();
+            properties.set("barLabel", names[i]);
+            properties.set("barShort", shortNames[i]);
+            properties.set("barLines", lines);
+            properties.set("barUseShort", useShort);
+            sliders[i]->setBounds(cell.getX(), cell.getCentreY() - barHeight / 2, cell.getWidth(), barHeight);
+            sliders[i]->repaint();
         }
         if (polyphonyDisplay != nullptr)
             polyphonyDisplay->setBounds(polyphonyArea.reduced(5, 5));
@@ -26045,52 +26108,7 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
-        // 0.9.134 (the user's choice after two tries of mine: no button that comes and goes, no menu): ONE switch with
-        // three places, always the same size and in the same place, beside every folder cell and every perspective's
-        // name. Left = loaded, middle (a dash) = kept in the table but not loaded, right (x) = removed. A click on a
-        // place chooses it; the knob stands on the present one (state 2 = between left and middle: a perspective of
-        // which some folders are loaded; state 3 = nothing there: an empty cell, drawn dim and dead).
-        class StateSwitch final : public juce::Component, public juce::SettableTooltipClient
-        {
-        public:
-            int state = 0;
-            std::function<void(int)> onChoose;   // 0 load, 1 unload, 2 remove
-            void paint(juce::Graphics& g) override
-            {
-                const auto area = getLocalBounds().toFloat().reduced(0.5f);
-                const float h = area.getHeight(), third = area.getWidth() / 3.0f, cy = area.getCentreY();
-                const bool dead = state == 3;
-                g.setColour(juce::Colour(0xff1c2428).withAlpha(dead ? 0.5f : 1.0f));
-                g.fillRoundedRectangle(area, h * 0.5f);
-                g.setColour(findColour(juce::ComboBox::outlineColourId).withAlpha(dead ? 0.35f : 1.0f));
-                g.drawRoundedRectangle(area, h * 0.5f, 1.0f);
-                const float knob = h * 0.5f - 1.5f, r = h * 0.2f;
-                auto centre = [&](float place) { return area.getX() + third * (place + 0.5f); };
-                const juce::Colour blue = findColour(juce::Slider::thumbColourId), dim = juce::Colours::white.withAlpha(0.32f);
-                if (!dead)
-                {
-                    const float at = state == 0 ? 0.0f : state == 1 ? 1.0f : 0.5f;
-                    g.setColour(state == 0 ? blue : state == 1 ? juce::Colours::grey : blue.interpolatedWith(juce::Colours::grey, 0.5f));
-                    g.fillEllipse(centre(at) - knob, cy - knob, knob * 2.0f, knob * 2.0f);
-                }
-                auto sign = [&](int place, juce::Colour colour)
-                {
-                    const float cx = centre((float)place);
-                    g.setColour(colour);
-                    if (place == 0) g.fillEllipse(cx - r * 0.8f, cy - r * 0.8f, r * 1.6f, r * 1.6f);
-                    else if (place == 1) g.drawLine(cx - r * 1.2f, cy, cx + r * 1.2f, cy, 1.8f);
-                    else { g.drawLine(cx - r, cy - r, cx + r, cy + r, 1.6f); g.drawLine(cx - r, cy + r, cx + r, cy - r, 1.6f); }
-                };
-                for (int place = 0; place < 3; ++place)
-                    sign(place, dead ? dim.withMultipliedAlpha(0.5f) : place == state ? juce::Colours::white : dim);
-            }
-            void mouseUp(const juce::MouseEvent& event) override
-            {
-                if (state == 3 || !getLocalBounds().contains(event.getPosition()) || !onChoose) return;
-                const int place = juce::jlimit(0, 2, event.x * 3 / juce::jmax(1, getWidth()));
-                if (place != state) onChoose(place);
-            }
-        };
+        // The three-way switch beside every folder cell and every perspective's name: StateSwitch (UIControls.h).
         class GridArea final : public juce::Component
         {
         public:
@@ -26150,10 +26168,8 @@ void MainComponent::showStopBuildingDialog(int)
         private:
             bool dragging = false;
         };
-        // 0.9.134 (#265, the user's "krokové tlačítko"): a folder of the table is loaded, or kept in the table but NOT
-        // loaded (FolderRef::unloaded - dimmed), or taken out of the row. The small buttons beside a cell and beside a
-        // column's name show the steps that can be taken, never a menu: "-" unloads (the folder stays, dimmed),
-        // "+" loads it again, "x" takes it out of the row (the column: removes it) - "x" only once it is unloaded.
+        // 0.9.134 (#265): a folder of the table is loaded, or kept in the table but NOT loaded (FolderRef::unloaded -
+        // dimmed), or taken out of the row: the three places of the StateSwitch beside every cell and every column's name.
         // A draft like the rest of the table: "Apply and reload" frees or reads the samples.
         struct HeaderCell { std::unique_ptr<HeaderLabel> label; std::unique_ptr<StateSwitch> stateSwitch; };
         std::set<juce::String> loadedPlaces;   // the folders the ENGINE holds now (lower-case full paths) - a cell's colour tells the truth
@@ -26346,7 +26362,7 @@ void MainComponent::showStopBuildingDialog(int)
             if (changes) applyButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkorange);
             else applyButton.removeColour(juce::TextButton::buttonColourId);
             applyButton.setTooltip(tableChanges ? "Saves the table and loads the changed divisions again. Folders left out of the "
-                "table, or unloaded with \"-\", are not loaded (they leave the RAM)."
+                "table, or switched to \"not loaded\" (the middle of their switch), are not loaded (they leave the RAM)."
                 : pendingCells > 0 ? juce::String(pendingCells) + " folder(s) of the table are not in the memory (dimmed): reads them - what is loaded stays."
                 : "Nothing to apply: the table is what is loaded. Transmissions act at once.");
         }
@@ -27052,7 +27068,7 @@ void MainComponent::showStopBuildingDialog(int)
                         // 0.9.134 (the user: after a cancelled load every row looked loaded): a folder that is NOT in the
                         // memory reads apart from the loaded ones - unloaded on purpose, or one a load did not reach.
                         cell.button->setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.4f));
-                        cellPaths[cell.button.get()] = (ref.unloaded ? juce::String("Not loaded (unloaded with \"-\"; \"+\" loads it again): ")
+                        cellPaths[cell.button.get()] = (ref.unloaded ? juce::String("Not loaded (its switch stands in the middle; the left place loads it again): ")
                                                                      : juce::String("Not in the memory yet - \"Apply and reload\" reads it: ")) + folder.getFullPathName();
                         if (!ref.unloaded && pooledPlaces.count(folder.getFullPathName().toLowerCase()) == 0) { ++pendingCells; pendingDivisions.insert(manual); }
                     }
@@ -37630,6 +37646,9 @@ void MainComponent::noisesTick()
                         else if (parts[1] == "folder") safeThis->setNoiseUnitFolder(parts[2] + (parts.size() > 5 ? "|" + parts[3] : juce::String()), parts[parts.size() - 2], juce::File(parts[parts.size() - 1]));
                         else if (parts[1] == "unfold") { safeThis->noiseUnitsUnfolded.insert(parts[2] + (parts.size() > 3 ? "|" + parts[3] : juce::String())); safeThis->showNoisesWindow(); }
                         else if (parts[1] == "random") safeThis->setNoiseFreeRandom(parts[2].getIntValue() != 0);
+                        // 0.9.134: "<s>|pall|<perspective>|0 or 1" = the perspective's switch of every noise, "<s>|premove|<key or *>|<perspective>" = its files taken out
+                        else if (parts[1] == "pall") safeThis->setNoisePerspectiveOnEverywhere(parts[2], parts[parts.size() - 1].getIntValue() != 0);
+                        else if (parts[1] == "premove") safeThis->removeNoiseUnitPerspective(parts[2] + (parts.size() > 4 ? "|" + parts[3] : juce::String()), parts[parts.size() - 1]);
                         else if (parts[1] == "assigned")
                         {
                             juce::StringArray pairs;
@@ -38679,6 +38698,87 @@ void MainComponent::removeNoiseUnit(const juce::String& key)
     setNoisesModel(kept.isEmpty() ? juce::var() : noisesVar, "the unit \"" + key + "\" removed");
 }
 
+// 0.9.134 (the Noises window's three-way switches): the files of ONE perspective of a noise taken out of the organ
+// (the x of a folder's switch), or of every noise (key "*": the x of the perspective's own switch). A noise left
+// without any file is gone with its last perspective, as with "remove".
+void MainComponent::removeNoiseUnitPerspective(const juce::String& key, const juce::String& perspective)
+{
+    auto* model = noisesVar.getDynamicObject();
+    auto* sounds = noisesVar.getProperty("sounds", juce::var()).getArray();
+    if (model == nullptr || sounds == nullptr) return;
+    juce::Array<juce::var> kept;
+    std::set<juce::String> touched, left;
+    for (const auto& text : *sounds)
+    {
+        juce::StringArray fields;
+        fields.addTokens(text.toString(), "\t", "");
+        if (fields.size() >= 10)
+        {
+            const auto unit = noiseUnitKey(fields);
+            if ((key == "*" || unit == key) && fields[3].equalsIgnoreCase(perspective)) { touched.insert(unit); continue; }
+            left.insert(unit);
+        }
+        kept.add(text);
+    }
+    if (touched.empty()) return;
+    model->setProperty("sounds", kept);
+    // A noise whose last files went: its button and its settings go with it.
+    for (const auto& unit : touched)
+    {
+        if (left.count(unit) != 0) continue;
+        if (unit.startsWith("button|"))
+        {
+            juce::DynamicObject::Ptr buttons = new juce::DynamicObject();
+            int index = 0;
+            if (auto* old = model->getProperty("buttons").getDynamicObject())
+                for (const auto& prop : old->getProperties())
+                    if (prop.value.getProperty("name", "").toString().toLowerCase() != unit.fromFirstOccurrenceOf("|", false, false))
+                        buttons->setProperty(juce::Identifier("b" + juce::String(++index)), prop.value);
+            model->setProperty("buttons", juce::var(buttons.get()));
+        }
+        if (auto* units = model->getProperty("units").getArray())
+            units->removeIf([&](const juce::var& entry) { return entry.getProperty("key", "").toString() == unit; });
+    }
+    const juce::String shown = perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective;
+    setNoisesModel(kept.isEmpty() ? juce::var() : noisesVar, key == "*" ? "the perspective \"" + shown + "\" of every noise removed (" + juce::String((int)touched.size()) + " noise(s))"
+                                                                         : "the perspective \"" + shown + "\" of the unit \"" + key + "\" removed");
+}
+
+void MainComponent::setNoisePerspectiveOnEverywhere(const juce::String& perspective, bool on)
+{
+    int count = 0;
+    for (const auto& unit : noiseUnits())
+        for (const auto& [name, files] : unit.perspectives)
+            if (name.equalsIgnoreCase(perspective) && files > 0)
+            {
+                auto* object = noiseUnitObject(unit.key, true);
+                if (object == nullptr) continue;
+                if (!object->getProperty("perspectives").isArray()) object->setProperty("perspectives", juce::Array<juce::var>());
+                auto* list = object->getProperty("perspectives").getArray();
+                bool found = false;
+                for (auto& p : *list)
+                    if (p.getProperty("name", "").toString().equalsIgnoreCase(perspective))
+                        if (auto* entry = p.getDynamicObject()) { entry->setProperty("on", on); found = true; }
+                if (!found)
+                {
+                    juce::DynamicObject::Ptr entry = new juce::DynamicObject();
+                    entry->setProperty("name", perspective);
+                    entry->setProperty("db", 0.0);
+                    entry->setProperty("on", on);
+                    list->add(juce::var(entry.get()));
+                }
+                ++count;
+            }
+    if (count == 0) return;
+    CrashHandler::note("Noises: the perspective \"" + (perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective) + "\" switched "
+        + (on ? "on" : "off") + " for " + juce::String(count) + " noise(s)");
+    applyNoiseGains();
+    noiseButtonInfoVersion = -1;   // the buttons' voicing rows take it at the next look
+    configurationDirty = true;
+    saveSettings();
+    refreshNoisesWindow();
+}
+
 // THE BUTTONS OF THE NOISES ON THE GRID (the user: "tlačítka musí být na gridu divize jako rejstříky. V okně noises
 // se jen nastavují"): a noise of its own - blower, zimbelstern, rossignol, calcant - is a stop WITHOUT PIPES of its
 // division, so it has everything a stop has: its cell on the grid, the dragging, MIDI learn, its voicing row, its
@@ -38875,6 +38975,11 @@ void MainComponent::applyNoiseButtons()
 // files; dropped anywhere else it is read as new noises. Modeless; the top bar's Noises button.
 namespace
 {
+    // 0.9.134 (the user: "ten dialog vypadá výrazně jinak než Stop List ... chceme dodržovat nějaký estetický kodex"):
+    // THE STOP LIST'S LOOK - its row and header heights, its name field, its folder cells, its three-way switch
+    // (UIControls.h) and the bar sliders. A row: the switch of the noise (on / off / removed), its division, its name,
+    // its kind, its volume; then for every perspective of the organ the folder (name, number of files, "+N" further
+    // folders), the switch of that perspective of the noise and its volume. A click on a folder unfolds the row.
     struct NoiseUnitsContent final : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer
     {
         struct Callbacks
@@ -38883,6 +38988,8 @@ namespace
             std::function<void(const juce::String&, bool)> on;
             std::function<void(const juce::String&, const juce::String&, double)> volume;
             std::function<void(const juce::String&, const juce::String&, bool)> perspectiveOn;
+            std::function<void(const juce::String&, bool)> perspectiveOnEverywhere;                            // perspective, on: every noise with files in it
+            std::function<void(const juce::String&, const juce::String&)> removePerspective;                    // unit key ("*" = every noise), perspective
             std::function<void(const juce::String&, const juce::String&, int)> change;
             std::function<void(const juce::String&)> remove;
             std::function<void(const juce::String&, bool)> unfold;
@@ -38903,17 +39010,22 @@ namespace
             std::map<juce::String, juce::String> assigned;
             juce::String libraryRoot;
         };
+        // The Stop List's measures (its dialog's enum): rows 32, headers 30, the switch 62.
+        enum : int { rowHeight = 32, headerHeight = 30, switchWidth = 62, divisionWidth = 74, nameWidth = 240, kindWidth = 116, volumeWidth = 112,
+                     folderWidth = 214, barWidth = 96, perspectiveWidth = folderWidth + switchWidth + barWidth + 14, left = 10 };
+        struct PerspectiveCell
+        {
+            juce::TextButton folder;
+            StateSwitch state;
+            juce::Slider volume;
+        };
         struct RowControls
         {
-            juce::TextButton fold;
-            juce::ToggleButton on;
+            StateSwitch state;                              // the noise: on / off / removed
+            juce::ComboBox division, kind;
             juce::Label name;
-            juce::ComboBox kind, division;
             juce::Slider volume;
-            juce::OwnedArray<juce::ToggleButton> perspectiveBoxes;
-            juce::OwnedArray<juce::Slider> perspectiveVolumes;
-            juce::OwnedArray<juce::Label> perspectiveFolders;
-            juce::TextButton remove{ "x" };
+            juce::OwnedArray<PerspectiveCell> cells;
             juce::TextEditor details;                      // unfolded: the folders and their files
             juce::OwnedArray<juce::Label> assignLabels;    // unfolded (drawknobs, couplers): button -> its free noise
             juce::OwnedArray<juce::ComboBox> assignBoxes;
@@ -38922,14 +39034,18 @@ namespace
             bool unfolded = false, hasOneShot = false;
             int detailsHeight = 0, top = 0, bottom = 0;
         };
-        // A line before every perspective's block (box, folder, volume) - the blocks read apart. 0.9.134 (the user):
-        // the divider between the divisions of the main window - 2 px, the same grey, one line from top to bottom.
+        struct PerspectiveHeader
+        {
+            juce::Label label;
+            StateSwitch state;
+        };
+        // The divider between the divisions of the main window (2 px, the same grey) before every perspective's block.
         void paint(juce::Graphics& g) override
         {
             g.setColour(juce::Colours::grey.withAlpha(0.65f));
-            const int bottom = rows.isEmpty() ? 32 : rows.getLast()->top + rowHeight;
+            const int bottom = rows.isEmpty() ? headerHeight + 4 : rows.getLast()->top + rowHeight;
             for (int i = 0; i <= perspectives.size(); ++i)
-                g.fillRect(perspectiveLeft + i * perspectiveWidth - 6, 8, 2, bottom - 8);
+                g.fillRect(perspectiveLeft + i * perspectiveWidth - 8, 6, 2, bottom - 6);
         }
         // A button's volume is its stop's: moved in the voicing row (or by a combination), it shows here at once.
         void timerCallback() override
@@ -38940,27 +39056,62 @@ namespace
                     if (const double now = callbacks.buttonVolume(row->key); std::abs(now - row->volume.getValue()) > 0.01)
                         row->volume.setValue(now, juce::dontSendNotification);
         }
-        static void setupVolume(juce::Slider& slider, double value, int box)
+        static void setupVolume(juce::Slider& slider, double value)
         {
-            slider.setSliderStyle(juce::Slider::LinearHorizontal);
-            slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, box, 22);
+            slider.setSliderStyle(juce::Slider::LinearHorizontal);   // a bar: its value is written in it (UIScale.h)
+            slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
             slider.setRange(-30.0, 12.0, 0.5);
             slider.setTextValueSuffix(" dB");
             slider.setDoubleClickReturnValue(true, 0.0);
+            slider.setScrollWheelEnabled(true);
             slider.setValue(value, juce::dontSendNotification);
         }
         NoiseUnitsContent(const std::vector<MainComponent::NoiseUnit>& units, const Options& options, Callbacks callbacksIn)
             : callbacks(std::move(callbacksIn)), perspectives(options.perspectives)
         {
-            auto addHeader = [this](const juce::String& text)
+            static const char* const shortNames[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." };
+            auto shownName = [](const juce::String& perspective) { return perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective; };
+            for (const char* text : { "Division", "Noise", "Kind", "Volume" })
             {
                 auto* label = headers.add(new juce::Label({}, text));
-                label->setFont(juce::FontOptions(14.0f, juce::Font::bold));
-                label->setColour(juce::Label::textColourId, onColour());
+                label->setFont(juce::FontOptions(15.0f, juce::Font::bold));   // the Stop List's headers
                 addAndMakeVisible(label);
-            };
-            addHeader(""); addHeader("On"); addHeader("Noise"); addHeader("Kind"); addHeader("Division"); addHeader("Volume");
-            for (const auto& perspective : perspectives) addHeader(perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective);
+            }
+            for (const auto& perspective : perspectives)
+            {
+                // The perspective's name and, right after it, its switch for EVERY noise - as in the Stop List.
+                auto* header = perspectiveHeaders.add(new PerspectiveHeader());
+                header->label.setText(shownName(perspective), juce::dontSendNotification);
+                header->label.setFont(juce::FontOptions(15.0f, juce::Font::bold));
+                int with = 0, on = 0, notLoaded = 0;
+                for (const auto& unit : units)
+                    for (const auto& [name, files] : unit.perspectives)
+                        if (name.equalsIgnoreCase(perspective) && files > 0)
+                        {
+                            ++with;
+                            const auto stored = unit.perspectiveOn.find(perspective.toLowerCase());
+                            if (stored == unit.perspectiveOn.end() || stored->second) ++on;
+                            if (const auto state = unit.state.find(perspective.toLowerCase()); state != unit.state.end() && state->second == 1) ++notLoaded;
+                        }
+                if (with > 0 && notLoaded == with) header->label.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.4f));
+                header->label.setTooltip(with > 0 && notLoaded == with ? "The perspective \"" + shownName(perspective) + "\" is NOT LOADED (Stop List): no noise sounds in it."
+                    : "The perspective \"" + shownName(perspective) + "\": the noises' files recorded in it. The perspectives and their order are the Stop List's.");
+                // A perspective the Stop List has not loaded looks as it does there: the switch in the middle, dimmed - it is
+                // loaded there, not here (the user: "proč je vypnutá perspektiva jinak vypadající než v dialogu Stop List?").
+                const bool perspectiveNotLoaded = with > 0 && notLoaded == with;
+                header->state.state = with == 0 ? (int)StateSwitch::dead : perspectiveNotLoaded ? 1 : on == with ? 0 : on == 0 ? 1 : (int)StateSwitch::mixed;
+                header->state.locked = perspectiveNotLoaded;
+                header->state.setTooltip(perspectiveNotLoaded ? "The perspective \"" + shownName(perspective) + "\" is NOT LOADED: its switch in the Stop List loads it, and its noises with it."
+                    : juce::String("This perspective of EVERY noise. Left: on. Middle: off (the files stay). Right (x): the files of this perspective are taken out of every noise."));
+                header->state.getProperties().set("testName", "noises " + shownName(perspective));
+                header->state.onChoose = [this, perspective](int place)
+                {
+                    if (place < 2) { if (callbacks.perspectiveOnEverywhere) callbacks.perspectiveOnEverywhere(perspective, place == 0); }
+                    else if (callbacks.removePerspective) callbacks.removePerspective("*", perspective);
+                };
+                addAndMakeVisible(header->label);
+                addAndMakeVisible(header->state);
+            }
             bool couplersUnit = false;
             for (const auto& unit : units) couplersUnit = couplersUnit || unit.kind == "couplers";
             for (const auto& unit : units)
@@ -38969,19 +39120,26 @@ namespace
                 const juce::String key = unit.key;
                 row->key = key;
                 row->unfolded = options.unfolded.count(key) > 0;
-                row->fold.setButtonText(row->unfolded ? "-" : "+");
-                row->fold.setTooltip("Shows or hides the folders and files of this noise.");
-                row->fold.onClick = [this, row, key] { if (callbacks.unfold) callbacks.unfold(key, !row->unfolded); };
-                row->on.setToggleState(unit.on, juce::dontSendNotification);
-                row->on.setTooltip("This noise on or off.");
-                row->on.onClick = [this, row, key] { if (callbacks.on) callbacks.on(key, row->on.getToggleState()); };
+                row->state.state = unit.on ? 0 : 1;
+                row->state.setTooltip("This noise. Left: on. Middle: off (it stays in the organ). Right (x): taken out of the organ (its files stay on the disk).");
+                row->state.getProperties().set("testName", "noise " + unit.name);
+                row->state.onChoose = [this, row, key](int place)
+                {
+                    if (place == 2) { if (callbacks.remove) callbacks.remove(key); return; }
+                    row->state.state = place;
+                    row->state.repaint();
+                    if (callbacks.on) callbacks.on(key, place == 0);
+                };
                 row->name.setText(unit.name, juce::dontSendNotification);
-                row->name.setTooltip(unit.kind == "button" ? "A noise with a button of its own on the grid of its division. Its alias, One-shot and Release xfade are in the button's voicing row." : unit.name);
+                row->name.setFont(juce::FontOptions(16.0f));   // the Stop List's stop name: the same field
+                row->name.setColour(juce::Label::backgroundColourId, juce::Colour(0xff2b2b2b));
+                row->name.setColour(juce::Label::outlineColourId, juce::Colour(0xff555555));
+                row->name.setColour(juce::Label::textColourId, juce::Colours::white);
+                row->name.setTooltip(unit.kind == "button" ? "A noise with a button of its own on the grid of its division. Its alias and Release xfade are in the button's voicing row." : unit.name);
                 for (const char* kind : { "Keys", "Tremulant", "Drawknobs", "Couplers", "Button" }) row->kind.addItem(kind, row->kind.getNumItems() + 1);
                 row->kind.setSelectedId(unit.kind == "keys" ? 1 : unit.kind == "tremulant" ? 2 : unit.kind == "drawknobs" ? 3 : unit.kind == "couplers" ? 4 : 5, juce::dontSendNotification);
                 row->kind.setTooltip("What starts this noise: the keys of a keyboard, a running tremulant, the stops' drawknobs, the couplers' drawknobs, or a button of its own on the grid.");
-                row->division.addItem("Pedal", 1);
-                for (int manual = 1; manual <= options.manualCount; ++manual) row->division.addItem("Manual " + juce::String(manual), manual + 1);
+                for (int manual = 0; manual <= options.manualCount && manual < 8; ++manual) row->division.addItem(shortNames[manual], manual + 1);
                 const bool placed = unit.kind == "keys" || unit.kind == "tremulant" || unit.kind == "button";
                 row->division.setSelectedId(placed ? juce::jlimit(0, options.manualCount, juce::jmax(0, unit.division)) + 1 : 0, juce::dontSendNotification);
                 row->division.setEnabled(placed);
@@ -38993,7 +39151,7 @@ namespace
                 };
                 row->kind.onChange = changed;
                 row->division.onChange = changed;
-                setupVolume(row->volume, unit.volumeDb, 66);
+                setupVolume(row->volume, unit.volumeDb);
                 row->volume.setTooltip(unit.kind == "button" ? "The volume of this noise: the same value as the Stop volume of its button's voicing row."
                     : "The volume of this noise as a whole, on top of the level its definition gives every file.");
                 row->volume.onValueChange = [this, row, key] { if (callbacks.volume) callbacks.volume(key, "*", row->volume.getValue()); };
@@ -39002,66 +39160,72 @@ namespace
                 {
                     int files = -1;
                     for (const auto& [name, count] : unit.perspectives) if (name.equalsIgnoreCase(perspective)) files = count;
-                    // The folder(s) of this perspective: the first one's name with the number of files; all of them in the tooltip.
+                    // The folder(s) of this perspective: the first one's name with the number of files and "+N" for the
+                    // further folders; all of them in the tooltip and in the unfolded list.
                     juce::String cell, tip;
                     if (const auto found = unit.files.find(perspective.toLowerCase()); found != unit.files.end() && !found->second.isEmpty())
                     {
-                        // 0.9.130 (the user: "mělo by to především ukazovat na atak adresář, ne na rel"): the attack
-                        // (on / loop) first, then off, the release last - in the cell and in the unfolded list.
-                        struct Ordered { juce::StringArray second; } sorted;
+                        // The attack (on / loop) first, then off, the release last - in the cell and in the unfolded list.
+                        juce::StringArray texts;
                         for (const char* moment : { "on: ", "loop: ", "off: ", "release: " })
-                            for (const auto& text : found->second) if (text.startsWith(moment)) sorted.second.add(text);
-                        for (const auto& text : found->second) sorted.second.addIfNotAlreadyThere(text);
-                        const auto* texts = &sorted;
-                        const auto first = texts->second[0].fromFirstOccurrenceOf(": ", false, false).upToFirstOccurrenceOf("//", false, false);
+                            for (const auto& text : found->second) if (text.startsWith(moment)) texts.add(text);
+                        for (const auto& text : found->second) texts.addIfNotAlreadyThere(text);
+                        const auto first = texts[0].fromFirstOccurrenceOf(": ", false, false).upToFirstOccurrenceOf("//", false, false);
                         cell = first.fromLastOccurrenceOf("/", false, false).fromLastOccurrenceOf("\\", false, false) + " (" + juce::String(files) + ")";
-                        if (texts->second.size() > 1) cell << " +" << juce::String(texts->second.size() - 1);
-                        detailLines.add((perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective) + ":");
-                        for (const auto& text : texts->second)
+                        if (texts.size() > 1) cell << " +" << juce::String(texts.size() - 1);
+                        detailLines.add(shownName(perspective) + ":");
+                        for (const auto& text : texts)
                         {
                             const auto moment = text.upToFirstOccurrenceOf(": ", true, false);
                             const auto folder = text.fromFirstOccurrenceOf(": ", false, false).upToFirstOccurrenceOf("//", false, false);
                             const auto names = juce::StringArray::fromTokens(text.fromFirstOccurrenceOf("//", false, false), "|", "");
                             juce::StringArray shown;
                             for (int i = 0; i < names.size() && i < 8; ++i) shown.add(names[i]);
-                            const juce::String line = "    " + moment + folder + "   -   " + juce::String(names.size()) + (names.size() == 1 ? " file: " : " files: ") + shown.joinIntoString(", ") + (names.size() > 8 ? ", ..." : "");
-                            detailLines.add(line);
+                            detailLines.add("    " + moment + folder + "   -   " + juce::String(names.size()) + (names.size() == 1 ? " file: " : " files: ") + shown.joinIntoString(", ") + (names.size() > 8 ? ", ..." : ""));
                             tip << moment << folder << "  (" << names.size() << ")\n";
                         }
                     }
-                    auto* box = row->perspectiveBoxes.add(new juce::ToggleButton());
+                    auto* part = row->cells.add(new PerspectiveCell());
+                    const bool has = files >= 0 && cell.isNotEmpty();
                     const auto stored = unit.perspectiveOn.find(perspective.toLowerCase());
-                    box->setToggleState(stored == unit.perspectiveOn.end() || stored->second, juce::dontSendNotification);
-                    box->setTooltip("This perspective of the noise on or off" + juce::String(unit.kind == "button" ? " - the same switch as the box of its button's voicing row." : "."));
-                    box->onClick = [this, box, key, perspective] { if (callbacks.perspectiveOn) callbacks.perspectiveOn(key, perspective, box->getToggleState()); };
-                    auto* folderLabel = row->perspectiveFolders.add(new juce::Label({}, cell));
-                    folderLabel->setFont(juce::FontOptions(12.5f));
-                    folderLabel->setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-                    folderLabel->setMinimumHorizontalScale(1.0f);
-                    // 0.9.134: the Stop List's colours - dimmed = not in the memory (its perspective is not loaded), orange = not found.
+                    const bool on = stored == unit.perspectiveOn.end() || stored->second;
+                    // The Stop List's colours: white = it sounds, dimmed = not in the memory (its perspective is not loaded)
+                    // or switched off here, orange = not found on this computer, grey = nothing there.
                     const auto stateFound = unit.state.find(perspective.toLowerCase());
-                    const int state = cell.isEmpty() ? 0 : stateFound != unit.state.end() ? stateFound->second : 0;
-                    if (state == 1) folderLabel->setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.4f));
-                    if (state == 2) folderLabel->setColour(juce::Label::textColourId, onColour());
-                    if (state == 1) tip = "NOT LOADED: the perspective \"" + perspective + "\" is not loaded (Stop List), so this noise does not sound in it.\n" + tip;
-                    if (state == 2) tip = "NOT FOUND on this computer - this noise does not sound in this perspective.\n" + tip;
-                    folderLabel->setTooltip(tip.isEmpty() ? juce::String("No files of this noise in this perspective - drop a folder here to give it some.")
-                        : tip + "\nDrop a folder from the file manager here: its files become this perspective of the noise.");
-                    auto* slider = row->perspectiveVolumes.add(new juce::Slider());
+                    const int truth = !has ? 0 : stateFound != unit.state.end() ? stateFound->second : 0;
+                    part->folder.setButtonText(has ? cell : juce::String("(none)"));   // the Stop List's empty cell
+                    part->folder.setColour(juce::TextButton::textColourOffId, !has ? juce::Colours::grey : truth == 2 ? onColour()
+                        : truth == 1 || !on ? juce::Colours::white.withAlpha(0.4f) : juce::Colours::white);
+                    if (truth == 1) tip = "NOT LOADED: the perspective \"" + perspective + "\" is not loaded (Stop List), so this noise does not sound in it.\n" + tip;
+                    if (truth == 2) tip = "NOT FOUND on this computer - this noise does not sound in this perspective.\n" + tip;
+                    part->folder.setTooltip((has ? tip : juce::String("No files of this noise in this perspective.\n"))
+                        + "Click: the folders and files of this noise shown or hidden.\nA folder dropped here from the file manager: its files become this perspective of the noise.");
+                    part->folder.onClick = [this, row, key] { if (callbacks.unfold) callbacks.unfold(key, !row->unfolded); };
+                    part->state.state = !has ? (int)StateSwitch::dead : truth == 1 || !on ? 1 : 0;   // not loaded = the Stop List's look: the middle
+                    part->state.locked = has && truth == 1;
+                    part->state.setTooltip(!has ? juce::String() : truth == 1 ? "NOT LOADED: the perspective \"" + shownName(perspective) + "\" is not loaded - its switch in the Stop List loads it, and this noise with it." : "This perspective of the noise. Left: on. Middle: off (its files stay). Right (x): its files are taken out of the noise."
+                        + juce::String(unit.kind == "button" ? " On / off is the same switch as the box of its button's voicing row." : ""));
+                    auto* folderButton = &part->folder;
+                    auto* stateSwitch = &part->state;
+                    part->state.onChoose = [this, key, perspective, folderButton, stateSwitch, truth](int place)
+                    {
+                        if (place == 2) { if (callbacks.removePerspective) callbacks.removePerspective(key, perspective); return; }
+                        stateSwitch->state = place;
+                        stateSwitch->repaint();
+                        if (truth == 0) folderButton->setColour(juce::TextButton::textColourOffId, place == 0 ? juce::Colours::white : juce::Colours::white.withAlpha(0.4f));
+                        if (callbacks.perspectiveOn) callbacks.perspectiveOn(key, perspective, place == 0);
+                    };
                     const auto storedDb = unit.perspectiveDb.find(perspective.toLowerCase());
-                    setupVolume(*slider, storedDb != unit.perspectiveDb.end() ? storedDb->second : 0.0, 60);
-                    slider->setTooltip("The volume of this noise in this perspective, on top of the noise's own volume.");
-                    slider->onValueChange = [this, slider, key, perspective] { if (callbacks.volume) callbacks.volume(key, perspective, slider->getValue()); };
-                    addAndMakeVisible(folderLabel);
-                    addChildComponent(box);
-                    addChildComponent(slider);
-                    box->setVisible(files >= 0);
-                    slider->setVisible(files >= 0);
+                    setupVolume(part->volume, storedDb != unit.perspectiveDb.end() ? storedDb->second : 0.0);
+                    part->volume.setEnabled(has && truth != 1);   // nothing sounds in a perspective that is not loaded
+                    part->volume.setTooltip(has ? "The volume of this noise in this perspective, on top of the noise's own volume." : juce::String());
+                    auto* slider = &part->volume;
+                    part->volume.onValueChange = [this, slider, key, perspective] { if (callbacks.volume) callbacks.volume(key, perspective, slider->getValue()); };
+                    addAndMakeVisible(part->folder);
+                    addAndMakeVisible(part->state);
+                    addAndMakeVisible(part->volume);
                 }
-                row->remove.setTooltip("Takes this noise out of the organ (its files stay on the disk).");
-                row->remove.onClick = [this, key] { if (callbacks.remove) callbacks.remove(key); };
-                addAndMakeVisible(row->fold); addAndMakeVisible(row->on); addAndMakeVisible(row->name); addAndMakeVisible(row->kind); addAndMakeVisible(row->division);
-                addAndMakeVisible(row->volume); addAndMakeVisible(row->remove);
+                addAndMakeVisible(row->state); addAndMakeVisible(row->division); addAndMakeVisible(row->name); addAndMakeVisible(row->kind); addAndMakeVisible(row->volume);
                 if (row->unfolded)
                 {
                     if (options.libraryRoot.isNotEmpty()) detailLines.insert(0, "Folders below " + options.libraryRoot);
@@ -39072,7 +39236,7 @@ namespace
                     row->details.setText(detailLines.joinIntoString("\n"), false);
                     row->detailsHeight = juce::jlimit(44, 260, 12 + detailLines.size() * 17);
                     addAndMakeVisible(row->details);
-                    // 0.9.130: One-shot of a noise that loops - here, not in its button's voicing row (pressed by mistake there).
+                    // One-shot of a noise that loops - here, not in its button's voicing row (pressed by mistake there).
                     if (unit.kind == "button" && unit.held)
                     {
                         row->hasOneShot = true;
@@ -39116,9 +39280,8 @@ namespace
             masterBox.setTooltip("Every noise of the organ on or off.");
             masterBox.onClick = [this] { if (callbacks.master) callbacks.master(masterBox.getToggleState()); };
             addAndMakeVisible(masterBox);
-            masterLabel.setText("Volume of all", juce::dontSendNotification);
-            addAndMakeVisible(masterLabel);
-            setupVolume(masterVolume, options.masterDb, 70);
+            setupVolume(masterVolume, options.masterDb);
+            masterVolume.getProperties().set("barLabel", "Volume of all");
             masterVolume.setTooltip("The level of all noises against the pipes.");
             masterVolume.onValueChange = [this] { if (callbacks.masterVolume) callbacks.masterVolume(masterVolume.getValue()); };
             addAndMakeVisible(masterVolume);
@@ -39141,47 +39304,50 @@ namespace
             hint.setFont(juce::FontOptions(12.5f));
             hint.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
             addAndMakeVisible(hint);
-            int height = 46;
+            int height = headerHeight + 8;
             for (auto* row : rows) height += rowHeight + (row->unfolded ? row->detailsHeight + 6 + (row->hasOneShot ? 28 : 0) + ((row->assignBoxes.size() + 1) / 2) * 28 : 0);
             if (rows.isEmpty()) height += rowHeight;
-            setSize(juce::jmax(1100, columnsLeft() + perspectives.size() * perspectiveWidth + 60), height + 104);
+            setSize(juce::jmax(1100, columnsLeft() + perspectives.size() * perspectiveWidth + 24), height + 104);
             startTimerHz(4);
         }
         ~NoiseUnitsContent() override { stopTimer(); }
-        static constexpr int rowHeight = 34, perspectiveWidth = 340;
-        static int columnsLeft() { return 12 + 34 + 34 + 200 + 116 + 116 + 206; }
+        static int columnsLeft() { return left + switchWidth + 6 + divisionWidth + nameWidth + kindWidth + volumeWidth + 12; }
         void resized() override
         {
-            const int left = 12;
-            int x = left;
-            const int widths[] = { 34, 34, 200, 116, 116, 206 };
-            for (int i = 0; i < headers.size(); ++i)
+            // Columns: the noise's switch | division | name | kind | volume | per perspective: folder, switch, volume.
+            int x = left + switchWidth + 6;
+            const int widths[] = { divisionWidth, nameWidth, kindWidth, volumeWidth };
+            for (int i = 0; i < headers.size(); ++i) { headers[i]->setBounds(x, 4, widths[i] - 6, headerHeight); x += widths[i]; }
+            perspectiveLeft = columnsLeft();
+            x = perspectiveLeft;
+            for (auto* header : perspectiveHeaders)
             {
-                const int width = i < 6 ? widths[i] : perspectiveWidth;
-                headers[i]->setBounds(x, 8, width - 6, 24);
-                x += width;
+                // The name and its switch together, the switch right after the text (the Stop List's header).
+                const int textWidth = (int)std::ceil(juce::GlyphArrangement::getStringWidth(header->label.getFont(), header->label.getText())) + 8;
+                const int labelWidth = juce::jlimit(20, perspectiveWidth - switchWidth - 24, textWidth);
+                header->label.setBounds(x + 2, 4, labelWidth, headerHeight);
+                header->state.setBounds(x + 2 + labelWidth + 4, 4 + (headerHeight - (rowHeight - 10)) / 2, switchWidth - 4, rowHeight - 10);
+                x += perspectiveWidth;
             }
-            perspectiveLeft = left + widths[0] + widths[1] + widths[2] + widths[3] + widths[4] + widths[5];
-            int y = 40;
+            int y = headerHeight + 8;
             for (auto* row : rows)
             {
                 row->top = y;
                 x = left;
-                row->fold.setBounds(x, y + 4, 28, 26); x += widths[0];
-                row->on.setBounds(x + 2, y + 4, 28, 26); x += widths[1];
-                row->name.setBounds(x, y + 2, widths[2] - 6, 30); x += widths[2];
-                row->kind.setBounds(x, y + 4, widths[3] - 8, 26); x += widths[3];
-                row->division.setBounds(x, y + 4, widths[4] - 8, 26); x += widths[4];
-                row->volume.setBounds(x, y + 4, widths[5] - 10, 26); x += widths[5];
-                for (int i = 0; i < row->perspectiveVolumes.size(); ++i)
+                row->state.setBounds(x, y + 5, switchWidth - 4, rowHeight - 10); x += switchWidth + 6;
+                row->division.setBounds(x, y + 3, divisionWidth - 6, rowHeight - 6); x += divisionWidth;
+                row->name.setBounds(x, y + 2, nameWidth - 6, rowHeight - 4); x += nameWidth;
+                row->kind.setBounds(x, y + 3, kindWidth - 6, rowHeight - 6); x += kindWidth;
+                row->volume.setBounds(x, y + 2, volumeWidth - 6, rowHeight - 4);
+                x = perspectiveLeft;
+                for (auto* cell : row->cells)
                 {
-                    // one block: its box, its folder, its volume close together; the next perspective begins after a gap and a line
-                    row->perspectiveBoxes[i]->setBounds(x, y + 4, 24, 26);
-                    row->perspectiveFolders[i]->setBounds(x + 24, y + 4, 156, 26);
-                    row->perspectiveVolumes[i]->setBounds(x + 180, y + 4, perspectiveWidth - 196, 26);
+                    // One block: the folder, its switch in a place that never moves, its volume.
+                    cell->folder.setBounds(x, y + 2, folderWidth - 4, rowHeight - 4);
+                    cell->state.setBounds(x + folderWidth + 2, y + 5, switchWidth - 4, rowHeight - 10);
+                    cell->volume.setBounds(x + folderWidth + switchWidth + 4, y + 2, barWidth, rowHeight - 4);
                     x += perspectiveWidth;
                 }
-                row->remove.setBounds(x + 4, y + 5, 26, 24);
                 y += rowHeight;
                 if (row->unfolded)
                 {
@@ -39202,9 +39368,8 @@ namespace
             if (rows.isEmpty()) { empty.setBounds(left, y, getWidth() - 2 * left, 28); y += rowHeight; }
             y += 14;
             masterBox.setBounds(left, y, 110, 28);
-            masterLabel.setBounds(left + 116, y, 96, 28);
-            masterVolume.setBounds(left + 212, y, 250, 28);
-            followBox.setBounds(left + 480, y, 250, 28);
+            masterVolume.setBounds(left + 116, y, 250, 28);
+            followBox.setBounds(left + 384, y, 250, 28);
             addFolderButton.setBounds(getWidth() - 132, y, 120, 30);
             y += 34;
             randomBox.setBounds(left, y, 420, 26);
@@ -39233,8 +39398,9 @@ namespace
         Callbacks callbacks;
         juce::StringArray perspectives;
         juce::OwnedArray<juce::Label> headers;
+        juce::OwnedArray<PerspectiveHeader> perspectiveHeaders;
         juce::OwnedArray<RowControls> rows;
-        juce::Label empty, masterLabel, hint;
+        juce::Label empty, hint;
         juce::ToggleButton masterBox, followBox, randomBox;
         juce::Slider masterVolume;
         juce::TextButton addFolderButton;
@@ -39287,6 +39453,28 @@ void MainComponent::showNoisesWindow(bool bringToFront)
     callbacks.remove = [safeThis](const juce::String& key)
     {
         juce::MessageManager::callAsync([safeThis, key] { if (safeThis != nullptr) safeThis->removeNoiseUnit(key); });
+    };
+    // 0.9.134: the three-way switches of the perspectives - the whole perspective of every noise on / off, and the
+    // files of a perspective taken out (of one noise at once; of every noise after a question).
+    callbacks.perspectiveOnEverywhere = [safeThis](const juce::String& perspective, bool on)
+    {
+        juce::MessageManager::callAsync([safeThis, perspective, on] { if (safeThis != nullptr) safeThis->setNoisePerspectiveOnEverywhere(perspective, on); });
+    };
+    callbacks.removePerspective = [safeThis](const juce::String& key, const juce::String& perspective)
+    {
+        juce::MessageManager::callAsync([safeThis, key, perspective]
+        {
+            if (safeThis == nullptr) return;
+            if (key != "*") { safeThis->removeNoiseUnitPerspective(key, perspective); return; }
+            const juce::String shown = perspective.isEmpty() ? juce::String(SamplerEngine::noisesPerspectiveName()) : perspective;
+            juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "Remove perspective",
+                "The files of the perspective \"" + shown + "\" will be taken out of EVERY noise of the organ (they stay on the disk). "
+                "A noise that has files in no other perspective goes with them.", "Remove", "Cancel", safeThis->noisesWindow.get(),
+                juce::ModalCallbackFunction::create([safeThis, perspective](int result)
+                {
+                    if (result == 1 && safeThis != nullptr) safeThis->removeNoiseUnitPerspective("*", perspective);
+                }));
+        });
     };
     callbacks.unfold = [safeThis](const juce::String& key, bool unfolded)
     {
@@ -39350,7 +39538,7 @@ void MainComponent::showNoisesWindow(bool bringToFront)
         return;
     }
     noisesWindow = std::make_unique<ModelessDialog>("Noises", new ScrollableContent(content), true);
-    placeDialog(*noisesWindow, "noises3", juce::jmin(width, 1700), juce::jmin(height, 860) + 40);
+    placeDialog(*noisesWindow, "noises4", juce::jmin(width, 2300), juce::jmin(height, 860) + 40);
     noisesWindow->setVisible(true);
     noisesWindow->toFront(true);
 }

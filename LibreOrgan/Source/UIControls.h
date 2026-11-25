@@ -257,6 +257,56 @@ public:
     }
 };
 
+// 0.9.134 THE THREE-WAY SWITCH (the user's choice after two tries of mine: no button that comes and goes, no menu):
+// ONE control with three places, always the same size and in the same place - in the Stop List beside every folder
+// cell and every perspective's name, in the Noises window before every noise, beside every folder of it and every
+// perspective's name. Left (a dot) = in use, middle (a dash) = kept but not in use, right (x) = removed. A click on
+// a place chooses it; the knob stands on the present one.
+//   state 0 = left, 1 = middle, mixed = the knob between left and middle (a perspective of which only some folders
+//   are in use: every place can be chosen), dead = nothing there (an empty cell: drawn dim, takes no click).
+class StateSwitch final : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    enum : int { mixed = 2, dead = 3 };
+    int state = 0;
+    bool locked = false;   // shown as it is but takes no click: the state is set elsewhere (the Noises window: a perspective the Stop List has not loaded - the same look as there)
+    std::function<void(int)> onChoose;   // the place clicked: 0 left, 1 middle, 2 right (x)
+    void paint(juce::Graphics& g) override
+    {
+        const auto area = getLocalBounds().toFloat().reduced(0.5f);
+        const float h = area.getHeight(), third = area.getWidth() / 3.0f, cy = area.getCentreY();
+        const bool nothing = state == dead;
+        g.setColour(juce::Colour(0xff1c2428).withAlpha(nothing ? 0.5f : 1.0f));
+        g.fillRoundedRectangle(area, h * 0.5f);
+        g.setColour(findColour(juce::ComboBox::outlineColourId).withAlpha(nothing ? 0.35f : 1.0f));
+        g.drawRoundedRectangle(area, h * 0.5f, 1.0f);
+        const float knob = h * 0.5f - 1.5f, r = h * 0.2f;
+        auto centre = [&](float place) { return area.getX() + third * (place + 0.5f); };
+        const juce::Colour blue = findColour(juce::Slider::thumbColourId), dim = juce::Colours::white.withAlpha(0.32f);
+        if (!nothing)
+        {
+            const float at = state == 0 ? 0.0f : state == 1 ? 1.0f : 0.5f;
+            g.setColour(state == 0 ? blue : state == 1 ? juce::Colours::grey : blue.interpolatedWith(juce::Colours::grey, 0.5f));
+            g.fillEllipse(centre(at) - knob, cy - knob, knob * 2.0f, knob * 2.0f);
+        }
+        const int here = state <= 1 ? state : -1;   // mixed: the knob stands on no place
+        for (int place = 0; place < 3; ++place)
+        {
+            const float cx = centre((float)place);
+            g.setColour(nothing ? dim.withMultipliedAlpha(0.5f) : place == here ? juce::Colours::white : dim);
+            if (place == 0) g.fillEllipse(cx - r * 0.8f, cy - r * 0.8f, r * 1.6f, r * 1.6f);
+            else if (place == 1) g.drawLine(cx - r * 1.2f, cy, cx + r * 1.2f, cy, 1.8f);
+            else { g.drawLine(cx - r, cy - r, cx + r, cy + r, 1.6f); g.drawLine(cx - r, cy + r, cx + r, cy - r, 1.6f); }
+        }
+    }
+    void mouseUp(const juce::MouseEvent& event) override
+    {
+        if (state == dead || locked || !getLocalBounds().contains(event.getPosition()) || !onChoose) return;
+        const int place = juce::jlimit(0, 2, event.x * 3 / juce::jmax(1, getWidth()));
+        if (state > 1 || place != state) onChoose(place);   // the present place does nothing; in the mixed state every place acts
+    }
+};
+
 // The large stop workspace must only move when its scrollbars are dragged.
 // Wheel gestures are reserved for the controls inside the workspace.
 class NoWheelScrollBar final : public juce::ScrollBar
