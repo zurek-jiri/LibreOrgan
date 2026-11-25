@@ -6356,9 +6356,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   NEVER released (softprops/action-gh-release "Too many retries" twice, his rerun hung in download-artifact); its
   remote tag is deleted, 0.9.135 carries it whole. CI: (1) build.yml's release step = `gh release create --verify-tag
   --prerelease` with the reason of a failure in an `::error title=Release::` annotation (readable without a login),
-  an earlier attempt's release / v* draft of the tag deleted first, `timeout-minutes: 20` on the job; (2) THE BRANCH
-  `ci-check` builds every platform WITHOUT a release: `git push origin main:ci-check` FIRST, watch it, tag only when
-  green - RULE from now on for every release (most failed release builds were compile errors only clang / GCC see).
+  an earlier attempt's release / v* draft of the tag deleted first, `timeout-minutes: 20` on the job; (2) a trial
+  branch `ci-check` (all platforms, no release, pushed before the tag) was used ONCE for 0.9.135 and REFUSED by the
+  user the same evening ("to je debilní, protože se to pak staví znova ... můžeš klidně pálit čísla, to mi nevadí ...
+  nesmíme plýtvat prostředky gitHubu na stavění opakované"): the trigger is gone. RULE: ONE BUILD PER VERSION - push
+  main, tag, the tag's run builds and publishes; a failed build = fix + the NEXT version number (burning numbers is
+  fine); never a trial build, never a second run of the same commit.
   PROGRAM: `hideTopRows` (machine key; Editor > Console "Hide the top rows"): resized() lays the two rows out as ever
   and notes their controls in `topRowParts`, the rest of the window begins at the top; `TopRowsTab` (12 px strip +
   tab, testName "topRowsTab": mouseEnter slides out, a click pins), `TopRowsBackdrop`, `TopRowsWatch` (the mouse's
@@ -6381,6 +6384,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   configuration (%TEMP%\make_rural_onerow.py), not the settings; test_0127b.ps1 -Settings takes JSON values ({...},
   [...]) now. NOT run: the slide-out by a real mouse on the strip and the going-in after it left (hooks cannot
   move the mouse), Linux / macOS.
+  RELEASED 25 Nov 2026 18:29: commit ea689c8, the ci-check build green on all five with NO test-step annotation (the
+  Intel macOS capitals fixed), then main + tag v0.9.135: release at the FIRST attempt by the new gh step (five
+  archives), Intel mac "late symbols: 0", the Windows exe on system DLLs only, the CI exe deployed; the remote tag
+  v0.9.134 and the branch ci-check deleted (no trial builds any more, see above). %TEMP%\ci_watch.ps1 -Tag vX
+  now follows the TAG's run alone (the ci-check run has the same commit).
 - 25 Nov 2026, THE USER'S SCHORNDORF IMPORT (the analysis; coded as 0.9.134, the note above):
   (1) NOISES "(one for all)" COLUMN = MY FAULT, never a feature: the definition's noise ranks are "Organist: Blower noise",
   "Organist: Tremulant noise"; the 0.9.65 rule (a head without a perspective word on >= 50 % of the stops is a perspective)
