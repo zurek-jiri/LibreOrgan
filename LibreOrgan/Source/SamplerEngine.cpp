@@ -14210,8 +14210,18 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         return a.file.getFileName().compareNatural(b.file.getFileName()) < 0;
     });
     std::vector<std::unique_ptr<Sample>> decoded(entries.size());
-    std::array<std::unique_ptr<juce::AudioFormatManager>, 16> managers;
+    std::array<std::unique_ptr<juce::AudioFormatManager>, 64> managers;
     juce::SpinLock managerLock;
+    // 0.9.139: how many threads decode the files of one stop. Files on a disk: 16 as ever. Files in an ARCHIVE:
+    // every logical processor - there the RAR decoder is the limit, not the disk (measured on the 16-core Ryzen with
+    // an NVMe disk, Frankfurt, 66.5 GB of WAV, the file cache emptied: 16 threads 98 s = 690 MB/s with the disk idle,
+    // 32 threads 80 s = 858 MB/s; unpacked folders 63 s with 16 threads, 51 s with 32).
+    // ORGAN_DECODE_THREADS=<n> sets the number for a measurement.
+    bool anyArchived = false;
+    for (const auto& entry : entries) if (entry.archived) { anyArchived = true; break; }
+    static const int forcedDecodeThreads = [] { const char* env = std::getenv("ORGAN_DECODE_THREADS"); return env != nullptr ? juce::String(env).getIntValue() : 0; }();
+    const int decodeThreads = forcedDecodeThreads > 0 ? juce::jlimit(1, 64, forcedDecodeThreads)
+                            : anyArchived ? juce::jlimit(16, 64, juce::SystemStats::getNumCpus()) : 16;
     // 0.9.125: the storage of the folder's own tree when it has one (an organ merged in), else the engine's.
     const TreeStorage ownStorage = storageFor(folder);
     const bool asFloat = ownStorage.asFloat;
@@ -14253,7 +14263,7 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         juce::AudioFormatManager* manager = nullptr;
         {
             const juce::SpinLock::ScopedLockType lk(managerLock);
-            auto& slot = managers[(size_t)juce::jlimit(0, 15, thread)];
+            auto& slot = managers[(size_t)juce::jlimit(0, 63, thread)];
             if (slot == nullptr) { slot = std::make_unique<juce::AudioFormatManager>(); slot->registerBasicFormats(); }
             manager = slot.get();
         }
@@ -14321,7 +14331,7 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         {
             decoded[(size_t)index] = nullptr;
         }
-    });
+    }, decodeThreads);
     // Cut by the memory stop (or a failed allocation) in the middle of its
     // files: half a stop is no stop - what was decoded is dropped and the tree
     // loader leaves the stop out, named among the skipped ones; it stays in the

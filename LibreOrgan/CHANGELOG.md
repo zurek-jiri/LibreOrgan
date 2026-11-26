@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.139] - 2026-11-26
+
+### Changed
+- Loading from RAR archives uses every logical processor for the unpacking
+  (16 threads before): measured 98 s -> 80 s for an organ of 66 GB of WAV on a
+  16-core computer. The manual's technical part (10.12) says when archives
+  pay and when unpacked folders load faster, with the measured figures.
+
 ## [0.9.138] - 2026-11-26
 
 ### Added

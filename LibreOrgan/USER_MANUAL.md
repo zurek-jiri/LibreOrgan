@@ -2836,7 +2836,23 @@ multi-volume sets (.partNN, .r00), recovery records, unicode names;
 encrypted archives are refused. Archives packed with PPMd or old filters go
 through a second reader (unarr) after the first fails, logged once. A
 configuration never names an archive: every path is a disk path, and a folder
-that is also on the disk wins over the archive.
+that is also on the disk wins over the archive unless your own lines of
+`Locations.txt` put the archive first.
+
+**Archives or unpacked folders - which loads faster.** Unpacking is the
+processor's work, about 50 MB/s of sound per core, so with a fast disk the
+processor is the limit and unpacked folders win. Measured on a 16-core
+computer with an NVMe disk, an organ of 66 GB of WAV (94 GB unpacked with
+everything, 57 GB as archives), the system's file cache emptied before each
+load: from the unpacked folders 63 s (1.1 GB/s), from the RAR archives 80 s
+(0.86 GB/s, every processor thread unpacking, the disk nearly idle). A second
+load of unpacked folders comes from the system's memory and is faster still;
+an archive gains nothing there. Archives pay where the disk is slower than
+the unpacking - a hard disk, a network folder: fewer bytes are read - and
+where room is short (about 40 % less). The fastest loading: unpacked folders
+on an SSD, and enough RAM for the system to keep the files in memory between
+loads. The storage choices of the load box change the RAM an organ takes,
+hardly the reading.
 
 ## 10.13 Files written by the program
 

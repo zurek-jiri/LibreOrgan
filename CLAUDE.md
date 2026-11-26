@@ -5367,6 +5367,17 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   only on a SLOW disk (HDD ~150 MB/s: half the bytes to read). `parallelFor` is capped at 16 threads (maxThreads) =
   the physical cores here; PROPOSED, not coded: all logical processors for the decode of packed archive entries
   (maybe +20-30 %), never promise more.
+  0.9.138 RELEASED (CI green on all five, Intel mac "late symbols: 0"). 0.9.139 (the same day, LOCAL COMMIT, NOT
+  PUSHED - his word wanted): MEASURED, the file cache emptied before every load (/tmp/lo136/measure.sh: python
+  os.posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED) on every file drops the page cache without root; Frankfurt, 3
+  packages, 66.5 GB of WAV = 94 GB unpacked with everything = 57 GB of archives, float, the NVMe system disk):
+  archives 16 threads 98 s (690 MB/s), archives 32 threads 80 s (858 MB/s), unpacked 16 threads 63 s (1099 MB/s),
+  unpacked 32 threads 51 s (1357 MB/s). His own "2600 MB/s" for unpacked was a WARM load (the system's memory).
+  `loadSamplesIntoStop`: `decodeThreads` = every logical processor (16..64) when the stop's files come from an
+  archive, 16 on a disk as ever (asked for archives only; the unpacked gain of 23 % OFFERED, not applied - a hard
+  disk with 32 readers is not measured); `managers` array 64; env ORGAN_DECODE_THREADS=<n> for measurements. Manual
+  10.12 has the paragraph "Archives or unpacked folders - which loads faster" with these figures. RULE: compare
+  loading speeds COLD (cache dropped) or say "warm"; a decoder-bound load shows the disk idle (rchar against cores).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
