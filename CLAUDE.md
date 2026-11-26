@@ -5534,6 +5534,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (his wish: the resynthesised perfect-pitch version sits in a velocity layer because Hauptwerk offered no other
   place - we carry it on), linked from 3.5 and from "Velocity layer boxes". NOT run: another organ with a 32' stop
   (Billerbeck, Bellevue, Brasov), Linux / macOS. juce::String(float, 0) printed "82.1671" again - roundToInt.
+  0.9.144 (26 Nov 2026 night; LOCAL COMMIT a625bc2, NOT pushed - his word and his EARS first): he found the 0.9.142
+  rule A wrong on Siebenquart 069 with rel99999 (the chunks sounded better) and right on 081. MEASURED
+  (%TEMP%\sieben_ranks.py <perspective folder> "<keys>": per key and release folder the ranks of attack and release,
+  the shift each needs, what C / A / B give): 069 rel99999 - release ranks 3108 and 4161 Hz EQUALLY loud, A took the
+  upper one (+28 c) and the attack's main rank (3115 Hz, the other 11 dB down) jumped 24 c. He agreed to "one new rule
+  A + C, B is needless". MY FIRST RULE (the rank loudest in attack and release together, sum of dB) FAILED IN THE
+  PROGRAM: for 081 it took the septime (-53 c = what he had heard as wrong) - the engine sees the septime of the long
+  release at -7.8 dB, my script (mono mix, another window) at -19 dB. LESSON: rank LEVELS move by 10 dB between two
+  measurements - no rule may hang on comparing them; and a rule derived from a script is run in the PROGRAM before it
+  is promised. THE RULE NOW: the LOWEST rank that is clear in both (>= -20 dB of each sample's strongest partial,
+  both standing alone) decides; fallback: the best sum of levels. On the keys with honest chunks the lower rank's
+  shift IS the chunks' difference (069, 070, 071 "as the chunks"); 081 -111.9 / -111.6 / -108.7 c and 082 -106.8 in
+  all three release folders. `releaseTuneBy`: 0 the sound, 2 the chunks alone (1 of older files reads as 0; both
+  tables soundCentsByRelease / soundCentsByAttack carry the same value now); the Editor combo has two items.
+  ORGAN_RELEASE_SOUND_DEBUG lists every pair with its levels ("[release Hz dB, attack Hz dB, not alone]"). HIS OWN
+  IDEA, said after I had built this (NOT coded, waiting for his listening): the release's loudest rank first, and
+  where the release's ranks are similarly loud the rank loudest in the attack - it gives 069 and the long 081 right,
+  but the short-held 081 (release ranks 0 / -0.5 / -1.0 dB) would go to the septime (-52 c), and it needs a threshold
+  on wobbling levels. Terminal tables fall apart when copied into an issue: raw Markdown is written to files for him
+  (F:\temp\issue266_siebenquart.md, F:\temp\tables_for_issue.md).
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO
