@@ -5388,6 +5388,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   in ~100 s from that disk (packed bytes at ~410 MB/s x 1.6) - CALCULATED, never measured (the archives lie on the
   NVMe only); the manual says "calculated". test_0136.sh: the activity log rotates at 1 MB mid-run - the slice by a
   byte mark came out EMPTY once; the script now takes activity-previous.log's tail + the new file.
+  0.9.139, TWO MORE THINGS BEFORE ITS RELEASE: (1) THE NAME SIEVE NEVER WORKED ON LINUX (the user copied the Frankfurt
+  archives to the SATA disk for a measurement and "zas to nic nenašlo"): `archivesNamedLike`'s `letters()` walked
+  `text.toLowerCase().getCharPointer()` - a pointer into a TEMPORARY freed at the end of the for-init (0.8.218 code);
+  the letters read were whatever the heap held. My 0.9.138 tests on the NVMe "passed" only through the second rule
+  (an index written before); freshly copied archives have none. Fixed (the lowered string kept); the log line of the
+  search names the folders and the name. RULE: a test of a rule with two ways to pass must be run so that only ONE
+  can pass (fresh archives without an index for the name rule). Whether MSVC's build was hit is not known.
+  (2) SATA ARCHIVES MEASURED (his copy in /run/media/doma/Hauptwerk/RAR_archivy__, cold): 32 threads 102 s = 662 MB/s,
+  16 threads 118 s = 573 MB/s - the calculated "about 100 s" was right; the manual carries the measured figure.
+  THE WHOLE TABLE (Frankfurt, 66.5 GB of WAV, cold, 16 / 32 threads): NVMe unpacked 63 / 51 s, NVMe archives 98 / 80 s,
+  SATA SSD unpacked 168 / 163 s, SATA SSD archives 118 / 102 s. pkill -f "<script name>" from a tool command kills the
+  command ITSELF (its own line holds the name): write the pattern as "[m]easure...".
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

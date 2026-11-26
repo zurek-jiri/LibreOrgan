@@ -19236,12 +19236,17 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
                     if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) like.push_back(archive);
                 const auto organ = configuration.getProperty("publication", juce::var()).getProperty("organ", "").toString();
                 std::vector<juce::File> candidates;
-                for (const auto& candidate : MainComponent::archivesNamedLike(folders, like, file.getFileNameWithoutExtension() + " " + organ, allChosen, true))
+                const auto nameWords = file.getFileNameWithoutExtension() + " " + organ;
+                for (const auto& candidate : MainComponent::archivesNamedLike(folders, like, nameWords, allChosen, true))
                     if (!pathIsForbidden(candidate)) candidates.push_back(candidate);
                 juce::StringArray candidateNames;
                 for (const auto& c : candidates) candidateNames.add(c.getFileName());
-                CrashHandler::note("Archives " + where + ": " + juce::String((int)forTrees.size()) + " tree(s) looked for; archives with a name like the organ's, or read before: "
-                    + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", ")));
+                juce::StringArray folderNames;
+                for (const auto& folder : folders) folderNames.add(folder.getFullPathName());
+                CrashHandler::note("Archives " + where + ": " + juce::String((int)forTrees.size()) + " tree(s) looked for in " + folderNames.joinIntoString(" | ")
+                    + "; archives with a name like \"" + nameWords.trim() + "\", or read before: "
+                    + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", "))
+                    + " (" + juce::String((int)allChosen.size()) + " archive(s) chosen already)");
                 if (candidates.empty()) return false;
                 std::atomic<bool> done{ false };
                 std::thread worker([&candidates, &done] { SampleFiles::indexArchives(candidates); done.store(true); });
@@ -22016,7 +22021,11 @@ std::vector<juce::File> MainComponent::archivesNamedLike(const std::vector<juce:
     auto letters = [](const juce::String& text)
     {
         juce::String out;
-        for (auto p = text.toLowerCase().getCharPointer(); !p.isEmpty(); ++p)
+        // 0.9.139: the lowered text KEPT while it is walked - the pointer was taken from a temporary that was freed
+        // at once, so the letters read were whatever the memory held then: on Linux the sieve matched no name at
+        // all (the user's "zas to nic nenašlo": archives were found only when their index had been written before).
+        const auto lowered = text.toLowerCase();
+        for (auto p = lowered.getCharPointer(); !p.isEmpty(); ++p)
             if (juce::CharacterFunctions::isLetter(*p)) out += juce::String::charToString(*p);
         return out;
     };

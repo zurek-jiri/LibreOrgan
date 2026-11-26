@@ -18,10 +18,17 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 - Loading uses every logical processor to decode the sample files (16 threads
   at most before): measured for an organ of 66 GB of WAV on a 16-core, 32-thread
   computer with an NVMe disk - from unpacked folders 63 s -> 51 s, from RAR
-  archives 98 s -> 80 s (from a SATA SSD the disk is the limit: 163 s either
-  way). The manual's technical part (10.12) says when
+  archives 98 s -> 80 s; from a SATA SSD unpacked 163 s either way (the disk
+  is the limit), archives 118 s -> 102 s. The manual's technical part (10.12)
+  says when
   archives pay and when unpacked folders load faster, with the measured
   figures.
+
+### Fixed
+- Archives were not found by their name on Linux: the name sieve read its
+  letters from a text already freed, so it matched nothing (an archive was
+  taken only when its index had been written before). The log now names the
+  folders looked through and the name looked for.
 
 ## [0.9.138] - 2026-11-26
 
