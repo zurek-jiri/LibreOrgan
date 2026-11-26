@@ -5444,6 +5444,63 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   right; D: SATA SSD and E: hard disk not looked at). Source/DiskInfo.h needs no jucer entry (headers are not listed).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
+  26 Nov 2026 evening, THE USER ON 0.9.141: "Siebenquart 081 / 082: _070 layer dobrý, 128 layer - release se nepřiladí;
+  na slideru Retune nezáleží" - ANSWERED, NOTHING CODED (his word wanted). MEASURED (%TEMP%\rel_vs_attack.py <perspective
+  folder> [rel folder]: per key the smpl difference plain attack - release = what 0.9.137 corrects, against the shift
+  that lays the release's spectrum over the attack's, log-frequency correlation, +-160 c): 47 of 58 keys agree within
+  a few cents; 11 do not - 57 (-35 left), 66 (+14), 67 (+32), 70 (+24), 71 (+39), 75 (+35), 80 (+55), 81 (-77), 82 (-76),
+  83, 86 (beyond the script's span). Key 81: plain 4786 Hz with an honest smpl (-19.3 c), "_070" and all releases 5106 Hz
+  (+112 c) whose smpl is the GENERIC +15.7 c of every file of that kind - the chunks say 35 c, the sound 112. So the
+  release's smpl cannot be the measure on such keys. PROPOSED: at the load measure the release against its attack(s)
+  from the SOUND (the script's method, on the loader threads beside the 0.9.70 pitch measurement) and take that
+  instead of the smpl difference; a key whose two ranks were moved differently (57, 80) has no single right shift -
+  the stronger rank decides. The Retune slider has had no part in attack-release since 0.9.137 (his own rule).
+  CORRECTED THE SAME EVENING (he doubted the figures; RECORDED through 0.9.141: a copy of his file with
+  "disabledVelocityLayers": [70] on the stop, Direct alone, ORGAN_TEST_RECORD "3|81|60|4|..."): the program DOES shift
+  the release by the smpl difference - 5106.0 -> 5003.9 Hz = -35.0 c. KEY 81 HAS TWO RANKS: his resynthesised plain
+  attack = exactly x5.5 and x7 of A5 -19.3 c (4786.3 / 6091.7 Hz, the septime 10 dB the louder); the raw recording
+  ("_070", every release; generic smpl +15.7 c) = 5106.0 / 6273.7 Hz, i.e. the septime 51 c and the lower rank 112 c
+  above the resynthesis (the raw pipes stand 357 c apart, pure 11:14 is 417.5), and in the release the LOWER rank is
+  18 dB the louder. After the 35 c: septime +16 c, lower rank +77 c. My "112 c by the sound" was the lower rank alone
+  (the correlation follows the loudest partial) - say per RANK next time. No single shift fits both ranks. WHY THE RED
+  RULE (0.9.70) SAID NOTHING: `measurePitch = !isRelease && ...` (releases are never measured) and pitchFromSound
+  looks for harmonics 1-4 of the pitch the smpl names (the 8' base, 870 Hz) - a stop that sounds x5.5 and x7 alone has
+  none, the measurement returns nothing, the smpl stays, nothing turns red (no "Pitch from the sound" line for
+  Siebenquart in the load). MY CLAIM "the program does not know a compound stop's ranks" WAS WRONG and he caught it:
+  `Stop::soundingHarmonic` / `footageSounding` (lowestSoundingHarmonic, 0.8.225) = the Orig. Pitch line's "8' (1 1/7')".
+  READ THE CODE before saying what the program knows.
+  0.9.142 (26 Nov 2026 evening, Windows, his "aplikuj ho ... zkusíme řešení A, možná přepínač A, B, C"; he then asked for
+  ENGLISH so he can paste the figures to Erik; LOCAL COMMIT, NOT pushed - his word): A RELEASE TUNED TO ITS ATTACK BY
+  THE SOUND. `strongestPartials(sample, release, binHz)` (anonymous namespace before computeTuning440: up to 8 partials,
+  loudest first; attack = the loop middle via analysisOrder/analysisStart, release = from 30 ms for <= 0.7 s; a partial
+  = a local maximum within 30 dB of the top, 15 dB over the median 300 c around it, sidebands within 30 c merged),
+  `partnerOf` (the loudest partial of the other list within 150 c), `standsAlone` (no other partial within 100 c and
+  10 dB - key 38's 220 ms release shows the 518 Hz rank as 510 + 524 Hz: a bogus 20-26 c without the rule). In
+  computeTuning440 after the layerCents block: per rank and release layer `soundCentsByRelease/soundCentsByAttack`
+  (ReleaseLayer; row 0 the plain attack, 1 + i velocity layer i; NaN = the chunks stand) + `soundMeasured`; ONLY for a
+  (release, attack) pair whose chunk difference is >= 0.05 c (the same chunk = one recording, left alone - his rule);
+  a reading within max(3 c, half a bin) of the chunk difference is NaN; the FIRST rank of a stop that has releases
+  measures (parallelFor over the keys), the other perspectives COPY its values (`groupOwner/groupReference`: the list
+  is stop, its ranks, next stop ...); off with "Measure the pitch of every pipe from its sound" (`gMeasurePipePitch`,
+  setMeasurePipePitch is in the .cpp now). Voice start: `Voice::attackLayerIndex` -> `ReleasePitch::attackLayer`,
+  `getNextReleaseSample(..., &releaseLayer)`; a finite table value replaces the chunk way: v.layerCents = measured
+  (+ the attack's own layerCents with 440), v.attackLayerCents = 0. Setting "Release tuned to its attack by" (addCombo
+  right after "Replace pipes off by more than"; key `releaseTuneBy` 0 the loudest rank of the release [A, default] /
+  1 of the attack [B] / 2 the smpl chunks alone [C], travels with the organ; engine `releaseTuneMode`, new notes take
+  it; GLOBAL RESET 0). Red note name + tooltip: `Stop::releaseTunedBySoundInAnyRank` (voicer.cpp before the orange
+  branch). Dev: ORGAN_RELEASE_SOUND_DEBUG=<stop part> lists every reading in the "Tuning <rank>: N release(s) whose
+  smpl chunk is off the sound ..." line. MEASURED through the program (%TEMP%\test_0142.ps1 -Mode 0|1|2 -Key 81: a
+  copy of his file, "_070" off, Direct alone; rec_peaks.py), attack 4786.3 / 6091.7 Hz: A release 4786.7 (0 c) /
+  5886.7 (-59 c, 13 dB weaker); B 4952.6 (+59) / 6085.1 (-2); C 5003.7 (+77) / 6146.9 (+16). HE HEARD the test notes:
+  A "znělo velmi správně", B wrong, C the jump of almost a semitone. Self-test 81 lines / 35 OK / 0 WRONG, kerneltest OK;
+  the row and the Editor combo pictured. LOAD TIME (whole Schorndorf, 55.9 GB of files, Ryzen, SATA SSD): COLD (he
+  demanded cold: %TEMP%\purge_cache.py <folders> = every file opened with FILE_FLAG_NO_BUFFERING and closed, no admin
+  needed; the load then reads at 340 MB/s) 166 s with the measuring, 165 s without; WARM 24 s with (0.9.141: 23 s),
+  16 s without - the 8 s are the 0.9.70 ATTACK measurement of every perspective, the new release part ~1 s. PROPOSED,
+  not coded: the attacks measured on one perspective only (saves ~6 s of a warm load, nothing cold). Website fact 4 +
+  feature 08 "It listens to the pipes", manual intro + 1.x + 10.1 (they still said "cannot be retuned"). OPEN GAP,
+  TOLD HIM: a smpl chunk whose pitch is garbage further than 2.5 % (43 c) from the sound is NOT rescued by the 0.9.70
+  measurement (the guided search finds nothing, the chunk stays); only a file with NO chunk is measured unguided.
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

@@ -9,6 +9,10 @@ organ with up to seven manuals and a pedal - couplers, combinations, crescendo,
 swell boxes, tremulants, a wind model, reverb per microphone perspective, and
 extensions and transmissions built from the stops you have.
 
+**The program listens to the pipes.** At the load it measures the pitch of
+every pipe from its sound: samples need no tuning data, a wrong figure in a
+file is corrected, and a release is tuned to the attack it follows.
+
 This manual lives inside the program: *Configuration Editor > About &
 licences...*. The chapter box above the text jumps to any chapter, *Find*
 searches it, *A-* / *A+* (or Ctrl + wheel) change the text size. Text can be
@@ -343,8 +347,8 @@ POS Organ Samples                <- the top folder: "Load folder..." in the Stop
   round-robin variants; a two- or three-digit suffix after an underscore
   (`060-C4_070.wav`) is a velocity layer ([Velocity layers](#35-velocity-layers)).
 - Mono and stereo files are both fine. Loop points and the recorded pitch come
-  from the WAV's smpl chunk ([The smpl chunk and the file names](#101-the-smpl-chunk-and-the-file-names)); files
-  without it play as they are, but cannot be retuned.
+  from the WAV's smpl chunk ([The smpl chunk and the file names](#101-the-smpl-chunk-and-the-file-names)); a file
+  without it is no obstacle: the program measures its pitch from the sound.
 - Missing pipes and missing loops are no obstacle: gaps are filled from the
   neighbouring pipes ([What a filled pipe is](#71-what-a-filled-pipe-is)), a file without loops plays to
   its end and loops as a whole.
@@ -1922,6 +1926,16 @@ so. Travels with the organ. A release or a velocity layer whose recorded
 pitch lies further than this from its pipe's attack is not believed: it is
 tuned like the attack.
 
+### Release tuned to its attack by
+
+Where the smpl chunks of a release and of the attack that sounded disagree,
+the program checks their difference against the sound and, when the sound
+says something else, follows the sound; the key's note name turns red and its
+tooltip gives the figures. In a compound stop the ranks may differ, and one
+release has one shift: *The loudest rank of the release* (default), *The
+loudest rank of the attack*, or *The smpl chunks alone* (no measuring). New
+notes take the change. Travels with the organ.
+
 ### Pipe coupling: detune left after the pull
 
 With *Allow Pipe Coupling* on, a pipe starting while others sound is pulled
@@ -2496,9 +2510,10 @@ of a semitone, 0 to 2^32-1 for 0 to 100 cents - always positive: an A4 four
 cents flat is coded as G#4 plus 96 cents), and *the loops* (the loop list's
 start and end in frames; several loops allowed, the type ignored). Unity note
 and fraction give the exact recorded pitch, from which the tuning, the
-temperament, the footage and the celeste detection follow. Files without the
-chunk play as they are: no retuning, no temperament, the footage from the
-folder name only.
+temperament, the footage and the celeste detection follow. The chunk is
+checked against the sound and a file without one gets its pitch from the
+sound ([Measure the pitch of every pipe from its sound](#measure-the-pitch-of-every-pipe-from-its-sound)); a file without
+loops plays to its end and loops as a whole.
 
 File names: the MIDI key number first, optionally a note name (036.wav,
 036-C.wav, 059-B3.wav). Several files of one key are round-robin variants

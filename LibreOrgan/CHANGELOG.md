@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.142] - 2026-11-26
+
+### Added
+- **A release is tuned to its attack by the sound** where the smpl chunks are
+  off it (Schorndorf Siebenquart: a resynthesised attack with an honest chunk,
+  raw releases whose chunk is one generic figure - the chunks said 35 cents,
+  the two ranks stood 51 and 112 cents apart). At the load the partials of
+  the release and of each attack of the pipe are paired and the shift between
+  them measured; where it differs from the chunks' difference, the release
+  follows the sound and the key's name turns red in the voicing (the tooltip
+  gives the figures). Samples that carry the same chunk are one recording and
+  are left alone; every perspective of a stop takes the same shift.
+- Configuration Editor > Advanced global audio > **Release tuned to its
+  attack by**: the loudest rank of the release (default), the loudest rank of
+  the attack, or the smpl chunks alone. Travels with the organ.
+
+### Changed
+- Manual and website: the program measures the pitch of every pipe from its
+  sound, so samples need no tuning data (the manual still said a file without
+  a smpl chunk "cannot be retuned").
+
 ## [0.9.141] - 2026-11-26
 
 ### Changed

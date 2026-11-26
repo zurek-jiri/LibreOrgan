@@ -5414,6 +5414,7 @@ void MainComponent::applyAdvancedAudioSettings()
     engine.setVelocityFullFrom(velocityFullFrom);
     engine.setVelocityPlainStrict(velocityPlainStrict);
     engine.setMeasurePipePitch(measurePipePitch);   // 0.9.70
+    engine.setReleaseTuneMode(releaseTuneBy);       // 0.9.142
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
     engine.setWindShares(windOneStopShare, windOnePipeShare, windTwoPipesShare);
@@ -29041,6 +29042,8 @@ void MainComponent::loadSettings()
     engine.setRetuneLimitCents(retuneLimitCents);
     mistuneCorrectCents = juce::jlimit(0.0f, 1200.0f, (float)(double)parsed.getProperty("mistuneCorrectCents", 50.0));   // 0.9.10
     engine.setMistuneCorrectCents(mistuneCorrectCents);
+    releaseTuneBy = juce::jlimit(0, 2, (int)parsed.getProperty("releaseTuneBy", 0));   // 0.9.142
+    engine.setReleaseTuneMode(releaseTuneBy);
     couplingLeftPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("couplingLeftPercent", 20.0));   // 0.9.56
     engine.setCouplingLeftPercent(couplingLeftPercent);
     couplingSkipPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("couplingSkipPercent", 10.0));   // 0.9.59
@@ -30034,6 +30037,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("fillGroupSize", fillGroupSize);
     obj->setProperty("retuneLimitCents", retuneLimitCents);
     obj->setProperty("mistuneCorrectCents", mistuneCorrectCents);   // 0.9.10
+    obj->setProperty("releaseTuneBy", releaseTuneBy);               // 0.9.142
     obj->setProperty("couplingLeftPercent", couplingLeftPercent);   // 0.9.56
     obj->setProperty("couplingSkipPercent", couplingSkipPercent);   // 0.9.59
     obj->setProperty("couplingMaxCents", couplingMaxCents);   // 0.9.60
@@ -33486,6 +33490,8 @@ void MainComponent::globalResetControls(const GlobalResetOptions& o)
     engine.setVelocityPlainStrict(false);
     measurePipePitch = true;
     engine.setMeasurePipePitch(true);
+    releaseTuneBy = 0;
+    engine.setReleaseTuneMode(0);
     velocityShelfDb = 9.0f; velocityShelfMs = 180.0f;
     engine.setVelocityShelfDb(velocityShelfDb);
     engine.setVelocityShelfMs(velocityShelfMs);
@@ -37103,6 +37109,16 @@ void MainComponent::showConfigurationEditor()
                 "played from its neighbours like a missing pipe (the key's tooltip in the voicing says so) - a pipe a third off is a wrong "
                 "file, not a tuning. Below it the pipe is retuned (the setting above, or \"Equal at 440 Hz\"). 200 cents (a whole tone) by "
                 "default; the setting travels with the organ.");
+            // 0.9.142 (the user's choice A / B / C): what decides the release's shift where its chunk is off the sound.
+            addCombo("Release tuned to its attack by", { "The loudest rank of the release  [default]", "The loudest rank of the attack",
+                "The smpl chunks alone" }, o.releaseTuneBy, [&o](int index)
+            {
+                o.releaseTuneBy = juce::jlimit(0, 2, index);
+                o.engine.setReleaseTuneMode(o.releaseTuneBy);
+                o.saveSettings();
+            }, "Where the smpl chunks of a release and of the attack that sounded disagree, their difference is checked against the "
+               "sound; when the sound says something else, the release follows the sound (the key's name turns red in the voicing). "
+               "In a compound stop the ranks may differ: choose which rank decides. New notes take the change; travels with the organ.");
             // 0.9.56 (the user): how much of a pipe's detune the coupling leaves - a random share between 0 and this.
             addSlider("Pipe coupling: detune left after the pull", 0.0, 100.0, 1.0, " %", o.couplingLeftPercent, 20.0,
                 [&o](double value)

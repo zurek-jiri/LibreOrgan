@@ -1042,6 +1042,20 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                         l->setTooltip(why);
                     }
             }
+            // 0.9.142: red as well - the RELEASE of this key is tuned to its attack by the sound, its smpl chunk is off it.
+            else if (float bySmpl = 0.0f, byRelease = 0.0f, byAttack = 0.0f; stop->releaseTunedBySoundInAnyRank(source, bySmpl, byRelease, byAttack))
+            {
+                auto cents = [](float c) { return std::isfinite(c) ? juce::String(c, 1) + " c" : juce::String("as the chunks"); };
+                const juce::String why = "The release of this key is tuned to its attack by the sound: the smpl chunks put it " + juce::String(bySmpl, 1)
+                    + " c from the plain attack, the sound " + cents(byRelease) + " (the rank loudest in the release) / " + cents(byAttack)
+                    + " (the rank loudest in the attack) - \"Release tuned to its attack by\", Configuration Editor";
+                for (auto* l : rowNames)
+                    if (l != nullptr)
+                    {
+                        l->setColour(juce::Label::textColourId, juce::Colour(0xffff6464));
+                        l->setTooltip(why);
+                    }
+            }
             // An orange note name (the shade of every emphasised text): the sample
             // that sounds here has no loop in its smpl chunk.
             else if (!stop->noteHasLoopInAnyRank(source))

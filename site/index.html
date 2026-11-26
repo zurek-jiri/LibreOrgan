@@ -25,7 +25,7 @@
         <p class="intro">LibreOrgan Sampler plays sampled pipe organs from plain folders of WAV files - one folder per stop, its pipes as WAV files - and turns any number of such folders into an organ of your own design.</p>
         <p>No organ definition file, no installer, no account. Load the folders, let the program propose the organ, shape it - divisions, stops, perspectives, audio routes, voicing - and save it as a configuration. Free software under the GNU GPL v3 for Windows, macOS and Linux.</p>
         <div class="actions"><a class="button primary" href="#download">Download <span aria-hidden="true">&darr;</span></a><a class="button secondary" href="#explore">What is inside</a></div>
-        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.9.141</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
+        <p class="availability"><span class="status-dot" aria-hidden="true"></span> Version <span data-version>0.9.142</span> &middot; Windows 10/11 x64 &middot; macOS 11+ (Intel: 10.11+) &middot; Linux x64 (glibc 2.38+) &middot; one portable executable</p>
       </div>
       <div class="hero-art">
         <img id="hero-pipes" src="assets/pipes.png" width="1250" height="1250" alt="Three metal organ pipes on a dark background" loading="eager">
@@ -46,7 +46,7 @@
       <p><strong>Your own organ, from any sources</strong><span>stops of different producers in one console, duplicated as transmissions and extensions, two configurations merged into one</span></p>
       <p><strong>Light on RAM, CPU and disk</strong><span>an 80 GB sample set squeezed into 8 GB of RAM with the saving options on a modest computer; samples read from the packed archives, nothing unpacked on the disk; on a strong computer up to 500 000 pipes of polyphony</span></p>
       <p><strong>Any number of sound cards</strong><span>every perspective and division on its own device and channels</span></p>
-      <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too. A Hauptwerk definition is not loaded: it is read for its folder paths and stop arrangement only; the perspectives and the relative volumes are LibreOrgan Sampler's own deduction, the organ is built from the folders</span></p>
+      <p><strong>Plain WAV folders</strong><span>no format of its own, no encryption: the samples you buy or download, as they are - straight from their RAR archives too. They need no tuning data: the program measures the pitch of every pipe from its sound. A Hauptwerk definition is not loaded: it is read for its folder paths and stop arrangement only; the perspectives and the relative volumes are LibreOrgan Sampler's own deduction, the organ is built from the folders</span></p>
     </div></div>
 
     <section id="explore" class="section wrap">
@@ -76,6 +76,7 @@
         <article><span class="feature-number">05</span><h3>Fast, measured, honest</h3><p>The sound engine renders on all cores with a lock-free control thread; the polyphony display shows the real peak, the DSP field the busiest audio callback. Every start, device, load and crash is written to an activity log, and "Report a problem" in the Configuration Editor turns it into a bug report with one click.</p></article>
         <article><span class="feature-number">06</span><h3>The manual lives inside</h3><p>The complete user manual is embedded: the question mark beside every option of the Configuration Editor opens the chapter that explains it, chapter names in the text are links, and a Find box searches it. Nothing is read from beside the executable; one file is the whole program.</p></article>
         <article><span class="feature-number">07</span><h3>Light on RAM, CPU and disk</h3><p>On a modest computer the saving options of the load box squeeze an 80 GB sample set into 8 GB of RAM, and the samples are read straight from their packed archives - nothing to unpack, no second copy on the disk. On a strong computer the same program reaches up to 500 000 pipes of polyphony; it measures what your machine can do and sets its limit itself.</p></article>
+        <article><span class="feature-number">08</span><h3>It listens to the pipes</h3><p>When an organ loads, the program measures the pitch of every pipe from its sound. Samples need no tuning data at all, a wrong figure in a file is corrected, and the release of a pipe is tuned to the attack it follows - even where a stop of several ranks was recorded and tuned in different ways. What it corrected is shown in red on the key, with the figures.</p></article>
       </div>
       <p class="note">What you need: sample folders (below), an audio interface (ASIO for the lowest latency on Windows; CoreAudio on macOS; ALSA or JACK on Linux), a MIDI keyboard or an organ console with MIDI out. RAM for the samples: a large wet organ with several perspectives needs tens of gigabytes; a small dry one runs on a laptop. The saving options of the load box bring a large organ down to a tenth of its RAM.</p>
     </section>
@@ -96,7 +97,7 @@
           <a class="button primary" href="https://github.com/zurek-jiri/LibreOrgan/releases" data-repo-suffix="/releases">Releases &amp; changelog &rarr;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan/blob/main/LibreOrgan/USER_MANUAL.md" data-repo-path="LibreOrgan/USER_MANUAL.md">Read the user manual &#8599;</a>
           <a class="text-link" href="https://github.com/zurek-jiri/LibreOrgan#building" data-repo-suffix="#building">Build from source &#8599;</a>
-          <p class="small">Version <span data-version>0.9.141</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/LibreOrgan" data-repo-suffix="">GitHub</a>.</p>
+          <p class="small">Version <span data-version>0.9.142</span>. Source, issues and configurations on <a href="https://github.com/zurek-jiri/LibreOrgan" data-repo-suffix="">GitHub</a>.</p>
         </div>
       </div>
     </section>
@@ -121,7 +122,7 @@
           <li>More free material: Sonus Paradisi's <a href="https://www.sonusparadisi.cz/en/free-stuff.html" rel="noopener">Free stuff</a> page.</li>
         </ul></article>
         <article><h3>Your own recordings</h3><ul>
-          <li>Record the pipes, name the files after the keys, put them in a folder per stop. Loop points and the pitch belong ideally in the WAV's <code>smpl</code> chunk (any audio editor writes it), but their absence is no obstacle: the program copes without them, and missing pipes are filled by transposition.</li>
+          <li>Record the pipes, name the files after the keys, put them in a folder per stop. Loop points and the pitch belong ideally in the WAV's <code>smpl</code> chunk (any audio editor writes it), but their absence is no obstacle: the program measures the pitch of every pipe from its sound, a file without loops plays to its end and loops as a whole, and missing pipes are filled by transposition.</li>
           <li>The exact rules: chapter "How the sample folders must be organised" of the manual.</li>
         </ul></article>
       </div>

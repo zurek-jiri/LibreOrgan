@@ -251,6 +251,7 @@ namespace
     std::atomic<bool> gVoiceProfiling{ false };
     std::atomic<float> gRetuneLimitCents{ 200.0f };   // the retune limit (0.8.165) for the static tuning analysis; set with SamplerEngine::retuneLimitCents
     std::atomic<float> gMistuneCorrectCents{ 50.0f }; // 0.9.10: a pipe off its rank by more than this is pulled to its key without the 440 mode (0 = never)
+    std::atomic<bool> gMeasurePipePitch{ true };      // 0.9.142: "Measure the pitch of every pipe from its sound" for the static tuning analysis
     struct VoiceProfile { int64_t header = 0, spans = 0, kernel = 0, post = 0, unpack = 0; int64_t voices = 0; };
     thread_local VoiceProfile tlVoiceProfile;
 
@@ -1505,6 +1506,7 @@ namespace
         std::atomic<float> tuningCents{ 0.0f };   // 440 Hz correction + undulation; may change while sounding
         float attackLayerCents = 0.0f;            // 0.9.137: the layerCents of the attack this voice is tuned to (an attack: its own; a release: the attack that sounded)
         float layerCents = 0.0f;                  // 0.9.134: this sample's own offset to the pipe's plain attack (a velocity layer, a release), inside tuningCents
+        uint8_t attackLayerIndex = 0;             // 0.9.142: an attack - 0 the plain files, 1 + i velocity layer i (its release is measured against THIS attack)
         // Transposing transmission: pure-interval correction plus the resampling
         // of a pipe beyond the rank's compass (0 for untransposed voices).
         std::atomic<float> shiftCents{ 0.0f };
@@ -4822,6 +4824,7 @@ struct SamplerEngine::Impl
         uint8_t velocity;            // the key velocity: the release of the attack's velocity layer
         bool preShifted;             // the attack played a pitch-shifted copy (its shiftCents lack the semitones)
         float layerCents;            // 0.9.137: the sounding attack's own offset (the release is tuned to THIS attack)
+        uint8_t attackLayer;         // 0.9.142: which attack sounded (0 plain, 1 + i velocity layer i)
     };
     std::vector<ReleasePitch> releasePitches;
     struct ReleaseTarget { Stop* stop; int pipe; int keyNote; };
@@ -5944,7 +5947,7 @@ struct SamplerEngine::Impl
         v.ctlReleasing = v.ctlStolen = false;
         v.detachedRelease = false; v.loopEnabled = true; v.couplingUsed = false; v.startFrozen = false;
         v.noise = false;
-        v.layerCents = 0.0f; v.attackLayerCents = 0.0f;
+        v.layerCents = 0.0f; v.attackLayerCents = 0.0f; v.attackLayerIndex = 0;
         v.windFrozen = false; v.frozenWindPitch = 0.0f; v.frozenWindGain = v.lastWindGain = v.initialWindGain = 1.0f;
         v.curWindGain.store(1.0f, std::memory_order_relaxed);
         std::fill(&v.shelfState[0][0], &v.shelfState[0][0] + 8, 0.0f); v.lastShelf = v.shelfSmoothed = 0.0f;
@@ -7128,6 +7131,7 @@ struct SamplerEngine::Impl
                     const bool wantsCopy = pipe != sampleNote && (pitchShiftMethod || (quality >= 2 && pipe > sampleNote));
                     const Sample* sampleToPlay = nullptr;
                     float attackLayerCents = 0.0f;
+                    int attackLayerIndex = 0;   // 0.9.142
                     bool preShifted = false;
                     // Velocity layers ("_070" files): the lowest enabled layer covering this
                     // velocity decides - its copy for a filled pipe, else its sample; no
@@ -7136,7 +7140,11 @@ struct SamplerEngine::Impl
                     {
                         if (wantsCopy) { sampleToPlay = layer->nextAliasFree(pipe); preShifted = pitchShiftMethod && sampleToPlay != nullptr; }
                         if (sampleToPlay == nullptr) sampleToPlay = Stop::pickRoundRobin(layer->samplesByNote, layer->nextSampleIndex, sampleNote);
-                        if (sampleToPlay != nullptr) attackLayerCents = layer->layerCents[(size_t)sampleNote];   // 0.9.134
+                        if (sampleToPlay != nullptr)
+                        {
+                            attackLayerCents = layer->layerCents[(size_t)sampleNote];   // 0.9.134
+                            attackLayerIndex = 1 + (int)(layer - rank->velocityLayers.data());
+                        }
                     }
                     // The option (0.8.192): an unticked "_128" never plays - no ticked layer has
                     // the note (the plain files would be the fallback) -> nothing sounds.
@@ -7194,6 +7202,7 @@ struct SamplerEngine::Impl
                     v.randomPitchCents.store(randomEff, std::memory_order_relaxed);
                     v.layerCents = attackLayerCents;
                     v.attackLayerCents = attackLayerCents;   // 0.9.137: an attack plays as recorded
+                    v.attackLayerIndex = (uint8_t)juce::jlimit(0, 255, attackLayerIndex);
                     v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, v.attackLayerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
                     v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
                     // COUPLING TO A PARTNER (0.9.55): an octave or double octave of this rank already sounding is
@@ -7493,7 +7502,7 @@ struct SamplerEngine::Impl
                                 v.curWindGain.load(std::memory_order_relaxed),
                                 v.note, v.keyNote, v.sampleNote, v.shift, v.shiftCents.load(std::memory_order_relaxed),
                                 v.routeGainTarget.load(std::memory_order_relaxed),
-                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted, v.layerCents });
+                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted, v.layerCents, v.attackLayerIndex });
                         const int vm = v.manual;
                         v.frozenExprRequested.store(vm >= 0 && vm < maxManuals ? releaseGains[(size_t)vm] : 1.0f, std::memory_order_relaxed);
                         v.releaseFadeMsRequested.store(releaseFadeOut * fadeScale(v.rank != nullptr ? v.rank : v.stop, v.note)
@@ -7544,7 +7553,7 @@ struct SamplerEngine::Impl
             if (sampleNote < 0) return;
             float toneDb = stop->getNoteToneDb(pipe);
             float toneStart = SamplerEngine::toneStartHzFor(rank, sampleNote, owner.toneStartHz.load(std::memory_order_relaxed));
-            int attackVelocity = 127;
+            int attackVelocity = 127, soundingAttackLayer = 0;
             bool attackFound = false, attackPreShifted = false;
             for (const auto& sounding : releasePitches)
                 if (sounding.stop == stop && sounding.rank == rank && (int)sounding.note == pipe)
@@ -7553,6 +7562,7 @@ struct SamplerEngine::Impl
                     attackPreShifted = sounding.preShifted;
                     releasePitchCents = sounding.cents;
                     soundingAttackLayerCents = sounding.layerCents;
+                    soundingAttackLayer = sounding.attackLayer;
                     releaseWindGain = sounding.windGain;
                     releaseKeyNote = sounding.keyNote;
                     sampleNote = sounding.sampleNote;
@@ -7572,8 +7582,9 @@ struct SamplerEngine::Impl
             const bool pitchShiftMethod = owner.transposeMethod.load(std::memory_order_relaxed) >= 1;
             bool releasePreShifted = false;
             float releaseLayerCents = 0.0f;   // 0.9.134: the release by its own smpl chunk
+            const Stop::ReleaseLayer* releaseLayer = nullptr;   // 0.9.142: the layer that plays (its measured shifts)
             const Sample* releaseSample = rank->getNextReleaseSample(sampleNote, pipeSoundingTimeMs, attackVelocity, &stop->velocityLayerDisabled,
-                pitchShiftMethod && pipe != sampleNote ? pipe : -1, &releasePreShifted, &releaseLayerCents);
+                pitchShiftMethod && pipe != sampleNote ? pipe : -1, &releasePreShifted, &releaseLayerCents, &releaseLayer);
             if (releaseSample == nullptr) return;
             shiftCents = fullShiftCents - (releasePreShifted ? 100.0f * (float)(pipe - sampleNote) : 0.0f);
             const int routeIndex = rank->routeByManual[(size_t)expressionManual];
@@ -7632,6 +7643,26 @@ struct SamplerEngine::Impl
             v.randomPitchCents.store(releasePitchCents, std::memory_order_relaxed);
             v.layerCents = releaseLayerCents;
             v.attackLayerCents = soundingAttackLayerCents;   // 0.9.137: the release is tuned to the attack that sounded
+            // 0.9.142 (the user's Schorndorf Siebenquart 081: a resynthesised plain attack with an honest smpl chunk,
+            // the release a raw recording whose chunk is the same generic figure in every file - the chunks said 35
+            // cents, the two ranks stood 51 and 112 cents apart): where the chunks of the release and of the attack
+            // that sounded disagree AND the sound says something else than their difference, the release follows
+            // the SOUND - the shift that lays its partials over that attack's, measured at the load. Which rank
+            // decides in a compound stop is the setting "Release tuned to its attack by".
+            if (const int tuneBy = owner.releaseTuneMode.load(std::memory_order_relaxed); tuneBy != 2 && attackFound && releaseLayer != nullptr)
+            {
+                const auto& table = tuneBy == 1 ? releaseLayer->soundCentsByAttack : releaseLayer->soundCentsByRelease;
+                if (soundingAttackLayer >= 0 && (size_t)soundingAttackLayer < table.size())
+                {
+                    const float measured = table[(size_t)soundingAttackLayer][(size_t)sampleNote];
+                    if (std::isfinite(measured))
+                    {
+                        // The attack's own tuning (without 440: the pipe's; with 440: by its own chunk) plus the measured shift.
+                        v.layerCents = measured + (stop->tuneTo440 ? soundingAttackLayerCents : 0.0f);
+                        v.attackLayerCents = 0.0f;
+                    }
+                }
+            }
             v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, v.attackLayerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);   // releases follow their attack
             v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
             v.couplingUsed = false;
@@ -16178,6 +16209,101 @@ namespace
     }
 }
 
+namespace
+{
+    // 0.9.142: the partials that carry a sample's pitch - up to eight, the loudest first. An attack is read in the
+    // middle of its loops (the sustain, as every other analysis), a release from 30 ms on for up to 0.7 s (what
+    // is heard right after the key goes up). A partial is a local maximum of the Blackman-Harris spectrum within
+    // 30 dB of the strongest that stands 15 dB above the median level 300 cents around it (noise and room rumble
+    // are no partials); peaks within 30 cents of a stronger one are its sidebands (a beating rank, the tremulant).
+    struct SoundPartial { double hz, db; };
+    std::vector<SoundPartial> strongestPartials(const Sample& sample, bool release, double& binHzOut)
+    {
+        std::vector<SoundPartial> found;
+        binHzOut = 0.0;
+        if (sample.numChannels < 1 || sample.sampleRate <= 0.0 || sample.numFrames < 4096) return found;
+        int order = 0;
+        int64_t start = 0;
+        if (release)
+        {
+            start = (int64_t)(0.03 * sample.sampleRate);
+            const int64_t room = std::min<int64_t>((int64_t)sample.numFrames - start, (int64_t)(0.7 * sample.sampleRate));
+            order = 16;
+            while (order > 0 && ((int64_t)1 << order) > room) --order;
+        }
+        else
+        {
+            order = analysisOrder(sample, 16);
+            if (order >= 13) start = analysisStart(sample, (int64_t)1 << order);
+        }
+        if (order < 13) return found;   // under a sixth of a second: no measurement
+        const int n = 1 << order;
+        std::vector<float> spec;
+        sustainSpectrum(sample, start, order, spec);
+        const double binHz = sample.sampleRate / (double)n;
+        binHzOut = binHz;
+        const int bins = n / 2;
+        const int from = std::max(4, (int)std::ceil(20.0 / binHz));
+        float top = 0.0f;
+        for (int bin = from; bin < bins - 4; ++bin) top = std::max(top, spec[(size_t)bin]);
+        if (!(top > 0.0f)) return found;
+        struct Candidate { int bin; float level; };
+        std::vector<Candidate> candidates;
+        const float least = top * 0.0316f;   // -30 dB
+        for (int bin = from; bin < bins - 4; ++bin)
+        {
+            const float m = spec[(size_t)bin];
+            if (m < least) continue;
+            bool peak = true;
+            for (int d = 1; d <= 3 && peak; ++d) peak = m > spec[(size_t)(bin - d)] && m >= spec[(size_t)(bin + d)];
+            if (peak) candidates.push_back({ bin, m });
+        }
+        std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) { return a.level > b.level; });
+        std::vector<float> around;
+        int looked = 0;
+        for (const auto& c : candidates)
+        {
+            if (found.size() >= 8 || ++looked > 48) break;
+            const double y0 = std::log((double)spec[(size_t)(c.bin - 1)] + 1.0e-12), y1 = std::log((double)c.level + 1.0e-12),
+                         y2 = std::log((double)spec[(size_t)(c.bin + 1)] + 1.0e-12);
+            const double bend = y0 - 2.0 * y1 + y2;
+            const double hz = ((double)c.bin + (std::abs(bend) > 1.0e-12 ? juce::jlimit(-0.5, 0.5, 0.5 * (y0 - y2) / bend) : 0.0)) * binHz;
+            bool sideband = false;
+            for (const auto& f : found) sideband = sideband || std::abs(1200.0 * std::log2(hz / f.hz)) < 30.0;
+            if (sideband) continue;
+            const int lo = std::max(1, (int)std::floor(hz * 0.841 / binHz)), hi = std::min(bins - 1, (int)std::ceil(hz * 1.189 / binHz));
+            around.assign(spec.begin() + lo, spec.begin() + hi + 1);
+            if (around.size() >= 16)
+            {
+                std::nth_element(around.begin(), around.begin() + (std::ptrdiff_t)(around.size() / 2), around.end());
+                if (c.level < around[around.size() / 2] * 5.62f) continue;   // not 15 dB above what surrounds it
+            }
+            found.push_back({ hz, 20.0 * std::log10((double)c.level + 1.0e-12) });
+        }
+        return found;
+    }
+
+    // The loudest partial of 'list' within 150 cents of 'hz' - the same rank in the other sample (the ranks of a
+    // compound stop and the harmonics of a pipe stand further apart than that where it matters).
+    const SoundPartial* partnerOf(const std::vector<SoundPartial>& list, double hz)
+    {
+        const SoundPartial* best = nullptr;
+        for (const auto& p : list)
+            if (std::abs(1200.0 * std::log2(p.hz / hz)) <= 150.0 && (best == nullptr || p.db > best->db)) best = &p;
+        return best;
+    }
+
+    // A partial that can be measured: no other one of nearly its level (within 10 dB) stands within 100 cents.
+    // The release of a short note shows a rank that has not settled as two peaks of one height (Siebenquart key
+    // 38, the release after 220 ms: 510 and 524 Hz for the attack's 518 Hz) - either would be a wrong reading.
+    bool standsAlone(const std::vector<SoundPartial>& list, const SoundPartial& partial)
+    {
+        for (const auto& p : list)
+            if (&p != &partial && std::abs(1200.0 * std::log2(p.hz / partial.hz)) <= 100.0 && p.db > partial.db - 10.0) return false;
+        return true;
+    }
+}
+
 void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
 {
     // Footage offsets (semitones above the written key) available to organ
@@ -16218,8 +16344,19 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
     struct NoteData { int note; double raw; };   // raw = recorded pitch - written key (semitones)
     struct RankData { Stop* rank; std::vector<NoteData> notes; bool valid = false; };
     std::vector<RankData> data;
+    // 0.9.142: the list holds every stop followed by its perspective ranks - one pipe in several recordings. The
+    // releases are measured once per stop (the first rank that has them) and every perspective takes the SAME
+    // shift: the perspectives of one tone stay together to the cent.
+    Stop* groupOwner = nullptr;
+    Stop* groupReference = nullptr;
     for (auto* rank : ranksOfOrgan)
     {
+        {
+            bool sameStop = false;
+            if (groupOwner != nullptr)
+                for (const auto& r : groupOwner->ranks) sameStop = sameStop || r.get() == rank;
+            if (!sameStop) { groupOwner = rank; groupReference = nullptr; }
+        }
         // 0.9.134 (the user's Schorndorf Siebenquart: fine-tuned plain attacks with a measured smpl, the "_070"
         // layer and every release the original recording with another smpl - the release came in up to 66 cents
         // above its attack): every sample is tuned by its OWN smpl chunk, as Hauptwerk does. The pipe's reference
@@ -16282,6 +16419,133 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
                     + ": " + juce::String(moved) + " velocity-layer / release sample(s) whose smpl chunk names another pitch than the pipe's plain attack"
                       " (up to " + juce::String(juce::roundToInt(largest)) + " c): an attack plays as recorded, a release is tuned to the attack that sounded (with \"Equal at 440 Hz\" every sample by its own chunk);"
                       " an offset beyond \"Replace pipes off by more than\" is not believed");
+
+            // 0.9.142: THE RELEASE AGAINST ITS ATTACK BY THE SOUND. Where the chunk of a release and the chunk of an
+            // attack of the pipe name different pitches, the difference is checked against the sound: the partials
+            // of both are paired (the same rank within 150 cents) and the shift of the pair decides - by the rank
+            // loudest in the release, and by the rank loudest in the attack (two readings, the setting chooses).
+            // A reading that agrees with the chunks within the measurement's precision (3 cents, half a bin of
+            // the spectrum at the least) is left to the chunks. The same chunk on both = one recording: left alone.
+            if (!gMeasurePipePitch.load(std::memory_order_relaxed))
+            {
+                for (auto& layer : rank->releaseLayers) { layer.soundCentsByRelease.clear(); layer.soundCentsByAttack.clear(); layer.soundMeasured = false; }
+            }
+            else
+            {
+                const size_t attacks = 1 + rank->velocityLayers.size();
+                bool pending = false;
+                for (const auto& layer : rank->releaseLayers) pending = pending || !layer.soundMeasured || layer.soundCentsByRelease.size() != attacks;
+                if (pending)
+                {
+                    std::array<float, 128> nothing;
+                    nothing.fill(std::numeric_limits<float>::quiet_NaN());
+                    for (auto& layer : rank->releaseLayers)
+                        if (!layer.soundMeasured || layer.soundCentsByRelease.size() != attacks)
+                        {
+                            layer.soundMeasured = false;
+                            layer.soundCentsByRelease.assign(attacks, nothing);
+                            layer.soundCentsByAttack.assign(attacks, nothing);
+                        }
+                    // The chunk difference of a release and an attack of this rank (what 0.9.137 corrects).
+                    auto smplDifference = [&](const Stop::ReleaseLayer& layer, size_t attack, int note)
+                    {
+                        return layer.layerCents[(size_t)note] - (attack == 0 ? 0.0f : rank->velocityLayers[attack - 1].layerCents[(size_t)note]);
+                    };
+                    auto attackSampleOf = [&](size_t attack, int note) -> const Sample*
+                    {
+                        const auto& variants = attack == 0 ? rank->samplesByNote[(size_t)note] : rank->velocityLayers[attack - 1].samplesByNote[(size_t)note];
+                        return variants.empty() ? nullptr : variants[0].get();
+                    };
+                    // Another perspective of the stop measured already: its shifts, for the same layers.
+                    bool sameLayers = groupReference != nullptr && groupReference != rank && groupReference->velocityLayers.size() == rank->velocityLayers.size();
+                    for (size_t i = 0; sameLayers && i < rank->velocityLayers.size(); ++i)
+                        sameLayers = groupReference->velocityLayers[i].maxVelocity == rank->velocityLayers[i].maxVelocity;
+                    int taken = 0;
+                    // Dev: ORGAN_RELEASE_SOUND_DEBUG=<part of a stop's name> lists every reading of that stop in the log.
+                    const char* debugStop = std::getenv("ORGAN_RELEASE_SOUND_DEBUG");
+                    const int exampleLimit = debugStop != nullptr && rank->name.containsIgnoreCase(debugStop) ? 600 : 6;
+                    juce::StringArray examples;
+                    juce::SpinLock examplesLock;
+                    for (auto& layer : rank->releaseLayers)
+                    {
+                        if (layer.soundMeasured) continue;
+                        const Stop::ReleaseLayer* measured = nullptr;
+                        if (sameLayers)
+                            for (const auto& other : groupReference->releaseLayers)
+                                if (other.maxHoldMs == layer.maxHoldMs && other.maxVelocity == layer.maxVelocity && other.soundMeasured && other.soundCentsByRelease.size() == attacks)
+                                    measured = &other;
+                        if (measured != nullptr)
+                        {
+                            for (size_t attack = 0; attack < attacks; ++attack)
+                                for (int note = 0; note < 128; ++note)
+                                    if (attackSampleOf(attack, note) != nullptr && !layer.samplesByNote[(size_t)note].empty() && std::abs(smplDifference(layer, attack, note)) >= 0.05f)
+                                    {
+                                        layer.soundCentsByRelease[attack][(size_t)note] = measured->soundCentsByRelease[attack][(size_t)note];
+                                        layer.soundCentsByAttack[attack][(size_t)note] = measured->soundCentsByAttack[attack][(size_t)note];
+                                    }
+                            layer.soundMeasured = true;
+                            continue;
+                        }
+                        std::atomic<int> takenHere{ 0 };
+                        parallelFor(128, [&](int note, int)
+                        {
+                            const auto& variants = layer.samplesByNote[(size_t)note];
+                            if (variants.empty() || variants[0] == nullptr) return;
+                            std::vector<SoundPartial> releasePartials;
+                            double releaseBin = 0.0;
+                            bool releaseRead = false;
+                            for (size_t attack = 0; attack < attacks; ++attack)
+                            {
+                                const Sample* attackSample = attackSampleOf(attack, note);
+                                if (attackSample == nullptr) continue;
+                                const float bySmpl = smplDifference(layer, attack, note);
+                                if (std::abs(bySmpl) < 0.05f) continue;   // one recording (the same chunk): left alone
+                                if (!releaseRead) { releasePartials = strongestPartials(*variants[0], true, releaseBin); releaseRead = true; }
+                                if (releasePartials.empty()) return;
+                                double attackBin = 0.0;
+                                const auto attackPartials = strongestPartials(*attackSample, false, attackBin);
+                                if (attackPartials.empty()) continue;
+                                const double bin = std::max(attackBin, releaseBin);
+                                // The cents that bring the release's partial 'r' onto the attack's 'a' - kept only when the
+                                // chunks say something else, beyond what the spectrum can tell.
+                                auto reading = [&](const SoundPartial& a, const SoundPartial& r)
+                                {
+                                    const double cents = 1200.0 * std::log2(a.hz / r.hz);
+                                    const double precision = std::max(3.0, 0.5 * 1731.234 * bin / std::min(a.hz, r.hz));
+                                    return std::abs(cents - (double)bySmpl) > precision ? (float)cents : std::numeric_limits<float>::quiet_NaN();
+                                };
+                                float byRelease = std::numeric_limits<float>::quiet_NaN(), byAttack = byRelease;
+                                double hzRelease = 0.0, hzAttack = 0.0;
+                                for (const auto& r : releasePartials)   // the loudest first
+                                    if (const SoundPartial* a = partnerOf(attackPartials, r.hz); a != nullptr && standsAlone(releasePartials, r) && standsAlone(attackPartials, *a))
+                                        { byRelease = reading(*a, r); hzRelease = r.hz; break; }
+                                for (const auto& a : attackPartials)
+                                    if (const SoundPartial* r = partnerOf(releasePartials, a.hz); r != nullptr && standsAlone(attackPartials, a) && standsAlone(releasePartials, *r))
+                                        { byAttack = reading(a, *r); hzAttack = a.hz; break; }
+                                layer.soundCentsByRelease[attack][(size_t)note] = byRelease;
+                                layer.soundCentsByAttack[attack][(size_t)note] = byAttack;
+                                if (attack == 0 && (std::isfinite(byRelease) || std::isfinite(byAttack)))
+                                {
+                                    takenHere.fetch_add(1, std::memory_order_relaxed);
+                                    const juce::SpinLock::ScopedLockType lock(examplesLock);
+                                    if (examples.size() < exampleLimit)
+                                        examples.add("key " + juce::String(note) + (layer.maxHoldMs < 99999 ? " held up to " + juce::String(layer.maxHoldMs) + " ms" : juce::String())
+                                            + ": the chunks " + juce::String(bySmpl, 1) + " c, the sound "
+                                            + (std::isfinite(byRelease) ? juce::String(byRelease, 1) + " c" : juce::String("as the chunks")) + " by the release's loudest rank (" + juce::String(hzRelease, 1) + " Hz) / "
+                                            + (std::isfinite(byAttack) ? juce::String(byAttack, 1) + " c" : juce::String("as the chunks")) + " by the attack's (" + juce::String(hzAttack, 1) + " Hz)");
+                                }
+                            }
+                        });
+                        taken += takenHere.load();
+                        layer.soundMeasured = true;
+                    }
+                    if (taken > 0)
+                        CrashHandler::note("Tuning " + rank->name + (rank->perspective.isNotEmpty() ? " [" + rank->perspective + "]" : juce::String())
+                            + ": " + juce::String(taken) + " release(s) whose smpl chunk is off the sound against the plain attack - tuned to the attack by the sound"
+                              " (\"Release tuned to its attack by\"): " + examples.joinIntoString("; "));
+                }
+                if (groupReference == nullptr && !rank->releaseLayers.empty()) groupReference = rank;
+            }
         }
         RankData rd{ rank, {}, false };
         for (int note = 0; note < 128; ++note)
@@ -16660,6 +16924,12 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
                 + juce::String(correctFrom, 0) + " cents pulled to their keys without the 440 mode: " + list);
         }
     }
+}
+
+void SamplerEngine::setMeasurePipePitch(bool on)
+{
+    measurePipePitch.store(on);
+    gMeasurePipePitch.store(on);
 }
 
 void SamplerEngine::setMistuneCorrectCents(float cents)

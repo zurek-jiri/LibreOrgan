@@ -335,6 +335,13 @@ struct Stop
         int maxHoldMs = 99999;
         int maxVelocity = -1;
         std::array<float, 128> layerCents{};   // 0.9.134: per note, what brings this release to the pitch of the pipe's plain attack
+        // 0.9.142: the release against each ATTACK of the pipe, measured from the sound (computeTuning440) - the
+        // cents that lay the release's partials over the attack's. Row 0 = the plain attack, row 1 + i = velocity
+        // layer i. Two readings: by the rank that is loudest in the release, and by the rank loudest in the attack
+        // (a compound stop whose ranks differ has no single right shift). NaN = the smpl chunks stand (they agree
+        // with the sound, the two samples carry the same chunk, or nothing could be measured).
+        std::vector<std::array<float, 128>> soundCentsByRelease, soundCentsByAttack;
+        bool soundMeasured = false;            // measured once per layer (the samples do not change)
         std::array<std::vector<std::unique_ptr<Sample>>, 128> samplesByNote;
         std::array<uint8_t, 128> nextSampleIndex{};
         // Pitch-shifted copies for filled pipes (transposition method "pitch shift,
@@ -379,9 +386,11 @@ struct Stop
     // copyPipe >= 0: the pitch-shifted release copy of that filled pipe is preferred
     // (usedCopy tells whether one was found) - the transposition method "pitch shift".
     const Sample* getNextReleaseSample(int note, double holdMs, int velocity = 127,
-        const std::bitset<128>* disabledVelocityLayers = nullptr, int copyPipe = -1, bool* usedCopy = nullptr, float* layerCentsOut = nullptr) noexcept
+        const std::bitset<128>* disabledVelocityLayers = nullptr, int copyPipe = -1, bool* usedCopy = nullptr, float* layerCentsOut = nullptr,
+        const ReleaseLayer** layerOut = nullptr) noexcept
     {
         if (usedCopy != nullptr) *usedCopy = false;
+        if (layerOut != nullptr) *layerOut = nullptr;
         if (releaseLayers.empty() || note < 0 || note >= 128) return nullptr;
         auto velocityRank = [](const ReleaseLayer& l) { return l.maxVelocity < 0 ? 128 : l.maxVelocity; };
         auto layerEnabled = [&](const ReleaseLayer& l)
@@ -405,6 +414,7 @@ struct Stop
                     if (layer.maxHoldMs == holdMsOfGroup && layer.maxVelocity < 0 && !layer.samplesByNote[(size_t)note].empty()) chosen = &layer;
             if (chosen == nullptr) return nullptr;
             if (layerCentsOut != nullptr) *layerCentsOut = chosen->layerCents[(size_t)note];
+            if (layerOut != nullptr) *layerOut = chosen;
             if (copyPipe >= 0)
                 if (const Sample* copy = chosen->nextAliasFree(copyPipe))
                 {
@@ -588,6 +598,27 @@ struct Stop
         if (const Sample* s = noteWithUncertainPitch(note)) return s;
         for (const auto& rank : ranks) if (const Sample* s = rank->noteWithUncertainPitch(note)) return s;
         return nullptr;
+    }
+    // 0.9.142: a release of the note is tuned to its plain attack by the SOUND, because its smpl chunk is off it:
+    // what the chunks say and the two measured readings (NaN = that reading agrees with the chunks).
+    bool releaseTunedBySound(int note, float& smplCents, float& byRelease, float& byAttack) const noexcept
+    {
+        if (note < 0 || note >= 128) return false;
+        for (const auto& layer : releaseLayers)
+        {
+            if (layer.soundCentsByRelease.empty() || layer.soundCentsByAttack.empty()) continue;
+            const float a = layer.soundCentsByRelease[0][(size_t)note], b = layer.soundCentsByAttack[0][(size_t)note];
+            if (!std::isfinite(a) && !std::isfinite(b)) continue;
+            smplCents = layer.layerCents[(size_t)note]; byRelease = a; byAttack = b;
+            return true;
+        }
+        return false;
+    }
+    bool releaseTunedBySoundInAnyRank(int note, float& smplCents, float& byRelease, float& byAttack) const noexcept
+    {
+        if (releaseTunedBySound(note, smplCents, byRelease, byAttack)) return true;
+        for (const auto& rank : ranks) if (rank->releaseTunedBySound(note, smplCents, byRelease, byAttack)) return true;
+        return false;
     }
     // Anti-alias copies for filled pipes that play a neighbour's sample faster
     // (transposed up): the source sample low-passed so that nothing above the
@@ -1034,6 +1065,10 @@ public:
     void setAttackCutFadeMs(float ms) { attackCutFadeMs.store(juce::jlimit(6.0f, 150.0f, ms), std::memory_order_relaxed); }   // 0.9.80
     void setVoicingGlideMs(float ms) { voicingGlideMs.store(juce::jlimit(0.0f, 2000.0f, ms), std::memory_order_relaxed); }   // 0.9.122
     float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
+    // 0.9.142: what a release is tuned to its attack by, where the two smpl chunks are off the sound -
+    // 0 the rank loudest in the release, 1 the rank loudest in the attack, 2 the smpl chunks alone. New releases take it.
+    void setReleaseTuneMode(int mode) { releaseTuneMode.store(juce::jlimit(0, 2, mode), std::memory_order_relaxed); }
+    int getReleaseTuneMode() const noexcept { return releaseTuneMode.load(std::memory_order_relaxed); }
     void setStopNoteTone(Stop* stop, int note, float db);
     void setTransmissionKeyTone(Stop* stop, int index, int key, float db);
     // Start frequency of the tone shelf for a pipe's sample: the global start, or
@@ -1732,7 +1767,7 @@ public:
     void setVelocityPlainStrict(bool strict) { velocityPlainStrict.store(strict); }
     // 0.9.70: the pitch of every pipe measured from its sound at the load (the smpl chunk checked, a missing one
     // replaced); off = the smpl chunk alone, as before.
-    void setMeasurePipePitch(bool on) { measurePipePitch.store(on); }
+    void setMeasurePipePitch(bool on);
     bool getVelocityPlainStrict() const noexcept { return velocityPlainStrict.load(std::memory_order_relaxed); }
     // ... and the chiff blunted by an extra high-shelf cut at the start: this many dB
     // at the lowest velocity (default 9), opening to nothing over velocityShelfMs (default 180).
@@ -1893,6 +1928,7 @@ private:
     std::atomic<int> velocityFullFrom{ 80 };
     std::atomic<bool> velocityPlainStrict{ false };
     std::atomic<bool> measurePipePitch{ true };
+    std::atomic<int> releaseTuneMode{ 0 };            // 0.9.142: see setReleaseTuneMode
     std::atomic<float> velocityShelfDb{ 9.0f };
     std::atomic<float> velocityShelfMs{ 180.0f };
     std::atomic<float> releaseScalingGain{ 1.0f };
