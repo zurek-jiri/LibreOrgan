@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.143] - 2026-11-26
+
+### Added
+- **A pipe that sounds far from its smpl chunk is found** (the second look of
+  the pitch measurement). Until now the measurement looked 43 cents around
+  the chunk's pitch and believed the chunk when it found nothing there. Now,
+  when no pipe sounds at the chunk's pitch, the same spectrum is searched up
+  to three semitones around it: the peaks are read as harmonics of a
+  fundamental there, and the sound is taken when two of the harmonics 1-4
+  agree and either a third one agrees or the two are the spectrum's strongest
+  peaks. The case is the deep bass, where a chunk may name the neighbouring
+  note. A well prepared chunk stays believed: nothing is taken within the 43
+  cents the first look covers, and nothing in a rank whose pipes the first
+  look cannot measure in more than half of the files (a compound stop). The
+  log names every such file with both pitches.
+- Manual: the subchapter **Fine-tuned mixtures** (why a resynthesised
+  compound stop sits beside its original recording as a velocity layer).
+
 ## [0.9.142] - 2026-11-26
 
 ### Added

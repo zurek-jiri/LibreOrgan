@@ -666,6 +666,8 @@ routes' volumes in the [Effects](#53-effects) of the Audio routing).
 ### Velocity layer boxes
 
 A tick box per layer and one for the plain files: [Velocity layers](#35-velocity-layers).
+In a compound stop "_070" may be the original recording beside a fine-tuned
+one: [Fine-tuned mixtures](#fine-tuned-mixtures).
 
 ### Stop volume
 
@@ -770,10 +772,21 @@ velocity 70; above it the plain file or the next layer). The voicing row shows
 a tick box per layer and one for the plain files ("_128"). An unticked layer
 sends its velocities to the next layer up or the plain files; with nothing
 ticked the plain files play (*Velocity layers: an unticked _128 never plays*
-makes such a key silent instead). Some organs keep the original recordings as
-"_070" and fine-tuned versions as the plain files: untick "_070" and only the
-fine-tuned ones sound. The keyboard drawing of the Divisions dialog shows the
-velocity of the last key.
+makes such a key silent instead). A layer need not be a softer stroke: see
+[Fine-tuned mixtures](#fine-tuned-mixtures). The keyboard drawing of the
+Divisions dialog shows the velocity of the last key.
+
+### Fine-tuned mixtures
+
+Some sample sets carry their compound stops (mixtures, a Sesquialtera, a
+Siebenquart) twice: the original recording as the layer "_070" and a
+resynthesised version, its ranks tuned pure, as the plain files. A velocity
+layer was the only place Hauptwerk offered for a second version of a pipe, so
+the files are built that way and the program carries it on. With *Ignore MIDI
+velocity* on (the default) the fine-tuned version plays; untick "_070" in the
+voicing row and it plays at every velocity. The releases are the original
+recordings: the program tunes them to the attack that sounded
+([Release tuned to its attack by](#release-tuned-to-its-attack-by)).
 
 ## 3.6 Stop-Merging
 
@@ -1903,7 +1916,11 @@ middle of its loops (the sustain), to about a cent. A smpl chunk that differs
 from the sound by more than 3 cents (6 under 50 Hz) is replaced by the
 measurement, a file without a smpl chunk gets one; the key's note name turns
 red in the voicing row and its tooltip says what happened (an orange name
-still means "no loop"; red wins when both). Off: the smpl chunk alone is
+still means "no loop"; red wins when both). Where no pipe sounds at the
+chunk's pitch, the same measurement looks up to three semitones around it -
+a deep bass pipe whose chunk names the neighbouring note - and takes what it
+finds only in a stop whose pipes it can otherwise measure; in a compound stop
+the chunk is believed. Off: the smpl chunk alone is
 believed, as before, and a file without one sounds at its file number. Takes
 effect at the next load. Travels with the organ. The loading takes a second
 or two longer on a large organ.

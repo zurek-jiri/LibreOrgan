@@ -5501,6 +5501,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   feature 08 "It listens to the pipes", manual intro + 1.x + 10.1 (they still said "cannot be retuned"). OPEN GAP,
   TOLD HIM: a smpl chunk whose pitch is garbage further than 2.5 % (43 c) from the sound is NOT rescued by the 0.9.70
   measurement (the guided search finds nothing, the chunk stays); only a file with NO chunk is measured unguided.
+  RELEASED on his word ("vydej"): commit 9f07eb3, tag v0.9.142 (main pushed, then the tag in its own step), CI green
+  at the first attempt on all five, five archives, Intel mac "late symbols: 0", the Windows exe on system DLLs only,
+  the CI exe deployed as C:\LibreOrgan\LibreOrgan_0.9.142.exe. The Projucer resave for 0.9.142 is IN that commit.
+  0.9.143 (26 Nov 2026 evening, Windows; he: "we should care for more than 43 cents error in the smpl pitch ... aby to
+  nestalo moc casu pri loadingu"; LOCAL COMMIT, NOT pushed - his word): THE SECOND LOOK. HIS CORRECTIONS OF MY FIRST
+  PROPOSAL: a plausibility check of the chunks "is good for nothing, no such case possible" - a prepared set has no
+  visibly wrong chunks; what happens is a chunk that LOOKS perfect while the audio is far off, above all in the deep
+  bass / 32' stops; "The program must believe to smpl, unless special circumstances"; the same FFT, no new
+  measurement; a bass flue has no good 12th harmonic (reeds do); +-3 semitones, usually within +-1. CODE:
+  `pitchFromSound(sample, guessHz, int* how)` (how: 0 nothing, 1 at the chunk's pitch, 2 elsewhere): after the first
+  look fails, up to 24 peaks of the SAME spectrum (within 50 dB of the top, 12 dB over the median +-f/2 around each,
+  0.9 x lowest .. 12.5 x highest) are read as harmonics 1..12 of a fundamental seed/k within +-3 semitones of the chunk
+  (3 c, 6 c under 50 Hz); accepted with two of harmonics 1..4 AND (a third harmonic OR the two are the spectrum's
+  two strongest peaks); a result within the first look's own window (2.5 % = 43 c) is DROPPED (the chunk stands).
+  loadSamplesIntoStop keeps such a pitch in `secondLook[index]` and takes it after the loop ONLY in a rank where the
+  first look measured more than half of the files with a chunk (`pitchFirstLook * 2 > pitchWithChunk`); else it is
+  counted with "no pipe measurable at the chunk's pitch ... (N of them had a reading elsewhere, not trusted in such a
+  rank)". Log "Pitch from the sound of X: N file(s) whose pipe sounds far from its smpl chunk (found by the second
+  look, up to 3 semitones) - the sound taken: 041-F (the chunk 20.60 Hz, the sound 21.82 Hz = 100 c) ...". WHY THE
+  TWO GATES: the first version (no gates) took 3-10 c "findings" in Mixtur / Zimbel / Quarte and ~40 c ones in ONE
+  perspective of Nonenkorn (chance readings of a compound stop's ranks) - 30 tuning lines of Schorndorf changed; with
+  the gates: 0 lines differ from 0.9.142 (compare with the example keys cut off: the "release(s) whose smpl chunk"
+  lines list examples in thread order). FOUND IN HIS OWN SET: package 000350 Ped\Bourdon32 - 041-F (chunk 16.000 =
+  20.60 Hz, the sound 21.82 Hz), 046-A# (27.50 / 29.14), 049-C# (32.70 / 34.66): each carries the chunk of the note
+  BELOW, the audio is the right pipe (+100 c; checked in the files by %TEMP%\bourdon_check.py: harmonics 1, 3, 5).
+  Test tree %TEMP%\make_secondlook.py <000350\Ped> <tree> (Bourdon32 + ContreBombard32 copies with chunks moved -80,
+  +120, -250, +60, +30, -150 c): every one beyond 43 c found within ~2 c, flue and reed; ContreBombard 036's
+  original chunk is 31 c off the sound (the first look takes that - its window is at least 4 bins, 9 % at 16 Hz).
+  The self-test takes 266 s now (wait 9 minutes, not 4): 81 lines / 35 OK / 0 WRONG; kerneltest OK. Manual: a
+  sentence under "Measure the pitch of every pipe from its sound"; the subchapter "### Fine-tuned mixtures" under 3.5
+  (his wish: the resynthesised perfect-pitch version sits in a velocity layer because Hauptwerk offered no other
+  place - we carry it on), linked from 3.5 and from "Velocity layer boxes". NOT run: another organ with a 32' stop
+  (Billerbeck, Bellevue, Brasov), Linux / macOS. juce::String(float, 0) printed "82.1671" again - roundToInt.
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

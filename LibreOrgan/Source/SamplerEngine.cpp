@@ -13890,8 +13890,18 @@ namespace
     // least. Without a guess the fundamental is found first: a harmonic product spectrum (k = 1..5) over 16 Hz -
     // 2 kHz, then halved as long as the odd multiples of the half (1, 3, 5) all stand - a real fundamental an
     // octave lower, whose even harmonics the product had taken for the series.
-    double pitchFromSound(const Sample& sample, double guessHz)
+    //
+    // 0.9.143 THE SECOND LOOK (the user: a well prepared chunk is believed; what happens is a chunk that LOOKS right
+    // while the audio is off by a great deal - the deep bass above all, 32' stops): when no pipe is found at the
+    // chunk's pitch, the same spectrum is searched +-3 semitones around it (never an octave). The spectrum's peaks
+    // are read as harmonics 1..12 of a fundamental there - whatever harmonics the pipe has (a bass flue has few) -
+    // and the sound is taken only when it is certain: two of the harmonics 1..4 agree, as the first look asks, AND
+    // either a third harmonic agrees or the two are the spectrum's two strongest peaks. A compound stop (ranks at
+    // the 5th harmonic and above, no low ones) never passes: its chunk stays. 'how' (when given): 0 nothing found,
+    // 1 the pipe at the chunk's pitch (or found unaided), 2 found elsewhere by the second look.
+    double pitchFromSound(const Sample& sample, double guessHz, int* how = nullptr)
     {
+        if (how != nullptr) *how = 0;
         if (sample.numChannels < 1 || sample.sampleRate <= 0.0) return std::numeric_limits<double>::quiet_NaN();
         const bool deep = !(guessHz > 50.0);
         const int order = analysisOrder(sample, deep ? 17 : 16);
@@ -13966,16 +13976,103 @@ namespace
             double hz, level;
             if (peakOf(f0, k, hz, level)) estimates.push_back(hz / k);
         }
-        if (estimates.size() < 2) return std::numeric_limits<double>::quiet_NaN();
-        std::sort(estimates.begin(), estimates.end());
-        const double median = estimates[estimates.size() / 2];
         const double limitCents = f0 < 50.0 ? 6.0 : 3.0;
-        std::vector<double> agreeing;
-        for (const double e : estimates) if (std::abs(1200.0 * std::log2(e / median)) <= limitCents) agreeing.push_back(e);
-        if (agreeing.size() < 2) return std::numeric_limits<double>::quiet_NaN();
-        double sum = 0.0;
-        for (const double e : agreeing) sum += e;
-        return sum / (double)agreeing.size();
+        if (estimates.size() >= 2)
+        {
+            std::sort(estimates.begin(), estimates.end());
+            const double median = estimates[estimates.size() / 2];
+            std::vector<double> agreeing;
+            for (const double e : estimates) if (std::abs(1200.0 * std::log2(e / median)) <= limitCents) agreeing.push_back(e);
+            if (agreeing.size() >= 2)
+            {
+                double sum = 0.0;
+                for (const double e : agreeing) sum += e;
+                if (how != nullptr) *how = 1;
+                return sum / (double)agreeing.size();
+            }
+        }
+        if (!(guessHz > 0.0)) return std::numeric_limits<double>::quiet_NaN();
+
+        // THE SECOND LOOK (see above): the spectrum's strongest peaks, read as harmonics of a fundamental near the chunk's.
+        const double lowest = guessHz * std::pow(2.0, -3.0 / 12.0), highest = guessHz * std::pow(2.0, 3.0 / 12.0);
+        const int fromBin = juce::jmax(3, (int)std::floor(lowest * 0.9 / binHz)), toBin = juce::jmin(bins - 3, (int)std::ceil(highest * 12.5 / binHz));
+        if (toBin - fromBin < 8) return std::numeric_limits<double>::quiet_NaN();
+        struct Peak { double hz, level; };
+        std::vector<Peak> peaks;
+        {
+            float top = 0.0f;
+            for (int bin = fromBin; bin <= toBin; ++bin) top = std::max(top, spec[(size_t)bin]);
+            if (!(top > 0.0f)) return std::numeric_limits<double>::quiet_NaN();
+            struct Candidate { int bin; float level; };
+            std::vector<Candidate> maxima;
+            const float least = top * 0.00316f;   // -50 dB
+            for (int bin = fromBin; bin <= toBin; ++bin)
+            {
+                const float m = spec[(size_t)bin];
+                if (m >= least && m > spec[(size_t)(bin - 1)] && m >= spec[(size_t)(bin + 1)] && m > spec[(size_t)(bin - 2)] && m >= spec[(size_t)(bin + 2)])
+                    maxima.push_back({ bin, m });
+            }
+            std::sort(maxima.begin(), maxima.end(), [](const Candidate& a, const Candidate& b) { return a.level > b.level; });
+            if (maxima.size() > 24) maxima.resize(24);
+            const int span = juce::jmax(8, (int)std::round(0.5 * guessHz / binHz));   // half the fundamental either way: between the harmonics
+            std::vector<double> around;
+            for (const auto& c : maxima)
+            {
+                around.clear();
+                for (int bin = juce::jmax(1, c.bin - span); bin <= juce::jmin(bins, c.bin + span); ++bin)
+                    if (std::abs(bin - c.bin) > 4) around.push_back(db(bin));
+                const double level = db(c.bin);
+                if (around.size() >= 3)
+                {
+                    std::nth_element(around.begin(), around.begin() + (std::ptrdiff_t)(around.size() / 2), around.end());
+                    if (level < around[around.size() / 2] + 12.0) continue;   // as the first look: 12 dB over what lies between the harmonics
+                }
+                const double a = db(c.bin - 1), b = level, d = db(c.bin + 1);
+                const double bend = a - 2.0 * b + d;
+                peaks.push_back({ ((double)c.bin + (std::abs(bend) > 1.0e-9 ? juce::jlimit(-0.5, 0.5, 0.5 * (a - d) / bend) : 0.0)) * binHz, level });
+            }
+        }
+        if (peaks.size() < 2) return std::numeric_limits<double>::quiet_NaN();
+        double best = std::numeric_limits<double>::quiet_NaN(), bestLevel = -1.0e9;
+        int bestCount = 0;
+        for (const auto& seed : peaks)
+            for (int k = 1; k <= 12; ++k)
+            {
+                const double f = seed.hz / k;
+                if (f < lowest || f > highest) continue;
+                const double limit = f < 50.0 ? 6.0 : 3.0;
+                // The strongest peak for every harmonic 1..12 of 'f'.
+                std::array<const Peak*, 13> harmonic{};
+                for (const auto& q : peaks)
+                {
+                    const int m = (int)std::round(q.hz / f);
+                    if (m < 1 || m > 12 || std::abs(1200.0 * std::log2(q.hz / (m * f))) > limit) continue;
+                    if (harmonic[(size_t)m] == nullptr || q.level > harmonic[(size_t)m]->level) harmonic[(size_t)m] = &q;
+                }
+                int count = 0, low = 0;
+                double sum = 0.0, levels = 0.0;
+                bool twoStrongest = false;
+                for (int m = 1; m <= 12; ++m)
+                    if (const Peak* p = harmonic[(size_t)m])
+                    {
+                        ++count; if (m <= 4) ++low;
+                        sum += p->hz / m; levels += p->level;
+                    }
+                if (low < 2) continue;   // no low harmonics: the ranks of a compound stop, not a pipe at this pitch
+                if (count == 2)
+                {
+                    int found = 0;   // the two must be the spectrum's two strongest peaks ('peaks' is sorted by level)
+                    for (int m = 1; m <= 12; ++m) if (harmonic[(size_t)m] == &peaks[0] || harmonic[(size_t)m] == &peaks[1]) ++found;
+                    twoStrongest = found == 2;
+                }
+                if (count < 3 && !twoStrongest) continue;
+                if (count > bestCount || (count == bestCount && levels > bestLevel)) { bestCount = count; bestLevel = levels; best = sum / (double)count; }
+            }
+        // Inside the first look's own window (2.5 %, 43 cents) the first look has had its say with its stricter
+        // rule: a looser reading there (the ranks of a mixture, a few cents from the chunk) never overrules the chunk.
+        if (std::isfinite(best) && std::abs(1200.0 * std::log2(best / guessHz)) <= 1200.0 * std::log2(1.025)) return std::numeric_limits<double>::quiet_NaN();
+        if (std::isfinite(best) && how != nullptr) *how = 2;
+        return best;
     }
 
     double hzOfMidi(double midi) { return 440.0 * std::pow(2.0, (midi - 69.0) / 12.0); }
@@ -14267,7 +14364,13 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
     // one supplied; counted and logged per stop below.
     const bool measurePitch = !isRelease && measurePipePitch.load(std::memory_order_relaxed);
     std::atomic<int> pitchTaken{ 0 }, pitchNoSmplMeasured{ 0 }, pitchNoSmplFailed{ 0 };
-    std::vector<juce::String> pitchNotes;
+    // 0.9.143: no pipe measurable at the chunk's pitch / measured there by the first look / files with a chunk.
+    // A pitch the second look found away from the chunk waits in 'secondLook' (MIDI pitch, NaN = none) and is
+    // taken after the loop only in a rank whose pipes the first look can measure (see there).
+    std::atomic<int> pitchNothing{ 0 }, pitchFirstLook{ 0 }, pitchWithChunk{ 0 };
+    int pitchSecondLook = 0;
+    std::vector<float> secondLook(measurePitch ? entries.size() : (size_t)0, std::numeric_limits<float>::quiet_NaN());
+    std::vector<juce::String> pitchNotes, secondLookNotes;
     parallelFor((int)entries.size(), [&](int index, int thread)
     {
         if (loadOutOfMemory.load(std::memory_order_relaxed)) return;
@@ -14319,7 +14422,16 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
                 const bool hasSmpl = std::isfinite(s.smplPitch);
                 if (measurePitch)
                 {
-                    const double hz = pitchFromSound(s, hasSmpl ? hzOfMidi(s.smplPitch) : std::numeric_limits<double>::quiet_NaN());
+                    int how = 0;   // 0.9.143: 0 nothing, 1 at the chunk's pitch, 2 found elsewhere by the second look
+                    double hz = pitchFromSound(s, hasSmpl ? hzOfMidi(s.smplPitch) : std::numeric_limits<double>::quiet_NaN(), &how);
+                    if (hasSmpl) pitchWithChunk.fetch_add(1, std::memory_order_relaxed);
+                    if (hasSmpl && how == 1) pitchFirstLook.fetch_add(1, std::memory_order_relaxed);
+                    if (hasSmpl && how == 2)
+                    {
+                        secondLook[(size_t)index] = (float)midiOfHz(hz);   // decided after the loop
+                        hz = std::numeric_limits<double>::quiet_NaN();
+                    }
+                    else if (hasSmpl && how == 0) pitchNothing.fetch_add(1, std::memory_order_relaxed);
                     if (std::isfinite(hz))
                     {
                         s.measuredPitch = (float)midiOfHz(hz);
@@ -14372,7 +14484,29 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
         loadMemoryCutStops.insert(stop);
         return;
     }
-    if (!isRelease && (pitchTaken.load() > 0 || pitchNoSmplMeasured.load() > 0 || pitchNoSmplFailed.load() > 0))
+    // 0.9.143 THE SECOND LOOK'S VERDICT: a pitch found away from the chunk's (more than 43 cents, up to 3 semitones)
+    // is taken only in a rank whose pipes the first look CAN measure - it found the pipe at the chunk's pitch in
+    // more than half of the files. In a compound stop (most files without a pipe at the chunk's pitch: the ranks
+    // stand at the 5th harmonic and above) a "pipe" found elsewhere is a chance reading of the ranks: the chunk stays.
+    int secondLookRefused = 0;
+    if (measurePitch && !isRelease)
+    {
+        const bool measurableRank = pitchFirstLook.load() * 2 > pitchWithChunk.load();
+        for (size_t i = 0; i < entries.size() && i < secondLook.size(); ++i)
+        {
+            if (!std::isfinite(secondLook[i]) || decoded[i] == nullptr) continue;
+            if (!measurableRank) { ++secondLookRefused; pitchNothing.fetch_add(1, std::memory_order_relaxed); continue; }
+            Sample& s = *decoded[i];
+            if (secondLookNotes.size() < 12)
+                secondLookNotes.push_back(entries[i].file.getFileNameWithoutExtension() + " (the chunk " + juce::String(hzOfMidi(s.smplPitch), 2) + " Hz, the sound "
+                    + juce::String(hzOfMidi(secondLook[i]), 2) + " Hz = " + juce::String(juce::roundToInt((secondLook[i] - s.smplPitch) * 100.0f)) + " c)");
+            s.measuredPitch = secondLook[i];
+            s.smplPitch = secondLook[i];
+            s.pitchSource = 1;
+            ++pitchSecondLook;
+        }
+    }
+    if (!isRelease && (pitchTaken.load() > 0 || pitchSecondLook > 0 || pitchNoSmplMeasured.load() > 0 || pitchNoSmplFailed.load() > 0 || pitchNothing.load() > 0))
     {
         // A pitch measured without a smpl chunk is pinned to the octave of its neighbours in the rank (the file
         // number's trend: the product spectrum may land an octave off on a pipe with a weak fundamental).
@@ -14402,6 +14536,16 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
             if (pitchTaken.load() > (int)pitchNotes.size()) s << " ...";
             parts.add(s);
         }
+        if (pitchSecondLook > 0)
+        {
+            juce::String s = juce::String(pitchSecondLook) + " file(s) whose pipe sounds far from its smpl chunk (found by the second look, up to 3 semitones) - the sound taken: "
+                + juce::StringArray(secondLookNotes.data(), (int)secondLookNotes.size()).joinIntoString(", ");
+            if (pitchSecondLook > (int)secondLookNotes.size()) s << " ...";
+            parts.add(s);
+        }
+        if (pitchNothing.load() > 0)
+            parts.add(juce::String(pitchNothing.load()) + " of " + juce::String((int)entries.size()) + " file(s) with no pipe measurable at the chunk's pitch (a compound stop, a lost fundamental) - the chunk believed"
+                + (secondLookRefused > 0 ? " (" + juce::String(secondLookRefused) + " of them had a reading elsewhere, not trusted in such a rank)" : juce::String()));
         if (pitchNoSmplMeasured.load() > 0) parts.add(juce::String(pitchNoSmplMeasured.load()) + " file(s) without a smpl chunk measured from the sound");
         if (pitchNoSmplFailed.load() > 0) parts.add(juce::String(pitchNoSmplFailed.load()) + " file(s) without a smpl chunk " + (measurePitch ? "not measurable" : "not measured (the setting is off)") + " - the file number taken as the pitch");
         CrashHandler::note(line + parts.joinIntoString("; "));
