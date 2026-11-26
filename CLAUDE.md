@@ -5378,6 +5378,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   disk with 32 readers is not measured); `managers` array 64; env ORGAN_DECODE_THREADS=<n> for measurements. Manual
   10.12 has the paragraph "Archives or unpacked folders - which loads faster" with these figures. RULE: compare
   loading speeds COLD (cache dropped) or say "warm"; a decoder-bound load shows the disk idle (rchar against cores).
+  0.9.139 FINAL STATE, LOCAL COMMITS ONLY, NOT PUSHED (the push + tag was refused by the tool: he had not said
+  "release" for this one - ask, then push main and tag v0.9.139 in two steps). The user, angry that I had left the
+  unpacked files at 16 threads ("evidentně jim to taky pomáhá o 30 procent ... ty fakt neumíš rozumně uvažovat"):
+  EVERY decode of a stop's files runs on all logical processors (jlimit(16, 64, getNumCpus())), archive or disk.
+  LESSON: when a measurement shows a gain, take it - do not hold a half back for a risk nobody measured. SATA SSD (the
+  Hauptwerk disk, Samsung 870 QVO, ntfs3) measured on his word, cold: 16 threads 168 s = 403 MB/s, 32 threads 163 s =
+  411 MB/s - the disk is the limit, threads change nothing (and do no harm). By the figures the archives would load
+  in ~100 s from that disk (packed bytes at ~410 MB/s x 1.6) - CALCULATED, never measured (the archives lie on the
+  NVMe only); the manual says "calculated". test_0136.sh: the activity log rotates at 1 MB mid-run - the slice by a
+  byte mark came out EMPTY once; the script now takes activity-previous.log's tail + the new file.
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

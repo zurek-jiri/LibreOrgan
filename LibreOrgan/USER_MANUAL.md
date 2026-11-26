@@ -2844,12 +2844,15 @@ processor's work, about 50 MB/s of sound per core, so with a fast disk the
 processor is the limit and unpacked folders win. Measured on a 16-core
 computer with an NVMe disk, an organ of 66 GB of WAV (94 GB unpacked with
 everything, 57 GB as archives), the system's file cache emptied before each
-load: from the unpacked folders 63 s (1.1 GB/s), from the RAR archives 80 s
+load: from the unpacked folders 51 s (1.36 GB/s), from the RAR archives 80 s
 (0.86 GB/s, every processor thread unpacking, the disk nearly idle). A second
 load of unpacked folders comes from the system's memory and is faster still;
-an archive gains nothing there. Archives pay where the disk is slower than
-the unpacking - a hard disk, a network folder: fewer bytes are read - and
-where room is short (about 40 % less). The fastest loading: unpacked folders
+an archive gains nothing there. From a SATA SSD the same unpacked folders
+took 163 s (0.41 GB/s: there the disk is the limit, and more threads change
+nothing). Archives pay where the disk is the slower part - by these figures
+already on a SATA SSD (about 100 s, calculated, not measured), all the more on
+a hard disk or a network folder: fewer bytes are read - and where room is
+short (about 40 % less). The fastest loading: unpacked folders
 on an SSD, and enough RAM for the system to keep the files in memory between
 loads. The storage choices of the load box change the RAM an organ takes,
 hardly the reading.

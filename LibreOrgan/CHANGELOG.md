@@ -15,10 +15,13 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
 ## [0.9.139] - 2026-11-26
 
 ### Changed
-- Loading from RAR archives uses every logical processor for the unpacking
-  (16 threads before): measured 98 s -> 80 s for an organ of 66 GB of WAV on a
-  16-core computer. The manual's technical part (10.12) says when archives
-  pay and when unpacked folders load faster, with the measured figures.
+- Loading uses every logical processor to decode the sample files (16 threads
+  at most before): measured for an organ of 66 GB of WAV on a 16-core, 32-thread
+  computer with an NVMe disk - from unpacked folders 63 s -> 51 s, from RAR
+  archives 98 s -> 80 s (from a SATA SSD the disk is the limit: 163 s either
+  way). The manual's technical part (10.12) says when
+  archives pay and when unpacked folders load faster, with the measured
+  figures.
 
 ## [0.9.138] - 2026-11-26
 

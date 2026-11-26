@@ -14212,16 +14212,16 @@ void SamplerEngine::loadSamplesIntoStop(Stop* stop, const juce::File& folder, bo
     std::vector<std::unique_ptr<Sample>> decoded(entries.size());
     std::array<std::unique_ptr<juce::AudioFormatManager>, 64> managers;
     juce::SpinLock managerLock;
-    // 0.9.139: how many threads decode the files of one stop. Files on a disk: 16 as ever. Files in an ARCHIVE:
-    // every logical processor - there the RAR decoder is the limit, not the disk (measured on the 16-core Ryzen with
-    // an NVMe disk, Frankfurt, 66.5 GB of WAV, the file cache emptied: 16 threads 98 s = 690 MB/s with the disk idle,
-    // 32 threads 80 s = 858 MB/s; unpacked folders 63 s with 16 threads, 51 s with 32).
-    // ORGAN_DECODE_THREADS=<n> sets the number for a measurement.
+    // 0.9.139: the files of one stop are decoded on EVERY LOGICAL PROCESSOR (16 threads at most before) - from an
+    // archive and from the disk alike (the user: "evidentně jim to taky pomáhá"). Measured on the 16-core Ryzen with an
+    // NVMe disk, Frankfurt, 66.5 GB of WAV, the file cache emptied: from the archives 16 threads 98 s = 690 MB/s (the
+    // disk idle: the RAR decoder is the limit), 32 threads 80 s = 858 MB/s; unpacked folders 16 threads 63 s =
+    // 1099 MB/s, 32 threads 51 s = 1357 MB/s. ORGAN_DECODE_THREADS=<n> sets the number for a measurement.
     bool anyArchived = false;
     for (const auto& entry : entries) if (entry.archived) { anyArchived = true; break; }
     static const int forcedDecodeThreads = [] { const char* env = std::getenv("ORGAN_DECODE_THREADS"); return env != nullptr ? juce::String(env).getIntValue() : 0; }();
-    const int decodeThreads = forcedDecodeThreads > 0 ? juce::jlimit(1, 64, forcedDecodeThreads)
-                            : anyArchived ? juce::jlimit(16, 64, juce::SystemStats::getNumCpus()) : 16;
+    const int decodeThreads = forcedDecodeThreads > 0 ? juce::jlimit(1, 64, forcedDecodeThreads) : juce::jlimit(16, 64, juce::SystemStats::getNumCpus());
+    juce::ignoreUnused(anyArchived);
     // 0.9.125: the storage of the folder's own tree when it has one (an organ merged in), else the engine's.
     const TreeStorage ownStorage = storageFor(folder);
     const bool asFloat = ownStorage.asFloat;
