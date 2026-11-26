@@ -488,7 +488,10 @@ main panel (the checkbox beside them in the editor); all are MIDI-learnable.
 written in it, the fill runs from the default to the value and the bright
 line marks the value. Drag left or right (the value moves from where it
 is - a click alone changes nothing), turn the wheel, **double-click** for
-the default, **click once** to type the value (Enter takes it, Esc leaves
+the default (in anything that scrolls - the Configuration Editor, a scrolled
+dialog, the stops with their open voicings - the wheel **scrolls**; a slider
+takes it once you moved the mouse onto it and the page has stood for a
+moment, and shows that with a thin orange frame), **click once** to type the value (Enter takes it, Esc leaves
 it), right-click for MIDI learn. The top row keeps one line as long as the
 names fit (they shrink first); short of room, all its sliders show the name
 above the value. The per-key sliders of a voicing row are the same bars
@@ -529,8 +532,9 @@ Divisions dialog. A right-click on the division's name lists the swell,
 tremulant and wind settings of the division and moves the division to the
 other program window; a right-click on the coupler rows below opens the
 [couplers' own menu](#61-couplers). Drag the dividers between the
-columns to share out the width. The mouse wheel scrolls the workspace, except
-over the sliders of an open voicing row.
+columns to share out the width. The mouse wheel scrolls the workspace, over
+an open voicing row too; a slider takes the wheel once the mouse moved onto
+it and the workspace stands (its thin orange frame says so).
 
 ## 2.6 Two program windows, screens, small screens
 
@@ -724,7 +728,10 @@ starts the sample that far into its attack with a fade-in
 pipe speaks promptly. *Randomize* (on by default): 30 to 100 % of the value at
 every stroke, and a tone repeated within the delay comes sooner, as the global
 delay does; off = the value exactly. *Reset to 0 ms* beside the header; the
-right mouse button paints a value across the row.
+right mouse button paints a value across the row. A transmission has the row
+too: its value is **added** to what the parent stop has for the pipe the key
+sounds, so a lazy pipe stays corrected there and the row only trims it for
+that transmission.
 
 ## 3.4 Transmissions and extensions
 
@@ -1900,12 +1907,10 @@ or two longer on a large organ.
 
 A pipe further off its own rank's tuning than this is pulled to its key even
 with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip
-says so. Travels with the organ. The rule holds for every sample of a pipe
-by its own recorded pitch: a release or a velocity layer that is off the
-rank by more than this is pulled to the key too, one that is within it is
-left as recorded. (With *Equal at 440 Hz* on every sample is tuned by its
-own pitch anyway.) Lower it for sample folders whose attacks were tuned
-afterwards and no longer meet their releases.
+says so. Travels with the organ. A release or a velocity layer whose own
+recorded pitch differs from its pipe's attack is always tuned to that attack,
+whatever this setting says (sample folders whose attacks were tuned
+afterwards meet their releases that way).
 
 ### Replace pipes off by more than
 
@@ -2549,6 +2554,16 @@ another's place by its last folder name alone - only by the same path below
 the root. What is found is taken silently and the root noted as a location;
 the list is `Locations.txt` (the folders, and the archives you chose - only
 those are read, never another archive lying beside them).
+
+**You decide which storage wins.** `Locations.txt` has a marker line. Write
+your own lines **above** it - folders and `.rar` archives, one per line: they
+are looked through from the top before anything else, and the first place
+that holds an organ's sample folders is the one it plays from (copy an organ
+to a faster disk, put that disk first, and every configuration takes it from
+there). A line that starts with `!` forbids a place: nothing is ever read from
+it. Then come the configuration's own folder, the lines the program remembered
+by itself (it writes only **under** the marker and never changes yours) and
+the drives. The log names the line a tree was taken from.
 
 A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up
 to four ancestors for the longest tail of the missing path that exists under

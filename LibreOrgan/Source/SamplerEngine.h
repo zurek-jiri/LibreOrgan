@@ -462,6 +462,10 @@ struct Stop
         bool enabled = false;              // the borrowed stop button is on
         std::array<float, 128> keyDb{};    // per-key voicing of this transmission (dB, indexed by the key played)
         std::array<float, 128> keyTone{};  // per-key tone (high shelf dB, -9..9) of this transmission, by key played
+        // 0.9.136: "Attack per key" of this transmission (ms, -300..300, by key played) - ADDED to the parent
+        // stop's value of the PIPE the key sounds (key + shift), as its volume is relative to the parent's.
+        std::array<float, 128> attackKeyMs{};
+        bool attackKeysExpanded = false;   // the row unfolded in its voicing (not saved)
         juce::String alias;                // shown instead of the automatic caption when set
         bool voicingExpanded = false;      // its voicing row is open (not saved)
         bool volumeKeysExpanded = false, toneKeysExpanded = false;   // its per-key rows unfolded
@@ -678,18 +682,19 @@ struct Stop
         return tuning440Cents[(size_t)note] + undulationCents[(size_t)note];
     }
     // 0.9.134: the tuning of ONE SAMPLE of the pipe - a velocity layer or a release whose smpl chunk names another
-    // pitch than the pipe's plain attack (layerCents = what brings it to that attack). The user's rule: the two
-    // sliders act on a sample as they act on a pipe. With "Equal at 440 Hz" the sample is tuned by its own chunk
-    // (the pipe's correction + its own offset). Without it the sample is left as recorded unless ITS OWN deviation
-    // from the rank exceeds "Retune pipes off by more than" - then it is pulled to its key, like a pipe. An offset
-    // beyond "Replace pipes off by more than" is no tuning but a chunk nobody filled: the sample follows its pipe.
-    float tuningCentsForSample(int note, bool tuned, float layerCents, float retuneAbove, float replaceAbove) const noexcept
+    // pitch than the pipe's plain attack (layerCents = what brings it to that attack).
+    // 0.9.136 (#266 again - Schorndorf's Siebenquart still went out of tune at the release with 0.9.135: without
+    // "Equal at 440 Hz" a sample was corrected only when IT lay further off the rank than "Retune pipes off by more
+    // than", 50 c by default, and the releases lie 32-39 c from their attacks - so nothing happened; the user:
+    // "musíš jim natvrdo nastavit override"): a sample of a pipe ALWAYS follows its pipe's attack - whatever the
+    // pipe gets (nothing, its pull to the key, the 440 correction) plus its own offset to that attack. The slider
+    // "Retune pipes off by more than" rules the PIPE against its rank, never a sample against its own attack. An
+    // offset beyond "Replace pipes off by more than" is no tuning but a chunk nobody filled: not believed.
+    float tuningCentsForSample(int note, bool tuned, float layerCents, float /*retuneAbove*/, float replaceAbove) const noexcept
     {
         if (note < 0 || note >= 128) return 0.0f;
         if (layerCents == 0.0f || std::abs(layerCents) > replaceAbove) return tuningCentsFor(note, tuned);
-        if (tuned) return tuning440Cents[(size_t)note] + undulationCents[(size_t)note] + layerCents;
-        const float own = rankDeviationCents[(size_t)note] - layerCents;   // this sample's deviation from the rank's tuning
-        return retuneAbove > 0.0f && std::abs(own) > retuneAbove ? -own : 0.0f;
+        return tuningCentsFor(note, tuned) + layerCents;
     }
     // Additional perspective ranks belonging to this logical stop. The Stop
     // itself is the first rank.

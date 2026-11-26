@@ -5230,17 +5230,74 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   FALSE FRIENDS of a word match: "cimbel" (a mixture stop), "nachthorn", "glockenton", "(tremmed)" ranks, "gross...".
   THE PROGRAM'S OWN IMPORT: does HauptwerkOdf.cpp read the lower-case uncompacted files? NOT CHECKED.
 ## Pending for the next session (delete when done)
-- TO-DO LIST (25 Nov 2026 evening, the user: "for to-do"; all of it into ONE build when he says so):
-  (1) ATTACK PER KEY FOR TRANSMISSIONS TOO. Today (startNote ~7015) `stop->getNoteAttackMs(midiNote)` is read by the
-  played KEY and decides for EVERY route of the stop on that key (`continue` before the shift loop): a transmission has
-  no row of its own and takes the parent's value of the KEY, not of the pipe it sounds (shift +12: key 48 plays pipe 60
-  with key 48's value). To do: `Transmission::attackKeyMs[128]` + randomize, the delay / cut decided INSIDE the shift
-  loop per route (the re-run of processPending skips pipes already speaking, so per-pipe delays work), StopRow's third
-  per-key row for a transmission (keyAreaHeight, the "All" control row 2, setNoteActive, rowSliders / rowNames /
-  rowNumbers), the four voicing places (createState, loadState, saveStopSettings, loadStopSettings) and the pistons
-  that hold the voicing. SETTLED (the user, 25 Nov 2026: "ano přičítat, ale dej to pouze do to-do, dnes nekóduj"): the
-  transmission's value ADDS to the parent's value of the sounding PIPE (key + shift), as its volume is relative to
-  the parent - a lazy pipe stays corrected on every route, the transmission only trims its own. NOT coded yet.
+- 0.9.136 (26 Nov 2026, LINUX session; the user's six to-dos + #266 in ONE build, edited in ~/LibreOrgan-linux through
+  patch scripts ~/tools/p136/*.py (exact-match replacements, lib.py), the changed files copied back to the NTFS checkout):
+  (1) LOCATIONS PRIORITY (his need of the day: "program tvrdohlavě furt bere z disku, který si najde sám"): Locations.txt
+  has a MARKER line (`kLocationsMarker`, "# --- found by the program ..."; `isLocationsMarker`). Above it = the USER's
+  lines, folders and .rar mixed, in his order (`gUserLocations`), `!<path>` anywhere = forbidden (`gForbiddenLocations`,
+  `pathIsForbidden`). `portableFolderCandidates` returns `TreeCandidates` (an Array<File> + userCount / archiveLine /
+  userLine / forbidden): FIRST the user's lines (per line: <line>/<root>/<relative>, the line as the root itself, and -
+  only for a tree WITH a fingerprint - the Hauptwerk layout, its children, the folder above, the bare forms; a .rar
+  line = the same paths under the archive's folder, taken only when an archive serves them), THEN the old list
+  (`portableFolderCandidatesPlain`: the configuration's own place, the remembered locations, the drives, the bare
+  forms). `firstUserLineTree` (a folder line: on the disk, also by the case of the letters; fingerprint checked; log
+  "Sample folders: taken from X (your line N of Locations.txt)") is tried before the old passes in the two overloads
+  `firstExistingDirectory(TreeCandidates)` / `firstMatchingTree(TreeCandidates, ...)`; a tree only in a forbidden place
+  -> `noteForbiddenHolders` (log + the missing-tree notice's detail). `writeLocationsFile` writes the user's part BACK
+  AS IT STANDS IN THE FILE NOW (never from memory), the program's lines under the marker; a file without a marker =
+  all lines the program's (a header is written above the marker at the first write). `readLocationsFile({})` at the
+  start of resolveAndApplyPortableConfiguration (the file as it is now rules the search). Forget keeps the user's
+  lines; a forbidden place is never remembered. The user's order for old files without fingerprints was "own place
+  first" - I made it "his lines count there in the root-NAMED form only" (works for him, no bare name): told him.
+  Tests (~/tools/test_0136.sh <seconds> <Locations file or -> [ENV=...], LO_SETTINGS='{json}', CFG=...; settings backed
+  up/restored; /tmp/lo136/{A,B}/Rural Organ/Samply = symlinks to the Rural test tree): his line wins over the
+  configuration's own folder; "!" own place + line B -> B; everything forbidden -> not found, said so. NOT run: a .rar
+  line above a folder line, a fingerprinted file, the merge path. A zero-tree search MOUNTS his data disks (0.9.33).
+  (2) THE WHEEL: `UIScale::WheelGate` (UIScale.h, member `MainComponent::wheelGate`, a global mouse listener + 80 ms
+  timer): a slider that has a juce::Viewport above it is made DEAF when it is painted (`WheelGate::prepare` from
+  drawLinearSlider - no creation site can forget it) and takes the wheel only while ARMED = the mouse itself moved
+  >= 3 px since the last scroll AND 0.4 s (`kStandMs`, the user's figure) passed since it; armed = property
+  "wheelArmed" = the thin orange frame (also on a hovered slider outside scrolling areas: the frame means "the wheel
+  sets this now" everywhere). A scroll = any wheel event not taken by the armed control: it disarms. A control that
+  handles the wheel itself marks "wheelGated" and asks `WheelGate::listens(*this)` (the header's SwellBar).
+  `stopsViewport.allowWheel` returns true everywhere (`Voicer::wheelBlockedAt` is no longer called): the workspace
+  scrolls over open voicings. A sounding key's per-key slider: orange INSIDE only (tint 0.6), no frame. NEVER a
+  modifier key or an extra click for this (both refused). Hook act ORGAN_TEST_BAR "<s>|<barLabel or manualChapter>|
+  wheel|<steps>" (s = notch beside the slider, w = notch on it, m = mouse moved onto it, p = 0.6 s; through
+  peer->handleMouseWheel so the listeners see it): scroll over the deaf slider scrolled, after the rest it listened,
+  a scroll made it deaf again. A wheel event at a NEW place counts as a mouse move (a test's first 'w' arms). NOT
+  tried: a real mouse, a touchpad's inertial scroll, the voicing rows (the same class), rotary sliders (not gated).
+  (3) AUDIO ROUTING HEADER: laid out in the VISIBLE width (`headerWidth` from the parent Viewport's
+  getMaximumVisibleWidth; the content keeps its design width 1100 and grows with the cables); with the "?" the block
+  starts 12 px after it (stripRight = 10 + 30 + 12 + 608), the "?" on row 1's line, the three routing buttons span
+  exactly the block's width (the user on my first picture: "neuspořádané, nezarovnané").
+  (4) TOOLTIP: `UIScale::tipPlacement()` {own, above} set by HelpTooltipWindow before displayTip; our
+  getTooltipBounds then puts the tip's top-left at the given point (under the control + 6; a control higher than
+  80 px: 28 px under the pointer) or above when there is no room. NOT pictured (no hook holds a tooltip).
+  (5) F1: the Editor rows' "?" carry "manualChapter" = their click's chapter; the Editor's Report / licences buttons
+  too; "For details press F1." is appended wherever a chapter resolves (the "?" keeps it - his order). Hook
+  `ORGAN_TEST_F1_AUDIT="<file>|<seconds>"` (window, origin own / above N / target / WINDOW / NONE, chapter, name, tip):
+  run over main, Editor, Noises, Stop List, Audio routing, Couplers, Temperaments - only the single-topic dialogs
+  fall back to the window's chapter (the right one). NOT done: chapters of their own for the Stop List's cells /
+  switches and the Audio routing's cards (they inherit "The table" / "Audio routing").
+  (6) ATTACK PER KEY FOR TRANSMISSIONS: `Transmission::attackKeyMs[128]` + `attackKeysExpanded`; engine
+  `routeAttackMs(stop, manual, shift, key, pipe)` = the parent's value of the PIPE + the transmission's value of the
+  key (several with one shift: the earliest), decided INSIDE the shift loop of startNote (the stop-level block is
+  gone; Randomize is the parent's; the random share adds shift x 0.236); StopRow shows the third row for a
+  transmission too (header tooltip says "added"; no Randomize box), "perKeyAttackMs" in the transmission's var
+  (configuration + voicing file), Load Voicing, the combinations' "keyAttackMs", the resets. Pictured (Rural, the
+  subbass transmission into II, All +40 ms); NOT heard.
+  (7) #266 AGAIN (hoofdwerk, 0.9.135: Siebenquart's releases still out of tune; his log: Equal at 440 off, "Retune
+  pipes off by more than" 50 = the default): MY 0.9.134 rule corrected a sample only when IT lay > the slider off the
+  rank - Schorndorf's releases lie 32-39 c from their attacks, so NOTHING happened at the defaults (I had even noted
+  it). Now `tuningCentsForSample` = the pipe's own tuning + layerCents ALWAYS (bound: "Replace pipes off by more
+  than"); the Retune slider rules the pipe against its rank only. MEASURED here (Schorndorf Surround imported with
+  Direct alone, key 57 of SW_Siebenquart, /tmp/lo136/peaks.py <wav> <release second> 1540,2090): held 1525.1 / 2069.7
+  Hz, released 1555.2 / 2071.3 = +34 c / +1 c (was +67 / +32). The +34 c on the 1 1/7' rank STAYS: the producer
+  tuned the attack's two ranks against each other and not the release's - no pitch shift of one file cures both
+  ranks. RULE: a fix is measured AT THE DEFAULT SETTINGS before an issue is closed. Issue #266 reopened.
+  SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
+  short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

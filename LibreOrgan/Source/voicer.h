@@ -171,7 +171,8 @@ public:
     {
         if (stop == nullptr) return true;
         if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
-            return !stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded && !stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
+            return !stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded && !stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded
+                && !stop->transmissions[(size_t)transmissionIndex].attackKeysExpanded;
         return !stop->volumeKeysExpanded && !stop->toneKeysExpanded && !stop->attackKeysExpanded;
     }
     template <typename Put>
@@ -247,12 +248,13 @@ public:
         if (transmissionIndex < 0 && stop->container)
             return stop->noiseButton != 0 ? expandedControlsHeight : containerExpandedHeight;   // 0.9.127: a noise's button has its Stop volume on line 2
         bool volume = stop->volumeKeysExpanded, tone = stop->toneKeysExpanded;
-        const bool attackRow = transmissionIndex < 0;   // 0.9.79: the stop's own row has the "Attack per key" header
-        const bool attack = attackRow && stop->attackKeysExpanded;
+        const bool attackRow = true;   // 0.9.79: the "Attack per key" header; 0.9.136: a transmission's row has it too
+        bool attack = stop->attackKeysExpanded;
         if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
         {
             volume = stop->transmissions[(size_t)transmissionIndex].volumeKeysExpanded;
             tone = stop->transmissions[(size_t)transmissionIndex].toneKeysExpanded;
+            attack = stop->transmissions[(size_t)transmissionIndex].attackKeysExpanded;
         }
         // 0.9.134: ONE layout for every open voicing - the wrapping walk - whether its per-key rows are folded or not
         // (the second, "full" layout put everything on two lines of some 1300 px over a row of keys of 750).
@@ -410,7 +412,11 @@ private:
     SectionHeaderLabel attackHeader;
     juce::TextButton attackReset{ "Reset to 0 ms" };
     juce::ToggleButton attackRandomizeBox{ "Randomize" };
-    bool attackRowShown() const { return !isTransmission() && stop->attackKeysExpanded; }
+    bool attackRowShown() const   // 0.9.136: a transmission has the row too (its value is added to the parent's)
+    {
+        if (isTransmission()) return transmissionIndex < (int)stop->transmissions.size() && stop->transmissions[(size_t)transmissionIndex].attackKeysExpanded;
+        return stop->attackKeysExpanded;
+    }
     void attackSliderChanged(int note, float value);
     void resetAttackRow();
     // 0.9.126 (the user): "All" - one spring slider before each per-key row (0 volume, 1 treble, 2 attack; a

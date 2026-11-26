@@ -1,5 +1,6 @@
 #include "voicer.h"
 #include "CrashHandler.h"
+#include "UIScale.h"
 
 static juce::String canonicalPerspectiveName(juce::String name)
 {
@@ -44,6 +45,15 @@ juce::var Voicer::transmissionsToVar(const Stop* stop)
                 anyTone = true;
             }
         if (anyTone) obj->setProperty("perKeyTone", juce::var(perKeyTone.get()));
+        juce::DynamicObject::Ptr perKeyAttack = new juce::DynamicObject();   // 0.9.136
+        bool anyAttack = false;
+        for (int key = 0; key < 128; ++key)
+            if (t.attackKeyMs[(size_t)key] != 0.0f)
+            {
+                perKeyAttack->setProperty(juce::Identifier(juce::String(key)), t.attackKeyMs[(size_t)key]);
+                anyAttack = true;
+            }
+        if (anyAttack) obj->setProperty("perKeyAttackMs", juce::var(perKeyAttack.get()));
         list.add(juce::var(obj.get()));
     }
     return list;
@@ -80,6 +90,12 @@ std::vector<Stop::Transmission> Voicer::transmissionsFromVar(const juce::var& st
                 {
                     const int key = prop.name.toString().getIntValue();
                     if (key >= 0 && key < 128) t.keyTone[(size_t)key] = juce::jlimit(-9.0f, 9.0f, (float)(double)prop.value);
+                }
+            if (auto* perKeyAttack = item.getProperty("perKeyAttackMs", juce::var()).getDynamicObject())   // 0.9.136
+                for (const auto& prop : perKeyAttack->getProperties())
+                {
+                    const int key = prop.name.toString().getIntValue();
+                    if (key >= 0 && key < 128) t.attackKeyMs[(size_t)key] = juce::jlimit(-300.0f, 300.0f, (float)(double)prop.value);
                 }
             list.push_back(t);
         }
@@ -735,13 +751,17 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     }
     volumeReset.onClick = [this] { resetKeyRow(false); };
     toneReset.onClick = [this] { resetKeyRow(true); };
-    // 0.9.79 (#228): the third row "Attack per key" (the stop's own row only).
+    // 0.9.79 (#228): the third row "Attack per key"; 0.9.136: a transmission has it too.
     attackHeader.setFont(juce::FontOptions(14.0f, juce::Font::bold));
     attackHeader.onClick = [this] { if (toggleSection) toggleSection(2); };
-    attackHeader.setTooltip("Attack per key: a positive value delays this pipe (ms, on top of the global Attack min. delay); a negative "
-        "value CUTS the attack - the sample starts that far in with a short fade-in, a lazy pipe speaks promptly. "
-        "Randomize: 30-100 % of the value at random at every stroke, and a repeated tone comes sooner (as the global "
-        "delay does); off = the value exactly. Click to fold.");
+    attackHeader.setTooltip(isTransmission()
+        ? juce::String("Attack per key of this transmission: ADDED to the value the parent stop has for the pipe this key sounds (ms; "
+            "positive = later, negative = the attack cut) - a lazy pipe stays corrected here too, this row only trims it for this "
+            "transmission. Randomize is the parent stop's. Click to fold.")
+        : juce::String("Attack per key: a positive value delays this pipe (ms, on top of the global Attack min. delay); a negative "
+            "value CUTS the attack - the sample starts that far in with a short fade-in, a lazy pipe speaks promptly. "
+            "Randomize: 30-100 % of the value at random at every stroke, and a repeated tone comes sooner (as the global "
+            "delay does); off = the value exactly. Click to fold."));
     attackHeader.getProperties().set("manualChapter", "Attack per key");
     addAndMakeVisible(attackHeader);
     attackReset.setTooltip("Sets every slider of this row back to 0 ms");
@@ -795,13 +815,13 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         toneSliders.add(tone);
         addAndMakeVisible(tone);
 
-        // Third row (0.9.79, #228): the attack delay / cut of this key (-300..300 ms), the stop's own row only.
-        if (!isTransmission())
+        // Third row (0.9.79, #228): the attack delay / cut of this key (-300..300 ms); 0.9.136: a transmission too.
         {
             auto* attack = new LearnableSlider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
             attack->setRange(-300.0, 300.0, 1.0);
             attack->getProperties().set("manualChapter", "Attack per key");
-            attack->setValue(stop->getNoteAttackMs(note), juce::dontSendNotification);
+            if (auto* t = transmission()) attack->setValue(t->attackKeyMs[(size_t)note], juce::dontSendNotification);
+            else attack->setValue(stop->getNoteAttackMs(note), juce::dontSendNotification);
             attack->setTextValueSuffix("");
             attack->setScrollWheelEnabled(true);
             attack->setDoubleClickReturnValue(true, 0.0);
@@ -1037,7 +1057,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     }
     // 0.9.126: the "All" slider before each per-key row (a transmission has no attack row).
     if (keyControlsWanted)
-        for (int row = 0; row < (isTransmission() ? 2 : 3); ++row) makeAllControl(row);
+        for (int row = 0; row < 3; ++row) makeAllControl(row);
 
     const bool showVoicing = isExpanded();
     // A stop folder without pipes: information and alias only, no sliders or key rows.
@@ -1054,12 +1074,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     for (auto* label : toneNameLabels) label->setVisible(showToneRow);
     for (auto* label : toneNumLabels) label->setVisible(showToneRow);
     {   // 0.9.79: the "Attack per key" row (the stop's own row only)
-        const bool attackRow = withPipes && !isTransmission();
+        const bool attackRow = withPipes;   // 0.9.136: a transmission too
         const bool showAttackRow = attackRow && attackRowShown();
         attackHeader.setVisible(attackRow);
         attackHeader.setSection("Attack per key", attackRowShown());
         attackReset.setVisible(showAttackRow);
-        attackRandomizeBox.setVisible(showAttackRow);
+        attackRandomizeBox.setVisible(showAttackRow && !isTransmission());   // (Randomize is the parent stop's)
         for (auto* s : attackSliders) s->setVisible(showAttackRow);
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
         for (auto* label : attackNumLabels) label->setVisible(showAttackRow);
@@ -1101,7 +1121,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     for (auto* label : noteNameLabels) label->setVisible(showVolumeRow);
     for (auto* label : midiNumLabels) label->setVisible(showVolumeRow);
     {   // 0.9.126: the "All" slider of each row shows with its row
-        const bool allShown[3] = { showVolumeRow, showToneRow, withPipes && !isTransmission() && attackRowShown() };
+        const bool allShown[3] = { showVolumeRow, showToneRow, withPipes && attackRowShown() };
         for (int row = 0; row < 3; ++row)
             if (auto* all = allControls[row].get()) { all->slider.setVisible(allShown[row]); all->label.setVisible(allShown[row]); }
     }
@@ -1417,8 +1437,13 @@ void StopRow::toneSliderChanged(int note, float value)
 // 0.9.79 (#228): the attack delay / cut of one key (the stop's own row; read at the next stroke).
 void StopRow::attackSliderChanged(int note, float value)
 {
-    if (isTransmission()) return;
-    stop->setNoteAttackMs(note, value);
+    if (isTransmission())
+    {
+        // 0.9.136: the transmission's own value (added to the parent's value of the pipe; read at the next stroke).
+        if (transmissionIndex < (int)stop->transmissions.size() && note >= 0 && note < 128)
+            stop->transmissions[(size_t)transmissionIndex].attackKeyMs[(size_t)note] = juce::jlimit(-300.0f, 300.0f, value);
+    }
+    else stop->setNoteAttackMs(note, value);
     if (stateChanged) stateChanged();
 }
 
@@ -1878,10 +1903,10 @@ void StopRow::resized()
         for (auto* slider : toneSliders) slider->setVisible(showToneRow);
         for (auto* label : toneNameLabels) label->setVisible(showToneRow);
         for (auto* label : toneNumLabels) label->setVisible(showToneRow);
-        const bool attackRow = showVoicing && !isTransmission();   // 0.9.79
+        const bool attackRow = showVoicing;   // 0.9.79; 0.9.136: a transmission too
         const bool showAttackRow = attackRow && attackRowShown();
         attackHeader.setSection("Attack per key", attackRowShown());
-        attackHeader.setVisible(attackRow); attackReset.setVisible(showAttackRow); attackRandomizeBox.setVisible(showAttackRow);
+        attackHeader.setVisible(attackRow); attackReset.setVisible(showAttackRow); attackRandomizeBox.setVisible(showAttackRow && !isTransmission());
         for (auto* slider : attackSliders) slider->setVisible(showAttackRow);
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
         for (auto* label : attackNumLabels) label->setVisible(showAttackRow);
@@ -1943,8 +1968,7 @@ void StopRow::resized()
         }
         y += toneLabelsHeight + keySliderHeight;
     }
-    if (!isTransmission())   // 0.9.79 (#228): the "Attack per key" row under the tone row
-    {
+    {   // 0.9.79 (#228): the "Attack per key" row under the tone row (0.9.136: a transmission's too)
         attackHeader.setBounds(margin + inset, y, 170, keyHeaderHeight);
         attackReset.setBounds(margin + inset + 172, y + 2, 92, keyHeaderHeight - 4);
         attackRandomizeBox.setBounds(margin + inset + 272, y + 1, 110, keyHeaderHeight - 2);
@@ -1980,6 +2004,8 @@ void StopRow::updateFromStop()
                 slider->setValue(t->keyDb[(size_t)note], juce::dontSendNotification);
             if (auto* slider = toneSliders[note - noteMin])
                 slider->setValue(t->keyTone[(size_t)note], juce::dontSendNotification);
+            if (auto* slider = attackSliders[note - noteMin])   // 0.9.136
+                slider->setValue(t->attackKeyMs[(size_t)note], juce::dontSendNotification);
         }
         shiftBox.setSelectedId(t->shift + 100, juce::dontSendNotification);   // the ids of the constructor's list (0.8.183; the old maxShift + 1 ids blanked the box after every state update since 0.8.158)
         formantSlider.setValue(100.0 * t->formantFollow, juce::dontSendNotification);
@@ -2701,15 +2727,16 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                 std::function<void(int, float)> setter, std::function<void(int)> learn,
                 std::function<bool(int)> learning)
                 : manual(manual), getter(std::move(getter)), setter(std::move(setter)),
-                  learn(std::move(learn)), learning(std::move(learning)) {}
+                  learn(std::move(learn)), learning(std::move(learning)) { getProperties().set("wheelGated", true); }
             void paint(juce::Graphics& g) override
             {
                 // Console display look: black rounded panel with a dark grey frame, lime content.
                 const auto panel = getLocalBounds().toFloat().reduced(1.0f);
                 g.setColour(juce::Colours::black);
                 g.fillRoundedRectangle(panel, 3.0f);
-                g.setColour(juce::Colours::darkgrey);
-                g.drawRoundedRectangle(panel, 3.0f, 1.0f);
+                const bool wheelListens = getProperties().contains("wheelArmed");   // 0.9.136: the orange frame = the wheel sets this bar now
+                g.setColour(wheelListens ? onColour() : juce::Colours::darkgrey);
+                g.drawRoundedRectangle(panel, 3.0f, wheelListens ? 1.5f : 1.0f);
                 if (learning && learning(manual))
                 {
                     g.setColour(juce::Colours::lime);
@@ -2743,9 +2770,11 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             {
                 if (event.mods.isLeftButtonDown()) setFromMouse(event.position.x);
             }
-            void mouseWheelMove(const juce::MouseEvent&,
+            void mouseWheelMove(const juce::MouseEvent& event,
                 const juce::MouseWheelDetails& wheel) override
             {
+                // 0.9.136: in the scrolling workspace the wheel scrolls unless this bar is the control that listens.
+                if (!UIScale::WheelGate::listens(*this)) { juce::Component::mouseWheelMove(event, wheel); return; }
                 const float current = getter ? getter(manual) : 1.0f;
                 if (setter) setter(manual, juce::jlimit(0.0f, 1.0f,
                     current + wheel.deltaY * 0.12f));
@@ -3527,7 +3556,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                     if (transmissionIndex >= 0 && transmissionIndex < (int)stop->transmissions.size())
                     {
                         auto& t = stop->transmissions[(size_t)transmissionIndex];
-                        flag = section == 0 ? &t.volumeKeysExpanded : &t.toneKeysExpanded;
+                        flag = section == 0 ? &t.volumeKeysExpanded : section == 1 ? &t.toneKeysExpanded : &t.attackKeysExpanded;   // 0.9.136
                     }
                     *flag = !*flag;
                     if (stateChanged) stateChanged();   // the folds are part of the saved voicing state
@@ -4525,7 +4554,7 @@ void Voicer::dropItem(int manual, const juce::String& key, juce::Component* row,
             {
                 const juce::ScopedLock lock(engine.getLock());
                 auto& moved = source->transmissions[(size_t)index];
-                moved.db = old.db; moved.keyDb = old.keyDb; moved.keyTone = old.keyTone; moved.alias = old.alias;
+                moved.db = old.db; moved.keyDb = old.keyDb; moved.keyTone = old.keyTone; moved.attackKeyMs = old.attackKeyMs; moved.alias = old.alias;
             }
             removeTransmission(source, sourceIndex);   // rebuilds asynchronously; later indices move down
             const int newIndex = index > sourceIndex ? index - 1 : index;
@@ -5431,7 +5460,7 @@ void Voicer::resetAll(bool resetGrid)
             juce::ScopedLock sl(engine.getLock());
             stop->resetNoteDb();
             stop->resetNoteTone();
-            for (auto& t : stop->transmissions) { t.keyDb.fill(0.0f); t.keyTone.fill(0.0f); }
+            for (auto& t : stop->transmissions) { t.keyDb.fill(0.0f); t.keyTone.fill(0.0f); t.attackKeyMs.fill(0.0f); }
             stop->gainDb = 0.0f;
             stop->attackMs = 75.0f;
             stop->attackDelayMs = 0.0f;   // 0.9.77

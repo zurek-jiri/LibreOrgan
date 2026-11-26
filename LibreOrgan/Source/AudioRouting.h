@@ -1093,7 +1093,13 @@ private:
         // (everything below starts under the header's line). Too narrow, or more than seven lines or so: the "?".
         const float helpFont = juce::jmax(13.0f, 15.0f * scale());
         help.setFont(juce::FontOptions(helpFont));
-        const int helpWidth = width - 644;
+        // 0.9.136 (the user: in a narrow window the block and the routing buttons lay out of sight at the right, under
+        // the horizontal scroll bar, with an empty space after the "?"): the header is laid out in the VISIBLE width
+        // (the content is at least as wide as its design and wider with many cables), and with the "?" instead of
+        // the text the block starts right after it, the routing buttons under it from the same left edge.
+        int headerWidth = width;
+        if (auto* viewport = findParentComponentOfClass<juce::Viewport>()) headerWidth = juce::jlimit(680, width, viewport->getMaximumVisibleWidth());
+        const int helpWidth = headerWidth - 644;
         const int helpHeight = helpWidth >= 380 ? helpHeightFor(helpWidth, helpFont) : 9999;
         const bool helpShown = helpHeight <= 132;
         help.setVisible(helpShown);
@@ -1105,11 +1111,14 @@ private:
         // 0.9.91: a block of two rows as high as the meter (72 px): Measure Polyphony and the meter stand over both
         // rows at the right; left of them row 1 = Master volume + its slider, row 2 = Show cables + Button size, the
         // two rows sharing their left and right edges (the size box ends where the slider's value box ends).
-        const int stripRight = width - 10, blockTop = 6, blockHeight = 72, rowHeight2 = 28;
+        // (with the "?": ONE block - its left edge 12 px after the "?", its right edge Measure Polyphony's; the "?"
+        // stands on the first row's line and the three routing buttons span exactly the block's width under it)
+        const int stripRight = helpShown ? headerWidth - 10 : 10 + 30 + 12 + 608, blockTop = 6, blockHeight = 72, rowHeight2 = 28;
         measureButton.setBounds(stripRight - 150, blockTop, 150, blockHeight);
         masterMeter.setBounds(measureButton.getX() - 10 - 46, blockTop, 46, blockHeight);
         const int rowsRight = masterMeter.getX() - 12, rowsLeft = rowsRight - 390;
         const int row1 = blockTop + 4, row2 = blockTop + blockHeight - 4 - rowHeight2;
+        helpButton.setBounds(10, row1, 30, rowHeight2);
         masterLabel.setBounds(rowsLeft, row1, 112, rowHeight2);
         masterSlider.setBounds(rowsLeft + 116, row1, rowsRight - rowsLeft - 116, rowHeight2);
         showCables.setBounds(rowsLeft, row2, 120, rowHeight2);
@@ -1133,13 +1142,13 @@ private:
         const juce::Font buttonFont(juce::FontOptions(juce::jmin(16.0f, (float)buttonHeight * 0.6f)));
         auto widthOf = [&buttonFont](const juce::String& text) { return 30 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(buttonFont, text)); };
         const int defaultWidth = widthOf("Use as default for new organs"), loadWidth = widthOf("Load routing..."), saveWidth = widthOf("Save routing...");
-        const int buttonsLeft = juce::jmax(12, stripRight - defaultWidth - loadWidth - saveWidth - 12);
+        const int buttonsLeft = helpShown ? juce::jmax(12, stripRight - defaultWidth - loadWidth - saveWidth - 12) : rowsLeft;
         const int helpBottom = helpShown ? 6 + helpHeight : 0;
         // (beside the help text when they fit right of it, under it when they reach below its right end)
         const int buttonsY = (buttonsLeft < help.getRight() + 10 ? juce::jmax(blockTop + blockHeight, helpBottom) : blockTop + blockHeight) + 6;
         saveRoutingButton.setBounds(buttonsLeft, buttonsY, saveWidth, buttonHeight);
         loadRoutingButton.setBounds(saveRoutingButton.getRight() + 6, buttonsY, loadWidth, buttonHeight);
-        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, buttonsY, stripRight - loadRoutingButton.getRight() - 6, buttonHeight);
+        defaultRoutingButton.setBounds(loadRoutingButton.getRight() + 6, buttonsY, juce::jmax(defaultWidth, stripRight - loadRoutingButton.getRight() - 6), buttonHeight);
         const int headerBottom = juce::jmax(helpBottom, buttonsY + buttonHeight);
         separatorY = headerBottom + 8;
         sourcesTop = separatorY + 10 + 30;

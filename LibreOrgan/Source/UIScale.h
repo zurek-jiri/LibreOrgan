@@ -129,6 +129,124 @@ namespace UIScale
         return bounds.withSizeKeepingCentre(bounds.getWidth(), juce::jmin(bounds.getHeight(), tall));
     }
 
+    // 0.9.136 THE WHEEL IN A SCROLLING AREA (the user: scrolling the Configuration Editor with the wheel changed
+    // whatever slider came under the mouse; a modifier key and an extra click were both refused): inside anything
+    // that scrolls - the Editor, the scrolled dialogs, the stop workspace with its open voicings - THE WHEEL
+    // SCROLLS, also when a slider comes under the mouse. A control takes the wheel only when the MOUSE ITSELF moved
+    // onto it since the last scroll (a control the page carried under a resting mouse stays deaf) and the page has
+    // stood for 0.4 s. A control that listens shows it: a thin orange frame = "the wheel sets this one now".
+    // One object for the whole program (a member of MainComponent) listening to the mouse of every window. A slider
+    // in a scrolling area is made deaf when it is PAINTED (LookAndFeel::drawLinearSlider calls prepare), so no
+    // place that creates a slider can forget it; a control that handles the wheel itself asks listens().
+    class WheelGate final : public juce::MouseListener, private juce::Timer
+    {
+    public:
+        WheelGate() { instance() = this; juce::Desktop::getInstance().addGlobalMouseListener(this); }
+        ~WheelGate() override
+        {
+            juce::Desktop::getInstance().removeGlobalMouseListener(this);
+            stopTimer();
+            instance() = nullptr;
+        }
+        static WheelGate*& instance() { static WheelGate* gate = nullptr; return gate; }
+        static constexpr double kStandMs = 400.0;
+        // The control the wheel would act on at this component: a slider, or a component marked "wheelGated".
+        static juce::Component* targetOf(juce::Component* c)
+        {
+            for (; c != nullptr; c = c->getParentComponent())
+                if (dynamic_cast<juce::Slider*>(c) != nullptr || c->getProperties().contains("wheelGated")) return c;
+            return nullptr;
+        }
+        static bool inScrollingArea(const juce::Component& c)
+        {
+            for (auto* p = c.getParentComponent(); p != nullptr; p = p->getParentComponent())
+                if (dynamic_cast<juce::Viewport*>(p) != nullptr) return true;
+            return false;
+        }
+        // For a control that handles the wheel itself: may it take the wheel now?
+        static bool listens(const juce::Component& c)
+        {
+            if (!inScrollingArea(c)) return true;
+            auto* gate = instance();
+            return gate == nullptr || gate->armed.getComponent() == &c;
+        }
+        // Called whenever a slider is painted.
+        static void prepare(juce::Slider& slider)
+        {
+            auto* gate = instance();
+            if (gate == nullptr || !inScrollingArea(slider)) return;
+            const bool on = gate->armed.getComponent() == &slider;
+            if (slider.isScrollWheelEnabled() != on) slider.setScrollWheelEnabled(on);
+        }
+        void mouseMove(const juce::MouseEvent& e) override { moved(e); }
+        void mouseEnter(const juce::MouseEvent& e) override { moved(e); }
+        void mouseDrag(const juce::MouseEvent& e) override { moved(e); }
+        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails&) override
+        {
+            auto* target = targetOf(e.eventComponent);
+            if (target != nullptr && (target == armed.getComponent() || !inScrollingArea(*target))) return;   // the wheel set a control
+            lastScrollMs = juce::Time::getMillisecondCounterHiRes();   // a scroll
+            movedSinceScroll = false;
+            lastPosition = e.getScreenPosition();
+            disarm();
+        }
+    private:
+        void moved(const juce::MouseEvent& e)
+        {
+            // The mouse ITSELF: a page that moves under a resting mouse sends moves at the same place.
+            const auto place = e.getScreenPosition();
+            if (place.getDistanceFrom(lastPosition) >= 3) { movedSinceScroll = true; lastPosition = place; }
+            look(targetOf(e.eventComponent));
+        }
+        void look(juce::Component* target)
+        {
+            if (target != under.getComponent()) { disarm(); under = target; }
+            if (under == nullptr) { stopTimer(); return; }
+            if (armed.getComponent() != under.getComponent())
+            {
+                const bool gated = inScrollingArea(*under);
+                auto* slider = dynamic_cast<juce::Slider*>(under.getComponent());
+                if (!gated) { if (slider == nullptr || slider->isScrollWheelEnabled()) arm(under, false); }
+                else if (movedSinceScroll && juce::Time::getMillisecondCounterHiRes() - lastScrollMs >= kStandMs) arm(under, true);
+            }
+            if (!isTimerRunning()) startTimer(80);
+        }
+        void timerCallback() override
+        {
+            // (the component under the mouse as JUCE keeps it from the mouse events - no question to the system)
+            look(targetOf(juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse()));
+        }
+        void arm(juce::Component* c, bool gated)
+        {
+            armed = c;
+            armedGated = gated;
+            c->getProperties().set("wheelArmed", true);
+            if (gated) if (auto* slider = dynamic_cast<juce::Slider*>(c)) slider->setScrollWheelEnabled(true);
+            c->repaint();
+        }
+        void disarm()
+        {
+            if (auto* c = armed.getComponent())
+            {
+                c->getProperties().remove("wheelArmed");
+                if (armedGated) if (auto* slider = dynamic_cast<juce::Slider*>(c)) slider->setScrollWheelEnabled(false);
+                c->repaint();
+            }
+            armed = nullptr;
+        }
+        juce::Component::SafePointer<juce::Component> under, armed;
+        juce::Point<int> lastPosition;
+        double lastScrollMs = 0.0;
+        bool movedSinceScroll = true, armedGated = false;
+    };
+
+    // 0.9.136 (the user: "Tool tip se zobrazí těsně u myši, takže většinou zakryje ovládací prvek"): the tip is
+    // placed by the CONTROL, not by the pointer - under its bottom edge, and above its top edge when there is no
+    // room below. The tooltip window sets this before it shows a tip: the position it passes is the tip's top left
+    // corner (under the control), 'above' the way up from there to where the tip's BOTTOM edge would stand.
+    struct TipPlacement { bool own = false; int above = 0; };
+    inline TipPlacement& tipPlacement() { static TipPlacement placement; return placement; }
+
     // The value typed into the bar itself: ONE left click without a drag opens a field over the bar once the
     // double-click time has passed (so a double click still puts the default back); Enter or a click elsewhere takes
     // the value, Escape leaves it. One object for the whole program (a member of MainComponent): it listens to the
@@ -240,8 +358,12 @@ namespace UIScale
                               juce::Slider::SliderStyle style, juce::Slider& slider) override
         {
             const bool upright = style == juce::Slider::LinearVertical;
+            WheelGate::prepare(slider);   // 0.9.136: in a scrolling area the wheel scrolls; only the slider that listens takes it
             if (!upright && !isBarSlider(slider)) { juce::LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider); return; }
             const float alpha = slider.isEnabled() ? 1.0f : 0.45f;
+            // The thin orange frame (the program's "on" colour, onColour() of UIControls.h): the wheel sets this slider now.
+            const bool wheelListens = slider.isEnabled() && slider.getProperties().contains("wheelArmed");
+            const juce::Colour wheelFrame = juce::Colour(0xffffa500).contrasting(0.05f);
             const auto ground = slider.findColour(juce::ComboBox::backgroundColourId);
             const auto thumb = slider.findColour(juce::Slider::thumbColourId);
             const auto track = slider.findColour(juce::Slider::trackColourId);
@@ -262,15 +384,16 @@ namespace UIScale
                 const float w = juce::jlimit(8.0f, 22.0f, (float)width - 5.0f);
                 const float corner = juce::jmin(barCorner, w / 3.0f);
                 const juce::Rectangle<float> box((float)x + ((float)width - w) * 0.5f, (float)y, w, (float)height);
-                g.setColour((ownTrack ? ground.interpolatedWith(track, 0.45f) : ground).withMultipliedAlpha(alpha));
+                g.setColour((ownTrack ? ground.interpolatedWith(track, 0.6f) : ground).withMultipliedAlpha(alpha));
                 g.fillRoundedRectangle(box, corner);
                 const float zero = (float)y + (float)height * (1.0f - (float)slider.valueToProportionOfLength(from));
                 g.setColour(fillColour);
                 if (std::abs(sliderPos - zero) > 1.0f) g.fillRect(juce::Rectangle<float>(box.getX() + 2.0f, juce::jmin(sliderPos, zero), w - 4.0f, std::abs(sliderPos - zero)));
                 g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * 0.6f));
                 g.fillRect(juce::Rectangle<float>(box.getRight() - 4.0f, zero - 0.5f, 3.0f, 1.0f));   // where the default lies
-                g.setColour((ownTrack ? track : slider.findColour(juce::ComboBox::outlineColourId)).withMultipliedAlpha(alpha));
-                g.drawRoundedRectangle(box.reduced(ownTrack ? 1.0f : 0.5f), corner, ownTrack ? 2.0f : 1.0f);
+                // 0.9.136 (the user): a sounding key is orange INSIDE alone; the orange frame is the wheel's.
+                g.setColour((wheelListens ? wheelFrame : slider.findColour(juce::ComboBox::outlineColourId)).withMultipliedAlpha(alpha));
+                g.drawRoundedRectangle(box.reduced(wheelListens ? 0.75f : 0.5f), corner, wheelListens ? 1.5f : 1.0f);
                 g.setColour(thumb.withMultipliedAlpha(alpha));
                 g.fillRect(juce::Rectangle<float>(box.getX() + 1.5f, juce::jlimit((float)y + 1.0f, (float)(y + height) - 3.5f, sliderPos - 1.25f), w - 3.0f, 2.5f));
                 return;
@@ -282,8 +405,8 @@ namespace UIScale
             g.setColour(fillColour);
             if (std::abs(sliderPos - zero) > 1.0f)
                 g.fillRect(juce::Rectangle<float>(juce::jmin(sliderPos, zero), area.getY() + 2.0f, std::abs(sliderPos - zero), area.getHeight() - 4.0f));
-            g.setColour(slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * (slider.isMouseOverOrDragging() ? 1.0f : 0.75f)));
-            g.drawRoundedRectangle(area.reduced(0.5f), barCorner, 1.0f);
+            g.setColour(wheelListens ? wheelFrame : slider.findColour(juce::ComboBox::outlineColourId).withMultipliedAlpha(alpha * (slider.isMouseOverOrDragging() ? 1.0f : 0.75f)));
+            g.drawRoundedRectangle(area.reduced(wheelListens ? 0.75f : 0.5f), barCorner, wheelListens ? 1.5f : 1.0f);
             // The texts: the name and the value (never cut). The bright line of the value is drawn whole where it
             // crosses no text, else as two marks above and below the text, as long as the bar's height allows - a
             // text is never struck through.
@@ -425,6 +548,13 @@ namespace UIScale
         {
             const auto layout = layoutTooltip(tipText, juce::Colours::black);
             const int w = (int)(layout.getWidth() + 18.0f), h = (int)(layout.getHeight() + 12.0f);
+            if (tipPlacement().own)
+            {
+                const int tx = juce::jlimit(parentArea.getX(), juce::jmax(parentArea.getX(), parentArea.getRight() - w), screenPos.x);
+                int ty = screenPos.y;                                                       // under the control
+                if (ty + h > parentArea.getBottom()) ty = screenPos.y - tipPlacement().above - h;   // no room: above it
+                return juce::Rectangle<int>(tx, juce::jmax(parentArea.getY(), ty), w, h);
+            }
             return juce::Rectangle<int>(screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
                 screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6) : screenPos.y + 6, w, h).constrainedWithin(parentArea);
         }

@@ -6726,6 +6726,28 @@ struct SamplerEngine::Impl
         return allowed;
     }
 
+    // 0.9.136 (the user: "make the attack-per-key also for transmissions ... ano přičítat"): the "Attack per key"
+    // value of the route that sounds 'pipe' from 'key' - the stop's own button: the stop's value of the pipe; a
+    // transmission: the PARENT's value of the pipe it sounds (key + shift) PLUS the transmission's own value of the
+    // key (a lazy pipe stays corrected on every route, the transmission trims its own). Several transmissions with
+    // this shift into the division: the one that speaks first.
+    float routeAttackMs(Stop* stop, int manualIndex, int shift, int key, int pipe) noexcept
+    {
+        const float parent = stop->getNoteAttackMs(pipe);
+        if (manualIndex < 0) return parent;
+        if (shift == 0 && stop->primaryManual == manualIndex && stop->enabled && !stop->pipeDisabled.test((size_t)pipe)) return parent;
+        bool found = false;
+        float own = 0.0f;
+        forEachRoute(stop, [&](const Stop::Transmission& t)
+        {
+            if (!t.enabled || t.manual != manualIndex || juce::jlimit(-kMaxShift, kMaxShift, t.shift) != shift) return;
+            const size_t k = (size_t)juce::jlimit(0, 127, key);
+            if (t.keyDisabled.test(k)) return;
+            if (!found || t.attackKeyMs[k] < own) { found = true; own = t.attackKeyMs[k]; }
+        });
+        return found ? juce::jlimit(-300.0f, 300.0f, parent + own) : parent;
+    }
+
     // A key is held and sounds: outside the division's compass a key is silent
     // (an extension ends with the compass). Keys without a division are not limited.
     bool keyHeldInCompass(int note, int manualIndex) const noexcept
@@ -7012,31 +7034,8 @@ struct SamplerEngine::Impl
             // 0.9.79 (#228): the value is PER KEY ("Attack per key" row, -300..300 ms): > 0 the delay as before,
             // < 0 a CUT - the attack sample starts that far in with a short fade-in (a lazy pipe made prompt);
             // the random 30-100 % share applies to both unless the row's "Randomize" is off.
-            const float attackKeyMs = stop->getNoteAttackMs(midiNote);
-            double attackCutMs = 0.0;   // the cut of this stop's pipes on this key (the startRank lambda below reads it)
-            if (attackKeyMs != 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
-            {
-                const double share = stop->attackRandomize ? 0.3 + 0.7 * std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887, 1.0) : 1.0;
-                if (attackKeyMs < 0.0f) attackCutMs = -(double)attackKeyMs * share;
-                double delay = juce::jmax(0.0, (double)attackKeyMs);
-                if (delay > 0.0 && stop->attackRandomize)
-                {
-                    const double sinceFinish = keySinceFinishMs[(size_t)sourceKey], interval = keyOnIntervalMs[(size_t)sourceKey];
-                    if (sinceFinish >= 0.0 && sinceFinish <= delay * 0.5) delay = 0.0;
-                    else if (sinceFinish >= 0.0 && sinceFinish <= delay) delay *= 0.5;
-                    else if (interval >= 0.0 && interval <= delay) delay = 0.0;
-                }
-                delay *= share;
-                const double due = keyStartMs[(size_t)sourceKey] + delay;
-                if (delay > 0.0 && nowMs() < due)
-                {
-                    double& queued = delayedStartMs[(size_t)sourceKey];
-                    queued = queued < 0.0 ? due : juce::jmin(queued, due);
-                    static const bool attackDebug = std::getenv("ORGAN_ATTACK_DEBUG") != nullptr;   // dev: the waits and the re-runs
-                    if (attackDebug) CrashHandler::note("Attack delay: " + stop->name + " waits " + juce::String(due - nowMs(), 0) + " ms on key " + juce::String(midiNote));
-                    continue;
-                }
-            }
+            // 0.9.136: decided per ROUTE inside the loop of the shifts below (a transmission has a row of its own,
+            // added to the parent's value of the pipe it sounds) - see routeAttackMs.
             const int expressionManual = juce::jlimit(0, maxManuals - 1, stop->primaryManual);
             const double couplingMs = 500.0 + tuningRandom.nextDouble() * 2000.0;
             const bool couplingRoll = tuningRandom.nextFloat() * 100.0f >= owner.couplingSkipPercent.load(std::memory_order_relaxed);   // 0.9.59: the share left untouched is a setting (default 10 % = 9 of 10 couple; 0 = all)
@@ -7050,6 +7049,31 @@ struct SamplerEngine::Impl
                 const int pipe = midiNote + shift;
                 if (pipe < 0 || pipe >= 128) continue;
                 if (!routeAllowsKey(stop, manualIndex, shift, midiNote, pipe)) continue;   // switched off in the voicing of every route with this shift
+                const float attackKeyMs = routeAttackMs(stop, manualIndex, shift, midiNote, pipe);
+                double attackCutMs = 0.0;   // the cut of this pipe on this key (the startRank lambda below reads it)
+                if (attackKeyMs != 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
+                {
+                    const double share = stop->attackRandomize ? 0.3 + 0.7 * std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887 + (double)shift * 0.2360679775 + 8.0, 1.0) : 1.0;
+                    if (attackKeyMs < 0.0f) attackCutMs = -(double)attackKeyMs * share;
+                    double delay = juce::jmax(0.0, (double)attackKeyMs);
+                    if (delay > 0.0 && stop->attackRandomize)
+                    {
+                        const double sinceFinish = keySinceFinishMs[(size_t)sourceKey], interval = keyOnIntervalMs[(size_t)sourceKey];
+                        if (sinceFinish >= 0.0 && sinceFinish <= delay * 0.5) delay = 0.0;
+                        else if (sinceFinish >= 0.0 && sinceFinish <= delay) delay *= 0.5;
+                        else if (interval >= 0.0 && interval <= delay) delay = 0.0;
+                    }
+                    delay *= share;
+                    const double due = keyStartMs[(size_t)sourceKey] + delay;
+                    if (delay > 0.0 && nowMs() < due)
+                    {
+                        double& queued = delayedStartMs[(size_t)sourceKey];
+                        queued = queued < 0.0 ? due : juce::jmin(queued, due);
+                        static const bool attackDebug = std::getenv("ORGAN_ATTACK_DEBUG") != nullptr;   // dev: the waits and the re-runs
+                        if (attackDebug) CrashHandler::note("Attack delay: " + stop->name + " waits " + juce::String(due - nowMs(), 0) + " ms on key " + juce::String(midiNote) + " (pipe " + juce::String(pipe) + ")");
+                        continue;
+                    }
+                }
                 // Without a partner the pull leaves a RANDOM share, 0 to the setting (default 20 %), of the pipe's
                 // whole detune (0.9.56: the recorded one too, not the random part alone - the user).
                 const float couplingShrink = tuningRandom.nextFloat() * owner.couplingLeftPercent.load(std::memory_order_relaxed) / 100.0f;
@@ -16241,8 +16265,8 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
             if (moved > 0)
                 CrashHandler::note("Tuning " + rank->name + (rank->perspective.isNotEmpty() ? " [" + rank->perspective + "]" : juce::String())
                     + ": " + juce::String(moved) + " velocity-layer / release sample(s) whose smpl chunk names another pitch than the pipe's plain attack"
-                      " (up to " + juce::String(juce::roundToInt(largest)) + " c): each is tuned by its own chunk - always with \"Equal at 440 Hz\", else only where it is off the"
-                      " rank by more than \"Retune pipes off by more than\"; an offset beyond \"Replace pipes off by more than\" is not believed");
+                      " (up to " + juce::String(juce::roundToInt(largest)) + " c): each is tuned to its pipe's attack by its own chunk, always;"
+                      " an offset beyond \"Replace pipes off by more than\" is not believed");
         }
         RankData rd{ rank, {}, false };
         for (int note = 0; note < 128; ++note)

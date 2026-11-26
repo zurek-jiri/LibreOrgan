@@ -367,6 +367,7 @@ public:
     {
         auto tip = juce::TooltipWindow::getTipFor(c);
         if (tip.isEmpty() || tip.contains("press F1")) return tip;
+        if (MainComponent::manualChapterForComponent(&c).isEmpty()) return tip;   // 0.9.136: the line only where F1 has a chapter to open
         return tip + "\nFor details press F1.";
     }
     // The base sized the tip by the component its own poll had found; ours is the one the mouse rests on.
@@ -401,7 +402,16 @@ private:
         if (buttonDown || under == suppressed.getComponent()) return;
         const auto tip = getTipFor(*under);
         if (tip.isEmpty()) { suppressed = under; return; }   // nothing to say about this control: not asked again until the mouse leaves it
-        displayTip(lastSeen.roundToInt() + juce::Point<int>(10, 16), tip);   // a little farther from the control than JUCE's own place (the user)
+        // 0.9.136 (the user: the tip covered the control it spoke of): under the control's bottom edge, above its
+        // top edge when there is no room below; a large one (a table, the grid, a display): 28 px under the pointer.
+        const auto control = under->getScreenBounds();
+        const auto pointer = lastSeen.roundToInt();
+        const bool large = control.isEmpty() || control.getHeight() > 80;
+        const float ratio = juce::Desktop::getInstance().getGlobalScaleFactor() / juce::jmax(0.1f, getDesktopScaleFactor());
+        UIScale::tipPlacement().own = true;
+        UIScale::tipPlacement().above = juce::roundToInt((float)(large ? 56 : control.getHeight() + 12) * ratio);
+        displayTip(large ? pointer + juce::Point<int>(0, 28) : juce::Point<int>(pointer.x, control.getBottom() + 6), tip);
+        UIScale::tipPlacement().own = false;
         restingPolls = 0;   // from here the polls count the time shown
     }
     // The global mouse listener of the base: the position of the last event is all the poll needs.
@@ -576,10 +586,7 @@ public:
             addAndMakeVisible(viewport);
             viewport.setViewedComponent(&stops, false);
             viewport.setScrollBarsShown(true, false);
-            viewport.allowWheel = [&o](const juce::MouseEvent& event)
-            {
-                return o.voicer == nullptr || !o.voicer->wheelBlockedAt(event.getScreenPosition());
-            };
+            viewport.allowWheel = [](const juce::MouseEvent&) { return true; };   // 0.9.136: over an open voicing too (UIScale::WheelGate)
         }
         void paint(juce::Graphics& g) override
         {
@@ -1992,10 +1999,9 @@ MainComponent::MainComponent()
     // Folding of the per-key rows in the voicing is remembered in the settings.
     // The wheel scrolls the stop workspace except over a division whose voicing
     // is open (there it belongs to the per-key sliders).
-    stopsViewport.allowWheel = [this](const juce::MouseEvent& event)
-    {
-        return voicer == nullptr || !voicer->wheelBlockedAt(event.getScreenPosition());
-    };
+    // 0.9.136 (the user: "zákaz scrollingu uvnitř plochy voicingu padá"): the wheel scrolls over an open voicing
+    // too; a slider takes it only when the mouse itself moved onto it and the page stands (UIScale::WheelGate).
+    stopsViewport.allowWheel = [](const juce::MouseEvent&) { return true; };
     // Two program windows: each division is shown on the window it was given.
     voicer->setCouplerButtonScale(couplerButtonScale());   // 0.9.79 (#233): the size read by loadSettings before the voicer existed
     // 0.9.80: the division's alias ("I. Hauptwerk"), edited by a double-click on the header's name or in the Divisions dialog.
@@ -2794,6 +2800,49 @@ MainComponent::MainComponent()
                 }
             });
     }
+    // 0.9.136: ORGAN_TEST_F1_AUDIT="<file>|<seconds>" - every showing control of every window that has a tooltip or
+    // is a button / slider / box: the chapter F1 opens over it and where it comes from (own = a property on it,
+    // above N = on its N-th parent, target = its MIDI target, WINDOW = nothing but the window's title, NONE).
+    if (const char* env = std::getenv("ORGAN_TEST_F1_AUDIT"))
+    {
+        const auto parts = juce::StringArray::fromTokens(juce::String::fromUTF8(env), "|", "");
+        const juce::File target(parts[0]);
+        juce::Timer::callAfterDelay(juce::jmax(1, parts[1].getIntValue()) * 1000, [target]
+        {
+            juce::StringArray lines;
+            std::function<void(juce::Component&, const juce::String&)> walk = [&](juce::Component& c, const juce::String& window)
+            {
+                if (!c.isVisible()) return;
+                auto* client = dynamic_cast<juce::TooltipClient*>(&c);
+                const auto tip = client != nullptr ? client->getTooltip() : juce::String();
+                auto* button = dynamic_cast<juce::Button*>(&c);
+                if (tip.isNotEmpty() || button != nullptr || dynamic_cast<juce::Slider*>(&c) != nullptr || dynamic_cast<juce::ComboBox*>(&c) != nullptr)
+                {
+                    juce::String origin = "NONE";
+                    int depth = 0;
+                    for (auto* p = &c; p != nullptr; p = p->getParentComponent(), ++depth)
+                    {
+                        if (p->getProperties()[juce::Identifier("manualChapter")].toString().isNotEmpty()) { origin = depth == 0 ? juce::String("own") : "above " + juce::String(depth); break; }
+                        const auto midiTarget = p->getProperties()[juce::Identifier("midiTarget")].toString();
+                        if (midiTarget.isNotEmpty() && manualChapterForTarget(midiTarget).isNotEmpty()) { origin = "target"; break; }
+                    }
+                    const auto chapter = manualChapterForComponent(&c);
+                    if (origin == "NONE" && chapter.isNotEmpty()) origin = "WINDOW";
+                    auto name = button != nullptr ? button->getButtonText() : juce::String();
+                    if (name.isEmpty()) name = c.getProperties()[juce::Identifier("testName")].toString();
+                    if (name.isEmpty()) name = c.getProperties()[juce::Identifier("barLabel")].toString();
+                    if (name.isEmpty()) name = c.getName();
+                    lines.add(window + "\t" + origin + "\t" + chapter + "\t" + name.replaceCharacters("\t\n", "  ").substring(0, 40) + "\t" + tip.replaceCharacters("\t\n", "  ").substring(0, 50));
+                }
+                for (auto* child : c.getChildren()) if (child != nullptr) walk(*child, window);
+            };
+            auto& desktop = juce::Desktop::getInstance();
+            for (int i = 0; i < desktop.getNumComponents(); ++i)
+                if (auto* top = desktop.getComponent(i)) walk(*top, top->getName());
+            target.replaceWithText(lines.joinIntoString("\n") + "\n");
+            CrashHandler::note("ORGAN_TEST_F1_AUDIT: " + juce::String(lines.size()) + " control(s) written to " + target.getFullPathName());
+        });
+    }
     // 0.9.134: ORGAN_TEST_BAR="<seconds>|<name in the bar>|<act>[|<text>]^..." - a bar slider found by its name
     // ("barLabel") in every window: "open" = the typing field as the single click opens it, "type" = that text typed
     // and Enter, "dblclick" = the default back, "value" = its value logged.
@@ -2810,7 +2859,8 @@ MainComponent::MainComponent()
                 std::function<juce::Slider*(juce::Component*)> find = [&find, &parts](juce::Component* c) -> juce::Slider*
                 {
                     if (auto* slider = dynamic_cast<juce::Slider*>(c); slider != nullptr && slider->isShowing()
-                        && slider->getProperties().getWithDefault("barLabel", {}).toString() == parts[1]) return slider;
+                        && (slider->getProperties().getWithDefault("barLabel", {}).toString() == parts[1]
+                            || (parts[2] == "wheel" && slider->getProperties().getWithDefault("manualChapter", {}).toString() == parts[1]))) return slider;
                     for (int i = 0; i < c->getNumChildComponents(); ++i)
                         if (auto* found = find(c->getChildComponent(i))) return found;
                     return nullptr;
@@ -2819,7 +2869,45 @@ MainComponent::MainComponent()
                 for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && slider == nullptr;)
                     slider = find(juce::Desktop::getInstance().getComponent(w));
                 if (slider == nullptr) { CrashHandler::note("ORGAN_TEST_BAR: no bar \"" + parts[1] + "\""); return; }
-                if (parts[2] == "open") safeThis->barValueTyping.openFor(*slider);
+                if (parts[2] == "wheel")
+                {
+                    // 0.9.136: "wheel|<steps>" - the wheel as the window system gives it (through the peer, so the
+                    // program's own listeners see it): w = one notch at the slider's place WITHOUT a mouse move,
+                    // m = the mouse moved onto the slider, s = a notch beside the slider, p = 0.6 s of rest; a step every 150 ms. Each step is logged
+                    // with the slider's value and the scroll position of the area it lies in.
+                    juce::Component::SafePointer<juce::Slider> target(slider);
+                    auto steps = std::make_shared<juce::String>(parts[3]);
+                    auto next = std::make_shared<std::function<void(int)>>();
+                    *next = [target, steps, next](int index)
+                    {
+                        if (target == nullptr || index >= steps->length()) { juce::MessageManager::callAsync([keep = next] { *keep = nullptr; }); return; }
+                        const auto step = (*steps)[index];
+                        auto* peer = target->getPeer();
+                        if (peer == nullptr) return;
+                        const auto place = peer->globalToLocal(target->getScreenBounds().toFloat().getCentre());
+                        const auto time = juce::Time::currentTimeMillis();
+                        if (step == 'm')
+                        {
+                            peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place + juce::Point<float>(8.0f, 0.0f), juce::ModifierKeys(), 0.0f, 0.0f, time);
+                            peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place, juce::ModifierKeys(), 0.0f, 0.0f, time);
+                        }
+                        else if (step == 'w' || step == 's')   // s = the wheel beside the slider (on its row's label): a scroll
+                        {
+                            juce::MouseWheelDetails wheel;
+                            wheel.deltaX = 0.0f; wheel.deltaY = -0.25f; wheel.isReversed = false; wheel.isSmooth = false; wheel.isInertial = false;
+                            const auto beside = place - juce::Point<float>((float)target->getWidth() * 0.5f + 60.0f, 0.0f);
+                            peer->handleMouseWheel(juce::MouseInputSource::InputSourceType::mouse, step == 's' ? beside : place, time, wheel);
+                        }
+                        if (target == nullptr) return;
+                        auto* viewport = target->findParentComponentOfClass<juce::Viewport>();
+                        CrashHandler::note("ORGAN_TEST_BAR wheel step " + juce::String(index) + " '" + juce::String::charToString(step) + "': value " + target->getTextFromValue(target->getValue())
+                            + ", scrolled to " + juce::String(viewport != nullptr ? viewport->getViewPositionY() : -1)
+                            + (target->getProperties().contains("wheelArmed") ? ", the slider listens" : ", the slider is deaf"));
+                        juce::Timer::callAfterDelay(step == 'p' ? 600 : 150, [next, index] { if (*next) (*next)(index + 1); });
+                    };
+                    (*next)(0);
+                }
+                else if (parts[2] == "open") safeThis->barValueTyping.openFor(*slider);
                 else if (parts[2] == "type") { if (!safeThis->barValueTyping.isOpen()) safeThis->barValueTyping.openFor(*slider); safeThis->barValueTyping.typeForTest(parts[3]); }
                 else if (parts[2] == "dblclick" && slider->isDoubleClickReturnEnabled()) slider->setValue(slider->getDoubleClickReturnValue(), juce::sendNotificationSync);
                 else if (parts[2] == "drag")
@@ -15220,6 +15308,7 @@ void MainComponent::loadVoicingFromFile(const juce::File& file)
                                     if (now.keyDisabled.test((size_t)key) != w.keyDisabled.test((size_t)key)) engine.setTransmissionKeyEnabled(stop, index, key, !w.keyDisabled.test((size_t)key));
                                     if (std::abs(now.keyDb[(size_t)key] - w.keyDb[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyDb(stop, index, key, w.keyDb[(size_t)key]);
                                     if (std::abs(now.keyTone[(size_t)key] - w.keyTone[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyTone(stop, index, key, w.keyTone[(size_t)key]);
+                                    stop->transmissions[(size_t)index].attackKeyMs[(size_t)key] = w.attackKeyMs[(size_t)key];   // 0.9.136 (read at the next stroke)
                                 }
                             }
                         }
@@ -16155,6 +16244,8 @@ void MainComponent::chooseFromList(const juce::String& title, const juce::String
     }), true);
 }
 
+namespace { bool pathIsForbidden(const juce::File& place); }   // 0.9.136: a "!" line of Locations.txt (defined with the lookup below)
+
 void MainComponent::refreshArchiveSearchFolders(const juce::File& configurationFile)
 {
     // The archives that serve paths (0.8.177): the archive lines of ArchiveFolders.txt
@@ -16209,9 +16300,9 @@ void MainComponent::refreshArchiveSearchFolders(const juce::File& configurationF
             for (const auto& line : lines)
             {
                 const auto text = line.trim();
-                if (text.isEmpty() || text.startsWithChar('#') || !text.endsWithIgnoreCase(".rar")) continue;
-                const juce::File entry(text);
-                if (entry.existsAsFile()) archives.push_back(entry);
+                if (text.isEmpty() || text.startsWithChar('#') || text.startsWithChar('!') || !text.endsWithIgnoreCase(".rar")) continue;
+                const juce::File entry(text.unquoted());
+                if (entry.existsAsFile() && !pathIsForbidden(entry)) archives.push_back(entry);
             }
         }
     }
@@ -16236,7 +16327,7 @@ void MainComponent::registerArchive(const juce::File& archiveChosen)
     // configuration any more (the user: "V Configurations to nemá co dělat").
     bool there = false;
     for (const auto& line : rememberedArchives) if (juce::File(line) == archive) { there = true; break; }
-    if (there) return;
+    if (there || pathIsForbidden(archive)) return;
     rememberedArchives.add(archive.getFullPathName());
     writeLocationsFile();
     CrashHandler::note("Archive remembered in " + locationsFile().getFullPathName() + ": " + archive.getFullPathName());
@@ -18389,6 +18480,41 @@ namespace
     // The sample locations of this computer (MainComponent::sampleLocations, 0.8.190),
     // for the candidates below: set whenever the settings are read or a location noted.
     juce::StringArray gSampleLocations;
+    // 0.9.136 (the user: "Potřebuju mít možnost zadávat přednost ... podle toho, jak jsou za sebou v souboru
+    // locations.txt. Ale to by si nesměl na začátek toho souboru dávat pořád ty ... automaticky rozpoznaný
+    // adresáře"): Locations.txt has a MARKER line. The lines above it are the user's own - folders and .rar
+    // archives mixed, looked through from the top, before anything else; the program writes only under the marker
+    // and never touches what stands above it. A line "!<path>" forbids a place: nothing is ever taken from it.
+    struct UserLocation { juce::String path; bool archive = false; };
+    std::vector<UserLocation> gUserLocations;        // the user's lines above the marker, in his order
+    juce::StringArray gForbiddenLocations;           // the "!" lines
+    juce::StringArray gForbiddenHolders;             // forbidden places found holding a tree of the last search (for the notice)
+    std::set<juce::String> gTreeSourcesNoted;        // "taken from ... (your line N)" once per place and load
+    std::mutex gLocationNotesLock;
+    const char* const kLocationsMarker = "# --- found by the program (your lines above come first; move a line up to give it priority) ---";
+    bool isLocationsMarker(const juce::String& line)
+    {
+        const auto text = line.trim();
+        return text.startsWith("# ---") && text.containsIgnoreCase("found by the program");
+    }
+    bool pathIsForbidden(const juce::File& place)
+    {
+        for (const auto& line : gForbiddenLocations)
+        {
+            const juce::File forbidden(line);
+            if (place == forbidden || place.isAChildOf(forbidden)) return true;
+        }
+        return false;
+    }
+    // The candidates of one tree: the first 'userCount' come from the user's own lines (a folder line = a folder on
+    // the disk, a .rar line = what that archive serves), the rest as before 0.9.136.
+    struct TreeCandidates : juce::Array<juce::File>
+    {
+        int userCount = 0;
+        std::vector<char> archiveLine;       // per user candidate: 1 = of a .rar line
+        std::vector<int> userLine;           // per user candidate: the number of his line (1 = the first)
+        juce::Array<juce::File> forbidden;   // candidates left out because a "!" line forbids the place
+    };
     // The folder of the file the user chose for this load (0.8.214): a search place of its own. The "same file
     // already in the LibreOrgans folder" rule loaded the COPY and looked beside it alone - a zip in F:\ beside
     // F:\haupwerk found nothing on a clean computer.
@@ -18471,7 +18597,7 @@ namespace
         return slot.second;
     }
 
-    juce::Array<juce::File> portableFolderCandidates(const juce::var& configuration, const juce::File& configurationFile,
+    juce::Array<juce::File> portableFolderCandidatesPlain(const juce::var& configuration, const juce::File& configurationFile,
         const juce::File& selectedLibraryRoot, const juce::String& relativeIn, const juce::String& absolute)
     {
         const auto relative = slashes(relativeIn);
@@ -18577,6 +18703,68 @@ namespace
         candidates.addArray(bare);   // 0.9.3: the bare "<location>/<relative>" forms last (see above)
         return candidates;
     }
+    // 0.9.136: the user's own lines first. One order for every configuration, portable or not: 1. his lines above
+    // the marker of Locations.txt, top to bottom (an archive line at its place); 2. the configuration's own place
+    // and 3. what the program remembered, 4. the drives - the candidates of before. With the fingerprint of the
+    // tree every place that passes holds the same samples, so the order chooses the storage, never the organ; a
+    // file without fingerprints (saved before 0.9.5) has only names, so his lines count there only in the form
+    // that carries the library root's NAME ("<line>/<root>/<relative>"), never a bare folder name (0.9.3).
+    TreeCandidates portableFolderCandidates(const juce::var& configuration, const juce::File& configurationFile,
+        const juce::File& selectedLibraryRoot, const juce::String& relativeIn, const juce::String& absolute)
+    {
+        TreeCandidates result;
+        const auto relative = slashes(relativeIn);
+        const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+        auto add = [&result](const juce::File& candidate, bool archive, int line)
+        {
+            if (pathIsForbidden(candidate)) { result.forbidden.addIfNotAlreadyThere(candidate); return; }
+            result.add(candidate);
+            result.archiveLine.push_back(archive ? 1 : 0);
+            result.userLine.push_back(line);
+            ++result.userCount;
+        };
+        int lineNumber = 0;
+        for (const auto& entry : gUserLocations)
+        {
+            ++lineNumber;
+            const juce::File folder = entry.archive ? juce::File(entry.path).getParentDirectory() : juce::File(entry.path);
+            if (relative.isEmpty())
+            {
+                // A tree saved with its absolute path alone: its last three, then two, folders under the line.
+                juce::StringArray parts;
+                parts.addTokens(absolute.replaceCharacter('/', '\\'), "\\", "");
+                parts.removeEmptyStrings();
+                for (int keep = 3; keep >= 2; --keep)
+                {
+                    if (keep > parts.size()) continue;
+                    juce::File candidate = folder;
+                    for (int i = parts.size() - keep; i < parts.size(); ++i) candidate = candidate.getChildFile(parts[i]);
+                    add(candidate, entry.archive, lineNumber);
+                }
+                continue;
+            }
+            const bool sure = fingerprintOfTree(configuration, relative).isNotEmpty();
+            if (rootName.isNotEmpty()) add(folder.getChildFile(rootName).getChildFile(relative), entry.archive, lineNumber);
+            if (rootName.isNotEmpty() && folder.getFileName() == rootName) add(folder.getChildFile(relative), entry.archive, lineNumber);
+            if (entry.archive) { if (sure) add(folder.getChildFile(relative), true, lineNumber); continue; }
+            if (!sure) continue;
+            if (rootName.isNotEmpty())
+            {
+                add(folder.getChildFile("HauptwerkSampleSetsAndComponents").getChildFile(rootName).getChildFile(relative), false, lineNumber);
+                for (const auto& child : locationChildren(folder)) add(child.getChildFile(rootName).getChildFile(relative), false, lineNumber);
+                const auto above = folder.getParentDirectory();
+                if (above != folder && above.getFullPathName().isNotEmpty()) add(above.getChildFile(rootName).getChildFile(relative), false, lineNumber);
+            }
+            add(folder.getChildFile(relative), false, lineNumber);
+            for (const auto& child : locationChildren(folder)) add(child.getChildFile(relative), false, lineNumber);
+        }
+        for (const auto& candidate : portableFolderCandidatesPlain(configuration, configurationFile, selectedLibraryRoot, relativeIn, absolute))
+        {
+            if (pathIsForbidden(candidate)) result.forbidden.addIfNotAlreadyThere(candidate);
+            else result.add(candidate);
+        }
+        return result;
+    }
     // A folder whose path exists but for the case of its letters (0.8.147, #57: a
     // configuration made on Windows says "002293/ped", the disk on Linux has
     // "002293/Ped" - NTFS does not care, ext4 and Linux's NTFS driver do): from
@@ -18597,6 +18785,12 @@ namespace
         gIsDiskDirectoryMemo.clear();
         gChildDirectoriesMemo.clear();
         gLookupMemoOn.store(on);
+        if (on)
+        {
+            const std::lock_guard<std::mutex> notes(gLocationNotesLock);
+            gTreeSourcesNoted.clear();
+            gForbiddenHolders.clear();
+        }
     }
     bool lookupIsDirectory(const juce::File& folder)
     {
@@ -18698,6 +18892,64 @@ namespace
                 if (refused != nullptr) refused->addIfNotAlreadyThere(found.getFullPathName() + " (" + why + ")");
             }
         return {};
+    }
+    // 0.9.136: the user's own lines of Locations.txt, in his order - a folder line is a folder on the disk (found
+    // also when only the case of the letters differs), an archive line is what that archive serves.
+    juce::File firstUserLineTree(const TreeCandidates& candidates, const juce::String& fingerprint, juce::StringArray* refused)
+    {
+        for (int i = 0; i < candidates.userCount; ++i)
+        {
+            const auto& candidate = candidates.getReference(i);
+            juce::File found;
+            if (candidates.archiveLine[(size_t)i] != 0) { if (!lookupIsDiskDirectory(candidate) && lookupIsDirectory(candidate)) found = candidate; }
+            else if (lookupIsDiskDirectory(candidate)) found = candidate;
+            else found = resolveCaseInsensitive(candidate);
+            if (found == juce::File()) continue;
+            juce::String why;
+            if (fingerprint.isNotEmpty() && !treeMatchesFingerprint(found, fingerprint, &why))
+            {
+                if (refused != nullptr) refused->addIfNotAlreadyThere(found.getFullPathName() + " (" + why + ")");
+                continue;
+            }
+            const std::lock_guard<std::mutex> lock(gLocationNotesLock);
+            if (gTreeSourcesNoted.insert(found.getFullPathName()).second)
+                CrashHandler::note("Sample folders: taken from " + found.getFullPathName() + " (your line " + juce::String(candidates.userLine[(size_t)i])
+                    + " of Locations.txt" + (candidates.archiveLine[(size_t)i] != 0 ? ", an archive" : "") + ")");
+            return found;
+        }
+        return {};
+    }
+    juce::Array<juce::File> candidatesAfterUserLines(const TreeCandidates& candidates)
+    {
+        juce::Array<juce::File> rest;
+        for (int i = candidates.userCount; i < candidates.size(); ++i) rest.add(candidates.getReference(i));
+        return rest;
+    }
+    // A tree that is nowhere but in a place a "!" line forbids: not taken, and said so (the log, the notice).
+    void noteForbiddenHolders(const TreeCandidates& candidates)
+    {
+        for (const auto& place : candidates.forbidden)
+        {
+            if (!lookupIsDiskDirectory(place)) continue;
+            const std::lock_guard<std::mutex> lock(gLocationNotesLock);
+            if (gForbiddenHolders.contains(place.getFullPathName())) continue;
+            gForbiddenHolders.add(place.getFullPathName());
+            CrashHandler::note("Sample folders: " + place.getFullPathName() + " holds the folder tree, but a \"!\" line of Locations.txt forbids that place - not taken");
+        }
+    }
+    juce::File firstExistingDirectory(const TreeCandidates& candidates)
+    {
+        auto found = firstUserLineTree(candidates, {}, nullptr);
+        if (found == juce::File()) found = firstExistingDirectory(candidatesAfterUserLines(candidates));
+        if (found == juce::File()) noteForbiddenHolders(candidates);
+        return found;
+    }
+    juce::File firstMatchingTree(const TreeCandidates& candidates, const juce::String& fingerprint, juce::StringArray* refused)
+    {
+        auto found = firstUserLineTree(candidates, fingerprint, refused);
+        if (found == juce::File()) found = firstMatchingTree(candidatesAfterUserLines(candidates), fingerprint, refused);
+        if (found == juce::File()) noteForbiddenHolders(candidates);
+        return found;
     }
 }
 
@@ -18847,6 +19099,7 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
     // and the search runs on its thread, saying what it does ("Searching for the sample folders", "Mounting the
     // disk ..."); the organ is applied when it ends - the same lookups again on the message thread, answered by
     // the system's directory cache in no time.
+    if (!searchingSampleFolders) readLocationsFile({});   // 0.9.136: Locations.txt as it stands now (the user's order and his "!" lines rule this search)
     if (searchingSampleFolders) { CrashHandler::note("Load Configuration: " + configurationFile.getFullPathName() + " ignored - the sample folders of another load are being searched"); return; }
     searchingSampleFolders = true;
     setLookupMemo(true);   // the search's answers serve the apply
@@ -30399,7 +30652,13 @@ juce::String MainComponent::missingTreeNotice(int manual, bool detail) const
     // 0.8.224: a remembered sample location that is not there now = most likely a disk not mounted.
     juce::StringArray locationsGone;
     for (const auto& location : sampleLocations) if (location.isNotEmpty() && !juce::File(location).isDirectory()) locationsGone.add(location);
+    juce::StringArray forbiddenHolders;
+    {
+        const std::lock_guard<std::mutex> lock(gLocationNotesLock);
+        forbiddenHolders = gForbiddenHolders;
+    }
     return "These sample folder trees of the division are not on this computer:\n" + paths.joinIntoString("\n")
+        + (forbiddenHolders.isEmpty() ? juce::String() : "\n\nA \"!\" line of Locations.txt forbids a place that holds folders of this organ:\n" + forbiddenHolders.joinIntoString("\n"))
         + (locationsGone.isEmpty() ? juce::String() : "\n\nA remembered sample location is not there now - a disk not mounted?\n" + locationsGone.joinIntoString("\n"))
         + "\n\nClick, choose the tree and then ANY folder of the organ's samples - the tree itself, a folder above it (the numbered "
           "package or the whole library) or a neighbouring tree: the program finds the tree from there, looks for the other missing "
@@ -30567,6 +30826,7 @@ juce::File MainComponent::configurationsDirectory() const
 void MainComponent::noteSampleLocation(const juce::File& folder)
 {
     if (folder == juce::File() || !folder.isDirectory()) return;
+    if (pathIsForbidden(folder)) return;   // 0.9.136: a place a "!" line forbids is never remembered
     for (const auto& known : sampleLocations) if (juce::File(known) == folder) return;
     sampleLocations.add(folder.getFullPathName());
     gSampleLocations = sampleLocations;
@@ -30664,18 +30924,46 @@ void MainComponent::readLocationsFile(const juce::var& settings)
 {
     sampleLocations.clear();
     rememberedArchives.clear();
+    gUserLocations.clear();
+    gForbiddenLocations.clear();
     const auto file = locationsFile();
     bool migrated = false;
     if (file.existsAsFile())
     {
+        // 0.9.136: the lines above the marker are the user's own, in his order (a file without the marker, as
+        // written before, holds the program's lines alone); "!<path>" anywhere forbids a place.
         juce::StringArray lines;
         lines.addLines(file.loadFileAsString());
+        bool hasMarker = false;
+        for (const auto& line : lines) if (isLocationsMarker(line)) { hasMarker = true; break; }
         for (const auto& line : lines)
         {
             const auto text = line.trim();
-            if (text.isEmpty() || text.startsWithChar('#')) continue;
-            if (text.endsWithIgnoreCase(".rar")) rememberedArchives.addIfNotAlreadyThere(text);
+            if (text.startsWithChar('!') && text.substring(1).trim().unquoted().isNotEmpty())
+                gForbiddenLocations.addIfNotAlreadyThere(text.substring(1).trim().unquoted());
+        }
+        bool above = hasMarker;
+        for (const auto& line : lines)
+        {
+            if (isLocationsMarker(line)) { above = false; continue; }
+            const auto text = line.trim().unquoted();
+            if (text.isEmpty() || text.startsWithChar('#') || text.startsWithChar('!')) continue;
+            if (pathIsForbidden(juce::File(text))) continue;
+            const bool archive = text.endsWithIgnoreCase(".rar");
+            if (above) gUserLocations.push_back({ text, archive });
+            if (archive) rememberedArchives.addIfNotAlreadyThere(text);
             else sampleLocations.addIfNotAlreadyThere(text);
+        }
+        juce::StringArray own;
+        for (const auto& entry : gUserLocations) own.add(entry.path);
+        const auto signature = own.joinIntoString("|") + "||" + gForbiddenLocations.joinIntoString("|");
+        static juce::String lastSignature = "?";
+        if (signature != lastSignature)
+        {
+            lastSignature = signature;
+            CrashHandler::note("Locations.txt: " + juce::String((int)gUserLocations.size()) + " line(s) of yours come first"
+                + (own.isEmpty() ? juce::String() : " - " + own.joinIntoString(" > "))
+                + (gForbiddenLocations.isEmpty() ? juce::String() : "; forbidden: " + gForbiddenLocations.joinIntoString("; ")));
         }
     }
     else
@@ -30708,13 +30996,51 @@ void MainComponent::readLocationsFile(const juce::var& settings)
 
 void MainComponent::writeLocationsFile() const
 {
-    juce::StringArray lines;
-    lines.add("# LibreOrgan Sampler - where the samples of this computer live, one path per line (edit freely).");
-    lines.add("# A folder: sample folder trees a configuration names are looked for under it (by the library root's name, by their path).");
-    lines.add("# A .rar file: an archive you chose; sample folders are read from it as it is. The program adds lines as organs are loaded, saved and archives chosen.");
-    for (const auto& location : sampleLocations) lines.add(location);
-    for (const auto& archive : rememberedArchives) lines.add(archive);
-    locationsFile().replaceWithText(lines.joinIntoString("\n") + "\n");
+    // 0.9.136: everything above the marker is the user's and is written back exactly as it stands in the file NOW
+    // (never from memory: he may have edited it since it was read); the program's lines go under the marker.
+    const auto file = locationsFile();
+    const auto before = file.existsAsFile() ? file.loadFileAsString() : juce::String();
+    juce::StringArray lines, old, stray;
+    old.addLines(before);
+    bool hasMarker = false;
+    for (const auto& line : old) if (isLocationsMarker(line)) { hasMarker = true; break; }
+    if (hasMarker)
+    {
+        bool above = true;
+        for (const auto& line : old)
+        {
+            if (isLocationsMarker(line)) { above = false; continue; }
+            if (above) lines.add(line);
+            else if (line.trim().startsWithChar('!')) stray.add(line.trim());   // a "!" line under the marker stays
+        }
+    }
+    else
+    {
+        lines.add("# LibreOrgan Sampler - where the samples of this computer live, one path per line.");
+        lines.add("# YOUR lines go here, above the marker line below: folders and .rar archives, in the order you want them");
+        lines.add("# looked through - the first place that holds an organ's sample folders is the one it plays from.");
+        lines.add("# A line that starts with ! forbids a place: nothing is ever read from it (for example  !D:\\old disk).");
+        lines.add("# The program never changes anything above the marker line.");
+        lines.add("");
+        for (const auto& line : old) if (line.trim().startsWithChar('!')) lines.add(line.trim());
+    }
+    auto isLineOfYours = [&lines](const juce::String& path)
+    {
+        for (const auto& line : lines)
+        {
+            const auto text = line.trim().unquoted();
+            if (text.isEmpty() || text.startsWithChar('#') || text.startsWithChar('!')) continue;
+            if (juce::File(text) == juce::File(path)) return true;
+        }
+        return false;
+    };
+    lines.add(kLocationsMarker);
+    lines.add("# What the program remembers by itself as organs are loaded and saved and archives chosen:");
+    for (const auto& line : stray) lines.add(line);
+    for (const auto& location : sampleLocations) if (!isLineOfYours(location)) lines.add(location);
+    for (const auto& archive : rememberedArchives) if (!isLineOfYours(archive)) lines.add(archive);
+    const auto text = lines.joinIntoString("\n") + "\n";
+    if (text != before) file.replaceWithText(text);
 }
 
 juce::File MainComponent::copyCacheDirectory() const
@@ -30902,6 +31228,7 @@ void MainComponent::addVoicingToSlot(MemorySlot& slot)
                     tv->setProperty("db", t.db);
                     tv->setProperty("keyDb", sparseKeys(t.keyDb));
                     tv->setProperty("keyTone", sparseKeys(t.keyTone));
+                    tv->setProperty("keyAttackMs", sparseKeys(t.attackKeyMs));   // 0.9.136
                     tEntry->setProperty("voicing", juce::var(tv.get()));
                 }
     }
@@ -30958,6 +31285,7 @@ void MainComponent::applySlotVoicing(const MemorySlot& slot)
                     if (std::abs(stop->transmissions[(size_t)index].keyDb[(size_t)key] - keyDb[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyDb(stop, index, key, keyDb[(size_t)key]);
                     if (std::abs(stop->transmissions[(size_t)index].keyTone[(size_t)key] - keyTone[(size_t)key]) > 1.0e-4f) engine.setTransmissionKeyTone(stop, index, key, keyTone[(size_t)key]);
                 }
+                if (tv.hasProperty("keyAttackMs")) stop->transmissions[(size_t)index].attackKeyMs = keysOf(tv.getProperty("keyAttackMs", juce::var()));   // 0.9.136
             }
         }
     }
@@ -33097,6 +33425,7 @@ void MainComponent::globalResetControls(const GlobalResetOptions& o)
             s->attackMs = 75.0f;
             s->attackDelayMs = 0.0f;   // 0.9.77
             s->attackKeyMs.fill(0.0f); s->attackRandomize = true;   // 0.9.79 (#228)
+            for (auto& t : s->transmissions) t.attackKeyMs.fill(0.0f);   // 0.9.136
             s->attackFadeoutMs = 75.0f;
             s->voicingExpanded = false;
             s->rankEnabled = true;
@@ -35824,10 +36153,12 @@ void MainComponent::showConfigurationEditor()
             aboutLabel.setJustificationType(juce::Justification::centredLeft);
             addAndMakeVisible(aboutLabel);
             licences.setButtonText("About & licences...");
+            licences.getProperties().set("manualChapter", "9.4 Free software, licences, platforms");   // 0.9.136 (F1 audit)
             licences.setTooltip("The licences of LibreOrgan Sampler and of the software it contains, in full.");
             licences.onClick = [this] { this->owner.showAboutDialog(); };
             addAndMakeVisible(licences);
             report.setButtonText("Report a problem...");
+            report.getProperties().set("manualChapter", "9.3 Report a problem");   // 0.9.136 (F1 audit)
             report.setTooltip("Packs the activity log, the crash reports, the settings and pictures of the program's windows into ONE file, logs.zip "
                 "(in a report folder opened for you), and opens the GitHub bug report with the fields filled in - you drag the zip into it.");
             report.onClick = [this] { this->owner.showProblemReportDialog(); };
@@ -36014,6 +36345,7 @@ void MainComponent::showConfigurationEditor()
             {
                 auto help = std::make_unique<juce::TextButton>("?");
                 help->setTooltip("Opens the user manual at \"" + helpSection + "\".");
+                help->getProperties().set("manualChapter", helpSection);   // 0.9.136: F1 over the "?" = its click (it led to the section's chapter)
                 MainComponent& o = owner;
                 const juce::String fallback = currentSection;
                 help->onClick = [&o, helpSection, fallback] { o.showManualSection(helpSection, fallback); };
@@ -37077,17 +37409,18 @@ void MainComponent::showConfigurationEditor()
                    "IR you choose; add one by hand when samples or IRs live elsewhere. The list is the text file Locations.txt beside the settings (one path per line, editable).",
                 "Where configurations and samples live");
             addButton("Sample and IR locations: the file", "Show", [&o] { o.writeLocationsFile(); o.locationsFile().startAsProcess(); },
-                "Opens Locations.txt in your text editor - the sample locations and the chosen archives, one path per line; the program reads it at the next load.",
+                "Opens Locations.txt in your text editor. Your own lines go above the marker line: folders and .rar archives, looked through from the top before anything else - the first place that holds an organ is the one it plays from. A line starting with ! forbids a place. The program writes only under the marker and reads the file at the next load.",
                 "Where configurations and samples live");
             addButton("Sample and IR locations: forget the folders", "Forget", [&o]
                 {
                     o.sampleLocations.clear();
-                    gSampleLocations.clear();
+                    for (const auto& entry : gUserLocations) if (!entry.archive) o.sampleLocations.add(entry.path);   // 0.9.136: your own lines stay
+                    gSampleLocations = o.sampleLocations;
                     o.writeLocationsFile();
                     CrashHandler::note("Sample locations forgotten (the archives chosen stay in Locations.txt)");
                     o.saveSettings();
                     o.refreshConfigurationEditor();
-                }, "Empties the list of sample folders (the archives you chose stay); the program fills it again as organs are saved, loaded and archives chosen.",
+                }, "Empties the list of sample folders the program remembered (your own lines above the marker of Locations.txt and the archives stay); the program fills it again as organs are saved, loaded and archives chosen.",
                 "Where configurations and samples live", !o.sampleLocations.isEmpty());
             {
                 juce::StringArray names;

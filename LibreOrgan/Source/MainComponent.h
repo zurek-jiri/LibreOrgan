@@ -169,6 +169,7 @@ private:
     HintSheen hintSheen;   // the golden sheen over Stop List and Load Configuration until the first click (UIControls.h)
     GlowLayer glowLayer;   // 0.8.206: a pressed button and a dragged stop glow for a moment (setting "consoleGlow")
     UIScale::BarValueTyping barValueTyping;   // 0.9.134: a click on a bar slider (any window) opens a field for its value
+    UIScale::WheelGate wheelGate;             // 0.9.136: in a scrolling area the wheel scrolls; a slider takes it only when the mouse moved onto it and the page stands
     bool consoleGlow = false;   // 0.8.213: off by default (the user)
     // 0.9.135: the top bar and the sliders' row hidden behind a tab at the top edge ("Hide the top rows"), and the
     // wish to have both in ONE row when they fit ("Top buttons and sliders in one row when they fit"). Machine keys.

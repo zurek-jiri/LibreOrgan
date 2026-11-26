@@ -12,6 +12,47 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.136] - 2026-11-26
+
+### Added
+- **You decide which storage an organ plays from.** `Locations.txt` has a
+  marker line: your own lines above it - folders and `.rar` archives, in your
+  order - are looked through first, before the configuration's own folder, the
+  places the program remembered and the drives. A line starting with `!`
+  forbids a place. The program writes only under the marker and never changes
+  your lines (it rewrote the whole file before: folders first, archives after,
+  comments gone). The log says which line a tree was taken from; a tree found
+  only in a forbidden place is not taken and the notice says so.
+- **Attack per key for transmissions**: a transmission's voicing has the row
+  too; its value is added to the parent stop's value of the pipe the key
+  sounds (the parent's value was taken by the key, not by the pipe, before).
+  Saved with the configuration, the voicing file and the combinations that
+  hold the voicing.
+
+### Changed
+- **The wheel in anything that scrolls** (Configuration Editor, scrolled
+  dialogs, the stops with open voicings): the wheel scrolls, also when a slider
+  comes under the mouse. A slider takes the wheel only when the mouse itself
+  moved onto it and the page has stood for 0.4 s; it shows a thin orange frame
+  then. The workspace scrolls over an open voicing too. A sounding key's
+  per-key slider is orange inside only (the frame is the wheel's now).
+- **Tooltips** stand under the control they speak of (above it when there is no
+  room), never over it.
+- Audio routing in a narrow window: with the "?" in place of the help text the
+  header's block and the routing buttons stand right beside it, in the visible
+  width (they lay out of sight at the right).
+
+### Fixed
+- **Releases and velocity layers out of tune with their attack (#266,
+  Schorndorf's Siebenquart)**: a sample whose own recorded pitch differs from
+  its pipe's attack is now always tuned to that attack. Since 0.9.134 that
+  happened only with Equal at 440 Hz, or when the sample lay further off the
+  rank than "Retune pipes off by more than" (50 cents by default) - releases
+  32-39 cents from their attacks were left as they were.
+- F1 over the "?" of a Configuration Editor row opens the row's own chapter
+  (it opened the section's); the Editor's Report a problem and licences buttons
+  have their chapters.
+
 ## [0.9.135] - 2026-11-25
 
 0.9.134 was built for every system but never released (its release step failed); this version carries it whole.
