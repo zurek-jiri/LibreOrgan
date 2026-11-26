@@ -5435,6 +5435,13 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   removed the SATA copy of the archives by then - two test runs "failed" for that reason alone: LOOK WHETHER THE
   TEST'S FILES STILL EXIST before hunting a bug), a hard disk, a network folder, few cores, Windows (DiskInfo there
   is written blind). Archives in a remembered FOLDER (not .rar lines) are still found only for trees that are missing.
+  0.9.141 RELEASED on his word ("vydej"): commit f4f6098, tag v0.9.141, CI green on all five (Windows COMPILED
+  DiskInfo.h - never run there), five archives, Intel mac "late symbols: 0"; v0.9.140 was cancelled by it (never
+  released). The local Linux build stands in ~/Desktop/LibreOrgan and ~/Downloads/LibreOrgan. WINDOWS CAUGHT UP the same
+  day: reset --mixed origin/main, Projucer resave ("Finished saving", versionString 0.9.141), the .ico copied, the CI
+  exe (system DLLs only) deployed as C:\LibreOrgan\LibreOrgan_0.9.141.exe, the shortcut retargeted; DiskInfo RUN on
+  Windows once (Rural on F: = Crucial T700: "taken from F:\Suchy_rejstrik\Kobrle\Samply (NVMe, about 1360 MB/s)" -
+  right; D: SATA SSD and E: hard disk not looked at). Source/DiskInfo.h needs no jucer entry (headers are not listed).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
