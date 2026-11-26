@@ -5420,6 +5420,21 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   after every disk folder (0.9.125) although the measurement says an archive on a SATA SSD (102 s) beats unpacked
   files on the same disk (163 s) - a full "fastest source" order (NVMe unpacked 51 > NVMe archive 80 > SATA archive
   102 > SATA unpacked 163) is PROPOSED, not coded.
+  0.9.139 RELEASED (CI green, five archives, Intel mac "late symbols: 0"); 0.9.140 pushed and tagged on his word.
+  0.9.141 (the same afternoon, LOCAL COMMIT - the push waits for his word; the user: "mělo by to brát v potaz i rary,
+  samozřejmě"): THE FASTEST SOURCE, ARCHIVES INCLUDED. `sourceSpeed(found, archive)` (MB of sound a second, from the
+  measurement of the day): unpacked = min(85 x physical cores, the disk: 3000 NVMe / 410 SSD / 150 hard disk / 80
+  network), archive = min(54 x cores, the disk x 1.6) - on 16 cores NVMe unpacked 1360 > NVMe archive 864 > SSD
+  archive 656 > SSD unpacked 410 > HDD archive 240 > HDD unpacked 150; on few cores unpacked wins on an SSD too.
+  `fastestMatchingTree` (the non-user candidates of a tree WITH a fingerprint, called from the TreeCandidates
+  overload of firstMatchingTree): the first disk folder that fits, then - only when an archive COULD be faster than
+  it - the first archive that fits; the faster is taken ("Sample folders: the archive is the faster source (about N
+  MB/s) than the unpacked folder ..."). `noteTreeSource` names the kind of disk and the speed counted on; the
+  existence overload no longer logs. The user's own lines keep his order (untouched). TESTED: NVMe unpacked beats
+  NVMe archives; NVMe archives beat SATA unpacked. NOT TESTED: archive against unpacked on the SAME SATA disk (he had
+  removed the SATA copy of the archives by then - two test runs "failed" for that reason alone: LOOK WHETHER THE
+  TEST'S FILES STILL EXIST before hunting a bug), a hard disk, a network folder, few cores, Windows (DiskInfo there
+  is written blind). Archives in a remembered FOLDER (not .rar lines) are still found only for trees that are missing.
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

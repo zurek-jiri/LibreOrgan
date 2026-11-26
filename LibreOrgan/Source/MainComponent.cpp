@@ -18979,27 +18979,83 @@ namespace
             CrashHandler::note("Sample folders: " + place.getFullPathName() + " holds the folder tree, but a \"!\" line of Locations.txt forbids that place - not taken");
         }
     }
+    // 0.9.141 (the user: "mělo by to brát v potaz i rary, samozřejmě"): how fast a source delivers, in MB of sound
+    // a second - by the measurement of 26 Nov 2026 (Frankfurt, 66.5 GB of WAV, cold, a 16-core Ryzen): unpacked
+    // folders 1360 MB/s from NVMe (the processor's limit: 85 per core), 410 from a SATA SSD (the disk's limit);
+    // RAR archives 860 from NVMe (the decoder's limit: 54 per core), 660 from the SATA SSD (the disk's 410 MB/s of
+    // packed bytes x 1.6). A hard disk and a network folder are put at 150 and 80 MB/s (not measured).
+    // So on 16 cores: NVMe unpacked > NVMe archive > SSD archive > SSD unpacked > HDD archive > HDD unpacked;
+    // on a few cores the decoder is the limit and unpacked folders win on an SSD too.
+    double sourceSpeed(const juce::File& found, bool archive)
+    {
+        static const double diskSpeed[4] = { 80.0, 150.0, 410.0, 3000.0 };   // network folder, hard disk, SSD, NVMe: what the disk itself delivers
+        const double cores = (double)juce::jmax(1, juce::SystemStats::getNumPhysicalCpus());
+        const double disk = diskSpeed[juce::jlimit(0, 3, DiskInfo::speedClassOf(archive ? SampleFiles::archiveOf(found) : found))];
+        return archive ? juce::jmin(54.0 * cores, disk * 1.6) : juce::jmin(85.0 * cores, disk);
+    }
     // (once per place and load: where a tree was taken from and what kind of disk that is)
     void noteTreeSource(const juce::File& found)
     {
         if (found == juce::File()) return;
+        const bool archive = SampleFiles::inArchive(found);
         const std::lock_guard<std::mutex> lock(gLocationNotesLock);
         if (gTreeSourcesNoted.insert(found.getFullPathName()).second)
             CrashHandler::note("Sample folders: taken from " + found.getFullPathName() + " ("
-                + (SampleFiles::inArchive(found) ? juce::String("an archive on ") : juce::String()) + DiskInfo::className(DiskInfo::speedClassOf(found)) + ")");
+                + (archive ? juce::String("an archive on ") : juce::String()) + DiskInfo::className(DiskInfo::speedClassOf(archive ? SampleFiles::archiveOf(found) : found))
+                + ", about " + juce::String(juce::roundToInt(sourceSpeed(found, archive))) + " MB/s)");
+    }
+    // The places that are not the user's own lines, for a tree WITH a fingerprint: the folder on the disk and the
+    // archive that hold it are both found, and the FASTER SOURCE is taken. The archives are looked into only when
+    // one could beat the folder found (never for an organ lying unpacked on an NVMe disk).
+    juce::File fastestMatchingTree(const juce::Array<juce::File>& candidates, const juce::String& fingerprint, juce::StringArray* refused)
+    {
+        auto fits = [&](const juce::File& found)
+        {
+            juce::String why;
+            if (treeMatchesFingerprint(found, fingerprint, &why)) return true;
+            if (refused != nullptr) refused->addIfNotAlreadyThere(found.getFullPathName() + " (" + why + ")");
+            return false;
+        };
+        juce::File onDisk, inArchive;
+        for (const auto& candidate : candidates)
+            if (lookupIsDiskDirectory(candidate) && fits(candidate)) { onDisk = candidate; break; }
+        const double diskSpeed = onDisk != juce::File() ? sourceSpeed(onDisk, false) : 0.0;
+        const double bestArchive = juce::jmin(54.0 * (double)juce::jmax(1, juce::SystemStats::getNumPhysicalCpus()), 3000.0 * 1.6);
+        if (onDisk == juce::File() || bestArchive > diskSpeed)
+            for (const auto& candidate : candidates)
+                if (!lookupIsDiskDirectory(candidate) && lookupIsDirectory(candidate) && fits(candidate))
+                {
+                    if (onDisk == juce::File() || sourceSpeed(candidate, true) > diskSpeed) { inArchive = candidate; break; }
+                }
+        if (inArchive != juce::File())
+        {
+            if (onDisk != juce::File())
+            {
+                const std::lock_guard<std::mutex> lock(gLocationNotesLock);
+                if (gTreeSourcesNoted.insert("faster:" + inArchive.getFullPathName()).second)
+                    CrashHandler::note("Sample folders: the archive is the faster source (about " + juce::String(juce::roundToInt(sourceSpeed(inArchive, true)))
+                        + " MB/s) than the unpacked folder " + onDisk.getFullPathName() + " (about " + juce::String(juce::roundToInt(diskSpeed)) + " MB/s)");
+            }
+            return inArchive;
+        }
+        if (onDisk != juce::File()) return onDisk;
+        for (const auto& candidate : candidates)
+            if (const auto found = resolveCaseInsensitive(candidate); found != juce::File() && fits(found)) return found;
+        return {};
     }
     juce::File firstExistingDirectory(const TreeCandidates& candidates)
     {
         auto found = firstUserLineTree(candidates, {}, nullptr);
         if (found == juce::File()) found = firstExistingDirectory(candidatesAfterUserLines(candidates));
         if (found == juce::File()) noteForbiddenHolders(candidates);
-        noteTreeSource(found);
-        return found;
+        return found;   // (a look whether the tree is anywhere - the place it is TAKEN from is named by firstMatchingTree)
     }
     juce::File firstMatchingTree(const TreeCandidates& candidates, const juce::String& fingerprint, juce::StringArray* refused)
     {
         auto found = firstUserLineTree(candidates, fingerprint, refused);
-        if (found == juce::File()) found = firstMatchingTree(candidatesAfterUserLines(candidates), fingerprint, refused);
+        if (found == juce::File())
+            found = fingerprint.isEmpty() ? firstMatchingTree(candidatesAfterUserLines(candidates), fingerprint, refused)
+                                          : fastestMatchingTree(candidatesAfterUserLines(candidates), fingerprint, refused);   // 0.9.141
         if (found == juce::File()) noteForbiddenHolders(candidates);
         noteTreeSource(found);
         return found;

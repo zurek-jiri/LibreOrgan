@@ -2567,10 +2567,12 @@ before) is opened, so a folder of hundreds of archives costs nothing. A line
 that starts with `!` forbids a place: nothing is ever read from
 it. Then come the configuration's own folder, the lines the program remembered
 by itself (it writes only **under** the marker and never changes yours) and
-the drives - among these the fastest disk first (NVMe, another SSD, a hard
-disk, a network folder), whatever their order in the file; your own lines keep
-your order. The log names the place a tree was taken from and its kind of
-disk.
+the drives - among these the fastest source wins, whatever their order in the
+file: unpacked folders on NVMe, then archives on NVMe, then archives on
+another SSD, then unpacked folders there, a hard disk, a network folder (on a
+computer with few cores unpacked folders come before archives - see
+[10.12](#1012-rar-archives-how-they-are-read)); your own lines keep your order. The log names
+the place a tree was taken from, its kind of disk and the speed counted on.
 
 A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up
 to four ancestors for the longest tail of the missing path that exists under
