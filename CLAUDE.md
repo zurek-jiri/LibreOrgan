@@ -5400,6 +5400,26 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   THE WHOLE TABLE (Frankfurt, 66.5 GB of WAV, cold, 16 / 32 threads): NVMe unpacked 63 / 51 s, NVMe archives 98 / 80 s,
   SATA SSD unpacked 168 / 163 s, SATA SSD archives 118 / 102 s. pkill -f "<script name>" from a tool command kills the
   command ITSELF (its own line holds the name): write the pattern as "[m]easure...".
+  0.9.139 PUSHED AND TAGGED on his word ("samozřejmě vydej, je to absolutně nutné"), commit 9e39b01.
+  0.9.140 (the same afternoon, LOCAL COMMIT, NOT PUSHED - ask): the user: "mění si program pod čarou v locations sám
+  pořadí? Nesmí! Dává si /run/hauptwerk na první místo ... To je pomalý SSD disk!" and "Měl by zvážit typ disku a podle
+  toho si to seřadit!!! Musí vyhrávat rychlé disky!". FACTS: (a) the FILE is not reordered since 0.9.137 (0.9.136 did
+  put the "!" lines first in its own part); (b) the SEARCH had a priority inversion: `portableFolderCandidatesPlain`
+  tried every root-NAMED form of every location before any BARE form (0.9.3) - his fast folder holds the packages
+  directly (~/Documents/SampleSety_Rozbalene/002704 = bare), the slow disk under OrganInstallationPackages (named), so
+  the slow disk won whatever the order. NOW, for a tree WITH a fingerprint (`linesRule`): each location's forms
+  together (named, then bare), and the candidates that are not the user's own lines - the configuration's own place +
+  the program's lines - are stable-sorted FASTEST DISK FIRST: `Source/DiskInfo.h` (header-only) `speedClassOf(path)`
+  3 NVMe / 2 another SSD or unknown / 1 hard disk / 0 network folder (Linux: st_dev -> /sys/dev/block/<maj:min>,
+  the disk's name "nvme*", queue/rotational, statfs type for NFS/CIFS; Windows: GetDriveType + IOCTL_STORAGE_QUERY_
+  PROPERTY BusTypeNvme / StorageDeviceSeekPenaltyProperty on \\.\X: - WRITTEN BLIND, compiled by CI only, never run;
+  macOS: always 2). A root the user pointed to by hand stays first; the user's lines above the marker keep HIS order
+  (tested: the slow disk as his line 1 is taken). A file without fingerprints keeps the 0.9.3 order. `noteTreeSource`
+  logs every tree once: "Sample folders: taken from X (NVMe)". Tested: program lines "Hauptwerk disk, then
+  SampleSety_Rozbalene" -> all 12 trees from the NVMe folder. NOT done: archives of the program's lines still come
+  after every disk folder (0.9.125) although the measurement says an archive on a SATA SSD (102 s) beats unpacked
+  files on the same disk (163 s) - a full "fastest source" order (NVMe unpacked 51 > NVMe archive 80 > SATA archive
+  102 > SATA unpacked 163) is PROPOSED, not coded.
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

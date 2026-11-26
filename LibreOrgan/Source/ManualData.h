@@ -2595,7 +2595,10 @@ static const char* const kManualText_part12 =
     "that starts with `!` forbids a place: nothing is ever read from\n"
     "it. Then come the configuration's own folder, the lines the program remembered\n"
     "by itself (it writes only **under** the marker and never changes yours) and\n"
-    "the drives. The log names the line a tree was taken from.\n"
+    "the drives - among these the fastest disk first (NVMe, another SSD, a hard\n"
+    "disk, a network folder), whatever their order in the file; your own lines keep\n"
+    "your order. The log names the place a tree was taken from and its kind of\n"
+    "disk.\n"
     "\n"
     "A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up\n"
     "to four ancestors for the longest tail of the missing path that exists under\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "What the definition gives: the keyboards in their order (the pedal first)\n"
     "with their key ranges - a division of ours is a keyboard, and every Hauptwerk\n"
     "division a keyboard's keys reach through the definition's switches joins it\n"
+    ;
+static const char* const kManualText_part13 =
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
     "without a coupler is placed stop by stop where the name says); the stops\n"
-    ;
-static const char* const kManualText_part13 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
@@ -2825,11 +2828,11 @@ static const char* const kManualText_part13 =
     "about 7 % of a 512-sample period for it.\n"
     "\n"
     "## 10.11 The render pool and the threads\n"
+    ;
+static const char* const kManualText_part14 =
     "\n"
     "The routes of one device are one stream: the driver's callback calls every\n"
     "route in turn, each route's voices become one job of the render pool, the\n"
-    ;
-static const char* const kManualText_part14 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"

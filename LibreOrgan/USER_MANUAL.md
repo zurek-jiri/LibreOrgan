@@ -2567,7 +2567,10 @@ before) is opened, so a folder of hundreds of archives costs nothing. A line
 that starts with `!` forbids a place: nothing is ever read from
 it. Then come the configuration's own folder, the lines the program remembered
 by itself (it writes only **under** the marker and never changes yours) and
-the drives. The log names the line a tree was taken from.
+the drives - among these the fastest disk first (NVMe, another SSD, a hard
+disk, a network folder), whatever their order in the file; your own lines keep
+your order. The log names the place a tree was taken from and its kind of
+disk.
 
 A clicked folder ([Sample folders not found](#sample-folders-not-found)) is searched from itself and up
 to four ancestors for the longest tail of the missing path that exists under

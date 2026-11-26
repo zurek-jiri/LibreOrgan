@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.140] - 2026-11-26
+
+### Changed
+- **The fastest disk wins** among the places the program finds by itself (the
+  configuration's own place and the folders it remembered): NVMe first, then
+  another SSD, a hard disk, a network folder - whatever their order in
+  Locations.txt. Your own lines above the marker keep your order. The log
+  names the place every folder tree was taken from and its kind of disk.
+
+### Fixed
+- A remembered folder that holds the packages directly (`<folder>/002704`)
+  lost to any folder holding them under the library root's name, even when
+  it stood first: for an organ with fingerprints the forms of one folder are
+  now tried together.
+
 ## [0.9.139] - 2026-11-26
 
 ### Changed

@@ -60,6 +60,7 @@ namespace
 #include "CrashHandler.h"
 #include "MemoryInfo.h"
 #include "CpuInfo.h"
+#include "DiskInfo.h"            // the kind of disk a path lies on: the fastest place first (0.9.140)
 #include "LinuxWindowPlacement.h"
 #include "TemperamentsData.h"   // temperaments.csv embedded by the pre-build step
 #include "LicencesData.h"       // the licence texts embedded (GenerateLicencesData.ps1)
@@ -18658,12 +18659,21 @@ namespace
         // every form that carries the library root's NAME ("<where>/temp/Principal8")
         // over all locations and the drives comes BEFORE any bare "<where>/Principal8"
         // form - a folder name alone is the weakest evidence there is.
+        // 0.9.140 (the user: "Dává si /run/hauptwerk na první místo ... To je pomalý SSD disk!" - his fast folder
+        // stood FIRST in Locations.txt, but it holds the packages directly ("<folder>/002704"), a bare form, and the
+        // slow disk has them under the root's name: every root-named form of EVERY location came before any bare
+        // form, so the last line won). With the fingerprint of the tree a bare form is as safe as a named one, so
+        // there THE ORDER OF THE LINES RULES: each location's forms, named then bare, before the next location's.
+        // Only a file without fingerprints keeps the 0.9.3 order (every named form first, the bare ones last).
+        const bool linesRule = fingerprintOfTree(configuration, relative).isNotEmpty();
+        const int ownCount = candidates.size();   // (the configuration's own place stands before the remembered ones)
         juce::Array<juce::File> named, bare;
         for (const auto& location : gSampleLocations)
         {
             const juce::File folder(location);
-            if (rootName.isNotEmpty()) named.add(folder.getChildFile(rootName).getChildFile(relative));
-            bare.add(folder.getChildFile(relative));
+            juce::Array<juce::File> namedHere, bareHere;
+            if (rootName.isNotEmpty()) namedHere.add(folder.getChildFile(rootName).getChildFile(relative));
+            bareHere.add(folder.getChildFile(relative));
             // The neighbourhood of a location (0.8.202, the user: "jestli tam nekde v
             // okoli nelezi onen cislovany adresar"): the folder above it and its own
             // subfolders, one level each - a place remembered one level too deep (the
@@ -18672,14 +18682,30 @@ namespace
             const auto above = folder.getParentDirectory();
             if (above != folder && above.getFullPathName().isNotEmpty())
             {
-                if (rootName.isNotEmpty()) named.add(above.getChildFile(rootName).getChildFile(relative));
-                bare.add(above.getChildFile(relative));
+                if (rootName.isNotEmpty()) namedHere.add(above.getChildFile(rootName).getChildFile(relative));
+                bareHere.add(above.getChildFile(relative));
             }
             for (const auto& child : locationChildren(folder))
             {
-                if (rootName.isNotEmpty()) named.add(child.getChildFile(rootName).getChildFile(relative));
-                bare.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
+                if (rootName.isNotEmpty()) namedHere.add(child.getChildFile(rootName).getChildFile(relative));
+                bareHere.add(child.getChildFile(relative));   // 0.8.206: a root named otherwise in the file ("haupwerk" in the user's old Stralsund)
             }
+            if (linesRule) { candidates.addArray(namedHere); candidates.addArray(bareHere); }
+            else { named.addArray(namedHere); bare.addArray(bareHere); }
+        }
+        // 0.9.140 (the user: "Měl by zvážit typ disku ... Musí vyhrávat rychlé disky!"): among the places that are
+        // NOT the user's own lines - the configuration's own place and what the program remembered - the FASTEST
+        // DISK is tried first: NVMe, then another SSD, then a hard disk, then a network folder (DiskInfo.h); within
+        // one kind the order stays. Only for a tree with a fingerprint (every place that passes holds the same
+        // samples, so nothing but the speed is chosen). A root the user pointed to by hand stays first.
+        if (linesRule)
+        {
+            const int fixed = selectedLibraryRoot != juce::File() ? ownCount : 0;
+            std::vector<std::pair<int, juce::File>> pool;
+            for (int i = fixed; i < candidates.size(); ++i) pool.push_back({ DiskInfo::speedClassOf(candidates.getReference(i)), candidates.getReference(i) });
+            std::stable_sort(pool.begin(), pool.end(), [](const std::pair<int, juce::File>& a, const std::pair<int, juce::File>& b) { return a.first > b.first; });
+            candidates.removeRange(fixed, candidates.size() - fixed);
+            for (const auto& entry : pool) candidates.add(entry.second);
         }
         candidates.addArray(named);
         // Last: the library root by its name at the top of every fixed drive (0.8.214 - a
@@ -18953,11 +18979,21 @@ namespace
             CrashHandler::note("Sample folders: " + place.getFullPathName() + " holds the folder tree, but a \"!\" line of Locations.txt forbids that place - not taken");
         }
     }
+    // (once per place and load: where a tree was taken from and what kind of disk that is)
+    void noteTreeSource(const juce::File& found)
+    {
+        if (found == juce::File()) return;
+        const std::lock_guard<std::mutex> lock(gLocationNotesLock);
+        if (gTreeSourcesNoted.insert(found.getFullPathName()).second)
+            CrashHandler::note("Sample folders: taken from " + found.getFullPathName() + " ("
+                + (SampleFiles::inArchive(found) ? juce::String("an archive on ") : juce::String()) + DiskInfo::className(DiskInfo::speedClassOf(found)) + ")");
+    }
     juce::File firstExistingDirectory(const TreeCandidates& candidates)
     {
         auto found = firstUserLineTree(candidates, {}, nullptr);
         if (found == juce::File()) found = firstExistingDirectory(candidatesAfterUserLines(candidates));
         if (found == juce::File()) noteForbiddenHolders(candidates);
+        noteTreeSource(found);
         return found;
     }
     juce::File firstMatchingTree(const TreeCandidates& candidates, const juce::String& fingerprint, juce::StringArray* refused)
@@ -18965,6 +19001,7 @@ namespace
         auto found = firstUserLineTree(candidates, fingerprint, refused);
         if (found == juce::File()) found = firstMatchingTree(candidatesAfterUserLines(candidates), fingerprint, refused);
         if (found == juce::File()) noteForbiddenHolders(candidates);
+        noteTreeSource(found);
         return found;
     }
 }
