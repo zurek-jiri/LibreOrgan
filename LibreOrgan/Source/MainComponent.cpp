@@ -18747,6 +18747,8 @@ namespace
             if (rootName.isNotEmpty()) add(folder.getChildFile(rootName).getChildFile(relative), entry.archive, lineNumber);
             if (rootName.isNotEmpty() && folder.getFileName() == rootName) add(folder.getChildFile(relative), entry.archive, lineNumber);
             if (entry.archive) { if (sure) add(folder.getChildFile(relative), true, lineNumber); continue; }
+            // 0.9.138: a folder line also stands for the archives lying in it (the ones the search took by their name)
+            if (rootName.isNotEmpty()) add(folder.getChildFile(rootName).getChildFile(relative), true, lineNumber);
             if (!sure) continue;
             if (rootName.isNotEmpty())
             {
@@ -18756,6 +18758,7 @@ namespace
                 if (above != folder && above.getFullPathName().isNotEmpty()) add(above.getChildFile(rootName).getChildFile(relative), false, lineNumber);
             }
             add(folder.getChildFile(relative), false, lineNumber);
+            add(folder.getChildFile(relative), true, lineNumber);
             for (const auto& child : locationChildren(folder)) add(child.getChildFile(relative), false, lineNumber);
         }
         for (const auto& candidate : portableFolderCandidatesPlain(configuration, configurationFile, selectedLibraryRoot, relativeIn, absolute))
@@ -18901,9 +18904,22 @@ namespace
         {
             const auto& candidate = candidates.getReference(i);
             juce::File found;
-            if (candidates.archiveLine[(size_t)i] != 0) { if (!lookupIsDiskDirectory(candidate) && lookupIsDirectory(candidate)) found = candidate; }
+            if (candidates.archiveLine[(size_t)i] != 0)
+            {
+                // (an archive of THIS line's folder: the path lies under the archive's own folder - an archive elsewhere
+                // that happens to hold the same path by its tail is not this line's)
+                if (!lookupIsDiskDirectory(candidate) && lookupIsDirectory(candidate))
+                {
+                    const auto archive = SampleFiles::archiveOf(candidate);
+                    if (archive != juce::File() && candidate.isAChildOf(archive.getParentDirectory())) found = candidate;
+                }
+            }
             else if (lookupIsDiskDirectory(candidate)) found = candidate;
-            else found = resolveCaseInsensitive(candidate);
+            else
+            {
+                found = resolveCaseInsensitive(candidate);
+                if (found != juce::File() && !lookupIsDiskDirectory(found)) found = juce::File();   // (a folder ON THE DISK: an archive has its own candidates)
+            }
             if (found == juce::File()) continue;
             juce::String why;
             if (fingerprint.isNotEmpty() && !treeMatchesFingerprint(found, fingerprint, &why))
@@ -19203,6 +19219,84 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
             };
             std::vector<size_t> all;
             for (size_t i = 0; i < trees.size(); ++i) all.push_back(i);
+            // 0.9.44 (#183, the user: "nesmí načítat dvakrát"): archives are looked at HERE, before the load, never after it.
+            // 0.9.138 (the user: a folder of Locations.txt should make the archives in it found - "ale když tam bude 356
+            // archivů, tak bude trvat hodinu"): never every archive of a folder - only the NAMES are listed; an archive
+            // is read when its name is like the organ's (a word of four letters or more of the configuration's or the
+            // organ's name, or four leading letters shared with an archive already chosen there) or when its index was
+            // written before (that costs nothing), 24 of each at most. Those that hold a tree looked for are taken
+            // (they serve from then on and are remembered in Locations.txt after the search).
+            auto takeArchivesIn = [&](const std::vector<juce::File>& folders, const std::vector<size_t>& forTrees, const juce::String& where) -> bool
+            {
+                if (folders.empty() || forTrees.empty()) return false;
+                const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
+                const auto allChosen = SampleFiles::chosenArchives();
+                std::vector<juce::File> like;
+                for (const auto& archive : allChosen)
+                    if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) like.push_back(archive);
+                const auto organ = configuration.getProperty("publication", juce::var()).getProperty("organ", "").toString();
+                std::vector<juce::File> candidates;
+                for (const auto& candidate : MainComponent::archivesNamedLike(folders, like, file.getFileNameWithoutExtension() + " " + organ, allChosen, true))
+                    if (!pathIsForbidden(candidate)) candidates.push_back(candidate);
+                juce::StringArray candidateNames;
+                for (const auto& c : candidates) candidateNames.add(c.getFileName());
+                CrashHandler::note("Archives " + where + ": " + juce::String((int)forTrees.size()) + " tree(s) looked for; archives with a name like the organ's, or read before: "
+                    + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", ")));
+                if (candidates.empty()) return false;
+                std::atomic<bool> done{ false };
+                std::thread worker([&candidates, &done] { SampleFiles::indexArchives(candidates); done.store(true); });
+                while (!done.load())
+                {
+                    const auto progress = SampleFiles::indexingProgress();
+                    show("Reading the archives ...", progress.length() > 36 ? progress.substring(0, 33) + "..." : progress);
+                    juce::Thread::sleep(200);
+                }
+                worker.join();
+                // Which of them hold a tree: the tree's path inside the archive is its place below the archive's
+                // folder (an absolute tree), else the library root's name + the relative path.
+                std::vector<juce::File> taken;
+                for (const auto& archive : candidates)
+                {
+                    const auto folder = archive.getParentDirectory();
+                    juce::StringArray tails;
+                    for (size_t index : forTrees)
+                    {
+                        const auto& tree = trees[index];
+                        juce::StringArray inside;
+                        if (tree.absolute.isNotEmpty() && juce::File(tree.absolute).isAChildOf(folder))
+                            inside.add(juce::File(tree.absolute).getRelativePathFrom(folder).replaceCharacter('\\', '/'));
+                        if (tree.relative.isNotEmpty())
+                        {
+                            if (rootName.isNotEmpty()) inside.add(rootName + "/" + slashes(tree.relative));
+                            inside.add(slashes(tree.relative));
+                        }
+                        bool held = false;
+                        for (const auto& rel : inside)
+                        {
+                            if (rel.isEmpty() || rel.startsWith("..")) continue;
+                            if (!SampleFiles::entriesOf(archive, [rel](const juce::String& path) { return path.startsWithIgnoreCase(rel + "/"); }).empty()) { held = true; break; }
+                        }
+                        if (held) tails.addIfNotAlreadyThere(tree.relative.isNotEmpty() ? slashes(tree.relative) : juce::File(tree.absolute).getFileName());   // one tree may be listed per division
+                    }
+                    if (tails.isEmpty()) continue;
+                    taken.push_back(archive);
+                    takenArchives.push_back(archive);
+                    takenText += "\n" + archive.getFileName() + ":  " + tails.joinIntoString(", ");
+                }
+                CrashHandler::note("Archives " + where + ": " + juce::String((int)taken.size()) + " of them hold folder trees of the organ and are read with it");
+                if (taken.empty()) return false;
+                SampleFiles::addChosenArchives(taken);   // they serve the paths from now on (registered on the message thread after this)
+                setLookupMemo(true);                     // the folders before were answered "not there"
+                return true;
+            };
+            {
+                // The user's own folder lines (above the marker): the archives in them take part at the line's place,
+                // so they are looked at BEFORE the lookup.
+                std::vector<juce::File> own;
+                for (const auto& entry : gUserLocations)
+                    if (!entry.archive && juce::File(entry.path).isDirectory() && std::find(own.begin(), own.end(), juce::File(entry.path)) == own.end()) own.push_back(juce::File(entry.path));
+                takeArchivesIn(own, all, "in your folders of Locations.txt");
+            }
             auto missing = findAll(all);
             juce::String mountedText;
 #if JUCE_LINUX
@@ -19217,14 +19311,9 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
                 }
             }
 #endif
-            // 0.9.44 (#183, the user: "nesmí načítat dvakrát"): the archives beside the organ with a name like it
-            // are looked at HERE, before the load, for the trees still missing - 0.8.218 did it after the whole load
-            // (runWhenLoaded) and loaded the organ a second time (two 20-minute loads on the Mac, the second one a
-            // fright after a Cancel). The same sieve as offerNeighbourArchives: the folders above the missing trees
-            // and the configuration's, the chosen archives in them give the name, only the few like it are indexed.
+            // The trees still missing: the archives beside the organ (0.9.44) and in every remembered folder (0.9.138).
             if (!missing.empty())
             {
-                const auto rootName = configuration.getProperty("sampleLibraryRootName", "").toString();
                 std::vector<juce::File> folders;
                 auto addFolder = [&folders](juce::File folder)
                 {
@@ -19234,70 +19323,14 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
                         if (parent == folder) { folder = juce::File(); break; }
                         folder = parent;
                     }
-                    if (folder.isDirectory() && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
+                    if (folder.isDirectory() && !pathIsForbidden(folder) && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
                 };
                 for (size_t index : missing)
                     if (trees[index].absolute.isNotEmpty()) addFolder(juce::File(trees[index].absolute).getParentDirectory());
                 addFolder(file.getParentDirectory());
-                const auto allChosen = SampleFiles::chosenArchives();
-                std::vector<juce::File> like;
-                for (const auto& archive : allChosen)
-                    if (std::find(folders.begin(), folders.end(), archive.getParentDirectory()) != folders.end()) like.push_back(archive);
-                const auto organ = configuration.getProperty("publication", juce::var()).getProperty("organ", "").toString();
-                const auto candidates = MainComponent::archivesNamedLike(folders, like, file.getFileNameWithoutExtension() + " " + organ, allChosen);
-                juce::StringArray candidateNames;
-                for (const auto& c : candidates) candidateNames.add(c.getFileName());
-                CrashHandler::note("Missing folders: " + juce::String((int)missing.size()) + " tree(s) before the load; archives beside the organ with a shared name: "
-                    + (candidates.empty() ? juce::String("none") : candidateNames.joinIntoString(", ")));
-                if (!candidates.empty())
-                {
-                    std::atomic<bool> done{ false };
-                    std::thread worker([&candidates, &done] { SampleFiles::indexArchives(candidates); done.store(true); });
-                    while (!done.load())
-                    {
-                        const auto progress = SampleFiles::indexingProgress();
-                        show("Reading the archives beside the organ ...", progress.length() > 36 ? progress.substring(0, 33) + "..." : progress);
-                        juce::Thread::sleep(200);
-                    }
-                    worker.join();
-                    // Which of them hold a missing tree: the tree's path inside the archive is its place below the
-                    // archive's folder (an absolute tree), else the library root's name + the relative path.
-                    for (const auto& archive : candidates)
-                    {
-                        const auto folder = archive.getParentDirectory();
-                        juce::StringArray tails;
-                        for (size_t index : missing)
-                        {
-                            const auto& tree = trees[index];
-                            juce::StringArray inside;
-                            if (tree.absolute.isNotEmpty() && juce::File(tree.absolute).isAChildOf(folder))
-                                inside.add(juce::File(tree.absolute).getRelativePathFrom(folder).replaceCharacter('\\', '/'));
-                            if (tree.relative.isNotEmpty())
-                            {
-                                if (rootName.isNotEmpty()) inside.add(rootName + "/" + slashes(tree.relative));
-                                inside.add(slashes(tree.relative));
-                            }
-                            bool held = false;
-                            for (const auto& rel : inside)
-                            {
-                                if (rel.isEmpty() || rel.startsWith("..")) continue;
-                                if (!SampleFiles::entriesOf(archive, [rel](const juce::String& path) { return path.startsWithIgnoreCase(rel + "/"); }).empty()) { held = true; break; }
-                            }
-                            if (held) tails.addIfNotAlreadyThere(tree.relative.isNotEmpty() ? slashes(tree.relative) : juce::File(tree.absolute).getFileName());   // one tree may be listed per division
-                        }
-                        if (tails.isEmpty()) continue;
-                        takenArchives.push_back(archive);
-                        takenText += "\n" + archive.getFileName() + ":  " + tails.joinIntoString(", ");
-                    }
-                    if (!takenArchives.empty())
-                    {
-                        SampleFiles::addChosenArchives(takenArchives);   // they serve the paths from now on (registered on the message thread after this)
-                        setLookupMemo(true);   // the folders before were answered "not there"
-                        missing = findAll(missing);
-                    }
-                    CrashHandler::note("Missing folders: " + juce::String((int)takenArchives.size()) + " archive(s) beside the organ hold them and are read with it"
-                        + (takenArchives.empty() ? juce::String() : ":" + takenText.replaceCharacters("\n", " ")));
-                }
+                for (const auto& location : gSampleLocations)
+                    if (const juce::File folder(location); folder.isDirectory() && !pathIsForbidden(folder) && std::find(folders.begin(), folders.end(), folder) == folders.end()) folders.push_back(folder);
+                if (takeArchivesIn(folders, missing, "beside the organ and in the remembered folders")) missing = findAll(missing);
             }
             CrashHandler::note("Searching for the sample folders: " + juce::String((int)(trees.size() - missing.size())) + " of " + juce::String((int)trees.size())
                 + " tree(s) found in " + juce::String((juce::Time::getMillisecondCounterHiRes() - startMs) / 1000.0, 1) + " s" + mountedText);
@@ -21973,7 +22006,7 @@ void MainComponent::showMissingTreesMenu(int manual)
 }
 
 std::vector<juce::File> MainComponent::archivesNamedLike(const std::vector<juce::File>& folders, const std::vector<juce::File>& like,
-                                                         const juce::String& nameWords, const std::vector<juce::File>& exclude)
+                                                         const juce::String& nameWords, const std::vector<juce::File>& exclude, bool alsoRead)
 {
     // The name sieve (the user's rule, 27 Oct 2026: "co když tam bude 100 dalších rarů? Já
     // bych to stavěl na shodnosti části jména"): the letters of a name (digits, separators
@@ -22023,6 +22056,21 @@ std::vector<juce::File> MainComponent::archivesNamedLike(const std::vector<juce:
             candidates.push_back(file);
             if (candidates.size() >= 24) break;
         }
+    // 0.9.138: an archive whose index was written before costs nothing to look into - taken whatever its name (24 at most).
+    if (alsoRead)
+    {
+        size_t extra = 0;
+        for (const auto& folder : folders)
+            for (const auto& entry : juce::RangedDirectoryIterator(folder, false, "*.rar", juce::File::findFiles))
+            {
+                const auto file = entry.getFile();
+                if (extra >= 24) break;
+                if (!SampleFiles::isFirstVolume(file) || std::find(exclude.begin(), exclude.end(), file) != exclude.end()) continue;
+                if (std::find(candidates.begin(), candidates.end(), file) != candidates.end() || !SampleFiles::hasIndexOnDisk(file)) continue;
+                candidates.push_back(file);
+                ++extra;
+            }
+    }
     return candidates;
 }
 

@@ -5345,6 +5345,28 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Frankfurt .rar lines back by my hand (above the marker, folder RAR_archivy__). NO Projucer resave for 0.9.136 /
   0.9.137 (Linux): Windows next. #266 is OPEN: a reply draft for hoofdwerk lies in /tmp/lo136/issue266_reply.md (it
   says 0.9.136; the rule is 0.9.137's now - rewrite before he posts it).
+  0.9.138 (26 Nov 2026, the same session; the user: "ano, může to platit pro všechny složky, i automaticky přidané
+  programem. udělej a vydej" - after his objection "když tam ve složce bude 356 archivů, tak bude trvat hodinu"): A
+  FOLDER OF LOCATIONS.TXT MAKES THE ARCHIVES IN IT FOUND, BY THEIR NAME. The SearchJob's lambda `takeArchivesIn(folders,
+  forTrees, where)` (the 0.9.44 neighbour block made a routine): `archivesNamedLike(..., alsoRead = true)` = the name
+  sieve (a word >= 4 letters of the configuration's / organ's name, or 4 leading letters shared with a chosen archive
+  there; 24 at most) + archives whose index was written before (`SampleFiles::hasIndexOnDisk`, 24 more) - only those
+  are indexed, the ones holding a tree are `addChosenArchives`ed and registered after the search. Called (1) BEFORE
+  the lookup for the user's folder lines above the marker (their archives count at the line's place: a folder line
+  got archive candidates <line>/<root>/<relative> and, with a fingerprint, <line>/<relative>), (2) AFTER it for the
+  trees still missing in: the folders above them, the configuration's folder and EVERY remembered folder. An archive
+  candidate of a line counts only when the archive LIES THERE (`candidate.isAChildOf(archiveOf(candidate)'s folder)`:
+  an archive elsewhere serving the same path by its tail is not that line's); a folder candidate only when it is on
+  the DISK (resolveCaseInsensitive answered through archives too). Tested on his Frankfurt with the folder line
+  below and above the marker: 8 of 12 trees (002704 + 002705; no FrankfurtOder_vol2 archive exists - 002706 lies only
+  unpacked on the two disks he had forbidden: his "a stejně to část rarů nenašlo").
+  RAR vs UNPACKED ON THE SAME NVMe (his test: unpacked 2600 MB/s, from the rars ~750 MB/s; "proč?"): MEASURED during
+  a load from the rars (/tmp/lo136/cpu.sh: /proc utime, threads in state R, rchar): 16 threads running, ~14 cores
+  busy, 470 MB/s of packed bytes read = 750 MB/s unpacked -> the DISK IS IDLE, the limit is the RAR decoder, ~50 MB/s
+  of output per core on these 2024 archives (old .r00 volumes); a WAV on the disk is a plain copy. An archive wins
+  only on a SLOW disk (HDD ~150 MB/s: half the bytes to read). `parallelFor` is capped at 16 threads (maxThreads) =
+  the physical cores here; PROPOSED, not coded: all logical processors for the decode of packed archive entries
+  (maybe +20-30 %), never promise more.
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

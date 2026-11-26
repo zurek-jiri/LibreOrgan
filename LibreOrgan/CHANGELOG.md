@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.138] - 2026-11-26
+
+### Added
+- **A folder of Locations.txt makes the archives in it found** - your own
+  lines and the folders the program remembered alike. Never every archive of
+  the folder: only the names are listed, and an archive is read when its name
+  resembles the organ's (a word of the configuration's or the organ's name) or
+  when it was read before; those that hold the organ's folder trees are taken
+  and remembered. A folder line of yours above the marker counts its archives
+  at the line's place in the order.
+
+### Fixed
+- An archive line (or folder line) of Locations.txt took a tree only from an
+  archive lying there, not from one elsewhere that happens to hold the same
+  path.
+
 ## [0.9.137] - 2026-11-26
 
 ### Fixed

@@ -793,7 +793,7 @@ private:
     // The name sieve (0.8.218): the first-volume rars in 'folders' (not in 'exclude') whose letters-only stem
     // shares >= 4 leading letters with one of 'like' or holds a >= 4-letter word of 'nameWords'; at most 24.
     static std::vector<juce::File> archivesNamedLike(const std::vector<juce::File>& folders, const std::vector<juce::File>& like,
-                                                     const juce::String& nameWords, const std::vector<juce::File>& exclude);
+                                                     const juce::String& nameWords, const std::vector<juce::File>& exclude, bool alsoRead = false);
     // 0.8.219: Load Configuration of an archive holding no definition - the archives beside it with a name like
     // it are read; one of them holding a definition is offered: "Load from the definition" with all of them.
     void offerDefinitionBeside(const std::vector<juce::File>& archives, bool merge);

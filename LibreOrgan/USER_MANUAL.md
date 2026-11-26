@@ -2561,7 +2561,10 @@ your own lines **above** it - folders and `.rar` archives, one per line: they
 are looked through from the top before anything else, and the first place
 that holds an organ's sample folders is the one it plays from (copy an organ
 to a faster disk, put that disk first, and every configuration takes it from
-there). A line that starts with `!` forbids a place: nothing is ever read from
+there). A folder line also stands for the archives lying in it, but never for
+all of them: only an archive whose name resembles the organ's (or one read
+before) is opened, so a folder of hundreds of archives costs nothing. A line
+that starts with `!` forbids a place: nothing is ever read from
 it. Then come the configuration's own folder, the lines the program remembered
 by itself (it writes only **under** the marker and never changes yours) and
 the drives. The log names the line a tree was taken from.

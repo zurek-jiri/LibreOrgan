@@ -89,6 +89,7 @@ namespace SampleFiles
     void setChosenArchives(const std::vector<juce::File>& archives);   // replaces the chosen list (parts -> their first part)
     void addChosenArchives(const std::vector<juce::File>& archives);
     std::vector<juce::File> chosenArchives();   // the chosen list as it stands (first volumes)
+    bool hasIndexOnDisk(const juce::File& archive);   // 0.9.138: its index was written before (reading it again costs nothing)
     juce::File archiveOf(const juce::File& path);   // the (first volume of the) archive a path lives in; {} on the disk or nowhere
     // The folder the archive indexes are kept in (under the settings folder).
     void setIndexFolder(const juce::File& folder);

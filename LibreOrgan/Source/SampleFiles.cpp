@@ -1243,6 +1243,11 @@ namespace
 
 namespace SampleFiles
 {
+    bool hasIndexOnDisk(const juce::File& archive)
+    {
+        const juce::File folder = gIndexFolder;
+        return folder != juce::File() && folder.getChildFile(indexCacheName(firstVolumeOf(archive))).existsAsFile();
+    }
     void setIndexFolder(const juce::File& folder) { std::lock_guard<std::mutex> lock(gMutex); gIndexFolder = folder; }
 
     void setSearchFolders(const std::vector<juce::File>& folders)

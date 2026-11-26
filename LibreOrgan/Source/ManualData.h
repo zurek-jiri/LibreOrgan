@@ -2589,7 +2589,10 @@ static const char* const kManualText_part12 =
     "are looked through from the top before anything else, and the first place\n"
     "that holds an organ's sample folders is the one it plays from (copy an organ\n"
     "to a faster disk, put that disk first, and every configuration takes it from\n"
-    "there). A line that starts with `!` forbids a place: nothing is ever read from\n"
+    "there). A folder line also stands for the archives lying in it, but never for\n"
+    "all of them: only an archive whose name resembles the organ's (or one read\n"
+    "before) is opened, so a folder of hundreds of archives costs nothing. A line\n"
+    "that starts with `!` forbids a place: nothing is ever read from\n"
     "it. Then come the configuration's own folder, the lines the program remembered\n"
     "by itself (it writes only **under** the marker and never changes yours) and\n"
     "the drives. The log names the line a tree was taken from.\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "(ventil-conditioned ones included; a division reached from several keyboards\n"
     "goes to the one with the most keys; a floating division no keyboard reaches\n"
     "without a coupler is placed stop by stop where the name says); the stops\n"
+    ;
+static const char* const kManualText_part13 =
     "with their sample folders (stop > StopRank rows > ranks > pipe folders); the\n"
     "perspectives from the rank names (\"Front A (direct): ...\" -> Direct, the\n"
     "folder prefixes learned into the patterns); the compass of every stop from\n"
-    ;
-static const char* const kManualText_part13 =
     "its own rows (keys outside switched off in the voicing, no fills); the\n"
     "per-pipe levels, split in three - the median of a division's perspective\n"
     "becomes the route volume, the median of the rest the stop volume, the\n"
@@ -2825,11 +2828,11 @@ static const char* const kManualText_part13 =
     "\n"
     "The routes of one device are one stream: the driver's callback calls every\n"
     "route in turn, each route's voices become one job of the render pool, the\n"
+    ;
+static const char* const kManualText_part14 =
     "device thread and the workers take chunks of it (lanes), the device thread\n"
     "merges their scratch buffers and mixes. The IR convolution of a route runs as\n"
     "a pool task posted by the last route of its group and joined by the first\n"
-    ;
-static const char* const kManualText_part14 =
     "route of the next block, so it takes render time but never piles up on the\n"
     "audio thread. The workers wake ahead of every period (the cadence is known)\n"
     "and the device thread takes no more voices at the tail of a job when the\n"
