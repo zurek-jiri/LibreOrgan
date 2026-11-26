@@ -1949,9 +1949,9 @@ Where the smpl chunks of a release and of the attack that sounded disagree,
 the program checks their difference against the sound and, when the sound
 says something else, follows the sound; the key's note name turns red and its
 tooltip gives the figures. In a compound stop the ranks may differ, and one
-release has one shift: *The loudest rank of the release* (default), *The
-loudest rank of the attack*, or *The smpl chunks alone* (no measuring). New
-notes take the change. Travels with the organ.
+release has one shift: the lowest rank that sounds clearly in both decides
+(*The sound*, default). *The smpl chunks alone*: no measuring. New notes take
+the change. Travels with the organ.
 
 ### Pipe coupling: detune left after the pull
 

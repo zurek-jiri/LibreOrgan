@@ -16658,25 +16658,48 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
                                     const double precision = std::max(3.0, 0.5 * 1731.234 * bin / std::min(a.hz, r.hz));
                                     return std::abs(cents - (double)bySmpl) > precision ? (float)cents : std::numeric_limits<float>::quiet_NaN();
                                 };
-                                float byRelease = std::numeric_limits<float>::quiet_NaN(), byAttack = byRelease;
-                                double hzRelease = 0.0, hzAttack = 0.0;
+                                // 0.9.144 (measured on Schorndorf's Siebenquart; the user's ears on keys 69 and 81): THE LOWEST
+                                // RANK DECIDES - the lowest partial that is clearly there in the attack and in the release
+                                // (within 20 dB of each sample's strongest). The ear takes the pitch from the lower rank
+                                // (above 5 kHz it hardly judges pitch), and the producer's chunks describe that rank too: on
+                                // the keys whose chunks are right the lower rank's shift IS the chunks' difference. The
+                                // release's loudest rank (0.9.142) was a coin toss between two equally loud ranks (key 69:
+                                // the upper one won and the main rank jumped 24 c); the levels themselves move by 10 dB with
+                                // the window and the channels, so no rule may hang on them. Only when no rank is clear in
+                                // both samples: the rank loudest in the two together.
+                                float bySound = std::numeric_limits<float>::quiet_NaN();
+                                double hzRank = 0.0, bestLevel = -1.0e9, lowestHz = 1.0e12;
+                                bool clearFound = false;
+                                juce::String pairsSeen;   // the debug list alone
                                 for (const auto& r : releasePartials)   // the loudest first
-                                    if (const SoundPartial* a = partnerOf(attackPartials, r.hz); a != nullptr && standsAlone(releasePartials, r) && standsAlone(attackPartials, *a))
-                                        { byRelease = reading(*a, r); hzRelease = r.hz; break; }
-                                for (const auto& a : attackPartials)
-                                    if (const SoundPartial* r = partnerOf(releasePartials, a.hz); r != nullptr && standsAlone(attackPartials, a) && standsAlone(releasePartials, *r))
-                                        { byAttack = reading(a, *r); hzAttack = a.hz; break; }
-                                layer.soundCentsByRelease[attack][(size_t)note] = byRelease;
-                                layer.soundCentsByAttack[attack][(size_t)note] = byAttack;
-                                if (attack == 0 && (std::isfinite(byRelease) || std::isfinite(byAttack)))
+                                {
+                                    const SoundPartial* a = partnerOf(attackPartials, r.hz);
+                                    const bool alone = a != nullptr && standsAlone(releasePartials, r) && standsAlone(attackPartials, *a);
+                                    if (exampleLimit > 100 && attack == 0)
+                                        pairsSeen << " [release " << juce::String(r.hz, 1) << " Hz " << juce::String(r.db - releasePartials.front().db, 1) << " dB"
+                                                  << (a != nullptr ? ", attack " + juce::String(a->hz, 1) + " Hz " + juce::String(a->db - attackPartials.front().db, 1) + " dB" : juce::String(", no partner"))
+                                                  << (alone ? "" : ", not alone") << "]";
+                                    if (alone)
+                                    {
+                                        const double inRelease = r.db - releasePartials.front().db, inAttack = a->db - attackPartials.front().db;
+                                        if (inRelease >= -20.0 && inAttack >= -20.0)
+                                        {
+                                            if (a->hz < lowestHz) { lowestHz = a->hz; clearFound = true; bySound = reading(*a, r); hzRank = a->hz; }
+                                        }
+                                        else if (!clearFound && inRelease + inAttack > bestLevel)
+                                            { bestLevel = inRelease + inAttack; bySound = reading(*a, r); hzRank = a->hz; }
+                                    }
+                                }
+                                layer.soundCentsByRelease[attack][(size_t)note] = bySound;
+                                layer.soundCentsByAttack[attack][(size_t)note] = bySound;   // one rule now: both tables the same
+                                if (attack == 0 && std::isfinite(bySound))
                                 {
                                     takenHere.fetch_add(1, std::memory_order_relaxed);
                                     const juce::SpinLock::ScopedLockType lock(examplesLock);
                                     if (examples.size() < exampleLimit)
                                         examples.add("key " + juce::String(note) + (layer.maxHoldMs < 99999 ? " held up to " + juce::String(layer.maxHoldMs) + " ms" : juce::String())
-                                            + ": the chunks " + juce::String(bySmpl, 1) + " c, the sound "
-                                            + (std::isfinite(byRelease) ? juce::String(byRelease, 1) + " c" : juce::String("as the chunks")) + " by the release's loudest rank (" + juce::String(hzRelease, 1) + " Hz) / "
-                                            + (std::isfinite(byAttack) ? juce::String(byAttack, 1) + " c" : juce::String("as the chunks")) + " by the attack's (" + juce::String(hzAttack, 1) + " Hz)");
+                                            + ": the chunks " + juce::String(bySmpl, 1) + " c, the sound " + juce::String(bySound, 1)
+                                            + " c by the lowest rank clear in attack and release (" + juce::String(hzRank, 1) + " Hz)" + pairsSeen);
                                 }
                             }
                         });

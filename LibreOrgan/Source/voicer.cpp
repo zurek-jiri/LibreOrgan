@@ -1047,8 +1047,8 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             {
                 auto cents = [](float c) { return std::isfinite(c) ? juce::String(c, 1) + " c" : juce::String("as the chunks"); };
                 const juce::String why = "The release of this key is tuned to its attack by the sound: the smpl chunks put it " + juce::String(bySmpl, 1)
-                    + " c from the plain attack, the sound " + cents(byRelease) + " (the rank loudest in the release) / " + cents(byAttack)
-                    + " (the rank loudest in the attack) - \"Release tuned to its attack by\", Configuration Editor";
+                    + " c from the plain attack, the sound " + cents(byRelease)
+                    + " (the lowest rank that sounds in both) - \"Release tuned to its attack by\", Configuration Editor";
                 for (auto* l : rowNames)
                     if (l != nullptr)
                     {

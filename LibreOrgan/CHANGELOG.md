@@ -12,6 +12,19 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.144] - 2026-11-26
+
+### Changed
+- **A release tuned to its attack by the sound follows the lowest rank** that
+  sounds clearly in the attack and in the release (within 20 dB of the
+  strongest partial of each). The release's loudest rank was a coin toss
+  where two ranks of a release are equally loud (Schorndorf Siebenquart, key
+  69, long-held release: the upper rank won and the attack's main rank jumped
+  by 24 cents). The ear takes the pitch from the lower rank, and on the keys
+  whose smpl chunks are right the lower rank's shift is what the chunks say.
+  *Release tuned to its attack by* has two choices now: the sound, or the
+  smpl chunks alone.
+
 ## [0.9.143] - 2026-11-26
 
 ### Added

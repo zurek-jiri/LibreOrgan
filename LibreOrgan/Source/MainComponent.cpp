@@ -29042,7 +29042,7 @@ void MainComponent::loadSettings()
     engine.setRetuneLimitCents(retuneLimitCents);
     mistuneCorrectCents = juce::jlimit(0.0f, 1200.0f, (float)(double)parsed.getProperty("mistuneCorrectCents", 50.0));   // 0.9.10
     engine.setMistuneCorrectCents(mistuneCorrectCents);
-    releaseTuneBy = juce::jlimit(0, 2, (int)parsed.getProperty("releaseTuneBy", 0));   // 0.9.142
+    releaseTuneBy = (int)parsed.getProperty("releaseTuneBy", 0) == 2 ? 2 : 0;   // 0.9.142; 0.9.144: the sound (0) or the chunks alone (2)
     engine.setReleaseTuneMode(releaseTuneBy);
     couplingLeftPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("couplingLeftPercent", 20.0));   // 0.9.56
     engine.setCouplingLeftPercent(couplingLeftPercent);
@@ -37110,15 +37110,16 @@ void MainComponent::showConfigurationEditor()
                 "file, not a tuning. Below it the pipe is retuned (the setting above, or \"Equal at 440 Hz\"). 200 cents (a whole tone) by "
                 "default; the setting travels with the organ.");
             // 0.9.142 (the user's choice A / B / C): what decides the release's shift where its chunk is off the sound.
-            addCombo("Release tuned to its attack by", { "The loudest rank of the release  [default]", "The loudest rank of the attack",
-                "The smpl chunks alone" }, o.releaseTuneBy, [&o](int index)
+            // 0.9.144 (the user): two choices - the sound (0) or the chunks (2); the value 1 of 0.9.142/0.9.143 files reads as 0.
+            addCombo("Release tuned to its attack by", { "The sound  [default]", "The smpl chunks alone" }, o.releaseTuneBy == 2 ? 1 : 0, [&o](int index)
             {
-                o.releaseTuneBy = juce::jlimit(0, 2, index);
+                o.releaseTuneBy = index == 1 ? 2 : 0;
                 o.engine.setReleaseTuneMode(o.releaseTuneBy);
                 o.saveSettings();
             }, "Where the smpl chunks of a release and of the attack that sounded disagree, their difference is checked against the "
                "sound; when the sound says something else, the release follows the sound (the key's name turns red in the voicing). "
-               "In a compound stop the ranks may differ: choose which rank decides. New notes take the change; travels with the organ.");
+               "In a compound stop the ranks may differ: the lowest rank that sounds clearly in both decides. "
+               "New notes take the change; travels with the organ.");
             // 0.9.56 (the user): how much of a pipe's detune the coupling leaves - a random share between 0 and this.
             addSlider("Pipe coupling: detune left after the pull", 0.0, 100.0, 1.0, " %", o.couplingLeftPercent, 20.0,
                 [&o](double value)
