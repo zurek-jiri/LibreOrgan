@@ -5340,6 +5340,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   a folder line ABOVE the marker (his own) serves the first-volume .rar files lying directly in it too; the
   program's folder lines never. VERIFIED on his Frankfurt (three .rar lines above the marker, the two disks
   forbidden): "8 of 12 tree(s) found", taken from the archives at 690 MB/s (002706 is in no archive of his).
+  0.9.137 RELEASED: commits d28a248 + fe46cc7, tag v0.9.137, CI green at the first attempt on all five, five archives,
+  Intel mac "late symbols: 0"; the local Linux build in ~/Desktop and ~/Downloads. His Locations.txt got the three
+  Frankfurt .rar lines back by my hand (above the marker, folder RAR_archivy__). NO Projucer resave for 0.9.136 /
+  0.9.137 (Linux): Windows next. #266 is OPEN: a reply draft for hoofdwerk lies in /tmp/lo136/issue266_reply.md (it
+  says 0.9.136; the rule is 0.9.137's now - rewrite before he posts it).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
