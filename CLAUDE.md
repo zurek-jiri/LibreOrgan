@@ -5309,6 +5309,37 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   = tuningCentsFor(note) + releaseLayerCents - soundingAttackLayerCents (the release start already reads the sounding
   voice: `sounding.cents` at SamplerEngine.cpp ~7551 - take its layerCents there too), bound by "Replace pipes off by
   more than"; with 440 every sample by its own chunk as now (told him; his word wanted on that too).
+  0.9.137 (26 Nov 2026, the same Linux session; three faults of 0.9.136 found by the user within two hours; the
+  "PROPOSED FOR 0.9.137" above is DONE):
+  (a) TUNING AS HE SAID: `tuningCentsForSample(note, tuned, layerCents, attackLayerCents, replaceAbove)` - without 440:
+  the pipe's own tuning + (layerCents - attackLayerCents); `Voice::attackLayerCents` = for an attack its own
+  layerCents (nothing is added: every attack, plain or velocity layer, plays as recorded), for a release the
+  layerCents of the attack that SOUNDED (`ReleasePitch::layerCents`, taken with `sounding.cents`); with 440 every
+  sample by its own chunk (his word: "režim 440 Hz je na to určený"). MEASURED (Schorndorf, key 57): velocity 100
+  (plain attack) held 1525.1 / 2069.7, released 1555.3 / 2070.8 = +34 / +1 c; velocity 60 (the _070 layer) held
+  1584.7 / 2110.1, released 1584.3 / 2109.7 = 0 / 0 c. NEVER tune one attack to another; never a threshold or a
+  setting between an attack and its release.
+  (b) THE WHEEL, his rule in its final form: a slider in a scrolling area listens when (1) the mouse itself moved
+  since the last scroll - moves within 0.3 s of a wheel notch are the hand on the wheel and only move the anchor
+  (`kHandOnWheelMs`; 0.9.136 took 3 px of that shake for a move: a slider under a RESTING mouse listened 0.4 s after
+  the scroll stopped), a move = 4 px (`kMovePixels`); (2) 0.4 s passed since the last scroll; (3) 0.4 s passed since
+  the LAST move / since the mouse came onto the control (`overSinceMs`: "často člověk trochu myší pohne než začne
+  scrollovat" - every move starts the 0.4 s anew; he asked "every, or only after a scroll?" - EVERY is what his own
+  first sentence needs, told him). Hook steps added: u / S = a notch UPWARDS on / beside the slider (at the top the
+  page stays: a resting mouse), j = a move of 5 px. A test's wheel event at a NEW place is a mouse move (the page
+  scrolled 56 px and my 'w' followed the slider = a teleport that armed it): test the resting mouse with 'u' at the top.
+  (c) LOCATIONS.TXT LOST HIS ARCHIVE LINES (his log: 12:08 he had "!/home/doma/Documents/RAR_archivy"; the lines
+  under a forbidden place are not taken into the memory, and the next write made the program's part ANEW from the
+  memory - the three .rar lines were gone for good; then he allowed the folder again and "it did not find the
+  archives"). `writeLocationsFile(forgetProgramFolders = false)`: BOTH parts are kept as they stand in the file; a
+  line is only ADDED (a memory entry the file names nowhere, "!" lines counted); Forget alone removes the program's
+  folder lines. RULE: a file the user edits is never regenerated from memory - read it, add to it, write it.
+  TWO MORE FACTS of that case: his folder is now ~/Documents/RAR_archivy__ (he renamed it at 10:30; the line said
+  RAR_archivy, which does not exist), and a FOLDER line never makes the .rar files in it serve - only .rar lines do
+  (his own 0.8.177 rule); he expected "the folder is allowed = its archives are found". PROPOSED to him, NOT coded:
+  a folder line ABOVE the marker (his own) serves the first-volume .rar files lying directly in it too; the
+  program's folder lines never. VERIFIED on his Frankfurt (three .rar lines above the marker, the two disks
+  forbidden): "8 of 12 tree(s) found", taken from the archives at 690 MB/s (002706 is in no archive of his).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
