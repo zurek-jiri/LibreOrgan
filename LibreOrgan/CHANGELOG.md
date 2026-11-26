@@ -12,6 +12,25 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.137] - 2026-11-26
+
+### Fixed
+- **The wheel after a scroll**: a slider under a RESTING mouse listened 0.4 s
+  after the scroll stopped - turning the wheel shakes the mouse by a few
+  pixels and that counted as "the mouse moved onto it". The hand on the wheel
+  (0.3 s after a notch) no longer counts. And a slider listens only 0.4 s
+  after the mouse came to rest on it: a small move before scrolling, or
+  crossing a slider and turning the wheel at once, scrolls.
+- **Locations.txt lost lines**: forbidding a folder with `!` made the next
+  write drop the archive lines under it for good. The program now only ever
+  adds lines under the marker; what stands there stays (Forget alone takes the
+  program's folder lines out).
+- **Attack and release (0.9.136's rule corrected)**: an attack - the plain one
+  or a velocity layer - plays as recorded; only the RELEASE is tuned, silently
+  and always, to the attack that was sounding (0.9.136 tuned velocity layers
+  to the plain attack too). With Equal at 440 Hz every sample is tuned by its
+  own recorded pitch, as before.
+
 ## [0.9.136] - 2026-11-26
 
 ### Added

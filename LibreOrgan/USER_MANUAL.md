@@ -491,7 +491,8 @@ is - a click alone changes nothing), turn the wheel, **double-click** for
 the default (in anything that scrolls - the Configuration Editor, a scrolled
 dialog, the stops with their open voicings - the wheel **scrolls**; a slider
 takes it once you moved the mouse onto it and the page has stood for a
-moment, and shows that with a thin orange frame), **click once** to type the value (Enter takes it, Esc leaves
+moment, and shows that with a thin orange frame; a slider the page carried
+under a resting mouse stays deaf), **click once** to type the value (Enter takes it, Esc leaves
 it), right-click for MIDI learn. The top row keeps one line as long as the
 names fit (they shrink first); short of room, all its sliders show the name
 above the value. The per-key sliders of a voicing row are the same bars
@@ -1907,10 +1908,10 @@ or two longer on a large organ.
 
 A pipe further off its own rank's tuning than this is pulled to its key even
 with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip
-says so. Travels with the organ. A release or a velocity layer whose own
-recorded pitch differs from its pipe's attack is always tuned to that attack,
-whatever this setting says (sample folders whose attacks were tuned
-afterwards meet their releases that way).
+says so. Travels with the organ. An attack - the plain one or a velocity
+layer - plays as it is recorded; a release whose recorded pitch differs from
+the attack that sounded is always tuned to that attack, silently, whatever
+this setting says.
 
 ### Replace pipes off by more than
 

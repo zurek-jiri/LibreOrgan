@@ -133,8 +133,8 @@ namespace UIScale
     // whatever slider came under the mouse; a modifier key and an extra click were both refused): inside anything
     // that scrolls - the Editor, the scrolled dialogs, the stop workspace with its open voicings - THE WHEEL
     // SCROLLS, also when a slider comes under the mouse. A control takes the wheel only when the MOUSE ITSELF moved
-    // onto it since the last scroll (a control the page carried under a resting mouse stays deaf) and the page has
-    // stood for 0.4 s. A control that listens shows it: a thin orange frame = "the wheel sets this one now".
+    // onto it since the last scroll (a control the page carried under a resting mouse stays deaf), has been on it
+    // for 0.4 s, and the page has stood for 0.4 s. A control that listens shows it: a thin orange frame = "the wheel sets this one now".
     // One object for the whole program (a member of MainComponent) listening to the mouse of every window. A slider
     // in a scrolling area is made deaf when it is PAINTED (LookAndFeel::drawLinearSlider calls prepare), so no
     // place that creates a slider can forget it; a control that handles the wheel itself asks listens().
@@ -149,7 +149,8 @@ namespace UIScale
             instance() = nullptr;
         }
         static WheelGate*& instance() { static WheelGate* gate = nullptr; return gate; }
-        static constexpr double kStandMs = 400.0;
+        static constexpr double kStandMs = 400.0, kHandOnWheelMs = 300.0;
+        static constexpr int kMovePixels = 4;
         // The control the wheel would act on at this component: a slider, or a component marked "wheelGated".
         static juce::Component* targetOf(juce::Component* c)
         {
@@ -194,20 +195,37 @@ namespace UIScale
         void moved(const juce::MouseEvent& e)
         {
             // The mouse ITSELF: a page that moves under a resting mouse sends moves at the same place.
+            // 0.9.137 (the user: a slider under the resting mouse listened 0.4 s after the scroll stopped): turning
+            // the wheel shakes the mouse by a few pixels, and 3 px counted as a move. What comes within 0.3 s of a
+            // wheel notch is the hand on the wheel (it only moves the place the distance is counted from); after
+            // that a move of 4 px or more is the user's.
             const auto place = e.getScreenPosition();
-            if (place.getDistanceFrom(lastPosition) >= 3) { movedSinceScroll = true; lastPosition = place; }
+            const double now = juce::Time::getMillisecondCounterHiRes();
+            if (now - lastScrollMs < kHandOnWheelMs) lastPosition = place;
+            else if (place.getDistanceFrom(lastPosition) >= kMovePixels)
+            {
+                // (the user: "často člověk trochu myší pohne než začne scrollovat" and "když se scrolling zastaví nad
+                // sliderem, a myš se trochu pohne - čekat 0.4 s": every move, a small one too, starts the 0.4 s anew -
+                // the control listens once the mouse has come to rest on it)
+                overSinceMs = now;
+                movedSinceScroll = true;
+                lastPosition = place;
+            }
             look(targetOf(e.eventComponent));
         }
         void look(juce::Component* target)
         {
-            if (target != under.getComponent()) { disarm(); under = target; }
+            // 0.9.137 (the user: "after mouse move over slider, it should wait 0.4s before activating the slider"): the
+            // mouse must have been on the control for 0.4 s as well - crossing a slider on the way and turning the
+            // wheel at once scrolls.
+            if (target != under.getComponent()) { disarm(); under = target; overSinceMs = juce::Time::getMillisecondCounterHiRes(); }
             if (under == nullptr) { stopTimer(); return; }
             if (armed.getComponent() != under.getComponent())
             {
                 const bool gated = inScrollingArea(*under);
                 auto* slider = dynamic_cast<juce::Slider*>(under.getComponent());
                 if (!gated) { if (slider == nullptr || slider->isScrollWheelEnabled()) arm(under, false); }
-                else if (movedSinceScroll && juce::Time::getMillisecondCounterHiRes() - lastScrollMs >= kStandMs) arm(under, true);
+                else if (const double now = juce::Time::getMillisecondCounterHiRes(); movedSinceScroll && now - lastScrollMs >= kStandMs && now - overSinceMs >= kStandMs) arm(under, true);
             }
             if (!isTimerRunning()) startTimer(80);
         }
@@ -236,7 +254,7 @@ namespace UIScale
         }
         juce::Component::SafePointer<juce::Component> under, armed;
         juce::Point<int> lastPosition;
-        double lastScrollMs = 0.0;
+        double lastScrollMs = 0.0, overSinceMs = 0.0;
         bool movedSinceScroll = true, armedGated = false;
     };
 

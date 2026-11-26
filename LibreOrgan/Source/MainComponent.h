@@ -1670,7 +1670,7 @@ private:
     void addNestedTreeStorage(juce::DynamicObject& own, const juce::String& poolPath, const juce::String& keptKey) const;   // the entries of folders below a pool tree, keyed "<the tree's key>/<the rest>"
     juce::File locationsFile() const;
     void readLocationsFile(const juce::var& settings);   // the file, else the old settings key / ArchiveFolders.txt once
-    void writeLocationsFile() const;
+    void writeLocationsFile(bool forgetProgramFolders = false) const;   // 0.9.137: lines are only added; Forget takes the program's folder lines out
     juce::File chosenConfigurationDir;      // 0.8.214: the folder of the file the user chose - a search place even when its copy is loaded
     bool voicerStateLoaded = false;         // 0.8.214: the voicer has read a state file (reloadDivisions saves only then)
     bool embeddedVoicingPresent = false;    // the configuration parsed last carried voicingSettings

@@ -1503,6 +1503,7 @@ namespace
         float initialWindGain = 1.0f;     // release samples: wind level of the pipe at release
         float windKeyScale = 1.0f;        // how strongly this pipe follows the wind sag (small pipes more)
         std::atomic<float> tuningCents{ 0.0f };   // 440 Hz correction + undulation; may change while sounding
+        float attackLayerCents = 0.0f;            // 0.9.137: the layerCents of the attack this voice is tuned to (an attack: its own; a release: the attack that sounded)
         float layerCents = 0.0f;                  // 0.9.134: this sample's own offset to the pipe's plain attack (a velocity layer, a release), inside tuningCents
         // Transposing transmission: pure-interval correction plus the resampling
         // of a pipe beyond the rank's compass (0 for untransposed voices).
@@ -4820,6 +4821,7 @@ struct SamplerEngine::Impl
         float toneDb, toneStartHz;   // the release keeps the attack's tone shelf
         uint8_t velocity;            // the key velocity: the release of the attack's velocity layer
         bool preShifted;             // the attack played a pitch-shifted copy (its shiftCents lack the semitones)
+        float layerCents;            // 0.9.137: the sounding attack's own offset (the release is tuned to THIS attack)
     };
     std::vector<ReleasePitch> releasePitches;
     struct ReleaseTarget { Stop* stop; int pipe; int keyNote; };
@@ -5942,7 +5944,7 @@ struct SamplerEngine::Impl
         v.ctlReleasing = v.ctlStolen = false;
         v.detachedRelease = false; v.loopEnabled = true; v.couplingUsed = false; v.startFrozen = false;
         v.noise = false;
-        v.layerCents = 0.0f;
+        v.layerCents = 0.0f; v.attackLayerCents = 0.0f;
         v.windFrozen = false; v.frozenWindPitch = 0.0f; v.frozenWindGain = v.lastWindGain = v.initialWindGain = 1.0f;
         v.curWindGain.store(1.0f, std::memory_order_relaxed);
         std::fill(&v.shelfState[0][0], &v.shelfState[0][0] + 8, 0.0f); v.lastShelf = v.shelfSmoothed = 0.0f;
@@ -7191,7 +7193,8 @@ struct SamplerEngine::Impl
                     const float randomEff = effectiveRandomCents(stop, devRank, devNote, pipe);
                     v.randomPitchCents.store(randomEff, std::memory_order_relaxed);
                     v.layerCents = attackLayerCents;
-                    v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, owner.mistuneCorrectCents.load(std::memory_order_relaxed), owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+                    v.attackLayerCents = attackLayerCents;   // 0.9.137: an attack plays as recorded
+                    v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, v.attackLayerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
                     v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
                     // COUPLING TO A PARTNER (0.9.55): an octave or double octave of this rank already sounding is
                     // the reference - the new pipe is pulled towards the PURE octave with it, the recorded detune
@@ -7490,7 +7493,7 @@ struct SamplerEngine::Impl
                                 v.curWindGain.load(std::memory_order_relaxed),
                                 v.note, v.keyNote, v.sampleNote, v.shift, v.shiftCents.load(std::memory_order_relaxed),
                                 v.routeGainTarget.load(std::memory_order_relaxed),
-                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted });
+                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted, v.layerCents });
                         const int vm = v.manual;
                         v.frozenExprRequested.store(vm >= 0 && vm < maxManuals ? releaseGains[(size_t)vm] : 1.0f, std::memory_order_relaxed);
                         v.releaseFadeMsRequested.store(releaseFadeOut * fadeScale(v.rank != nullptr ? v.rank : v.stop, v.note)
@@ -7536,7 +7539,7 @@ struct SamplerEngine::Impl
             if (!rank->rankEnabled) return;
             // The release follows its attack: same key, same shift, same
             // resampling of a pipe beyond the compass.
-            float releasePitchCents = 0.0f, releaseWindGain = 1.0f, shiftCents = 0.0f, routeGain = 1.0f;
+            float releasePitchCents = 0.0f, releaseWindGain = 1.0f, shiftCents = 0.0f, routeGain = 1.0f, soundingAttackLayerCents = 0.0f;
             int releaseKeyNote = keyNote, sampleNote = rank->sourceNoteFor(pipe), shift = pipe - keyNote;
             if (sampleNote < 0) return;
             float toneDb = stop->getNoteToneDb(pipe);
@@ -7549,6 +7552,7 @@ struct SamplerEngine::Impl
                     attackVelocity = sounding.velocity;
                     attackPreShifted = sounding.preShifted;
                     releasePitchCents = sounding.cents;
+                    soundingAttackLayerCents = sounding.layerCents;
                     releaseWindGain = sounding.windGain;
                     releaseKeyNote = sounding.keyNote;
                     sampleNote = sounding.sampleNote;
@@ -7627,7 +7631,8 @@ struct SamplerEngine::Impl
             v.velocityGain = 1.0f;
             v.randomPitchCents.store(releasePitchCents, std::memory_order_relaxed);
             v.layerCents = releaseLayerCents;
-            v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, owner.mistuneCorrectCents.load(std::memory_order_relaxed), owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);   // releases follow their attack
+            v.attackLayerCents = soundingAttackLayerCents;   // 0.9.137: the release is tuned to the attack that sounded
+            v.tuningCents.store(rank->tuningCentsForSample(sampleNote, stop->tuneTo440, v.layerCents, v.attackLayerCents, owner.retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);   // releases follow their attack
             v.tempMode.store(stop->tuneTo440 ? 1 : (rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
             v.couplingUsed = false;
             v.coupledPitchCents = 0.0f;
@@ -16034,7 +16039,7 @@ void SamplerEngine::setStopTuneTo440(Stop* stop, bool enabled)
         auto& v = impl->voices[idx];
         if (v.stop == stop && v.rank != nullptr)
         {
-            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, enabled, v.layerCents, mistuneCorrectCents.load(std::memory_order_relaxed), retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, enabled, v.layerCents, v.attackLayerCents, retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
             v.tempMode.store(enabled ? 1 : (v.rank->measuredTemperamentValid ? 2 : 0), std::memory_order_relaxed);
             if (v.shift != 0 || v.sampleNote != v.note)   // the pure-interval correction depends on the mode
                 v.shiftCents.store(Impl::transpositionCents(stop, v.rank, v.shift, (int)v.note, (int)v.sampleNote),
@@ -16055,7 +16060,7 @@ void SamplerEngine::setStopUndulation(Stop* stop, float beatsAtA1)
     {
         auto& v = impl->voices[idx];
         if (v.stop == stop && v.rank != nullptr)
-            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, stop->tuneTo440, v.layerCents, mistuneCorrectCents.load(std::memory_order_relaxed), retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+            v.tuningCents.store(v.rank->tuningCentsForSample((int)v.sampleNote, stop->tuneTo440, v.layerCents, v.attackLayerCents, retuneLimitCents.load(std::memory_order_relaxed)), std::memory_order_relaxed);
     }
 }
 
@@ -16265,7 +16270,7 @@ void SamplerEngine::computeTuning440(const std::vector<Stop*>& ranksOfOrgan)
             if (moved > 0)
                 CrashHandler::note("Tuning " + rank->name + (rank->perspective.isNotEmpty() ? " [" + rank->perspective + "]" : juce::String())
                     + ": " + juce::String(moved) + " velocity-layer / release sample(s) whose smpl chunk names another pitch than the pipe's plain attack"
-                      " (up to " + juce::String(juce::roundToInt(largest)) + " c): each is tuned to its pipe's attack by its own chunk, always;"
+                      " (up to " + juce::String(juce::roundToInt(largest)) + " c): an attack plays as recorded, a release is tuned to the attack that sounded (with \"Equal at 440 Hz\" every sample by its own chunk);"
                       " an offset beyond \"Replace pipes off by more than\" is not believed");
         }
         RankData rd{ rank, {}, false };

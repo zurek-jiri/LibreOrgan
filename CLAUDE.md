@@ -5296,6 +5296,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   Hz, released 1555.2 / 2071.3 = +34 c / +1 c (was +67 / +32). The +34 c on the 1 1/7' rank STAYS: the producer
   tuned the attack's two ranks against each other and not the release's - no pitch shift of one file cures both
   ranks. RULE: a fix is measured AT THE DEFAULT SETTINGS before an issue is closed. Issue #266 reopened.
+  RELEASED: commit 8d6e70f, tag v0.9.136, CI green at the first attempt on all five, the release with five archives,
+  Intel mac "late symbols: 0"; the LOCAL Linux build stands in ~/Desktop/LibreOrgan and ~/Downloads/LibreOrgan. NO
+  Projucer resave (Linux): the VS2026 files say 0.9.135 - Windows next (git fetch + reset --mixed origin/main first).
+  THE USER ON (7), THE SAME HOUR: his own Schorndorf played right on 0.9.135 because HIS configuration has the Retune
+  slider lowered (it travels with the organ; Erik imported afresh = 50 c). A second slider for releases REFUSED ("Jeden
+  posuvník stačí, tak jak byl"), a threshold between attack and release REFUSED ("nemá být žádných 5 centů"), and
+  "velocity vrstva se NESMÍ dolaďovat na svou píšťalu ... Jen release se musí tiše doladit k právě znějícímu ataku, ať
+  už ten atak zní jakkoli rozladěně (podle smpl)". PROPOSED FOR 0.9.137, WAITING FOR HIS WORD (not coded): an ATTACK
+  (plain or a velocity layer) plays as recorded - no layerCents on it without "Equal at 440 Hz" (the pipe's own
+  correction alone); a RELEASE = the tuning the sounding attack voice got + (that attack's smpl - the release's smpl)
+  = tuningCentsFor(note) + releaseLayerCents - soundingAttackLayerCents (the release start already reads the sounding
+  voice: `sounding.cents` at SamplerEngine.cpp ~7551 - take its layerCents there too), bound by "Replace pipes off by
+  more than"; with 440 every sample by its own chunk as now (told him; his word wanted on that too).
   SEEN, NOT LOOKED AT: the import on Linux wrote "Schorndorf, Bornefeld, Surroun.json" (the organ's name one letter
   short; Erik's Windows file is "...Surround.json").
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their

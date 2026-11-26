@@ -681,20 +681,22 @@ struct Stop
         if (!tuned) return mistuneCents[(size_t)note];   // 0.9.10: as recorded, but a pipe far off its rank is pulled to its key
         return tuning440Cents[(size_t)note] + undulationCents[(size_t)note];
     }
-    // 0.9.134: the tuning of ONE SAMPLE of the pipe - a velocity layer or a release whose smpl chunk names another
-    // pitch than the pipe's plain attack (layerCents = what brings it to that attack).
-    // 0.9.136 (#266 again - Schorndorf's Siebenquart still went out of tune at the release with 0.9.135: without
-    // "Equal at 440 Hz" a sample was corrected only when IT lay further off the rank than "Retune pipes off by more
-    // than", 50 c by default, and the releases lie 32-39 c from their attacks - so nothing happened; the user:
-    // "musíš jim natvrdo nastavit override"): a sample of a pipe ALWAYS follows its pipe's attack - whatever the
-    // pipe gets (nothing, its pull to the key, the 440 correction) plus its own offset to that attack. The slider
-    // "Retune pipes off by more than" rules the PIPE against its rank, never a sample against its own attack. An
-    // offset beyond "Replace pipes off by more than" is no tuning but a chunk nobody filled: not believed.
-    float tuningCentsForSample(int note, bool tuned, float layerCents, float /*retuneAbove*/, float replaceAbove) const noexcept
+    // 0.9.134 / 0.9.137: the tuning of ONE SAMPLE of the pipe. layerCents = what would bring this sample's own
+    // recorded pitch (its smpl chunk) to the pipe's plain attack; attackLayerCents = the same figure of the ATTACK
+    // THAT SOUNDS (for an attack voice: its own). The user's rule (26 Nov 2026, after two wrong tries of mine): an
+    // ATTACK - the plain one or a velocity layer - plays as it is recorded, nothing is done to it on account of
+    // another sample; a RELEASE is tuned, silently and always, to the attack that was sounding when the key went
+    // up (the difference of their two recorded pitches), and takes whatever that attack got from the pipe's own
+    // rule. No threshold and no setting between an attack and its release. With "Equal at 440 Hz" every sample is
+    // tuned by its own chunk (that mode's meaning). An offset beyond "Replace pipes off by more than" is no tuning
+    // but a chunk nobody filled: not believed (counted as none).
+    float tuningCentsForSample(int note, bool tuned, float layerCents, float attackLayerCents, float replaceAbove) const noexcept
     {
         if (note < 0 || note >= 128) return 0.0f;
-        if (layerCents == 0.0f || std::abs(layerCents) > replaceAbove) return tuningCentsFor(note, tuned);
-        return tuningCentsFor(note, tuned) + layerCents;
+        const float own = std::abs(layerCents) > replaceAbove ? 0.0f : layerCents;
+        if (tuned) return tuningCentsFor(note, true) + own;
+        const float attack = std::abs(attackLayerCents) > replaceAbove ? 0.0f : attackLayerCents;
+        return tuningCentsFor(note, false) + (own - attack);
     }
     // Additional perspective ranks belonging to this logical stop. The Stop
     // itself is the first rank.

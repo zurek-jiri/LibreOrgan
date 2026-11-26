@@ -2886,17 +2886,17 @@ MainComponent::MainComponent()
                         if (peer == nullptr) return;
                         const auto place = peer->globalToLocal(target->getScreenBounds().toFloat().getCentre());
                         const auto time = juce::Time::currentTimeMillis();
-                        if (step == 'm')
+                        if (step == 'm' || step == 'j')   // j = a small move of 5 px
                         {
-                            peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place + juce::Point<float>(8.0f, 0.0f), juce::ModifierKeys(), 0.0f, 0.0f, time);
+                            peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place + juce::Point<float>(step == 'j' ? 5.0f : 24.0f, 0.0f), juce::ModifierKeys(), 0.0f, 0.0f, time);
                             peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place, juce::ModifierKeys(), 0.0f, 0.0f, time);
                         }
-                        else if (step == 'w' || step == 's')   // s = the wheel beside the slider (on its row's label): a scroll
+                        else if (step == 'w' || step == 's' || step == 'u' || step == 'S')   // s = the wheel beside the slider (on its row's label): a scroll; u / S = the same UPWARDS (at the top the page stays where it is: a resting mouse)
                         {
                             juce::MouseWheelDetails wheel;
-                            wheel.deltaX = 0.0f; wheel.deltaY = -0.25f; wheel.isReversed = false; wheel.isSmooth = false; wheel.isInertial = false;
+                            wheel.deltaX = 0.0f; wheel.deltaY = step == 'u' || step == 'S' ? 0.25f : -0.25f; wheel.isReversed = false; wheel.isSmooth = false; wheel.isInertial = false;
                             const auto beside = place - juce::Point<float>((float)target->getWidth() * 0.5f + 60.0f, 0.0f);
-                            peer->handleMouseWheel(juce::MouseInputSource::InputSourceType::mouse, step == 's' ? beside : place, time, wheel);
+                            peer->handleMouseWheel(juce::MouseInputSource::InputSourceType::mouse, step == 's' || step == 'S' ? beside : place, time, wheel);
                         }
                         if (target == nullptr) return;
                         auto* viewport = target->findParentComponentOfClass<juce::Viewport>();
@@ -30994,25 +30994,24 @@ void MainComponent::readLocationsFile(const juce::var& settings)
     }
 }
 
-void MainComponent::writeLocationsFile() const
+void MainComponent::writeLocationsFile(bool forgetProgramFolders) const
 {
     // 0.9.136: everything above the marker is the user's and is written back exactly as it stands in the file NOW
     // (never from memory: he may have edited it since it was read); the program's lines go under the marker.
+    // 0.9.137 (the user's archive lines were LOST: he forbade their folder with "!" for a moment, the lines under a
+    // forbidden place were not in the memory, and the next write made the program's part anew from the memory): the
+    // program's part is kept as it stands in the file too - a line is only ever ADDED (what the memory holds and the
+    // file does not name anywhere); only "Forget" takes the program's folder lines out.
     const auto file = locationsFile();
     const auto before = file.existsAsFile() ? file.loadFileAsString() : juce::String();
-    juce::StringArray lines, old, stray;
+    juce::StringArray lines, old;
     old.addLines(before);
-    bool hasMarker = false;
-    for (const auto& line : old) if (isLocationsMarker(line)) { hasMarker = true; break; }
-    if (hasMarker)
+    while (old.size() > 0 && old[old.size() - 1].trim().isEmpty()) old.remove(old.size() - 1);
+    int marker = -1;
+    for (int i = 0; i < old.size(); ++i) if (isLocationsMarker(old[i])) { marker = i; break; }
+    if (marker >= 0)
     {
-        bool above = true;
-        for (const auto& line : old)
-        {
-            if (isLocationsMarker(line)) { above = false; continue; }
-            if (above) lines.add(line);
-            else if (line.trim().startsWithChar('!')) stray.add(line.trim());   // a "!" line under the marker stays
-        }
+        for (int i = 0; i <= marker; ++i) lines.add(old[i]);
     }
     else
     {
@@ -31022,23 +31021,30 @@ void MainComponent::writeLocationsFile() const
         lines.add("# A line that starts with ! forbids a place: nothing is ever read from it (for example  !D:\\old disk).");
         lines.add("# The program never changes anything above the marker line.");
         lines.add("");
-        for (const auto& line : old) if (line.trim().startsWithChar('!')) lines.add(line.trim());
+        lines.add(kLocationsMarker);
+        lines.add("# What the program remembers by itself as organs are loaded and saved and archives chosen:");
     }
-    auto isLineOfYours = [&lines](const juce::String& path)
+    for (int i = marker + 1; i < old.size(); ++i)
+    {
+        const auto text = old[i].trim();
+        if (marker < 0 && (text.isEmpty() || text.startsWithChar('#'))) continue;   // an older file: its three comment lines go
+        if (forgetProgramFolders && text.isNotEmpty() && !text.startsWithChar('#') && !text.startsWithChar('!') && !text.endsWithIgnoreCase(".rar")) continue;
+        lines.add(old[i]);
+    }
+    auto named = [&lines](const juce::String& path)
     {
         for (const auto& line : lines)
         {
-            const auto text = line.trim().unquoted();
-            if (text.isEmpty() || text.startsWithChar('#') || text.startsWithChar('!')) continue;
+            auto text = line.trim();
+            if (text.startsWithChar('!')) text = text.substring(1).trim();
+            text = text.unquoted();
+            if (text.isEmpty() || text.startsWithChar('#')) continue;
             if (juce::File(text) == juce::File(path)) return true;
         }
         return false;
     };
-    lines.add(kLocationsMarker);
-    lines.add("# What the program remembers by itself as organs are loaded and saved and archives chosen:");
-    for (const auto& line : stray) lines.add(line);
-    for (const auto& location : sampleLocations) if (!isLineOfYours(location)) lines.add(location);
-    for (const auto& archive : rememberedArchives) if (!isLineOfYours(archive)) lines.add(archive);
+    for (const auto& location : sampleLocations) if (!named(location)) lines.add(location);
+    for (const auto& archive : rememberedArchives) if (!named(archive)) lines.add(archive);
     const auto text = lines.joinIntoString("\n") + "\n";
     if (text != before) file.replaceWithText(text);
 }
@@ -37416,7 +37422,7 @@ void MainComponent::showConfigurationEditor()
                     o.sampleLocations.clear();
                     for (const auto& entry : gUserLocations) if (!entry.archive) o.sampleLocations.add(entry.path);   // 0.9.136: your own lines stay
                     gSampleLocations = o.sampleLocations;
-                    o.writeLocationsFile();
+                    o.writeLocationsFile(true);
                     CrashHandler::note("Sample locations forgotten (the archives chosen stay in Locations.txt)");
                     o.saveSettings();
                     o.refreshConfigurationEditor();
