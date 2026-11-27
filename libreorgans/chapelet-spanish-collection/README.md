@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Chapelet Spanish Collection, as recorded by Sonus Paradisi in 2 perspectives, Diffuse and Direct, each on its own audio route: 4 divisions and 36 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Chapelet Spanish Collection, as recorded by Sonus Paradisi in 2 perspectives, Direct and Diffuse, each on its own audio route: 4 divisions and 36 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Chapelet Spanish Collection.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/spain/chapelet-spanish-collection.html](https://www.sonusparadisi.cz/en/organs/spain/chapelet-spanish-collection.html); the folders `002290` and `002291` (as they come, or in their RAR archives); perspectives Diffuse and Direct (`03-ORTF`). LibreOrgan Sampler 0.9.64 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/spain/chapelet-spanish-collection.html](https://www.sonusparadisi.cz/en/organs/spain/chapelet-spanish-collection.html); the folders `002290` and `002291` (as they come, or in their RAR archives); perspectives Direct (`03-ORTF`) and Diffuse (`AB`). LibreOrgan Sampler 0.9.147 or later.
 - **Expects:** library root of any name, holding the trees `002290/pipes/Spanel_Old`, `002291/pipes/GO`, `002291/pipes/pedal` and `002291/pipes/positif`.
-- **Audio layout:** every division has the routes diffuse and direct; auxiliary (unused).
+- **Audio layout:** every division has the routes direct and diffuse; auxiliary (unused).
 - **RAM:**
-  - **2.3 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **2.8 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **23 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.64.
-- **Author:** Jiri Zurek, 5 November 2026.
+  - **3.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **4.7 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **37 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.147.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -62,4 +62,4 @@ Put `Chapelet Spanish Collection.portable.json` into your LibreOrgans folder (Co
 |  |  |  | III. Dulziana bajos 8' |
 |  |  |  | III. Dulziana disc. 8' (Ext.) |
 
-<!-- published by @zurek-jiri (issue #218, 2026-11-05) -->
+<!-- published by @zurekjiri (issue #305, 2026-11-27) -->

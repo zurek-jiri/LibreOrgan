@@ -3,11 +3,11 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Doesburg, Martinikerk, Walcker, as recorded by Sonus Paradisi in 3 perspectives, Dry, Diffuse and Rear, each on its own audio route: 5 divisions and 76 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Doesburg, Martinikerk, Walcker, as recorded by Sonus Paradisi in 3 perspectives, Dry, Diffuse and Rear, each on its own audio route: 5 divisions and 77 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Doesburg, Martinikerk, Walcker.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/doesburg-martinikerk-walcker/Doesburg,%20Martinikerk,%20Walcker.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Doesburg, Martinikerk, Walcker.portable.json` there yourself.
+**Download:** [Doesburg Martinikerk Walcker.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/doesburg-martinikerk-walcker/Doesburg%20Martinikerk%20Walcker.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Doesburg Martinikerk Walcker.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,19 +15,19 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Doesburg, Martinikerk, Walcker.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html); the folders `002292`, `002293` and `002294` (as they come, or in their RAR archives); perspectives Dry (`su`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.51 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html); the folders `002292`, `002293` and `002294` (as they come, or in their RAR archives); perspectives Dry (`su`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.147 or later.
 - **Expects:** library root of any name, holding the trees `002292/I_Man`, `002292/II_Pos`, `002292/Ped`, `002293/I_MAN`, `002293/II_Pos`, `002293/III`, `002293/IV`, `002293/Ped`, `002294/I_MAN`, `002294/II_Pos`, `002294/III`, `002294/IV` and `002294/Ped`.
-- **Audio layout:** every division has the routes diffuse; auxiliary, dry and rear (unused).
+- **Audio layout:** every division has the routes dry, diffuse, rear and noises; auxiliary (unused).
 - **RAM:**
-  - **7.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **9.4 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **76 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.51.
-- **Author:** Jiri Zurek, 4 November 2026.
+  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **10 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **81 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.147.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
-Put `Doesburg, Martinikerk, Walcker.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002292`, `002293` and `002294` must stand side by side in one folder:
+Put `Doesburg Martinikerk Walcker.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002292`, `002293` and `002294` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -75,5 +75,6 @@ Put `Doesburg, Martinikerk, Walcker.portable.json` into your LibreOrgans folder 
 | P. Posaune 16' |  |  |  |  |
 | P. Tuba 8' |  |  |  |  |
 | P. Clairon harm. 4' (Trsm.) |  |  |  |  |
+| Blower noise |  |  |  |  |
 
-<!-- published by @zurek-jiri (issue #195, 2026-11-04) -->
+<!-- published by @zurekjiri (issue #307, 2026-11-27) -->

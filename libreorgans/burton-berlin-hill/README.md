@@ -3,11 +3,11 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Burton-Berlin, Hill, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 48 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Burton-Berlin, Hill, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 49 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Hill, Burton-Berlin, Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/burton-berlin-hill/Hill,%20Burton-Berlin,%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Hill, Burton-Berlin, Surround.portable.json` there yourself.
+**Download:** [Hill Burton-Berlin Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/burton-berlin-hill/Hill%20Burton-Berlin%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Hill Burton-Berlin Surround.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,19 +15,19 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Burton-Berlin, Hill.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html](https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html); the folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` (as they come, or in their RAR archives); perspectives Direct, Diffuse and Rear. LibreOrgan Sampler 0.9.28 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html](https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html); the folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` (as they come, or in their RAR archives); perspectives Direct (`ORTF`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.147 or later.
 - **Expects:** library root of any name, holding the trees `002261/pipes`, `002262/pipes`, `002263/pipes`, `002264/pipes`, `002265/pipes` and `002266/pipes`.
-- **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
+- **Audio layout:** every division has the routes direct, diffuse, rear and noises; auxiliary (unused).
 - **RAM:**
-  - **4.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **7.5 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **46 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.28.
-- **Author:** Jiri Zurek, 1 November 2026.
+  - **5.0 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **8.2 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **50 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.147.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
-Put `Hill, Burton-Berlin, Surround.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` must stand side by side in one folder:
+Put `Hill Burton-Berlin Surround.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -60,8 +60,8 @@ Put `Hill, Burton-Berlin, Surround.portable.json` into your LibreOrgans folder (
 | PED. Bourdon 16' | CH. Viola d Orchestre 8' | GT. Open Diapason 8' | SW. Vox Angelica 8' |
 | PED. Resultantbass 32' | CH. Gedact 8' | GT. Small Open Diapason 8' | SW. Voix Celeste 8' |
 | PED. Violone 16' | CH. Aeoline 8' | GT. Bourdon 16' | SW. Open Diapason 8' |
-|  |  | GT. Stopped Diapason 8' | SW. Salicional 8' |
+| Blower On/Off |  | GT. Stopped Diapason 8' | SW. Salicional 8' |
 |  |  |  | SW. Bourdon 16' |
 |  |  |  | SW. Rohrflote 8' |
 
-<!-- published by @zurek-jiri (issue #142, 2026-11-01) -->
+<!-- published by @zurekjiri (issue #297, 2026-11-27) -->
