@@ -3,11 +3,11 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 72 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Stralsund, St. Jakobi, Kr. Wegscheider, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 76 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Stralsund, St. Jakobi, Wegscheider.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/Stralsund,%20St.%20Jakobi,%20Wegscheider.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Stralsund, St. Jakobi, Wegscheider.portable.json` there yourself.
+**Download:** [Stralsund St. Jakobi Wegscheider.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/Stralsund%20St.%20Jakobi%20Wegscheider.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Stralsund St. Jakobi Wegscheider.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.
@@ -15,18 +15,18 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.9.126 or later.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.9.149 or later.
 - **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
   - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **85 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
-- **Saved with:** LibreOrgan Sampler 0.9.126.
-- **Author:** Jiri Zurek, 23 November 2026.
+  - **86 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
+- **Saved with:** LibreOrgan Sampler 0.9.149.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
-Put `Stralsund, St. Jakobi, Wegscheider.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `003135` and `003136` must stand side by side in one folder:
+Put `Stralsund St. Jakobi Wegscheider.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `003135` and `003136` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -62,9 +62,10 @@ Put `Stralsund, St. Jakobi, Wegscheider.portable.json` into your LibreOrgans fol
 | Ped Principalbass 64' (Ext.) | UW Gedackt 4' (Ext.) | HW Cornet 8' | Bombarde 16' (Ext.) |
 | Cornet [III] | UW Octave 2' (Ext.) | HW Rohrflote 16' (Ext.) | Vox Humana Cornet [V] |
 | Ped Posaune 64' (Ext.) | UW Gedackt 2' (Ext.) | Montre 32' (Ext.) | Clairon 4' (Ext.) |
-| BauernFlöte 2' (Trsm.) | Regal 16' (Trsm.) | HW Gamba 16' (Ext.) |  |
+| BauernFlöte 2' (Trsm.) | Regal 16' (Trsm.) | HW Gamba 16' (Ext.) | OW. Cimbelstern |
 | Ped ContraPos 64' (Ext.) | Septime 1 1/7' (Ext.) | HW Tromp 8' (Ext.) |  |
-|  |  | Flöte 2' (Trsm.) |  |
-|  |  | HW Tromp 4' (Ext.) |  |
+| Pauke |  | Flöte 2' (Trsm.) |  |
+| Calcant |  | HW Tromp 4' (Ext.) |  |
+| Blower On/Off |  |  |  |
 
-<!-- published by @zurekjiri (issue #262, 2026-11-23) -->
+<!-- published by @zurekjiri (issue #328, 2026-11-27) -->
