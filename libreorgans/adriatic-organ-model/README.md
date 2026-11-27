@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Adriatic Organ Model.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/italy/adriatic-organ-model.html](https://www.sonusparadisi.cz/en/organs/italy/adriatic-organ-model.html); the folders `000822`, `000823`, `000825` and `000826` (as they come, or in their RAR archives); perspectives Rear (`06_rea`) and default. LibreOrgan Sampler 0.9.135 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/italy/adriatic-organ-model.html](https://www.sonusparadisi.cz/en/organs/italy/adriatic-organ-model.html); the folders `000822`, `000823`, `000825` and `000826` (as they come, or in their RAR archives); perspectives Rear (`06_rea`) and default. LibreOrgan Sampler 0.9.146 or later.
 - **Expects:** library root of any name, holding the trees `000822/pipe`, `000823/pipe`, `000825/pipe` and `000826/pipe`.
 - **Audio layout:** Pedal: the routes noises; auxiliary (unused); I: the routes rear, default and noises; auxiliary (unused).
 - **RAM:**
   - **1.5 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
   - **1.7 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
   - **15 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.135.
-- **Author:** Jiri Zurek, 25 November 2026.
+- **Saved with:** LibreOrgan Sampler 0.9.146.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -56,4 +56,4 @@ Put `Adriatic Organ Model.portable.json` into your LibreOrgans folder (Configura
 |  | 09 Tromboncini bassi 8' |
 |  | 10 Tromboncini soprani 8' (Ext.) |
 
-<!-- published by @zurekjiri (issue #270, 2026-11-25) -->
+<!-- published by @zurekjiri (issue #283, 2026-11-27) -->

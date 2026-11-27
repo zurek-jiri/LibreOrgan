@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Adlington Hall (Smith), as recorded by Sonus Paradisi in 3 perspectives, Diffuse, Direct and Rear, each on its own audio route: 3 divisions and 16 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Adlington Hall (Smith), as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 3 divisions and 16 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Adlington Hall (Smith).
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/adlington-hall-organ.html](https://www.sonusparadisi.cz/en/organs/england/adlington-hall-organ.html); the folders `002707` and `002708` (as they come, or in their RAR archives); perspectives Diffuse (`02-diffuse`), Direct (`04-direct`) and Rear (`07-rear`). LibreOrgan Sampler 0.9.135 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/adlington-hall-organ.html](https://www.sonusparadisi.cz/en/organs/england/adlington-hall-organ.html); the folders `002707` and `002708` (as they come, or in their RAR archives); perspectives Direct (`04-direct`), Diffuse (`02-diffuse`) and Rear (`07-rear`). LibreOrgan Sampler 0.9.146 or later.
 - **Expects:** library root of any name, holding the trees `002707/pipes` and `002708/pipes`.
-- **Audio layout:** Pedal: no routeauxiliary (unused); I: the routes diffuse, direct and rear; auxiliary (unused); II: the routes diffuse, direct and rear; auxiliary (unused).
+- **Audio layout:** Pedal: no routeauxiliary (unused); I: the routes direct, diffuse and rear; auxiliary (unused); II: the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **2.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **7.9 GB** - 16-bit, 48 kHz, full releases, packed only as far as the memory asked; *measured*
-  - **26 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.135.
-- **Author:** Jiri Zurek, 25 November 2026.
+  - **2.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **8.0 GB** - 16-bit, 48 kHz, full releases, packed only as far as the memory asked; *measured*
+  - **27 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.146.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -54,4 +54,4 @@ Put `Adlington Hall (Smith).portable.json` into your LibreOrgans folder (Configu
 |  |  | GO. Twenty Second 1' |
 |  |  | GO. Vox Humana 8' |
 
-<!-- published by @zurekjiri (issue #268, 2026-11-25) -->
+<!-- published by @zurekjiri (issue #281, 2026-11-27) -->

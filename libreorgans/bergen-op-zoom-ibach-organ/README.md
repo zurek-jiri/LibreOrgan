@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Bergen op Zoom, Ibach organ, as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Rear and Distant, each on its own audio route: 4 divisions and 54 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Bergen op Zoom, Ibach organ, as recorded by Sonus Paradisi in 4 perspectives, Direct, Diffuse, Distant and Rear, each on its own audio route: 4 divisions and 55 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,14 +15,14 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Bergen op Zoom, Ibach organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/bergen-op-zoom-ibach-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/bergen-op-zoom-ibach-organ.html); the folders `002082`, `002083`, `002084`, `002085`, `002086`, `002087` and `002088` (as they come, or in their RAR archives); perspectives Diffuse, Direct, Rear and Distant (`06-far`). LibreOrgan Sampler 0.8.224 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/bergen-op-zoom-ibach-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/bergen-op-zoom-ibach-organ.html); the folders `002082`, `002083`, `002084`, `002085`, `002086`, `002087` and `002088` (as they come, or in their RAR archives); perspectives Direct (`04-direct`), Diffuse (`02-diffuse`), Distant (`06-far`) and Rear (`07-rear`). LibreOrgan Sampler 0.9.146 or later.
 - **Expects:** library root of any name, holding the trees `002082/pipes`, `002083/pipes`, `002084/pipes`, `002085/pipes`, `002086/pipes`, `002087/pipes` and `002088/pipes`.
-- **Audio layout:** every division has the routes diffuse, direct, rear and distant; auxiliary (unused).
+- **Audio layout:** every division has the routes direct, diffuse, distant, rear and noises; auxiliary (unused).
 - **RAM:**
-  - **8.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
-  - **87 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.8.224.
-- **Author:** Jiri Zurek, 29 October 2026.
+  - **8.9 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
+  - **89 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.146.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -66,6 +66,6 @@ Put `Bergen op Zoom Ibach organ Surround 8-chan.portable.json` into your LibreOr
 | P. Posaunenbass 16' | 1. Fagott 16' |  |  |
 | P. Trompetenbass 8' | 1. Trompete 16' (Ext.) |  |  |
 | P. Claironbass 4' | 1. Trompete 8' |  |  |
-|  | Clairon 4' (Ext.) |  |  |
+| Blower On/Off | Clairon 4' (Ext.) |  |  |
 
-<!-- published by @zurek-jiri (issue #120, 2026-10-29) -->
+<!-- published by @zurekjiri (issue #279, 2026-11-27) -->
