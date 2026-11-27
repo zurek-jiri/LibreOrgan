@@ -187,7 +187,9 @@ loads, and the Messages name them.
 
 *Organ catalog* (top bar) lists the organs published for LibreOrgan Sampler:
 the organ, its divisions and stops, the RAM it takes at the least, its
-perspectives, and whether its sample folders are on this computer. A click on
+perspectives, and whether its sample folders are on this computer - where
+they are not, the last column links to the page where they are bought or
+downloaded. A click on
 a column's header sorts; the filter row narrows the list by a word, by RAM or
 to the organs whose samples are here. *Download and load* (or a double-click)
 fetches the configuration and loads it through the load box, as *Load

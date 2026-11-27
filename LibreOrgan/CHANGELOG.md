@@ -19,7 +19,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   the organs published in the repository's `libreorgans/` folder, listed in
   the program with the website's columns - organ, divisions, stops, RAM,
   routes - and a sixth one, whether the organ's sample folders are on this
-  computer (the search a load does, run quietly). A click on a header sorts;
+  computer (the search a load does, run quietly): Yes, or - where they are
+  not - the link to the page where they are bought or downloaded (the link
+  the publisher gave at the save). A click on a header sorts;
   the filter row narrows the list by a word, by RAM or to the organs whose
   samples are here. *Download and load* fetches the organ's zip and hands its
   configuration to the same path as Load Configuration (the load box, the

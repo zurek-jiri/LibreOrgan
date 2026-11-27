@@ -244,7 +244,8 @@ public:
         cacheFile = cacheFolder.getChildFile("catalog.json");
 
         intro.setText("The organs published for LibreOrgan Sampler. A click downloads the organ's configuration and loads it; the sample folders "
-            "themselves must be on this computer (the last column says whether they are) - the README names their producer.",
+            "themselves must be on this computer - the last column says whether they are, and where they are not it links to the page "
+            "where they are bought or downloaded.",
             juce::dontSendNotification);
         intro.setFont(juce::FontOptions(15.0f));
         intro.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -281,13 +282,13 @@ public:
         table.setOutlineThickness(1);
         table.getProperties().set("manualChapter", "The organ catalog");
         auto& header = table.getHeader();
-        const int flags = juce::TableHeaderComponent::visible | juce::TableHeaderComponent::resizable | juce::TableHeaderComponent::sortable;
-        header.addColumn("Organ", colOrgan, 380, 160, -1, flags);
-        header.addColumn("Divisions", colDivisions, 90, 70, 140, flags);
-        header.addColumn("Stops", colStops, 80, 60, 140, flags);
-        header.addColumn("RAM", colRam, 90, 70, 140, flags);
-        header.addColumn("Routes", colRoutes, 250, 100, -1, flags);
-        header.addColumn("Samples on this computer", colSamples, 210, 150, -1, flags);
+        const int columnFlags = juce::TableHeaderComponent::visible | juce::TableHeaderComponent::resizable | juce::TableHeaderComponent::sortable;
+        header.addColumn("Organ", colOrgan, 380, 160, -1, columnFlags);
+        header.addColumn("Divisions", colDivisions, 90, 70, 140, columnFlags);
+        header.addColumn("Stops", colStops, 80, 60, 140, columnFlags);
+        header.addColumn("RAM", colRam, 90, 70, 140, columnFlags);
+        header.addColumn("Routes", colRoutes, 220, 100, -1, columnFlags);
+        header.addColumn("Samples on this computer", colSamples, 280, 200, -1, columnFlags);
         header.setSortColumnId(colOrgan, true);
         header.setStretchToFitActive(true);
         addAndMakeVisible(table);
@@ -393,7 +394,9 @@ public:
         for (int row = 0; row < juce::jmin(6, (int)shown.size()); ++row)
         {
             const auto& e = all[(size_t)shown[(size_t)row]];
-            lines.add(e.title + " [" + juce::String(e.divisions) + " div, " + juce::String(e.stops) + " stops, " + OrganCatalog::sizeText(e.ramBytes) + ", " + samplesText(e) + "]");
+            const auto link = samplesLinkText(e);
+            lines.add(e.title + " [" + juce::String(e.divisions) + " div, " + juce::String(e.stops) + " stops, " + OrganCatalog::sizeText(e.ramBytes) + ", " + samplesText(e)
+                + (link.isNotEmpty() ? " -> " + link + " = " + samplesPageOf(e) : juce::String()) + "]");
         }
         CrashHandler::note("ORGAN_TEST_CATALOG " + parts.joinIntoString("|") + ": " + juce::String((int)shown.size()) + " of " + juce::String((int)all.size())
             + " organ(s) shown; status \"" + status.getText() + "\"; first: " + lines.joinIntoString("; "));
@@ -428,10 +431,57 @@ private:
         if (e.samplesUrl.isNotEmpty() && samplesFileOf(e).existsAsFile() && e.treesHere <= 0) return "its archive is downloaded";
         if (e.trees.isEmpty()) return "-";
         if (e.treesHere < 0) return "looking ...";
-        if (e.treesHere >= e.trees.size()) return "here";
+        if (e.treesHere >= e.trees.size()) return "Yes";
         const juce::String free = e.samplesUrl.isNotEmpty() ? " - free: " + OrganCatalog::sizeText(e.samplesBytes) : juce::String();
-        if (e.treesHere == 0) return "not here" + free;
+        if (e.treesHere == 0) return "No" + free;
         return juce::String(e.treesHere) + " of " + juce::String(e.trees.size()) + " folder trees" + free;
+    }
+
+    // Where the organ's samples are bought or downloaded: the link its publisher gave at the save (shown and opened
+    // only as a web link - it is a text out of a published file), else the organ's README on GitHub.
+    static juce::String samplesPageOf(const OrganCatalog::Entry& e)
+    {
+        if (e.link.startsWithIgnoreCase("https://") || e.link.startsWithIgnoreCase("http://")) return e.link;
+        if (e.readme.startsWithIgnoreCase("https://")) return e.readme;
+        return {};
+    }
+
+    // The link's words in the last column - only for an organ whose sample folders are not (all) on this computer.
+    juce::String samplesLinkText(const OrganCatalog::Entry& e) const
+    {
+        if (e.trees.isEmpty() || e.treesHere < 0 || e.treesHere >= e.trees.size()) return {};
+        if (e.samplesUrl.isNotEmpty()) return {};   // (free samples: the button downloads them)
+        const auto page = samplesPageOf(e);
+        if (page.isEmpty()) return {};
+        if (page == e.readme) return "README";
+        auto domain = juce::URL(page).getDomain();
+        if (domain.startsWithIgnoreCase("www.")) domain = domain.substring(4);
+        return domain;
+    }
+
+    static juce::Font cellFont(bool bold, bool underlined = false)
+    {
+        const int style = (bold ? (int)juce::Font::bold : 0) | (underlined ? (int)juce::Font::underlined : 0);
+        return juce::Font(juce::FontOptions(15.0f, style));
+    }
+
+    // Where the link stands in its cell (x from the cell's left edge): after the state's words.
+    juce::Range<int> samplesLinkRange(const OrganCatalog::Entry& e) const
+    {
+        const auto link = samplesLinkText(e);
+        if (link.isEmpty()) return {};
+        const int start = 8 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(cellFont(false), samplesText(e) + "  "));
+        return { start, start + juce::roundToInt(juce::GlyphArrangement::getStringWidth(cellFont(false, true), link)) + 2 };
+    }
+
+    bool onSamplesLink(int row, int column, const juce::MouseEvent& event)
+    {
+        const auto* e = entryOfRow(row);
+        if (e == nullptr || column != colSamples) return false;
+        const auto range = samplesLinkRange(*e);
+        if (range.isEmpty()) return false;
+        const int x = event.getEventRelativeTo(&table).x - table.getCellPosition(colSamples, row, true).getX();
+        return range.contains(x);
     }
 
     juce::String cellText(const OrganCatalog::Entry& e, int column) const
@@ -458,9 +508,20 @@ private:
             colour = e->treesHere >= e->trees.size() && !e->trees.isEmpty() ? juce::Colours::lightgreen
                    : e->treesHere > 0 || e->samplesUrl.isNotEmpty() ? juce::Colours::white : juce::Colours::grey;
         g.setColour(colour);
-        g.setFont(juce::FontOptions(15.0f, column == colOrgan && e->featured ? juce::Font::bold : juce::Font::plain));
+        g.setFont(cellFont(column == colOrgan && e->featured));
         const bool number = column == colDivisions || column == colStops || column == colRam;
         g.drawText(cellText(*e, column), juce::Rectangle<int>(8, 0, width - 16, height), number ? juce::Justification::centredRight : juce::Justification::centredLeft, true);
+        if (column == colSamples)
+        {
+            // (the samples are not here: the page where they are bought or downloaded, as a link)
+            const auto range = samplesLinkRange(*e);
+            if (!range.isEmpty() && range.getStart() < width - 24)
+            {
+                g.setColour(juce::Colours::lightskyblue);
+                g.setFont(cellFont(false, true));
+                g.drawText(samplesLinkText(*e), juce::Rectangle<int>(range.getStart(), 0, width - 8 - range.getStart(), height), juce::Justification::centredLeft, true);
+            }
+        }
         g.setColour(juce::Colours::white.withAlpha(0.08f));
         g.fillRect(width - 1, 0, 1, height);
     }
@@ -475,6 +536,9 @@ private:
                 : juce::String(juce::jmax(0, e->treesHere)) + " of " + juce::String(e->trees.size()) + " folder tree(s) of the organ found on this computer.";
             text << "\nExpected under \"" << e->rootName << "\": " << e->trees.joinIntoString(", ");
             if (e->samplesUrl.isNotEmpty()) text << "\nIts samples are free: \"Download with its samples\" fetches them (" << OrganCatalog::sizeText(e->samplesBytes) << ").";
+            if (samplesLinkText(*e).isNotEmpty())
+                text << "\nA click on the link opens the page where the samples are bought or downloaded"
+                     << (e->producer.isNotEmpty() ? " (" + e->producer + ")" : juce::String()) << ": " << samplesPageOf(*e);
             return text;
         }
         if (column == colRam) return "The least the organ takes, with every saving option of the load box. At the full quality count on roughly ten times as much.";
@@ -486,7 +550,24 @@ private:
 
     void sortOrderChanged(int, bool) override { applyFilter(); }
     void selectedRowsChanged(int) override { updateButtons(); }
-    void cellDoubleClicked(int row, int, const juce::MouseEvent&) override { table.selectRow(row); loadSelected(false); }
+    void cellClicked(int row, int column, const juce::MouseEvent& event) override
+    {
+        if (event.mods.isPopupMenu() || event.getNumberOfClicks() > 1 || !onSamplesLink(row, column, event)) return;
+        if (const auto* e = entryOfRow(row)) openSamplesPage(*e);
+    }
+    void cellDoubleClicked(int row, int column, const juce::MouseEvent& event) override
+    {
+        if (onSamplesLink(row, column, event)) return;   // (the link was opened by the first click - no load on top of it)
+        table.selectRow(row);
+        loadSelected(false);
+    }
+    void openSamplesPage(const OrganCatalog::Entry& e)
+    {
+        const auto page = samplesPageOf(e);
+        if (page.isEmpty()) return;
+        CrashHandler::note("Organ catalog: the page of the samples of \"" + e.title + "\" opened in the browser - " + page);
+        juce::URL(page).launchInDefaultBrowser();
+    }
     void returnKeyPressed(int row) override { table.selectRow(row); loadSelected(false); }
 
     void applyFilter()

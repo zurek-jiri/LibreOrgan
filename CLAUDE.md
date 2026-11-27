@@ -5576,8 +5576,16 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   computer"; buttons "Download and load", "Download with its samples (N MB)" (only for a SAMPLES.txt organ), README,
   Refresh, "Cancel the download". The samples column = `MainComponent::catalogTreesHere(...)` on a thread
   (portableFolderCandidates per tree, disk folders by a disk-only fingerprint, archives only when every remembered
-  archive has its index on the disk - it never walks an archive; 31 organs in 1.2-3.6 s here): "here" green / "N of M
-  folder trees" / "not here" / "not here - free: 692 MB". Download: the zip -> the .json inside (must hold
+  archive has its index on the disk - it never walks an archive; 31 organs in 1.2-3.6 s here): "Yes" green / "N of M
+  folder trees" / "No" / "No - free: 692 MB" (THE USER on my first words "here" / "not here": "slovo here je idiocie!
+  Stačí snad Yes" - a state column says Yes / No) and, where the samples are not (all) here, A LINK in the cell to the
+  page where they are bought (the user's order): `samplesPageOf(e)` = the catalog's "link" (the publisher's link from
+  the save; shown and opened ONLY when it begins with http:// or https:// - it is a text out of a published file), else
+  the organ's README on GitHub; drawn as the domain ("sonusparadisi.cz") or "README", lightskyblue underlined, after the
+  state's words (`samplesLinkRange`); `cellClicked` on the link's own x-range opens the browser (a double click there
+  loads nothing); no link for an organ with free samples (the button downloads them). Pictured with
+  %TEMP%\craft_catalog2.py (an organ without samples, one with 2 of 3 trees, one without a link, one with a
+  "javascript:" link -> README). The click itself was NOT tried by a mouse. Download: the zip -> the .json inside (must hold
   "manualKeyboards"; every plug-in object gets "on": false + a Messages note - a downloaded organ never starts a
   plug-in by itself) -> `loadFromCatalog` = askToKeepChanges + `loadConfigurationFile` (the ordinary load box: copy
   into the LibreOrgans folder etc.); a samples archive -> Documents/LibreOrgan/LibreSamples (beside LibreOrgans; a file
