@@ -16,6 +16,7 @@
     "Rear"
    ],
    "ramBytes": 2814684128,
+   "published": "2026-11-25",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/england/adlington-hall-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -40,10 +41,11 @@
    "divisions": 2,
    "stops": 11,
    "routes": [
-    "Rear",
-    "default"
+    "default",
+    "Rear"
    ],
    "ramBytes": 1604029679,
+   "published": "2026-11-25",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/italy/adriatic-organ-model.html",
    "rootName": "OrganInstallationPackages",
@@ -75,6 +77,7 @@
     "default"
    ],
    "ramBytes": 2226268297,
+   "published": "2026-11-27",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html",
    "rootName": "OrganInstallationPackages",
@@ -109,6 +112,7 @@
     "Rear"
    ],
    "ramBytes": 4513412855,
+   "published": "2026-11-01",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -147,6 +151,7 @@
     "Rear"
    ],
    "ramBytes": 10307228912,
+   "published": "2026-11-27",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -189,6 +194,7 @@
     "Rear"
    ],
    "ramBytes": 5363136182,
+   "published": "2026-11-27",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html",
    "rootName": "OrganInstallationPackages",
@@ -235,6 +241,7 @@
     "Distant"
    ],
    "ramBytes": 9383276544,
+   "published": "2026-10-29",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/netherlands/bergen-op-zoom-ibach-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -266,6 +273,7 @@
     "Rear"
    ],
    "ramBytes": 8197537462,
+   "published": "2026-11-01",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/france/beziers-cathedral-puget-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -304,6 +312,7 @@
     "Rear"
    ],
    "ramBytes": 15935397888,
+   "published": "2026-10-29",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/billerbeck-dom-fleiter-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -350,6 +359,7 @@
     "Rear"
    ],
    "ramBytes": 5856628150,
+   "published": "2026-10-29",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/bra.html",
    "rootName": "OrganInstallationPackages",
@@ -381,10 +391,11 @@
    "divisions": 2,
    "stops": 12,
    "routes": [
-    "Pedale",
-    "default"
+    "default",
+    "Pedale"
    ],
    "ramBytes": 1385288799,
+   "published": "2026-10-31",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/italy/brescia-st-carlo.html",
    "rootName": "OrganInstallationPackages",
@@ -412,6 +423,7 @@
     "Rear"
    ],
    "ramBytes": 4990445224,
+   "published": "2026-11-01",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html",
    "rootName": "OrganInstallationPackages",
@@ -449,6 +461,7 @@
     "Rear"
    ],
    "ramBytes": 6345719808,
+   "published": "2026-10-31",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/buckeburg-janke-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -481,10 +494,11 @@
    "divisions": 4,
    "stops": 55,
    "routes": [
-    "Rear",
-    "Front"
+    "Front",
+    "Rear"
    ],
    "ramBytes": 6165909504,
+   "published": "2026-11-03",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne.html",
    "rootName": "OrganInstallationPackages",
@@ -540,6 +554,7 @@
     "default"
    ],
    "ramBytes": 985299899,
+   "published": "2026-11-03",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/harpsichords-etc/cembalo-mietke-model.html",
    "rootName": "OrganInstallationPackages",
@@ -565,6 +580,7 @@
     "default"
    ],
    "ramBytes": 1122604416,
+   "published": "2026-11-03",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/harpsichords-etc/cembalo-ruckers-model.html",
    "rootName": "OrganInstallationPackages",
@@ -593,6 +609,7 @@
     "Direct"
    ],
    "ramBytes": 2445403005,
+   "published": "2026-11-05",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/spain/chapelet-spanish-collection.html",
    "rootName": "OrganInstallationPackages",
@@ -627,6 +644,7 @@
     "Rear"
    ],
    "ramBytes": 8924279331,
+   "published": "2026-11-05",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/chemitz-lutherkirche-sauer-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -666,6 +684,7 @@
     "Rear"
    ],
    "ramBytes": 8133818260,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -716,6 +735,7 @@
     "auxiliary"
    ],
    "ramBytes": 1040225299,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/doky-kruh.html",
    "rootName": "OrganInstallationPackages",
@@ -740,10 +760,11 @@
    "divisions": 6,
    "stops": 56,
    "routes": [
-    "Rear",
-    "default"
+    "default",
+    "Rear"
    ],
    "ramBytes": 4517103485,
+   "published": "2026-10-27",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/france/dom-bedos-organ-model.html",
    "rootName": "OrganInstallationPackages",
@@ -781,6 +802,7 @@
     "Rear"
    ],
    "ramBytes": 7598542845,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -816,6 +838,7 @@
     "default"
    ],
    "ramBytes": 2596212512,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/forcalquier-france.html",
    "rootName": "OrganInstallationPackages",
@@ -846,6 +869,7 @@
     "Rear"
    ],
    "ramBytes": 11352122510,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html",
    "rootName": "OrganInstallationPackages",
@@ -893,6 +917,7 @@
     "default"
    ],
    "ramBytes": 997929736,
+   "published": "2026-11-04",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/italy/greccio.html",
    "rootName": "OrganInstallationPackages",
@@ -920,6 +945,7 @@
     "Rear"
    ],
    "ramBytes": 12295464060,
+   "published": "2026-11-05",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html",
    "rootName": "OrganInstallationPackages",
@@ -961,6 +987,7 @@
     "default"
    ],
    "ramBytes": 1629920007,
+   "published": "2026-11-05",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/czech/hrade-kralove-maria-church.html",
    "rootName": "OrganInstallationPackages",
@@ -990,6 +1017,7 @@
     "default"
    ],
    "ramBytes": 1512339631,
+   "published": "2026-11-06",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/czech/kdousov.html",
    "rootName": "OrganInstallationPackages",
@@ -1016,6 +1044,7 @@
     "auxiliary"
    ],
    "ramBytes": 1283735552,
+   "published": "",
    "producer": "",
    "link": "",
    "rootName": "Kobrle",
@@ -1046,6 +1075,7 @@
     "Rear"
    ],
    "ramBytes": 8675767319,
+   "published": "2026-11-23",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -1087,6 +1117,7 @@
     "Rear"
    ],
    "ramBytes": 4335649494,
+   "published": "2026-11-06",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/u-s-a/yokota-centennial-organ-of-chico-state-university.html",
    "rootName": "OrganInstallationPackages",

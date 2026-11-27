@@ -12822,16 +12822,50 @@ void SamplerEngine::setManualTremulantTargets(int manualIndex, int targetMask)
 }
 
 //------------------------------------------------------------------------------
+// 0.9.147 (the user): the DEFAULT order of the perspectives - Dry, Semi-Dry, Front, default, Direct, Diffuse,
+// Distant, every other one (by the alphabet), Rear, auxiliary. By the name's letters ("Semi-Dry", "Front A",
+// "Direct dir22" count as their word).
+int SamplerEngine::defaultPerspectiveRank(const juce::String& name)
+{
+    juce::String letters;
+    for (int i = 0; i < name.length(); ++i)
+        if (juce::CharacterFunctions::isLetter(name[i])) letters << juce::CharacterFunctions::toLowerCase(name[i]);
+    static const std::pair<const char*, int> words[]{ { "semidry", 1 }, { "dry", 0 }, { "front", 2 }, { "default", 3 }, { "direct", 4 },
+                                                       { "diffuse", 5 }, { "distant", 6 }, { "rear", 8 }, { "auxiliary", 9 } };
+    for (const auto& word : words)
+        if (letters.startsWith(word.first)) return word.second;
+    return 7;
+}
+
+std::vector<juce::String> SamplerEngine::perspectiveLinesInDefaultOrder(std::vector<juce::String> lines)
+{
+    std::stable_sort(lines.begin(), lines.end(), [](const juce::String& a, const juce::String& b)
+    {
+        const auto labelA = a.upToFirstOccurrenceOf(";", false, false).trim(), labelB = b.upToFirstOccurrenceOf(";", false, false).trim();
+        const int rankA = defaultPerspectiveRank(labelA), rankB = defaultPerspectiveRank(labelB);
+        if (rankA != rankB) return rankA < rankB;
+        return labelA.compareNatural(labelB) < 0;
+    });
+    return lines;
+}
+
 int SamplerEngine::perspectiveOrderIndex(const juce::String& name) const
 {
-    if (name.equalsIgnoreCase("default")) return -1;
     // 0.9.95 (#242, the user: "always!"): the auxiliary route is the LAST one everywhere, whatever the lines say -
     // it stood before "Front" in the Audio routing (no line for either: the alphabet decided).
     if (name.equalsIgnoreCase(auxiliaryPerspectiveName())) return std::numeric_limits<int>::max();
     if (name.equalsIgnoreCase(noisesPerspectiveName())) return std::numeric_limits<int>::max() - 1;   // 0.9.134: the noises' own route after the organ's perspectives
+    // The lines of the Perspective patterns keep THEIR order (the user's own: a dragged column).
     for (size_t i = 0; i < perspectivePatterns.size(); ++i)
-        if (perspectivePatterns[i].upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(name.trim())) return (int)i;
-    return (int)perspectivePatterns.size() + 1;
+        if (perspectivePatterns[i].upToFirstOccurrenceOf(";", false, false).trim().equalsIgnoreCase(name.trim())) return (int)i * 32 + 16;
+    // 0.9.147: a perspective WITHOUT a line ("default" above all) stands at its default place among them - before
+    // the first line that comes later in the default order ("default" was always first, the others last by the
+    // alphabet: an unlisted perspective stood after Rear).
+    const int rank = defaultPerspectiveRank(name);
+    size_t slot = perspectivePatterns.size();
+    for (size_t i = 0; i < perspectivePatterns.size(); ++i)
+        if (defaultPerspectiveRank(perspectivePatterns[i].upToFirstOccurrenceOf(";", false, false)) > rank) { slot = i; break; }
+    return (int)slot * 32 + rank;
 }
 
 void SamplerEngine::sortPerspectives(std::vector<juce::String>& names) const

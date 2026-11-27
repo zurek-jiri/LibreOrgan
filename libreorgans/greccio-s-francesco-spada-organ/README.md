@@ -9,7 +9,7 @@ the recordings loads the whole instrument in a single step.
 
 The organ was recorded for HW1. It has no native multiple releases. Therefore, it is recommended to use it with an appropriate IR. This configuration was created using the IR freely available in the "Rural Organ" sample set downloadable from gitHub.
 
-**Download:** [Greccio, S. Francesco, Spada.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/greccio-s-francesco-spada-organ/Greccio,%20S.%20Francesco,%20Spada.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Greccio, S. Francesco, Spada.portable.json` there yourself.
+**Download:** [Greccio, S. Francesco, Spada.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/greccio-s-francesco-spada-organ/Greccio,%20S.%20Francesco,%20Spada.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Greccio, S. Francesco, Spada.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

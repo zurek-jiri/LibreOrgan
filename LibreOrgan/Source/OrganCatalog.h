@@ -31,7 +31,7 @@ namespace OrganCatalog
 
     struct Entry
     {
-        juce::String title, folder, zip, url, readme, routes, producer, link, rootName, rootRelative;
+        juce::String title, folder, zip, url, readme, routes, producer, link, rootName, rootRelative, published;   // published: YYYY-MM-DD, or empty
         juce::StringArray trees;
         juce::StringPairArray fingerprints;
         int divisions = 0, stops = 0;
@@ -57,6 +57,7 @@ namespace OrganCatalog
             e.url = item.getProperty("url", "").toString();
             e.readme = item.getProperty("readme", "").toString();
             e.producer = item.getProperty("producer", "").toString();
+            e.published = item.getProperty("published", "").toString();
             e.link = item.getProperty("link", "").toString();
             e.rootName = item.getProperty("rootName", "").toString();
             e.rootRelative = item.getProperty("rootRelative", "").toString();
@@ -288,6 +289,7 @@ public:
         header.addColumn("Stops", colStops, 80, 60, 140, columnFlags);
         header.addColumn("RAM", colRam, 90, 70, 140, columnFlags);
         header.addColumn("Routes", colRoutes, 220, 100, -1, columnFlags);
+        header.addColumn("Published", colPublished, 110, 90, 150, columnFlags);
         header.addColumn("Samples on this computer", colSamples, 280, 200, -1, columnFlags);
         header.setSortColumnId(colOrgan, true);
         header.setStretchToFitActive(true);
@@ -375,8 +377,8 @@ public:
         else if (act == "here") { hereOnly.setToggleState(parts.size() > 2 && parts[2].getIntValue() != 0, juce::sendNotificationSync); }
         else if (act == "sort" && parts.size() > 2)
         {
-            static const char* names[]{ "", "organ", "divisions", "stops", "ram", "routes", "samples" };
-            for (int id = 1; id <= 6; ++id) if (parts[2] == names[id]) table.getHeader().setSortColumnId(id, !(parts.size() > 3 && parts[3] == "desc"));
+            static const char* names[]{ "", "organ", "divisions", "stops", "ram", "routes", "samples", "published" };
+            for (int id = 1; id <= 7; ++id) if (parts[2] == names[id]) table.getHeader().setSortColumnId(id, !(parts.size() > 3 && parts[3] == "desc"));
         }
         else if (act == "refresh") fetchCatalog();
         else if ((act == "load" || act == "samples" || act == "select") && parts.size() > 2)
@@ -403,7 +405,7 @@ public:
     }
 
 private:
-    enum { colOrgan = 1, colDivisions, colStops, colRam, colRoutes, colSamples };
+    enum { colOrgan = 1, colDivisions, colStops, colRam, colRoutes, colSamples, colPublished };
     enum class Job { none, catalog, configuration, samples };
 
     // ---- the table ----
@@ -493,6 +495,7 @@ private:
             case colStops:     return juce::String(e.stops);
             case colRam:       return OrganCatalog::sizeText(e.ramBytes);
             case colRoutes:    return e.routes;
+            case colPublished: return e.published.isNotEmpty() ? e.published : juce::String("-");
             case colSamples:   return samplesText(e);
             default:           return {};
         }
@@ -541,6 +544,7 @@ private:
                      << (e->producer.isNotEmpty() ? " (" + e->producer + ")" : juce::String()) << ": " << samplesPageOf(*e);
             return text;
         }
+        if (column == colPublished) return "The day this configuration was published (its latest version).";
         if (column == colRam) return "The least the organ takes, with every saving option of the load box. At the full quality count on roughly ten times as much.";
         juce::String text = e->title + (e->featured ? "  (featured)" : "");
         if (e->producer.isNotEmpty()) text << "\nSamples: " << e->producer;
@@ -601,6 +605,7 @@ private:
                 case colStops:     order = x.stops - y.stops; break;
                 case colRam:       order = x.ramBytes < y.ramBytes ? -1 : x.ramBytes > y.ramBytes ? 1 : 0; break;
                 case colRoutes:    order = x.routes.compareIgnoreCase(y.routes); break;
+                case colPublished: order = x.published.compare(y.published); break;
                 case colSamples:
                 {
                     auto share = [](const OrganCatalog::Entry& e) { return e.trees.isEmpty() ? -1.0 : (double)juce::jmax(0, e.treesHere) / (double)e.trees.size(); };

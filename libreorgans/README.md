@@ -29,10 +29,10 @@ same by hand.
 2. Find the organ in [INDEX.md](INDEX.md), open its README and click its
    **Download** link: a zip with the `.json` inside.
 3. In LibreOrgan Sampler: *Load Configuration* in the top bar, choose the zip as
-   it is (0.8.195; nothing to unpack) - the load box copies the
+   it is (nothing to unpack) - the load box copies the
    configuration into your **LibreOrgans folder** (Configuration Editor >
    *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by
-   default - since 0.8.190 every configuration lives there, away from the
+   default - every configuration lives there, away from the
    samples). The sample folders are found in your *sample locations* (the folders
    above your sample libraries, which the program remembers by itself and
    lists in the Configuration Editor); the README shows the folder tree
@@ -68,7 +68,7 @@ others)** ticked in the Save Configuration box: it then carries the organ
 only - no MIDI devices, no audio devices or channels, nothing of your
 computer (the manual chapter of the same name explains it). LibreOrgan Sampler
 writes it as an export into the `Publish` subfolder of your configurations
-folder (0.8.194; your ordinary configuration stays untouched):
+folder (your ordinary configuration stays untouched):
 `<name>.portable.json`, `<name>.portable.zip` (the configuration and its
 README zipped for the upload) and `<name>.portable.README.md`, the README
 for reading - the perspectives,
@@ -143,8 +143,9 @@ The list is [INDEX.md](INDEX.md): one line per organ with its divisions,
 Stop List rows, RAM (the least the organ takes, with every saving option of
 the load box - 16-bit, 32 kHz on loading, releases at half the rate, packed
 samples - measured or estimated at the save; the full quality takes roughly
-ten times as much) and perspectives, written
-automatically from the configuration files. The README of each organ says how
+ten times as much), perspectives and the day it was published, written
+automatically from the configuration files; the triangles in the header sort
+by any of them. The README of each organ says how
 to download its `.json`.
 
 ## The demo organ: Rural Organ

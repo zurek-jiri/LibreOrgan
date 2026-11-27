@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Frankfurt (Oder), Sauer op. 2025,
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Frankfurt (Oder), Sauer op. 2025.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/frankfurt-oder-sauer-op-2025/Frankfurt%20(Oder),%20Sauer%20op.%202025.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Frankfurt (Oder), Sauer op. 2025.portable.json` there yourself.
+**Download:** [Frankfurt (Oder), Sauer op. 2025.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/frankfurt-oder-sauer-op-2025/Frankfurt%20(Oder),%20Sauer%20op.%202025.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Frankfurt (Oder), Sauer op. 2025.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

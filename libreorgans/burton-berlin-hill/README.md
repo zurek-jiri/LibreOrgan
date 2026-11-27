@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Burton-Berlin, Hill, as recorded 
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Hill, Burton-Berlin, Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/burton-berlin-hill/Hill,%20Burton-Berlin,%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Hill, Burton-Berlin, Surround.portable.json` there yourself.
+**Download:** [Hill, Burton-Berlin, Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/burton-berlin-hill/Hill,%20Burton-Berlin,%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Hill, Burton-Berlin, Surround.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

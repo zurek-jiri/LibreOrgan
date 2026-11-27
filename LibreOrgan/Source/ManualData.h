@@ -191,7 +191,8 @@ static const char* const kManualText_part0 =
     "\n"
     "*Organ catalog* (top bar) lists the organs published for LibreOrgan Sampler:\n"
     "the organ, its divisions and stops, the RAM it takes at the least, its\n"
-    "perspectives, and whether its sample folders are on this computer - where\n"
+    "perspectives, the day it was published, and whether its sample folders are\n"
+    "on this computer - where\n"
     "they are not, the last column links to the page where they are bought or\n"
     "downloaded. A click on\n"
     "a column's header sorts; the filter row narrows the list by a word, by RAM or\n"
@@ -201,9 +202,9 @@ static const char* const kManualText_part0 =
     "\n"
     "The catalog holds configurations, not samples: the sample folders must be on\n"
     "this computer, and *README* opens the organ's page with their producer. Where\n"
-    "the samples are free (the Rural Organ demo), *Download with its samples*\n"
     ;
 static const char* const kManualText_part1 =
+    "the samples are free (the Rural Organ demo), *Download with its samples*\n"
     "fetches the archive into `Documents\\LibreOrgan\\LibreSamples` and loads the\n"
     "organ from it. The internet is asked only while this window is open. Plug-ins\n"
     "of a downloaded configuration come switched off. On Linux the download needs\n"
@@ -403,9 +404,9 @@ static const char* const kManualText_part1 =
     "\n"
     "Folders matching *One-shot stops (folder contains)* (\"Chiff\", \"Chimes\",\n"
     "\"Tubular\", \"Celesta\", \"Harp\", \"Glockenspiel\") play once from start to end\n"
-    "whenever the key is released - chiffs, percussion, bells. Folders matching\n"
     ;
 static const char* const kManualText_part2 =
+    "whenever the key is released - chiffs, percussion, bells. Folders matching\n"
     "*Ignored folders (folder contains)* (\"trem\", \"\\*_tr\", \"output\", \"Traktur\", \"mustr\") are not loaded;\n"
     "tremmed recordings named after their sibling with \"tr\"/\"trem\" appended are\n"
     "skipped as well. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
@@ -605,9 +606,9 @@ static const char* const kManualText_part2 =
     "workspace and choose *Enter arrange mode*: every stop and transmission can\n"
     "be dragged to another cell or into another division. A click on empty\n"
     "workspace ends the mode. The same menu's *Grid upside down* reverses the\n"
-    "rows of that division (the last row first, the columns stay).\n"
     ;
 static const char* const kManualText_part3 =
+    "rows of that division (the last row first, the columns stay).\n"
     "\n"
     "- Dragging a stop into another division moves it there with its voicing and\n"
     "  transmissions. A name is unique within a division: a stop whose name the\n"
@@ -807,9 +808,9 @@ static const char* const kManualText_part3 =
     "### Fine-tuned mixtures\n"
     "\n"
     "Some sample sets carry their compound stops (mixtures, a Sesquialtera, a\n"
-    "Siebenquart) twice: the original recording as the layer \"_070\" and a\n"
     ;
 static const char* const kManualText_part4 =
+    "Siebenquart) twice: the original recording as the layer \"_070\" and a\n"
     "resynthesised version, its ranks tuned pure, as the plain files. A velocity\n"
     "layer was the only place Hauptwerk offered for a second version of a pipe, so\n"
     "the files are built that way and the program carries it on. With *Ignore MIDI\n"
@@ -915,8 +916,11 @@ static const char* const kManualText_part4 =
     "\n"
     "**The order of the perspectives** - the columns here, the boxes of every\n"
     "voicing row, the rows of Audio routing - is the order of the\n"
-    "lines in *Perspective prefixes*, \"default\" first, the auxiliary route always\n"
-    "last; every perspective has a line there. **Drag a column header\n"
+    "lines in *Perspective prefixes*, the auxiliary route always last. An organ\n"
+    "read from a definition gets its lines in the usual order - Dry, Semi-Dry,\n"
+    "Front, default, Direct, Diffuse, Distant, any other by the alphabet, Rear -\n"
+    "and a perspective without a line (\"default\") stands at its place in that\n"
+    "order. **Drag a column header\n"
     "left or right** to change it: the lines take the new order, saved with the\n"
     "configuration, and the voicing boxes and the routing rows follow at once;\n"
     "nothing is reloaded.\n"
@@ -1006,12 +1010,12 @@ static const char* const kManualText_part4 =
     "The *Tremulant* button in the division header is registration like a stop: it\n"
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
     "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
+    ;
+static const char* const kManualText_part5 =
     "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
     "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
-    ;
-static const char* const kManualText_part5 =
     "cycle, and the children of a stop folder are spread in phase like the ranks of\n"
     "a mixture, so nothing pulses mechanically. One tremulant may shake several\n"
     "divisions: tick them under *Tremulant also shakes* (the Divisions dialog, the\n"
@@ -1208,12 +1212,12 @@ static const char* const kManualText_part5 =
     "\n"
     "*Load IR...* (WAV, AIFF or FLAC; mono, stereo or true stereo with four\n"
     "channels; the chooser starts where an IR was chosen last), *Clear*, the\n"
+    ;
+static const char* const kManualText_part6 =
     "dry/wet ratio, and the shaping of the wet signal: high and low cut (they grow\n"
     "with the dry/wet ratio - nothing is cut at 0 % wet), pre-delay, wet volume,\n"
     "decay (the IR shortened) and fade-out (the shortened IR dies away over that\n"
     "share of its end). An IR costs the DSP a fixed amount per route whatever the\n"
-    ;
-static const char* const kManualText_part6 =
     "polyphony; [IR processing](#ir-processing) lightens it on weak computers.\n"
     "\n"
     "**The buffer size decides more than anything else.** 512 samples at 48 kHz\n"
@@ -1410,12 +1414,12 @@ static const char* const kManualText_part6 =
     "by something else on the computer. What the measurement sees and what it\n"
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "---\n"
     "\n"
     "# 6. Playing\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "## 6.1 Couplers\n"
     "\n"
     "*Couplers...* (top bar): one column per division (the keyboard played) with\n"
@@ -1612,12 +1616,12 @@ static const char* const kManualText_part7 =
     "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
+    ;
+static const char* const kManualText_part8 =
     "  octave, but it wobbles slightly upwards, loses body two octaves away and\n"
     "  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).\n"
     "\n"
     "Until a pipe's copy is ready it plays by resampling; the stop buttons show\n"
-    ;
-static const char* const kManualText_part8 =
     "the build (a dark track filling orange). The settings of the methods are\n"
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
@@ -1814,12 +1818,12 @@ static const char* const kManualText_part8 =
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
-    ;
-static const char* const kManualText_part9 =
     "release.\n"
     "\n"
     "### Release sample volume\n"
@@ -2016,12 +2020,12 @@ static const char* const kManualText_part9 =
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
     "within this of where the starting pipe would otherwise settle (default\n"
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Attack cut fade-in\n"
     "\n"
     "The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)\n"
-    ;
-static const char* const kManualText_part10 =
     "value: the sample starts that far in and rises over this time (6 to 150 ms,\n"
     "default 20). Too short clicks or sounds like an edit, too long softens the\n"
     "speech. Travels with the organ.\n"
@@ -2218,12 +2222,12 @@ static const char* const kManualText_part10 =
     "folder and archive you ever chose, counted after the button. *Add folder...*\n"
     "adds one.\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "### Sample and IR locations: the file\n"
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "### Sample and IR locations: forget the folders\n"
     "\n"
@@ -2420,12 +2424,12 @@ static const char* const kManualText_part11 =
     "depth - the bellows has its end positions.\n"
     "\n"
     "### Wind: sag settling lag\n"
+    ;
+static const char* const kManualText_part12 =
     "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
     "ms, default 255).\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "### Wind: also affects divisions\n"
     "\n"
     "The other divisions fed from this wind: they receive half of this division's\n"
@@ -2622,12 +2626,12 @@ static const char* const kManualText_part12 =
     "## 10.3 Where the program looks for folders\n"
     "\n"
     "A configuration names its trees relative to its library root\n"
+    ;
+static const char* const kManualText_part13 =
     "(`OrganInstallationPackages/003135/pipe/HW` with the root's name) and an IR by\n"
     "its path inside the library or by its full path. At a load each is looked for\n"
     "at the path it had; then under every sample location:\n"
     "`<location>/<root name>/<path>`, `<location>/<path>`, the last one to three\n"
-    ;
-static const char* const kManualText_part13 =
     "parts of the old path, and one level around every location (the folder above\n"
     "and its first subfolders); then beside the configuration file (also the\n"
     "folder the file was chosen from when a copy is loaded); then, on a computer\n"
@@ -2824,12 +2828,12 @@ static const char* const kManualText_part13 =
     "a fixed part per block and a part per voice, and the device thread's own\n"
     "profile: own render, waiting for the lanes, mixing, IR hand-over,\n"
     "bookkeeping, the longest route callback of the run and the latest a lane\n"
+    ;
+static const char* const kManualText_part14 =
     "joined a job. On Linux the CPU governor, on Windows the power plan.\n"
     "\n"
     "What moves the figure: the buffer size first (two cores: 1000 voices at\n"
     "256, 2300-2900 at 512, 3100-3800 at 1024; sixteen cores: 49 000 / 64 000 /\n"
-    ;
-static const char* const kManualText_part14 =
     "74 000 - compare runs at one buffer only); the device path (Linux: measure\n"
     "on the card's direct ALSA device or JACK, not on PipeWire's default output;\n"
     "Windows: ASIO or one Windows Audio device for all routes); *Compress samples\n"

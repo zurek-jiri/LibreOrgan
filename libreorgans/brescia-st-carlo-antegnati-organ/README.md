@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Brescia, St. Carlo, Antegnati Org
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Brescia, St. Carlo, Antegnati Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/brescia-st-carlo-antegnati-organ/Brescia,%20St.%20Carlo,%20Antegnati%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Brescia, St. Carlo, Antegnati Organ.portable.json` there yourself.
+**Download:** [Brescia, St. Carlo, Antegnati Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/brescia-st-carlo-antegnati-organ/Brescia,%20St.%20Carlo,%20Antegnati%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Brescia, St. Carlo, Antegnati Organ.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

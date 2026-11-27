@@ -187,7 +187,8 @@ loads, and the Messages name them.
 
 *Organ catalog* (top bar) lists the organs published for LibreOrgan Sampler:
 the organ, its divisions and stops, the RAM it takes at the least, its
-perspectives, and whether its sample folders are on this computer - where
+perspectives, the day it was published, and whether its sample folders are
+on this computer - where
 they are not, the last column links to the page where they are bought or
 downloaded. A click on
 a column's header sorts; the filter row narrows the list by a word, by RAM or
@@ -903,8 +904,11 @@ reload*. "default" is the route of folders without a perspective prefix.
 
 **The order of the perspectives** - the columns here, the boxes of every
 voicing row, the rows of Audio routing - is the order of the
-lines in *Perspective prefixes*, "default" first, the auxiliary route always
-last; every perspective has a line there. **Drag a column header
+lines in *Perspective prefixes*, the auxiliary route always last. An organ
+read from a definition gets its lines in the usual order - Dry, Semi-Dry,
+Front, default, Direct, Diffuse, Distant, any other by the alphabet, Rear -
+and a perspective without a line ("default") stands at its place in that
+order. **Drag a column header
 left or right** to change it: the lines take the new order, saved with the
 configuration, and the voicing boxes and the routing rows follow at once;
 nothing is reloaded.

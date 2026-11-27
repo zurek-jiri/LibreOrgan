@@ -48,30 +48,44 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for zip in libreorgans/*.zip; do
-            [ -e "$zip" ] || continue
-            base="$(basename "$zip" .zip)"
-            readme="libreorgans/$base.README.md"
-            if [ ! -f "$readme" ]; then echo "::warning file=$zip::no $base.README.md beside it - left where it is"; continue; fi
-            slug="$(python3 .github/scripts/configuration_tools.py slug "$zip")"
-            [ -n "$slug" ] || slug="organ-$(date +%s)"
-            # The same organ published before (the folder of its name, or one of
-            # another name holding the same organ): its files go, the new ones replace them.
-            for old in $(python3 .github/scripts/configuration_tools.py same-organ "$zip"); do
-              [ -d "libreorgans/$old" ] || continue
-              echo "libreorgans/$old held this organ already - replaced by $base"
-              git rm -r -q "libreorgans/$old"
+          # Several merges in a row start several of these jobs at once (27 Nov 2026: three pull requests
+          # merged within 30 seconds - two of the three jobs failed, their push refused because main had
+          # moved). Each job therefore works on main AS IT IS NOW, and when its push is refused it starts
+          # again from the new main: what another job did already is then simply found done.
+          for attempt in 1 2 3 4 5 6; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            for zip in libreorgans/*.zip; do
+              [ -e "$zip" ] || continue
+              base="$(basename "$zip" .zip)"
+              readme="libreorgans/$base.README.md"
+              if [ ! -f "$readme" ]; then echo "::warning file=$zip::no $base.README.md beside it - left where it is"; continue; fi
+              slug="$(python3 .github/scripts/configuration_tools.py slug "$zip")"
+              [ -n "$slug" ] || slug="organ-$(date +%s)"
+              # The same organ published before (the folder of its name, or one of
+              # another name holding the same organ): its files go, the new ones replace them.
+              for old in $(python3 .github/scripts/configuration_tools.py same-organ "$zip"); do
+                [ -d "libreorgans/$old" ] || continue
+                echo "libreorgans/$old held this organ already - replaced by $base"
+                git rm -r -q "libreorgans/$old"
+              done
+              mkdir -p "libreorgans/$slug"
+              git mv -f "$zip" "libreorgans/$slug/$base.zip"
+              git mv -f "$readme" "libreorgans/$slug/README.md"
+              echo "sorted $base into libreorgans/$slug/"
             done
-            mkdir -p "libreorgans/$slug"
-            git mv -f "$zip" "libreorgans/$slug/$base.zip"
-            git mv -f "$readme" "libreorgans/$slug/README.md"
-            echo "sorted $base into libreorgans/$slug/"
+            python3 .github/scripts/configurations_index.py || true
+            git add -A libreorgans .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
+            if git diff --cached --quiet; then
+              echo "nothing to commit"
+              exit 0
+            fi
+            git commit -q -m "configurations: uploads sorted into their folders, INDEX.md regenerated"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "main moved meanwhile - once more from the new main (attempt $attempt of 6)"
+            sleep $((attempt * 4))
           done
-          python3 .github/scripts/configurations_index.py || true
-          git add -A libreorgans .github/ISSUE_TEMPLATE/organ_configuration_remove.yml
-          if git diff --cached --quiet; then
-            echo "nothing to commit"
-            exit 0
-          fi
-          git commit -m "configurations: uploads sorted into their folders, INDEX.md regenerated"
-          git push
+          echo "::error title=Index::main kept moving - the uploads are not sorted yet; run this workflow again"
+          exit 1

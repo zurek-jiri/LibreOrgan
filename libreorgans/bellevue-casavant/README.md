@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Bellevue, Casavant, as recorded b
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Bellevue Casavant op.3742.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/bellevue-casavant/Bellevue%20Casavant%20op.3742.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Bellevue Casavant op.3742.portable.json` there yourself.
+**Download:** [Bellevue Casavant op.3742.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/bellevue-casavant/Bellevue%20Casavant%20op.3742.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Bellevue Casavant op.3742.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Ashton, Albion Church, Lewis Orga
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Ashton Albion Church Lewis.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/ashton-albion-church-lewis-organ/Ashton%20Albion%20Church%20Lewis.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Ashton Albion Church Lewis.portable.json` there yourself.
+**Download:** [Ashton Albion Church Lewis.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/ashton-albion-church-lewis-organ/Ashton%20Albion%20Church%20Lewis.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Ashton Albion Church Lewis.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

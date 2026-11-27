@@ -71,7 +71,23 @@ def main():
             for p in m.get('stopBuild', {}).get('perspectives', []) or []:
                 if p and p not in perspectives:
                     perspectives.append(p)
-        perspectives.sort(key=lambda p: next((i for i, o in enumerate(order) if o.lower() == p.lower()), len(order)))
+        # The program's own rule (SamplerEngine::perspectiveOrderIndex): a perspective with a line stands where
+        # its line stands; one without ("default" above all) before the first line that comes later in the
+        # default order - Dry, Semi-Dry, Front, default, Direct, Diffuse, Distant, the others, Rear.
+        def default_rank(name):
+            letters = re.sub(r'[^a-z]', '', name.lower())
+            for word, rank in (('semidry', 1), ('dry', 0), ('front', 2), ('default', 3), ('direct', 4), ('diffuse', 5), ('distant', 6), ('rear', 8), ('auxiliary', 9)):
+                if letters.startswith(word):
+                    return rank
+            return 7
+        def order_key(p):
+            for i, o in enumerate(order):
+                if o.lower() == p.lower():
+                    return (i * 32 + 16, '')
+            rank = default_rank(p)
+            slot = next((i for i, o in enumerate(order) if default_rank(o) > rank), len(order))
+            return (slot * 32 + rank, p.lower())
+        perspectives.sort(key=order_key)
         if not perspectives:
             perspectives = ['default']
         # The auxiliary route counts as well when a division uses it (a device saved on it).
@@ -94,6 +110,21 @@ def main():
             ram_min = ram_bytes   # loaded with the saving options already: the measured figure is the least
         title = folder
         readme = os.path.join(path, 'README.md')
+        # When it was published (27 Nov 2026, the user: the table lists the dates and sorts by them): the
+        # robot's own note at the README's end, "published by @login (issue #n, YYYY-MM-DD)" - a new version
+        # of the organ brings a new note; without one, the date of the save ("Author: ..., 27 November 2026").
+        published = ''
+        if os.path.exists(readme):
+            with open(readme, encoding='utf-8') as f:
+                whole = f.read()
+            m = re.search(r'<!--\s*published by @[A-Za-z0-9-]+ \(issue #\S+, (\d{4}-\d{2}-\d{2})\)', whole)
+            if m:
+                published = m.group(1)
+            else:
+                m = re.search(r'\*\*Author:\*\*[^\n]*?(\d{1,2}) ([A-Z][a-z]+) (\d{4})', whole)
+                months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                if m and m.group(2) in months:
+                    published = '%s-%02d-%02d' % (m.group(3), months.index(m.group(2)) + 1, int(m.group(1)))
         if os.path.exists(readme):
             with open(readme, encoding='utf-8') as f:
                 for line in f:
@@ -104,7 +135,7 @@ def main():
                         # table; "Organ" INSIDE a name ("Hill English Organ Model") stays.
                         title = re.sub(r'\s+[Oo]rgan$', '', title)
                         break
-        rows.append((title, folder, divisions, count, ', '.join(perspectives), ram_bytes, ram_min))
+        rows.append((title, folder, divisions, count, ', '.join(perspectives), ram_bytes, ram_min, published))
         if zip_name:
             publication = cfg.get('publication') or {}
             catalog.append({
@@ -113,6 +144,7 @@ def main():
                 'readme': 'https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/%s/README.md' % quote(folder),
                 'divisions': divisions, 'stops': count, 'routes': perspectives,
                 'ramBytes': ram_min if ram_min > 0 else ram_bytes,
+                'published': published,
                 'producer': str(publication.get('producer', '') or ''), 'link': str(publication.get('link', '') or ''),
                 'rootName': str(cfg.get('sampleLibraryRootName', '') or ''),
                 'rootRelative': str(cfg.get('sampleLibraryRootRelative', '') or ''),
@@ -134,7 +166,7 @@ def main():
     # quality is roughly ten times that, said in the legend.
     columns = [('organ', 'Organ', lambda r: r[0].lower()), ('divisions', 'Divisions', lambda r: r[2]),
                ('stops', 'Stops', lambda r: r[3]), ('ram', 'RAM', lambda r: r[6] if r[6] > 0 else r[5]),
-               ('routes', 'Routes', lambda r: r[4].lower())]
+               ('routes', 'Routes', lambda r: r[4].lower()), ('published', 'Published', lambda r: r[7])]
     def file_for(key, descending):
         return 'INDEX.md' if (key == 'organ' and not descending) else 'INDEX-%s-%s.md' % (key, 'desc' if descending else 'asc')
     # Two tables (25 Oct 2026, the user): "Featured" - the folders listed in
@@ -170,7 +202,8 @@ def main():
             'count on roughly ten times as much; `-` = saved by an older version - and the',
             'routes - the perspectives as the configuration names them (`default` = a single',
             'perspective) and `auxiliary` when a division uses that route; what each one carries, the',
-            'README of the organ says. The triangles in the header sort the tables by that column.',
+            'README of the organ says - and the day it was published here (its latest version). The',
+            'triangles in the header sort the tables by that column.',
             'The last column takes a configuration off the list: its *remove* link opens the',
             '"Remove my configuration" form with the organ filled in - submit it, and a robot removes',
             'the folder when you are the one who published it (or the maintainer).',
@@ -186,9 +219,9 @@ def main():
             return ('[remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml'
                     '&title=%s&organ=%s&name=%s)' % (quote('[Remove configuration] ' + folder), quote(folder), quote(folder)))
         def table(entries):
-            out = ['| ' + ' | '.join(header + ['Remove']) + ' |', '|---|---:|---:|---:|---|---|']
-            for title, folder, divisions, count, perspectives, ram_bytes, ram_min in entries:
-                out.append('| [%s](%s/README.md) | %d | %d | %s | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives,
+            out = ['| ' + ' | '.join(header + ['Remove']) + ' |', '|---|---:|---:|---:|---|---|---|']
+            for title, folder, divisions, count, perspectives, ram_bytes, ram_min, published in entries:
+                out.append('| [%s](%s/README.md) | %d | %d | %s | %s | %s | %s |' % (title.replace('|', '\\|'), folder, divisions, count, ram_text(ram_min if ram_min > 0 else ram_bytes), perspectives, published or '-',
                                                                                '' if folder == 'rural-organ' else remove_link(folder)))
             return out
         top = [r for r in ordered if r[1].lower() in featured]

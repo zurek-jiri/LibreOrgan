@@ -5636,6 +5636,40 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   loader either (it knows release FOLDERS alone) - a key release just fades. The tools: %TEMP%\odftools\
   odf_sample_rows.py <odf> <file name part> (the Sample row and its attack / release rows), %TEMP%\wav_loops.py and
   wav_cue.py <wav> (loops, cue markers). RELEASED on his word ("zapracuj to ... A dej na gitHub"): commit 10daa69, tag v0.9.146, CI green at the first attempt on all five, five archives, Intel mac "late symbols: 0", the Windows exe on system DLLs only, the CI exe deployed. v0.9.145 had come out whole too (CI green on all five: the catalog compiled on Linux and macOS).
+  0.9.147 (27 Nov 2026 afternoon; the user while re-publishing his configurations): (1) THE RED CROSSES IN ACTIONS,
+  read without a token (`actions/runs?per_page=45`, `runs/<id>/jobs`, `check-runs/<job id>/annotations`, the public run
+  page's text): (a) every pull request the robot opens leaves TWO failed runs with 0 jobs ("Build" and
+  "Configurations check" on pull_request): "This workflow run required approval but was not approved before it
+  expired" - a bot-made pull request needs the maintainer's approval to run workflows, he merges without approving;
+  harmless, since at least 6 Nov; NOT changed (he answered the queue alone). (b) three merges within 30 s = three
+  index jobs racing: two died on a refused push (the last one had sorted everything - nothing was lost). The index
+  step of configurations.yml is now a loop (6 attempts): `git fetch origin main` + `git reset --hard origin/main`, sort
+  + index + commit, `git push origin HEAD:main`, a refused push starts again from the new main ("nothing to commit" =
+  success). The same race exists in configuration-remove.yml / configuration-feature.yml (not touched). (2) HIS RULE:
+  NO VERSION NUMBER IN THE TEXT OF A CONFIGURATION'S README ("no version mention please!!! The only mention of version
+  must be in LibreOrgan Sampler XXX or later in the Configuration") - `configurationReadme` wrote "opens the zip as it
+  is (0.8.195)"; gone, and from the 30 published READMEs and libreorgans/README.md (three places). "Saved with:
+  LibreOrgan Sampler X." STAYS beside "X or later" (both in The configuration; the robot's validate requires the Saved
+  with line) - told him; the README inside the published ZIPS still has the old text (they go with a re-publish).
+  Checked: `configuration_tools.py validate <zip> <README> folder` for all 31 and `... pair` for one (the arguments are
+  zip, readme, mode - without them it prints its help). (3) PUBLISHED COLUMN: configurations_index.py reads the robot's
+  note "<!-- published by @x (issue #n, YYYY-MM-DD) -->" (else the Author line's date), row tuple + catalog.json
+  "published", INDEX column "Published" sortable (INDEX-published-asc/desc.md), the program's catalog window
+  `colPublished` (enum value 7, shown before Samples). (4) THE DEFAULT ORDER OF THE PERSPECTIVES (his words: "Dry,
+  Semi-Dry, Front, default, Direct, Diffuse, Distant, Rear, Auxiliary. Other divisions go always alphabetically before
+  Rear" - he said divisions, he means perspectives): `SamplerEngine::defaultPerspectiveRank(name)` (by the name's
+  letters, startsWith: semidry 1, dry 0, front 2, default 3, direct 4, diffuse 5, distant 6, others 7, rear 8,
+  auxiliary 9); `perspectiveOrderIndex`: a line i -> i * 32 + 16 (the user's own order: a dragged column), a name
+  WITHOUT a line -> (the first line whose rank is greater) * 32 + rank ("default" is no longer always first; an
+  unlisted one no longer after Rear); `perspectiveLinesInDefaultOrder(lines)` used by the Hauptwerk import when it
+  writes "perspectivePatterns" and a division's "perspectives"; `mergedPerspectiveLines`: a line that is ADDED (the
+  computer's lines into an organ at a load, an organ's into Patterns.json) is inserted at its default place among the
+  base's lines instead of appended; the same rule in Python (configurations_index.py `order_key`) - INDEX changed for
+  Adriatic, Dom Bedos, Brescia ("default" first) and Caen ("Front, Rear"). Existing files keep their lines' order
+  (Adlington published stays "Diffuse, Direct, Rear" until imported anew). NOT touched: the scan's own learning
+  (SamplerEngine, appends a new label), learnPrefixesFromTables' bare lines, patternsWithHead (append) - an unlisted
+  name is placed by the rule anyway, a line appended there stands where it was appended. .NET file calls in a tool
+  command: ABSOLUTE paths (the cwd is LibreOrgan/LibreOrgan - a relative path threw; nothing was written).
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

@@ -9,7 +9,7 @@ the recordings loads the whole instrument in a single step.
 
 The organ was recorded for HW1. It has no native multiple releases. Therefore, it is recommended to use it with an appropriate IR. This configuration was created using the IR freely available in the "Rural Organ" sample set downloadable from gitHub.
 
-**Download:** [Doksy-Kruh, Renaissance Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/doksy-kruh-renaissance-organ/Doksy-Kruh,%20Renaissance%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Doksy-Kruh, Renaissance Organ.portable.json` there yourself.
+**Download:** [Doksy-Kruh, Renaissance Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/doksy-kruh-renaissance-organ/Doksy-Kruh,%20Renaissance%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Doksy-Kruh, Renaissance Organ.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

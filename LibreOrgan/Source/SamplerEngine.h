@@ -1825,6 +1825,8 @@ public:
     // the perspective patterns in their order, then names no line knows (natural order). The
     // Stop List columns, the voicing row's boxes and the audio tabs of the Divisions dialog follow it.
     int perspectiveOrderIndex(const juce::String& name) const;
+    static std::vector<juce::String> perspectiveLinesInDefaultOrder(std::vector<juce::String> lines);   // 0.9.147: "Label;prefix" lines sorted by their label's default place
+    static int defaultPerspectiveRank(const juce::String& name);    // 0.9.147: Dry 0, Semi-Dry 1, Front 2, default 3, Direct 4, Diffuse 5, Distant 6, others 7, Rear 8, auxiliary 9
     void sortPerspectives(std::vector<juce::String>& names) const;
 
     struct Impl;

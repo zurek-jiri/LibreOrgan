@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Este, St. Maria delle Grazie, Mas
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Este, St. Maria, Mascioni.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/este-st-maria-delle-grazie-mascioni-organ/Este,%20St.%20Maria,%20Mascioni.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Este, St. Maria, Mascioni.portable.json` there yourself.
+**Download:** [Este, St. Maria, Mascioni.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/este-st-maria-delle-grazie-mascioni-organ/Este,%20St.%20Maria,%20Mascioni.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Este, St. Maria, Mascioni.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

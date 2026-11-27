@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Bückeburg, Janke Organ, as recor
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Buckeburg, Janke Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/b-ckeburg-janke-organ/Buckeburg,%20Janke%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Buckeburg, Janke Organ.portable.json` there yourself.
+**Download:** [Buckeburg, Janke Organ.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/b-ckeburg-janke-organ/Buckeburg,%20Janke%20Organ.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Buckeburg, Janke Organ.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

@@ -17824,7 +17824,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 }
                 // The perspectives in the order of the patterns (Direct, Diffuse, Rear ...), "default" last.
                 juce::Array<juce::var> perspectiveList;
-                for (const auto& pattern : plan.perspectivePatterns)
+                for (const auto& pattern : SamplerEngine::perspectiveLinesInDefaultOrder(plan.perspectivePatterns))
                 {
                     const auto label = pattern.upToFirstOccurrenceOf(";", false, false);
                     if (perspectivesUsed.contains(label)) perspectiveList.add(label);
@@ -17842,7 +17842,9 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         for (const auto& tree : plan.allTrees) trees.add(tree.getFullPathName());
         rootObject->setProperty("sampleTrees", trees);
         juce::Array<juce::var> patterns;
-        for (const auto& pattern : plan.perspectivePatterns) patterns.add(pattern);
+        // 0.9.147 (the user): a new organ's lines stand in the default order of the perspectives (Dry, Semi-Dry, Front,
+        // default, Direct, Diffuse, Distant, the others by the alphabet, Rear) - the definition's own order was chance.
+        for (const auto& pattern : SamplerEngine::perspectiveLinesInDefaultOrder(plan.perspectivePatterns)) patterns.add(pattern);
         rootObject->setProperty("perspectivePatterns", patterns);
         // Tremmed samples: Hauptwerk sets keep them in "trem" folders or in
         // sibling folders ending in "_TR" (II_TR beside II) or "tr"/"TREM" after
@@ -18450,7 +18452,7 @@ juce::String MainComponent::configurationReadme(const juce::var& configuration, 
     while (slug.contains("--")) slug = slug.replace("--", "-");
     slug = slug.trimCharactersAtStart("-").trimCharactersAtEnd("-");
     text << "**Download:** [" << zipName << "](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/" << slug << "/"
-         << zipName.replace(" ", "%20") << ") - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the " << code(file.getFileName()) << " there yourself.\n\n";
+         << zipName.replace(" ", "%20") << ") - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the " << code(file.getFileName()) << " there yourself.\n\n";
     text << "**No samples are published here.** The configuration merely names the folders it expects;\n"
             "the recordings themselves are the property of their producer and are obtained from them.\n\n";
     text << "## The configuration\n\n";
@@ -29980,7 +29982,25 @@ namespace
                 juce::String label; juce::StringArray prefixes;
                 if (!split(text, label, prefixes)) continue;
                 Line* line = lineOf(label);
-                if (line == nullptr) { lines.push_back({ label, {} }); line = &lines.back(); if (counting) ++count; }
+                if (line == nullptr)
+                {
+                    // 0.9.147 (the user's default order of the perspectives): the base's lines keep their order; a line
+                    // that is ADDED goes to its default place among them - before the first line that comes later
+                    // (it was appended: "Dry" stood after "Rear" and "Organist").
+                    size_t place = lines.size();
+                    if (counting)
+                    {
+                        const int rank = SamplerEngine::defaultPerspectiveRank(label);
+                        for (size_t i = 0; i < lines.size(); ++i)
+                        {
+                            const int other = SamplerEngine::defaultPerspectiveRank(lines[i].label);
+                            if (other > rank || (other == rank && lines[i].label.compareNatural(label) > 0)) { place = i; break; }
+                        }
+                        ++count;
+                    }
+                    lines.insert(lines.begin() + (std::ptrdiff_t)place, Line{ label, {} });
+                    line = &lines[place];
+                }
                 for (const auto& p : prefixes)
                 {
                     const auto key = p.toLowerCase();

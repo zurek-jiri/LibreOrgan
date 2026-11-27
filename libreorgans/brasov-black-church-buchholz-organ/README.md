@@ -7,7 +7,7 @@ A complete LibreOrgan Sampler configuration of Brasov, Black Church, Buchholz Or
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
-**Download:** [Brasov Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/brasov-black-church-buchholz-organ/Brasov%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is (0.8.195) and copies the configuration into your LibreOrgans folder; or unpack it and put the `Brasov Surround.portable.json` there yourself.
+**Download:** [Brasov Surround.portable.zip](https://github.com/zurek-jiri/LibreOrgan/raw/main/libreorgans/brasov-black-church-buchholz-organ/Brasov%20Surround.portable.zip) - *Load Configuration* in LibreOrgan Sampler opens the zip as it is and copies the configuration into your LibreOrgans folder; or unpack it and put the `Brasov Surround.portable.json` there yourself.
 
 **No samples are published here.** The configuration merely names the folders it expects;
 the recordings themselves are the property of their producer and are obtained from them.

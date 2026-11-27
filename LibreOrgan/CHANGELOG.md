@@ -12,6 +12,29 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.147] - 2026-11-27
+
+### Changed
+- The README the program writes for a published configuration names no
+  version in its text any more ("Load Configuration ... opens the zip as it
+  is"); the version stands only in *The configuration* ("LibreOrgan Sampler
+  ... or later", "Saved with"). The published READMEs were cleaned the same
+  way.
+- The list of published configurations (`INDEX.md`) and the Organ catalog
+  window have a **Published** column - the day the configuration (its latest
+  version) was published - and sort by it.
+- The default order of the perspectives: Dry, Semi-Dry, Front, default,
+  Direct, Diffuse, Distant, any other one by the alphabet, Rear, auxiliary.
+  An organ read from a Hauptwerk definition gets its Perspective prefixes
+  lines in that order (it was the order the definition happened to name
+  them), and a perspective without a line stands at its place among the
+  lines ("default" was always first, others after Rear). Lines keep the order
+  you gave them by dragging a column; the published list follows the same
+  rule.
+- The robot that sorts merged configurations works on the repository as it is
+  at that moment and starts again when another merge came meanwhile: several
+  configurations merged in a row no longer leave failed runs.
+
 ## [0.9.146] - 2026-11-27
 
 ### Fixed
