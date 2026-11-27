@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Brasov, Black Church, Buchholz Organ, as recorded by Sonus Paradisi in 3 perspectives, Diffuse, Direct and Rear, each on its own audio route: 5 divisions and 63 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Brasov, Black Church, Buchholz Organ, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 5 divisions and 64 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Brasov, Black Church, Buchholz Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/bra.html](https://www.sonusparadisi.cz/en/organs/germany/bra.html); the folders `001722`, `001723`, `001724`, `001725`, `001726`, `001727`, `001728` and `001729` (as they come, or in their RAR archives); perspectives Diffuse, Direct and Rear. LibreOrgan Sampler 0.8.226 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/bra.html](https://www.sonusparadisi.cz/en/organs/germany/bra.html); the folders `001722`, `001723`, `001724`, `001725`, `001726`, `001727`, `001728` and `001729` (as they come, or in their RAR archives); perspectives Direct (`03-difMk22`), Diffuse (`04-distMk2H`) and Rear (`Rea`). LibreOrgan Sampler 0.9.147 or later.
 - **Expects:** library root of any name, holding the trees `001722/_II`, `001723/_I`, `001723/_III`, `001723/_IV`, `001723/_P`, `001724/_I`, `001725/_II`, `001726/_III`, `001727/_IV`, `001728/_P`, `001729/_I` and `001729/_P`.
-- **Audio layout:** every division has the routes diffuse, direct and rear; auxiliary (unused).
+- **Audio layout:** every division has the routes direct, diffuse, rear and noises; auxiliary (unused).
 - **RAM:**
   - **5.5 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **15 GB** - 32-bit float, 32 kHz, full releases, packed; *measured*
+  - **16 GB** - 32-bit float, 32 kHz, full releases, packed; *measured*
   - **55 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.8.226.
-- **Author:** Jiri Zurek, 29 October 2026.
+- **Saved with:** LibreOrgan Sampler 0.9.147.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -74,5 +74,6 @@ Put `Brasov Surround.portable.json` into your LibreOrgans folder (Configuration 
 | P. Posaune 16' |  |  | M. Cimbel 1 1/3' |  |
 | P. Trompete 8' |  |  |  |  |
 | P. Cornetta 4' |  |  |  |  |
+| Calcantenglocke |  |  |  |  |
 
-<!-- published by @zurek-jiri (issue #126, 2026-10-29) -->
+<!-- published by @zurekjiri (issue #293, 2026-11-27) -->
