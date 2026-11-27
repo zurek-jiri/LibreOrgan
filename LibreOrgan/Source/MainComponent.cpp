@@ -364,10 +364,42 @@ struct HelpKeyWatcher final : public juce::Timer, public juce::KeyListener
 class HelpTooltipWindow final : public juce::TooltipWindow
 {
 public:
-    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600) {}
+    HelpTooltipWindow() : juce::TooltipWindow(nullptr, 600)
+    {
+        testMode = std::getenv("ORGAN_TEST_TIP") != nullptr;
+        debug = testMode || std::getenv("ORGAN_TIP_DEBUG") != nullptr;
+    }
+    // What a control has to say, whatever stands in the way of showing it now.
+    static juce::String textOf(juce::Component& c)
+    {
+        auto* client = dynamic_cast<juce::TooltipClient*>(&c);
+        return client != nullptr ? client->getTooltip() : juce::String();
+    }
+    static juce::String nameOf(juce::Component& c)
+    {
+        juce::String name;
+        if (auto* button = dynamic_cast<juce::Button*>(&c)) name = button->getButtonText();
+        if (name.isEmpty()) name = c.getProperties()[juce::Identifier("barLabel")].toString();
+        if (name.isEmpty()) name = c.getProperties()[juce::Identifier("testName")].toString();
+        if (name.isEmpty()) if (auto* label = dynamic_cast<juce::Label*>(&c)) name = label->getText();
+        if (name.isEmpty()) name = c.getName();
+        return name.replaceCharacters("\n\t", "  ").substring(0, 40);
+    }
+    // For the test hook (ORGAN_TEST_TIP): what shows now.
+    juce::String stateForTest() const
+    {
+        if (!isVisible() || getPeer() == nullptr) return "NO tooltip shows";
+        return "a tooltip shows at " + getScreenBounds().toString() + ": \"" + shownText.replaceCharacters("\n", "|").substring(0, 70) + "\"";
+    }
     juce::String getTipFor(juce::Component& c) override
     {
-        auto tip = juce::TooltipWindow::getTipFor(c);
+        // 0.9.148 (the user: "nikde se neobjevuje tooltip"): JUCE's own rule gives a tip only while the program is the
+        // one IN FRONT - the mouse resting on a control of ours while another program has the keyboard (the user
+        // writes in another window and looks at the console beside it: the sliders take the wheel there, the buttons
+        // light up) showed nothing, anywhere. A tip comes wherever the mouse rests on a control of ours; what still
+        // holds it back: a mouse button held, and a box in front that waits for its answer.
+        if (juce::ModifierKeys::getCurrentModifiers().isAnyMouseButtonDown() || c.isCurrentlyBlockedByAnotherModalComponent()) return {};
+        auto tip = textOf(c);
         if (tip.isEmpty() || tip.contains("press F1")) return tip;
         if (MainComponent::manualChapterForComponent(&c).isEmpty()) return tip;   // 0.9.136: the line only where F1 has a chapter to open
         return tip + "\nFor details press F1.";
@@ -392,6 +424,7 @@ private:
             restingOver = under;
             restingAt = lastSeen;
             restingPolls = 0;
+            withheldPolls = 0;
             if (isVisible()) hideTip();
             return;
         }
@@ -401,9 +434,34 @@ private:
             if (restingPolls >= 7) { hideTip(); suppressed = under; }   // 0.8.236: about 7 s, then again only after the mouse left the control
             return;
         }
-        if (buttonDown || under == suppressed.getComponent()) return;
+        if (under == suppressed.getComponent()) return;
         const auto tip = getTipFor(*under);
-        if (tip.isEmpty()) { suppressed = under; return; }   // nothing to say about this control: not asked again until the mouse leaves it
+        if (tip.isEmpty())
+        {
+            // 0.9.148 (the user: "nikde se neobjevuje tooltip ... regres"): a control that HAS a text and gets no tip
+            // is asked again at the next look - a held button, a box in front, another program in front all pass -
+            // and what held the tip back for seconds is written to the log (once in a while), so a session without
+            // tooltips can be read there. Before, the control was struck off until the mouse left it, and a flag of
+            // this window's own ("a button is down", set at every press and cleared by the release - which never
+            // comes when the pressed control is deleted before the button goes up) silenced every tip of the program
+            // until some later click. The system's own state of the buttons is asked instead (JUCE's getTipFor).
+            if (textOf(*under).isEmpty()) { suppressed = under; withheldPolls = 0; return; }   // nothing to say about this control: not asked again until the mouse leaves it
+            if (++withheldPolls >= 3)
+            {
+                const double now = juce::Time::getMillisecondCounterHiRes();
+                juce::String why;
+                if (juce::ModifierKeys::getCurrentModifiers().isAnyMouseButtonDown()) why = "a mouse button counts as held";
+                else if (under->isCurrentlyBlockedByAnotherModalComponent()) why = debug ? "a box waits for its answer" : "";
+                else why = "no reason found";
+                if (why.isNotEmpty() && now - lastWithheldNoteMs > 60000.0)
+                {
+                    lastWithheldNoteMs = now;
+                    CrashHandler::note("Tooltip over \"" + nameOf(*under) + "\" held back for " + juce::String(withheldPolls) + " s: " + why);
+                }
+            }
+            return;
+        }
+        withheldPolls = 0;
         // 0.9.136 (the user: the tip covered the control it spoke of): under the control's bottom edge, above its
         // top edge when there is no room below; a large one (a table, the grid, a display): 28 px under the pointer.
         const auto control = under->getScreenBounds();
@@ -415,19 +473,31 @@ private:
         displayTip(large ? pointer + juce::Point<int>(0, 28) : juce::Point<int>(pointer.x, control.getBottom() + 6), tip);
         UIScale::tipPlacement().own = false;
         restingPolls = 0;   // from here the polls count the time shown
+        shownText = tip;
+        // The proof in the log: the first tip of a session (and every one under ORGAN_TIP_DEBUG), and a tip that
+        // was asked for and did not come up.
+        const bool up = isVisible() && getPeer() != nullptr;
+        if (!up || debug || !firstShownNoted)
+        {
+            firstShownNoted = firstShownNoted || up;
+            CrashHandler::note(juce::String(up ? "Tooltip shown" : "Tooltip did NOT come up") + " over \"" + nameOf(*under) + "\" (the control at "
+                + control.toString() + ", the pointer at " + pointer.toString() + "): the tip at " + getScreenBounds().toString()
+                + (debug ? juce::String() : juce::String(" - the first of this session; the others are not logged")));
+        }
     }
     // The global mouse listener of the base: the position of the last event is all the poll needs.
     void mouseMove(const juce::MouseEvent& e) override { lastSeen = e.getScreenPosition().toFloat(); }
     void mouseDrag(const juce::MouseEvent& e) override { lastSeen = e.getScreenPosition().toFloat(); }
     void mouseEnter(const juce::MouseEvent& e) override { if (e.eventComponent == this) hideTip(); }   // the base's rule: the mouse on the tip itself takes it down
-    void mouseDown(const juce::MouseEvent&) override { buttonDown = true; dismiss(); }
-    void mouseUp(const juce::MouseEvent&) override { buttonDown = false; }
+    void mouseDown(const juce::MouseEvent&) override { dismiss(); }
     void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override { dismiss(); }
     void dismiss() { if (isVisible()) hideTip(); suppressed = restingOver; }
     juce::Component::SafePointer<juce::Component> restingOver, suppressed;
     juce::Point<float> lastSeen, restingAt;
-    int tick = 0, restingPolls = 0;
-    bool buttonDown = false;
+    juce::String shownText;
+    double lastWithheldNoteMs = -1.0e9;
+    int tick = 0, restingPolls = 0, withheldPolls = 0;
+    bool testMode = false, debug = false, firstShownNoted = false;
 };
 
 // A modeless dialog of the program (0.8.239, the user: "Kde nemá modalita význam, tam ji zruš"):
@@ -1238,6 +1308,7 @@ MainComponent::MainComponent()
 {
     noticeOwner = this;   // the notice queue (0.8.217)
     tooltipWindow = std::make_unique<HelpTooltipWindow>();   // 0.8.233: "For details press F1." on every tip
+    UIScale::WheelGate::note() = [](const juce::String& text) { CrashHandler::note(text); };   // 0.9.148: the wheel's refusals in the log
     setOpaque(true);
     DBG("MainComponent constructor start");
     manualConfigs[0].compassHigh = 67;   // pedal: 32 keys by default
@@ -2849,6 +2920,8 @@ MainComponent::MainComponent()
                     if (name.isEmpty()) name = c.getProperties()[juce::Identifier("testName")].toString();
                     if (name.isEmpty()) name = c.getProperties()[juce::Identifier("barLabel")].toString();
                     if (name.isEmpty()) name = c.getName();
+                    if (name.isEmpty()) name = "<" + juce::String(typeid(c).name()).fromLastOccurrenceOf("::", false, false).fromLastOccurrenceOf(" ", false, false)
+                        + " " + c.getBounds().toString() + " in " + (c.getParentComponent() != nullptr ? juce::String(typeid(*c.getParentComponent()).name()).fromLastOccurrenceOf("::", false, false).fromLastOccurrenceOf(" ", false, false) : juce::String()) + ">";
                     lines.add(window + "\t" + origin + "\t" + chapter + "\t" + name.replaceCharacters("\t\n", "  ").substring(0, 40) + "\t" + tip.replaceCharacters("\t\n", "  ").substring(0, 50));
                 }
                 for (auto* child : c.getChildren()) if (child != nullptr) walk(*child, window);
@@ -2859,6 +2932,102 @@ MainComponent::MainComponent()
             target.replaceWithText(lines.joinIntoString("\n") + "\n");
             CrashHandler::note("ORGAN_TEST_F1_AUDIT: " + juce::String(lines.size()) + " control(s) written to " + target.getFullPathName());
         });
+    }
+    // 0.9.148: ORGAN_TEST_TIP="<seconds>|<name>^<seconds>|<name>..." (at least 5 s apart) - the mouse moved, as the
+    // window system gives it (through the peer), onto the control found by its button text, bar name, label text or
+    // "testName" in every window, or onto "@x,y" of the main window; three seconds later the log says whether a
+    // tooltip shows and where, and ORGAN_TEST_TIP_OUT=<folder> gets a picture of the window with the tip in its place.
+    // ORGAN_TEST_TOPMOST=1: the program's windows above every other window for a test whose mouse comes through the
+    // peer - JUCE names a control under the mouse only where no other window covers ours (WindowFromPoint).
+    if (std::getenv("ORGAN_TEST_TOPMOST") != nullptr)
+    {
+        struct Topmost final : public juce::Timer
+        {
+            void timerCallback() override
+            {
+                for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+                    if (auto* window = juce::TopLevelWindow::getTopLevelWindow(i); window != nullptr && window->isOnDesktop() && !window->isAlwaysOnTop())
+                        window->setAlwaysOnTop(true);
+            }
+        };
+        static Topmost topmost;   // (every window of ours, the dialogs that open later too)
+        topmost.startTimer(1000);
+    }
+    if (const char* env = std::getenv("ORGAN_TEST_TIP"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        const juce::String outFolder = std::getenv("ORGAN_TEST_TIP_OUT") != nullptr ? juce::String::fromUTF8(std::getenv("ORGAN_TEST_TIP_OUT")) : juce::String();
+        int number = 0;
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 2) continue;
+            const int index = ++number;
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, text = parts[1], outFolder, index]
+            {
+                if (safeThis == nullptr) return;
+                juce::Component* target = nullptr;
+                if (text.startsWith("@"))
+                {
+                    const auto xy = juce::StringArray::fromTokens(text.substring(1), ",", "");
+                    if (auto* top = safeThis->getTopLevelComponent()) target = top->getComponentAt(xy[0].getIntValue(), xy[1].getIntValue());
+                }
+                else
+                {
+                    std::function<juce::Component*(juce::Component*)> find = [&find, &text](juce::Component* c) -> juce::Component*
+                    {
+                        if (!c->isShowing()) return nullptr;
+                        if (auto* button = dynamic_cast<juce::Button*>(c); button != nullptr && button->getButtonText() == text) return c;
+                        if (c->getProperties().getWithDefault("barLabel", {}).toString() == text) return c;
+                        if (c->getProperties().getWithDefault("testName", {}).toString() == text) return c;
+                        if (auto* label = dynamic_cast<juce::Label*>(c); label != nullptr && label->getText() == text) return c;
+                        for (int i = 0; i < c->getNumChildComponents(); ++i)
+                            if (auto* found = find(c->getChildComponent(i))) return found;
+                        return nullptr;
+                    };
+                    for (int w = juce::Desktop::getInstance().getNumComponents(); --w >= 0 && target == nullptr;)
+                        target = find(juce::Desktop::getInstance().getComponent(w));
+                }
+                auto* peer = target != nullptr ? target->getPeer() : nullptr;
+                if (peer == nullptr) { CrashHandler::note("ORGAN_TEST_TIP: no control \"" + text + "\""); return; }
+                const auto centre = text.startsWith("@")
+                    ? safeThis->getTopLevelComponent()->localPointToGlobal(juce::Point<int>(text.substring(1).upToFirstOccurrenceOf(",", false, false).getIntValue(),
+                                                                                             text.fromFirstOccurrenceOf(",", false, false).getIntValue())).toFloat()
+                    : target->getScreenBounds().toFloat().getCentre();
+                const auto place = peer->globalToLocal(centre);
+                const auto time = juce::Time::currentTimeMillis();
+                peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place + juce::Point<float>(30.0f, 0.0f), juce::ModifierKeys(), 0.0f, 0.0f, time);
+                peer->handleMouseEvent(juce::MouseInputSource::InputSourceType::mouse, place, juce::ModifierKeys(), 0.0f, 0.0f, time + 1);
+                juce::Component::SafePointer<juce::Component> control(target);
+                juce::Timer::callAfterDelay(3000, [safeThis, control, text, outFolder, index]
+                {
+                    if (safeThis == nullptr || control == nullptr) return;
+                    auto* tipWindow = dynamic_cast<HelpTooltipWindow*>(safeThis->tooltipWindow.get());
+                    if (tipWindow == nullptr) return;
+                    auto* under = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
+                    CrashHandler::note("ORGAN_TEST_TIP: over \"" + text + "\" (" + juce::String(typeid(*control.getComponent()).name()).fromLastOccurrenceOf("::", false, false)
+                        + " at " + control->getScreenBounds().toString() + ", its text: \"" + HelpTooltipWindow::textOf(*control).replaceCharacters("\n", "|").substring(0, 50)
+                        + "\"; under the mouse: " + (under == control.getComponent() ? juce::String("it") : under != nullptr ? "\"" + HelpTooltipWindow::nameOf(*under) + "\"" : juce::String("nothing"))
+                        + "): " + tipWindow->stateForTest());
+                    if (outFolder.isEmpty() || !tipWindow->isVisible()) return;
+                    auto* top = control->getTopLevelComponent();
+                    const auto windowArea = top->getScreenBounds(), tipArea = tipWindow->getScreenBounds();
+                    const auto all = windowArea.getUnion(tipArea);
+                    juce::Image picture(juce::Image::ARGB, all.getWidth(), all.getHeight(), true, juce::SoftwareImageType());
+                    {
+                        juce::Graphics g(picture);
+                        g.drawImageAt(top->createComponentSnapshot(top->getLocalBounds(), false, 1.0f), windowArea.getX() - all.getX(), windowArea.getY() - all.getY());
+                        g.drawImageAt(tipWindow->createComponentSnapshot(tipWindow->getLocalBounds(), false, 1.0f), tipArea.getX() - all.getX(), tipArea.getY() - all.getY());
+                    }
+                    // The neighbourhood of the control, so that the place of the tip against it can be judged.
+                    const auto cut = control->getScreenBounds().getUnion(tipArea).expanded(160, 90).getIntersection(all) - all.getPosition();
+                    const juce::File file = juce::File(outFolder).getChildFile("tip-" + juce::String(index) + ".png");
+                    file.deleteFile();
+                    juce::FileOutputStream out(file);
+                    if (out.openedOk()) juce::PNGImageFormat().writeImageToStream(picture.getClippedImage(cut), out);
+                });
+            });
+        }
     }
     // 0.9.134: ORGAN_TEST_BAR="<seconds>|<name in the bar>|<act>[|<text>]^..." - a bar slider found by its name
     // ("barLabel") in every window: "open" = the typing field as the single click opens it, "type" = that text typed
@@ -4907,6 +5076,8 @@ void MainComponent::showCouplersDialog()
                     auto* toggle = toggles.add(new juce::ToggleButton(coupler->label));
                     toggle->getProperties().set("source", source);
                     toggle->setToggleState(coupler->visible, juce::dontSendNotification);
+                    toggle->setTooltip("Ticked: the coupler " + coupler->label + " has its button under the header of this keyboard's division on the console. "
+                        "Not ticked: no button there (a coupler that was on is not switched off by this).");   // 0.9.148: the boxes had no tooltip
                     toggle->onClick = [this, id = coupler->id, toggle]
                     {
                         if (auto* state = this->owner.findCoupler(id))
@@ -4920,6 +5091,7 @@ void MainComponent::showCouplersDialog()
             viewport.setViewedComponent(&content, false);
             addAndMakeVisible(viewport);
             close.setButtonText("Close");
+            close.setTooltip("Closes this window; what is ticked is on the console already.");
             close.onClick = [this]
             {
                 if (auto* window = findParentComponentOfClass<juce::DialogWindow>())
@@ -12114,6 +12286,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 addAndMakeVisible(channelLabels[(size_t)manual]);
                 for (int ch = 1; ch <= 16; ++ch)
                     channel.addItem("Ch " + juce::String(ch), ch);
+                channel.setTooltip("The MIDI channel on which the keyboard of this division sends.");   // 0.9.148: it had none
                 channel.onChange = [this, manual]
                 {
                     this->owner.manualConfigs[(size_t)manual].midiChannel =
@@ -12148,6 +12321,15 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 {
                     auto& button = keyboardLayoutButtons[(size_t)manual][(size_t)layout];
                     button.setButtonText(layoutNames[layout]);
+                    static const juce::String layoutTips[4]
+                    {
+                        "The bass octave as on a modern keyboard: every key plays its own note.",
+                        "A short bass octave: the key E sounds C, F# sounds D, G# sounds E; the keys C to D# play nothing.",
+                        "A historic bass octave without C#: the lowest C# plays nothing.",
+                        "A historic bass octave without C# and D#: the lowest C# and D# play nothing."
+                    };
+                    button.setTooltip(layoutTips[layout]);   // 0.9.148: they had none
+                    button.getProperties().set("manualChapter", "Bass octave layout");
                     button.setRadioGroupId(700 + manual, juce::dontSendNotification);
                     button.onClick = [this, manual, layout]
                     {
@@ -12340,6 +12522,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         + juce::String(manual) + ":" + target);
                     slider.addMouseListener(&this->owner, false);
                     slider.onValueChange = applyWind;
+                    // 0.9.148: they had no tooltip (the Windsag lag gets its own below)
+                    slider.setTooltip(target == "windDepth" ? "How far the pitch of this division sags under the fullest load of the wind, in cents (0 = no wind model). Right-click: MIDI learn."
+                        : target == "windFrequency" ? "The frequency at which the wind swings after a stroke. Right-click: MIDI learn."
+                        : target == "windOscillations" ? "After how many swings the wind has settled (0 = it does not swing). Right-click: MIDI learn."
+                        : "How strongly a struck or released key shakes the wind. Right-click: MIDI learn.");
                     label.setText(text, juce::dontSendNotification);
                     label.setJustificationType(juce::Justification::centredLeft);
                     addAndMakeVisible(slider);
@@ -12464,6 +12651,10 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     };
                     label.setText(text, juce::dontSendNotification);
                     label.setJustificationType(juce::Justification::centredLeft);
+                    // 0.9.148: they had no tooltip
+                    slider.setTooltip(target == "tremulantRate" ? "The speed of the tremulant of this division. Right-click: MIDI learn."
+                        : target == "tremulantDepth" ? "How far the tremulant moves the pitch, in cents. Right-click: MIDI learn."
+                        : "How far the tremulant of every further rank of a stop folder and of every further perspective lags behind the first, in degrees of its wave - the ranks do not shake as one. Right-click: MIDI learn.");
                     addAndMakeVisible(label);
                     addAndMakeVisible(slider);
                 };
@@ -12539,8 +12730,10 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 if (auto* window = findParentComponentOfClass<juce::DialogWindow>())
                     window->closeButtonPressed();
             };
+            if (closeButton.getTooltip().isEmpty()) closeButton.setTooltip("Closes this window.");   // 0.9.148: every button says what it does
             addAndMakeVisible(closeButton);
             closeButton.setButtonText("Close");
+            closeButton.setTooltip("Closes this dialog; everything set in it is in force already.");
             audioRoutingButton.setButtonText("Audio routing...");   // 0.9.89: the way to the sound cards, channels and effects (the audio tabs are gone)
             audioRoutingButton.setTooltip("The sound cards, the output channels and the effects of every division and perspective - the Audio routing dialog (the same one as the console's button opens).");
             audioRoutingButton.getProperties().set("manualChapter", "Audio routing");
@@ -13649,6 +13842,7 @@ void MainComponent::showTemperamentsDialog()
                 juce::Component::SafePointer<juce::DialogWindow> window(findParentComponentOfClass<juce::DialogWindow>());
                 juce::MessageManager::callAsync([window] { if (window != nullptr) window->closeButtonPressed(); });   // after the click: the window may delete this button
             };
+            if (closeButton.getTooltip().isEmpty()) closeButton.setTooltip("Closes this window.");   // 0.9.148: every button says what it does
             addAndMakeVisible(closeButton);
             // Global normalisation of every stop from its recorded smpl pitches.
             equalButton.setButtonText("Set diapason a1 = 440 Hz (all stops)");
@@ -14388,10 +14582,12 @@ void MainComponent::showCrescendoDialog()
             };
             addAndMakeVisible(voidButton);
             closeButton.setButtonText("Close");
+            closeButton.setTooltip("Closes this window.");   // 0.9.148: every button says what it does
             closeButton.onClick = [this]
             {
                 if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->closeButtonPressed();
             };
+            if (closeButton.getTooltip().isEmpty()) closeButton.setTooltip("Closes this window.");   // 0.9.148: every button says what it does
             addAndMakeVisible(closeButton);
             rebuildButtons();
             owner.crescendoDialogRefresh = [this] { refreshButtons(); };
@@ -26535,6 +26731,12 @@ void MainComponent::showStopBuildingDialog(int)
     class StopListDialog final : public juce::Component, private juce::Timer
     {
     public:
+        // 0.9.148: the dialog is a mouse listener of its folder cells - a notch it hears as their listener is passed
+        // up by the cell itself; passing it up from here as well scrolled the table twice as far over the cells.
+        void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override
+        {
+            if (event.eventComponent == this) juce::Component::mouseWheelMove(event, wheel);
+        }
         using Build = ManualConfig::StopBuild;
         // For the window's close button (0.8.160): unapplied changes, and the apply itself.
         bool hasUnappliedChanges() const { return !changedDivisions().empty() || transmissionsChanged(); }
@@ -26783,7 +26985,7 @@ void MainComponent::showStopBuildingDialog(int)
             setup(resetButton, "Reset division...", "Forgets a division's table: it is built from the folder names again.",
                 [this] { resetMenu(); });
             setup(applyButton, "Apply and reload", "", [this] { apply(); });
-            setup(closeButton, "Close", "", [this]
+            setup(closeButton, "Close", "Closes the Stop List.", [this]
             {
                 MainComponent& o = owner;
                 juce::MessageManager::callAsync([&o] { o.stopBuildWindow.reset(); });
@@ -35940,6 +36142,7 @@ void MainComponent::prepareManual()
             findPrevious.setTooltip("The previous occurrence of the search text.");
             addAndMakeVisible(findPrevious);
             close.setButtonText("Close");
+            close.setTooltip("Closes this window.");   // 0.9.148: every button says what it does
             close.onClick = [this] { if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->closeButtonPressed(); };
             addAndMakeVisible(close);
             setSize(1100, 760);   // the view takes its width here: the manual's blocks are laid out now, once
@@ -36449,9 +36652,11 @@ void MainComponent::showConfigurationEditor()
                 });
             }
             openFolder.setButtonText("Show settings.json");
+            openFolder.setTooltip("Shows the file of the program's settings in the file manager (written first, so it is up to date).");
             openFolder.onClick = [this] { this->owner.saveSettingsNow(); this->owner.settingsFile.revealToUser(); };
             addAndMakeVisible(openFolder);
             reloadAll.setButtonText("Refresh values");
+            reloadAll.setTooltip("Reads every value of this window anew from the program.");
             reloadAll.onClick = [this] { rows.clear(); content.removeAllChildren(); build(); resized(); };
             addAndMakeVisible(reloadAll);
             // Actions that change what the editor shows (swapping divisions, the
@@ -36483,6 +36688,7 @@ void MainComponent::showConfigurationEditor()
             addAndMakeVisible(desktopEntry);
            #endif
             close.setButtonText("Close");
+            close.setTooltip("Closes this window; every setting is in force already.");
             close.onClick = [this]
             {
                 if (auto* window = findParentComponentOfClass<juce::DialogWindow>()) window->closeButtonPressed();
@@ -37098,6 +37304,7 @@ void MainComponent::showConfigurationEditor()
                 row->slider.setValue(target.getValue(), juce::dontSendNotification);
                 row->slider.setDoubleClickReturnValue(true, defaultValue);
                 row->slider.setScrollWheelEnabled(true);
+                row->slider.setTooltip(target.getTooltip());   // 0.9.148: what the slider of the main panel says
                 auto* raw = &row->slider;
                 row->slider.onValueChange = [raw, &target] { target.setValue(raw->getValue(), juce::sendNotification); };
                 row->addAndMakeVisible(row->shown);
@@ -37639,7 +37846,7 @@ void MainComponent::showConfigurationEditor()
                 juce::StringArray divisions;
                 for (int count = 1; count < SamplerEngine::maxManuals; ++count) divisions.add(juce::String(count) + " manuals + pedal");
                 addCombo("Divisions", divisions, o.manualCount - 1, [&o](int index)
-                { o.manualCountBox.setSelectedId(index + 1, juce::sendNotification); });
+                { o.manualCountBox.setSelectedId(index + 1, juce::sendNotification); }, o.manualCountBox.getTooltip());   // 0.9.148: the rows that had no tooltip have one
                 addCombo("Program windows", { "One window", "Two windows (each division chooses its window)" },
                     o.twoWindows ? 1 : 0, [&o](int index) { o.setTwoWindows(index == 1); },
                     "With two windows every division section below offers \"Shown in window\"; the second window "
@@ -37653,11 +37860,13 @@ void MainComponent::showConfigurationEditor()
                     for (int source = 0; source <= o.manualCount; ++source) o.recomputeCouplersForSource(source);
                 }
                 o.saveSettings();
-            });
+            }, "A melody (bass) coupler couples a key only when it becomes the new highest (lowest) key held; when that key is released it does not fall back to the next one.");
             addToggle("Melody couplers: legato grace time", o.melodyBassGraceTime, [&o](bool state)
-            { o.melodyBassGraceTime = state; o.saveSettings(); });
+            { o.melodyBassGraceTime = state; o.saveSettings(); },
+                "When the highest key changes in legato playing, the melody coupler waits a moment, so a brief overlap of two keys does not make the solo stop jump.");
             addToggle("Load the last configuration at startup", o.loadLastConfigurationAtStartup, [&o](bool state)
-            { o.loadLastConfigurationAtStartup = state; o.saveSettings(); });
+            { o.loadLastConfigurationAtStartup = state; o.saveSettings(); },
+                "On: the program starts with the organ that was loaded when it was closed. Off: it starts with an empty console.");
             addToggle("Glow: a pressed button and a dragged stop glow for a moment", o.consoleGlow, [&o](bool state)
                 { o.consoleGlow = state; o.glowLayer.enabled = state; o.saveSettings(); },
                 "The golden halo of the instruction video on the console itself: every button pressed with the left mouse button "
@@ -37755,9 +37964,11 @@ void MainComponent::showConfigurationEditor()
                     if (o.temperaments[(size_t)i].name.equalsIgnoreCase(o.selectedTemperamentName)) selectedIndex = i;
                 }
                 addCombo("Samples' base temperament", names, baseIndex, [&o, names](int index)
-                { o.setBaseTemperament(names[index]); });
+                { o.setBaseTemperament(names[index]); },
+                    "The temperament the samples were recorded in - the same choice as in the Temperaments window.");
                 addCombo("Target temperament", names, selectedIndex, [&o, names](int index)
-                { o.selectTemperament(names[index]); });
+                { o.selectTemperament(names[index]); },
+                    "The temperament the organ plays in - the same choice as in the Temperaments window.");
             }
             addInfo("Window size", juce::String(o.getWidth()) + " x " + juce::String(o.getHeight()) + " (saved automatically)");
 
@@ -37767,7 +37978,7 @@ void MainComponent::showConfigurationEditor()
                 juce::StringArray pistons;
                 for (int count = 0; count <= MainComponent::maxPistons; ++count) pistons.add(juce::String(count));
                 addCombo("Combination pistons", pistons, o.pistonCount, [&o](int index)
-                { o.pistonCountBox.setSelectedId(index + 1, juce::sendNotification); });
+                { o.pistonCountBox.setSelectedId(index + 1, juce::sendNotification); }, o.pistonCountBox.getTooltip());
             }
             addToggle("Combinations hold the voicing of the stops", o.combinationsHoldVoicing, [&o](bool state)
                 { o.combinationsHoldVoicing = state; o.saveSettings(); },

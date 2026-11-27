@@ -12,6 +12,43 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.148] - 2026-11-27
+
+### Fixed
+- **The wheel on a voicing slider changed its value and scrolled the workspace
+  at once.** A voicing row listens to the mouse of its own sliders (right-click
+  = MIDI learn) and so heard every notch on them too - and passed it on to the
+  area that scrolls, although the slider had taken it. A notch a row (a
+  division header, the Stop List, the hint and glow layers) hears as a
+  listener is no longer passed on. Over a slider that did not listen the page
+  had scrolled twice as far for the same reason.
+- **A slider that "did not catch"** (no orange frame after the 0.4 s, the
+  mouse had to come again): a notch on a slider that did not listen yet was
+  taken for a scroll, and the slider then waited for a new move of the mouse -
+  also when nothing had scrolled (a dialog that fits its window, a page at its
+  end). Now only the 0.4 s of rest start anew when the page stood. And a move
+  straight onto a slider within 0.3 s of the last notch counts as the user's
+  move (12 px or more), not as the hand shaking on the wheel.
+- **Tooltips came only while the program was the one in front.** With another
+  program having the keyboard (writing elsewhere, the console beside it) the
+  mouse resting on a control showed nothing, anywhere - while the sliders took
+  the wheel and the buttons lit up. A tooltip now comes wherever the mouse
+  rests on a control of the program, in the main window and in every dialog.
+  A flag of the tooltip window's own ("a button is down") that could stay set
+  after a press whose release never arrived is gone; the system's own state of
+  the buttons is asked.
+
+### Added
+- Tooltips for the controls that had none: the voicing row's Stop volume and
+  perspective boxes, the Divisions dialog's bass octave layouts, MIDI channel,
+  wind and tremulant sliders, the boxes of the Couplers dialog, the
+  Configuration Editor's top-row sliders and a few of its boxes, Show cables
+  of the Audio routing, the Close buttons.
+- The activity log says what the wheel and the tooltips do when they do not
+  do what is expected: "Wheel over the slider ... before it listened", the
+  first tooltip of a session with its place, a tooltip held back for seconds
+  with the reason. `ORGAN_TIP_DEBUG=1` logs every tooltip.
+
 ## [0.9.147] - 2026-11-27
 
 ### Changed

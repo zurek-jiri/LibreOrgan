@@ -336,6 +336,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         auto* button = rankButtons.add(new juce::ToggleButton(rank->perspective));
         button->getProperties().set("manualChapter", "Perspective boxes");   // F1 (0.8.232)
         button->setToggleState(rank->rankEnabled, juce::dontSendNotification);
+        button->setTooltip("This perspective of the stop on or off (its samples stay loaded). A held key keeps what it sounds with; the next key follows the box.");   // 0.9.148: it had none
         button->onClick = [this, rank, button]
         {
             this->engine.setRankEnabled(this->stop, rank, button->getToggleState());
@@ -630,6 +631,9 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     globalSlider.setDoubleClickReturnValue(true, 0.0);
     globalSlider.addMouseListener(this, false);
     globalSlider.onValueChange = [this] { globalSliderChanged(); };
+    // 0.9.148: it had no tooltip (found by the audit of every control).
+    globalSlider.setTooltip(isTransmission() ? "The volume of this transmission against its parent stop, in dB: added to the parent stop's own volume. Right-click: MIDI learn."
+                                             : "The volume of the whole stop, in dB (of a noise's button: of the noise). Right-click: MIDI learn.");
     addAndMakeVisible(globalSlider);
     globalLabel.setText(isTransmission() ? "Volume vs. parent stop" : "Stop volume", juce::dontSendNotification);
     globalLabel.setJustificationType(juce::Justification::centredLeft);
@@ -2728,6 +2732,12 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
     class SectionHeader final : public juce::Component, public juce::TooltipClient, private juce::Timer
     {
     public:
+        // 0.9.148: the header is a mouse listener of its name and its Tremulant button - a notch it hears as their
+        // listener is theirs (they pass it up themselves); passing it up from here too scrolled twice.
+        void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override
+        {
+            if (event.eventComponent == this) juce::Component::mouseWheelMove(event, wheel);
+        }
         // 0.9.14: the header's own tooltip is the keyboard indicator's (painted, no component of its own);
         // elsewhere on the header background there is none.
         juce::String getTooltip() override

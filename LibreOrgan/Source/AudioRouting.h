@@ -66,6 +66,7 @@ public:
         helpButton.onClick = [this] { juce::Component::SafePointer<MainComponent> target(&owner); juce::MessageManager::callAsync([target] { if (target != nullptr) target->showManualSection("Audio routing"); }); };
         addChildComponent(helpButton);
         showCables.setButtonText("Show cables");
+        showCables.setTooltip("Ticked: every cable is drawn. Not ticked: the cables are drawn only while one is selected or dragged (the cards and their outputs stay readable).");
         showCables.setToggleState(true, juce::dontSendNotification);
         showCables.onClick = [this] { repaint(); };
         addAndMakeVisible(showCables);

@@ -5670,6 +5670,46 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (SamplerEngine, appends a new label), learnPrefixesFromTables' bare lines, patternsWithHead (append) - an unlisted
   name is placed by the rule anyway, a line appended there stands where it was appended. .NET file calls in a tool
   command: ABSOLUTE paths (the cwd is LibreOrgan/LibreOrgan - a relative path threw; nothing was written). RELEASED on his word ("publish it on gitHub, too"): commit f5ecb4a + the merge e890818 (origin had three more publishes: INDEX / catalog conflicts resolved by git checkout --theirs + the index script run again), tag v0.9.147 on e890818, CI green at the first attempt on all five, Intel mac "late symbols: 0", the Windows exe on system DLLs only; the CI exe NOT deployed (his program ran - the local build stands in C:\LibreOrgan\LibreOrgan_0.9.147.exe). The first merge after the push: the index job's loop ran green. ARNSTADT "again without noises": the log showed an export at 12:42 never submitted (no issue; the next organ loaded 10 s later) and the catalog load at 13:36 bringing the old published file back - %TEMP%\published_state.py <libreorgans> lists per organ the publishing date, the version and the noises (27 Nov: 7 re-published with noises, 23 + Stralsund without). OFFERED, not coded: a guard against an export that was never submitted.
+  0.9.148 (27 Nov 2026 evening, Windows; the user: a slider "se někdy nechytne", the wheel on the blower's Stop volume
+  changes the dB AND scrolls, "nikde se neobjevuje tooltip ... regres"; LOCAL COMMIT, NOT pushed - his word):
+  (1) WHEEL + SCROLL AT ONCE: StopRow is a MOUSE LISTENER of its own sliders (`globalSlider.addMouseListener(this, false)`,
+  right-click = MIDI learn), a juce::Component is a MouseListener, and Component::mouseWheelMove hands the notch to its
+  PARENT - so every notch on a voicing slider reached the row as a listener callback and went up to the viewport,
+  whether the slider had taken it or not (a deaf slider scrolled twice as far). Hidden until 0.9.136, when
+  `stopsViewport.allowWheel` became true over open voicings. Fix: `mouseWheelMove` overridden in StopRow, SectionHeader,
+  StopListDialog (`if (event.eventComponent == this) Component::mouseWheelMove(...)`) and empty in HintSheen / GlowLayer.
+  RULE: a Component that is added as a mouse listener of other components overrides mouseWheelMove - a notch it hears
+  as a listener (eventComponent != this) is never passed on. (2) "DOES NOT CATCH": WheelGate took a notch on a slider that
+  did not listen yet for a scroll (`movedSinceScroll = false` - a new mouse move wanted) also when NOTHING scrolled;
+  now `pageStood` (the control under the mouse stands where `look()` last saw it: `underAt`) keeps movedSinceScroll and
+  only restarts the 0.4 s; within 0.3 s of a notch a move of >= 12 px from `scrollAnchor` is the user's (it was all
+  "the hand on the wheel"). `WheelGate::note()` (a std::function set by MainComponent) logs "Wheel over the slider X
+  before it listened (...)" at most every 5 s. (3) TOOLTIPS: JUCE's TooltipWindow::getTipFor gives a tip only while
+  `Process::isForegroundProcess()` - the user writes in another window (the terminal) and hovers over the console:
+  sliders arm, the wheel works (Windows scrolls inactive windows), no tooltip anywhere. HelpTooltipWindow::getTipFor no
+  longer calls the base: held back only by a held mouse button (ModifierKeys) and a modal box in front. The window's own
+  `buttonDown` flag (set at every mouseDown, cleared by a mouseUp that never comes when the pressed component is deleted
+  before the release - MouseInputSource sends no mouseUp without a component under the mouse) is gone. A control WITH a
+  text that gets no tip is asked again at the next poll (was struck off until the mouse left it). Log: "Tooltip shown
+  over X ... - the first of this session", "Tooltip over X held back for N s: <why>", "did NOT come up";
+  `ORGAN_TIP_DEBUG=1` logs every tip. WHICH of the two was his case is NOT proven (the foreground rule fits everything
+  he described; no real mouse was driven) - read those log lines next time. (4) Tooltips added where the audit
+  (ORGAN_TEST_F1_AUDIT, now naming unnamed controls "<Class bounds in Parent>") found none: voicing Stop volume and
+  perspective boxes, Divisions bass layouts / MIDI channel / wind and tremulant sliders, Couplers boxes, the Editor's
+  top-row sliders and six rows, Show cables, the Close buttons. Left: the Stop List's folder cells (their own path
+  bubble), three zero-size combos of a StopRow, the hidden legacy buttons "Keyboards" / "Select Top Folder with Stops".
+  HOOKS: `ORGAN_TEST_TIP="<s>|<button text, bar name, testName, label text or @x,y>^..."` (>= 5 s apart; the mouse through
+  the peer, 3 s later the log says whether a tooltip shows and where; `ORGAN_TEST_TIP_OUT=<folder>` = tip-N.png, the
+  window with the tip in its place), `ORGAN_TEST_TOPMOST=1` (every window of ours always on top). TEST LESSON: JUCE names
+  a component under the mouse only where NO OTHER WINDOW covers ours (HWNDComponentPeer::contains -> WindowFromPoint) -
+  a peer-driven mouse test of a window the user's own windows cover finds "nothing under the mouse" and proves
+  nothing (two runs lost); such a test runs with ORGAN_TEST_TOPMOST=1. ORGAN_TEST_BAR's wheel sequences: "muppww" at
+  the page's top = the page-stood case; a 'j' needs a 'p' before it (within 0.3 s of a notch 5 px are the hand).
+  RUN (Rural, final build): armed slider's notches change the value with the scroll position unchanged, main window
+  and Configuration Editor; tips over a top-bar button, a voicing bar, a per-key number, a perspective box, with the
+  Editor open too. NOT run: a real mouse, a modal dialog (Stop List) in front, the red note names (Rural has none),
+  Linux / macOS (not compiled; the tooltip rule and the listeners are platform-neutral), self-test / kerneltest (no
+  engine change).
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

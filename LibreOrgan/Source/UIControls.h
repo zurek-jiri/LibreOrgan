@@ -507,6 +507,9 @@ class HintSheen final : public juce::Component, private juce::Timer   // a Compo
 {
 public:
     HintSheen() { setInterceptsMouseClicks(false, false); }
+    // 0.9.148: it hears the wheel of the whole window as a listener - a Component would hand every notch to its
+    // parent a second time (the Stop List scrolled twice as far while the hint stood).
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override {}
     // arrowFromAbove: the arrow comes down onto the button (room above it, the
     // Stop List's table); otherwise it comes up from below (the console's top row).
     void follow(std::vector<juce::Component*> buttons, bool arrowFromAbove = false)
@@ -591,6 +594,7 @@ class GlowLayer final : public juce::Component, private juce::Timer
 {
 public:
     GlowLayer() { setInterceptsMouseClicks(false, false); setOpaque(false); }
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override {}   // 0.9.148: a listener's notch is never passed on
     bool enabled = true;
     void glow(juce::Component* target, double ms)
     {

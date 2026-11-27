@@ -464,6 +464,15 @@ private:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseEnter(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
+    // 0.9.148 (the user: the wheel on a voicing slider that listened changed its value AND scrolled the workspace):
+    // the row is a mouse listener of its own sliders and buttons (right-click = MIDI learn), so it heard every
+    // notch on them as well - and a Component's own mouseWheelMove hands the notch to its parent, up to the area
+    // that scrolls. A notch the row hears as a LISTENER is the slider's own business (it took it, or passed it up
+    // itself); only one that comes to the row itself goes on to the parent.
+    void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override
+    {
+        if (event.eventComponent == this) juce::Component::mouseWheelMove(event, wheel);
+    }
 };
 
 

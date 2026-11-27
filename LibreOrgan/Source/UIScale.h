@@ -150,7 +150,9 @@ namespace UIScale
         }
         static WheelGate*& instance() { static WheelGate* gate = nullptr; return gate; }
         static constexpr double kStandMs = 400.0, kHandOnWheelMs = 300.0;
-        static constexpr int kMovePixels = 4;
+        static constexpr int kMovePixels = 4, kHandMovePixels = 12;
+        // What the gate has to say goes into the activity log (set by MainComponent; this header knows no log).
+        static std::function<void(const juce::String&)>& note() { static std::function<void(const juce::String&)> f; return f; }
         // The control the wheel would act on at this component: a slider, or a component marked "wheelGated".
         static juce::Component* targetOf(juce::Component* c)
         {
@@ -186,9 +188,27 @@ namespace UIScale
         {
             auto* target = targetOf(e.eventComponent);
             if (target != nullptr && (target == armed.getComponent() || !inScrollingArea(*target))) return;   // the wheel set a control
-            lastScrollMs = juce::Time::getMillisecondCounterHiRes();   // a scroll
-            movedSinceScroll = false;
-            lastPosition = e.getScreenPosition();
+            const double now = juce::Time::getMillisecondCounterHiRes();
+            // 0.9.148 (the user: "slider se někdy nechytne, nezoranžoví ani po 0.4 s, musím najet znova"): a notch on a
+            // slider that does not listen YET was taken for a scroll and the slider then wanted a new move of the
+            // mouse - also when nothing had scrolled (a dialog that fits its window, a page at its end). The page
+            // has scrolled by the time this listener hears of the notch: when the control under the mouse stands
+            // where it stood, nothing carried it there - the mouse is still where the user put it, and only the
+            // 0.4 s of rest start anew.
+            const bool pageStood = target != nullptr && target == under.getComponent() && target->getScreenPosition() == underAt;
+            if (pageStood && now - lastNoteMs > 5000.0 && note())
+            {
+                lastNoteMs = now;
+                auto name = target->getProperties()[juce::Identifier("barLabel")].toString();
+                if (name.isEmpty()) name = target->getProperties()[juce::Identifier("manualChapter")].toString();
+                if (name.isEmpty()) name = target->getName();
+                note()("Wheel over the slider \"" + name + "\" before it listened (the mouse on it for " + juce::String(juce::roundToInt(now - overSinceMs))
+                    + " ms, " + juce::String(juce::roundToInt(juce::jmin(99999.0, now - lastScrollMs))) + " ms since the last scroll, moved since the scroll: "
+                    + (movedSinceScroll ? "yes" : "no") + "): it listens after " + juce::String(juce::roundToInt(kStandMs)) + " ms of rest");
+            }
+            lastScrollMs = now;   // a scroll
+            if (!pageStood) movedSinceScroll = false;
+            scrollAnchor = lastPosition = e.getScreenPosition();
             disarm();
         }
     private:
@@ -199,10 +219,13 @@ namespace UIScale
             // the wheel shakes the mouse by a few pixels, and 3 px counted as a move. What comes within 0.3 s of a
             // wheel notch is the hand on the wheel (it only moves the place the distance is counted from); after
             // that a move of 4 px or more is the user's.
+            // 0.9.148: within those 0.3 s a move of 12 px or more from where the wheel was turned is the user's too -
+            // scroll, go straight onto a slider and rest there: it never listened, the whole move had been "the hand".
             const auto place = e.getScreenPosition();
             const double now = juce::Time::getMillisecondCounterHiRes();
-            if (now - lastScrollMs < kHandOnWheelMs) lastPosition = place;
-            else if (place.getDistanceFrom(lastPosition) >= kMovePixels)
+            const bool handOnWheel = now - lastScrollMs < kHandOnWheelMs;
+            if (handOnWheel && place.getDistanceFrom(scrollAnchor) < kHandMovePixels) lastPosition = place;
+            else if (handOnWheel || place.getDistanceFrom(lastPosition) >= kMovePixels)
             {
                 // (the user: "často člověk trochu myší pohne než začne scrollovat" and "když se scrolling zastaví nad
                 // sliderem, a myš se trochu pohne - čekat 0.4 s": every move, a small one too, starts the 0.4 s anew -
@@ -220,6 +243,7 @@ namespace UIScale
             // wheel at once scrolls.
             if (target != under.getComponent()) { disarm(); under = target; overSinceMs = juce::Time::getMillisecondCounterHiRes(); }
             if (under == nullptr) { stopTimer(); return; }
+            underAt = under->getScreenPosition();   // where it stands: a notch that leaves it there scrolled nothing
             if (armed.getComponent() != under.getComponent())
             {
                 const bool gated = inScrollingArea(*under);
@@ -253,8 +277,8 @@ namespace UIScale
             armed = nullptr;
         }
         juce::Component::SafePointer<juce::Component> under, armed;
-        juce::Point<int> lastPosition;
-        double lastScrollMs = 0.0, overSinceMs = 0.0;
+        juce::Point<int> lastPosition, scrollAnchor, underAt;
+        double lastScrollMs = 0.0, overSinceMs = 0.0, lastNoteMs = 0.0;
         bool movedSinceScroll = true, armedGated = false;
     };
 
