@@ -12,6 +12,27 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.145] - 2026-11-27
+
+### Added
+- **Organ catalog** (a new top-bar button, and a button on the empty console):
+  the organs published in the repository's `libreorgans/` folder, listed in
+  the program with the website's columns - organ, divisions, stops, RAM,
+  routes - and a sixth one, whether the organ's sample folders are on this
+  computer (the search a load does, run quietly). A click on a header sorts;
+  the filter row narrows the list by a word, by RAM or to the organs whose
+  samples are here. *Download and load* fetches the organ's zip and hands its
+  configuration to the same path as Load Configuration (the load box, the
+  copy into the LibreOrgans folder, keep / replace, the merge).
+- An organ whose samples are free (the Rural Organ demo) can be fetched with
+  them: *Download with its samples* puts the archive into
+  `Documents/LibreOrgan/LibreSamples` and loads the organ from it.
+- The robot that writes `INDEX.md` writes `libreorgans/catalog.json` from the
+  same published zips; `libreorgans/SAMPLES.txt` names the free sample
+  archives. The internet is asked only while the catalog window is open.
+  Plug-ins of a downloaded configuration come switched off. Linux downloads
+  through the system's `curl` or `wget` (no new library is linked).
+
 ## [0.9.144] - 2026-11-26
 
 ### Changed

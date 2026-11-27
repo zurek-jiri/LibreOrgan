@@ -1,0 +1,4 @@
+# Free sample folders the program may download together with an organ (its "Organ catalog" window):
+# one line per organ - the folder name as under libreorgans/, the link to the archive, its size in bytes.
+# Only archives that hold the organ's configuration with the samples (as the Rural Organ demo does).
+rural-organ https://github.com/zurek-jiri/LibreOrgan/releases/download/rural-organ-0.8/RuralOrgan.rar 725727097

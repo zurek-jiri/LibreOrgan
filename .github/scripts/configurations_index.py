@@ -21,12 +21,14 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'lib
 
 def main():
     rows = []
+    catalog = []   # the same organs for the program's "Organ catalog" window (catalog.json)
     for folder in sorted(os.listdir(ROOT)):
         path = os.path.join(ROOT, folder)
         if not os.path.isdir(path):
             continue
         # The configuration is the .json inside the folder's zip (a bare .json is accepted too).
         cfg = None
+        zip_name, zip_bytes = '', 0
         for name in sorted(os.listdir(path)):
             full = os.path.join(path, name)
             if name.lower().endswith('.zip'):
@@ -34,6 +36,7 @@ def main():
                     inner = [n for n in z.namelist() if n.lower().endswith('.json')]
                     if inner:
                         cfg = json.loads(z.read(inner[0]).decode('utf-8'))
+                        zip_name, zip_bytes = name, os.path.getsize(full)
                         break
             elif name.lower().endswith('.json'):
                 with open(full, encoding='utf-8') as f:
@@ -102,6 +105,20 @@ def main():
                         title = re.sub(r'\s+[Oo]rgan$', '', title)
                         break
         rows.append((title, folder, divisions, count, ', '.join(perspectives), ram_bytes, ram_min))
+        if zip_name:
+            publication = cfg.get('publication') or {}
+            catalog.append({
+                'title': title, 'folder': folder, 'zip': zip_name, 'zipBytes': zip_bytes,
+                'url': 'https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/%s/%s' % (quote(folder), quote(zip_name)),
+                'readme': 'https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/%s/README.md' % quote(folder),
+                'divisions': divisions, 'stops': count, 'routes': perspectives,
+                'ramBytes': ram_min if ram_min > 0 else ram_bytes,
+                'producer': str(publication.get('producer', '') or ''), 'link': str(publication.get('link', '') or ''),
+                'rootName': str(cfg.get('sampleLibraryRootName', '') or ''),
+                'rootRelative': str(cfg.get('sampleLibraryRootRelative', '') or ''),
+                'trees': [str(t) for t in (cfg.get('sampleTrees') or []) if isinstance(t, str)],
+                'fingerprints': dict((str(k), str(v)) for k, v in (cfg.get('treeFingerprints') or {}).items()),
+            })
 
     def ram_text(ram_bytes):
         if ram_bytes <= 0:
@@ -190,6 +207,31 @@ def main():
         lines.append('')
         return '\n'.join(lines)
     changed = 0
+    # catalog.json: the same organs for the program (its "Organ catalog" window reads this one file and
+    # downloads the zip of the organ chosen). Nothing here changes from run to run but the organs themselves.
+    # Free sample folders the program may download with an organ are named in libreorgans/SAMPLES.txt:
+    # "<folder> <link to the archive> [<bytes>]" per line ("#" lines are comments).
+    samples = {}
+    samples_file = os.path.join(ROOT, 'SAMPLES.txt')
+    if os.path.exists(samples_file):
+        with open(samples_file, encoding='utf-8') as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2 and not parts[0].startswith('#'):
+                    samples[parts[0].lower()] = {'url': parts[1], 'name': parts[1].rstrip('/').split('/')[-1],
+                                                 'bytes': int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0}
+    for entry in catalog:
+        entry['featured'] = entry['folder'].lower() in featured
+        if entry['folder'].lower() in samples:
+            entry['samples'] = samples[entry['folder'].lower()]
+    catalog.sort(key=lambda e: e['title'].lower())
+    catalog_text = json.dumps({'libreOrganCatalog': 1, 'organs': catalog}, ensure_ascii=False, indent=1) + '\n'
+    catalog_file = os.path.join(ROOT, 'catalog.json')
+    old = open(catalog_file, encoding='utf-8').read() if os.path.exists(catalog_file) else None
+    if old != catalog_text:
+        with open(catalog_file, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(catalog_text)
+        changed += 1
     for key, _, _ in columns:
         for descending in (False, True):
             name = file_for(key, descending)

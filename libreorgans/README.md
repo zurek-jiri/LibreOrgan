@@ -19,6 +19,11 @@ refuses anything else.
 
 ## Using a published configuration
 
+**The short way: *Organ catalog* in the program's top bar.** It lists every
+organ published here, says whether its sample folders are on your computer,
+and a click downloads the configuration and loads it. The steps below do the
+same by hand.
+
 1. Get the sample folders the configuration was made for (its README says
    which and where from).
 2. Find the organ in [INDEX.md](INDEX.md), open its README and click its
@@ -124,6 +129,13 @@ default). To put an organ there or take it out: edit `FEATURED.txt` on
 GitHub (the pencil; INDEX.md follows by itself), or GitHub > *Actions* >
 *Feature a configuration* > *Run workflow* > any part of the organ's name +
 *feature* / *unfeature* > *Run workflow*.
+
+**The catalog in the program.** `catalog.json` is written by the same robot
+as INDEX.md, for the program's *Organ catalog* window - never edit it. An
+organ whose samples are free can be downloaded there together with them: its
+line in [SAMPLES.txt](SAMPLES.txt) - the folder name, the link to the archive
+(one that holds the organ's configuration with the samples), its size in
+bytes - says where the archive is.
 
 ## The published configurations
 

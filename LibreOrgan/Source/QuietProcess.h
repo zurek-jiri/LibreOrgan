@@ -50,6 +50,17 @@ public:
        #endif
     }
 
+    // What the process ended with (0 = in order); -1 while it runs or when it never started.
+    int exitCode() const
+    {
+       #if JUCE_WINDOWS
+        DWORD code = 0;
+        return process != nullptr && GetExitCodeProcess(process, &code) != 0 && code != STILL_ACTIVE ? (int)code : -1;
+       #else
+        return child.isRunning() ? -1 : (int)child.getExitCode();
+       #endif
+    }
+
     bool kill()
     {
        #if JUCE_WINDOWS

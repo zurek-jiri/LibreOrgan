@@ -66,6 +66,7 @@ namespace
 #include "LicencesData.h"       // the licence texts embedded (GenerateLicencesData.ps1)
 #include "ManualData.h"         // the user manual embedded (GenerateManualData.ps1)
 #include "GuidedTour.h"         // the guided tour of a teaching organ (0.8.206)
+#include "OrganCatalog.h"       // the Organ catalog: the published organs, downloaded and loaded (0.9.145)
 #include "AudioRouting.h"       // the Audio routing dialog: cards as blocks, routes as chips (0.9.79, #236)
 #include "PluginHost.h"         // plug-ins (VST3, AU on macOS): the scan in a process of its own, the safe start (0.9.102)
 #include "EffectsDialog.h"      // the Effects dialog of a route / a perspective: Volume, Separation, EQ, IR, LINKED (0.9.89)
@@ -1416,6 +1417,11 @@ MainComponent::MainComponent()
     addAndMakeVisible(audioRoutingButton);
     audioRoutingButton.setTooltip("The audio routes as cables between the organ and the sound cards, with the effects of every route");
     audioRoutingButton.onClick = [this] { showAudioRoutingDialog(); };
+    // 0.9.145: the Organ catalog - the organs published in the repository, downloaded and loaded from here.
+    addAndMakeVisible(organCatalogButton);
+    organCatalogButton.setTooltip("The organs published for LibreOrgan Sampler on the internet: choose one, the program downloads its configuration and loads it "
+        "(the sample folders must be on this computer). The internet is asked only when this window is open.");
+    organCatalogButton.onClick = [this] { showOrganCatalog(); };
     // 0.9.39 (the user: no strip at the bottom, "zvoneček" in the top bar instead): a button that is there
     // while a message is unread, a click opens the Messages tab; nothing periodic behind it.
     addChildComponent(messagesButton);
@@ -1645,7 +1651,8 @@ MainComponent::MainComponent()
     stopsViewport.setScrollBarsShown(true, false);
     stopsViewport.setInterceptsMouseClicks(true, true);
     // The empty instrument: a hint and a button to the manual, over the stop workspace.
-    emptyHintLabel.setText("Drag and drop your sample folders, RAR archives, folder trees or organ configurations onto a division.\n\n"
+    emptyHintLabel.setText("Drag and drop your sample folders, RAR archives, folder trees or organ configurations onto a division -\n"
+        "or take a published organ from the Organ catalog.\n\n"
         "Need help designing your pipe organ?\nOpen the user manual and read \"Getting started\":",
         juce::dontSendNotification);
     emptyHintLabel.setJustificationType(juce::Justification::centred);
@@ -1656,6 +1663,11 @@ MainComponent::MainComponent()
     emptyHintButton.setTooltip("The user manual, embedded in the program: how to load your samples and build the organ");
     emptyHintButton.onClick = [this] { showManualSection("1. Getting started"); };
     emptyHintPanel.addAndMakeVisible(emptyHintButton);
+    emptyHintCatalogButton.setButtonText("Organ catalog");
+    emptyHintCatalogButton.setTooltip("The organs published for LibreOrgan Sampler on the internet: choose one, the program downloads its configuration and loads it");
+    emptyHintCatalogButton.getProperties().set("manualChapter", "The organ catalog");
+    emptyHintCatalogButton.onClick = [this] { showOrganCatalog(); };
+    emptyHintPanel.addAndMakeVisible(emptyHintCatalogButton);
     emptyHintPanel.setOpaque(true);
     addChildComponent(emptyHintPanel);
 
@@ -3001,6 +3013,25 @@ MainComponent::MainComponent()
             });
         }
     }
+    // 0.9.145: ORGAN_TEST_CATALOG="<seconds>|open^<seconds>|filter|<text>^<seconds>|sort|<organ|divisions|stops|ram|routes|samples>[|desc]
+    // ^<seconds>|ram|<item 1-7>^<seconds>|here|<0 or 1>^<seconds>|select|<folder part>^<seconds>|load|<folder part>
+    // ^<seconds>|samples|<folder part>^<seconds>|cancel^<seconds>|state" - the Organ catalog's acts, each with the state into the log.
+    if (const char* env = std::getenv("ORGAN_TEST_CATALOG"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        for (const auto& spec : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(spec, "|", "");
+            if (parts.size() < 2) continue;
+            juce::Timer::callAfterDelay(1000 * juce::jmax(1, parts[0].getIntValue()), [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                if (parts[1] == "open") { safeThis->showOrganCatalog(); return; }
+                if (safeThis->organCatalogWindow == nullptr) { CrashHandler::note("ORGAN_TEST_CATALOG " + parts[1] + ": the catalog is not open"); return; }
+                if (auto* content = dynamic_cast<OrganCatalogContent*>(safeThis->organCatalogWindow->getContentComponent())) content->testAct(parts);
+            });
+        }
+    }
     // 0.9.100: ORGAN_TEST_HEADER="<seconds>|<key>|<before key or empty>" moves a top-bar button as a drag does and
     // leaves the arranging mode on (for a picture).
     if (const char* env = std::getenv("ORGAN_TEST_HEADER"))
@@ -4065,11 +4096,16 @@ void MainComponent::resized()
     {
         // The empty-instrument hint in the middle of the stop workspace, on its
         // own panel (the window's background) so that no column divider crosses it.
-        emptyHintPanel.setBounds(stopsViewport.getBounds().withSizeKeepingCentre(juce::jmin(900, stopsViewport.getWidth()), 200));   // 0.9.19: the drag-and-drop line above the manual hint
+        emptyHintPanel.setBounds(stopsViewport.getBounds().withSizeKeepingCentre(juce::jmin(900, stopsViewport.getWidth()), 226));   // 0.9.19: the drag-and-drop line above the manual hint
         auto hint = emptyHintPanel.getLocalBounds().reduced(12);
-        emptyHintLabel.setBounds(hint.removeFromTop(120));
+        emptyHintLabel.setBounds(hint.removeFromTop(146));
         hint.removeFromTop(8);
-        emptyHintButton.setBounds(hint.withSizeKeepingCentre(260, 34));
+        {
+            // 0.9.145: two buttons of one size side by side - the catalog and the manual.
+            auto pair = hint.withSizeKeepingCentre(532, 34);
+            emptyHintCatalogButton.setBounds(pair.removeFromLeft(260));
+            emptyHintButton.setBounds(pair.removeFromRight(260));
+        }
         updateEmptyHint();
     }
     // The notices lie over the (still empty) stop area, one above the other: the
@@ -4938,6 +4974,46 @@ void MainComponent::showCouplersDialog()
 }
 
 // 0.9.79 (#236): the Audio routing dialog (AudioRouting.h), modeless like the Couplers dialog; kept while hidden.
+// 0.9.145 THE ORGAN CATALOG (OrganCatalog.h): the window, and the two ways its downloads go on - both are ways
+// that existed: a configuration as "a file from the desktop" (the unsaved changes asked for, then
+// loadConfigurationFile with its load box), an archive with samples as Load Configuration of a .rar.
+void MainComponent::showOrganCatalog()
+{
+    if (organCatalogWindow != nullptr)
+    {
+        organCatalogWindow->setVisible(true);
+        organCatalogWindow->toFront(true);
+        return;
+    }
+    auto* content = new OrganCatalogContent(*this);
+    content->setSize(1180, 680);
+    organCatalogWindow = std::make_unique<ModelessDialog>("Organ catalog", content, true);
+    placeDialog(*organCatalogWindow, "organCatalog", 1180, 680);
+    organCatalogWindow->setVisible(true);
+    organCatalogWindow->toFront(true);
+    CrashHandler::note("Organ catalog opened");
+}
+
+void MainComponent::loadFromCatalog(const juce::File& configuration, const juce::String& organ, int pluginsSwitchedOff)
+{
+    CrashHandler::note("Organ catalog: \"" + organ + "\" goes to Load Configuration - " + configuration.getFullPathName()
+        + (pluginsSwitchedOff > 0 ? " (" + juce::String(pluginsSwitchedOff) + " plug-in(s) of it switched off)" : juce::String()));
+    if (pluginsSwitchedOff > 0)
+        noteMessage("Organ catalog", "\"" + organ + "\" carries " + juce::String(pluginsSwitchedOff) + " plug-in(s) in its effects. They come switched OFF: "
+            "switch them on in the Effects (the fx buttons of Audio routing) when you have them and want them.");
+    if (organCatalogWindow != nullptr) organCatalogWindow->setVisible(false);   // (the load box and the loading window come now)
+    juce::Component::SafePointer<MainComponent> guard(this);
+    askToKeepChanges("Load Configuration", "load", [guard, configuration] { if (guard != nullptr) guard->loadConfigurationFile(configuration); });
+}
+
+void MainComponent::loadFromCatalogArchive(const juce::File& archive, const juce::String& organ)
+{
+    CrashHandler::note("Organ catalog: \"" + organ + "\" is loaded from its archive with the samples - " + archive.getFullPathName());
+    if (organCatalogWindow != nullptr) organCatalogWindow->setVisible(false);
+    juce::Component::SafePointer<MainComponent> guard(this);
+    askToKeepChanges("Load Configuration", "load", [guard, archive] { if (guard != nullptr) guard->loadConfigurationFromArchives({ archive }, false); });
+}
+
 void MainComponent::showAudioRoutingDialog()
 {
     // 0.9.107: every ASIO card that is not open is asked (in the helper process) the first time the dialog comes -
@@ -19063,6 +19139,53 @@ namespace
     }
 }
 
+// 0.9.145, the Organ catalog's column "Samples on this computer": how many of an organ's folder trees the search of a
+// load would find - the same candidates in the same order (the user's lines of Locations.txt, the place the
+// configuration would stand in, the remembered locations, the drives), each checked against the tree's fingerprint.
+// QUIET: no log line, no note, nothing remembered - and no archive is opened that has not been read before (the
+// catalog must never set a hard disk walking through archives): a folder on the disk counts, an archive only when
+// every chosen archive's index is in the memory or written on the disk already. Called on the catalog's own thread.
+int MainComponent::catalogTreesHere(const juce::File& configurationFile, const juce::String& rootName, const juce::String& rootRelative,
+    const juce::StringArray& trees, const juce::StringPairArray& fingerprints)
+{
+    auto* object = new juce::DynamicObject();
+    object->setProperty("sampleLibraryRootName", rootName);
+    object->setProperty("sampleLibraryRootRelative", rootRelative);
+    const juce::var configuration(object);
+    bool archivesCheap = true;
+    for (const auto& archive : SampleFiles::archivesNotRead()) archivesCheap = archivesCheap && SampleFiles::hasIndexOnDisk(archive);
+    // (the fingerprint of a folder on the disk, without a look into any archive)
+    auto fitsOnDisk = [](const juce::File& tree, const juce::String& fingerprint)
+    {
+        for (const auto& part : juce::StringArray::fromTokens(fingerprint, ";", ""))
+        {
+            const auto fields = juce::StringArray::fromTokens(part, "|", "");
+            if (fields.size() != 4) continue;
+            const juce::File folder = fields[0] == "." || fields[0].isEmpty() ? tree : tree.getChildFile(fields[0].replaceCharacter('/', juce::File::getSeparatorChar()));
+            if (!folder.isDirectory()) return false;
+            const auto print = folderPrintOf(folder);
+            if (print.files != fields[1].getIntValue() || juce::String(print.nameHash) != fields[2]) return false;
+            if (fields[3] != "-" && print.sizes && juce::String(print.sizeHash) != fields[3]) return false;
+        }
+        return true;
+    };
+    int here = 0;
+    for (const auto& tree : trees)
+    {
+        const auto fingerprint = fingerprints[tree];
+        const auto candidates = portableFolderCandidates(configuration, configurationFile, juce::File(), tree, {});
+        bool found = false;
+        for (const auto& candidate : candidates)
+        {
+            if (candidate.isDirectory()) found = fitsOnDisk(candidate, fingerprint);
+            else if (archivesCheap && SampleFiles::isDirectory(candidate)) found = treeMatchesFingerprint(candidate, fingerprint, nullptr);
+            if (found) break;
+        }
+        if (found) ++here;
+    }
+    return here;
+}
+
 #if JUCE_LINUX
 namespace
 {
@@ -21204,6 +21327,7 @@ std::vector<MainComponent::HeaderButtonInfo> MainComponent::builtInHeaderButtons
         { &loadStopSettingsButton, 140, "loadVoicing", "Load Voicing", false },
         { &saveStopSettingsButton, 140, "saveVoicing", "Save Voicing", false },
         { &audioRoutingButton, 130, "audioRouting", "Audio routing", true },   // 0.9.79 (#236); 0.9.99: right before Load Configuration (the user)
+        { &organCatalogButton, 135, "organCatalog", "Organ catalog", true },   // 0.9.145: beside Load Configuration - one more way to an organ
         { &loadConfigurationButton, 170, "loadConfiguration", "Load Configuration", true },
         { &saveConfigurationButton, 170, "saveConfiguration", "Save Configuration", true },
         { &configurationEditorButton, 175, "configurationEditor", "Configuration Editor", true },
@@ -32286,6 +32410,7 @@ juce::String MainComponent::manualChapterForTarget(const juce::String& target)
         if (key == "ignoredPatterns") return "Ignored folders (folder contains)";
         if (key == "oneShotPatterns") return "One-shot stops (folder contains)";
         if (key == "stopMerging") return "Stop-Merging";
+        if (key == "organCatalog") return "The organ catalog";   // 0.9.145
         if (key == "loadConfiguration" || key == "saveConfiguration") return "Saving and loading";
         if (key == "configurationEditor") return "Configuration Editor reference";
         if (key == "unpackArchive") return "Sample archives (RAR)";
@@ -32323,6 +32448,7 @@ juce::String MainComponent::manualChapterForWindowTitle(const juce::String& titl
     struct Pair { const char* titleStart; const char* chapter; };
     static const Pair pairs[]{
         { "Audio routing", "Audio routing" },   // 0.9.79 (#236)
+        { "Organ catalog", "The organ catalog" },   // 0.9.145
         { "Couplers", "Couplers" }, { "Noises", "The Noises window" }, { "Temperaments", "Temperaments" }, { "General Crescendo", "The crescendo" },
         { "Divisions", "Divisions and audio" }, { "Stop List", "The Stop List" }, { "Configuration Editor", "Configuration Editor reference" },
         { "Report a problem", "Report a problem" }, { "IR reverb settings", "IR reverb" }, { "Set for all", "Audio routing" }, { "Effects", "Effects" },   // 0.9.89: the Effects dialog, the audio tabs are gone

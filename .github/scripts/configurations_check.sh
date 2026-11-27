@@ -19,7 +19,7 @@ while IFS= read -r -d '' f; do
   lower="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
   size=$(stat -c %s "$f")
   case "$f" in
-    libreorgans/README.md|libreorgans/INDEX*.md|libreorgans/FEATURED.txt) continue ;;
+    libreorgans/README.md|libreorgans/INDEX*.md|libreorgans/FEATURED.txt|libreorgans/SAMPLES.txt|libreorgans/catalog.json) continue ;;
     libreorgans/*/*)
       # An organ's folder: README.md and the zip.
       case "$lower" in

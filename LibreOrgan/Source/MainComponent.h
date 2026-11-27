@@ -163,6 +163,7 @@ private:
     LeftOnlyTextButton noisesButton{ "Noises" };        // 0.9.127: the table of the organ's noises (their units, volumes per perspective)
     LeftOnlyTextButton guidedTourButton{ "Guided tour" };   // shown on a teaching organ only (0.8.206)
     LeftOnlyTextButton audioRoutingButton{ "Audio routing" };   // 0.9.79 (#236)
+    LeftOnlyTextButton organCatalogButton{ "Organ catalog" };   // 0.9.145: the published organs, downloaded and loaded from the program
     LeftOnlyTextButton messagesButton{ "Messages" };   // 0.9.39: shown while messages are unread (the top bar's bell; no timer of its own)
     void updateMessagesButton();   // caption from the count; the top bar laid out again only when the button comes or goes
     double compileDoneMs = 0.0;    // 0.9.39: when "Compiling the Stop List: done" was logged (the loader's release is timed against it)
@@ -396,6 +397,7 @@ private:
     HintPanel emptyHintPanel;
     juce::Label emptyHintLabel;
     juce::TextButton emptyHintButton;
+    juce::TextButton emptyHintCatalogButton;   // 0.9.145: the Organ catalog from the empty console
     void updateEmptyHint();
     // Sample folder trees of a division that are not on this computer (a
     // configuration from elsewhere): the notice under the division header
@@ -1396,6 +1398,7 @@ private:
     std::shared_ptr<void> pluginEditorTrial;        // the running trial of a plug-in's window (PluginHost::EditorTrialRunner)
     std::unique_ptr<juce::Component> pluginTrialNote;
     void pluginFaulted(const juce::String& perspective, const juce::String& id, const juce::String& where);
+    std::unique_ptr<juce::DialogWindow> organCatalogWindow;   // 0.9.145: "Organ catalog" (OrganCatalog.h)
     std::unique_ptr<juce::DialogWindow> audioRoutingWindow;   // 0.9.79 (#236): "Audio routing" - the sound cards as blocks, the routes as chips in their channel cells
     // Set by the open Configuration Editor: rebuilds its rows. Called (deferred)
     // after every action that changes the values it shows.
@@ -1830,6 +1833,7 @@ private:
     void mergeConfigurationFile(const juce::File& file);
     void mergeConfiguration(juce::var added, const juce::File& addedFile, const juce::String& addedName, std::function<void()> afterLoad);
     friend class PolyphonyDisplay;   // the RAM column reads the two memory figures below
+    friend class OrganCatalogContent;   // 0.9.145: OrganCatalog.h hands its downloads to the load paths
     friend class AudioRoutingContent;   // 0.9.79 (#236): AudioRouting.h reads the routes and applies devices/channels
     friend class EffectsContent;        // 0.9.89: EffectsDialog.h - the effects of a route / a perspective (LINKED)
     // Before a configuration loads: the WAV bytes of its trees against the free
@@ -1931,6 +1935,13 @@ private:
     void showCouplersDialog();
     // 0.9.79 (#236): the Audio routing dialog (AudioRouting.h) and its "Test" tone on one route.
     void showAudioRoutingDialog();
+    // 0.9.145 the Organ catalog: the window; a configuration / an archive with samples it downloaded, into the load
+    // paths; how many of an organ's folder trees are on this computer (the search of a load, quiet; any thread).
+    void showOrganCatalog();
+    void loadFromCatalog(const juce::File& configuration, const juce::String& organ, int pluginsSwitchedOff);
+    void loadFromCatalogArchive(const juce::File& archive, const juce::String& organ);
+    static int catalogTreesHere(const juce::File& configurationFile, const juce::String& rootName, const juce::String& rootRelative,
+        const juce::StringArray& trees, const juce::StringPairArray& fingerprints);
     void startRouteTestTone(int manual, const juce::String& perspective);
     void setCouplerEnabled(const juce::String& id, bool enabled);
     void routeKeyboardNote(int manual, int note, int velocity, bool isOn);

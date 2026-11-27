@@ -5553,7 +5553,51 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   where the release's ranks are similarly loud the rank loudest in the attack - it gives 069 and the long 081 right,
   but the short-held 081 (release ranks 0 / -0.5 / -1.0 dB) would go to the septime (-52 c), and it needs a threshold
   on wobbling levels. Terminal tables fall apart when copied into an issue: raw Markdown is written to files for him
-  (F:\temp\issue266_siebenquart.md, F:\temp\tables_for_issue.md).
+  (F:\temp\issue266_siebenquart.md, F:\temp\tables_for_issue.md). v0.9.144 RELEASED on his word ("yes, I like the
+  result as the best compromise"): tag on 2fcd75d, CI green on all five, Intel mac "late symbols: 0", CI exe deployed.
+  0.9.145 (27 Nov 2026, Windows; the user: "Load From Internet Catalog ... yes, new topbar button. Do all in one pass.
+  No scopes. Also, the filtering columns should be the same what they are now on the web (even RAM ...)"; LOCAL COMMIT,
+  NOT pushed - his word; THE CATALOG WORKS FOR USERS ONLY AFTER THE PUSH: catalog.json must be on GitHub's main):
+  THE ORGAN CATALOG. ROBOT: `configurations_index.py` writes `libreorgans/catalog.json` beside INDEX.md ({libreOrganCatalog
+  1, organs [{title, folder, zip, zipBytes, url (raw.githubusercontent), readme, divisions, stops, routes[], ramBytes
+  (the least), producer, link, rootName, rootRelative, trees[], fingerprints{}, featured, samples{url, name, bytes}}]};
+  no date in it: it changes only with the organs) - every workflow's `git add -A libreorgans` takes it;
+  `libreorgans/SAMPLES.txt` ("<folder> <url> [<bytes>]"; rural-organ = the release asset RuralOrgan.rar, 725 727 097
+  bytes) names the FREE sample archives; configurations_check.sh skips both files. PROGRAM: `Source/OrganCatalog.h`
+  (header-only, no jucer entry; `friend class OrganCatalogContent`): `OrganCatalog::catalogLink()` (env
+  ORGAN_CATALOG_URL = a link or a LOCAL FILE for tests, else the raw main link), `Entry`, `entriesOf(var)`, `sizeText`,
+  `Download` (a juce::Thread: ".part" file, done / total atomics; Windows / macOS juce::URL::createInputStream with a
+  20 s timeout, Linux curl then wget through QuietProcess - WRITTEN BLIND, never run; a local path is copied);
+  `OrganCatalogContent` (ModelessDialog "Organ catalog", placeDialog key "organCatalog", F1 -> "The organ catalog"):
+  the cache `<settings folder>/Catalog/catalog.json` shown at once, then the link fetched (the internet is asked ONLY
+  while the window opens / Refresh / a download - never at the start); a juce::TableListBox with the web's columns
+  Organ / Divisions / Stops / RAM / Routes + "Samples on this computer" (header click sorts; the featured organs always
+  first, bold, a line under them), filter text, "RAM up to N GB" combo, the tick "Only organs whose samples are on this
+  computer"; buttons "Download and load", "Download with its samples (N MB)" (only for a SAMPLES.txt organ), README,
+  Refresh, "Cancel the download". The samples column = `MainComponent::catalogTreesHere(...)` on a thread
+  (portableFolderCandidates per tree, disk folders by a disk-only fingerprint, archives only when every remembered
+  archive has its index on the disk - it never walks an archive; 31 organs in 1.2-3.6 s here): "here" green / "N of M
+  folder trees" / "not here" / "not here - free: 692 MB". Download: the zip -> the .json inside (must hold
+  "manualKeyboards"; every plug-in object gets "on": false + a Messages note - a downloaded organ never starts a
+  plug-in by itself) -> `loadFromCatalog` = askToKeepChanges + `loadConfigurationFile` (the ordinary load box: copy
+  into the LibreOrgans folder etc.); a samples archive -> Documents/LibreOrgan/LibreSamples (beside LibreOrgans; a file
+  of the expected size is not downloaded again) -> `loadFromCatalogArchive` = `loadConfigurationFromArchives`. Top bar
+  `organCatalogButton` (key "organCatalog", after Audio routing), the empty console's hint has a second button "Organ
+  catalog" (panel 226 px). `QuietProcess::exitCode()`. Hook `ORGAN_TEST_CATALOG="<s>|open^<s>|filter|<text>^<s>|sort|
+  <organ|divisions|stops|ram|routes|samples>[|desc]^<s>|ram|<1-7>^<s>|here|<0|1>^<s>|select|<folder part>^<s>|load|
+  <folder part>^<s>|samples|<folder part>^<s>|cancel^<s>|state"`. RUN (test_0127b.ps1 -Odf "" -Tag catN -Env
+  "ORGAN_CATALOG_URL=F:\...\libreorgans\catalog.json;ORGAN_TEST_CATALOG=...;ORGAN_TEST_CLICK=zzz|Load;
+  ORGAN_TEST_CLICK_AT=20"): the list of 31, the states pictured, sorting, the three filters; Adlington's zip over real
+  HTTPS from raw.githubusercontent -> load box -> Load -> copied into the (temp) LibreOrgans folder, trees found, Stop
+  List compiled; Rural's rar from the release: cancelled at 100 of 692 MB ("nothing of it is kept"), then whole in
+  ~30 s, indexed, the load box, Load -> the organ loaded - BUT from F:\Suchy_rejstrik (the unpacked Rural of this box
+  is the faster source), so "samples read out of the downloaded rar" is NOT proven by this run (the archive path itself
+  is the 0.8.207 one). NOT run: the default link (404 until the push), a failed download's text, the plug-ins-off
+  path (no published organ has plug-ins), a real mouse (double click on a row, header clicks), Linux (curl / wget),
+  macOS (juce::URL; the 10.11 Mac's TLS to GitHub unknown). LESSONS: `TextEditor::setText(..., true)` notifies
+  ASYNCHRONOUSLY - a hook calls the filter itself; a hook click on "Load" must come AFTER the box (ORGAN_TEST_CLICK_AT);
+  the test leaves `%APPDATA%\LibreOrgan\Catalog\` (cache) and %TEMP%\noise0127_cat3\LibreSamples\RuralOrgan.rar. His
+  running 0.9.144 (idle, empty console) was closed in order for the tests.
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

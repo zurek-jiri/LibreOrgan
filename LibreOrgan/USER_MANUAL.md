@@ -183,13 +183,27 @@ archives are remembered. A set sold as several separate archives can be loaded
 from one of them: the others with a name like it are read too, before the organ
 loads, and the Messages name them.
 
-### A configuration published on GitHub
+### The organ catalog
 
-Download the zip from `libreorgans/INDEX.md` of the project, *Load
-Configuration*, choose the zip as it is: the configuration inside is copied
-into your LibreOrgans folder and loaded. The samples are looked for in your
-sample locations; on a computer that knows none yet, "Sample folders not
-found" shows the way.
+*Organ catalog* (top bar) lists the organs published for LibreOrgan Sampler:
+the organ, its divisions and stops, the RAM it takes at the least, its
+perspectives, and whether its sample folders are on this computer. A click on
+a column's header sorts; the filter row narrows the list by a word, by RAM or
+to the organs whose samples are here. *Download and load* (or a double-click)
+fetches the configuration and loads it through the load box, as *Load
+Configuration* does; it is copied into your LibreOrgans folder.
+
+The catalog holds configurations, not samples: the sample folders must be on
+this computer, and *README* opens the organ's page with their producer. Where
+the samples are free (the Rural Organ demo), *Download with its samples*
+fetches the archive into `Documents\LibreOrgan\LibreSamples` and loads the
+organ from it. The internet is asked only while this window is open. Plug-ins
+of a downloaded configuration come switched off. On Linux the download needs
+`curl` or `wget`.
+
+The same zips are on GitHub (`libreorgans/INDEX.md` of the project): a zip
+downloaded there is chosen in *Load Configuration* as it is. On a computer
+that knows no sample location yet, "Sample folders not found" shows the way.
 
 ### A Hauptwerk organ already installed
 
@@ -434,6 +448,8 @@ anywhere else to finish; *Top bar: back to the built-in order* undoes it.
   file: everything an unfolded voicing row sets, for every stop, transmission
   and extension. Loading sets the voicing of what is there; it never adds,
   removes or moves a transmission.
+- **Organ catalog** - the published organs, downloaded and loaded from the
+  program ([The organ catalog](#the-organ-catalog)).
 - **Load Configuration / Save Configuration** - the instrument as a file; a
   right-click on Load offers the merge.
 - **Shut down PC** (hidden by default) saves everything, quits and shuts the
