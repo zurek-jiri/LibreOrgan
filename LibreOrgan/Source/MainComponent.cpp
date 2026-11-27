@@ -2039,6 +2039,10 @@ MainComponent::MainComponent()
             stop->oneShotManual = on ? 1 : 0;
             applyNoiseGains();
             voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
+            CrashHandler::note("Noises: \"" + stop->name + "\" " + (on ? "is played once at every switching-on (One-shot, its voicing row)" : "loops while its button is on (its voicing row)"));
+            // (0.9.146: the same value as the box of the Noises window's unfolded row - an open window follows)
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::MessageManager::callAsync([safeThis] { if (safeThis != nullptr) safeThis->refreshNoisesWindow(); });
             return;
         }
         engine.setStopOneShot(stop, on ? 1 : 0);
@@ -39158,6 +39162,15 @@ juce::var MainComponent::noisesVarFromFolder(const juce::File& folder, juce::Str
                 if (file.getFileNameWithoutExtension().toLowerCase().endsWith("rel") && (!filesArePerspectives || perspectiveOf(file.getFileNameWithoutExtension()) == perspective)) releaseFiles.push_back(file);
             const bool held = leaf.edge.isEmpty() && SamplerEngine::fileHasLoop(files.front());   // a loop in the file: it sounds while it is on
             if (!held) releaseFiles.clear();
+            // 0.9.146: no release file of its own - the tail of the looped file itself (after its release marker) is
+            // the release, when it is long enough to hear (as a definition names the same file for both).
+            if (held && releaseFiles.empty())
+                for (const auto& file : files)
+                {
+                    int64_t frames = 0;
+                    const int64_t start = SamplerEngine::releaseStartInFile(file, nullptr, &frames);
+                    if (start >= 0 && frames - start >= 2000) releaseFiles.push_back(file);
+                }
             const juce::String edge = held ? "held" : leaf.edge == "off" ? "off" : "on";
             if (leaf.kind == "tremulant")
             {   // the running noise alone: a tremulant's drawknob click is not wanted (it is in that recording)
@@ -40489,6 +40502,7 @@ void MainComponent::showNoisesWindow(bool bringToFront)
             safeThis->applyNoiseGains();
             safeThis->voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0;
             CrashHandler::note("Noises: \"" + stop->name + "\" " + (on ? "is played once at every switching-on (One-shot)" : "loops while its button is on"));
+            if (safeThis->voicer != nullptr) safeThis->voicer->updateStopStates();   // 0.9.146: the One-shot box of its voicing row follows
         }
     };
     callbacks.assign = [safeThis](const juce::String& buttonKey, const juce::String& group)

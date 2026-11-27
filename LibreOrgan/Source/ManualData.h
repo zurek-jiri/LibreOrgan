@@ -1517,8 +1517,11 @@ static const char* const kManualText_part7 =
     "  combinations like a stop. None is on by itself, the blower neither. Tutti\n"
     "  leaves them alone; the general cancel leaves a blower running; PANIC\n"
     "  switches every one off. Their voicing row has the alias, the Stop volume,\n"
-    "  a box per perspective and *Release xfade* where the loop has a release.\n"
-    "  Volume and perspective boxes are the same values as in the Noises window.\n"
+    "  a box per perspective and, for a noise that loops, *One-shot* (the file\n"
+    "  once, whole, instead of the loop) and *Release xfade* where the loop has a\n"
+    "  release. A release may be the end of the looped file itself: it then plays\n"
+    "  from the file's last marker. Volume, perspective boxes and One-shot are the\n"
+    "  same values as in the Noises window.\n"
     "  A noise's button has no pipes: it takes no folders and has no\n"
     "  transmissions (the Stop List shows its row as *Noise*); stops can be\n"
     "  indented under it.\n"
@@ -1613,11 +1616,11 @@ static const char* const kManualText_part7 =
     "  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).\n"
     "\n"
     "Until a pipe's copy is ready it plays by resampling; the stop buttons show\n"
+    ;
+static const char* const kManualText_part8 =
     "the build (a dark track filling orange). The settings of the methods are\n"
     "their own options in [Filled pipes](#7-filled-pipes) of the reference; the per-stop\n"
     "*Formants* is in the voicing row.\n"
-    ;
-static const char* const kManualText_part8 =
     "\n"
     "## 7.3 The cache\n"
     "\n"
@@ -1815,11 +1818,11 @@ static const char* const kManualText_part8 =
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
     "the fade-out. The two together shape the join between the note and its\n"
+    ;
+static const char* const kManualText_part9 =
     "release.\n"
     "\n"
     "### Release sample volume\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "All release samples, -20 to +10 dB (default 0); \"-inf\" silences them.\n"
     "\n"
@@ -2017,11 +2020,11 @@ static const char* const kManualText_part9 =
     "### Attack cut fade-in\n"
     "\n"
     "The fade-in of a pipe whose attack is cut by a negative [Attack per key](#attack-per-key)\n"
+    ;
+static const char* const kManualText_part10 =
     "value: the sample starts that far in and rises over this time (6 to 150 ms,\n"
     "default 20). Too short clicks or sounds like an edit, too long softens the\n"
     "speech. Travels with the organ.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Voicing changes glide over\n"
     "\n"
@@ -2219,11 +2222,11 @@ static const char* const kManualText_part10 =
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
     "editor, the program reads it at the next load).\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "### Sample and IR locations: forget the folders\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "*Forget* drops the folder lines; the archives chosen stay.\n"
     "\n"
     "### Samples' base temperament\n"
@@ -2421,11 +2424,11 @@ static const char* const kManualText_part11 =
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
     "ms, default 255).\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "### Wind: also affects divisions\n"
     "\n"
     "The other divisions fed from this wind: they receive half of this division's\n"
-    ;
-static const char* const kManualText_part12 =
     "sag.\n"
     "\n"
     "---\n"
@@ -2623,11 +2626,11 @@ static const char* const kManualText_part12 =
     "its path inside the library or by its full path. At a load each is looked for\n"
     "at the path it had; then under every sample location:\n"
     "`<location>/<root name>/<path>`, `<location>/<path>`, the last one to three\n"
+    ;
+static const char* const kManualText_part13 =
     "parts of the old path, and one level around every location (the folder above\n"
     "and its first subfolders); then beside the configuration file (also the\n"
     "folder the file was chosen from when a copy is loaded); then, on a computer\n"
-    ;
-static const char* const kManualText_part13 =
     "with no location yet, by the root's name at the top of every fixed drive,\n"
     "under every first-level folder and in the Hauptwerk layout\n"
     "(`<folder>\\HauptwerkSampleSetsAndComponents\\<root>`). A tree never takes\n"
@@ -2825,11 +2828,11 @@ static const char* const kManualText_part13 =
     "\n"
     "What moves the figure: the buffer size first (two cores: 1000 voices at\n"
     "256, 2300-2900 at 512, 3100-3800 at 1024; sixteen cores: 49 000 / 64 000 /\n"
+    ;
+static const char* const kManualText_part14 =
     "74 000 - compare runs at one buffer only); the device path (Linux: measure\n"
     "on the card's direct ALSA device or JACK, not on PipeWire's default output;\n"
     "Windows: ASIO or one Windows Audio device for all routes); *Compress samples\n"
-    ;
-static const char* const kManualText_part14 =
     "in RAM* halves the figure (the unpacking runs with AVX2 where the processor\n"
     "has it, and the kernel still reads the unpacked pieces slower than a plain\n"
     "sample); *Full kernel from* on a processor without AVX2\n"

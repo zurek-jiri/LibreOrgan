@@ -6283,7 +6283,7 @@ struct SamplerEngine::Impl
         last = pick;
         return list[(size_t)pick].get();
     }
-    void startNoiseVoice(NoiseSound& sound, const Sample* sample, bool loop, float fadeInMs, int contextManual, bool remember) noexcept
+    void startNoiseVoice(NoiseSound& sound, const Sample* sample, bool loop, float fadeInMs, int contextManual, bool remember, int64_t startFrame = 0) noexcept
     {
         if (sample == nullptr || sound.carrier == nullptr) return;
         Route* route = noiseRoute(sound, contextManual);
@@ -6313,13 +6313,15 @@ struct SamplerEngine::Impl
         v.velocityGain = 1.0f; v.velocity = 127;
         v.releaseFadeMsRequested.store(owner.releaseFadeOutMs.load(std::memory_order_relaxed), std::memory_order_relaxed);
         v.windPitchVar = v.windGainVar = 0; v.windKeyScale = 0.0f; v.tremBucket = 0;
+        if (startFrame > 0 && startFrame < sample->numFrames) v.pos = (uint64_t)startFrame << 32;   // 0.9.146: the release inside a looped file
         publishVoice(idx, *route);
         if (remember) sound.sounding.push_back({ idx, v.creationOrder });
         owner.storePolyphony((int)controlActive.size());
         static const bool debug = std::getenv("ORGAN_NOISE_DEBUG") != nullptr;   // tests: one log line per noise voice (allocates)
         if (debug)
             CrashHandler::note("Noise voice: " + sound.kind + " " + sound.edge + " \"" + sound.ref + "\" key " + juce::String(sound.note) + " -> division " + juce::String(route->manual)
-                + " / " + route->perspective + ", " + sample->fileName + (loop ? " (held)" : "") + ", gain " + juce::String(juce::Decibels::gainToDecibels(sound.gain), 1) + " dB");
+                + " / " + route->perspective + ", " + sample->fileName + (loop ? " (held)" : "")
+                + (startFrame > 0 ? " from frame " + juce::String(startFrame) + " of " + juce::String(sample->numFrames) : juce::String()) + ", gain " + juce::String(juce::Decibels::gainToDecibels(sound.gain), 1) + " dB");
     }
     void playNoise(int index, bool on, int contextManual) noexcept
     {
@@ -6368,7 +6370,11 @@ struct SamplerEngine::Impl
         }
         sound.sounding.clear();
         if (wasSounding && hasRelease)
-            startNoiseVoice(sound, nextOf(sound.releases, sound.lastRelease), false, owner.releaseFadeInMs.load(std::memory_order_relaxed) * crossfade, contextManual, false);
+        {
+            const Sample* release = nextOf(sound.releases, sound.lastRelease);
+            startNoiseVoice(sound, release, false, owner.releaseFadeInMs.load(std::memory_order_relaxed) * crossfade, contextManual, false,
+                release != nullptr ? release->noiseReleaseStart : 0);
+        }
     }
     // An event of a switch: "stop" (ref "<division>|<name lower-case>"), "coupler" (its id), "tremulant" /
     // "tremulantRun" (the division), "button" (its name lower-case). The click of that moment and the held sound;
@@ -14129,14 +14135,32 @@ juce::String SamplerEngine::loadNoises(const std::vector<NoiseSpec>& specs)
             decoded[(size_t)index] = decodeSampleFile(file, *manager, false, parseSmpl(file, data),
                 storage.resample || storage.rate < kBaseSampleRate - 0.5, storage.rate, 0.0, nullptr, data);
             if (decoded[(size_t)index] == nullptr) { missing.fetch_add(1, std::memory_order_relaxed); return; }
+            if (jobs[(size_t)index].release)
+            {   // 0.9.146: a release file that holds a loop is the sound's own file (or one like it) - its release is
+                // the tail after the release marker, never the file from its beginning (Altenbruch's Cimbelstern
+                // rang its whole 30 s again when it was switched off). A tail too short to hear: no release.
+                Sample& sample = *decoded[(size_t)index];
+                const int64_t inFile = releaseStartInFile(file, data);
+                if (inFile >= 0)
+                {
+                    const double ratio = sample.sourceSampleRate > 0.0 ? sample.sampleRate / sample.sourceSampleRate : 1.0;
+                    const int64_t start = (int64_t)std::llround((double)inFile * ratio);
+                    sample.noiseReleaseStart = start < sample.numFrames - (int64_t)(0.02 * sample.sampleRate) ? start : -1;
+                }
+            }
             packIfEnabled(*decoded[(size_t)index], packAutomatic || storage.packed);
             bytes.fetch_add((juce::int64)decoded[(size_t)index]->frameBytes(), std::memory_order_relaxed);
         }
         catch (const std::bad_alloc&) { missing.fetch_add(1, std::memory_order_relaxed); }
     });
+    int releasesInFile = 0;
     for (size_t i = 0; i < jobs.size(); ++i)
         if (decoded[i] != nullptr)
+        {
+            if (jobs[i].release && decoded[i]->noiseReleaseStart < 0) continue;   // (no tail after its loop: it just fades)
+            if (jobs[i].release && decoded[i]->noiseReleaseStart > 0) ++releasesInFile;
             (jobs[i].release ? set->sounds[(size_t)jobs[i].sound]->releases : set->sounds[(size_t)jobs[i].sound]->variants).push_back(std::move(decoded[i]));
+        }
     // The tables: a key's sounds; the sounds by their trigger; the drawknob noises no stop has, by their group.
     int usable = 0;
     for (int index = 0; index < (int)set->sounds.size(); ++index)
@@ -14187,13 +14211,68 @@ juce::String SamplerEngine::loadNoises(const std::vector<NoiseSpec>& specs)
         + juce::String((double)bytes.load() / 1048576.0, 1) + " MB in " + juce::String((nowMs() - startMs) / 1000.0, 1) + " s"
         + (missing.load() > 0 ? "; " + juce::String(missing.load()) + " file(s) NOT FOUND or unreadable" : juce::String())
         + (leftForMemory.load() > 0 ? "; " + juce::String(leftForMemory.load()) + " file(s) LEFT OUT: the memory is full" : juce::String());
-    CrashHandler::note("Noises loaded: " + summary);
+    CrashHandler::note("Noises loaded: " + summary
+        + (releasesInFile > 0 ? "; " + juce::String(releasesInFile) + " release(s) are the tail of a looped file - played from its release marker" : juce::String()));
     return summary;
 }
 
 bool SamplerEngine::fileHasLoop(const juce::File& file)
 {
     return !parseSmpl(file).loops.empty();
+}
+
+int64_t SamplerEngine::releaseStartInFile(const juce::File& file, std::shared_ptr<juce::MemoryBlock> data, int64_t* framesInFile)
+{
+    if (framesInFile != nullptr) *framesInFile = 0;
+    const SmplInfo smpl = parseSmpl(file, data);
+    if (smpl.loops.empty()) return -1;
+    int64_t loopsEnd = 0;
+    for (const auto& loop : smpl.loops) loopsEnd = std::max(loopsEnd, loop.end);
+    // The cue markers and the length of the sound: one walk over the chunks.
+    std::unique_ptr<juce::InputStream> stream = data != nullptr
+        ? std::unique_ptr<juce::InputStream>(new juce::MemoryInputStream(data->getData(), data->getSize(), false))
+        : std::unique_ptr<juce::InputStream>(file.createInputStream());
+    int64_t frames = 0;
+    std::vector<int64_t> cues;
+    uint32_t blockAlign = 0;
+    char header[12];
+    if (stream != nullptr && stream->read(header, 12) == 12 && std::strncmp(header, "RIFF", 4) == 0)
+        while (!stream->isExhausted())
+        {
+            char chunkID[4];
+            uint32_t chunkSize = 0;
+            if (stream->read(chunkID, 4) < 4 || stream->read(&chunkSize, 4) < 4) break;
+            const juce::int64 next = stream->getPosition() + (juce::int64)chunkSize + (juce::int64)(chunkSize % 2);
+            if (std::strncmp(chunkID, "fmt ", 4) == 0 && chunkSize >= 16)
+            {
+                uint8_t format[16];
+                if (stream->read(format, 16) == 16) blockAlign = (uint32_t)format[12] | ((uint32_t)format[13] << 8);
+            }
+            else if (std::strncmp(chunkID, "data", 4) == 0)
+            {
+                if (blockAlign > 0) frames = (int64_t)(chunkSize / blockAlign);
+            }
+            else if (std::strncmp(chunkID, "cue ", 4) == 0)
+            {
+                uint32_t count = 0;
+                stream->read(&count, 4);
+                count = juce::jmin<uint32_t>(count, 4096u);
+                for (uint32_t i = 0; i < count; ++i)
+                {
+                    uint32_t point[6]{};   // dwName, dwPosition, fccChunk, dwChunkStart, dwBlockStart, dwSampleOffset
+                    if (stream->read(point, 24) < 24) break;
+                    cues.push_back(std::max<int64_t>((int64_t)point[1], (int64_t)point[5]));
+                }
+            }
+            if (!stream->setPosition(next)) break;
+        }
+    if (framesInFile != nullptr) *framesInFile = frames;
+    // (the user: markers may stand earlier in the file too - the LAST one in time is the release's; one beyond the
+    // file's end is no marker)
+    int64_t lastCue = -1;
+    for (const int64_t cue : cues)
+        if (frames <= 0 || cue < frames) lastCue = std::max(lastCue, cue);
+    return lastCue > loopsEnd ? lastCue : loopsEnd + 1;
 }
 
 void SamplerEngine::clearNoises()

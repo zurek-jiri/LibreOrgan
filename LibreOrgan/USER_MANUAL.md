@@ -1499,8 +1499,11 @@ perspective, with its own cable, volume and effects.
   combinations like a stop. None is on by itself, the blower neither. Tutti
   leaves them alone; the general cancel leaves a blower running; PANIC
   switches every one off. Their voicing row has the alias, the Stop volume,
-  a box per perspective and *Release xfade* where the loop has a release.
-  Volume and perspective boxes are the same values as in the Noises window.
+  a box per perspective and, for a noise that loops, *One-shot* (the file
+  once, whole, instead of the loop) and *Release xfade* where the loop has a
+  release. A release may be the end of the looped file itself: it then plays
+  from the file's last marker. Volume, perspective boxes and One-shot are the
+  same values as in the Noises window.
   A noise's button has no pipes: it takes no folders and has no
   transmissions (the Stop List shows its row as *Noise*); stops can be
   indented under it.

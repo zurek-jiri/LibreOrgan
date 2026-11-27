@@ -12,6 +12,21 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.146] - 2026-11-27
+
+### Fixed
+- A noise whose release is the end of its own looped file (Altenbruch's
+  Cimbelstern and blower: the definition names the same file for the loop
+  and for the release) played the whole file again from its beginning when
+  it was switched off - the Cimbelstern rang another 30 seconds. The release
+  now starts at the file's release marker: the last cue marker in time when
+  it lies after the loop, else the end of the loop. A folder read without a
+  definition takes the tail of a looped file as its release the same way.
+
+### Changed
+- *One-shot* is back in the voicing row of a noise's button that loops (it
+  was in the Noises window's unfolded row alone): one value, two ways to it.
+
 ## [0.9.145] - 2026-11-27
 
 ### Added

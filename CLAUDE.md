@@ -5556,8 +5556,9 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (F:\temp\issue266_siebenquart.md, F:\temp\tables_for_issue.md). v0.9.144 RELEASED on his word ("yes, I like the
   result as the best compromise"): tag on 2fcd75d, CI green on all five, Intel mac "late symbols: 0", CI exe deployed.
   0.9.145 (27 Nov 2026, Windows; the user: "Load From Internet Catalog ... yes, new topbar button. Do all in one pass.
-  No scopes. Also, the filtering columns should be the same what they are now on the web (even RAM ...)"; LOCAL COMMIT,
-  NOT pushed - his word; THE CATALOG WORKS FOR USERS ONLY AFTER THE PUSH: catalog.json must be on GitHub's main):
+  No scopes. Also, the filtering columns should be the same what they are now on the web (even RAM ...)"; commits
+  8f4d633 + c3ab6f2, pushed and tagged v0.9.145 on his word "A hlavně to dej na github, na co čekáš?"; the default
+  link was then read by the program: 31 organs from raw.githubusercontent):
   THE ORGAN CATALOG. ROBOT: `configurations_index.py` writes `libreorgans/catalog.json` beside INDEX.md ({libreOrganCatalog
   1, organs [{title, folder, zip, zipBytes, url (raw.githubusercontent), readme, divisions, stops, routes[], ramBytes
   (the least), producer, link, rootName, rootRelative, trees[], fingerprints{}, featured, samples{url, name, bytes}}]};
@@ -5606,6 +5607,35 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   ASYNCHRONOUSLY - a hook calls the filter itself; a hook click on "Load" must come AFTER the box (ORGAN_TEST_CLICK_AT);
   the test leaves `%APPDATA%\LibreOrgan\Catalog\` (cache) and %TEMP%\noise0127_cat3\LibreSamples\RuralOrgan.rar. His
   running 0.9.144 (idle, empty console) was closed in order for the tests.
+  0.9.146 (27 Nov 2026, the same day; the user after "Noises of a Hauptwerk definition" on Altenbruch SemiDry: the
+  Cimbelstern "not a loop with release ... plays as one shot", no One-shot in its voicing row): THE RELEASE INSIDE THE
+  LOOPED FILE. The definition names THE SAME FILE for the loop and for the release (Sample pipe/hracky/vybrane/
+  etoi_61.wav: 30.2 s, loop 347740..926221, cues at 347740 and 1147188; the blower pipe/mech/mech.wav: loop
+  20825..66594, cues 20825 and 81600; ReleaseSample rows `<c>` = the attack's sample id, e = LoadSampleRange_
+  StartPositionValue 1 - field order by odf_fields.py: a UniqueID, b LayerID, c SampleID, d/e start type / value,
+  f/g end type / value, n ReleaseCrossfadeLengthMs, s PreferThisRelForAttackID) and the engine played a release file
+  from frame 0 - the whole 30 s rang again at the switching-off. In the noises since 0.9.127 (Stralsund has separate
+  release files - the only organ I had tried), no regression. NOW `SamplerEngine::releaseStartInFile(file, data,
+  &frames)` (static; -1 without a loop; THE LAST CUE MARKER IN TIME - the user: "někdy mohou být cue značky i dřív v
+  souboru, musí to vzít tu poslední časově" - when it lies after the last loop's end and inside the file, else the
+  frame after the loop's end), `Sample::noiseReleaseStart` set in loadNoises for a RELEASE job whose file holds a loop
+  (file frames x sampleRate / sourceSampleRate; a tail under 20 ms = no release, the loop just fades),
+  `startNoiseVoice(..., startFrame)` sets v.pos; the folder reading (noisesVarFromFolder) gives a looped file without
+  a release file its own file as the release when >= 2000 frames follow the marker; log "N release(s) are the tail of a
+  looped file - played from its release marker"; the debug line says "from frame A of B". RUN on a copy of his
+  Altenbruch (%TEMP%\make_altenbruch_0146.py: his file + the noises of settings.json; test_0127b.ps1 -Tag alt0146
+  -Settings "defaultCard=ASIO|ASIO Fireface USB" -Env "ORGAN_TEST_NOISE_BUTTON=Cimbelstern|6;ORGAN_DUMP_GRID=1;
+  ORGAN_TEST_EXPAND=0|Cimbelstern|62000;ORGAN_TEST_SNAPSHOT={out}\grid.png"): "2 release(s) are the tail ...", off ->
+  "etoi_61.wav from frame 1147188 of 1450470". ONE-SHOT IS BACK IN THE VOICING ROW of a noise's button that loops (his
+  order, reversing his 0.9.130 one; `oneShotToggle` visible for noiseRow && noiseHeld, placed before Release xfade in
+  the container line of resized) - the same `stop->oneShotManual` as the Noises window's box; each side refreshes the
+  other (oneShotRequest -> refreshNoisesWindow by callAsync; callbacks.oneShot -> voicer->updateStopStates). Pictured
+  (the row: One-shot, Release xfade x1, Noise (no pipes), Alias, Stop volume). NOT run: a click on the toggle, the
+  folder reading's new rule, a file with a marker BEFORE the loop only (falls to the loop's end by the code), by ear.
+  SEEN, NOT TOUCHED: PIPE ranks whose release is the tail of the attack file (old sets) are not handled by the pipe
+  loader either (it knows release FOLDERS alone) - a key release just fades. The tools: %TEMP%\odftools\
+  odf_sample_rows.py <odf> <file name part> (the Sample row and its attack / release rows), %TEMP%\wav_loops.py and
+  wav_cue.py <wav> (loops, cue markers).
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

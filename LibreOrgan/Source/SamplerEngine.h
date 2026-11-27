@@ -99,6 +99,7 @@ struct Sample
     // kernel for its first 1.3 s; a dull one (nothing above 6 kHz at -40 dB)
     // has nothing to mirror and keeps the cheap linear kernel.
     bool sincHead = false;
+    int64_t noiseReleaseStart = 0;       // 0.9.146: a noise's release that is the tail of a looped file starts here (frames of this sample)
     juce::String fileName;               // the file the sample was read from (its name only; copies carry their source's)
 
     Sample(int channels, int64_t frames, double sr, bool asFloat);
@@ -1666,6 +1667,10 @@ public:
     juce::String loadNoises(const std::vector<NoiseSpec>& specs);   // decodes the files (call it from a background thread), replaces the set; returns a summary
     void clearNoises();
     static bool fileHasLoop(const juce::File& file);                // a loop in the file's smpl chunk (the folder reading: a held noise or a click)
+    // 0.9.146: where the release begins inside a file that holds its own loop (a noise whose release is the tail of
+    // the same file - Altenbruch's Cimbelstern and blower): the LAST cue marker in time when it lies after the last
+    // loop's end, else the frame after that loop's end; -1 for a file without a loop. In the FILE's frames.
+    static int64_t releaseStartInFile(const juce::File& file, std::shared_ptr<juce::MemoryBlock> data = nullptr, int64_t* framesInFile = nullptr);
     void noiseHousekeeping();                                       // once a second: frees replaced sets, restarts a held noise a panic ended
     int noiseSoundCount() const;
     bool hasNoiseFor(const juce::String& kind, const juce::String& ref) const;
