@@ -5709,7 +5709,27 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   and Configuration Editor; tips over a top-bar button, a voicing bar, a per-key number, a perspective box, with the
   Editor open too. NOT run: a real mouse, a modal dialog (Stop List) in front, the red note names (Rural has none),
   Linux / macOS (not compiled; the tooltip rule and the listeners are platform-neutral), self-test / kerneltest (no
-  engine change).
+  engine change). v0.9.148 RELEASED (main 83118bf = a merge of 34 origin commits, CI green on all five).
+  0.9.149 (27 Nov 2026 night; the user: Chico's Cymbelstern on the pedal - "Rear" cut, the Alias not there at all,
+  "řádky musí správně wrapovat ... I u transmisí, i u noisů, prostě všude"): a noise's button and a stop folder
+  without pipes had kept the OLD ONE-LINE layout (0.9.134 moved only stops with pipes and transmissions to the
+  wrapping walk: "containers keep their line") - 213 + One-shot + xfade + Ranks + 3 boxes = 797 px in a 760 px column.
+  NOW `StopRow::compactControlsLayout` is THE layout of every open voicing (stop, transmission, stop folder, noise's
+  button) at ANY width: lines beside the button start at buttonRight (y < 50), lines under it at the row's left;
+  `item(control, index, width, minimum)` wraps, jumps under the button when not even the minimum fits beside it, and
+  NARROWS a box (transposition, alias: the put handler takes `w`) instead of cutting it; the perspective boxes stay
+  one group when a line holds them, else wrap box by box; velocity layers wrap; a transmission has TWO sliders, a
+  noise's button ONE (the walk kept lines for six); `Control::info` = "Noise (no pipes)" inline; a stop folder's
+  sentence on its own line(s) under the button; `expandedHeightFor` of a container = the walk's bottom + 4
+  (containerExpandedHeight 58 / expandedControlsHeight 104 are no longer its heights). Noise's order: Alias, One-shot,
+  Release xfade, perspectives, text, Stop volume (was One-shot first, Alias last). RULE: there is ONE layout of an
+  open voicing; a new kind of row or control goes into the walk (voicer.h) + its `put` case in resized - never a
+  line of its own. TEST: `ORGAN_TEST_ROW_WIDTHS=1` (with ORGAN_DUMP_GRID=1 + ORGAN_TEST_EXPAND / ORGAN_TEST_ALL):
+  the open row laid out in 59 widths 240..1400 px, `StopRow::outsideControls()` names every control outside the
+  row or over another (the controls above the per-key rows; `lastControlsBottom`); describeLineOne ends with it.
+  RUN: Rural stop / transmission / "Cornet [III]" folder / an empty new folder, Yokota's Cymbelstern_front (the
+  user's file loaded in place, not written): all 59 widths clean, rows pictured. NOT run: a child row inside a
+  folder with its own voicing open, a stop with velocity layers, Linux / macOS.
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO

@@ -107,8 +107,56 @@ public:
         { return name + (c.isVisible() ? " " : " hidden ") + c.getBounds().toString(); };
         return "row " + getBounds().toString() + " | " + one("transposition", shiftBox) + " | " + one("diapason", diapasonLabel) + " | " + one("alias", aliasBox)
             + " | " + one("oneShot", oneShotToggle) + (oneShotToggle.getToggleState() ? " on" : " off") + " | " + one("releaseCrossfade", releaseFadeBox) + " " + releaseFadeBox.getText()
-            + " | " + one("rankCount", rankCountToggle);
+            + " | " + one("rankCount", rankCountToggle) + " | " + outsideControls();
     }
+    // 0.9.149 (tests): every visible control of the open row must lie inside it - the ones that do not are named.
+    // (The controls above the per-key rows: a row of keys is as wide as its keys, whatever the row's width.)
+    juce::String outsideControls() const
+    {
+        auto nameOf = [](const juce::Component* child)
+        {
+            juce::String name;
+            if (auto* button = dynamic_cast<const juce::Button*>(child)) name = button->getButtonText();
+            if (name.isEmpty()) name = child->getProperties()[juce::Identifier("barLabel")].toString();
+            if (name.isEmpty()) if (auto* label = dynamic_cast<const juce::Label*>(child)) name = label->getText().substring(0, 16);
+            if (name.isEmpty()) name = child->getProperties()[juce::Identifier("manualChapter")].toString();
+            return "\"" + name + "\" " + child->getBounds().toString();
+        };
+        std::vector<const juce::Component*> controls;
+        for (auto* child : getChildren())
+            if (child != nullptr && child->isVisible() && !child->getBounds().isEmpty() && child->getY() < lastControlsBottom
+                && child != &voicingToggle && child != &removeButton)
+                controls.push_back(child);
+        juce::StringArray faults;
+        for (auto* child : controls)
+            if (child->getRight() > getWidth() || child->getBottom() > getHeight() || child->getX() < 0) faults.add("OUTSIDE " + nameOf(child));
+        for (size_t a = 0; a < controls.size(); ++a)
+            for (size_t b = a + 1; b < controls.size(); ++b)
+                if (controls[a]->getBounds().intersects(controls[b]->getBounds())) faults.add("OVER EACH OTHER " + nameOf(controls[a]) + " and " + nameOf(controls[b]));
+        return faults.isEmpty() ? juce::String("ALL INSIDE (" + juce::String(getWidth()) + " x " + juce::String(getHeight()) + ", " + juce::String((int)controls.size()) + " controls)")
+                                : "FAULTS (" + juce::String(getWidth()) + " x " + juce::String(getHeight()) + "): " + faults.joinIntoString(", ");
+    }
+    // Tests (ORGAN_TEST_ROW_WIDTHS): the open row laid out in every width from 240 to 1400 px, 20 px apart, at the
+    // height its width gives it - the widths at which a control lies outside the row or over another one.
+    juce::String sweepWidthsForTest()
+    {
+        const auto was = getBounds();
+        const bool folderRow = !isTransmission() && rankCountToggle.isVisible();
+        juce::StringArray bad;
+        int widths = 0;
+        for (int w = 240; w <= 1400; w += 20, ++widths)
+        {
+            setBounds(was.getX(), was.getY(), w, expandedHeightFor(stop, transmissionIndex, w, folderRow));
+            resized();
+            const auto text = outsideControls();
+            if (!text.startsWith("ALL INSIDE")) bad.add(juce::String(w) + " px: " + text.fromFirstOccurrenceOf("): ", false, false).substring(0, 160));
+        }
+        setBounds(was);
+        resized();
+        return bad.isEmpty() ? juce::String(widths) + " widths from 240 to 1400 px: every control inside the row, none over another"
+                             : juce::String(bad.size()) + " of " + juce::String(widths) + " widths with faults - " + bad.joinIntoString(" || ").substring(0, 900);
+    }
+    int lastControlsBottom = 1 << 20;   // where the controls end and the per-key rows begin (set by resized)
     // 0.9.126: the width the "All" slider takes before the first key of every per-key row (the slider + a gap).
     static int allControlSpace(int keySliderWidth) noexcept { return keySliderWidth + 10; }
     // Tests (ORGAN_TEST_ALL): the "All" slider of a row dragged by `offset` and released; the row unfolded first.
@@ -160,7 +208,7 @@ public:
     // below. ONE walk decides the lines for the owner's height (expandedHeightFor) and for the
     // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
     // return value is the bottom of the control lines (the key headers follow it).
-    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox };
+    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox, info };
     static constexpr int compactLineStep = 27, compactSliderLineStep = 36, compactVelocityLineHeight = 30, compactPitchLineHeight = 19;
     // 0.9.134 THE WIDTH OF AN OPEN VOICING (the user: "nesmí to být širší než nejširší rozbalená sekce vertikálních
     // sliderů ... když budou všecky per key řádky sbalené, tak to taky musí být ultra úzké"): with a per-key row
@@ -178,55 +226,91 @@ public:
     template <typename Put>
     static int compactControlsLayout(const Stop* stop, int transmissionIndex, int rowWidth, bool folder, int inset, Put&& put)
     {
+        // 0.9.149 (the user, a noise's button on the pedal: the last perspective box cut, the Alias not there at all -
+        // "řádky musí správně wrapovat ... musí ukázat vždycky vše potřebné. I u transmisí, i u noisů, prostě všude"):
+        // EVERY open voicing goes through this one walk - a stop with pipes, a transmission, a stop folder without
+        // pipes and the button of a noise (the last two had a single line of their own that never wrapped) - in ANY
+        // width: the lines beside the button are as wide as what the button leaves, the lines under it as wide as
+        // the row; a control that fits nowhere whole is made narrower, never cut; the perspective boxes stay one
+        // group when a line holds them and wrap box by box when none does.
         const bool trsm = transmissionIndex >= 0;
-        const int x0 = 5 + 200 + 8;   // margin + buttonWidth + sliderSpacing: right of the button
-        const int right = juce::jmax(x0 + 100, rowWidth - 5);
-        int x = x0, y = 13;
-        auto fits = [&](int width) { return x == x0 || x + width <= right; };
-        auto newline = [&] { x = x0; y += compactLineStep; };
-        auto item = [&](Control c, int index, int width) { if (!fits(width)) newline(); put(c, index, x, y, width); x += width; };
-        // The user's order (4 Nov 2026): Transposition, Alias, One-shot, then the perspective
-        // boxes as ONE group on one line (the group wraps whole, never in the middle), the rest.
-        item(Control::transposition, 0, 362);   // label 100 + 4 + box 250 + 8
-        item(Control::alias, 0, 244);   // label 46 + 2 + box 190 + 6
-        if (!trsm) item(Control::oneShot, 0, 96);
-        if (!trsm) item(Control::releaseFade, 0, 150);   // 0.9.62: the Release crossfade box
-        if (trsm) item(Control::source, 0, juce::jmin(528, right - x0));
-        else
-        {
-            const int boxes = 1 + (int)stop->ranks.size();
-            if (!fits(92 + 82 * boxes)) newline();
-            put(Control::ranksLabel, 0, x, y, 92); x += 92;
-            for (int i = 0; i < boxes; ++i) item(Control::rankBox, i, 82);
-            x += 8;
-        }
-        if (!trsm && folder) item(Control::rankCount, 0, 146);
-        y += compactLineStep;
+        const bool container = !trsm && stop->container;
+        const bool noise = container && stop->noiseButton != 0;
+        const int buttonRight = 5 + 200 + 8, buttonBottom = 50;   // margin + buttonWidth + sliderSpacing; topRowHeight
+        const int underButton = buttonBottom + 4;
         const int sx0 = 5 + inset;
-        if (!trsm)
+        const int right = juce::jmax(sx0 + 150, rowWidth - 5);
+        int y = right - buttonRight < 150 ? underButton : 13;   // a row too narrow for anything beside the button
+        auto lineLeft = [&] { return y < buttonBottom ? buttonRight : sx0; };
+        int x = lineLeft();
+        auto newline = [&] { y += compactLineStep; x = lineLeft(); };
+        auto item = [&](Control c, int index, int width, int minimum)
+        {
+            if (x != lineLeft() && x + width > right) newline();
+            if (right - x < minimum && y < buttonBottom) { y = underButton; x = sx0; }   // not even narrowed beside the button: a whole line under it
+            const int w = juce::jmax(40, juce::jmin(width, right - x));
+            put(c, index, x, y, w);
+            x += w;
+        };
+        // The user's order (4 Nov 2026): Transposition, Alias, One-shot, then the perspective boxes, the rest.
+        if (!container) item(Control::transposition, 0, 362, 250);   // label 100 + 4 + box 250 + 8
+        item(Control::alias, 0, 244, 150);   // label 46 + 2 + box 190 + 6
+        if (!trsm && (!container || (noise && stop->noiseHeld))) item(Control::oneShot, 0, 96, 96);
+        if (!trsm && (!container || (noise && stop->noiseHeld && stop->noiseRelease))) item(Control::releaseFade, 0, 150, 150);   // 0.9.62: the Release crossfade box
+        if (trsm)
+        {   // "Taken from: ..." is a text: whole on a line under the button rather than cut beside it
+            if (x != lineLeft() && x + 528 > right) newline();
+            if (x + 528 > right && y < buttonBottom && sx0 + 528 <= right) { y = underButton; x = sx0; }
+            item(Control::source, 0, 528, 200);
+        }
+        else if (!container || noise)
+        {
+            const int boxes = noise ? (int)stop->noisePerspectives.size() : 1 + (int)stop->ranks.size();
+            if (boxes > 0)
+            {
+                const int group = 92 + 82 * boxes;
+                if (x != lineLeft() && x + group > right) newline();
+                if (x + group > right && y < buttonBottom && sx0 + group <= right) { y = underButton; x = sx0; }   // whole on a line under the button
+                if (right - x < 92 + 82 && y < buttonBottom) { y = underButton; x = sx0; }
+                put(Control::ranksLabel, 0, x, y, 92); x += 92;
+                for (int i = 0; i < boxes; ++i) item(Control::rankBox, i, 82, 82);
+                x += 8;
+            }
+        }
+        if (!trsm && folder) item(Control::rankCount, 0, 146, 146);
+        if (noise) item(Control::info, 0, 130, 100);   // "Noise (no pipes)"
+        y += compactLineStep;
+        if (!trsm && !noise)
         {
             // 0.9.134: the pitch text ("Orig. Pitch: ...") on a line of its own UNDER the button, in the row's whole
-            // width and the normal font; a narrow row keeps two lines for it, so nothing of it is cut or squeezed.
-            const int lines = right - sx0 < 900 ? 2 : 1;
-            y = juce::jmax(y, 54);
-            put(Control::diapason, lines, sx0, y, right - sx0);
+            // width and the normal font; a narrow row keeps more lines for it, so nothing of it is cut or squeezed.
+            // (A stop folder without pipes: its one sentence, about 660 px of text.)
+            const int width = right - sx0;
+            const int lines = container ? juce::jlimit(1, 4, (660 + width - 1) / width) : (width < 450 ? 3 : width < 900 ? 2 : 1);
+            y = juce::jmax(y, underButton);
+            put(Control::diapason, lines, sx0, y, width);
             y += lines * compactPitchLineHeight + 4;
         }
+        if (container && !noise) return y;   // a stop folder without pipes has no sliders
         // The sliders: one bar each (its name inside), wrapped when the line is full.
-        int sy = juce::jmax(y + 2, 54);
+        int sy = juce::jmax(y + 2, underButton);
         x = sx0;
-        // The full layout's order: global, [formant], gain, attack, random pitch, undulation, [formant] (0.9.79: the
-        // per-stop attack delay slider of 0.9.77 is gone - "Attack per key" is a per-key row, #228).
-        const int widths[] = { trsm ? transmissionVolumeSliderWidth : stopVolumeSliderWidth, trsm ? formantSliderWidth : gainSliderWidth, trsm ? gainSliderWidth : attackSliderWidth,
-            trsm ? attackSliderWidth : randomPitchSliderWidth, trsm ? randomPitchSliderWidth : undulationSliderWidth, trsm ? undulationSliderWidth : formantSliderWidth };
-        for (int i = 0; i < 6; ++i)
+        // The order: global, [formant], gain, attack, random pitch, undulation, [formant] (0.9.79: the per-stop attack
+        // delay slider of 0.9.77 is gone - "Attack per key" is a per-key row, #228). A transmission has two of them
+        // (its volume and the formants), a noise's button one (its volume) - the walk kept lines for six.
+        const int stopWidths[] = { stopVolumeSliderWidth, gainSliderWidth, attackSliderWidth, randomPitchSliderWidth, undulationSliderWidth, formantSliderWidth };
+        const int transmissionWidths[] = { transmissionVolumeSliderWidth, formantSliderWidth };
+        const int* widths = trsm ? transmissionWidths : stopWidths;
+        const int sliders = trsm ? 2 : noise ? 1 : 6;
+        for (int i = 0; i < sliders; ++i)
         {
-            if (x != sx0 && x + widths[i] > right) { x = sx0; sy += compactSliderLineStep; }
-            put(Control::slider, i, x, sy, widths[i]);
-            x += widths[i] + voicingSliderGap;
+            const int w = juce::jmin(widths[i], right - sx0);
+            if (x != sx0 && x + w > right) { x = sx0; sy += compactSliderLineStep; }
+            put(Control::slider, i, x, sy, w);
+            x += w + voicingSliderGap;
         }
         int bottom = sy + compactSliderLineStep;
-        if (!trsm)
+        if (!trsm && !container)
         {
             const int layers = (int)stop->velocityLayerValues().size();
             if (layers > 0)
@@ -235,7 +319,11 @@ public:
                 int vy = sy + 3;   // beside the sliders' bars
                 if (x + needed > right) { x = sx0; vy = sy + compactSliderLineStep; bottom = vy + compactVelocityLineHeight; }
                 put(Control::velocityLabel, 0, x, vy, 100); x += 104;
-                for (int i = 0; i <= layers; ++i) { put(Control::velocityBox, i, x, vy, 62); x += 66; }
+                for (int i = 0; i <= layers; ++i)
+                {
+                    if (x + 62 > right && x != sx0) { x = sx0; vy += compactVelocityLineHeight; bottom = vy + compactVelocityLineHeight; }   // more layers than a line holds
+                    put(Control::velocityBox, i, x, vy, 62); x += 66;
+                }
             }
         }
         return bottom;
@@ -245,8 +333,8 @@ public:
     static int expandedHeightFor(const Stop* stop, int transmissionIndex, int rowWidth = 1 << 30, bool folder = false) noexcept
     {
         if (stop == nullptr) return containerExpandedHeight;
-        if (transmissionIndex < 0 && stop->container)
-            return stop->noiseButton != 0 ? expandedControlsHeight : containerExpandedHeight;   // 0.9.127: a noise's button has its Stop volume on line 2
+        if (transmissionIndex < 0 && stop->container)   // 0.9.149: a stop folder without pipes and a noise's button wrap like every row (no key rows)
+            return compactControlsLayout(stop, -1, rowWidth, folder, folder ? 26 : 0, [](Control, int, int, int, int) {}) + 4;
         bool volume = stop->volumeKeysExpanded, tone = stop->toneKeysExpanded;
         const bool attackRow = true;   // 0.9.79: the "Attack per key" header; 0.9.136: a transmission's row has it too
         bool attack = stop->attackKeysExpanded;

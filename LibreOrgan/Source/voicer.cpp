@@ -512,6 +512,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
                 + "), " + (stop->footageKnown ? "smpl pitch: " : "name: ") + SamplerEngine::footageLabel(base),
                 juce::dontSendNotification);
             sourceLabel.setJustificationType(juce::Justification::centredLeft);
+            sourceLabel.setTooltip(sourceLabel.getText());   // 0.9.149: whole, should a very narrow row cut it
             addAndMakeVisible(sourceLabel);
         }
     }
@@ -1743,8 +1744,9 @@ void StopRow::resized()
     const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
         || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
     int keyAreaTop = 0;
-    if (isExpanded() && !stop->container)
-    {   // 0.9.134: ALWAYS the wrapping walk for an open voicing (its per-key rows folded or not): the row is as wide
+    if (isExpanded())
+    {   // 0.9.149: a stop folder without pipes and a noise's button too (they had one line that never wrapped).
+        // 0.9.134: ALWAYS the wrapping walk for an open voicing (its per-key rows folded or not): the row is as wide
         // as its keys and the controls wrap to that. (0.9.36 had it for folded rows only.)
         // 0.9.88: the attack row counts as a key row too - the compact controls under an open attack row pushed the
         // sliders below the row's height (expandedHeightFor takes the full layout for it): "spodní okýnka uřízlá"
@@ -1760,7 +1762,7 @@ void StopRow::resized()
             {
                 switch (c)
                 {
-                    case Control::transposition: transpositionLabel.setBounds(x, y, 100, 23); shiftBox.setBounds(x + 104, y, 250, 23); break;
+                    case Control::transposition: transpositionLabel.setBounds(x, y, 100, 23); shiftBox.setBounds(x + 104, y, juce::jmax(60, w - 112), 23); break;   // 0.9.149: as wide as the walk gives it
                     case Control::oneShot: oneShotToggle.setBounds(x, y, 92, 23); break;
                     case Control::releaseFade: releaseFadeBox.setBounds(x, y, 142, 23); break;
                     case Control::source: sourceLabel.setBounds(x, y, juce::jmax(60, w - 8), 23); break;
@@ -1772,7 +1774,13 @@ void StopRow::resized()
                         diapasonLabel.setBounds(x, y, w, juce::jmax(1, i) * compactPitchLineHeight + 2);
                         diapasonLabel.setTooltip(w * juce::jmax(1, i) < textWidth + 12 * juce::jmax(1, i) ? diapasonLabel.getText() : juce::String());   // the whole text when still cut
                         break;
-                    case Control::alias: aliasLabel.setBounds(x, y, 46, 23); aliasBox.setBounds(x + 48, y, 190, 23); break;
+                    case Control::alias: aliasLabel.setBounds(x, y, 46, 23); aliasBox.setBounds(x + 48, y, juce::jmax(60, w - 54), 23); break;
+                    case Control::info:   // a noise's button: "Noise (no pipes)" on the controls' line
+                        diapasonLabel.setMinimumHorizontalScale(1.0f);
+                        diapasonLabel.setJustificationType(juce::Justification::centredLeft);
+                        diapasonLabel.setBounds(x, y, w, 23);
+                        diapasonLabel.setTooltip({});
+                        break;
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
                     case Control::slider:
                     {
@@ -1786,6 +1794,7 @@ void StopRow::resized()
                         add(gainSlider, gainLabel); add(attackSlider, attackLabel); add(randomPitchSlider, randomPitchLabel); add(undulationSlider, undulationLabel);
                         if (!isTransmission()) add(formantSlider, formantLabel);
                         if (i < n) sliders[i]->setBounds(x, y + 2, w, 28);   // 0.9.134: one bar, its name inside (labels[] are not shown)
+                        // (0.9.149: the walk gives a transmission two sliders and a noise's button one - the others are not shown)
                         break;
                     }
                     case Control::velocityLabel: velocityLabel.setBounds(x, y, 100, 26); break;
@@ -1793,6 +1802,7 @@ void StopRow::resized()
                 }
             });
         keyAreaTop = bottom + 4;
+        lastControlsBottom = keyAreaTop;
     }
     int x = 0;
     if (keyAreaTop == 0)
@@ -2443,6 +2453,8 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
                     + " caption \"" + row->getStop()->displayName() + "\""
                     + (row->getStop()->isOneShot ? " one-shot" : "")
                     + (row->isExpanded() ? " EXPANDED " + row->describeLineOne() : juce::String()));
+                if (row->isExpanded() && std::getenv("ORGAN_TEST_ROW_WIDTHS") != nullptr)   // 0.9.149: the row in every width
+                    CrashHandler::note("ORGAN_TEST_ROW_WIDTHS: \"" + row->getStop()->displayName() + "\"" + (row->isTransmission() ? " (transmission)" : "") + ": " + row->sweepWidthsForTest());
                 if (const char* png = std::getenv("ORGAN_TEST_SNAPSHOT"); png != nullptr && row->isExpanded())
                 {
                     const juce::Image snapshot = row->createComponentSnapshot(row->getLocalBounds(), false, 1.0f);

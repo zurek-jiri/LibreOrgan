@@ -12,6 +12,22 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.149] - 2026-11-27
+
+### Fixed
+- **The open voicing of a noise's button and of a stop folder without pipes
+  did not wrap**: they had one line of their own, and in a narrow column (the
+  pedal) the last perspective box was cut and the Alias was not there at all.
+  Every open voicing - a stop, a transmission, a stop folder, a noise's
+  button - is laid out by the one wrapping walk now, in any width: the lines
+  beside the button, then lines of the row's whole width under it; a box that
+  fits nowhere whole is made narrower, never cut; the perspective boxes wrap
+  box by box when one line cannot hold them, and so do the velocity layers.
+  A noise's button: Alias, One-shot, Release xfade, the perspectives, then
+  its Stop volume.
+- A transmission's open voicing kept lines for six sliders although it shows
+  two - in a narrow column it was taller than it needed to be.
+
 ## [0.9.148] - 2026-11-27
 
 ### Fixed
