@@ -66,15 +66,15 @@
    "title": "Altenbruch, Klapmeyer",
    "folder": "altenbruch-klapmeyer-organ",
    "zip": "Altenbruch SemiDry Extended.portable.zip",
-   "zipBytes": 15180,
+   "zipBytes": 13432,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/altenbruch-klapmeyer-organ/Altenbruch%20SemiDry%20Extended.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/altenbruch-klapmeyer-organ/README.md",
    "divisions": 4,
-   "stops": 35,
+   "stops": 37,
    "routes": [
     "default"
    ],
-   "ramBytes": 2015896663,
+   "ramBytes": 2226268297,
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html",
    "rootName": "OrganInstallationPackages",
@@ -85,7 +85,12 @@
     "002067/pipes/hw",
     "002067/pipes/bw"
    ],
-   "fingerprints": {},
+   "fingerprints": {
+    "002067/pipes/pedal": "02-suchy_Ped_Cornet2|53|6836119747608926150|6747948327621745869;02-suchy_Ped_Posaun16|52|-7261564461342355512|-5517537970562451103;02-suchy_Ped_Untersatz16|54|1620364564650446936|-3361627200446966656",
+    "002068/pipes/rw": "02-suchy_RP_BlockFl2|51|7975772664345070257|3990145932348643661;02-suchy_RP_Oct2|51|7975772664345070257|-8667398300248126056;02-suchy_RP_Sexqulalt|51|7975772664345070257|5203816120984423294",
+    "002067/pipes/hw": "02-suchy_HW_Cimbel|52|-3289324765102597476|25390066727909564;02-suchy_HW_Principal8|96|-1482183970239751251|2118602620383966606;02-suchy_HW_Waldfl2|51|7975772664345070257|-4460082927507975655",
+    "002067/pipes/bw": "02-suchy_BWclosed_Gedackt4|52|4784386290214276969|4418939530280360353;02-suchy_BWclosed_OCTAV2|54|5677540936768792355|1883170329911808701;02-suchy_BWclosed_Scharff|51|7975772664345070257|8245338577502588151"
+   },
    "featured": false
   },
   {
@@ -129,19 +134,19 @@
   {
    "title": "Ashton, Albion Church, Lewis",
    "folder": "ashton-albion-church-lewis-organ",
-   "zip": "Ashton, Albion Church, Lewis.portable.zip",
-   "zipBytes": 17064,
-   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/ashton-albion-church-lewis-organ/Ashton%2C%20Albion%20Church%2C%20Lewis.portable.zip",
+   "zip": "Ashton Albion Church Lewis.portable.zip",
+   "zipBytes": 13144,
+   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/ashton-albion-church-lewis-organ/Ashton%20Albion%20Church%20Lewis.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/ashton-albion-church-lewis-organ/README.md",
    "divisions": 5,
-   "stops": 47,
+   "stops": 48,
    "routes": [
     "Diffuse",
     "Direct",
     "Distant",
     "Rear"
    ],
-   "ramBytes": 10114447096,
+   "ramBytes": 10307228912,
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -173,17 +178,17 @@
   {
    "title": "Bellevue, Casavant",
    "folder": "bellevue-casavant",
-   "zip": "Bellevue, Casavant, op.3742.portable.zip",
-   "zipBytes": 17078,
-   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/bellevue-casavant/Bellevue%2C%20Casavant%2C%20op.3742.portable.zip",
+   "zip": "Bellevue Casavant op.3742.portable.zip",
+   "zipBytes": 22708,
+   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/bellevue-casavant/Bellevue%20Casavant%20op.3742.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/bellevue-casavant/README.md",
    "divisions": 4,
-   "stops": 74,
+   "stops": 76,
    "routes": [
     "Front",
     "Rear"
    ],
-   "ramBytes": 5202418404,
+   "ramBytes": 5363136182,
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html",
    "rootName": "OrganInstallationPackages",
