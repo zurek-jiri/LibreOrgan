@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Forcalquier Organ Model, as recorded by Sonus Paradisi in one perspective, default, each on its own audio route: 4 divisions and 36 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Forcalquier Organ Model, as recorded by Sonus Paradisi in one perspective, default, each on its own audio route: 4 divisions and 37 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Forcalquier Organ Model.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/forcalquier-france.html](https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/forcalquier-france.html); the folders `000346` and `000347` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.9.53 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/forcalquier-france.html](https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/forcalquier-france.html); the folders `000346` and `000347` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.9.148 or later.
 - **Expects:** library root of any name, holding the trees `000346/pipe` and `000347/pipe`.
-- **Audio layout:** every division has the routes default; auxiliary (unused).
+- **Audio layout:** every division has the routes default and noises; auxiliary (unused).
 - **RAM:**
-  - **2.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **2.8 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **24 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.53.
-- **Author:** Jiri Zurek, 4 November 2026.
+  - **2.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **3.1 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **26 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.148.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
@@ -49,10 +49,10 @@ Put `Forcalquier Wet.portable.json` into your LibreOrgans folder (Configuration 
 | P. Bombarde 16' | 1. Quarte 2' | 2. Flute 4' |  |
 | P. Trompette 8' | 1. Tierce 1 3/5' | 2. Doublette 2' |  |
 | P. Clairon 4' | 1. Larigot 1 1/3' | 2. Sifflet 1' |  |
-|  | 1. Plein Jeu 1' | 2. Grand Cornet 8' |  |
+| Blower On/Off | 1. Plein Jeu 1' | 2. Grand Cornet 8' |  |
 |  | 1. Cromorne 8' | 2. Plein Jeu 1' |  |
 |  |  | 2. Trompette 1ere 8' |  |
 |  |  | 2. Trompette 2eme 8' |  |
 |  |  | 2. Clairon 4' |  |
 
-<!-- published by @zurek-jiri (issue #205, 2026-11-04) -->
+<!-- published by @zurekjiri (issue #316, 2026-11-27) -->
