@@ -5635,7 +5635,7 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   SEEN, NOT TOUCHED: PIPE ranks whose release is the tail of the attack file (old sets) are not handled by the pipe
   loader either (it knows release FOLDERS alone) - a key release just fades. The tools: %TEMP%\odftools\
   odf_sample_rows.py <odf> <file name part> (the Sample row and its attack / release rows), %TEMP%\wav_loops.py and
-  wav_cue.py <wav> (loops, cue markers).
+  wav_cue.py <wav> (loops, cue markers). RELEASED on his word ("zapracuj to ... A dej na gitHub"): commit 10daa69, tag v0.9.146, CI green at the first attempt on all five, five archives, Intel mac "late symbols: 0", the Windows exe on system DLLs only, the CI exe deployed. v0.9.145 had come out whole too (CI green on all five: the catalog compiled on Linux and macOS).
 - BUG REPORT FORM (25 Nov 2026, the user: "make all the fields NOT compulsory, apart from the LOG ... people bring their
   .zip from different computers onto an internet computer ... We learn everything from the log anyway"; then: "what
   happened by mělo být povinné ... stačí opravdu pár slov"): `.github/ISSUE_TEMPLATE/bug_report.yml` requires TWO
