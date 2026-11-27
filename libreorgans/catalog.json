@@ -768,18 +768,17 @@
   {
    "title": "Doksy-Kruh Renaissance",
    "folder": "doksy-kruh-renaissance-organ",
-   "zip": "Doksy-Kruh, Renaissance Organ.portable.zip",
-   "zipBytes": 6012,
-   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/doksy-kruh-renaissance-organ/Doksy-Kruh%2C%20Renaissance%20Organ.portable.zip",
+   "zip": "Doksy-Kruh Renaissance Organ.portable.zip",
+   "zipBytes": 8425,
+   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/doksy-kruh-renaissance-organ/Doksy-Kruh%20Renaissance%20Organ.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/doksy-kruh-renaissance-organ/README.md",
    "divisions": 2,
-   "stops": 11,
+   "stops": 12,
    "routes": [
-    "default",
-    "auxiliary"
+    "default"
    ],
-   "ramBytes": 1040225299,
-   "published": "2026-11-04",
+   "ramBytes": 1200904177,
+   "published": "2026-11-27",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/discontinued-organ-models/doky-kruh.html",
    "rootName": "OrganInstallationPackages",
