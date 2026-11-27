@@ -1,9 +1,9 @@
 # Altenbruch, Klapmeyer Organ
 
-<!-- Written by LibreOrgan Sampler. To publish it: attach this README and the zip beside it to the form (a free GitHub account):
+<!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Altenbruch, Klapmeyer Organ, as recorded by Sonus Paradisi in one perspective, default, each on its own audio route: 4 divisions and 35 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Altenbruch, Klapmeyer Organ, as recorded by Sonus Paradisi in one perspective, default, each on its own audio route: 4 divisions and 37 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,19 +15,19 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Altenbruch, Klapmeyer Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html](https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html); the folders `002067` and `002068` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.8.198 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html](https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html); the folders `002067` and `002068` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.9.146 or later.
 - **Expects:** library root of any name, holding the trees `002067/pipes/bw`, `002067/pipes/hw`, `002067/pipes/pedal` and `002068/pipes/rw`.
-- **Audio layout:** every division has the routes default; auxiliary (unused).
+- **Audio layout:** every division has the routes default and noises; auxiliary (unused).
 - **RAM:**
-  - **1.9 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **2.7 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **12 GB** - 32-bit float, the files' own rate, full releases, no packing; *measured*
-- **Saved with:** LibreOrgan Sampler 0.8.198.
-- **Author:** Jiri Zurek, 25 October 2026.
+  - **2.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **2.9 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **21 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.146.
+- **Author:** Jiri Zurek, 27 November 2026.
 
 ## Where to put the file
 
-Put `Altenbruch SemiDry Extended.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor); one not found is asked for once. The folders `002067` and `002068` must stand side by side in one folder:
+Put `Altenbruch SemiDry Extended.portable.json` into your LibreOrgans folder (Configuration Editor > *LibreOrgans folder*; `Documents\LibreOrgan\LibreOrgans` by default) and load it from there. The sample folders are found in your sample locations (the folders above your sample libraries, remembered by the program and listed in the Configuration Editor). One not found shows "Sample folder not found" under its division: click it and choose any folder of the samples (the tree, a folder above it, a neighbouring tree) - the program finds the tree, the other missing ones around it, and remembers the place for every configuration to come. The folders `002067` and `002068` must stand side by side in one folder:
 
 ```
 <a sample location>\
@@ -51,9 +51,9 @@ Put `Altenbruch SemiDry Extended.portable.json` into your LibreOrgans folder (Co
 | P. Trometh 8' | R. Quintadohn 8' | O. Waldtfloit 2' | B. Knopregal 8' |
 | P. Mixtur 2' | R. Octav 2' | O. Cimbel 1/2' |  |
 | P. Corneth 2' | R. Nasat 2 2/3' | O. Vox humana 8' |  |
-|  | R. Blockfloit 2' | O. Trometh 8' |  |
-|  | R. Sexquialtera 1 1/3' |  |  |
+| Blower On/Off | R. Blockfloit 2' | O. Trometh 8' |  |
+| Cimbelstern | R. Sexquialtera 1 1/3' |  |  |
 |  | R. Dulcian 16' |  |  |
 |  | R. Kromhorn 8' |  |  |
 
-<!-- published by @zurek-jiri (issue #99, 2026-10-25) -->
+<!-- published by @zurekjiri (issue #273, 2026-11-27) -->
