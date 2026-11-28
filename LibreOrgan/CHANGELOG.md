@@ -12,7 +12,7 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
-## [0.9.150] - 2026-11-28 - MILESTONE: sampled tremulants support
+## [0.9.150] - 2026-11-28
 
 ### Added
 - **Recorded (sampled) tremulants.** Many sample folders hold a stop's pipes a
@@ -41,7 +41,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   - A Hauptwerk definition's alternate ranks and hidden "(Tremmed)" stops are
     read as these rows, with their tremulant, its division (a general
     tremulant sits on the first division it shakes that has no other, the
-    others are its targets) and the per-pipe levels; without a definition the
+    others are its targets) and the per-pipe levels - a tremmed rank that no
+    stop row of the definition names (Billerbeck's Rear) is joined to the
+    plain rank of the same name and perspective; without a definition the
     folder names decide ("tr" / "trem" + a tag appended, a tree "OWTR" beside
     "OW") and the speed is measured in the samples. A stop with two such
     recordings has two tremulants: the folders do not say where the second

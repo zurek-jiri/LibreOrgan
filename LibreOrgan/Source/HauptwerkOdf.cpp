@@ -1158,6 +1158,56 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
                 rank->second.tremulantId = tremulant;
             }
         }
+        // A tremmed rank NO row of the definition names (Billerbeck: "Rear: 1. Principal 8 (tremmed)" exists with all
+        // its pipes, the rows of Direct and Diffuse name their alternates, the Rear row names none - an omission of
+        // the definition; Hauptwerk plays that perspective plain): it is the recording of the plain rank of the SAME
+        // NAME ("Rear: 1. Principal 8"), played by the tremulant the stop's other recordings have - else by the one
+        // tremulant of the stop's division.
+        {
+            std::set<int> rowRanks;                         // ranks a stop plays itself
+            std::map<int, int> stopOfRank;
+            for (const auto& [stopId, stop] : odf.stops)
+                for (const int rankId : stop.rankIds) { rowRanks.insert(rankId); stopOfRank.emplace(rankId, stopId); }
+            std::map<juce::String, std::vector<int>> plainByName;   // lower-case name -> the plain ranks named so
+            for (const auto& [id, rank] : odf.ranks)
+                if (rowRanks.count(id) > 0 && !rank.name.toLowerCase().contains("(trem")) plainByName[rank.name.trim().toLowerCase()].push_back(id);
+            auto markOf = [](const juce::String& name)
+            {
+                const int at = name.toLowerCase().indexOf("(trem");
+                return at >= 0 ? name.substring(at).trim().toLowerCase() : juce::String();
+            };
+            juce::StringArray joined;
+            for (auto& [id, rank] : odf.ranks)
+            {
+                if (rank.alternateOfRankId > 0 || rowRanks.count(id) > 0 || !rank.name.toLowerCase().contains("(trem")) continue;
+                const auto found = plainByName.find(plainName(rank.name));
+                if (found == plainByName.end() || found->second.size() != 1) continue;
+                const int of = found->second.front();
+                const auto stop = odf.stops.find(stopOfRank[of]);
+                if (stop == odf.stops.end()) continue;
+                // The tremulant: the one of the stop's other recordings (the same mark first), else the division's only.
+                int tremulant = 0, sameMark = 0;
+                for (const auto& [otherId, other] : odf.ranks)
+                {
+                    if (otherId == id || other.alternateOfRankId <= 0 || other.tremulantId <= 0) continue;
+                    if (std::find(stop->second.rankIds.begin(), stop->second.rankIds.end(), other.alternateOfRankId) == stop->second.rankIds.end()) continue;
+                    if (tremulant == 0) tremulant = other.tremulantId;
+                    if (sameMark == 0 && markOf(other.name) == markOf(rank.name)) sameMark = other.tremulantId;
+                }
+                if (sameMark > 0) tremulant = sameMark;
+                if (tremulant == 0)
+                {
+                    int count = 0;
+                    for (const auto& t : odf.tremulants) if (t.divisionIds.count(stop->second.divisionId) > 0) { tremulant = t.id; ++count; }
+                    if (count != 1) tremulant = 0;
+                }
+                rank.alternateOfRankId = of;
+                rank.tremulantId = tremulant;
+                joined.add(rank.name);
+            }
+            odf.joinedTremmedRanks = joined.size();
+            if (!joined.isEmpty()) odf.joinedTremmedExample = joined[0];
+        }
     }
     for (auto& [id, rank] : odf.ranks)
     {
@@ -2543,6 +2593,9 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
             }
             result.notes.add("Recorded tremulants: " + juce::String(rows) + " stop(s) have their pipes recorded with a tremulant running - rows of the Stop List's second level; "
                 "while that tremulant runs at its recorded speed they sound instead of the plain pipes with the tremulant model.");
+            if (joinedTremmedRanks > 0)
+                result.notes.add("Recorded tremulants: " + juce::String(joinedTremmedRanks) + " tremmed rank(s) that no stop row of the definition names (\"" + joinedTremmedExample
+                    + "\" ...) joined to the plain rank of the same name and perspective.");
         }
     }
     // What the whole definition holds besides (for the message): the tremmed

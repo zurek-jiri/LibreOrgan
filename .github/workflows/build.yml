@@ -247,25 +247,15 @@ jobs:
             echo "an earlier attempt's release $old goes first"
             gh release delete "$old" --repo "$GITHUB_REPOSITORY" --yes || true
           done
-          # A milestone release says so in its title and at the top of its notes (0.9.150, the user: "na githubu by se
-          # to pak mělo označit jako milestone").
-          title="$tag"
-          milestone=""
-          case "$tag" in v0.9.150) milestone="sampled tremulants support" ;; esac
-          if [ -n "$milestone" ]; then
-            title="$tag - milestone: $milestone"
-            { printf '**Milestone: %s.** Stops that were recorded with their tremulant running play those recordings while the tremulant is on.\n\n' "$milestone"; cat notes.md; } > notes-with-milestone.md
-            mv notes-with-milestone.md notes.md
-          fi
-          if ! out=$(gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$title" --notes-file notes.md 2>&1); then
+          if ! out=$(gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$tag" --notes-file notes.md 2>&1); then
             echo "$out"
             echo "::error title=Release::$(echo "$out" | tail -n 3 | tr '\n' ' ' | cut -c1-400)"
             exit 1
           fi
           echo "$out"
       # 0.9.101 (the user: "na GitHubu tentokrát nechej i starou verzi, kdyby tato s VST kulhala ... pak ji časem zase
-      # zrušíme"): the release named in `keep` below stays beside the current one while the plug-in hosting is new.
-      # Empty `keep` = one release again.
+      # zrušíme"): a release named in `keep` below stays beside the current one. 28 Nov 2026 (the user deleted
+      # v0.9.100 by hand: "Nebudeme to držet"): `keep` is empty - one release again.
       # ONE current release only (0.9.80: the previous version kept since 0.9.77 pushed the Rural Organ
       # demo release down the page - GitHub sorts releases by date, nothing can be pinned); every older
       # v* release (and its tag) is deleted; the Rural Organ demo release is kept.
@@ -274,7 +264,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="${GITHUB_REF_NAME}"
-          keep="v0.9.100"
+          keep=""
           # Newest first; each tag once (a release listed twice made the second delete fail on the tag
           # already gone, 0.8.154); a release or tag gone by then is no failure.
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName' | awk '!seen[$0]++'); do

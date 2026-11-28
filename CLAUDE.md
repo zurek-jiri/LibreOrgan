@@ -7001,10 +7001,19 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   alignPeriod / alignFreqA; fades are linear = right for phase-aligned signals. OFF = unloaded (FolderRef::unloaded).
   ALSO SEEN: the load box's "Perspectives to load" (askLoadOptions ~16828) orders by the var's pattern lines and puts
   the names without a line after them in table order (alphabet: Diffuse, Direct, Rear) - not by defaultPerspectiveRank.
-  0.9.150 BUILT AND RUN ON WINDOWS (28 Nov 2026; LOCAL, push and tag wait for his word; the release is to be marked
-  "MILESTONE: sampled tremulants support" - the CHANGELOG heading, and build.yml's release step: `case "$tag" in
-  v0.9.150) milestone=...` gives the release the title "v0.9.150 - milestone: ..." and a first line of the notes; no
-  GitHub milestone OBJECT (no token), and the next version's release replaces this one unless `keep` names it).
+  0.9.150 BUILT AND RUN ON WINDOWS (28 Nov 2026; LOCAL, push and tag wait for his word). NO MILESTONE MARK (he took
+  it back the same day: "tak nedělej milestone, to je zbytečné"); build.yml's `keep` is EMPTY again (he deleted
+  v0.9.100 by hand: "Nebudeme to držet"). BILLERBECK'S REAR (he: "neumíš číst Hauptwerk ODF správně, to určitě
+  obsahuje rear ranky i pro tremulanty"): the reading was right and he was right too - both Billerbeck definitions
+  (Surround, 8 chan.) HOLD 45 ranks "Rear: ... (tremmed)" with 2932 pipes, but the Rear StopRank rows carry no m / p
+  (alternate) while Direct / Diffuse / Semi-dry do: the definition's own omission (Hauptwerk plays Rear plain there).
+  Now parse() joins a tremmed rank that NO row names (not in any stop's rankIds, no alternateOf) to the plain rank
+  of the SAME NAME less "(tremmed)" (unique), tremulant = the stop's other recordings' (same "(trem..." mark first),
+  else the division's only one; `joinedTremmedRanks / joinedTremmedExample` -> a plan note. Of the 25 published
+  organs only Billerbeck has such ranks (%TEMP%\odftools\odf_alt_count.py <odf>...: per perspective the rows with /
+  without an alternate and the tremmed ranks nobody names; odf_rows_of.py <odf> <name part>: the raw Rank / Stop /
+  StopRank rows). LESSON: when a count says "N tremmed ranks skipped" after the new rule, LOOK at what they are
+  before calling it "the definition's choice" - I told him "Billerbeck has recordings for Direct and Diffuse only".
   WHAT EXISTS: table entry
   `tremmedManual` (JSON "tremmed": N, child always true; bound to the nearest non-tremmed row ABOVE - by position, no
   id), engine `Stop::tremmedOfPtr / tremmedManual / tremmedAlternates` set by MainComponent::applyStopGroups ->

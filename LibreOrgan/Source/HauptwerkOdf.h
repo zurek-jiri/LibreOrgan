@@ -104,6 +104,10 @@ struct HauptwerkOdf
     // rank > the stop playing it > its division).
     struct Tremulant { int id = 0; juce::String name; float rateHz = 0.0f; std::set<int> divisionIds; int switchId = 0; };   // switchId: its ControllingSwitchID (0.9.127: the noises of its drawknob)
     std::vector<Tremulant> tremulants;
+    // 0.9.150: tremmed ranks no stop row of the definition names, joined to the plain rank of the same name
+    // (Billerbeck's Rear) - how many and the first one's name, for the plan's notes.
+    int joinedTremmedRanks = 0;
+    juce::String joinedTremmedExample;
     // 0.9.127 THE NOISES. Hauptwerk knows nothing but pipes, so a definition writes every noise as a pipe with
     // a pallet switch of its own (Pipe_SoundEngine01.ControllingPalletSwitchID), and the switch linkages say
     // what drives that switch: a key of a keyboard (the press and the release are two pipes; link action codes
