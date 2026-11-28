@@ -1087,6 +1087,44 @@
    "featured": false
   },
   {
+   "title": "Kiedrich, Kirchner",
+   "folder": "kiedrich-kirchner-organ",
+   "zip": "Kiedrich Kirchner Organ.portable.zip",
+   "zipBytes": 9894,
+   "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/kiedrich-kirchner-organ/Kiedrich%20Kirchner%20Organ.portable.zip",
+   "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/kiedrich-kirchner-organ/README.md",
+   "divisions": 3,
+   "stops": 22,
+   "routes": [
+    "Direct",
+    "Diffuse",
+    "Rear"
+   ],
+   "ramBytes": 2566963401,
+   "published": "2026-11-28",
+   "producer": "Sonus Paradisi",
+   "link": "https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html",
+   "rootName": "OrganInstallationPackages",
+   "rootRelative": "",
+   "trees": [
+    "001842/pipes/ab",
+    "001843/pipes/ort",
+    "001844/pipes/rea",
+    "001841/pipes/ab",
+    "001841/pipes/ort",
+    "001841/pipes/rea"
+   ],
+   "fingerprints": {
+    "001842/pipes/ab": "AB_Gedackt16|59|-4816215372071306920|5896217866636058816;AB_Ped_Subbas16-01|38|5824714789289438144|1010412263721532732;AB_superoctave2|51|-8180673374606790391|1324689878192097085",
+    "001843/pipes/ort": "ORTF_Gedackt16|59|-4816215372071306920|4506567245036321012;ORTF_Ped_Subbas16-01|38|5824714789289438144|-5397036823308557144;ORTF_superoctave2|51|-8180673374606790391|5457436561735570431",
+    "001844/pipes/rea": "Rea_Gedackt16|59|-4816215372071306920|-5352275865407580585;Rea_Ped_Subbas16-01|38|5824714789289438144|1010412263721532732;Rea_superoctave2|51|-8180673374606790391|3781692412912616012",
+    "001841/pipes/ab": "AB_flotengedack4|100|1869877021311057704|1683813783260282165;AB_Principal8|92|4694104230839687301|-830088480040261432",
+    "001841/pipes/ort": "ORTF_flotengedack4|100|1869877021311057704|323760278102856711;ORTF_Principal8|92|4694104230839687301|-5172306266511075541",
+    "001841/pipes/rea": "Rea_flotengedack4|100|1869877021311057704|-8147507808772022373;Rea_Principal8|92|4694104230839687301|2256761692509629614"
+   },
+   "featured": false
+  },
+  {
    "title": "Rural Organ - the demo",
    "folder": "rural-organ",
    "zip": "Rural-Organ.zip",

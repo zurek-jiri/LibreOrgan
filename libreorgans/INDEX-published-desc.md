@@ -28,6 +28,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 
 | Organ [▲](INDEX.md)[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Published [▲](INDEX-published-asc.md)▼ | Remove |
 |---|---:|---:|---:|---|---|---|
+| [Kiedrich, Kirchner](kiedrich-kirchner-organ/README.md) | 3 | 22 | 2.4 GB | Direct, Diffuse, Rear | 2026-11-28 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20kiedrich-kirchner-organ&organ=kiedrich-kirchner-organ&name=kiedrich-kirchner-organ) |
 | [Adlington Hall (Smith)](adlington-hall-smith/README.md) | 3 | 16 | 2.7 GB | Direct, Diffuse, Rear | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adlington-hall-smith&organ=adlington-hall-smith&name=adlington-hall-smith) |
 | [Adriatic Organ Model](adriatic-organ-model/README.md) | 2 | 11 | 1.5 GB | default, Rear | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20adriatic-organ-model&organ=adriatic-organ-model&name=adriatic-organ-model) |
 | [Altenbruch, Klapmeyer](altenbruch-klapmeyer-organ/README.md) | 4 | 37 | 2.1 GB | default | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20altenbruch-klapmeyer-organ&organ=altenbruch-klapmeyer-organ&name=altenbruch-klapmeyer-organ) |
@@ -58,4 +59,4 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Cembalo Mietke Model](cembalo-mietke-model/README.md) | 3 | 4 | 0.9 GB | default | 2026-11-03 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-mietke-model&organ=cembalo-mietke-model&name=cembalo-mietke-model) |
 | [Cembalo Ruckers Model](cembalo-ruckers-model/README.md) | 3 | 4 | 1.0 GB | default | 2026-11-03 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20cembalo-ruckers-model&organ=cembalo-ruckers-model&name=cembalo-ruckers-model) |
 
-31 configuration(s).
+32 configuration(s).
