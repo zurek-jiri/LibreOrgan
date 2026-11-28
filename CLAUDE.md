@@ -7258,6 +7258,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   release) - use Tutti / X, ORGAN_TEST_TREMMED "trem", or a crafted combination to change states. NOT run: a real
   mouse, recall of swell positions and the temperament, the Stop List's rename / division move carrying a
   combination (former key), a combinations file of another organ, hold-voicing with recordings, Linux / macOS.
+  RELEASED on his word: commit bd04dbc + the merge 5f8cf90 (origin had 21 commits of his publishes), tag v0.9.153
+  on 5f8cf90, CI run 46170000327 green on all five at the first attempt, five archives, v0.9.149 kept beside it
+  (v0.9.152 went), Intel mac "late symbols: 0", the Windows exe on system DLLs only; C:\LibreOrgan\
+  LibreOrgan_0.9.153.exe is the LOCAL build (his program ran when the CI exe came). The replies for pasztor63 are
+  DRAFTS in F:\temp\issue342_reply.md and issue343_reply.md - I cannot post (no token: the credential must not be
+  read); he posts them or says how.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
