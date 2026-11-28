@@ -7038,6 +7038,18 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   stop dB, rest per key). Hook act ORGAN_TEST_TREMMED "<s>|definition|0|<odf>". RUN (%TEMP%\odftools\craft_old.py
   makes an "old" Altenbruch SemiDry configuration: no recordings, rates x 1.1, old patterns): 47 of 47 added,
   rates P. 5.28 -> 4.80, I. 7.04 -> 6.40 ..., 7.3 GB of recordings read while "35 rank(s) kept their samples".
+  STRALSUND DEMO (%TEMP%\odftools\craft_old2.py: also takes the trees of recordings out of the pool; two
+  perspectives, 48 GB - a COLD hook import needs > 150 s, the first run was quit mid-load): 24 of 24 recordings,
+  48 folders, "2 folder tree(s) of recordings joined the organ's" (pipe/UWTR, pipe/OWTR), I. 5.94 -> 5.40 Hz,
+  III. 4.95 -> 4.50 Hz, only the two new trees read (13 GB), "48 rank(s) kept their samples". Self-test after the
+  pattern change: 81 lines / 35 OK / 0 WRONG. WHICH PUBLISHED ORGANS HAVE TREMMED RANKS (he asked, to save only
+  those anew; %TEMP%\odftools\published_tremmed.py <OrganDefinitions> <catalog.json> <out>: every definition's
+  packages from its Sample table and its ranks named "(trem...", matched to the catalog's organs by their package
+  numbers; list in F:\temp\published_tremmed.txt): YES 15 - Altenbruch (47 stops), Arnstadt (21), Ashton (19),
+  Bellevue (29), Beziers (23), Billerbeck (45), Burton-Berlin Hill (22), Bückeburg (35), Doesburg (20), Este (9),
+  Frankfurt/Oder (37), Hildesheim (37), Kiedrich (18), Stralsund (24), Yokota (34); NONE - Adlington, Adriatic,
+  Bergen op Zoom, Brasov, Brescia, Caen, both Cembalos, Chapelet, Chemnitz, Doksy, Dom Bedos, Forcalquier, Greccio,
+  Hradec Kralove, Kdousov (Rural has no definition).
   EXPORT with recordings (ORGAN_SAVE_PORTABLE): the README counts the stops as before (recordings are no stops:
   37 rows), the json carries the 47 "tremmed" rows, clean ignored patterns, the rates / recorded rates / targets;
   the robot's validate (README split out of the zip first: %TEMP%\odftools\zip_without_readme.py) fails only for
