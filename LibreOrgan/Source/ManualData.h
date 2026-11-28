@@ -1965,6 +1965,26 @@ static const char* const kManualText_part9 =
     "\n"
     "The level modulation per cent of pitch modulation (default 0.187 dB).\n"
     "\n"
+    "### Recorded tremulant: crossfade\n"
+    "\n"
+    "A tremulant switched while keys are held: the stops with\n"
+    "[recorded tremulants](#recorded-tremulants) cross over between the plain\n"
+    "samples and the recording in this time (default 180 ms, up to 1 s), in phase,\n"
+    "without striking the notes again. Travels with the organ.\n"
+    "\n"
+    "### Recorded tremulant: crossfade curve\n"
+    "\n"
+    "The shape of that crossfade. *Linear* (default): the level stays even where\n"
+    "the two recordings are in phase - the program puts them in phase. *Equal\n"
+    "power*: even where they are not, up to 3 dB louder in the middle where they\n"
+    "are. *Between the two*: half of each. Travels with the organ.\n"
+    "\n"
+    "### Recorded tremulant: model on its releases\n"
+    "\n"
+    "The release of a sample recorded with a tremulant is often flat: this share\n"
+    "of the tremulant model's depth moves it (default 40 %; an ordinary release\n"
+    "gets 60 %; 0 = as recorded). Travels with the organ.\n"
+    "\n"
     "### Key velocity: full strike from velocity\n"
     "\n"
     "From this velocity up a stroke is a full one (2 to 127, default 80); the two\n"
@@ -2000,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "### Measure the pitch of every pipe from its sound\n"
     "\n"
@@ -2020,8 +2042,6 @@ static const char* const kManualText_part9 =
     "### Retune pipes off by more than\n"
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
-    ;
-static const char* const kManualText_part10 =
     "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
     "says so. Travels with the organ. An attack - the plain one or a velocity\n"
     "layer - plays as it is recorded; a release whose recorded pitch differs from\n"
@@ -2089,19 +2109,6 @@ static const char* const kManualText_part10 =
     "Off by default. On: a release sample starts up to one period of its\n"
     "fundamental later, where it is in phase with the sounding pipe it fades into -\n"
     "the two cannot cancel each other during the crossfade. Travels with the organ.\n"
-    "\n"
-    "### Recorded tremulant: crossfade\n"
-    "\n"
-    "A tremulant switched while keys are held: the stops with\n"
-    "[recorded tremulants](#recorded-tremulants) cross over between the plain\n"
-    "samples and the recording in this time (default 300 ms, up to 1 s), in phase,\n"
-    "without striking the notes again. Travels with the organ.\n"
-    "\n"
-    "### Recorded tremulant: model on its releases\n"
-    "\n"
-    "The release of a sample recorded with a tremulant is often flat: this share\n"
-    "of the tremulant model's depth moves it (default 40 %; an ordinary release\n"
-    "gets 60 %; 0 = as recorded). Travels with the organ.\n"
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "\n"
     "Off by default: a piston switches on and off, as on an organ. On: a piston\n"
     "also stores and recalls the voicing of every stop and transmission - stop\n"
-    ;
-static const char* const kManualText_part11 =
     "volume, attack gain and time, random tuning, release crossfade, the\n"
     "perspective boxes, volume / treble / attack per key - so one piston can change\n"
     "the colour and the strength of the same stops, which no pipe organ can. A\n"
@@ -2417,6 +2424,8 @@ static const char* const kManualText_part11 =
     "compass are filled from neighbouring pipes. Keys outside it play nothing on\n"
     "this division - they are free for another division on the same MIDI channel\n"
     "(two divisions with different compasses split one keyboard) or for MIDI\n"
+    ;
+static const char* const kManualText_part12 =
     "learn. The compass counts after the MIDI transposition; the keyboard drawing\n"
     "of the Divisions dialog shows the keys it takes.\n"
     "\n"
@@ -2424,8 +2433,6 @@ static const char* const kManualText_part11 =
     "\n"
     "The controller learned for the swell (right-click the swell bar). Information.\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "### Swell: maximum attenuation when closed\n"
     "\n"
     "How much quieter the division is with the box closed (0 to 60 dB, default\n"
@@ -2619,6 +2626,8 @@ static const char* const kManualText_part12 =
     "happened - a few words are enough. *Create the report and open GitHub*\n"
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
+    ;
+static const char* const kManualText_part13 =
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
     "with the computer and every audio route, and pictures of the program's\n"
     "windows and dialogs, taken by the program itself (the Audio routing always,\n"
@@ -2626,8 +2635,6 @@ static const char* const kManualText_part12 =
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
     "\n"
-    ;
-static const char* const kManualText_part13 =
     "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
     "step no program can do for you (GitHub takes files only that way); without\n"
     "the zip a report gives nothing to work from. A free GitHub account is\n"
@@ -2821,6 +2828,8 @@ static const char* const kManualText_part13 =
     "by its measured pitch instead (the four lowest files, within 2 cents). The\n"
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
+    ;
+static const char* const kManualText_part14 =
     "perspective prefix, and the new head on three folders at least. The log\n"
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
@@ -2828,8 +2837,6 @@ static const char* const kManualText_part13 =
     "(and the gate agrees) or when it carries a perspective word (dir, dif, rea,\n"
     "far, near, close, dry, wet, front, ab, ortf ...); a lone head such as \"HW_\"\n"
     "or \"Ped_\" is a division mark and never becomes a perspective.\n"
-    ;
-static const char* const kManualText_part14 =
     "\n"
     "## 10.6 Memory and the loading stop\n"
     "\n"
@@ -3023,6 +3030,8 @@ static const char* const kManualText_part14 =
     "an archive gains nothing there. From a SATA SSD the same unpacked folders\n"
     "took 163 s (0.41 GB/s: there the disk is the limit) and the archives 102 s.\n"
     "Archives pay where the disk is the slower part - on a SATA SSD already, all\n"
+    ;
+static const char* const kManualText_part15 =
     "the more on a hard disk or a network folder: fewer bytes are read - and\n"
     "where room is short (about 40 % less). The fastest loading: unpacked folders\n"
     "on an SSD, and enough RAM for the system to keep the files in memory between\n"
@@ -3030,8 +3039,6 @@ static const char* const kManualText_part14 =
     "hardly the reading.\n"
     "\n"
     "## 10.13 Files written by the program\n"
-    ;
-static const char* const kManualText_part15 =
     "\n"
     "In the settings folder ([Where the files are](#14-where-the-files-are)): `settings.json` (this\n"
     "computer: devices, MIDI, the editor's machine settings, the last\n"

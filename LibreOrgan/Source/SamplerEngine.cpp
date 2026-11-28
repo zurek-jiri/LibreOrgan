@@ -1507,6 +1507,12 @@ namespace
         bool detachedRelease = false, loopEnabled = true, couplingUsed = false, startFrozen = false;
         bool noise = false;   // 0.9.127: a NOISE (key action, drawknob, blower ...): the file as it is - no tuning, wind, tremulant, swell or dynamic tone
         bool recordedTrem = false;   // 0.9.150: a sample recorded with the tremulant running - the model leaves its sustain alone (its release gets a share)
+        // 0.9.150 THE CROSSFADE of a tremulant switch: the shape of this voice's fade-in (1 = linear; 0.5 = equal power:
+        // gain = progress ^ curve) and, once it fades out in such a switch, of its fade-out; modelOff = the plain pipe
+        // that fades out while its recording takes over gets no tremulant model on the way (the model's swing against
+        // the recording's own was a second, unrelated tremulant for the length of the crossfade).
+        float fadeInCurve = 1.0f, fadeOutCurve = 1.0f;
+        bool modelOff = false;
         // 0.9.150 PHASE ALIGNMENT at the take (renderRoute): this voice follows 'alignPartner' (a voice of the same
         // route that fades out while this one fades in - the plain pipe and its tremmed recording at a tremulant
         // switch, an attack and its release). The control thread measured this sample's fundamental phase at its
@@ -1562,6 +1568,7 @@ namespace
         std::atomic<float> couplingRetarget{ std::numeric_limits<float>::quiet_NaN() };
         std::atomic<uint32_t> couplingRetargetTotal{ 1 };
         std::atomic<float> releaseFadeMsRequested{ 70.0f };
+        std::atomic<float> swapCurveRequested{ 0.0f };   // 0.9.150: > 0 = the release asked for is a tremulant switch's fade-out with this curve (see fadeOutCurve)
         std::atomic<float> frozenExprRequested{ 1.0f };
         std::atomic<float> curRandomPitch{ 0.0f }, curWindPitch{ 0.0f }, curTremPitch{ 0.0f }, curWindGain{ 1.0f };
 
@@ -3348,14 +3355,18 @@ namespace
             if (v.fadeInRemaining > 0 && v.fadeInTotal > 0)
             {
                 const float inv = 1.0f / (float)v.fadeInTotal;
-                e0 *= 1.0f - (float)v.fadeInRemaining * inv;
-                e1 *= 1.0f - (float)(v.fadeInRemaining - (uint32_t)span) * inv;
+                float a = 1.0f - (float)v.fadeInRemaining * inv, b = 1.0f - (float)(v.fadeInRemaining - (uint32_t)span) * inv;
+                if (v.fadeInCurve != 1.0f) { a = std::pow(juce::jmax(0.0f, a), v.fadeInCurve); b = std::pow(juce::jmax(0.0f, b), v.fadeInCurve); }   // 0.9.150: a tremulant switch's curve
+                e0 *= a;
+                e1 *= b;
             }
             if (v.fadingOut && v.fadeOutTotal > 0)
             {
                 const float inv = 1.0f / (float)v.fadeOutTotal;
-                e0 *= (float)v.fadeOutRemaining * inv;
-                e1 *= (float)(v.fadeOutRemaining - (uint32_t)span) * inv;
+                float a = (float)v.fadeOutRemaining * inv, b = (float)(v.fadeOutRemaining - (uint32_t)span) * inv;
+                if (v.fadeOutCurve != 1.0f) { a = std::pow(juce::jmax(0.0f, a), v.fadeOutCurve); b = std::pow(juce::jmax(0.0f, b), v.fadeOutCurve); }
+                e0 *= a;
+                e1 *= b;
             }
             if (wholeFileLoop && fadeLenF > 0 && v.pos >= fadeStartF)
             {
@@ -3700,6 +3711,8 @@ namespace
             if (cmd & CmdRelease)
             {
                 startFade(v, v.releaseFadeMsRequested.load(std::memory_order_relaxed), c.routeRate, false);
+                // 0.9.150: the fade-out of a tremulant switch - its curve, and no tremulant model on the way out.
+                if (const float curve = v.swapCurveRequested.exchange(0.0f, std::memory_order_relaxed); curve > 0.0f) { v.fadeOutCurve = curve; v.modelOff = true; }
                 // The pipe stops taking wind: hold its wind pitch/level so the
                 // fading sustain and the release sample stay matched.
                 if (!v.windFrozen)
@@ -3756,7 +3769,7 @@ namespace
             windGain = windDb != 0.0f ? fastDbToGain(windDb * v.windKeyScale) : 1.0f;   // the pipe's share of the sag (0.9.67)
         }
         v.lastWindGain = windGain;
-        if (c.tremActive && !(v.recordedTrem && !v.detachedRelease))   // 0.9.150: a sample recorded with the tremulant - the model leaves its sustain alone
+        if (c.tremActive && !v.modelOff && !(v.recordedTrem && !v.detachedRelease))   // 0.9.150: a sample recorded with the tremulant - the model leaves its sustain alone
         {
             const int b = v.tremBucket & (kTremBuckets - 1);
             if (v.detachedRelease)
@@ -3873,7 +3886,7 @@ namespace
                 mix += c.shelfSwell * juce::jlimit(0.0f, 1.0f, 8.6859f * fastNegLn(juce::jmax(0.001f, expr)) / c.exprMaxDb);
             if (c.windMaxDb > 0.01f && windGain < 0.9999f)
                 mix += c.shelfWind * juce::jlimit(0.0f, 1.0f, 8.6859f * fastNegLn(juce::jmax(0.001f, windGain)) / c.windMaxDb);
-            if (c.tremActive && !(v.recordedTrem && !v.detachedRelease))
+            if (c.tremActive && !v.modelOff && !(v.recordedTrem && !v.detachedRelease))
             {
                 const int b = v.tremBucket & (kTremBuckets - 1);
                 mix += c.shelfTrem * (v.detachedRelease ? c.tremShelfRelease[b] * (v.recordedTrem ? c.tremRecordedRelease : 1.0f) : c.tremShelf[b]);
@@ -5278,6 +5291,7 @@ struct SamplerEngine::Impl
         w.sampleNote = v.sampleNote; w.shift = v.shift; w.cubic = v.cubic; w.fullKernel = v.fullKernel;
         w.windPitchVar = v.windPitchVar; w.windGainVar = v.windGainVar; w.tremBucket = v.tremBucket;
         w.recordedTrem = v.recordedTrem;   // 0.9.150
+        w.fadeInCurve = v.fadeInCurve; w.fadeOutCurve = v.fadeOutCurve; w.modelOff = v.modelOff;
         w.detachedRelease = v.detachedRelease; w.loopEnabled = v.loopEnabled; w.couplingUsed = v.couplingUsed;
         w.startFrozen = v.startFrozen;
         w.velocityGain = v.velocityGain; w.velocity = v.velocity; w.coupledPitchCents = v.coupledPitchCents;
@@ -5983,6 +5997,7 @@ struct SamplerEngine::Impl
         v.detachedRelease = false; v.loopEnabled = true; v.couplingUsed = false; v.startFrozen = false;
         v.noise = false;
         v.recordedTrem = false; v.alignPartner = 0xffffffffu;   // 0.9.150
+        v.fadeInCurve = v.fadeOutCurve = 1.0f; v.modelOff = false; v.swapCurveRequested.store(0.0f, std::memory_order_relaxed);
         v.layerCents = 0.0f; v.attackLayerCents = 0.0f; v.attackLayerIndex = 0;
         v.windFrozen = false; v.frozenWindPitch = 0.0f; v.frozenWindGain = v.lastWindGain = v.initialWindGain = 1.0f;
         v.curWindGain.store(1.0f, std::memory_order_relaxed);
@@ -7493,6 +7508,7 @@ struct SamplerEngine::Impl
                         start = juce::jlimit((int64_t)0, juce::jmax((int64_t)0, sampleToPlay->numFrames - 2), start);
                         v.pos = (uint64_t)start << 32;
                         v.fadeInTotal = v.fadeInRemaining = (uint32_t)juce::jmax(1.0, (double)swapFadeMs * 0.001 * rate);
+                        v.fadeInCurve = swapCurve;
                         v.attackActive = false;
                         v.attackToneDb = 0.0f; v.attackToneStepPerFrame = 0.0f;
                         for (const auto& partner : swapPartners)
@@ -7863,7 +7879,13 @@ struct SamplerEngine::Impl
     struct SwapPartner { const Stop* parent; int pipe; int routeIndex; uint32_t voice; double startMs; };
     std::vector<SwapPartner> swapPartners;
     bool swapMode = false;            // startNote runs for a tremulant switch: the stops with recordings alone, in their sustain
-    float swapFadeMs = 300.0f;
+    float swapFadeMs = 180.0f;
+    // The shape of a tremulant switch's crossfade: gain = progress ^ swapCurve on both sides. 1 = linear (the sum of
+    // the two gains is 1: right for what is IN PHASE), 0.5 = equal power (the sum of their squares is 1: right for
+    // what is NOT). The fundamentals are put in phase, the upper partials of the two recordings are not.
+    // The user's choice (setTremulantSwapCurve; "Recorded tremulant: crossfade curve"), read at every switch.
+    // ORGAN_SWAP_CURVE=<exponent> (dev) overrides it: for the measurements.
+    float swapCurve = 1.0f;
     std::atomic<bool> tremSwapPending{ false };
 
     static double fundamentalHz(const Sample& s) noexcept
@@ -7955,6 +7977,8 @@ struct SamplerEngine::Impl
         for (const auto* stop : owner.stops) if (stop->tremmedOfPtr != nullptr) { any = true; break; }
         if (!any) return;
         const float fadeMs = juce::jmax(1.0f, owner.tremulantSwapMs.load(std::memory_order_relaxed));
+        static const float curveFromEnvironment = std::getenv("ORGAN_SWAP_CURVE") != nullptr ? juce::jlimit(0.3f, 1.5f, juce::String(std::getenv("ORGAN_SWAP_CURVE")).getFloatValue()) : 0.0f;
+        swapCurve = curveFromEnvironment > 0.0f ? curveFromEnvironment : juce::jlimit(0.3f, 1.5f, owner.tremulantSwapCurve.load(std::memory_order_relaxed));
         swapPartners.clear();
         if (swapPartners.capacity() < 1024) swapPartners.reserve(1024);
         bool changed = false;
@@ -7968,6 +7992,7 @@ struct SamplerEngine::Impl
             if (mainVoice && swapPartners.size() < swapPartners.capacity())
                 swapPartners.push_back({ routeOwner(v.stop), (int)v.note, v.routeIndex, idx, v.stop->pipeStartMs[(size_t)v.note] });
             v.releaseFadeMsRequested.store(fadeMs, std::memory_order_relaxed);
+            v.swapCurveRequested.store(swapCurve, std::memory_order_relaxed);
             v.ctlReleasing = true;
             refreshStealable(v);
             sendCommand(v, CmdRelease);

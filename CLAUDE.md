@@ -7014,6 +7014,36 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   without an alternate and the tremmed ranks nobody names; odf_rows_of.py <odf> <name part>: the raw Rank / Stop /
   StopRank rows). LESSON: when a count says "N tremmed ranks skipped" after the new rule, LOOK at what they are
   before calling it "the definition's choice" - I told him "Billerbeck has recordings for Direct and Diffuse only".
+  THE CROSSFADE OF A TREMULANT SWITCH (28 Nov 2026, he: "Crossfade není plynulý nějak, nedal by se udělat jiný typ
+  crossfadu, nějaký izoamplitudový ... Jiný návrh?"; default 180 ms on his order; the two Editor rows "Recorded
+  tremulant: ..." moved right after the "Tremulant: ..." rows of Advanced global audio, the manual's two ### too).
+  MEASURED (%TEMP%\odftools\band_check.py / band_fade.py <wav> <switch seconds>: levels of three bands, < 700 Hz /
+  700-2500 / > 2500 Hz, every 30 ms around a switch; Altenbruch RW key 60 held through own tremulant on / off /
+  general on): (1) A BUG OF MINE: the plain voice that fades out got the tremulant MODEL for the length of the
+  crossfade (tremActive had just become true) - a second, unrelated tremulant against the recording's own; now
+  `Voice::modelOff` (set at CmdRelease when `swapCurveRequested` > 0). (2) THE CURVE: `Voice::fadeInCurve /
+  fadeOutCurve` (gain = progress ^ curve; Impl::swapCurve, dev env ORGAN_SWAP_CURVE=<exponent>): Principal 8 with
+  1.0 (linear) - fundamental band within 1 dB, 700-2500 Hz within the recording's own swing, > 2500 Hz a brief
+  -3..-4 dB; with 0.5 (equal power) a +3 dB BUMP for 150 ms in the fundamental AND in 700-2500 Hz at every switch;
+  0.75: +1.5 dB. So the phase alignment makes the two recordings coherent well into the harmonics and LINEAR is
+  the constant-amplitude curve here - never promise "equal power" as the smoother one for this crossfade. HIS ORDER
+  all the same ("dej do config výběr křivky prolnutí a udělej všecky tři"): "Recorded tremulant: crossfade curve"
+  (addCombo right after the crossfade row; configuration key `tremulantSwapCurve` 0 linear [default] / 1 between
+  the two (exponent 0.75) / 2 equal power (0.5), travels with the organ; `engine.setTremulantSwapCurve(choice)` ->
+  atomic exponent read at every switch; manual ### of the label). (3) WHAT
+  IS LEFT is not the curve: the recordings differ in LOUDNESS (Kromphorn 8 key 60: plain -58.5 dB, its "trRP"
+  recording -62.9 dB = 4.4 dB quieter, the "TR" one -59.0; the definition's level difference is 0.0) and in pitch /
+  where in the tremulant's cycle the recording starts. PROPOSED to him, NOT coded: (A) loudness matching - the
+  recording's volume per key from the measured mean level of the two samples (at the import, in the temporary
+  function, a button); (B) the recording entered where its tremulant passes the plain pipe's pitch and level, and
+  left at such a point. His own settings.json carries tremulantSwapMs 190 (he tried values).
+  POWERSHELL DISASTER, CAUGHT AND UNDONE (28 Nov 2026): a hashtable of file -> @(@('old', 'new')) for a
+  multi-file replacement - PowerShell FLATTENS a one-element array of arrays, `foreach ($pair in $files[$f])` then
+  walks the two STRINGS and `$pair[0]` / `$pair[1]` are their first two CHARACTERS: every "(" of the CHANGELOG
+  became "*", every "f" of SamplerEngine.cpp "l" ... in six files (the printed counts "14969 replaced" gave it
+  away). Restored with `git checkout -- <the six files>` (everything was committed but two Editor edits of the
+  turn, done again). RULES: a text replacement in the sources goes through the Edit tool, one place at a time -
+  never a home-made multi-file replace loop; and commit BEFORE any scripted edit (it was the commit that saved it).
   THE SAME DAY, HIS ORDERS ("trem tr* a všecko mělo zmizet z Ignored patterns, protože to je teď prostě mylné";
   "doplň funkci A místo noises, dočasně. Na github to nedávej ... opravit již zadanou definici Tremulant Rate ...
   vyřadit z Ignored patterns vše, co se týká tremulantů ... Já to pak zkontroluju, přeuložím a znova vydám"):

@@ -1943,6 +1943,26 @@ default 90).
 
 The level modulation per cent of pitch modulation (default 0.187 dB).
 
+### Recorded tremulant: crossfade
+
+A tremulant switched while keys are held: the stops with
+[recorded tremulants](#recorded-tremulants) cross over between the plain
+samples and the recording in this time (default 180 ms, up to 1 s), in phase,
+without striking the notes again. Travels with the organ.
+
+### Recorded tremulant: crossfade curve
+
+The shape of that crossfade. *Linear* (default): the level stays even where
+the two recordings are in phase - the program puts them in phase. *Equal
+power*: even where they are not, up to 3 dB louder in the middle where they
+are. *Between the two*: half of each. Travels with the organ.
+
+### Recorded tremulant: model on its releases
+
+The release of a sample recorded with a tremulant is often flat: this share
+of the tremulant model's depth moves it (default 40 %; an ordinary release
+gets 60 %; 0 = as recorded). Travels with the organ.
+
 ### Key velocity: full strike from velocity
 
 From this velocity up a stroke is a full one (2 to 127, default 80); the two
@@ -2065,19 +2085,6 @@ from the next key. Travels with the organ.
 Off by default. On: a release sample starts up to one period of its
 fundamental later, where it is in phase with the sounding pipe it fades into -
 the two cannot cancel each other during the crossfade. Travels with the organ.
-
-### Recorded tremulant: crossfade
-
-A tremulant switched while keys are held: the stops with
-[recorded tremulants](#recorded-tremulants) cross over between the plain
-samples and the recording in this time (default 300 ms, up to 1 s), in phase,
-without striking the notes again. Travels with the organ.
-
-### Recorded tremulant: model on its releases
-
-The release of a sample recorded with a tremulant is often flat: this share
-of the tremulant model's depth moves it (default 40 %; an ordinary release
-gets 60 %; 0 = as recorded). Travels with the organ.
 
 ### Filled pipes: resampling quality
 

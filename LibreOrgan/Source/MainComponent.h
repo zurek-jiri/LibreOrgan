@@ -1625,7 +1625,8 @@ private:
     // 0.9.150 (all three travel with the organ): the crossfade between a stop and its recording with a tremulant when
     // the tremulant is switched under held keys, the tremulant model's share on the release of such a recording, and
     // the option that starts a release in the phase of its attack.
-    float tremulantSwapMs = 300.0f, tremmedReleaseModelPercent = 40.0f;
+    float tremulantSwapMs = 180.0f, tremmedReleaseModelPercent = 40.0f;
+    int tremulantSwapCurve = 0;          // 0.9.150: the shape of that crossfade - 0 linear, 1 between the two, 2 equal power; travels with the organ
     bool releasePhaseAlign = false;
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.

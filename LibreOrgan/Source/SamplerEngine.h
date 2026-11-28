@@ -1093,6 +1093,10 @@ public:
     // model's full depth; an ordinary release gets 60), and the option that starts a release sample in the phase of
     // the attack it follows.
     void setTremulantSwapMs(float ms) { tremulantSwapMs.store(juce::jlimit(0.0f, 1000.0f, ms), std::memory_order_relaxed); }
+    // The shape of that crossfade: 0 linear (gain = progress: the two gains add up to 1 - constant level for what is
+    // in phase), 1 between the two (progress ^ 0.75), 2 equal power (progress ^ 0.5: their squares add up to 1 -
+    // constant level for what is not in phase). The next tremulant switch takes it.
+    void setTremulantSwapCurve(int choice) { tremulantSwapCurve.store(choice == 2 ? 0.5f : choice == 1 ? 0.75f : 1.0f, std::memory_order_relaxed); }
     void setTremmedReleaseModelPercent(float percent) { tremmedReleaseModelPercent.store(juce::jlimit(0.0f, 100.0f, percent), std::memory_order_relaxed); }
     void setReleasePhaseAlign(bool on) { releasePhaseAlign.store(on, std::memory_order_relaxed); }
     float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
@@ -1924,7 +1928,8 @@ private:
     std::atomic<float> couplingMaxCents{ 14.0f };     // 0.9.60: a partner whose pure interval lies further than this from the pipe's base does not pull (nor is pulled)
     std::atomic<float> attackCutFadeMs{ 20.0f };      // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0), 6-150 ms
     std::atomic<float> voicingGlideMs{ 150.0f };      // 0.9.122: a sounding pipe's glide to a changed stop / key volume, 0-2000 ms
-    std::atomic<float> tremulantSwapMs{ 300.0f };     // 0.9.150
+    std::atomic<float> tremulantSwapMs{ 180.0f };     // 0.9.150
+    std::atomic<float> tremulantSwapCurve{ 1.0f };    // the exponent of that crossfade's gains (setTremulantSwapCurve)
     std::atomic<float> tremmedReleaseModelPercent{ 40.0f };
     std::atomic<bool> releasePhaseAlign{ false };
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1

@@ -30250,8 +30250,10 @@ void MainComponent::loadSettings()
     engine.setAttackCutFadeMs(attackCutFadeMs);
     voicingGlideMs = juce::jlimit(0.0f, 2000.0f, (float)(double)parsed.getProperty("voicingGlideMs", 150.0));   // 0.9.122
     engine.setVoicingGlideMs(voicingGlideMs);
-    tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)(double)parsed.getProperty("tremulantSwapMs", 300.0));   // 0.9.150
+    tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)(double)parsed.getProperty("tremulantSwapMs", 180.0));   // 0.9.150
     engine.setTremulantSwapMs(tremulantSwapMs);
+    tremulantSwapCurve = juce::jlimit(0, 2, (int)parsed.getProperty("tremulantSwapCurve", 0));
+    engine.setTremulantSwapCurve(tremulantSwapCurve);
     tremmedReleaseModelPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("tremmedReleaseModelPercent", 40.0));
     engine.setTremmedReleaseModelPercent(tremmedReleaseModelPercent);
     releasePhaseAlign = (bool)parsed.getProperty("releasePhaseAlign", false);
@@ -31274,6 +31276,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("attackCutFadeMs", attackCutFadeMs);     // 0.9.80
     obj->setProperty("voicingGlideMs", voicingGlideMs);       // 0.9.122
     obj->setProperty("tremulantSwapMs", tremulantSwapMs);     // 0.9.150
+    obj->setProperty("tremulantSwapCurve", tremulantSwapCurve);
     obj->setProperty("tremmedReleaseModelPercent", tremmedReleaseModelPercent);
     obj->setProperty("releasePhaseAlign", releasePhaseAlign);
     {
@@ -38296,6 +38299,38 @@ void MainComponent::showConfigurationEditor()
             addSlider("Tremulant: volume change per cent of pitch", 0.0, 0.6, 0.001, " dB/cent", o.tremulantLevelDbPerCent, 0.187,
                 [&o](double value) { o.tremulantLevelDbPerCent = (float)value; o.applyAdvancedAudioSettings(); o.saveSettings(); },
                 "Volume modulation of the tremulant relative to its pitch modulation.");   // with the other tremulant rows (0.8.179: it stood among the key-velocity rows)
+            // --- Recorded tremulant (0.9.150; the user: right after the tremulant's rows - "patří to trochu k sobě").
+            // The tick itself is beside every tremulant's rate.
+            addSlider("Recorded tremulant: crossfade", 0.0, 1000.0, 10.0, " ms", o.tremulantSwapMs, 180.0,
+                [&o](double value)
+                {
+                    o.tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)value);
+                    o.engine.setTremulantSwapMs(o.tremulantSwapMs);
+                    o.saveSettings();
+                },
+                "A tremulant switched on or off while keys are held: the stops that have their pipes recorded with that tremulant cross over between the "
+                "plain samples and the recorded ones in this time (default 180 ms, up to 1 s), in phase, without striking the notes again. Travels with the organ.",
+                "Recorded tremulant: crossfade");
+            addCombo("Recorded tremulant: crossfade curve", { "Linear  [default]", "Between the two", "Equal power" }, juce::jlimit(0, 2, o.tremulantSwapCurve), [&o](int index)
+                {
+                    o.tremulantSwapCurve = juce::jlimit(0, 2, index);
+                    o.engine.setTremulantSwapCurve(o.tremulantSwapCurve);
+                    o.saveSettings();
+                },
+                "The shape of that crossfade. Linear: the level stays where the two recordings are in phase - the program puts them in phase, so this is the even one "
+                "for most pipes. Equal power: the level stays where they are NOT in phase, and rises by up to 3 dB in the middle where they are. Between the two: half of each. "
+                "The next tremulant switch takes it; travels with the organ.",
+                "Recorded tremulant: crossfade curve");
+            addSlider("Recorded tremulant: model on its releases", 0.0, 100.0, 1.0, " %", o.tremmedReleaseModelPercent, 40.0,
+                [&o](double value)
+                {
+                    o.tremmedReleaseModelPercent = juce::jlimit(0.0f, 100.0f, (float)value);
+                    o.engine.setTremmedReleaseModelPercent(o.tremmedReleaseModelPercent);
+                    o.saveSettings();
+                },
+                "The release of a sample recorded with a tremulant is often flat. This share of the tremulant model's depth moves it (an ordinary release gets 60 %; "
+                "default 40 %, 0 = the release as recorded). The sustain of such a sample is never touched by the model. Travels with the organ.",
+                "Recorded tremulant: model on its releases");
             // --- Key velocity (the rows of one subject stay TOGETHER - the user's rule, 0.8.196)
             addSlider("Key velocity: full strike from velocity", 2.0, 127.0, 1.0, "", (double)o.velocityFullFrom, 80.0,
                 [&o](double value)
@@ -38468,27 +38503,6 @@ void MainComponent::showConfigurationEditor()
                 "On: a release sample starts up to one period of its fundamental later, where it is in phase with the sounding pipe it fades into - "
                 "the two cannot cancel each other during the crossfade. Off (default): the release starts at its beginning. Travels with the organ; the next key releases follow it.",
                 "Release starts in the phase of its attack");
-            // 0.9.150: the recorded tremulants (the tick itself is beside every tremulant's rate).
-            addSlider("Recorded tremulant: crossfade", 0.0, 1000.0, 10.0, " ms", o.tremulantSwapMs, 300.0,
-                [&o](double value)
-                {
-                    o.tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)value);
-                    o.engine.setTremulantSwapMs(o.tremulantSwapMs);
-                    o.saveSettings();
-                },
-                "A tremulant switched on or off while keys are held: the stops that have their pipes recorded with that tremulant cross over between the "
-                "plain samples and the recorded ones in this time (default 300 ms, up to 1 s), in phase, without striking the notes again. Travels with the organ.",
-                "Recorded tremulant: crossfade");
-            addSlider("Recorded tremulant: model on its releases", 0.0, 100.0, 1.0, " %", o.tremmedReleaseModelPercent, 40.0,
-                [&o](double value)
-                {
-                    o.tremmedReleaseModelPercent = juce::jlimit(0.0f, 100.0f, (float)value);
-                    o.engine.setTremmedReleaseModelPercent(o.tremmedReleaseModelPercent);
-                    o.saveSettings();
-                },
-                "The release of a sample recorded with a tremulant is often flat. This share of the tremulant model's depth moves it (an ordinary release gets 60 %; "
-                "default 40 %, 0 = the release as recorded). The sustain of such a sample is never touched by the model. Travels with the organ.",
-                "Recorded tremulant: model on its releases");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);

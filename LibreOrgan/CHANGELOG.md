@@ -35,7 +35,8 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
     back. No place in combinations, crescendo or Tutti, no alias, no
     transmissions.
   - A tremulant switched under held keys crosses the pipes over in phase
-    (*Recorded tremulant: crossfade*, 300 ms, up to 1 s); the release of a
+    (*Recorded tremulant: crossfade*, 180 ms, up to 1 s; *Recorded tremulant:
+    crossfade curve*: linear, equal power or between the two); the release of a
     recording gets a share of the model (*Recorded tremulant: model on its
     releases*, 40 %).
   - A Hauptwerk definition's alternate ranks and hidden "(Tremmed)" stops are
