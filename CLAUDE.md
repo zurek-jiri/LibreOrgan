@@ -7091,6 +7091,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the tremulant; steady 3 dB against 0: -3.1 dB above 6 kHz, -5.3 dB in 2.5-6 kHz (the shelf's corner is 3 kHz:
   the low-passed branch is out of phase there - the existing shelf's nature, the same for swell and wind), -0.4 dB
   in 0.7-2.5 kHz. THE NEW DEFAULTS CHANGE THE MODEL'S SOUND A LITTLE for every organ (-1 c, 0.5 dB) - his order.
+  ITS PRICE, MEASURED (self-test O N O N, the 12:31 build against this one; EngineSelfTest switches EVERY
+  tremulant on before its tutti): 61-note tutti avg 0.285 / 0.300 / 0.294 / 0.305 ms a block = +4-5 % - with a
+  steady loss above 0 the tone shelf works through the whole tremulant cycle (before: the dip's half only), so
+  every model-shaken voice takes the shelf kernel all the time. No tremulant running = no cost; steady loss 0 =
+  the old cost. The self-test's tutti lines are ~5 % higher from this build on: compare against
+  %TEMP%\selftest_0150c.txt, not a regression of the kernels (kerneltest OK, 81 lines / 35 OK / 0 WRONG).
   Test recipes: test_0127b.ps1 -Odf "%TEMP%\noise0127_trem3\cfg\Altenbruch SemiDry Extended.json" with
   ORGAN_TEST_TREMMED "..|load|1|Gedackt8trRP|0/1" under ORGAN_TEST_RECORD (the record starts ~10 s after the
   load's end - read "recording started" in the log and place the acts after it; a cold load of that organ takes
