@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Beziers Cathedral, Puget, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 57 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Beziers Cathedral, Puget, as recorded by Sonus Paradisi in 3 perspectives, Diffuse, Direct and Rear, each on its own audio route: 4 divisions and 56 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Beziers Cathedral, Puget.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/france/beziers-cathedral-puget-organ.html](https://www.sonusparadisi.cz/en/organs/france/beziers-cathedral-puget-organ.html); the folders `002721` and `002722` (as they come, or in their RAR archives); perspectives Direct (`02-dir22`), Diffuse (`03-dif22`) and Rear (`05-reaSen`). LibreOrgan Sampler 0.9.147 or later.
-- **Expects:** library root of any name, holding the trees `002721/pipes/GO`, `002721/pipes/RE`, `002722/pipes/GO`, `002722/pipes/PE`, `002722/pipes/PO` and `002722/pipes/RE`.
-- **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/france/beziers-cathedral-puget-organ.html](https://www.sonusparadisi.cz/en/organs/france/beziers-cathedral-puget-organ.html); the folders `002721` and `002722` (as they come, or in their RAR archives); perspectives Diffuse (`03-Mk2Hdiff`), Direct (`02-MK8diff`) and Rear (`08-rear`). LibreOrgan Sampler 0.9.150 or later.
+- **Expects:** library root of any name, holding the trees `002721/pipes/GO`, `002721/pipes/RE`, `002721/pipes/RETR`, `002722/pipes/GO`, `002722/pipes/PE`, `002722/pipes/PO`, `002722/pipes/POTR`, `002722/pipes/RE` and `002722/pipes/RETR`.
+- **Audio layout:** every division has the routes diffuse, direct and rear; auxiliary (unused).
 - **RAM:**
-  - **7.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **11 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **77 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **10 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **14 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **101 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.150.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,12 +33,15 @@ Put `Beziers Puget Surround.portable.json` into your LibreOrgans folder (Configu
 <a sample location>\
 ├── 002721\
 │   ├── pipes\GO\
-│   └── pipes\RE\
+│   ├── pipes\RE\
+│   └── pipes\RETR\
 └── 002722\
     ├── pipes\GO\
     ├── pipes\PE\
     ├── pipes\PO\
-    └── pipes\RE\
+    ├── pipes\POTR\
+    ├── pipes\RE\
+    └── pipes\RETR\
 ```
 
 ## Stop List
@@ -57,9 +60,9 @@ Put `Beziers Puget Surround.portable.json` into your LibreOrgans folder (Configu
 | Ped. Bombarde 16' | GO. Doublette 2' | Piccolo 1' (Ext.) | Rec. Trompete 8' |
 | Ped. Trompete 8' | GO. Fourniture progr. 2' | Pos. Fourniture 7rgs 1 1/3' | Rec. Hautbois et basson 8' |
 | Ped. Clairon 4' | GO. Gran cornet 8' | Tierce 1 3/5' (Ext.) | Rec. Clairon 4' |
-| Blower On/Off | GO. Bombarde 16' | Pos. Trompete 8' | Rec. Vox humana 8' |
+|  | GO. Bombarde 16' | Pos. Trompete 8' | Rec. Vox humana 8' |
 |  | GO. 1ere Trompette 8' | Pos. Cromorne 8' |  |
 |  | GO. 2eme Trompette 8' | Pos. Clairon 4' |  |
 |  | GO. Clairon 4' |  |  |
 
-<!-- published by @zurekjiri (issue #289, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #340, 2026-11-28) -->

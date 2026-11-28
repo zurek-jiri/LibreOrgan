@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Bückeburg, Janke Organ, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 48 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Bückeburg, Janke Organ, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 47 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,14 +15,14 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Bückeburg, Janke Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/buckeburg-janke-organ.html](https://www.sonusparadisi.cz/en/organs/germany/buckeburg-janke-organ.html); the folders `002306` and `002307` (as they come, or in their RAR archives); perspectives Direct (`ORTF`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.147 or later.
-- **Expects:** library root of any name, holding the trees `002306/pipes/Buckeburg_1noc_PED`, `002306/pipes/Buckeburg_3noc_OW`, `002306/pipes/Buckeburg_4noc_UW`, `002306/pipes/Buckeburg_5noc_HW`, `002307/pipes/Buckeburg_1noc_PED` and `002307/pipes/Buckeburg_4noc_UW`.
-- **Audio layout:** every division has the routes direct, diffuse, rear and noises; auxiliary (unused).
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/buckeburg-janke-organ.html](https://www.sonusparadisi.cz/en/organs/germany/buckeburg-janke-organ.html); the folders `002306` and `002307` (as they come, or in their RAR archives); perspectives Direct (`02-MK8diff`), Diffuse (`03-Mk2Hdiff`) and Rear (`08-rear`). LibreOrgan Sampler 0.9.152 or later.
+- **Expects:** library root of any name, holding the trees `002306/pipes/Buckeburg_1noc_PED`, `002306/pipes/Buckeburg_3noc_OW`, `002306/pipes/Buckeburg_3noc_OW_TR`, `002306/pipes/Buckeburg_4noc_UW`, `002306/pipes/Buckeburg_4noc_UW_TR`, `002306/pipes/Buckeburg_5noc_HW`, `002306/pipes/Buckeburg_5noc_HW_TR`, `002307/pipes/Buckeburg_1noc_PED`, `002307/pipes/Buckeburg_4noc_UW` and `002307/pipes/Buckeburg_4noc_UW_TR`.
+- **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **6.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
-  - **64 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **8.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
+  - **86 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,11 +33,15 @@ Put `Buckeburg Janke Organ.portable.json` into your LibreOrgans folder (Configur
 ├── 002306\
 │   ├── pipes\Buckeburg_1noc_PED\
 │   ├── pipes\Buckeburg_3noc_OW\
+│   ├── pipes\Buckeburg_3noc_OW_TR\
 │   ├── pipes\Buckeburg_4noc_UW\
-│   └── pipes\Buckeburg_5noc_HW\
+│   ├── pipes\Buckeburg_4noc_UW_TR\
+│   ├── pipes\Buckeburg_5noc_HW\
+│   └── pipes\Buckeburg_5noc_HW_TR\
 └── 002307\
     ├── pipes\Buckeburg_1noc_PED\
-    └── pipes\Buckeburg_4noc_UW\
+    ├── pipes\Buckeburg_4noc_UW\
+    └── pipes\Buckeburg_4noc_UW_TR\
 ```
 
 ## Stop List
@@ -54,9 +58,9 @@ Put `Buckeburg Janke Organ.portable.json` into your LibreOrgans folder (Configur
 | Ped Posaune 16' | HW Tertia 1 3/5' | OW Flote 4' | BW Terzflote 1 3/5' |
 | Ped Trompete 8' | HW Octave 2' | OW Quinta 1 1/3' | BW Sifflote 1' |
 | Ped Trompete 4' | HW Cornet 4f 4' | OW Nasat 2 2/3' | BW Regal 8' |
-| Blower On/Off | HW Mixtur 1 1/3' | OW Mixtur 1' |  |
+|  | HW Mixtur 1 1/3' | OW Mixtur 1' |  |
 |  | HW Fagott 16' | OW Waldflote 2' |  |
 |  | HW Trompete 8' | OW Sesquialtera 1 1/3' |  |
 |  |  | OW Voxhumana 8' |  |
 
-<!-- published by @zurekjiri (issue #299, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #348, 2026-11-28) -->

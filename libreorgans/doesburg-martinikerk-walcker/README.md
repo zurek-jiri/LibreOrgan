@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Doesburg, Martinikerk, Walcker, as recorded by Sonus Paradisi in 3 perspectives, Dry, Diffuse and Rear, each on its own audio route: 5 divisions and 77 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Doesburg, Martinikerk, Walcker, as recorded by Sonus Paradisi in 3 perspectives, Dry, Diffuse and Rear, each on its own audio route: 5 divisions and 76 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Doesburg, Martinikerk, Walcker.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html); the folders `002292`, `002293` and `002294` (as they come, or in their RAR archives); perspectives Dry (`su`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.147 or later.
-- **Expects:** library root of any name, holding the trees `002292/I_Man`, `002292/II_Pos`, `002292/Ped`, `002293/I_MAN`, `002293/II_Pos`, `002293/III`, `002293/IV`, `002293/Ped`, `002294/I_MAN`, `002294/II_Pos`, `002294/III`, `002294/IV` and `002294/Ped`.
-- **Audio layout:** every division has the routes dry, diffuse, rear and noises; auxiliary (unused).
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html](https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html); the folders `002292`, `002293` and `002294` (as they come, or in their RAR archives); perspectives Dry (`su`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.152 or later.
+- **Expects:** library root of any name, holding the trees `002292/I_Man`, `002292/II_Pos`, `002292/II_Pos_tr`, `002292/Ped`, `002293/I_MAN`, `002293/II_Pos`, `002293/III`, `002293/IV`, `002293/Ped`, `002294/I_MAN`, `002294/II_Pos`, `002294/II_Pos_tr`, `002294/III`, `002294/III_tr`, `002294/IV`, `002294/IVTrem` and `002294/Ped`.
+- **Audio layout:** every division has the routes dry, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **10 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **81 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **9.2 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **12 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **92 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -34,6 +34,7 @@ Put `Doesburg Martinikerk Walcker.portable.json` into your LibreOrgans folder (C
 ├── 002292\
 │   ├── I_Man\
 │   ├── II_Pos\
+│   ├── II_Pos_tr\
 │   └── Ped\
 ├── 002293\
 │   ├── I_MAN\
@@ -44,8 +45,11 @@ Put `Doesburg Martinikerk Walcker.portable.json` into your LibreOrgans folder (C
 └── 002294\
     ├── I_MAN\
     ├── II_Pos\
+    ├── II_Pos_tr\
     ├── III\
+    ├── III_tr\
     ├── IV\
+    ├── IVTrem\
     └── Ped\
 ```
 
@@ -75,6 +79,5 @@ Put `Doesburg Martinikerk Walcker.portable.json` into your LibreOrgans folder (C
 | P. Posaune 16' |  |  |  |  |
 | P. Tuba 8' |  |  |  |  |
 | P. Clairon harm. 4' (Trsm.) |  |  |  |  |
-| Blower noise |  |  |  |  |
 
-<!-- published by @zurekjiri (issue #307, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #350, 2026-11-28) -->

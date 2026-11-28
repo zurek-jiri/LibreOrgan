@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Hildesheim, St. Andreas, Beckerath Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html](https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html); the folders `002718` and `002719` (as they come, or in their RAR archives); perspectives Direct (`02dif-PE`), Diffuse (`03dis-PE`) and Rear (`04rea-PE`). LibreOrgan Sampler 0.9.148 or later.
-- **Expects:** library root of any name, holding the trees `002718/pipes/1RW`, `002718/pipes/2HW`, `002718/pipes/3OW`, `002718/pipes/PED`, `002719/pipes/1RW`, `002719/pipes/2HW`, `002719/pipes/3OW`, `002719/pipes/4BW` and `002719/pipes/PED`.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html](https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html); the folders `002718` and `002719` (as they come, or in their RAR archives); perspectives Direct (`02dif-PE`), Diffuse (`03dis-PE`) and Rear (`04rea-PE`). LibreOrgan Sampler 0.9.152 or later.
+- **Expects:** library root of any name, holding the trees `002718/pipes/1RW`, `002718/pipes/1RWTR`, `002718/pipes/2HW`, `002718/pipes/3OW`, `002718/pipes/3OWTR`, `002718/pipes/PED`, `002719/pipes/1RW`, `002719/pipes/1RWTR`, `002719/pipes/2HW`, `002719/pipes/3OW`, `002719/pipes/3OWTR`, `002719/pipes/4BW`, `002719/pipes/4BWTR` and `002719/pipes/PED`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **12 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **13 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **119 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.148.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **17 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **19 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **165 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,14 +33,19 @@ Put `Hildesheim St. Andreas Beckerath.portable.json` into your LibreOrgans folde
 <a sample location>\
 ├── 002718\
 │   ├── pipes\1RW\
+│   ├── pipes\1RWTR\
 │   ├── pipes\2HW\
 │   ├── pipes\3OW\
+│   ├── pipes\3OWTR\
 │   └── pipes\PED\
 └── 002719\
     ├── pipes\1RW\
+    ├── pipes\1RWTR\
     ├── pipes\2HW\
     ├── pipes\3OW\
+    ├── pipes\3OWTR\
     ├── pipes\4BW\
+    ├── pipes\4BWTR\
     └── pipes\PED\
 ```
 
@@ -66,4 +71,4 @@ Put `Hildesheim St. Andreas Beckerath.portable.json` into your LibreOrgans folde
 | Blower On/Off |  |  |  |  |
 | P. Glocken-Ped 8' (Trsm.) |  |  |  |  |
 
-<!-- published by @zurekjiri (issue #322, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #356, 2026-11-28) -->
