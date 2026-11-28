@@ -39425,27 +39425,10 @@ void MainComponent::showConfigurationEditor()
                     "The table of the organ's noises (the top bar's Noises button): each on or off, what it is, its volume and the volume of each of its perspectives. "
                     "The noises' own buttons (blower, zimbelstern ...) stand on the grid among the stops.",
                     "Noises window");
-                // 0.9.150, TEMPORARY (the user): the noises' "of a Hauptwerk definition" row is gone (every published
-                // organ was saved anew with its noises); in its place the same service for the recorded tremulants,
-                // until those configurations are saved anew too.
-                juce::ignoreUnused(soundCount);   // the note of the noises' row that stood here
-                int recordedRows = 0;
-                for (int m = 0; m <= juce::jmin(o.manualCount, SamplerEngine::maxManuals - 1); ++m)
-                    for (const auto& entry : o.manualConfigs[(size_t)m].stopBuild.entries) if (entry.isTremmed()) ++recordedRows;
-                addButtonWithNote("Recorded tremulants of a Hauptwerk definition", "Add...", juce::String(recordedRows) + " recording(s) in this organ", [&o]
-                    {
-                        auto chooser = std::make_shared<juce::FileChooser>("The organ's Hauptwerk definition", o.lastSettingsDirectory, "*.Organ_Hauptwerk_xml", true);
-                        juce::Component::SafePointer<MainComponent> safeThis(&o);
-                        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [safeThis, chooser](const juce::FileChooser& fc)
-                        {
-                            if (safeThis != nullptr && fc.getResult().existsAsFile()) safeThis->addTremulantsFromDefinition(fc.getResult());
-                        });
-                    },
-                    "For an organ made before recorded tremulants were read: adds the stops' recordings with a tremulant running, as the organ's Hauptwerk definition "
-                    "names them, to the LOADED organ - rows of the Stop List's second level under their stops - and sets the tremulants' rates as the definition has them. "
-                    "LibreOrgan Sampler does not load the definition: as with the pipes, it is read for where the sample folders lie and what they belong to. "
-                    "Nothing else of your configuration is touched - stops, transmissions, their voicing and the grid stay as they are. Save the configuration afterwards.",
-                    "Recorded tremulants of a Hauptwerk definition");
+                // 0.9.154 (the user): the temporary rows "Noises / Recorded tremulants of a Hauptwerk definition" are
+                // gone - every published organ was saved anew with its noises and its recordings. (The functions
+                // addNoisesFromDefinition / addTremulantsFromDefinition stay for the test hooks.)
+                juce::ignoreUnused(soundCount);   // the note of the row that stood here
                 addButton("Noises of a folder", "Add...", [&o]
                     {
                         auto chooser = std::make_shared<juce::FileChooser>("The folder with the organ's noises", o.lastSampleFolderDirectory, juce::String(), true);

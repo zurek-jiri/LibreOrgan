@@ -12,6 +12,13 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.154] - 2026-11-28
+
+### Removed
+- Configuration Editor > Noises: the temporary row "Recorded tremulants of a
+  Hauptwerk definition" (it served organs made before the recorded tremulants
+  were read; the published organs carry their recordings now).
+
 ## [0.9.153] - 2026-11-28
 
 ### Changed

@@ -2629,20 +2629,6 @@ On: every division a coupler reaches adds the noise of its own key.
 Opens [The Noises window](#the-noises-window), as the top bar's Noises button
 does.
 
-### Recorded tremulants of a Hauptwerk definition
-
-For an organ made before recorded tremulants were read: adds the
-[recorded tremulants](#recorded-tremulants) of the organ's Hauptwerk
-definition to the loaded organ. LibreOrgan Sampler does not load the
-definition: as with the pipes, it is read for where the sample folders lie and
-what they belong to - here the stop each recording belongs to, its tremulant
-and that tremulant's speed. A recording finds its stop by the sample folder
-the stop plays, so renamed and rearranged stops get theirs. The tremulant
-rates are set as the definition has them; each recording takes its stop's
-voicing with the definition's level difference. Stops, transmissions, the
-stops' voicing and the grid stay as they are; only the recordings are read.
-Save the configuration afterwards.
-
 ### Noises of a folder
 
 Without a definition: reads a folder of noises by the names of its folders -

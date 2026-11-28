@@ -2659,20 +2659,6 @@ static const char* const kManualText_part13 =
     "Opens [The Noises window](#the-noises-window), as the top bar's Noises button\n"
     "does.\n"
     "\n"
-    "### Recorded tremulants of a Hauptwerk definition\n"
-    "\n"
-    "For an organ made before recorded tremulants were read: adds the\n"
-    "[recorded tremulants](#recorded-tremulants) of the organ's Hauptwerk\n"
-    "definition to the loaded organ. LibreOrgan Sampler does not load the\n"
-    "definition: as with the pipes, it is read for where the sample folders lie and\n"
-    "what they belong to - here the stop each recording belongs to, its tremulant\n"
-    "and that tremulant's speed. A recording finds its stop by the sample folder\n"
-    "the stop plays, so renamed and rearranged stops get theirs. The tremulant\n"
-    "rates are set as the definition has them; each recording takes its stop's\n"
-    "voicing with the definition's level difference. Stops, transmissions, the\n"
-    "stops' voicing and the grid stay as they are; only the recordings are read.\n"
-    "Save the configuration afterwards.\n"
-    "\n"
     "### Noises of a folder\n"
     "\n"
     "Without a definition: reads a folder of noises by the names of its folders -\n"
@@ -2828,8 +2814,6 @@ static const char* const kManualText_part13 =
     "it. Then come the configuration's own folder, the lines the program remembered\n"
     "by itself (it writes only **under** the marker and never changes yours) and\n"
     "the drives - among these the fastest source wins, whatever their order in the\n"
-    ;
-static const char* const kManualText_part14 =
     "file: unpacked folders on NVMe, then archives on NVMe, then archives on\n"
     "another SSD, then unpacked folders there, a hard disk, a network folder (on a\n"
     "computer with few cores unpacked folders come before archives - see\n"
@@ -2844,6 +2828,8 @@ static const char* const kManualText_part14 =
     "\n"
     "The relocation of a whole library: keep every tree of an organ under one\n"
     "root; the root's parent is what the program remembers. The LibreOrgans\n"
+    ;
+static const char* const kManualText_part14 =
     "folder can be moved as a whole: nothing in it points at its own place.\n"
     "\n"
     "## 10.4 Hauptwerk import rules\n"
@@ -3030,8 +3016,6 @@ static const char* const kManualText_part14 =
     "\n"
     "## 10.9 Retune buses and the full kernel\n"
     "\n"
-    ;
-static const char* const kManualText_part15 =
     "A pipe is retuned by its own recorded deviation (its rank's smpl pitches),\n"
     "the temperament of the played key, the random detune, wind and tremulant,\n"
     "and the transposition of its transmission - every pipe and every rank for\n"
@@ -3046,6 +3030,8 @@ static const char* const kManualText_part15 =
     "stay in the pipes themselves (temperament, detune) play through the linear\n"
     "kernel, or through the 8-tap sinc with phase interpolation above *Full\n"
     "kernel from (sounding pitch)*; the sinc also serves the first 1.3 s of a\n"
+    ;
+static const char* const kManualText_part15 =
     "half-rate release and the loop splices of the high pipes. 32 or 36 kHz\n"
     "storage is no retune: its images stay.\n"
     "\n"

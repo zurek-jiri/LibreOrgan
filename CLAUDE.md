@@ -7264,6 +7264,12 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   LibreOrgan_0.9.153.exe is the LOCAL build (his program ran when the CI exe came). The replies for pasztor63 are
   DRAFTS in F:\temp\issue342_reply.md and issue343_reply.md - I cannot post (no token: the credential must not be
   read); he posts them or says how.
+  0.9.154 (28 Nov 2026 night, his order minutes after 0.9.153: "odstranit button add tremulants z HW ODF ... Hned
+  dej na github ... přeuložil jsem všecky publikované konfigy s tremulanty"): the temporary Editor row "Recorded
+  tremulants of a Hauptwerk definition" and its manual heading are GONE (Configuration Editor > Noises: Noises on,
+  Noises volume, Key noises follow the couplers, Noises window, Noises of a folder, Noises of this organ - pictured);
+  addTremulantsFromDefinition and the hook act ORGAN_TEST_TREMMED "definition" stay in the code for tests, like
+  addNoisesFromDefinition / ORGAN_TEST_NOISE_ODF.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
