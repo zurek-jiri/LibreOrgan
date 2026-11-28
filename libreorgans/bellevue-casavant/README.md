@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Bellevue, Casavant.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html](https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html); the folders `002096`, `002097`, `002098`, `002099` and `002100` (as they come, or in their RAR archives); perspectives Front and Rear (`07-rear`). LibreOrgan Sampler 0.9.146 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html](https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html); the folders `002096`, `002097`, `002098`, `002099` and `002100` (as they come, or in their RAR archives); perspectives Front and Rear (`07-rear`). LibreOrgan Sampler 0.9.150 or later.
 - **Expects:** library root of any name, holding the trees `002096/grand`, `002096/ped`, `002096/rec`, `002097/ped`, `002097/pos`, `002097/rec`, `002098/grand`, `002098/ped`, `002099/pos` and `002100/rec`.
 - **Audio layout:** every division has the routes front and rear; auxiliary (unused).
 - **RAM:**
-  - **5.0 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **7.2 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **50 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.146.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **6.2 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **9.2 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **62 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.150.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -79,4 +79,4 @@ Put `Bellevue Casavant op.3742.portable.json` into your LibreOrgans folder (Conf
 | Blower |  |  |  |
 | Clochettes |  |  |  |
 
-<!-- published by @zurekjiri (issue #277, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #338, 2026-11-28) -->

@@ -204,7 +204,7 @@
    "title": "Bellevue, Casavant",
    "folder": "bellevue-casavant",
    "zip": "Bellevue Casavant op.3742.portable.zip",
-   "zipBytes": 22708,
+   "zipBytes": 25375,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/bellevue-casavant/Bellevue%20Casavant%20op.3742.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/bellevue-casavant/README.md",
    "divisions": 4,
@@ -213,8 +213,8 @@
     "Front",
     "Rear"
    ],
-   "ramBytes": 5363136182,
-   "published": "2026-11-27",
+   "ramBytes": 6684159032,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/u-s-a/casavant-organ-model.html",
    "rootName": "OrganInstallationPackages",
@@ -237,11 +237,11 @@
     "002096/ped": "Ped_2opr_OctaveBasse8/02-suchy_Ped_2opr_OctaveBasse8|32|-5415162768870310507|-7519697654531556546;Ped_2opr_Soubasse16/02-suchy_Ped_2opr_Soubasse16|32|-5415162768870310507|-5478300869717743755;Ped_2opr_Soubasse16/04-rea_Ped_2opr_Soubasse16|32|-5415162768870310507|215272500537046374",
     "002098/grand": "Grand_bombarde/02-suchy_Grand_bombarde|61|3257789663153676937|6883879810985332478;Grand_FluteACheminee8/04-rea_Grand_FluteACheminee8|61|3257789663153676937|2392710733961701399;Grand_Violon8/04-rea_Grand_Violon8|61|3257789663153676937|-4535609698064740202",
     "002096/grand": "Grand_Doublette2/02-suchy_Grand_Doublette2|61|3257789663153676937|-1693648112159322180;Grand_fourniture/04-rea_Grand_Fourniture|122|9182304387326754078|-3826180187765747773;Grand_Prestant4/04-rea_Grand_Prestant4|61|3257789663153676937|-7554003720021213825",
-    "002099/pos": "Pos_BombardeEnChamade16/02-suchy_Pos_BombardeEnChamade16|61|3257789663153676937|-3652972782975098891;pos_fluteCeleste/04-rea_pos_fluteCeleste|49|1050596355787253606|6866490029758882950;pos_voceumana/04-rea_pos_voceumana|49|1050596355787253606|8525324405836839836",
-    "002097/pos": "pos_bourdon/02-suchy_pos_bourdon|61|3257789663153676937|94751175294552857;Pos_FluteFuseau4/02-suchy_Pos_FluteFuseau4|62|-1566317041869043183|1455172907985113801;Pos_Sesquialtera/04-rea_Pos_Sesquialtera|122|9182304387326754078|-7275027589230021136",
-    "002100/rec": "rec_Basson16/02-suchy_rec_Basson16|61|3257789663153676937|1000832737360712534;rec_Piccolo1/04-rea_rec_Piccolo1|61|3257789663153676937|-5986103190214137523;rec_voixhum8/04-rea_rec_voixhum8|61|3257789663153676937|225923415916435180",
-    "002096/rec": "rec_FluteDeCheminee4/02-suchy_rec_FluteDeCheminee4|61|3257789663153676937|-5730362888444129657;rec_Octave4/02-suchy_rec_Octave4|61|3257789663153676937|-1291932824822425048;rec_VoixCeleste8/04-rea_rec_VoixCeleste8|49|1050596355787253606|-1929444526131243088",
-    "002097/rec": "rec_hautbois/02-suchy_rec_hautbois|61|3257789663153676937|-7905922236084387648;rec_quarte2/02-suchy_rec_quarte2|61|3257789663153676937|-4705854360340421645;rec_quarte2/04-rea_rec_quarte2|61|3257789663153676937|-4705854360340421645"
+    "002099/pos": "Pos_BombardeEnChamade16/02-suchy_Pos_BombardeEnChamade16|61|3257789663153676937|-3652972782975098891;pos_flutedouce8/02-suchy_pos_flutedouce8|61|3257789663153676937|-3881021567613424656;pos_voceumana/04-rea_pos_voceumanaTr|49|1050596355787253606|-3013289683920162242",
+    "002097/pos": "pos_bourdon/02-suchy_pos_bourdon|61|3257789663153676937|94751175294552857;Pos_FluteFuseau4/02-suchy_Pos_FluteFuseau4|62|-1566317041869043183|1455172907985113801;Pos_Sesquialtera/04-rea_Pos_SesquialteraTr|61|3257789663153676937|5489457404627399244",
+    "002100/rec": "rec_Basson16/02-suchy_rec_Basson16|61|3257789663153676937|1000832737360712534;rec_Piccolo1/02-suchy_rec_Piccolo1tr|61|3257789663153676937|2258580217312310495;rec_voixhum8/04-rea_rec_voixhum8tr|61|3257789663153676937|7712316451771006568",
+    "002096/rec": "rec_FluteDeCheminee4/02-suchy_rec_FluteDeCheminee4|61|3257789663153676937|-5730362888444129657;rec_Octave4/02-suchy_rec_Octave4|61|3257789663153676937|-1291932824822425048;rec_VoixCeleste8/04-rea_rec_VoixCeleste8tr|49|1050596355787253606|-5565316860251311511",
+    "002097/rec": "rec_hautbois/02-suchy_rec_hautbois|61|3257789663153676937|-7905922236084387648;rec_quarte2/02-suchy_rec_quarte2|61|3257789663153676937|-4705854360340421645;rec_quarte2/04-rea_rec_quarte2tr|61|3257789663153676937|8667041803409985629"
    },
    "featured": false
   },
