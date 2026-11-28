@@ -200,6 +200,7 @@ struct Stop
     // Set by the owner under the control lock (MainComponent::applyStopGroups).
     Stop* tremmedOfPtr = nullptr;
     int tremmedManual = -1;                  // -1 = an ordinary stop
+    float tremmedHz = 0.0f;                  // the speed of the tremulant it was recorded with (0 = not known); SamplerEngine::setRecordingSpeed
     std::vector<Stop*> tremmedAlternates;    // the parent's side: its recordings
     // 0.9.127: the button of a NOISE of its own on the grid (blower, zimbelstern, rossignol, calcant ...): a stop
     // without pipes whose switch starts and ends that noise (set by MainComponent::syncNoiseButtonStops after every
@@ -1488,6 +1489,12 @@ public:
     // second level) instead of the model; false = the model on the plain pipes for every stop. Switching it (or the
     // tremulant itself) under held keys crossfades the sounding pipes over.
     void setManualTremulantRecorded(int manualIndex, bool recorded);
+    // WHICH tremulant plays a recording: the one that shakes the HOME division of its stop - whichever keyboard
+    // plays the pipes (a transmission sounds through the home division: its swell, wind and tremulant). The
+    // tremulant the recording names ("Tremmed by") first; another tremulant shaking that division plays it when it
+    // runs at the recording's speed and no other recording of the stop names it (a stop moved to another division).
+    void setRecordingSpeed(Stop* recording, float hz);          // the speed of the tremulant it was recorded with
+    bool recordingHasTremulant(const Stop* recording) const;    // false: no tremulant shaking its home division can play it as things stand
     // The rows of the second level changed (MainComponent::applyStopGroups): held keys are looked at again.
     void tremmedStopsChanged();
     // A stop that holds samples of its own or in a perspective rank (a recording that is not loaded holds none).

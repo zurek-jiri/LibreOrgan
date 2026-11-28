@@ -12,6 +12,24 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.151] - 2026-11-28
+
+### Fixed
+- **A transmission plays its stop's recorded tremulant.** Which recording
+  sounds is decided by the tremulant that shakes the stop's home division -
+  the division whose swell, wind and tremulant act on the pipes whichever
+  keyboard plays them. It was asked of the division of the pressed key, so
+  through a transmission the recording stayed silent.
+- **A stop moved to another division keeps its recorded tremulant.** Its
+  recording still names the tremulant it was made with (*Tremmed by*); in the
+  new division it is played by any tremulant shaking that division that runs
+  at the recording's speed, unless another recording of the stop names that
+  tremulant. Where none does, the stop plays with the tremulant model and the
+  recording's button says *needs trem. at N Hz*; the tick *Recorded tremulant
+  (N Hz)* is shown for such a division too and sets the speed.
+- A stop folder's child dragged to another division on the grid takes its
+  recordings along.
+
 ## [0.9.150] - 2026-11-28
 
 ### Added

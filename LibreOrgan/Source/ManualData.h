@@ -1037,7 +1037,9 @@ static const char* const kManualText_part5 =
     "tremulant runs and its tick *Recorded tremulant (N Hz)* is on, the recording\n"
     "sounds instead of the stop - through the stop's button, its transmissions and\n"
     "the couplers; the tremulant model is silent for it. A key or a perspective\n"
-    "the recording has no files for plays the plain pipe with the model.\n"
+    "the recording has no files for plays the plain pipe with the model. The\n"
+    "tremulant that counts is the one shaking the stop's own division, whichever\n"
+    "keyboard plays the pipes - a transmission trembles with its home division.\n"
     "\n"
     "- **The tick** stands beside the tremulant's rate in the Divisions dialog, in\n"
     "  the right-click *Tremulant settings...* and in the Configuration Editor\n"
@@ -1056,6 +1058,11 @@ static const char* const kManualText_part5 =
     "  it); on the grid indent the stop under its stop and choose the division in\n"
     "  its *Tremmed by* box. Transmissions of a stop moved there are deleted - the\n"
     "  program asks first.\n"
+    "- **A stop moved to another division** keeps its recording and the tremulant\n"
+    "  it names. There any tremulant shaking that division plays it while it runs\n"
+    "  at the recording's speed; until then the button of the recording says\n"
+    "  *needs trem. at N Hz* and the stop plays with the model. The tick of that\n"
+    "  division's tremulant sets the speed.\n"
     "- A tremulant switched under held keys crosses the pipes over in phase\n"
     "  ([Recorded tremulant: crossfade](#recorded-tremulant-crossfade)); the\n"
     "  release of a recording gets a share of the model\n"
@@ -1205,6 +1212,8 @@ static const char* const kManualText_part5 =
     "order the engine applies it - *Division volume* (a route's only), *Volume*,\n"
     "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
     "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
+    ;
+static const char* const kManualText_part6 =
     "the module you looked at last.\n"
     "\n"
     "Before every module's name stands its switch, **ON** or **OFF** (the same\n"
@@ -1212,8 +1221,6 @@ static const char* const kManualText_part5 =
     "setting is kept. Right-click the switch to learn a MIDI control for it. A\n"
     "route's linked module shows the perspective's switch and is locked like its\n"
     "sliders. The order of *Volume*, *Channel separation* and *Equalizer* is\n"
-    ;
-static const char* const kManualText_part6 =
     "yours: hold a module down for two seconds - or right-click the chain and\n"
     "choose *Arrange the chain* - then drag a framed module to its place and\n"
     "click anywhere else to finish. *Division volume* stays first\n"
@@ -1407,6 +1414,8 @@ static const char* const kManualText_part6 =
     "through - the output chosen in the desktop's sound settings. Beside the\n"
     "cards stands the system's default output (under ALSA), which is PipeWire\n"
     "too. A configuration saved on a card's direct ALSA device moves to the same\n"
+    ;
+static const char* const kManualText_part7 =
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
     "sound cards. The cards' direct ALSA devices stay hidden: the unfolded *ALSA*\n"
     "section has the tick box *Show the cards' direct ALSA devices* for the rare\n"
@@ -1414,8 +1423,6 @@ static const char* const kManualText_part6 =
     "opened directly plays nowhere else until every cable is removed from it.\n"
     "\n"
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
-    ;
-static const char* const kManualText_part7 =
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
     "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
     "dropped on it waits until the card is free.\n"
@@ -1609,6 +1616,8 @@ static const char* const kManualText_part7 =
     "  ([Noises volume](#noises-volume)),\n"
     "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
     "  *Free drawknob noises: a random one at every press* (instead of each\n"
+    ;
+static const char* const kManualText_part8 =
     "  button keeping its own) and *Add folder...*\n"
     "  ([Noises of a folder](#noises-of-a-folder)), which adds to the noises the\n"
     "  organ has.\n"
@@ -1616,8 +1625,6 @@ static const char* const kManualText_part7 =
     "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
     "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
     "is on. Merging another organ adds its noises; only what the loaded organ\n"
-    ;
-static const char* const kManualText_part8 =
     "already has is left out.\n"
     "\n"
     "Nothing clicks while an organ loads.\n"
@@ -1811,6 +1818,8 @@ static const char* const kManualText_part8 =
     "### Measurement limit of DSP power\n"
     "\n"
     "How much of its period the longest callback of the busiest device may take\n"
+    ;
+static const char* const kManualText_part9 =
     "before the measurement counts a level as broken (60 to 100 %, default 85).\n"
     "85 leaves headroom for what the computer does besides; 100 counts a level\n"
     "as broken only when the driver really called late - the limit it finds breaks\n"
@@ -1818,8 +1827,6 @@ static const char* const kManualText_part8 =
     "\n"
     "### Measure the maximum polyphony\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
     "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
     "struck on every division faster and wider until the voices stop rising, the\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
     "default 180).\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "### Velocity layers: an unticked _128 never plays\n"
     "\n"
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "\n"
     "### Treble per key: shelf start frequency\n"
     "\n"
-    ;
-static const char* const kManualText_part10 =
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
     "\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "### Program windows\n"
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
+    ;
+static const char* const kManualText_part11 =
     "screens](#26-two-program-windows-screens-small-screens)).\n"
     "\n"
     "### Melody/bass couplers: new extreme key only\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
@@ -2417,6 +2424,8 @@ static const char* const kManualText_part11 =
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
+    ;
+static const char* const kManualText_part12 =
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
     "\n"
@@ -2424,8 +2433,6 @@ static const char* const kManualText_part11 =
     "\n"
     "The keyboard plays this many semitones away from what it sends (-24 to +24).\n"
     "\n"
-    ;
-static const char* const kManualText_part12 =
     "### Compass\n"
     "\n"
     "*Compass from* and *Compass to*: the division's lowest and highest key\n"
@@ -2619,6 +2626,8 @@ static const char* const kManualText_part12 =
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
     "you with a box: the texts are collected quietly under **Messages** in the\n"
     "*About & licences...* window (the entry above the manual), and a button\n"
+    ;
+static const char* const kManualText_part13 =
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
     "warnings and the polyphony report still come as boxes.\n"
     "\n"
@@ -2626,8 +2635,6 @@ static const char* const kManualText_part12 =
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
-    ;
-static const char* const kManualText_part13 =
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
@@ -2821,6 +2828,8 @@ static const char* const kManualText_part13 =
     "caption's footage is the sounding one). A configuration whose rows an older\n"
     "import named with the prefix is renamed the same way when it loads, every\n"
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
+    ;
+static const char* const kManualText_part14 =
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
     "Transpositions come from the definition's pipe notes against the file names\n"
@@ -2828,8 +2837,6 @@ static const char* const kManualText_part13 =
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
     "decided is written to `ImportReports` in the settings folder.\n"
-    ;
-static const char* const kManualText_part14 =
     "\n"
     "## 10.5 The tuning gate of a perspective join\n"
     "\n"
@@ -3023,6 +3030,8 @@ static const char* const kManualText_part14 =
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
+    ;
+static const char* const kManualText_part15 =
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
     "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"
@@ -3030,8 +3039,6 @@ static const char* const kManualText_part14 =
     "through a second reader (unarr) after the first fails, logged once. A\n"
     "configuration never names an archive: every path is a disk path, and a folder\n"
     "that is also on the disk wins over the archive unless your own lines of\n"
-    ;
-static const char* const kManualText_part15 =
     "`Locations.txt` put the archive first.\n"
     "\n"
     "**Archives or unpacked folders - which loads faster.** Unpacking is the\n"

@@ -7097,6 +7097,9 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   every model-shaken voice takes the shelf kernel all the time. No tremulant running = no cost; steady loss 0 =
   the old cost. The self-test's tutti lines are ~5 % higher from this build on: compare against
   %TEMP%\selftest_0150c.txt, not a regression of the kernels (kerneltest OK, 81 lines / 35 OK / 0 WRONG).
+  CORRECTION (the 0.9.151 self-test an hour later, the same steady loss in it: 0.287 ms): the "+4-5 %" is NOT
+  proven - five runs gave 0.285 / 0.300 / 0.294 / 0.305 / 0.287, i.e. the machine's own spread. I told the user a
+  price I had not established; the mechanism (the shelf on through the whole cycle) is real, its size unknown.
   Test recipes: test_0127b.ps1 -Odf "%TEMP%\noise0127_trem3\cfg\Altenbruch SemiDry Extended.json" with
   ORGAN_TEST_TREMMED "..|load|1|Gedackt8trRP|0/1" under ORGAN_TEST_RECORD (the record starts ~10 s after the
   load's end - read "recording started" in the log and place the acts after it; a cold load of that organ takes
@@ -7108,6 +7111,39 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   file, not in the settings). NOT run: a real mouse on the Tremmed button, an organ with several perspectives
   (Stralsund: the in-place load of 2-4 ranks), a click during "(loading)" (ignored by the code), the automatic
   packing with an in-place load, Linux / macOS.
+  0.9.151 (28 Nov 2026 afternoon; LOCAL, not pushed; the user: "když přesunu rejstřík do jiné divize, tak jeho
+  tremmed přestane hrát ... když je rejstřík ve své divizi a někde jinde je jeho transmise, ta nehraje tremulant
+  původního rejstříku"): MY ANSWER FIRST CLAIMED THAT A TRANSMISSION IS SHAKEN BY THE RECEIVING DIVISION'S TREMULANT -
+  WRONG, said without reading; he: "Ta se dnes chová jako na opravdových varhanách! ... Kurva, tvoje neznalost
+  kontextu je alarmující ... Nikdy nesmíš něco plácat bez kontextu. A nekódovat bez znalosti celého kontextu."
+  THE FACT (startNote ~7191, release ~7719): `expressionManual = stop->primaryManual` - a transmission's voice goes
+  through the route of the stop's HOME division: swell, wind and the tremulant MODEL are the home division's. THE
+  BUG: variantSounds / variantRankSounds / swapTremulantVariants asked `recordedDriverOf(the KEY's division)`.
+  NOW `Impl::homeOf(stop)` (routeOwner's primaryManual) is the division asked at all three places (the key's
+  division is ignored), and `recordingAnswers(recording, driver)`: the tremulant the recording NAMES ("Tremmed by",
+  tremmedManual) first - it decides with two recordings on one stop (Altenbruch RW: trRP by RW's 6.4 Hz, TR by the
+  general 4.8 Hz) -, else another tremulant shaking the home division that runs at the recording's speed
+  (`Stop::tremmedHz` = tremulantRecordedHz of the division it names, set by syncTremulantRecorded through
+  `engine.setRecordingSpeed`; +-0.011 Hz) unless another recording of the stop names that tremulant. A changed RATE
+  now sets tremSwapPending (setManualTremulant). `engine.recordingHasTremulant(stop)`: named == home, or the named
+  tremulant targets home, or ANY tremulant shaking home (own, or one that names it among its targets) runs at the
+  speed - false -> the recording's button reads "Tremmed I." + a second line "needs trem. at 6.4 Hz" (HIS wording
+  after four tries: never "here", never the division - "libovolný trem", it may be another division's that shakes
+  this one; it tells that the recording comes on by itself) and a log line. MainComponent: `tremulantRecordingsHz
+  (manual)` (the rows naming it, else the recordings of stops LIVING in the division that name another tremulant),
+  `tremulantHasRecordings` (the tick is shown: three places), `tremulantRecordedNow` (the tick as SHOWN: on and the
+  rate at the speed - a tremulant that plays recordings by speed alone is never auto-unticked, so a loaded organ is
+  not made "changed"), setTremulantRecorded sets the rate to that speed. moveStopToDivision (the grid drag): a
+  CHILD now takes its recordings along (they stayed and became the recordings of the row above), a recording
+  dragged alone loses "tremmed" (as in the Stop List). MEASURED on Altenbruch with the model's depth 0 (a tremolo
+  heard = a recording; craft_trsm.py / craft_depth0.py; ORGAN_TEST_RECORD_TRANSMISSIONS=1 keeps the wanted stops'
+  transmissions on; ORGAN_TEST_DROP needs a cell the grid dump lists as free - "cell MISSING" = nothing moved and a
+  silent recording): RW Gedackt 8 through a transmission played on HW: RW's tremulant on -> 6.27 Hz, depth 2.4 dB
+  (trRP), the general one -> 4.8 Hz (TR), else steady; the stop dragged RW -> Pedal: pedal tremulant at 4.8 -> TR,
+  at 6.4 -> trRP, at 5.5 -> steady, at 4.8 again -> TR. A tremulant's on/off set in a configuration file is not
+  taken by a hook load (acts must fall inside the recording: record 45-52 s, acts from second 52). VERSION LESSON
+  (he: "a proč nezvedáš čísla verzí? 150 už jsme měli"): I deployed four builds as 0.9.150 because nothing was
+  pushed - WRONG: every exe put into C:\LibreOrgan is a delivered build = a new number, pushed or not.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division

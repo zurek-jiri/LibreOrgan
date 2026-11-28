@@ -13338,9 +13338,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 }
                 {   // 0.9.150: the tick follows the model (the right-click dialog and the Editor set it too); it comes and goes with the recordings
                     auto& tick = tremulantRecordedButtons[(size_t)manual];
-                    const bool shown = tremulantRateSliders[(size_t)manual].isVisible() && owner.anyTremmedRows(manual);
+                    const bool shown = tremulantRateSliders[(size_t)manual].isVisible() && owner.tremulantHasRecordings(manual);   // also a division a stop with recordings was moved into
                     tick.setButtonText(owner.tremulantRecordedText(manual));
-                    tick.setToggleState(config.tremulantRecorded, juce::dontSendNotification);
+                    tick.setToggleState(owner.tremulantRecordedNow(manual), juce::dontSendNotification);
                     if (tick.isVisible() != shown) { tick.setVisible(shown); resized(); }
                 }
                 tremulantDepthSliders[(size_t)manual].setValue(config.tremulantDepthCents,
@@ -25820,13 +25820,18 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
     size_t i = 0;
     while (i < from.entries.size() && stopBuildKey(from.entries[i].name) != stopBuildKey(stop->name)) ++i;
     if (i >= from.entries.size()) return;
-    // A stop folder takes its indented children along; a child leaves its folder.
+    // A stop folder takes its indented children along; a child leaves its folder - with its recordings with a
+    // tremulant (0.9.150: the rows of the second level right under it; left behind they would have become the
+    // recordings of the row above them).
     size_t count = 1;
     if (!from.entries[i].child)
         while (i + count < from.entries.size() && from.entries[i + count].child) ++count;
+    else if (!from.entries[i].isTremmed())
+        while (i + count < from.entries.size() && from.entries[i + count].isTremmed()) ++count;
     std::vector<ManualConfig::StopBuild::Entry> block(from.entries.begin() + (long)i, from.entries.begin() + (long)(i + count));
     from.entries.erase(from.entries.begin() + (long)i, from.entries.begin() + (long)(i + count));
     block.front().child = false;
+    block.front().tremmedManual = -1;   // a recording dragged away alone is a row of its own there (as in the Stop List)
     std::vector<std::pair<juce::String, juce::String>> renamed;   // old name -> new name
     for (auto& entry : block)
     {
@@ -26706,10 +26711,38 @@ bool MainComponent::tremmedRowsLoaded(int tremulantManual) const
     return false;
 }
 
+// The speed of the recordings a division's tremulant can play: of the rows that name it ("Tremmed by"); a
+// tremulant no row names plays the recordings of the stops that LIVE in its division when it runs at their speed
+// (a stop moved here from another division keeps "Tremmed by" the tremulant it was recorded with; so do the
+// recordings of a general tremulant in the divisions it shakes). 0 = none, or not measured yet.
+float MainComponent::tremulantRecordingsHz(int manual) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return 0.0f;
+    if (anyTremmedRows(manual)) return manualConfigs[(size_t)manual].tremulantRecordedHz;
+    if (manual > manualCount || !manualConfigs[(size_t)manual].stopBuild.active) return 0.0f;
+    for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
+        if (entry.isTremmed() && entry.tremmedManual != manual && entry.tremmedManual < SamplerEngine::maxManuals)
+            if (const float hz = manualConfigs[(size_t)entry.tremmedManual].tremulantRecordedHz; hz > 0.0f) return hz;
+    return 0.0f;
+}
+
+bool MainComponent::tremulantHasRecordings(int manual) const
+{
+    return anyTremmedRows(manual) || tremulantRecordingsHz(manual) > 0.0f;
+}
+
+// The tick as it is SHOWN: on, and the rate stands at the recordings' speed.
+bool MainComponent::tremulantRecordedNow(int manual) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals || !manualConfigs[(size_t)manual].tremulantRecorded) return false;
+    const float speed = tremulantRecordingsHz(manual);
+    return speed <= 0.0f || std::abs(manualConfigs[(size_t)manual].tremulantRateHz - speed) <= 0.011f;
+}
+
 juce::String MainComponent::tremulantRecordedText(int manual) const
 {
     if (manual < 0 || manual >= SamplerEngine::maxManuals) return {};
-    const float hz = manualConfigs[(size_t)manual].tremulantRecordedHz;
+    const float hz = tremulantRecordingsHz(manual);
     return hz > 0.0f ? "Recorded tremulant (" + juce::String(hz, 1) + " Hz)" : juce::String("Recorded tremulant");
 }
 
@@ -26718,10 +26751,10 @@ void MainComponent::setTremulantRecorded(int manual, bool recorded)
     if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
     auto& config = manualConfigs[(size_t)manual];
     config.tremulantRecorded = recorded;
-    if (recorded && config.tremulantRecordedHz > 0.0f && std::abs(config.tremulantRateHz - config.tremulantRecordedHz) > 0.011f)
+    if (const float speed = tremulantRecordingsHz(manual); recorded && speed > 0.0f && std::abs(config.tremulantRateHz - speed) > 0.011f)
     {
         // The way back: the rate returns to the one the samples were recorded at.
-        config.tremulantRateHz = config.tremulantRecordedHz;
+        config.tremulantRateHz = speed;
         engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
     }
     CrashHandler::note("Tremulant of division " + juce::String(manual) + ": " + (recorded ? "its recorded samples (" + juce::String(config.tremulantRateHz, 2) + " Hz)" : juce::String("the model")));
@@ -26768,18 +26801,40 @@ void MainComponent::syncTremulantRecorded()
             }
             if (recordings.empty()) tried[(size_t)manual] = 0;
         }
-        if (config.tremulantRecorded && config.tremulantRecordedHz > 0.0f && std::abs(config.tremulantRateHz - config.tremulantRecordedHz) > 0.011f
+        // (Only for the tremulant the rows NAME: it plays them whatever its rate. A tremulant that plays recordings by
+        // their speed alone - tremulantRecordedNow - needs no unticking: off its speed the engine leaves them alone,
+        // and an organ loaded with such a division is not made "changed" by this.)
+        if (const float speed = tremulantRecordingsHz(manual); config.tremulantRecorded && speed > 0.0f && std::abs(config.tremulantRateHz - speed) > 0.011f
             && anyTremmedRows(manual))
         {
             // The rate was moved (a slider, MIDI, the Editor): the recording cannot follow - the model plays.
             config.tremulantRecorded = false;
             CrashHandler::note("Tremulant of division " + juce::String(manual) + ": the rate " + juce::String(config.tremulantRateHz, 2) + " Hz is not the recorded "
-                + juce::String(config.tremulantRecordedHz, 2) + " Hz - the model plays (\"Recorded tremulant\" unticked)");
+                + juce::String(speed, 2) + " Hz - the model plays (\"Recorded tremulant\" unticked)");
             configurationDirty = true;
             saveSettings();
         }
         engine.setManualTremulantRecorded(manual, config.tremulantRecorded);
     }
+    // Every recording knows the speed of the tremulant it names: another tremulant that shakes its stop's division
+    // plays it when it runs at that speed (a stop moved to another division).
+    bool captions = false;
+    for (auto* stop : engine.getStops())
+    {
+        if (stop->tremmedOfPtr == nullptr || stop->tremmedManual < 0 || stop->tremmedManual >= SamplerEngine::maxManuals) continue;
+        const float hz = manualConfigs[(size_t)stop->tremmedManual].tremulantRecordedHz;
+        if (std::abs(stop->tremmedHz - hz) > 0.0005f) engine.setRecordingSpeed(stop, hz);
+        const bool has = engine.recordingHasTremulant(stop);
+        if (const auto known = recordingTremulantSeen.find(stop->serial); known == recordingTremulantSeen.end() || known->second != has)
+        {
+            recordingTremulantSeen[stop->serial] = has;
+            captions = true;
+            if (!has)
+                CrashHandler::note("Recorded tremulant: \"" + stop->name + "\" (division " + juce::String(stop->primaryManual) + ") names the tremulant of division " + juce::String(stop->tremmedManual)
+                    + ", which does not shake this division, and the tremulant here does not run at its " + juce::String(hz, 2) + " Hz - the stop plays with the model");
+        }
+    }
+    if (captions && voicer != nullptr) voicer->updateStopStates();   // the recordings' buttons say so
 }
 
 void MainComponent::setTremmedRowDivision(int manual, const juce::String& name, int division)
@@ -34192,11 +34247,11 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         content->setTargetBoxes("Also shakes divisions", "The other divisions this tremulant shakes as well (one tremulant device for several divisions); its own always.",
             m, manualCount + 1, [this, m] { return manualConfigs[(size_t)m].tremulantTargetMask; },
             [this, m](uint8_t mask) { manualConfigs[(size_t)m].tremulantTargetMask = mask; engine.setManualTremulantTargets(m, mask); configurationDirty = true; saveSettings(); });
-    if (feature == "tremulant" && anyTremmedRows(m))   // 0.9.150: the stops recorded with this tremulant play their recordings - the same tick as in the Divisions dialog and the Editor
+    if (feature == "tremulant" && tremulantHasRecordings(m))   // 0.9.150: the stops recorded with this tremulant play their recordings - the same tick as in the Divisions dialog and the Editor
         content->setTick([this, m] { return tremulantRecordedText(m); },
             "The stops recorded with this tremulant running (the rows of the Stop List's second level) play their RECORDED samples while it is on - at the speed they were "
             "recorded at, which the rate is set to. Move the rate and the tick goes: the tremulant model plays every stop instead. Tick it again and the rate returns to the recorded one.",
-            "Recorded tremulants", [this, m] { return manualConfigs[(size_t)m].tremulantRecorded; },
+            "Recorded tremulants", [this, m] { return tremulantRecordedNow(m); },
             [this, m](bool on) { setTremulantRecorded(m, on); }, [this, m] { return (double)manualConfigs[(size_t)m].tremulantRateHz; });
     const int height = content->neededHeight();
     content->setSize(700, height);
@@ -39372,14 +39427,14 @@ void MainComponent::showConfigurationEditor()
                 addSlider("Tremulant rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, config.tremulantRateDefault(4.4),   // 0.9.150: the definition's speed, else the recordings'
                     [&config, applyTremulant](double value) { config.tremulantRateHz = (float)value; applyTremulant(); });
                 // 0.9.150: the same tick as under the rate in the Divisions dialog and in the right-click Tremulant settings.
-                addToggle("Tremulant: recorded samples", config.tremulantRecorded, [&o, manual](bool state)
+                addToggle("Tremulant: recorded samples", o.tremulantRecordedNow(manual), [&o, manual](bool state)
                     {
                         o.setTremulantRecorded(manual, state);
                         juce::Component::SafePointer<MainComponent> safe(&o);
                         juce::MessageManager::callAsync([safe] { if (safe != nullptr) safe->refreshConfigurationEditor(); });   // the rate above went back to the recorded one
                     },
                     "The stops recorded with this tremulant running (the rows of the Stop List's second level) play their recorded samples while it is on, "
-                    "at the speed they were recorded at (" + (config.tremulantRecordedHz > 0.0f ? juce::String(config.tremulantRecordedHz, 2) + " Hz" : juce::String("not known yet"))
+                    "at the speed they were recorded at (" + (o.tremulantRecordingsHz(manual) > 0.0f ? juce::String(o.tremulantRecordingsHz(manual), 2) + " Hz" : juce::String("not known yet"))
                     + "): the rate is set to it. Move the rate and this goes off - the tremulant model plays every stop. No such stops in the organ: it does nothing.",
                     "Tremulant: recorded samples");
                 addSlider("Tremulant depth", 0.0, 50.0, 0.1, " cents", config.tremulantDepthCents, 6.0,

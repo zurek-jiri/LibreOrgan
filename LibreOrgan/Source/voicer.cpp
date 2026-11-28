@@ -186,8 +186,19 @@ juce::String StopRow::caption() const
     if (auto* t = transmission()) return Voicer::transmissionLabel(stop, transmissionIndex);
     // 0.9.150: a recording with a tremulant names the division whose tremulant plays it, and says when it is not in the memory.
     if (tremmedRow())
-        return "Tremmed " + divisionNames[juce::jlimit(0, 7, stop->tremmedManual)].replace("Pedal", "P.")
-            + (SamplerEngine::stopHoldsSamples(stop) ? "" : stop->reloading.load(std::memory_order_relaxed) ? "  (loading)" : "  (not loaded)");
+    {
+        const juce::String name = "Tremmed " + divisionNames[juce::jlimit(0, 7, stop->tremmedManual)].replace("Pedal", "P.");
+        if (!SamplerEngine::stopHoldsSamples(stop)) return name + (stop->reloading.load(std::memory_order_relaxed) ? "  (loading)" : "  (not loaded)");
+        // Its stop lives in a division the tremulant it names does not shake (a stop moved there), and the tremulant
+        // of that division does not run at its speed: nothing can play it as things stand - said on the button.
+        if (!engine.recordingHasTremulant(stop))
+        {
+            // The user's wording ("needs trem. at ... Hz"): it tells that the recording comes on by itself once the
+            // tremulant of the division is set so.
+            return name + "\n" + (stop->tremmedHz > 0.0f ? "needs trem. at " + juce::String(stop->tremmedHz, 1) + " Hz" : juce::String("needs its tremulant"));
+        }
+        return name;
+    }
     // A stop folder shows how many ranks sound with it (a Roman numeral: the
     // children, plus the master itself when it has pipes of its own).
     if (childrenGetter)
@@ -619,6 +630,8 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     if (tremmedRow())
     {
         stopButton.setTooltip("A recording of the stop above with a tremulant running. Click: its samples into the memory, or out of it (the stop then plays with the tremulant model). "
+            "\"needs trem. at N Hz\": the stop stands in a division the tremulant named here does not shake - set that division's tremulant to this speed "
+            "(its tick \"Recorded tremulant\"), or choose it in \"Tremmed by\". "
             "It is not a stop: no place in combinations, crescendo or Tutti.");
         stopButton.getProperties().set("manualChapter", "Recorded tremulants");
     }
@@ -2714,7 +2727,9 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
                             eng->setStopEnabled(stop, wanted);
                             if (wanted) ++on;
                             if (wanted && noTune) { stop->tuneTo440 = false; stop->randomPitchErrorCents = 0.0f; }
-                            for (int i = 0; i < (int)stop->transmissions.size(); ++i) eng->setTransmissionEnabled(stop, i, false);
+                            // ORGAN_TEST_RECORD_TRANSMISSIONS=1: the transmissions of the wanted stops stay on (a key of the receiving division plays them)
+                            static const bool withTransmissions = std::getenv("ORGAN_TEST_RECORD_TRANSMISSIONS") != nullptr;
+                            for (int i = 0; i < (int)stop->transmissions.size(); ++i) eng->setTransmissionEnabled(stop, i, wanted && withTransmissions);
                         }
                         CrashHandler::note("ORGAN_TEST_RECORD: copies built, " + juce::String(on) + " stop(s) \"" + prefix + "\" on, recording " + file.getFullPathName()
                             + ": key " + juce::String(key) + " on division " + juce::String(manual) + " at velocity " + juce::String(velocity) + " for " + juce::String(seconds, 1) + " s");

@@ -994,6 +994,10 @@ private:
     static void setTremmedRowsLoadedInVar(juce::var& configuration, bool load);    // the load box's tick "Recorded tremulants": every folder of every recording of a configuration var
     static bool varHasTremmedRows(const juce::var& configuration, bool* anyToLoad = nullptr);
     void setTremulantRecorded(int manual, bool recorded);                           // the tick "Recorded tremulant (N Hz)": the rate back to the recorded one
+    float tremulantRecordingsHz(int manual) const;                                  // the speed of the recordings this division's tremulant can play (its "Tremmed by" rows, else those of the stops living in its division); 0 = none
+    bool tremulantHasRecordings(int manual) const;                                  // the tick "Recorded tremulant" is shown for this division
+    bool tremulantRecordedNow(int manual) const;                                    // the tick as shown: on and the rate at the recordings' speed
+    std::map<juce::uint64, bool> recordingTremulantSeen;                            // Stop::serial of a recording -> a tremulant can play it (logged and captioned on a change)
     void syncTremulantRecorded();                                                   // the ticks to the engine (a rate that left the recorded one unticks)
     juce::String tremulantRecordedText(int manual) const;                           // "Recorded tremulant (4.8 Hz)" or the reason it cannot be ticked
     void reloadDivisionTrees(int manual);   // unloads the division and loads its trees again (with the map when active)

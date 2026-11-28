@@ -1023,7 +1023,9 @@ tremulant plays it where other rows have their transmissions. While that
 tremulant runs and its tick *Recorded tremulant (N Hz)* is on, the recording
 sounds instead of the stop - through the stop's button, its transmissions and
 the couplers; the tremulant model is silent for it. A key or a perspective
-the recording has no files for plays the plain pipe with the model.
+the recording has no files for plays the plain pipe with the model. The
+tremulant that counts is the one shaking the stop's own division, whichever
+keyboard plays the pipes - a transmission trembles with its home division.
 
 - **The tick** stands beside the tremulant's rate in the Divisions dialog, in
   the right-click *Tremulant settings...* and in the Configuration Editor
@@ -1042,6 +1044,11 @@ the recording has no files for plays the plain pipe with the model.
   it); on the grid indent the stop under its stop and choose the division in
   its *Tremmed by* box. Transmissions of a stop moved there are deleted - the
   program asks first.
+- **A stop moved to another division** keeps its recording and the tremulant
+  it names. There any tremulant shaking that division plays it while it runs
+  at the recording's speed; until then the button of the recording says
+  *needs trem. at N Hz* and the stop plays with the model. The tick of that
+  division's tremulant sets the speed.
 - A tremulant switched under held keys crosses the pipes over in phase
   ([Recorded tremulant: crossfade](#recorded-tremulant-crossfade)); the
   release of a recording gets a share of the model

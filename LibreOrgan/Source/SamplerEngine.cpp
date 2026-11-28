@@ -6767,13 +6767,30 @@ struct SamplerEngine::Impl
         return t.enabled.load(std::memory_order_relaxed) && t.recorded.load(std::memory_order_relaxed) ? driver : -1;
     }
     static bool recordingHolds(const Stop* recording, int pipe) noexcept { return !recording->samplesUnloaded && recording->hasNoteInAnyRank(pipe); }
-    // Does THIS variant of a pipe sound for a key of the division - the plain stop, or its recording with the
-    // tremulant that runs there? Stops without recordings: always.
-    bool variantSounds(const Stop* stop, int manualIndex, int pipe) const noexcept
+    // The division whose swell, wind and tremulant act on a stop's pipes: its HOME division, whichever keyboard
+    // plays them - a transmission sounds through the home division's routes, as on a real organ. The recordings
+    // with a tremulant go by the same division (before, they asked the division of the pressed KEY: through a
+    // transmission the recording stayed silent beside a running home tremulant).
+    static int homeOf(const Stop* stop) noexcept { return juce::jlimit(0, maxManuals - 1, routeOwner(stop)->primaryManual); }
+    // Is this recording the one the tremulant 'driver' (on, set to its recordings) plays? The tremulant it names
+    // ("Tremmed by") first; another tremulant when it runs at the recording's speed and no other recording of the
+    // stop names it (a stop moved to another division; two recordings of one stop: the named one decides).
+    bool recordingAnswers(const Stop* recording, int driver) const noexcept
+    {
+        if (recording->tremmedManual == driver) return true;
+        if (recording->tremmedHz <= 0.0f || std::abs(trem[(size_t)driver].rateHz.load(std::memory_order_relaxed) - recording->tremmedHz) > 0.011f) return false;
+        if (recording->tremmedOfPtr != nullptr)
+            for (const auto* other : recording->tremmedOfPtr->tremmedAlternates)
+                if (other != recording && other->tremmedManual == driver) return false;
+        return true;
+    }
+    // Does THIS variant of a pipe sound - the plain stop, or its recording with the tremulant that shakes the stop's
+    // home division? Stops without recordings: always. (The key's division plays no part: see homeOf.)
+    bool variantSounds(const Stop* stop, int /*keyManual*/, int pipe) const noexcept
     {
         if (stop->tremmedOfPtr == nullptr && stop->tremmedAlternates.empty()) return true;
-        const int driver = recordedDriverOf(manualIndex);
-        if (stop->tremmedOfPtr != nullptr) return driver >= 0 && stop->tremmedManual == driver && recordingHolds(stop, pipe);
+        const int driver = recordedDriverOf(homeOf(stop));
+        if (stop->tremmedOfPtr != nullptr) return driver >= 0 && recordingAnswers(stop, driver) && recordingHolds(stop, pipe);
         if (driver < 0) return true;
         // The plain stop still sounds while one of its perspectives has no recording of the pipe (Billerbeck: the
         // definition has recordings for Direct and Diffuse, none for Rear - Rear goes on with the model).
@@ -6788,15 +6805,15 @@ struct SamplerEngine::Impl
         for (const auto& rank : stop->ranks) if (open(rank.get())) return true;
         if (anyRank) return false;
         for (const auto* alternate : stop->tremmedAlternates)
-            if (alternate->tremmedManual == driver && recordingHolds(alternate, pipe)) return false;
+            if (recordingAnswers(alternate, driver) && recordingHolds(alternate, pipe)) return false;
         return true;
     }
     // Has the recording played by 'driver' this pipe in the PERSPECTIVE of the plain rank?
-    static bool coveredByRecording(const Stop* plain, const Stop* plainRank, int driver, int pipe) noexcept
+    bool coveredByRecording(const Stop* plain, const Stop* plainRank, int driver, int pipe) const noexcept
     {
         for (const auto* alternate : plain->tremmedAlternates)
         {
-            if (alternate->tremmedManual != driver || alternate->samplesUnloaded) continue;
+            if (!recordingAnswers(alternate, driver) || alternate->samplesUnloaded) continue;
             auto same = [&](const Stop* rank) { return rank->hasNote(pipe) && rank->perspective.equalsIgnoreCase(plainRank->perspective); };
             if (same(alternate)) return true;
             for (const auto& rank : alternate->ranks) if (same(rank.get())) return true;
@@ -6805,19 +6822,19 @@ struct SamplerEngine::Impl
     }
     // The same question for ONE perspective rank of a stop: the plain rank is silent only where the running
     // tremulant's recording has this pipe in the same perspective; a recording plays the files it has.
-    bool variantRankSounds(const Stop* stop, const Stop* rank, int manualIndex, int pipe) const noexcept
+    bool variantRankSounds(const Stop* stop, const Stop* rank, int /*keyManual*/, int pipe) const noexcept
     {
         if (stop->tremmedOfPtr == nullptr && stop->tremmedAlternates.empty()) return true;
-        const int driver = recordedDriverOf(manualIndex);
+        const int driver = recordedDriverOf(homeOf(stop));
         if (stop->tremmedOfPtr != nullptr)
         {
-            if (driver < 0 || stop->tremmedManual != driver || stop->samplesUnloaded || !rank->hasNote(pipe)) return false;
-            // Two recordings of one stop given the SAME tremulant (rows made from folders, the division not set
-            // yet): the first of them plays, never both.
+            if (driver < 0 || !recordingAnswers(stop, driver) || stop->samplesUnloaded || !rank->hasNote(pipe)) return false;
+            // Two recordings of one stop that answer to the SAME tremulant (rows made from folders, the division
+            // not set yet; two of one speed): the first of them plays, never both.
             for (const auto* earlier : stop->tremmedOfPtr->tremmedAlternates)
             {
                 if (earlier == stop) break;
-                if (earlier->tremmedManual != driver || earlier->samplesUnloaded) continue;
+                if (!recordingAnswers(earlier, driver) || earlier->samplesUnloaded) continue;
                 auto same = [&](const Stop* r) { return r->hasNote(pipe) && r->perspective.equalsIgnoreCase(rank->perspective); };
                 bool covers = same(earlier);
                 for (const auto& r : earlier->ranks) covers = covers || same(r.get());
@@ -13165,7 +13182,9 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
         impl->noiseTrigger("tremulantRun", juce::String(manualIndex), enabled, manualIndex);
         impl->tremSwapPending.store(true, std::memory_order_release);   // 0.9.150: held pipes with a recording cross over
     }
-    t.rateHz.store(juce::jlimit(2.0f, 11.0f, rateHz));
+    // A recording may be played by a tremulant that runs at its speed: a changed rate is looked at like a switch.
+    const float rate = juce::jlimit(2.0f, 11.0f, rateHz);
+    if (std::abs(t.rateHz.exchange(rate) - rate) > 0.0005f) impl->tremSwapPending.store(true, std::memory_order_release);
     t.depthCents.store(juce::jlimit(0.0f, 50.0f, depthCents));
     t.rankDriftDegrees.store(juce::jlimit(0.0f, 360.0f, rankDriftDegrees));
 }
@@ -13198,6 +13217,32 @@ void SamplerEngine::setManualTremulantRecorded(int manualIndex, bool recorded)
 void SamplerEngine::tremmedStopsChanged()
 {
     impl->tremSwapPending.store(true, std::memory_order_release);
+}
+
+void SamplerEngine::setRecordingSpeed(Stop* recording, float hz)
+{
+    if (recording == nullptr) return;
+    hz = juce::jmax(0.0f, hz);
+    const juce::ScopedLock sl(controlLock);
+    if (!stops.contains(recording) || std::abs(recording->tremmedHz - hz) < 0.0005f) return;
+    recording->tremmedHz = hz;
+    impl->tremSwapPending.store(true, std::memory_order_release);
+}
+
+bool SamplerEngine::recordingHasTremulant(const Stop* recording) const
+{
+    if (recording == nullptr || recording->tremmedOfPtr == nullptr) return true;
+    const int home = juce::jlimit(0, maxManuals - 1, recording->tremmedOfPtr->primaryManual);
+    const int named = recording->tremmedManual;
+    if (named == home) return true;
+    if (named >= 0 && named < maxManuals && (impl->trem[(size_t)named].targetMask.load(std::memory_order_relaxed) & (1 << home)) != 0) return true;
+    // Its own tremulant does not shake this division (a stop moved here): a tremulant that does - the division's
+    // own, or another's that names the division among its targets - plays it when it runs at its speed.
+    if (recording->tremmedHz <= 0.0f) return false;
+    for (int d = 0; d < maxManuals; ++d)
+        if ((d == home || (impl->trem[(size_t)d].targetMask.load(std::memory_order_relaxed) & (1 << home)) != 0)
+            && std::abs(impl->trem[(size_t)d].rateHz.load(std::memory_order_relaxed) - recording->tremmedHz) <= 0.011f) return true;
+    return false;
 }
 
 bool SamplerEngine::stopHoldsSamples(const Stop* stop) noexcept
