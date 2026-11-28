@@ -808,6 +808,11 @@ struct Stop
     float getNoteAttackMs(int note) const noexcept { return note >= 0 && note < 128 ? attackKeyMs[(size_t)note] : 0.0f; }
     bool anyNoteAttack() const noexcept { for (const float v : attackKeyMs) if (v != 0.0f) return true; return false; }
 
+    // 0.9.150: every Stop object ever made has a number of its own - a job that works on a stop from another thread
+    // recognises it for certain afterwards (a pointer alone may be a NEW stop at the address of one freed meanwhile).
+    const juce::uint64 serial = nextSerial();
+    static juce::uint64 nextSerial() noexcept { static std::atomic<juce::uint64> counter{ 1 }; return counter.fetch_add(1, std::memory_order_relaxed); }
+
     Stop(const juce::String& n, const juce::File& f) : name(n), folder(f)
     {
         for (auto& g : perNoteGain) g.store(1.0f, std::memory_order_relaxed);
@@ -969,6 +974,9 @@ public:
         bool sampleOffsetSet = false;   // the row carries the offset (a definition or the user); unset: the loader finds it from the smpl pitches (0.8.158)
         juce::String component;         // "L" / "R": one half of a stereo stop ("quintaton16L" beside "quintaton16R"), both ranks of one stop (0.8.160)
         int tremmedManual = -1;         // 0.9.150: a recording with a tremulant (the Stop List's second level): the division whose tremulant plays it; -1 = an ordinary stop
+        // 0.9.150: a recording switched off at its button - the stop is built whole (its ranks, folders, routes) but its
+        // samples stay on the disk, so the button puts them into the memory later without building anything anew.
+        bool samplesNotWanted = false;
         // 0.9.150, the scan only: this folder is the tremmed recording of the stop folder 'tremmedOf' (a sibling named
         // like it with "tr", "trem", "_tr" + a tag appended, or the same folder in a sibling tree "OWTR" beside "OW");
         // 'tremmedTag' is what follows the mark ("", "2", "rp" ...).
@@ -1470,6 +1478,12 @@ public:
         float rankDriftDegrees);
     // 0.9.88: the other divisions this division's tremulant shakes as well (bit = division index; its own is implied).
     void setManualTremulantTargets(int manualIndex, int targetMask);
+    // 0.9.150: the whole pitch of the pipes this tremulant shakes while it runs (-20..0 cents, default -1): a
+    // running tremulant takes wind. Comes and goes with the tremulant's own fade.
+    void setManualTremulantPitchDrop(int manualIndex, float cents);
+    // 0.9.150: the steady part of the tremulant's harmonic filter (0..3 dB, default 0.5; every division): the
+    // tone is that much darker all the time it runs, the dip ("harmonic filter") swings on top of it.
+    void setTremulantShelfConstantDb(float db) noexcept;
     // 0.9.150: this division's tremulant plays the RECORDED samples of the stops that have them (their rows of the
     // second level) instead of the model; false = the model on the plain pipes for every stop. Switching it (or the
     // tremulant itself) under held keys crossfades the sounding pipes over.
@@ -1478,6 +1492,22 @@ public:
     void tremmedStopsChanged();
     // A stop that holds samples of its own or in a perspective rank (a recording that is not loaded holds none).
     static bool stopHoldsSamples(const Stop* stop) noexcept;
+    // 0.9.150: one stop's samples out of / into the memory IN PLACE (a recorded tremulant's button) - see the .cpp.
+    struct StopSampleLoad
+    {
+        Stop* stop = nullptr;
+        juce::uint64 stopSerial = 0;                                  // Stop::serial of 'stop' when the job was made
+        std::vector<std::pair<Stop*, std::unique_ptr<Stop>>> ranks;   // the live rank and its detached stand-in
+        std::vector<juce::uint64> rankSerials;                        // Stop::serial of every live rank, in the order of 'ranks'
+        juce::int64 frames = 0;                                       // what came into the memory
+        double decodeMs = 0.0, lockMs = 0.0;                          // reading the files; the swap under the control lock (note starts wait that long)
+        bool memoryShort = false;                                     // stopped: the memory reserve was reached
+    };
+    bool stopSamplesInMemory(const Stop* stop) const;                 // any rank of it holds samples (wanted or not)
+    void setStopSamplesWanted(Stop* stop, bool wanted);               // "unloaded" marks; true only where the samples are still there
+    bool freeStopSamplesIfSilent(Stop* stop, bool endItsVoices);      // true = freed (or nothing to free); false = a voice still reads them
+    std::shared_ptr<StopSampleLoad> prepareStopSampleLoad(Stop* stop);        // message thread; nullptr = nothing to load
+    bool runStopSampleLoad(const std::shared_ptr<StopSampleLoad>& job);       // any other thread: decode, then swap in
     std::vector<juce::String> getPerspectivesForManual(int manualIndex) const;
     // 0.9.87 (#238): the perspectives the division's Stop List table names (folders under a label), set by
     // MainComponent at every route rebuild - a perspective whose ranks a cancelled or memory-limited load left out
@@ -1911,6 +1941,7 @@ private:
     std::atomic<float> harmonicSwellDb{ 8.0f }, harmonicWindDb{ 2.0f }, harmonicTremulantDb{ 4.0f };
     // 1 - 10^(-db/20): the shelf's high-frequency loss per modulator
     std::atomic<float> harmonicSwellMix{ 0.60189f }, harmonicWindMix{ 0.20567f }, harmonicTremulantMix{ 0.36904f };
+    std::atomic<float> harmonicTremulantConstantMix{ 0.05593f };   // 0.9.150: 0.5 dB (1 - 10^(-0.5/20)), the steady part of the tremulant's filter
     std::atomic<float> windLevelDbPerCentValue{ 0.2f };
     std::atomic<float> windOctaveRatioValue{ 1.3f };
     std::atomic<float> tremulantLevelDbPerCentValue{ 0.187f };

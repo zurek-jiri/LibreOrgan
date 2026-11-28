@@ -1626,6 +1626,8 @@ namespace
         float tremPitchCentsRelease[kTremBuckets]{};
         float tremGainRelease[kTremBuckets]{};
         float tremRecordedRelease = 0.667f;   // 0.9.150: the release of a sample recorded with the tremulant - its share of the release figures above
+        float shelfTremConstant = 0.0f;       // 0.9.150: the steady part of the tremulant's harmonic filter (a mix, faded with the tremulant) - the dip swings on top of it
+        float tremPitchDrop = 0.0f;           // 0.9.150: the pitch drop inside tremPitchCents / tremPitchCentsRelease (a recording's release takes it out again)
         float exprGain = 1.0f;
         float divisionGain = 1.0f;
         float releaseScale = 1.0f;
@@ -3777,7 +3779,8 @@ namespace
                 tremPitch = c.tremPitchCentsRelease[b]; tremGain = c.tremGainRelease[b];
                 if (v.recordedTrem)   // its release (often flat in the recording) gets the setting's share of the model
                 {
-                    tremPitch *= c.tremRecordedRelease;
+                    // the swing alone: the pitch drop of a running tremulant is in the recording already
+                    tremPitch = (tremPitch - c.tremPitchDrop) * c.tremRecordedRelease;
                     tremGain = 1.0f + (tremGain - 1.0f) * c.tremRecordedRelease;
                 }
             }
@@ -3889,7 +3892,11 @@ namespace
             if (c.tremActive && !v.modelOff && !(v.recordedTrem && !v.detachedRelease))
             {
                 const int b = v.tremBucket & (kTremBuckets - 1);
-                mix += c.shelfTrem * (v.detachedRelease ? c.tremShelfRelease[b] * (v.recordedTrem ? c.tremRecordedRelease : 1.0f) : c.tremShelf[b]);
+                float dip = c.shelfTrem * (v.detachedRelease ? c.tremShelfRelease[b] * (v.recordedTrem ? c.tremRecordedRelease : 1.0f) : c.tremShelf[b]);
+                // 0.9.150: the steady part (a recording has it in its own sound) and the dip AROUND it - the two
+                // losses multiply (their dB add): 1 - (1 - steady)(1 - dip).
+                if (!v.recordedTrem) dip = c.shelfTremConstant + dip * (1.0f - c.shelfTremConstant);
+                mix += dip;
             }
             shelfTarget = juce::jmin(0.7488f, mix);   // 1 - 10^(-12/20)
         }
@@ -4828,6 +4835,7 @@ struct SamplerEngine::Impl
         std::atomic<float> rateHz{ 4.4f }, depthCents{ 6.0f }, rankDriftDegrees{ 260.0f };
         std::atomic<uint8_t> targetMask{ 0 };   // 0.9.88: the OTHER divisions this tremulant shakes too (bit = division; the own one always)
         std::atomic<bool> recorded{ false };    // 0.9.150: it plays the stops' RECORDED samples (their rows of the second level) where they exist
+        std::atomic<float> pitchDropCents{ -1.0f };   // 0.9.150: the whole pitch while it runs (a tremulant takes wind: the pipes sink a little), -20..0
     };
     // The tremulant that moves a division's pipes: its own when on, else the first division whose tremulant is on
     // and names it among its targets (one device shaking several divisions - the same rate, the same nominal phase).
@@ -8373,8 +8381,16 @@ struct SamplerEngine::Impl
         // 0.9.150: an ordinary release gets 60 % of the model's depth (below); the release of a recording the
         // setting's share of the FULL depth (40 % by default), i.e. that share / 0.6 of the release figures.
         ctx.tremRecordedRelease = juce::jlimit(0.0f, 1.667f, owner.tremmedReleaseModelPercent.load(std::memory_order_relaxed) / 60.0f);
+        // 0.9.150 (the user): a running tremulant takes wind - the whole pitch sinks a little (the division's
+        // "pitch drop", -20..0 cents, default -1) and the tone is a little darker all the time (the harmonic
+        // filter's "steady loss", 0..3 dB, default 0.5); the swing and the filter's dip move around those. Both
+        // come and go with the tremulant's own fade (route.tremMix), sustain and release alike.
+        const float pitchDrop = juce::jlimit(-20.0f, 0.0f, tp.pitchDropCents.load(std::memory_order_relaxed)) * route.tremMix;
+        ctx.shelfTremConstant = 0.0f;
+        ctx.tremPitchDrop = pitchDrop;
         if (ctx.tremActive)
         {
+            ctx.shelfTremConstant = owner.harmonicTremulantConstantMix.load(std::memory_order_relaxed) * juce::jlimit(0.0f, 1.0f, route.tremMix);
             constexpr float pitchPhaseOffsetTurns = 20.0f / 360.0f;
             // The harmonic filter oscillates a settable phase after the volume (Advanced global audio).
             const float shelfPhaseTurns = owner.tremulantShelfPhaseTurns.load(std::memory_order_relaxed);
@@ -8384,9 +8400,9 @@ struct SamplerEngine::Impl
                 const float pitch = depth * fastSinTurns(turns + pitchPhaseOffsetTurns);
                 const float sine = fastSinTurns(turns);
                 const float gainDb = depth * windAttenuationDbPerCent * sine;
-                ctx.tremPitchCents[b] = pitch;
+                ctx.tremPitchCents[b] = pitch + pitchDrop;
                 ctx.tremGain[b] = fastDbToGain(gainDb);
-                ctx.tremPitchCentsRelease[b] = pitch * 0.6f;
+                ctx.tremPitchCentsRelease[b] = pitch * 0.6f + pitchDrop;
                 ctx.tremGainRelease[b] = fastDbToGain(gainDb * 0.6f);
                 // Tone shelf: the dip's fraction of its full depth (fade-in/out of the
                 // tremulant is already inside 'depth', so scale by the mix as well).
@@ -8401,7 +8417,7 @@ struct SamplerEngine::Impl
         ctx.shelfSwell = owner.harmonicSwellMix.load(std::memory_order_relaxed);
         ctx.shelfWind = owner.harmonicWindMix.load(std::memory_order_relaxed);
         ctx.shelfTrem = owner.harmonicTremulantMix.load(std::memory_order_relaxed);
-        ctx.shelfEnabled = ctx.shelfSwell > 1.0e-4f || ctx.shelfWind > 1.0e-4f || ctx.shelfTrem > 1.0e-4f;
+        ctx.shelfEnabled = ctx.shelfSwell > 1.0e-4f || ctx.shelfWind > 1.0e-4f || ctx.shelfTrem > 1.0e-4f || ctx.shelfTremConstant > 1.0e-4f;
         butterworthLowpass(ctx.routeRate, kShelfCornerHz, ctx.shelfLp);
         {
             // 15 degrees of lag at the tremulant rate: tau = tan(15 deg) / (2 pi f).
@@ -13161,6 +13177,18 @@ void SamplerEngine::setManualTremulantTargets(int manualIndex, int targetMask)
     if (impl->trem[(size_t)manualIndex].targetMask.exchange(mask) != mask) impl->tremSwapPending.store(true, std::memory_order_release);   // 0.9.150
 }
 
+void SamplerEngine::setManualTremulantPitchDrop(int manualIndex, float cents)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals) return;
+    impl->trem[(size_t)manualIndex].pitchDropCents.store(juce::jlimit(-20.0f, 0.0f, cents), std::memory_order_relaxed);
+}
+
+void SamplerEngine::setTremulantShelfConstantDb(float db) noexcept
+{
+    db = juce::jlimit(0.0f, 3.0f, db);
+    harmonicTremulantConstantMix.store(db < 0.01f ? 0.0f : 1.0f - std::pow(10.0f, -db / 20.0f), std::memory_order_relaxed);
+}
+
 void SamplerEngine::setManualTremulantRecorded(int manualIndex, bool recorded)
 {
     if (manualIndex < 0 || manualIndex >= maxManuals) return;
@@ -13177,6 +13205,160 @@ bool SamplerEngine::stopHoldsSamples(const Stop* stop) noexcept
     if (stop == nullptr || stop->samplesUnloaded) return false;
     for (int note = 0; note < 128; ++note) if (stop->hasNoteInAnyRank(note)) return true;
     return false;
+}
+
+//------------------------------------------------------------------------------
+// 0.9.150 ONE STOP'S SAMPLES OUT OF / INTO THE MEMORY, IN PLACE AND GENTLY (the button of a recorded tremulant; the
+// user: "vše musí zůstat na místě, nic se nesmí přestavovat, jenom se tlačítko vypne a zapne"): no division is built
+// anew, no window, no voice of the organ is touched - the Stop objects stay where they are.
+//   OUT: setStopSamplesWanted(stop, false) marks every rank "unloaded" - the stop no longer sounds (a recording that
+//   sounds crosses over to its plain stop with the tremulant switch's crossfade); freeStopSamplesIfSilent() then
+//   frees the memory once no voice reads the samples (the caller tries again until it says true).
+//   IN: samples still in the memory -> setStopSamplesWanted(stop, true) and that is all; else
+//   prepareStopSampleLoad() (message thread) + runStopSampleLoad() (any other thread: decodes into detached
+//   stand-ins, then swaps them in under the control lock; the render never stops).
+bool SamplerEngine::stopSamplesInMemory(const Stop* stop) const
+{
+    if (stop == nullptr) return false;
+    auto holds = [](const Stop* rank)
+    {
+        for (const auto& variants : rank->samplesByNote) if (!variants.empty()) return true;
+        return false;
+    };
+    if (holds(stop)) return true;
+    for (const auto& rank : stop->ranks) if (holds(rank.get())) return true;
+    return false;
+}
+
+void SamplerEngine::setStopSamplesWanted(Stop* stop, bool wanted)
+{
+    if (stop == nullptr) return;
+    const juce::ScopedLock sl(controlLock);
+    if (!stops.contains(stop)) return;
+    auto mark = [wanted](Stop* rank)
+    {
+        if (!wanted) { rank->samplesUnloaded = true; return; }
+        for (const auto& variants : rank->samplesByNote) if (!variants.empty()) { rank->samplesUnloaded = false; return; }
+    };
+    mark(stop);
+    for (auto& rank : stop->ranks) mark(rank.get());
+    // The stop's own mark is what the engine asks ("is this recording there?"): there as soon as any rank of it is.
+    if (wanted) for (auto& rank : stop->ranks) if (!rank->samplesUnloaded) stop->samplesUnloaded = false;
+    impl->tremSwapPending.store(true, std::memory_order_release);
+}
+
+bool SamplerEngine::freeStopSamplesIfSilent(Stop* stop, bool endItsVoices)
+{
+    if (stop == nullptr) return true;
+    const juce::ScopedLock sl(controlLock);
+    if (!stops.contains(stop) || !stop->samplesUnloaded) return true;   // gone with a reload, or wanted again meanwhile
+    impl->reclaimFinished();
+    int reading = 0;
+    for (const uint32_t idx : impl->controlActive)
+    {
+        auto& v = impl->voices[idx];
+        bool ours = v.stop == stop || v.rank == stop;
+        for (const auto& rank : stop->ranks) ours = ours || v.rank == rank.get();
+        if (!ours) continue;
+        ++reading;
+        if (endItsVoices) impl->sendCommand(v, CmdKill);   // a long release still rings: it ends with the 300 ms fade
+    }
+    if (reading > 0) return false;
+    auto release = [](Stop* rank)
+    {
+        for (auto& variants : rank->samplesByNote) { variants.clear(); variants.shrink_to_fit(); }
+        rank->velocityLayers.clear();
+        rank->velocityLayers.shrink_to_fit();
+        rank->releaseLayers.clear();
+        rank->releaseLayers.shrink_to_fit();
+        rank->aliasFree.clear();
+        rank->aliasFreeOffset.clear();
+        rank->retiredSamples.clear();
+        rank->speaking.reset();
+        rank->samplesUnloaded = true;
+    };
+    release(stop);
+    for (auto& rank : stop->ranks) release(rank.get());
+    return true;
+}
+
+std::shared_ptr<SamplerEngine::StopSampleLoad> SamplerEngine::prepareStopSampleLoad(Stop* stop)
+{
+    if (stop == nullptr || stop->tremmedManual < 0) return nullptr;   // recordings alone: they have no filled pipes and no copies a build could be reading
+    const juce::ScopedLock sl(controlLock);
+    if (!stops.contains(stop)) return nullptr;
+    auto job = std::make_shared<StopSampleLoad>();
+    job->stop = stop;
+    job->stopSerial = stop->serial;
+    auto add = [&job](Stop* rank)
+    {
+        if (rank->folder == juce::File()) return;
+        job->rankSerials.push_back(rank->serial);
+        auto standIn = std::make_unique<Stop>(rank->name, rank->folder);
+        standIn->sampleOffset = rank->sampleOffset;
+        standIn->sampleOffsetSet = true;              // the transposition as it is
+        standIn->primaryManual = rank->primaryManual; // the automatic packing goes by the division
+        standIn->perspective = rank->perspective;
+        standIn->tremmedManual = rank->tremmedManual;
+        job->ranks.emplace_back(rank, std::move(standIn));
+    };
+    add(stop);
+    for (auto& rank : stop->ranks) add(rank.get());
+    if (job->ranks.empty()) return nullptr;
+    stop->reloading.store(true, std::memory_order_release);   // no voice of it meanwhile; the voicing shows "loading"
+    return job;
+}
+
+bool SamplerEngine::runStopSampleLoad(const std::shared_ptr<StopSampleLoad>& job)
+{
+    if (job == nullptr) return false;
+    const double started = juce::Time::getMillisecondCounterHiRes();
+    loadOutOfMemory.store(false, std::memory_order_relaxed);
+    for (auto& entry : job->ranks) loadRankSamples(entry.second.get());
+    const bool memoryShort = loadOutOfMemory.load(std::memory_order_relaxed);
+    job->decodeMs = juce::Time::getMillisecondCounterHiRes() - started;
+    const juce::ScopedLock sl(controlLock);
+    const double locked = juce::Time::getMillisecondCounterHiRes();
+    // The division was built anew meanwhile (the stop is gone, or another object stands at its address): these
+    // samples are dropped.
+    if (!stops.contains(job->stop) || job->stop->serial != job->stopSerial) return false;
+    Stop* stop = job->stop;
+    if (memoryShort)
+    {
+        stop->reloading.store(false, std::memory_order_release);
+        job->memoryShort = true;
+        return false;
+    }
+    std::vector<Stop*> ranks;
+    for (size_t index = 0; index < job->ranks.size(); ++index)
+    {
+        auto& entry = job->ranks[index];
+        Stop* live = entry.first;
+        if (live != stop && std::none_of(stop->ranks.begin(), stop->ranks.end(), [live](const std::unique_ptr<Stop>& r) { return r.get() == live; })) continue;
+        if (index >= job->rankSerials.size() || live->serial != job->rankSerials[index]) continue;
+        live->samplesByNote = std::move(entry.second->samplesByNote);
+        live->velocityLayers = std::move(entry.second->velocityLayers);
+        live->releaseLayers = std::move(entry.second->releaseLayers);
+        live->storageSignature = entry.second->storageSignature;
+        live->aliasFree.clear();
+        live->aliasFreeOffset.clear();
+        live->nextSampleIndex.fill(0);
+        live->speaking.reset();
+        for (int note = 0; note < 128; ++note)   // as every reload does
+            if (live->hasNote(note) && std::abs(live->getNoteDb(note)) < 1.0e-6f) live->setNoteDb(note, 0.0f);
+        for (const auto& variants : live->samplesByNote) for (const auto& sample : variants) if (sample != nullptr) job->frames += sample->numFrames;
+        ranks.push_back(live);
+    }
+    // Its tuning, temperament and footage from its own samples (the control thread waits at this lock meanwhile:
+    // no voice starts on them while this runs; lockMs says how long the note starts waited).
+    for (auto* rank : ranks) rank->samplesUnloaded = false;   // the analysis skips unloaded ranks
+    if (!ranks.empty()) stop->samplesUnloaded = false;       // the stop's own mark = "this recording is there"
+    computeTuning440(ranks);
+    refillStopPipes(stop);
+    stop->reloading.store(false, std::memory_order_release);
+    impl->tremSwapPending.store(true, std::memory_order_release);
+    job->lockMs = juce::Time::getMillisecondCounterHiRes() - locked;
+    return !ranks.empty();
 }
 
 //------------------------------------------------------------------------------
@@ -15724,7 +15906,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         return false;
     };
 
-    auto loadRank = [&](Stop* rank, const juce::File& stopFolder, int manualIndex)
+    auto loadRank = [&](Stop* rank, const juce::File& stopFolder, int manualIndex, bool notWanted = false)
     {
         rank->primaryManual = manualIndex;
         for (const auto& pattern : oneShot)
@@ -15735,7 +15917,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
         // A folder the division already holds with its samples is not decoded
         // again: the commit adopts the old rank's samples, copies and analysis.
         const bool replaces = !append || (replacing != nullptr && replacing->count(manualIndex) != 0);
-        if (isPooledStop(manualIndex, rank->name)) rank->samplesUnloaded = true;
+        if (isPooledStop(manualIndex, rank->name) || notWanted) rank->samplesUnloaded = true;   // 0.9.150: notWanted = a recording switched off at its button
         else if (replaces && hasLoadedRankForFolder(manualIndex, stopFolder, rank->keyShift())) { rank->samplesUnloaded = true; rank->adoptSamples = true; }
         else
         {
@@ -15931,7 +16113,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                     rank->sampleOffset = assignment.sampleOffset;
                     rank->sampleOffsetSet = assignment.sampleOffsetSet;
                     rank->tremmedManual = assignment.tremmedManual;   // 0.9.150: a recording with a tremulant (never filled from its neighbours)
-                    loadRank(rank.get(), stopFolder, groupManual);
+                    loadRank(rank.get(), stopFolder, groupManual, assignment.samplesNotWanted);
                     if (!found->second->sampleOffsetDetected && rank->sampleOffsetDetected) { found->second->sampleOffset = rank->sampleOffset; found->second->sampleOffsetDetected = true; found->second->sampleOffsetSet = true; }
                     found->second->isOneShot = found->second->isOneShot || rank->isOneShot;
                     found->second->ranks.push_back(std::move(rank));
@@ -15942,7 +16124,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 mainStop->sampleOffset = assignment.sampleOffset;
                 mainStop->sampleOffsetSet = assignment.sampleOffsetSet;
                 mainStop->tremmedManual = assignment.tremmedManual;   // 0.9.150
-                loadRank(mainStop.get(), stopFolder, groupManual);
+                loadRank(mainStop.get(), stopFolder, groupManual, assignment.samplesNotWanted);
                 perspectiveStops[groupKey] = mainStop.get();
                 newStops.add(mainStop.release());
             }

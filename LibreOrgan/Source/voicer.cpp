@@ -186,7 +186,8 @@ juce::String StopRow::caption() const
     if (auto* t = transmission()) return Voicer::transmissionLabel(stop, transmissionIndex);
     // 0.9.150: a recording with a tremulant names the division whose tremulant plays it, and says when it is not in the memory.
     if (tremmedRow())
-        return "Tremmed " + divisionNames[juce::jlimit(0, 7, stop->tremmedManual)].replace("Pedal", "P.") + (SamplerEngine::stopHoldsSamples(stop) ? "" : "  (not loaded)");
+        return "Tremmed " + divisionNames[juce::jlimit(0, 7, stop->tremmedManual)].replace("Pedal", "P.")
+            + (SamplerEngine::stopHoldsSamples(stop) ? "" : stop->reloading.load(std::memory_order_relaxed) ? "  (loading)" : "  (not loaded)");
     // A stop folder shows how many ranks sound with it (a Roman numeral: the
     // children, plus the master itself when it has pipes of its own).
     if (childrenGetter)
@@ -1468,7 +1469,7 @@ void StopRow::mouseUp(const juce::MouseEvent& event)
         tremmedPressed = false;
         if (event.eventComponent == &stopButton && stopButton.getLocalBounds().contains(event.getPosition()) && tremmedLoadRequest)
         {
-            const auto request = tremmedLoadRequest;   // the request rebuilds the rows: nothing of this row is touched after it
+            const auto request = tremmedLoadRequest;   // the samples go or come in place (a row the engine never built: its division is reloaded - nothing of this row is touched after the call)
             Stop* const target = stop;
             const bool load = !routeEnabled();
             request(target, load);
@@ -2099,6 +2100,14 @@ void StopRow::resized()
 
 void StopRow::updateFromStop()
 {
+    // 0.9.150: the button of a recording with a tremulant is its place in the memory - its caption and colour follow
+    // it here (the samples go and come in place: no row is built anew for it).
+    if (tremmedRow())
+    {
+        const auto text = caption();
+        if (stopButton.getButtonText() != text) stopButton.setButtonText(text);
+        refreshEnabledColour();
+    }
     if (auto* t = transmission())
     {
         globalSlider.setValue(t->db, juce::dontSendNotification);
@@ -2136,8 +2145,10 @@ void StopRow::updateFromStop()
     }
     attackRandomizeBox.setToggleState(stop->attackRandomize, juce::dontSendNotification);
     stopButton.setButtonText(caption());
+    // routeEnabled(): a recording with a tremulant is lit only while its samples are in the memory - "not loaded" is
+    // dark, whatever its stop's own on / off says (0.9.150, the user: "při not loaded musí zhasnout").
     stopButton.setColour(juce::TextButton::buttonColourId,
-        stop->enabled ? onColour() : juce::Colours::darkgrey);
+        routeEnabled() ? onColour() : juce::Colours::darkgrey);
     if (stop->container && stop->noiseButton != 0)
     {   // 0.9.129: a noise's button - its perspectives' switches as the model has them
         for (int i = 0; i < rankButtons.size() && i < (int)stop->noisePerspectives.size(); ++i)
@@ -4834,6 +4845,7 @@ void Voicer::setStopHidden(int manual, const juce::String& name, bool hidden)
     for (auto* stop : engine.getStops())
     {
         if (stop->primaryManual != manual || stop->name != name) continue;
+        if (stop->tremmedManual >= 0) continue;   // 0.9.150: a recording's place in the memory is its own button's business
         if (hidden && stop->transmissions.empty()) engine.unloadStopSamples(stop);
         else if (!hidden && stop->samplesUnloaded) engine.reloadStopSamples(stop);
     }
@@ -5617,7 +5629,7 @@ void Voicer::resetAll(bool resetGrid)
         hiddenStops.clear(); // and the stop pool is emptied
         engine.setPooledStopNames({});
         for (auto* stop : engine.getStops())
-            if (stop->samplesUnloaded) engine.reloadStopSamples(stop);
+            if (stop->samplesUnloaded && stop->tremmedManual < 0) engine.reloadStopSamples(stop);   // 0.9.150: never a recording switched off at its button
     }
     exitArrangeMode();
     for (auto* stop : engine.getStops())

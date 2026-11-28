@@ -1014,9 +1014,10 @@ static const char* const kManualText_part4 =
 static const char* const kManualText_part5 =
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
     "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
-    "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
+    "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation), [Tremulant pitch drop](#tremulant-pitch-drop) (a running tremulant takes wind:\n"
+    "the pipes sound a little lower) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
-    "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
+    "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter), [Tremulant: harmonic filter steady loss](#tremulant-harmonic-filter-steady-loss) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
     "level). The strength wanders between 60 and 100 % of the depth from cycle to\n"
     "cycle, and the children of a stop folder are spread in phase like the ranks of\n"
     "a mixture, so nothing pulses mechanically. One tremulant may shake several\n"
@@ -1046,7 +1047,8 @@ static const char* const kManualText_part5 =
     "- **In the voicing** of the stop the recording is a row of its own under it\n"
     "  (a tree shows the levels) with its own stop volume, volume, treble and\n"
     "  attack per key and release crossfade. Its button puts its samples into the\n"
-    "  memory or gives the memory back - off, the stop plays with the model. It is\n"
+    "  memory or gives the memory back - off, the stop plays with the model;\n"
+    "  nothing else of the organ is loaded or built anew for it. It is\n"
     "  no stop: no place in combinations, crescendo or Tutti, no alias, no\n"
     "  transmissions.\n"
     "- **Made by hand:** in the Stop List drag the name of the folder's row right\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "setting is kept. Right-click the switch to learn a MIDI control for it. A\n"
     "route's linked module shows the perspective's switch and is locked like its\n"
     "sliders. The order of *Volume*, *Channel separation* and *Equalizer* is\n"
-    "yours: hold a module down for two seconds - or right-click the chain and\n"
-    "choose *Arrange the chain* - then drag a framed module to its place and\n"
     ;
 static const char* const kManualText_part6 =
+    "yours: hold a module down for two seconds - or right-click the chain and\n"
+    "choose *Arrange the chain* - then drag a framed module to its place and\n"
     "click anywhere else to finish. *Division volume* stays first\n"
     "and the *IR reverb* last; the order belongs to the perspective and all its\n"
     "routes share it. *Reset* in a module's header and *Reset all\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "opened directly plays nowhere else until every cable is removed from it.\n"
     "\n"
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
-    "own) keeps the ALSA list of the cards: a card another program holds is left\n"
-    "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
     ;
 static const char* const kManualText_part7 =
+    "own) keeps the ALSA list of the cards: a card another program holds is left\n"
+    "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
     "dropped on it waits until the card is free.\n"
     "\n"
     "### Audio on macOS\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
     "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
     "is on. Merging another organ adds its noises; only what the loaded organ\n"
-    "already has is left out.\n"
-    "\n"
     ;
 static const char* const kManualText_part8 =
+    "already has is left out.\n"
+    "\n"
     "Nothing clicks while an organ loads.\n"
     "\n"
     "---\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "\n"
     "### Measure the maximum polyphony\n"
     "\n"
-    "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
-    "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
     ;
 static const char* const kManualText_part9 =
+    "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
+    "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
     "struck on every division faster and wider until the voices stop rising, the\n"
     "target raised in steps and held four seconds each, the first breakup\n"
     "narrowed down by keys, rate and stops. *Maximum polyphony* is set to the\n"
@@ -1956,6 +1958,11 @@ static const char* const kManualText_part9 =
     "The shelf following the tremulant: this much loss at the bottom of its dip\n"
     "(default 4 dB).\n"
     "\n"
+    "### Tremulant: harmonic filter steady loss\n"
+    "\n"
+    "The part of that loss that stays all the time the tremulant runs (0 to 3 dB,\n"
+    "default 0.5): the dip swings on top of it.\n"
+    "\n"
     "### Tremulant: harmonic filter phase\n"
     "\n"
     "How far the tone oscillation lags the volume oscillation (0 to 360 degrees,\n"
@@ -2013,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "### Treble per key: shelf start frequency\n"
     "\n"
+    ;
+static const char* const kManualText_part10 =
     "The *Treble per key* sliders act above this frequency (120 to 5000 Hz,\n"
     "default 1800); a pipe whose fundamental lies higher starts there.\n"
     "\n"
@@ -2020,8 +2029,6 @@ static const char* const kManualText_part9 =
     "\n"
     "Celeste stops beat this many times faster at the top of the compass than at\n"
     "the bottom (1 to 20, default 12); a1 beats as the voicing says.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Measure the pitch of every pipe from its sound\n"
     "\n"
@@ -2215,6 +2222,8 @@ static const char* const kManualText_part10 =
     "On (default): a melody (bass) coupler couples a key only when it becomes the\n"
     "new highest (lowest) key held. Off: the coupled note always follows the\n"
     "extreme key.\n"
+    ;
+static const char* const kManualText_part11 =
     "\n"
     "### Melody couplers: legato grace time\n"
     "\n"
@@ -2222,8 +2231,6 @@ static const char* const kManualText_part10 =
     "so a brief overlap does not make the solo stop jump.\n"
     "\n"
     "### Load the last configuration at startup\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
@@ -2417,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "The keyboard plays this many semitones away from what it sends (-24 to +24).\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "### Compass\n"
     "\n"
     "*Compass from* and *Compass to*: the division's lowest and highest key\n"
@@ -2424,8 +2433,6 @@ static const char* const kManualText_part11 =
     "compass are filled from neighbouring pipes. Keys outside it play nothing on\n"
     "this division - they are free for another division on the same MIDI channel\n"
     "(two divisions with different compasses split one keyboard) or for MIDI\n"
-    ;
-static const char* const kManualText_part12 =
     "learn. The compass counts after the MIDI transposition; the keyboard drawing\n"
     "of the Divisions dialog shows the keys it takes.\n"
     "\n"
@@ -2474,6 +2481,12 @@ static const char* const kManualText_part12 =
     "\n"
     "The pitch modulation, 0 to 50 cents (default 6); the strength wanders between\n"
     "60 and 100 % of it.\n"
+    "\n"
+    "### Tremulant pitch drop\n"
+    "\n"
+    "A running tremulant takes wind: the pipes it shakes sound this much lower all\n"
+    "the time it is on (-20 to 0 cents, default -1); the modulation swings around\n"
+    "that.\n"
     "\n"
     "### Tremulant phase drift between ranks\n"
     "\n"
@@ -2613,6 +2626,8 @@ static const char* const kManualText_part12 =
     "\n"
     "Everything the program does at a coarse level - devices opened, divisions\n"
     "loaded, builds of the copies, the memory and disk figures of every load - is\n"
+    ;
+static const char* const kManualText_part13 =
     "noted in `CrashLogs/activity.log` in the settings folder ([Where the files\n"
     "are](#14-where-the-files-are)); a crash writes `crash-<date>.txt` beside it, and a window that\n"
     "answers nothing for eight seconds records where it was waiting.\n"
@@ -2626,8 +2641,6 @@ static const char* const kManualText_part12 =
     "happened - a few words are enough. *Create the report and open GitHub*\n"
     "writes **one file, `logs.zip`**, into a folder of its own\n"
     "(`Reports\\LibreOrgan-report-<date>` in the settings folder): the activity\n"
-    ;
-static const char* const kManualText_part13 =
     "log, the crash reports, `settings.json`, the last self-test, `system.txt`\n"
     "with the computer and every audio route, and pictures of the program's\n"
     "windows and dialogs, taken by the program itself (the Audio routing always,\n"
@@ -2815,6 +2828,8 @@ static const char* const kManualText_part13 =
     "folder as `<organ>.json`; the folder above `OrganInstallationPackages` is\n"
     "noted as a sample location. An import report with everything the plan\n"
     "decided is written to `ImportReports` in the settings folder.\n"
+    ;
+static const char* const kManualText_part14 =
     "\n"
     "## 10.5 The tuning gate of a perspective join\n"
     "\n"
@@ -2828,8 +2843,6 @@ static const char* const kManualText_part13 =
     "by its measured pitch instead (the four lowest files, within 2 cents). The\n"
     "name rule before the gate: the whole stem after the prefix must be equal\n"
     "(\"HW_Principal8\" is not \"Principal8\"), the base folder's head a known\n"
-    ;
-static const char* const kManualText_part14 =
     "perspective prefix, and the new head on three folders at least. The log\n"
     "says for every pair \"Tuning gate: ... the same pipes / NOT the same pipes\".\n"
     "\n"
@@ -3017,6 +3030,8 @@ static const char* const kManualText_part14 =
     "through a second reader (unarr) after the first fails, logged once. A\n"
     "configuration never names an archive: every path is a disk path, and a folder\n"
     "that is also on the disk wins over the archive unless your own lines of\n"
+    ;
+static const char* const kManualText_part15 =
     "`Locations.txt` put the archive first.\n"
     "\n"
     "**Archives or unpacked folders - which loads faster.** Unpacking is the\n"
@@ -3030,8 +3045,6 @@ static const char* const kManualText_part14 =
     "an archive gains nothing there. From a SATA SSD the same unpacked folders\n"
     "took 163 s (0.41 GB/s: there the disk is the limit) and the archives 102 s.\n"
     "Archives pay where the disk is the slower part - on a SATA SSD already, all\n"
-    ;
-static const char* const kManualText_part15 =
     "the more on a hard disk or a network folder: fewer bytes are read - and\n"
     "where room is short (about 40 % less). The fastest loading: unpacked folders\n"
     "on an SSD, and enough RAM for the system to keep the files in memory between\n"

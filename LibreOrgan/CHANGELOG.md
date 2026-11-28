@@ -32,8 +32,9 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   - In the stop's open voicing the recording is a row of its own (a tree shows
     the levels) with its own stop volume, volume / treble / attack per key and
     release crossfade; its button puts the samples into the memory or gives it
-    back. No place in combinations, crescendo or Tutti, no alias, no
-    transmissions.
+    back - in place: the grid, the open voicings and every other stop stay as
+    they are, held keys cross over. No place in combinations, crescendo or
+    Tutti, no alias, no transmissions.
   - A tremulant switched under held keys crosses the pipes over in phase
     (*Recorded tremulant: crossfade*, 180 ms, up to 1 s; *Recorded tremulant:
     crossfade curve*: linear, equal power or between the two); the release of a
@@ -64,6 +65,13 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   taken out of every list that brings them (an older configuration, this
   computer's Patterns.json). Folders of tremulant recordings and of a
   definition's tremulant waveforms are left out of the scans by what they are.
+- **Tremulant pitch drop** (per division: Divisions dialog, the right-click
+  Tremulant settings, Configuration Editor; -20 to 0 cents, default -1): a
+  running tremulant takes wind, so the pipes it shakes sound a little lower
+  all the time it is on - the modulation swings around that.
+- **Tremulant: harmonic filter steady loss** (0 to 3 dB, default 0.5): the part
+  of the tremulant's tone loss that stays while it runs; the dip of
+  *Tremulant: harmonic filter* swings on top of it.
 - **Release starts in the phase of its attack** (Advanced global audio, off by
   default): the release begins up to one period later, in phase with the pipe
   it fades into.

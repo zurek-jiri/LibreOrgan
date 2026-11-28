@@ -7044,6 +7044,64 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   away). Restored with `git checkout -- <the six files>` (everything was committed but two Editor edits of the
   turn, done again). RULES: a text replacement in the sources goes through the Edit tool, one place at a time -
   never a home-made multi-file replace loop; and commit BEFORE any scripted edit (it was the commit that saved it).
+  THE TREMMED BUTTON IN PLACE + TWO MODEL SETTINGS (28 Nov 2026 afternoon, still 0.9.150, local; the user: "když
+  vypnu nebo zapnu tlačítko tremmed, tak se přestaví grid, vše se resetuje. Kurva, prostě vše musí zůstat na místě,
+  nic se nesmí přestavovat, jenom se tlačítko vypne a zapne"; "při not loaded (tremmed) musí ale zhasnout. Nebýt
+  oranžový"; the load box's tick white like everything else): the first build did the button through
+  reloadDivisions (loading window, routes, grid, every voicing folded). NOW NOTHING IS BUILT ANEW:
+  `MainComponent::setTremmedRowLoaded` sets the table's `unloaded` flags and calls `setRecordingSamplesInPlace
+  (stop, load)` - OFF: `engine.setStopSamplesWanted(stop, false)` (ranks marked samplesUnloaded: the recording stops
+  sounding, a held pipe crosses over with the tremulant switch's crossfade), then a self-clearing retry lambda
+  (first after tremulantSwapMs + 400 ms, every 500 ms, 120 tries; from the 16th the stop's last voices are killed)
+  calls `freeStopSamplesIfSilent` = the vectors freed under controlLock once NO voice of the stop exists; ON:
+  samples still there -> `setStopSamplesWanted(true)` at once; else `prepareStopSampleLoad` (stand-in Stops,
+  `stop->reloading` = caption "(loading)") + a juce::Thread::launch running `runStopSampleLoad` (loadRankSamples
+  on the stand-ins OFF every lock, then under controlLock: samples moved in, computeTuning440 of the recording's
+  own ranks, refillStopPipes, tremSwapPending) - `recordingLoadsRunning` (the destructor waits). MEASURED
+  (Altenbruch RP_Gedackt8trRP, one perspective, 0.1 GB): read in place in 58-89 ms, the control lock held 2-11 ms,
+  freed 0.6-1 s after the switch; a key held through off / on / off: 0 discontinuities, level within 1 dB, the
+  log has NO "Division(s) rebuilt" / loading window / Commit, the workspace is not laid out again (the one
+  exception: the recording's OWN voicing open at an in-place load -> rebuildUI, its key rows show the pipes).
+  `Stop::serial` (a number per Stop object ever made): the load job and the free lambda compare it besides the
+  pointer (a division built anew meanwhile may put a NEW stop at the old address). `FolderAssignment::
+  samplesNotWanted` (stopBuildMap gives a recording's unloaded folders to the engine all the same: the Stop exists
+  with `samplesUnloaded`, so the button can load it in place later; ordinary rows' unloaded folders are still left
+  out; a recording's perspective whose PLAIN row is unloaded is left out). A recording that never got an engine
+  stop (older state) still goes the reloadDivisions way. THE COLOUR BUG: `StopRow::updateFromStop` ended with
+  `stop->enabled ? onColour() : darkgrey` - a recording's own `enabled` is meaningless (it answers with its
+  parent's), so "not loaded" stayed orange after every updateStopStates; it is `routeEnabled()` now (for a
+  recording = stopHoldsSamples). RULE: a row's colour comes from routeEnabled() in EVERY place that sets it.
+  Voicer guards: setStopHidden and resetAll never reload / unload a `tremmedManual >= 0` stop. MODEL SETTINGS (his
+  words: "celkový pitch decrement (on často klesá při zapnutém tremulantu) -20 centů až 0, výchozí -1"; "harmonic
+  filter ... konstantní složku, o kolik to prostě klesne a teprve kolem této hodnoty se aplikuje Harmonic filter
+  at dip. 0 - 3 dB, výchozí 0.5"): per division `ManualConfig::tremulantPitchDropCents` (key
+  "tremulantPitchDropCents", engine `TremParams::pitchDropCents`, `setManualTremulantPitchDrop`; added to
+  ctx.tremPitchCents / tremPitchCentsRelease x route.tremMix = it comes and goes with the tremulant's own fade;
+  `ctx.tremPitchDrop` is taken out again for a recording's release - the recording has it) in ALL THREE places:
+  Divisions dialog ("Trem. pitch drop" between Depth and rank drift, midiTarget "tremulantPitchDrop", the MIDI
+  dispatcher's case, the 10 Hz refresh), the right-click Tremulant settings ("Pitch drop while it runs"), the
+  Editor's division section ("Tremulant pitch drop" after "Tremulant depth"); swapped with the divisions, in the
+  merge's key list; global `tremulantShelfConstantDb` (key of that name, engine `harmonicTremulantConstantMix` =
+  1 - 10^(-dB/20), `setTremulantShelfConstantDb`, `ctx.shelfTremConstant` x tremMix; in the voice the dip is
+  applied AROUND it: steady + dip x (1 - steady), i.e. the dB add; never on a recording): Editor "Tremulant:
+  harmonic filter steady loss" after "Tremulant: harmonic filter", the Tremulant settings row "Harmonic filter
+  steady loss (all divisions)" before "... at the dip". MEASURED (%TEMP%\odftools\pitch_mean.py <wav> <guess Hz>
+  <t0:t1>...: the carrier's frequency and band levels; craft_drop.py makes the two configurations): drop 0 ->
+  the mean pitch with the model on = off (284.381 / 284.380 Hz); drop -20 -> 281.114 Hz = -19.99 c, back after
+  the tremulant; steady 3 dB against 0: -3.1 dB above 6 kHz, -5.3 dB in 2.5-6 kHz (the shelf's corner is 3 kHz:
+  the low-passed branch is out of phase there - the existing shelf's nature, the same for swell and wind), -0.4 dB
+  in 0.7-2.5 kHz. THE NEW DEFAULTS CHANGE THE MODEL'S SOUND A LITTLE for every organ (-1 c, 0.5 dB) - his order.
+  Test recipes: test_0127b.ps1 -Odf "%TEMP%\noise0127_trem3\cfg\Altenbruch SemiDry Extended.json" with
+  ORGAN_TEST_TREMMED "..|load|1|Gedackt8trRP|0/1" under ORGAN_TEST_RECORD (the record starts ~10 s after the
+  load's end - read "recording started" in the log and place the acts after it; a cold load of that organ takes
+  28 s, a warm one 9 s), ORGAN_TEST_EXPAND "1|RP_Gedackt8|3000|RP_Gedackt8trRP" (the delay counts from the layout
+  after the load), pictures of the main window at given seconds = ORGAN_TEST_CLICK "zzz|zzz|..." +
+  ORGAN_TEST_CLICK_AT + ORGAN_TEST_SNAPSHOT_KEEP=1 ("cNN-0-main.png"); %TEMP%\test_0150_box.ps1 -Cfg <file>
+  pictures the load box and cancels; craft_unloaded.py = every recording left out at the load (Altenbruch 6.4 GB
+  instead of 11.0). `divisionTremulantExpanded` is read from the CONFIGURATION at a load (a test sets it in the
+  file, not in the settings). NOT run: a real mouse on the Tremmed button, an organ with several perspectives
+  (Stralsund: the in-place load of 2-4 ranks), a click during "(loading)" (ignored by the code), the automatic
+  packing with an in-place load, Linux / macOS.
   THE SAME DAY, HIS ORDERS ("trem tr* a všecko mělo zmizet z Ignored patterns, protože to je teď prostě mylné";
   "doplň funkci A místo noises, dočasně. Na github to nedávej ... opravit již zadanou definici Tremulant Rate ...
   vyřadit z Ignored patterns vše, co se týká tremulantů ... Já to pak zkontroluju, přeuložím a znova vydám"):

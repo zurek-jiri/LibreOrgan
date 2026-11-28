@@ -3901,6 +3901,7 @@ void MainComponent::askToKeepChanges(const juce::String& title, const juce::Stri
 MainComponent::~MainComponent()
 {
     for (int i = 0; i < 1200 && noisesLoading.load(); ++i) juce::Thread::sleep(50);   // 0.9.127: the noises' loading thread uses the engine
+    for (int i = 0; i < 1200 && recordingLoadsRunning.load() > 0; ++i) juce::Thread::sleep(50);   // 0.9.150: so does a recording's samples being read in place
     if (deviceListListener != nullptr)
         for (auto* type : deviceManager.getAvailableDeviceTypes()) if (type != nullptr) type->removeListener(deviceListListener.get());
     PluginHost::scanner().cancel();
@@ -12744,9 +12745,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         config.tremulantRateHz = (float)tremulantRateSliders[(size_t)manual].getValue();
                         config.tremulantDepthCents = (float)tremulantDepthSliders[(size_t)manual].getValue();
                         config.tremulantRankDriftDegrees = (float)tremulantRankDriftSliders[(size_t)manual].getValue();
+                        config.tremulantPitchDropCents = juce::jlimit(-20.0f, 0.0f, (float)tremulantPitchDropSliders[(size_t)manual].getValue());   // 0.9.150
                         this->owner.engine.setManualTremulant(manual, config.tremulantEnabled,
                             config.tremulantRateHz, config.tremulantDepthCents,
                             config.tremulantRankDriftDegrees);
+                        this->owner.engine.setManualTremulantPitchDrop(manual, config.tremulantPitchDropCents);
                         this->owner.syncTremulantRecorded();   // 0.9.150: a rate moved off the recorded one - the model plays, the tick goes
                         this->owner.saveSettings();
                     };
@@ -12755,6 +12758,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     // 0.9.148: they had no tooltip
                     slider.setTooltip(target == "tremulantRate" ? "The speed of the tremulant of this division. Right-click: MIDI learn."
                         : target == "tremulantDepth" ? "How far the tremulant moves the pitch, in cents. Right-click: MIDI learn."
+                        : target == "tremulantPitchDrop" ? "A running tremulant takes wind: the pipes it shakes sound this much lower all the time it is on (-20 to 0 cents, default -1). Right-click: MIDI learn."
                         : "How far the tremulant of every further rank of a stop folder and of every further perspective lags behind the first, in degrees of its wave - the ranks do not shake as one. Right-click: MIDI learn.");
                     addAndMakeVisible(label);
                     addAndMakeVisible(slider);
@@ -12765,6 +12769,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 setupTremulantSlider(tremulantDepthSliders[(size_t)manual],
                     tremulantDepthLabels[(size_t)manual], "Tremulant Depth", 0.0, 50.0,
                     defaultTremulantDepth[manual], " cents", "tremulantDepth");
+                setupTremulantSlider(tremulantPitchDropSliders[(size_t)manual],   // 0.9.150: beside the depth, as in the right-click settings and the Editor
+                    tremulantPitchDropLabels[(size_t)manual], "Trem. pitch drop", -20.0, 0.0,
+                    -1.0, " cents", "tremulantPitchDrop");
                 setupTremulantSlider(tremulantRankDriftSliders[(size_t)manual],
                     tremulantRankDriftLabels[(size_t)manual], "Trem. rank drift", 0.0, 360.0,
                     defaultTremulantRankDrift, " deg", "tremulantRankDrift");
@@ -12939,6 +12946,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 tremulantGroupHeaders[(size_t)manual].setVisible(visible);
                 tremulantGroupHeaders[(size_t)manual].setSection("Tremulant", owner.divisionTremulantExpanded);
                 tremulantDepthSliders[(size_t)manual].setVisible(tremulantMore);
+                tremulantPitchDropSliders[(size_t)manual].setVisible(tremulantMore);
+                tremulantPitchDropLabels[(size_t)manual].setVisible(tremulantMore);
                 tremulantRankDriftSliders[(size_t)manual].setVisible(tremulantMore);
                 tremulantTargetLabels[(size_t)manual].setVisible(tremulantMore);
                 for (int target = 0; target < SamplerEngine::maxManuals; ++target)
@@ -13047,6 +13056,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 {
                     placeSetting(settingsArea, tremulantDepthLabels[(size_t)manual],
                         tremulantDepthSliders[(size_t)manual]);
+                    placeSetting(settingsArea, tremulantPitchDropLabels[(size_t)manual],
+                        tremulantPitchDropSliders[(size_t)manual]);
                     placeSetting(settingsArea, tremulantRankDriftLabels[(size_t)manual],
                         tremulantRankDriftSliders[(size_t)manual]);
                     tremulantTargetLabels[(size_t)manual].setBounds(settingsArea.removeFromTop(18));
@@ -13119,7 +13130,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         std::array<std::unique_ptr<LearnSlider>, SamplerEngine::maxManuals> expressionSliders;
         std::array<LearnableSlider, SamplerEngine::maxManuals> attenuationSliders;
         std::array<LearnableSlider, SamplerEngine::maxManuals> tremulantRateSliders, tremulantDepthSliders,
-            tremulantRankDriftSliders;
+            tremulantRankDriftSliders, tremulantPitchDropSliders;
         std::array<juce::ToggleButton, SamplerEngine::maxManuals> randomTuningButtons;
         std::array<juce::ToggleButton, SamplerEngine::maxManuals> pipeCouplingButtons;
         std::array<LearnableSlider, SamplerEngine::maxManuals> windDepthSliders, windFrequencySliders,
@@ -13129,7 +13140,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
             windOscillationLabels, windStrengthLabels, windTargetLabels;
         std::array<juce::Label, SamplerEngine::maxManuals> windSmoothingLabels;
         std::array<juce::Label, SamplerEngine::maxManuals> tremulantRateLabels, tremulantDepthLabels,
-            tremulantRankDriftLabels;
+            tremulantRankDriftLabels, tremulantPitchDropLabels;
         std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> windTargetButtons;
         std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> tremulantTargetButtons;   // 0.9.88
         std::array<juce::Label, SamplerEngine::maxManuals> tremulantTargetLabels;
@@ -13324,6 +13335,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     if (tick.isVisible() != shown) { tick.setVisible(shown); resized(); }
                 }
                 tremulantDepthSliders[(size_t)manual].setValue(config.tremulantDepthCents,
+                    juce::dontSendNotification);
+                tremulantPitchDropSliders[(size_t)manual].setValue(config.tremulantPitchDropCents,
                     juce::dontSendNotification);
                 tremulantRankDriftSliders[(size_t)manual].setValue(config.tremulantRankDriftDegrees,
                     juce::dontSendNotification);
@@ -17027,8 +17040,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             ticks->addAndMakeVisible(ticks->caption);
             if (hasTremmed)
             {
-                ticks->recordedTremulants = std::make_unique<juce::ToggleButton>("Recorded tremulants");
-                ticks->recordedTremulants->setColour(juce::ToggleButton::textColourId, onColour());
+                ticks->recordedTremulants = std::make_unique<juce::ToggleButton>("Recorded tremulants");   // white like every tick of the box (the user)
                 ticks->recordedTremulants->setToggleState(tremmedToLoad, juce::dontSendNotification);
                 ticks->recordedTremulants->getProperties().set("tickedAtFirst", tremmedToLoad);
                 ticks->recordedTremulants->setTooltip("The stops recorded with a tremulant running. Ticked: they are loaded and sound while that tremulant runs at its recorded speed. "
@@ -22304,6 +22316,7 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
     if (manual < 0 || manual >= SamplerEngine::maxManuals || !manualConfigs[(size_t)manual].stopBuild.active) return nullptr;
     auto map = std::make_shared<std::vector<SamplerEngine::FolderAssignment>>();
     const auto trees = divisionTrees(manual);
+    const ManualConfig::StopBuild::Entry* plainRow = nullptr;   // the row a recording with a tremulant stands under (the nearest row above that is none)
     for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
     {
         if (entry.folders.empty())
@@ -22320,13 +22333,26 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
             continue;
         }
         const size_t before = map->size();
+        if (!entry.isTremmed()) plainRow = &entry;
         for (const auto& [perspective, ref] : entry.folders)
         {
-            if (ref.unloaded) continue;   // 0.9.134 (#265): a folder left out of the load - it waits in the table
+            // 0.9.150: a recording with a tremulant follows its STOP's perspectives (one the stop does not load is
+            // not built for the recording either); switched off at its button ("unloaded" on its own folders) it is
+            // still BUILT - ranks, folders, routes - only its samples stay on the disk, so the button brings them in
+            // later without building the division anew.
+            bool notWanted = false;
+            if (entry.isTremmed())
+            {
+                if (plainRow != nullptr)
+                    if (const auto parent = plainRow->folders.find(perspective); parent != plainRow->folders.end() && parent->second.unloaded) continue;
+                notWanted = ref.unloaded;
+            }
+            else if (ref.unloaded) continue;   // 0.9.134 (#265): a folder left out of the load - it waits in the table
             const auto folder = resolveStopBuildFolder(manual, ref);
             if (folder == juce::File()) continue;
             map->push_back({ folder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
             map->back().tremmedManual = entry.tremmedManual;   // 0.9.150
+            map->back().samplesNotWanted = notWanted;
             for (const auto& more : ref.morePaths)   // the other halves of a stereo stop: ranks of the same perspective (0.8.160)
             {
                 ManualConfig::StopBuild::FolderRef half = ref;
@@ -22337,6 +22363,7 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
                 {
                     map->push_back({ halfFolder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
                     map->back().tremmedManual = entry.tremmedManual;
+                    map->back().samplesNotWanted = notWanted;
                 }
             }
         }
@@ -26840,11 +26867,104 @@ void MainComponent::setTremmedRowLoaded(int manual, const juce::String& name, bo
             CrashHandler::note("Recorded tremulant: \"" + entry.name + "\" (division " + juce::String(manual) + ") " + (load ? "into the memory" : "out of the memory - its stop plays with the tremulant model"));
             configurationDirty = true;
             saveSettings();
-            // Out of the memory: nothing is read (the division's other stops keep their samples, no loading
-            // window); into it: only this row's folders are read, the rest is adopted.
-            reloadDivisions({ manual }, {}, !load);
+            // IN PLACE (the user: "vše musí zůstat na místě, nic se nesmí přestavovat, jenom se tlačítko vypne a zapne"):
+            // the engine's stop stays where it is, only its samples go or come - no division reload, no grid rebuild,
+            // open voicings stay open, sounding pipes go on.
+            Stop* recording = nullptr;
+            for (auto* stop : engine.getStops())
+                if (stop != nullptr && stop->primaryManual == manual && stop->tremmedManual >= 0 && stopBuildKey(stop->name) == stopBuildKey(entry.name)) { recording = stop; break; }
+            if (recording == nullptr || recording->container)
+            {
+                // No stop to work on (a table row the engine never built with its ranks): the division's reload makes it.
+                reloadDivisions({ manual }, {}, !load);
+                return;
+            }
+            setRecordingSamplesInPlace(recording, load);
             return;
         }
+}
+
+// The samples of one recording with a tremulant out of the memory or into it, the engine's stop left in place.
+void MainComponent::setRecordingSamplesInPlace(Stop* recording, bool load)
+{
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    auto refresh = [safeThis]
+    {
+        if (safeThis == nullptr) return;
+        if (safeThis->voicer != nullptr) safeThis->voicer->updateStopStates();
+        safeThis->syncTremulantRecorded();
+    };
+    if (!load)
+    {
+        // It stops sounding at once (a held pipe crosses over to the plain one); the memory is given back when no
+        // voice reads the samples any more - a long release may still ring.
+        engine.setStopSamplesWanted(recording, false);
+        refresh();
+        const juce::int64 heldBefore = MemoryInfo::heldBytes();
+        auto attempt = std::make_shared<std::function<void(int)>>();
+        *attempt = [safeThis, recording, serial = recording->serial, attempt, heldBefore](int tries)
+        {
+            if (safeThis == nullptr) return;
+            auto& o = *safeThis;
+            auto finish = [attempt] { juce::MessageManager::callAsync([keep = attempt] { *keep = nullptr; }); };   // cleared after this call, never while it runs
+            if (!o.engine.getStops().contains(recording) || recording->serial != serial || !recording->samplesUnloaded) { finish(); return; }   // gone with a reload, or switched on again
+            if (o.activeFolderLoader == nullptr && o.engine.freeStopSamplesIfSilent(recording, tries >= 16))
+            {
+                MemoryInfo::releaseFreedMemory();
+                CrashHandler::note("Recorded tremulant: the samples of \"" + recording->name + "\" freed in place - "
+                    + juce::String((double)juce::jmax((juce::int64)0, heldBefore - MemoryInfo::heldBytes()) / (1024.0 * 1024.0 * 1024.0), 2) + " GB given back; nothing was built anew");
+                finish();
+                return;
+            }
+            if (tries >= 120) { finish(); return; }
+            juce::Timer::callAfterDelay(500, [attempt, tries] { if (*attempt) (*attempt)(tries + 1); });
+        };
+        juce::Timer::callAfterDelay(juce::roundToInt(tremulantSwapMs) + 400, [attempt] { if (*attempt) (*attempt)(0); });
+        return;
+    }
+    if (engine.stopSamplesInMemory(recording))
+    {
+        engine.setStopSamplesWanted(recording, true);   // not freed yet: back at once
+        refresh();
+        return;
+    }
+    auto job = engine.prepareStopSampleLoad(recording);
+    if (job == nullptr) { refresh(); return; }
+    refresh();   // its button says "loading"
+    const double started = juce::Time::getMillisecondCounterHiRes();
+    recordingLoadsRunning.fetch_add(1);   // the destructor waits for the thread (it works on the engine)
+    MainComponent* const self = this;
+    juce::Thread::launch([self, safeThis, job, refresh, started]
+    {
+        const bool loaded = self->engine.runStopSampleLoad(job);
+        self->recordingLoadsRunning.fetch_sub(1);
+        juce::MessageManager::callAsync([safeThis, job, loaded, refresh, started]
+        {
+            if (safeThis == nullptr) return;
+            auto& o = *safeThis;
+            if (loaded)
+                CrashHandler::note("Recorded tremulant: the samples of \"" + job->ranks.front().second->name + "\" read in place in "
+                    + juce::String(juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - started)) + " ms (" + juce::String((int)job->ranks.size()) + " perspective(s), the files "
+                    + juce::String(juce::roundToInt(job->decodeMs)) + " ms, put in under the control lock in " + juce::String(juce::roundToInt(job->lockMs)) + " ms); nothing was built anew");
+            else if (job->memoryShort)
+                queueNotice(juce::AlertWindow::WarningIcon, "Recorded tremulants", "Not enough memory for the samples of this recorded tremulant - its stop goes on with the tremulant model.");
+            refresh();
+            if (!loaded || !o.engine.getStops().contains(job->stop) || job->stop->serial != job->stopSerial) return;
+            Stop* const recording = job->stop;
+            // Switched off again while it was being read: out it goes.
+            for (const auto& entry : o.manualConfigs[(size_t)juce::jlimit(0, SamplerEngine::maxManuals - 1, recording->primaryManual)].stopBuild.entries)
+                if (entry.isTremmed() && stopBuildKey(entry.name) == stopBuildKey(recording->name))
+                {
+                    bool anyWanted = false;
+                    for (const auto& [perspective, ref] : entry.folders) anyWanted = anyWanted || !ref.unloaded;
+                    if (!anyWanted) { o.setRecordingSamplesInPlace(recording, false); return; }
+                    break;
+                }
+            // Its own voicing open: the key rows show the pipes it has now (the rows are laid out again where they
+            // stand - nothing folds, nothing moves).
+            if (recording->voicingExpanded && o.voicer != nullptr) o.voicer->rebuildUI(o.stopsContent, o.stopsViewport);
+        });
+    });
 }
 
 // A configuration that is about to be loaded (the load box's tick "Recorded tremulants"): every folder of every
@@ -29888,6 +30008,7 @@ void MainComponent::swapDivisionStops(int a, int b)
         std::swap(ca.tremulantEnabled, cb.tremulantEnabled);
         std::swap(ca.tremulantRateHz, cb.tremulantRateHz);
         std::swap(ca.tremulantDepthCents, cb.tremulantDepthCents);
+        std::swap(ca.tremulantPitchDropCents, cb.tremulantPitchDropCents);   // 0.9.150
         std::swap(ca.tremulantRankDriftDegrees, cb.tremulantRankDriftDegrees);
         std::swap(ca.expressionPosition, cb.expressionPosition);
         std::swap(ca.expressionMaxAttenuationDb, cb.expressionMaxAttenuationDb);
@@ -29941,6 +30062,7 @@ void MainComponent::swapDivisionStops(int a, int b)
         {
             auto& c = manualConfigs[(size_t)m];
             engine.setManualTremulant(m, c.tremulantEnabled, c.tremulantRateHz, c.tremulantDepthCents, c.tremulantRankDriftDegrees);
+            engine.setManualTremulantPitchDrop(m, c.tremulantPitchDropCents);   // 0.9.150
             engine.setWindModel(m, c.windDepthCents, c.windFrequencyHz, c.windOscillations, c.windOscillationStrength / 50.0f, c.windSmoothingMs, c.windTargetMask);
             engine.setManualRandomTuningAllowed(m, c.allowRandomTuningError);
             engine.setManualPipeCouplingAllowed(m, c.allowPipeCoupling);
@@ -30389,6 +30511,8 @@ void MainComponent::loadSettings()
     harmonicWindDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicWindDb", 4.0));   // 0.9.75: 4 dB (was 2)
     harmonicTremulantDb = juce::jlimit(0.0f, 12.0f, (float)(double)parsed.getProperty("harmonicTremulantDb", 4.0));
     engine.setHarmonicFilterDb(harmonicSwellDb, harmonicWindDb, harmonicTremulantDb);
+    tremulantShelfConstantDb = juce::jlimit(0.0f, 3.0f, (float)(double)parsed.getProperty("tremulantShelfConstantDb", 0.5));   // 0.9.150
+    engine.setTremulantShelfConstantDb(tremulantShelfConstantDb);
     windLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("windLevelDbPerCent", 0.2));
     windOctaveRatio = juce::jlimit(1.0f, 2.0f, (float)(double)parsed.getProperty("windOctaveRatio", 1.3));
     tremulantLevelDbPerCent = juce::jlimit(0.0f, 1.0f, (float)(double)parsed.getProperty("tremulantLevelDbPerCent", 0.187));
@@ -30637,6 +30761,9 @@ void MainComponent::loadSettings()
                 manualConfigs[(size_t)i].tremulantRateHz,
                 manualConfigs[(size_t)i].tremulantDepthCents,
                 manualConfigs[(size_t)i].tremulantRankDriftDegrees);
+            // 0.9.150: the pitch drop while the tremulant runs; a file without the key = the default, -1 cent.
+            manualConfigs[(size_t)i].tremulantPitchDropCents = juce::jlimit(-20.0f, 0.0f, (float)(double)item.getProperty("tremulantPitchDropCents", -1.0));
+            engine.setManualTremulantPitchDrop(i, manualConfigs[(size_t)i].tremulantPitchDropCents);
             manualConfigs[(size_t)i].windDepthCents = (float)(double)item.getProperty(
                 "windDepthCents", manualConfigs[(size_t)i].windDepthCents);
             manualConfigs[(size_t)i].windFrequencyHz = (float)(double)item.getProperty(
@@ -31392,6 +31519,7 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("harmonicSwellDb", harmonicSwellDb);
     obj->setProperty("harmonicWindDb", harmonicWindDb);
     obj->setProperty("harmonicTremulantDb", harmonicTremulantDb);
+    obj->setProperty("tremulantShelfConstantDb", tremulantShelfConstantDb);   // 0.9.150
     obj->setProperty("tremulantShelfPhaseDegrees", tremulantShelfPhaseDegrees);
     obj->setProperty("velocityFadeInMs", velocityFadeInMs);
     obj->setProperty("velocityFullFrom", velocityFullFrom);
@@ -31547,6 +31675,7 @@ void MainComponent::saveSettingsNow()
         item->setProperty("tremulantEnabled", config.tremulantEnabled);
         item->setProperty("tremulantRateHz", config.tremulantRateHz);
         item->setProperty("tremulantDepthCents", config.tremulantDepthCents);
+        item->setProperty("tremulantPitchDropCents", config.tremulantPitchDropCents);   // 0.9.150
         item->setProperty("tremulantRankDriftDegrees", config.tremulantRankDriftDegrees);
         item->setProperty("windDepthCents", config.windDepthCents);
         item->setProperty("windFrequencyHz", config.windFrequencyHz);
@@ -33833,6 +33962,8 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                         { "Rate", "Tremulant rate", "The speed of the division's tremulant (2 to 11 Hz)." },
                         { "Depth (maximum pitch sag)", "Wind: depth (maximum pitch sag)", "How far the pitch sags with the wind at its lowest; 0 switches the wind model off for this division." },
                         { "Depth", "Tremulant depth", "The pitch modulation of the tremulant (0 to 50 cents); its strength wanders between 60 and 100 % of it." },
+                        { "Pitch drop", "Tremulant pitch drop", "A running tremulant takes wind: the pipes it shakes sound this much lower all the time it is on (-20 to 0 cents, default -1); the swing moves around that." },
+                        { "Harmonic filter steady loss", "Tremulant: harmonic filter steady loss", "The tone is this much darker all the time the tremulant runs (0 to 3 dB, default 0.5; every division); the filter's dip swings on top of it." },
                         { "Phase drift", "Tremulant phase drift between ranks", "How far the ranks of the division drift apart in the tremulant's cycle: 0 = every stop dips at once, a large value lets a full registration shimmer." },
                         { "Volume change per cent of pitch", "Tremulant: volume change per cent of pitch", "The level modulation per cent of pitch modulation (every division)." },
                         { "Harmonic filter at the dip", "Tremulant: harmonic filter", "This much high-frequency loss at the bottom of the tremulant's dip, so the tone breathes with the level (every division)." },
@@ -33983,10 +34114,26 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             [this, m, applyTremulant](double value) { manualConfigs[(size_t)m].tremulantRateHz = (float)value; applyTremulant(); } });
         rows.push_back({ "Depth", 0.0, 50.0, 0.1, " cents", config.tremulantDepthCents, 6.0,
             [this, m, applyTremulant](double value) { manualConfigs[(size_t)m].tremulantDepthCents = (float)value; applyTremulant(); } });
+        // 0.9.150 (the user): the whole pitch sinks while the tremulant runs - beside its depth, in every place.
+        rows.push_back({ "Pitch drop while it runs", -20.0, 0.0, 0.1, " cents", config.tremulantPitchDropCents, -1.0,
+            [this, m](double value)
+            {
+                manualConfigs[(size_t)m].tremulantPitchDropCents = juce::jlimit(-20.0f, 0.0f, (float)value);
+                engine.setManualTremulantPitchDrop(m, manualConfigs[(size_t)m].tremulantPitchDropCents);
+                saveSettings();
+            } });
         rows.push_back({ "Phase drift between ranks", 0.0, 360.0, 1.0, " deg", config.tremulantRankDriftDegrees, 260.0,
             [this, m, applyTremulant](double value) { manualConfigs[(size_t)m].tremulantRankDriftDegrees = (float)value; applyTremulant(); } });
         rows.push_back({ "Volume change per cent of pitch (all divisions)", 0.0, 0.6, 0.001, " dB/cent", tremulantLevelDbPerCent, 0.187,
             [this](double value) { tremulantLevelDbPerCent = (float)value; applyAdvancedAudioSettings(); saveSettings(); } });
+        // 0.9.150 (the user): the filter's steady part first - the dip swings around it.
+        rows.push_back({ "Harmonic filter steady loss (all divisions)", 0.0, 3.0, 0.1, " dB", tremulantShelfConstantDb, 0.5,
+            [this](double value)
+            {
+                tremulantShelfConstantDb = juce::jlimit(0.0f, 3.0f, (float)value);
+                engine.setTremulantShelfConstantDb(tremulantShelfConstantDb);
+                saveSettings();
+            } });
         rows.push_back({ "Harmonic filter at the dip (all divisions)", 0.0, 12.0, 0.5, " dB", harmonicTremulantDb, 4.0,
             [this, harmonic](double value) { harmonicTremulantDb = (float)value; harmonic(); } });
         rows.push_back({ "Harmonic filter phase (all divisions)", 0.0, 360.0, 1.0, " deg", tremulantShelfPhaseDegrees, 90.0,
@@ -34353,6 +34500,13 @@ bool MainComponent::applyMidiSliderValue(const juce::String& target, float norma
             engine.setManualTremulant(manual, config.tremulantEnabled,
                 config.tremulantRateHz, config.tremulantDepthCents,
                 config.tremulantRankDriftDegrees);
+            saveSettings();
+            return true;
+        }
+        else if (parameter == "tremulantPitchDrop")   // 0.9.150
+        {
+            config.tremulantPitchDropCents = juce::jlimit(-20.0f, 0.0f, scaled(-20.0, 0.0));
+            engine.setManualTremulantPitchDrop(manual, config.tremulantPitchDropCents);
             saveSettings();
             return true;
         }
@@ -38288,6 +38442,16 @@ void MainComponent::showConfigurationEditor()
             addSlider("Tremulant: harmonic filter", 0.0, 12.0, 0.5, " dB", o.harmonicTremulantDb, 4.0,
                 [&o, harmonicChanged](double value) { o.harmonicTremulantDb = (float)value; harmonicChanged(); },
                 "High shelf that follows the tremulant: this much high-frequency loss at the bottom of its dip.");
+            // 0.9.150 (the user): the filter's steady part - the tone is that much darker all the time the tremulant runs.
+            addSlider("Tremulant: harmonic filter steady loss", 0.0, 3.0, 0.1, " dB", o.tremulantShelfConstantDb, 0.5,
+                [&o](double value)
+                {
+                    o.tremulantShelfConstantDb = juce::jlimit(0.0f, 3.0f, (float)value);
+                    o.engine.setTremulantShelfConstantDb(o.tremulantShelfConstantDb);
+                    o.saveSettings();
+                },
+                "A running tremulant takes wind: the tone is this much darker ALL THE TIME it is on (0 to 3 dB, default 0.5), and the harmonic filter above "
+                "swings its dip on top of that. Comes and goes with the tremulant's own fade.");
             addSlider("Tremulant: harmonic filter phase", 0.0, 360.0, 1.0, " deg", o.tremulantShelfPhaseDegrees, 90.0,
                 [&o](double value)
                 {
@@ -39207,6 +39371,16 @@ void MainComponent::showConfigurationEditor()
                     "Tremulant: recorded samples");
                 addSlider("Tremulant depth", 0.0, 50.0, 0.1, " cents", config.tremulantDepthCents, 6.0,
                     [&config, applyTremulant](double value) { config.tremulantDepthCents = (float)value; applyTremulant(); });
+                // 0.9.150 (the user): the whole pitch while the tremulant runs.
+                addSlider("Tremulant pitch drop", -20.0, 0.0, 0.1, " cents", config.tremulantPitchDropCents, -1.0,
+                    [&o, &config, manual](double value)
+                    {
+                        config.tremulantPitchDropCents = juce::jlimit(-20.0f, 0.0f, (float)value);
+                        o.engine.setManualTremulantPitchDrop(manual, config.tremulantPitchDropCents);
+                        o.saveSettings();
+                    },
+                    "A running tremulant takes wind: the pipes it shakes sound this much lower all the time it is on (-20 to 0 cents, default -1); "
+                    "the swing moves around that. Comes and goes with the tremulant's own fade.");
                 addSlider("Tremulant phase drift between ranks", 0.0, 360.0, 1.0, " deg", config.tremulantRankDriftDegrees, 260.0,
                     [&config, applyTremulant](double value) { config.tremulantRankDriftDegrees = (float)value; applyTremulant(); });
                 dumpOption("tick boxes, one per division", "Tremulant: also shakes divisions",

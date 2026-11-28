@@ -568,6 +568,7 @@ private:
         bool tremulantEnabled = false;
         float tremulantRateHz = 4.4f;
         float tremulantDepthCents = 6.0f;
+        float tremulantPitchDropCents = -1.0f;   // 0.9.150: the whole pitch while the tremulant runs (-20..0 cents): it takes wind
         float tremulantRankDriftDegrees = 260.0f;
         float windDepthCents = 15.0f;   // 0.9.75: 15 cents (the pedal's profile 20)
         float windFrequencyHz = 7.5f;
@@ -978,6 +979,8 @@ private:
     void applyStopGroups();   // Stop::groupMaster of every stop from the tables' indented rows
     // 0.9.150 RECORDED TREMULANTS (rows of the Stop List's second level; Stop::tremmedManual in the engine):
     void setTremmedRowLoaded(int manual, const juce::String& name, bool load);     // its samples into the memory / out of it (the voicing row's button; the row's "unloaded" flags)
+    void setRecordingSamplesInPlace(Stop* recording, bool load);                    // ... the engine's stop left where it is: no reload, no grid rebuild
+    std::atomic<int> recordingLoadsRunning { 0 };                                   // threads reading a recording's samples (the destructor waits for them)
     void setTremmedRowDivision(int manual, const juce::String& name, int division);   // the division whose tremulant plays it
     bool anyTremmedRows(int tremulantManual = -1) const;                            // a recording played by this division's tremulant (-1: by any) is in the tables
     bool tremmedRowsLoaded(int tremulantManual) const;                              // ... and in the memory
@@ -1636,6 +1639,7 @@ private:
     void applyAdvancedAudioSettings();
     // Harmonic filter depth (dB at full attenuation) following swell, wind and tremulant; 0 = off.
     float harmonicSwellDb = 8.0f, harmonicWindDb = 4.0f, harmonicTremulantDb = 4.0f;   // harmonic filter depths (wind 4 dB since 0.9.75)
+    float tremulantShelfConstantDb = 0.5f;   // 0.9.150: the steady part of the tremulant's harmonic filter (0..3 dB) - its dip swings on top of it
     float tremulantShelfPhaseDegrees = 90.0f;   // the tremulant's tone oscillation behind its volume oscillation
     float velocityFadeInMs = 100.0f;            // key velocity on stops without velocity layers: fade-in at the lowest velocity (0.8.196: 100 ms, was 40)
     int velocityFullFrom = 80;                  // ... and the velocity from which a stroke is a full one (no fade-in, no treble cut); the ramp runs below it (0.8.196)

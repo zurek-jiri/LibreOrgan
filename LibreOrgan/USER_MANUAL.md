@@ -1000,9 +1000,10 @@ inertia set, so a sudden stroke arrives smoothly.
 The *Tremulant* button in the division header is registration like a stop: it
 sits in combinations and crescendo steps and is MIDI-learnable (right-click:
 *Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per
-division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,
+division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation), [Tremulant pitch drop](#tremulant-pitch-drop) (a running tremulant takes wind:
+the pipes sound a little lower) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,
 a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how
-much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the
+much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter), [Tremulant: harmonic filter steady loss](#tremulant-harmonic-filter-steady-loss) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the
 level). The strength wanders between 60 and 100 % of the depth from cycle to
 cycle, and the children of a stop folder are spread in phase like the ranks of
 a mixture, so nothing pulses mechanically. One tremulant may shake several
@@ -1032,7 +1033,8 @@ the recording has no files for plays the plain pipe with the model.
 - **In the voicing** of the stop the recording is a row of its own under it
   (a tree shows the levels) with its own stop volume, volume, treble and
   attack per key and release crossfade. Its button puts its samples into the
-  memory or gives the memory back - off, the stop plays with the model. It is
+  memory or gives the memory back - off, the stop plays with the model;
+  nothing else of the organ is loaded or built anew for it. It is
   no stop: no place in combinations, crescendo or Tutti, no alias, no
   transmissions.
 - **Made by hand:** in the Stop List drag the name of the folder's row right
@@ -1934,6 +1936,11 @@ stroke shakes the wind with a random 40 to 100 % of it. 0 switches it off.
 The shelf following the tremulant: this much loss at the bottom of its dip
 (default 4 dB).
 
+### Tremulant: harmonic filter steady loss
+
+The part of that loss that stays all the time the tremulant runs (0 to 3 dB,
+default 0.5): the dip swings on top of it.
+
 ### Tremulant: harmonic filter phase
 
 How far the tone oscillation lags the volume oscillation (0 to 360 degrees,
@@ -2446,6 +2453,12 @@ rate back.
 
 The pitch modulation, 0 to 50 cents (default 6); the strength wanders between
 60 and 100 % of it.
+
+### Tremulant pitch drop
+
+A running tremulant takes wind: the pipes it shakes sound this much lower all
+the time it is on (-20 to 0 cents, default -1); the modulation swings around
+that.
 
 ### Tremulant phase drift between ranks
 
