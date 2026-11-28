@@ -2760,6 +2760,7 @@ MainComponent::MainComponent()
                     o.engine.setManualTremulant(division, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
                     o.syncTremulantRecorded();
                 }
+                else if (act == "definition") o.addTremulantsFromDefinition(juce::File(parts[3]));   // "<s>|definition|0|<odf>": the Editor's temporary "Recorded tremulants of a Hauptwerk definition"
                 else if (act == "load") o.setTremmedRowLoaded(division, rowNamed(parts[3]), parts[4].getIntValue() != 0);
                 else if (act == "division") o.setTremmedRowDivision(division, rowNamed(parts[3]), parts[4].getIntValue());
                 else if (act == "fxall")
@@ -2771,8 +2772,8 @@ MainComponent::MainComponent()
                 for (const auto* stop : o.engine.getStops())
                     if (stop->tremmedManual >= 0)
                         lines.add("\"" + stop->name + "\" (division " + juce::String(stop->primaryManual) + ") by the tremulant of " + juce::String(stop->tremmedManual)
-                            + (stop->tremmedOfPtr != nullptr ? " of \"" + stop->tremmedOfPtr->name + "\"" : juce::String(" UNBOUND"))
-                            + (SamplerEngine::stopHoldsSamples(stop) ? ", in the memory" : ", not loaded") + ", " + juce::String((int)stop->ranks.size() + 1) + " perspective(s), "
+                            + (stop->tremmedOfPtr != nullptr ? " of \"" + stop->tremmedOfPtr->name + "\" (" + juce::String(stop->tremmedOfPtr->db, 1) + " dB)" : juce::String(" UNBOUND"))
+                            + (SamplerEngine::stopHoldsSamples(stop) ? ", in the memory" : ", not loaded") + ", " + juce::String(stop->db, 1) + " dB, " + juce::String((int)stop->ranks.size() + 1) + " perspective(s), "
                             + juce::String((int)stop->transmissions.size()) + " transmission(s)");
                 juce::String tremulants;
                 for (int m = 0; m <= o.manualCount; ++m)
@@ -31130,7 +31131,13 @@ void MainComponent::rememberPatterns(bool exact)
     };
     juce::DynamicObject::Ptr obj = new juce::DynamicObject();
     obj->setProperty("oneShotPatterns", lists("oneShotPatterns", engine.getOneShotPatterns(), false));
-    obj->setProperty("ignoredPatterns", lists("ignoredPatterns", engine.getIgnoredPatterns(), false));
+    {
+        // 0.9.150: this computer's list loses the patterns that hid the tremulant recordings as well (the engine's
+        // own list never holds them: setIgnoredPatterns).
+        auto ignored = mergedPatterns(engine.getIgnoredPatterns(), exact ? std::vector<juce::String>{} : patternsOf(stored, "ignoredPatterns"), false);
+        ignored.erase(std::remove_if(ignored.begin(), ignored.end(), [](const juce::String& p) { return SamplerEngine::isTremulantPattern(p); }), ignored.end());
+        obj->setProperty("ignoredPatterns", patternsVar(ignored));
+    }
     // 0.9.65: by prefix, Patterns.json's own lines FIRST - what the user wrote keeps its prefixes, the
     // organ's new prefixes join their labels, a prefix of another label there stays where it is.
     obj->setProperty("perspectivePatterns", patternsVar(exact ? engine.getPerspectivePatterns()
@@ -38683,19 +38690,27 @@ void MainComponent::showConfigurationEditor()
                     "The table of the organ's noises (the top bar's Noises button): each on or off, what it is, its volume and the volume of each of its perspectives. "
                     "The noises' own buttons (blower, zimbelstern ...) stand on the grid among the stops.",
                     "Noises window");
-                addButtonWithNote("Noises of a Hauptwerk definition", "Add...", juce::String(soundCount) + " noise sound(s) in this organ", [&o]
+                // 0.9.150, TEMPORARY (the user): the noises' "of a Hauptwerk definition" row is gone (every published
+                // organ was saved anew with its noises); in its place the same service for the recorded tremulants,
+                // until those configurations are saved anew too.
+                juce::ignoreUnused(soundCount);   // the note of the noises' row that stood here
+                int recordedRows = 0;
+                for (int m = 0; m <= juce::jmin(o.manualCount, SamplerEngine::maxManuals - 1); ++m)
+                    for (const auto& entry : o.manualConfigs[(size_t)m].stopBuild.entries) if (entry.isTremmed()) ++recordedRows;
+                addButtonWithNote("Recorded tremulants of a Hauptwerk definition", "Add...", juce::String(recordedRows) + " recording(s) in this organ", [&o]
                     {
                         auto chooser = std::make_shared<juce::FileChooser>("The organ's Hauptwerk definition", o.lastSettingsDirectory, "*.Organ_Hauptwerk_xml", true);
                         juce::Component::SafePointer<MainComponent> safeThis(&o);
                         chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [safeThis, chooser](const juce::FileChooser& fc)
                         {
-                            if (safeThis != nullptr && fc.getResult().existsAsFile()) safeThis->addNoisesFromDefinition(fc.getResult());
+                            if (safeThis != nullptr && fc.getResult().existsAsFile()) safeThis->addTremulantsFromDefinition(fc.getResult());
                         });
                     },
-                    "Adds the noises of the organ's Hauptwerk definition to the LOADED organ. LibreOrgan Sampler does not load the definition: as with the pipes, it is "
-                    "read for where the samples lie and what they belong to - here a key, a drawknob, a coupler, the tremulant or a button of its own. "
-                    "Nothing else of your configuration is touched - stops, transmissions, voicing and the grid stay as they are. Save the configuration afterwards.",
-                    "Noises of a Hauptwerk definition");
+                    "For an organ made before recorded tremulants were read: adds the stops' recordings with a tremulant running, as the organ's Hauptwerk definition "
+                    "names them, to the LOADED organ - rows of the Stop List's second level under their stops - and sets the tremulants' rates as the definition has them. "
+                    "LibreOrgan Sampler does not load the definition: as with the pipes, it is read for where the sample folders lie and what they belong to. "
+                    "Nothing else of your configuration is touched - stops, transmissions, their voicing and the grid stay as they are. Save the configuration afterwards.",
+                    "Recorded tremulants of a Hauptwerk definition");
                 addButton("Noises of a folder", "Add...", [&o]
                     {
                         auto chooser = std::make_shared<juce::FileChooser>("The folder with the organ's noises", o.lastSampleFolderDirectory, juce::String(), true);
@@ -39986,6 +40001,258 @@ void MainComponent::addNoisesFromDefinition(const juce::File& odfFile)
                 + " sounds). Nothing else of the configuration was changed. Save the configuration to keep them.");
         });
     });
+}
+
+// 0.9.150, TEMPORARY (the user: "doplň funkci A místo noises, dočasně ... Já to pak zkontroluju, přeuložím a znova
+// vydám" - it goes again once his published configurations are saved anew): the RECORDED TREMULANTS of the organ's
+// Hauptwerk definition added to the LOADED organ, nothing else of it touched.
+//  - every recording of the definition becomes a row of the second level under the row that plays its plain
+//    rank's folder (found by the folder's place on the disk, whatever division and name the row has now), the
+//    perspective = the one that row plays the plain folder under; a tree of recordings that is no tree of the organ
+//    yet ("pipe/OWTR") joins the pool;
+//  - the tremulants: the rate of EVERY division the definition gives one (the old imports took the middle of the
+//    engaged and the disengaged frequency, 10 % too fast), the recorded speed and the tick, the target divisions;
+//  - after the load (only the recordings are read; the organ's samples stay) each recording takes its stop's
+//    voicing moved by the definition's level difference between the two, pipe by pipe.
+void MainComponent::addTremulantsFromDefinition(const juce::File& odfFile)
+{
+    static const char* const title = "Recorded tremulants";
+    if (engine.getStops().isEmpty()) { queueNotice(juce::AlertWindow::WarningIcon, title, "Load the organ first: the recorded tremulants are added to the loaded organ."); return; }
+    if (activeFolderLoader != nullptr || searchingSampleFolders) { queueNotice(juce::AlertWindow::WarningIcon, title, "The organ is loading - once more when it is loaded."); return; }
+    juce::File root = HauptwerkOdf::hauptwerkRootFor(odfFile);
+    if (root == juce::File())
+        if (const auto library = libraryRootOnThisComputer(); library != juce::File()) root = library.getParentDirectory();
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    CrashHandler::note("Recorded tremulants: reading the definition " + odfFile.getFullPathName());
+    juce::Thread::launch([safeThis, odfFile, root]
+    {
+        auto odf = std::make_shared<HauptwerkOdf>(HauptwerkOdf::parse(odfFile));
+        auto plan = std::make_shared<HauptwerkOdf::Plan>();
+        if (odf->error.isEmpty()) *plan = odf->plan(root);
+        juce::MessageManager::callAsync([safeThis, odf, plan, odfFile] { if (safeThis != nullptr) safeThis->addTremulantsOfPlan(odf, plan, odfFile); });
+    });
+}
+
+void MainComponent::addTremulantsOfPlan(std::shared_ptr<HauptwerkOdf> odf, std::shared_ptr<HauptwerkOdf::Plan> plan, const juce::File& odfFile)
+{
+    static const char* const title = "Recorded tremulants";
+    if (odf == nullptr || plan == nullptr || odf->error.isNotEmpty() || plan->error.isNotEmpty())
+    {
+        queueNotice(juce::AlertWindow::WarningIcon, title, "The definition " + odfFile.getFileName() + " could not be read: "
+            + (odf != nullptr && odf->error.isNotEmpty() ? odf->error : plan != nullptr ? plan->error : juce::String("no data")));
+        return;
+    }
+    if (activeFolderLoader != nullptr || searchingSampleFolders) { queueNotice(juce::AlertWindow::WarningIcon, title, "The organ is loading - once more when it is loaded."); return; }
+    const auto places = usedFolderPlaces();
+    struct NewRow { int manual = 0; juce::String parentKey; int tremulantId = 0; ManualConfig::StopBuild::Entry entry; };
+    std::vector<NewRow> rows;
+    int inDefinition = 0, alreadyThere = 0, treesAdded = 0, foldersPlaced = 0;
+    juce::StringArray missed;
+    const int lastManual = juce::jmin(manualCount, SamplerEngine::maxManuals - 1);
+    std::function<void(const HauptwerkOdf::PlanStop&)> take = [&](const HauptwerkOdf::PlanStop& stop)
+    {
+        for (const auto& recording : stop.tremmed)
+        {
+            ++inDefinition;
+            bool placed = false, known = false;
+            for (const int rankId : recording.rankIds)
+            {
+                const auto rankIt = odf->ranks.find(rankId);
+                if (rankIt == odf->ranks.end() || rankIt->second.folder == juce::File()) continue;
+                const auto& rank = rankIt->second;
+                const auto plainIt = odf->ranks.find(rank.alternateOfRankId);
+                if (plainIt == odf->ranks.end() || plainIt->second.folder == juce::File()) continue;
+                if (places.count(rank.folder.getFullPathName().toLowerCase()) > 0) { known = true; continue; }   // a row plays this folder already
+                const auto place = places.find(plainIt->second.folder.getFullPathName().toLowerCase());
+                if (place == places.end()) continue;   // the organ here does not play that stop
+                const int manual = place->second.first;
+                if (manual < 0 || manual > lastManual) continue;
+                auto& config = manualConfigs[(size_t)manual];
+                if (!config.stopBuild.active) { config.stopBuild = deriveStopBuildFromEngine(manual); config.stopBuild.active = true; }
+                // The row and the perspective under which it plays the plain folder.
+                const ManualConfig::StopBuild::Entry* parent = nullptr;
+                juce::String label;
+                for (const auto& entry : config.stopBuild.entries)
+                {
+                    if (entry.isTransmission() || entry.isTremmed() || stopBuildKey(entry.name) != stopBuildKey(place->second.second)) continue;
+                    for (const auto& [perspective, ref] : entry.folders)
+                        if (resolveStopBuildFolder(manual, ref).getFullPathName().equalsIgnoreCase(plainIt->second.folder.getFullPathName())) { parent = &entry; label = perspective; break; }
+                    if (parent != nullptr) break;
+                }
+                if (parent == nullptr) continue;
+                // Its tree: the deepest tree of the organ that holds the folder, else the definition's (it joins the pool).
+                int treeIndex = -1, deepest = -1;
+                for (int t = 0; t < (int)sampleTrees.size(); ++t)
+                {
+                    const juce::File tree(sampleTrees[(size_t)t]);
+                    if ((rank.folder == tree || rank.folder.isAChildOf(tree)) && tree.getFullPathName().length() > deepest) { treeIndex = t; deepest = tree.getFullPathName().length(); }
+                }
+                if (treeIndex < 0)
+                    for (const auto& tree : plan->allTrees)
+                        if (rank.folder == tree || rank.folder.isAChildOf(tree)) { treeIndex = addTreeToPool(tree.getFullPathName()); ++treesAdded; break; }
+                if (treeIndex < 0) continue;
+                const auto parentKey = stopBuildKey(parent->name);
+                auto row = std::find_if(rows.begin(), rows.end(), [&](const NewRow& r) { return r.manual == manual && r.parentKey == parentKey && r.tremulantId == recording.tremulantId; });
+                if (row == rows.end())
+                {
+                    NewRow made;
+                    made.manual = manual;
+                    made.parentKey = parentKey;
+                    made.tremulantId = recording.tremulantId;
+                    const auto mine = rank.folder.getFileName(), theirs = plainIt->second.folder.getFileName();
+                    const juce::String suffix = mine.length() > theirs.length() && mine.substring(0, theirs.length()).equalsIgnoreCase(theirs) ? mine.substring(theirs.length()) : juce::String(" tremmed");
+                    juce::String name = parent->name + suffix;
+                    int number = 2;
+                    auto taken = [&](const juce::String& candidate)
+                    {
+                        for (const auto& entry : config.stopBuild.entries) if (stopBuildKey(entry.name) == stopBuildKey(candidate)) return true;
+                        for (const auto& r : rows) if (r.manual == manual && stopBuildKey(r.entry.name) == stopBuildKey(candidate)) return true;
+                        return false;
+                    };
+                    while (taken(name) && number < 50) name = parent->name + suffix + " (" + juce::String(number++) + ")";
+                    made.entry.name = name;
+                    made.entry.customName = true;
+                    made.entry.child = true;
+                    made.entry.tremmedManual = juce::jlimit(0, lastManual, recording.tremulantDivision >= 0 ? recording.tremulantDivision : manual);
+                    made.entry.sampleOffset = parent->sampleOffset;
+                    made.entry.sampleOffsetSet = parent->sampleOffsetSet;
+                    rows.push_back(made);
+                    row = rows.end() - 1;
+                }
+                if (row->entry.folders.count(label) == 0)
+                {
+                    row->entry.folders[label] = { treeIndex, slashes(rank.folder.getRelativePathFrom(juce::File(sampleTrees[(size_t)treeIndex]))) };
+                    ++foldersPlaced;
+                    placed = true;
+                }
+            }
+            if (!placed) { if (known) ++alreadyThere; else if (missed.size() < 8) missed.add(stop.name); }
+        }
+    };
+    for (const auto& division : plan->divisions)
+        for (const auto& stop : division.stops) { take(stop); for (const auto& child : stop.children) take(child); }
+
+    // The rows into the tables, each after its stop's row and the recordings that row has already.
+    std::set<int> affected;
+    struct Made { int manual; juce::String name, parentName; };
+    std::vector<Made> made;
+    for (const auto& row : rows)
+    {
+        auto& entries = manualConfigs[(size_t)row.manual].stopBuild.entries;
+        size_t at = entries.size();
+        juce::String parentName;
+        for (size_t i = 0; i < entries.size(); ++i)
+            if (!entries[i].isTremmed() && !entries[i].isTransmission() && stopBuildKey(entries[i].name) == row.parentKey) { at = i + 1; parentName = entries[i].name; break; }
+        if (parentName.isEmpty()) continue;
+        while (at < entries.size() && entries[at].isTremmed()) ++at;
+        entries.insert(entries.begin() + (long)at, row.entry);
+        affected.insert(row.manual);
+        made.push_back({ row.manual, row.entry.name, parentName });
+    }
+
+    // The tremulants as the definition has them.
+    juce::StringArray rates;
+    for (int d = 0; d < (int)plan->divisions.size() && d <= lastManual; ++d)
+    {
+        const auto& division = plan->divisions[(size_t)d];
+        auto& config = manualConfigs[(size_t)d];
+        if (division.tremulantRateHz <= 0.0f) continue;
+        const float rate = juce::jlimit(2.0f, 11.0f, division.tremulantRateHz);
+        if (std::abs(config.tremulantRateHz - rate) > 0.011f)
+            rates.add((d == 0 ? juce::String("P.") : romanNumeral(d) + ".") + " " + juce::String(config.tremulantRateHz, 2) + " -> " + juce::String(rate, 2) + " Hz");
+        config.tremulantRateHz = rate;
+        if (division.tremulantHasRecordings)
+        {
+            config.tremulantRecordedHz = rate;
+            config.tremulantRecorded = true;
+            config.tremulantTargetMask = (uint8_t)((config.tremulantTargetMask | division.tremulantTargetMask) & ~(1 << d));
+            engine.setManualTremulantTargets(d, config.tremulantTargetMask);
+        }
+        engine.setManualTremulant(d, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+    }
+    syncTremulantRecorded();
+
+    const juce::String summary = juce::String((int)made.size()) + " recording(s) of " + juce::String(inDefinition) + " in the definition \"" + plan->organName + "\" added under their stops ("
+        + juce::String(foldersPlaced) + " folder(s)" + (treesAdded > 0 ? ", " + juce::String(treesAdded) + " folder tree(s) of recordings joined the organ's" : juce::String()) + ")"
+        + (alreadyThere > 0 ? "; " + juce::String(alreadyThere) + " were rows already" : juce::String())
+        + (!missed.isEmpty() ? "; no row of this organ plays the stop of: " + missed.joinIntoString(", ") : juce::String())
+        + (!rates.isEmpty() ? ". Tremulant rates set from the definition: " + rates.joinIntoString(", ") : juce::String(". The tremulant rates were as the definition has them"));
+    CrashHandler::note("Recorded tremulants: " + summary);
+    configurationDirty = true;
+    if (made.empty())
+    {
+        saveSettings();
+        if (voicer != nullptr) voicer->updateStopStates();
+        refreshConfigurationEditor();
+        queueNotice(juce::AlertWindow::InfoIcon, title, summary + ".");
+        return;
+    }
+    syncDivisionTreeLists();
+    saveSettings();
+    queueNotice(juce::AlertWindow::InfoIcon, title, summary + ". Nothing else of the configuration was changed; the recordings are read now - the organ's own samples stay in the memory. "
+        "Check the rows in the Stop List (second level, \"Tremmed\") and save the configuration to keep them.");
+    // After the load: each recording takes its stop's voicing, moved by the definition's level difference between the
+    // two folders of the same perspective, pipe by pipe (the stop's own voicing is the user's work - it is the base).
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    runWhenLoaded([safeThis, odf, made]
+    {
+        if (safeThis == nullptr) return;
+        auto& o = *safeThis;
+        int voiced = 0;
+        {
+            const juce::ScopedLock lock(o.engine.getLock());
+            for (const auto& item : made)
+            {
+                Stop* recording = nullptr;
+                Stop* parent = nullptr;
+                for (auto* stop : o.engine.getStops())
+                {
+                    if (stop == nullptr || stop->primaryManual != item.manual) continue;
+                    if (stop->tremmedManual >= 0 && stopBuildKey(stop->name) == stopBuildKey(item.name)) recording = stop;
+                    else if (stop->tremmedManual < 0 && !stop->container && stopBuildKey(stop->name) == stopBuildKey(item.parentName)) parent = stop;
+                }
+                if (recording == nullptr || parent == nullptr) continue;
+                auto foldersOf = [](const Stop* stop)
+                {
+                    std::vector<std::pair<juce::String, juce::File>> folders;
+                    if (stop->folder != juce::File()) folders.push_back({ stop->perspective, stop->folder });
+                    for (const auto& rank : stop->ranks) if (rank->folder != juce::File()) folders.push_back({ rank->perspective, rank->folder });
+                    return folders;
+                };
+                std::map<int, float> sum;
+                std::map<int, int> count;
+                for (const auto& [perspective, folder] : foldersOf(recording))
+                    for (const auto& [plainPerspective, plainFolder] : foldersOf(parent))
+                    {
+                        if (!plainPerspective.equalsIgnoreCase(perspective)) continue;
+                        const auto mine = odf->levelsForFolders({ folder }), theirs = odf->levelsForFolders({ plainFolder });
+                        for (const auto& [note, db] : mine)
+                            if (const auto other = theirs.find(note); other != theirs.end()) { sum[note] += db - other->second; ++count[note]; }
+                    }
+                if (sum.empty()) continue;
+                std::vector<float> deltas;
+                for (auto& [note, value] : sum) { value /= (float)count[note]; deltas.push_back(value); }
+                std::sort(deltas.begin(), deltas.end());
+                const float median = deltas.size() % 2 == 1 ? deltas[deltas.size() / 2] : 0.5f * (deltas[deltas.size() / 2 - 1] + deltas[deltas.size() / 2]);
+                recording->setDb(juce::jlimit(-24.0f, 12.0f, parent->db + median));
+                if (voiced < 4) CrashHandler::note("Recorded tremulants: \"" + recording->name + "\" " + juce::String(recording->db, 1) + " dB = its stop's " + juce::String(parent->db, 1)
+                    + " dB + the definition's difference " + juce::String(median, 1) + " dB (" + juce::String((int)sum.size()) + " pipe(s) compared)");
+                for (int note = 0; note < 128; ++note)
+                {
+                    const auto delta = sum.find(note);
+                    recording->setNoteDb(note, juce::jlimit(-12.0f, 12.0f, parent->getNoteDb(note) + (delta != sum.end() ? delta->second - median : 0.0f)));
+                }
+                ++voiced;
+            }
+        }
+        CrashHandler::note("Recorded tremulants: " + juce::String(voiced) + " of " + juce::String((int)made.size()) + " recording(s) took their stop's voicing with the definition's level difference");
+        if (o.voicer != nullptr) { o.voicer->updateStopStates(); o.voicingSaveAt = juce::Time::getMillisecondCounterHiRes() + 350.0; }
+        o.syncTremulantRecorded();
+        o.configurationDirty = true;
+        o.saveSettings();
+    });
+    std::vector<int> manuals(affected.begin(), affected.end());
+    reloadDivisions(manuals);
 }
 
 // THE FALLBACK: the noises read from a folder by the NAMES of its levels (no definition). A level is known by its

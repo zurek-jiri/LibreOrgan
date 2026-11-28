@@ -565,7 +565,11 @@ namespace
         for (const auto& f : folders) keys.insert(f.getFullPathName().toLowerCase());
         return keys;
     }
-    bool isTremmedVariantFolder(const juce::File& folder, const std::set<juce::String>& keys)
+    // 0.9.150: the Ignored Patterns no longer name tremulants ("trem", "*_tr" are gone from the list), so what they
+    // hid is known here by what it IS: a folder "trem" (a definition's tremulant waveforms inside a rank folder), a
+    // folder named like its sibling or parent with the mark, and every folder UNDER such a folder ("pipe/OWTR/..."
+    // beside "pipe/OW", "II_Pos_tr/..." beside "II_Pos") while both lie in the scanned tree.
+    bool namedLikeWithTremulantMark(const juce::File& folder, const std::set<juce::String>& keys)
     {
         const auto name = folder.getFileName().toLowerCase();
         juce::String base;
@@ -578,6 +582,15 @@ namespace
         const auto parent = folder.getParentDirectory();
         if (parent.getFileName().toLowerCase() == base) return true;
         return keys.count(parent.getChildFile(base).getFullPathName().toLowerCase()) > 0;
+    }
+    bool isTremmedVariantFolder(const juce::File& folder, const std::set<juce::String>& keys)
+    {
+        if (folder.getFileName().equalsIgnoreCase("trem")) return true;
+        if (namedLikeWithTremulantMark(folder, keys)) return true;
+        int depth = 0;
+        for (auto above = folder.getParentDirectory(); depth < 8 && keys.count(above.getFullPathName().toLowerCase()) > 0; above = above.getParentDirectory(), ++depth)
+            if (above.getFileName().equalsIgnoreCase("trem") || namedLikeWithTremulantMark(above, keys)) return true;
+        return false;
     }
 
     // The perspective prefix of a folder name taken off ("dir-Principal 8" ->
@@ -13815,9 +13828,35 @@ void SamplerEngine::updateOneShotFlags()
     }
 }
 
+// 0.9.150 (the user: "trem, tr* a všecko mělo zmizet z Ignored patterns, protože to je teď prostě mylné"): a pattern
+// that hid the stops recorded with a tremulant running - "trem", "*_tr", "*trrp", "tr2" ... - is no pattern any
+// more: those folders are rows of the Stop List's second level, and the scans leave them out by what they ARE
+// (isTremmedVariantFolder), never by a name pattern. Whatever brings such a pattern (an older configuration,
+// Patterns.json, the dialog) loses it here.
+bool SamplerEngine::isTremulantPattern(const juce::String& pattern)
+{
+    juce::String s;
+    const auto lower = pattern.toLowerCase();
+    for (int i = 0; i < lower.length(); ++i) if (juce::CharacterFunctions::isLetterOrDigit(lower[i])) s << juce::String::charToString(lower[i]);
+    if (s == "tr" || s.startsWith("trem")) return true;
+    if (!s.startsWith("tr")) return false;
+    const auto rest = s.substring(2);
+    for (const char* mark : { "rp", "rw", "bw", "hw", "ow", "uw", "sw", "go", "gt", "pos", "ped", "pd", "pe", "rec", "ch", "so", "ech", "bp" })
+        if (rest == mark) return true;
+    return rest.length() <= 2 && rest.containsOnly("0123456789");   // "tr2": a second tremulant
+}
+
 void SamplerEngine::setIgnoredPatterns(const std::vector<juce::String>& patterns)
 {
-    ignoredPatterns = patterns;
+    ignoredPatterns.clear();
+    juce::StringArray dropped;
+    for (const auto& pattern : patterns)
+    {
+        if (isTremulantPattern(pattern)) dropped.addIfNotAlreadyThere(pattern);
+        else ignoredPatterns.push_back(pattern);
+    }
+    if (!dropped.isEmpty())
+        CrashHandler::note("Ignored patterns: " + dropped.joinIntoString(", ") + " taken out - the stops recorded with a tremulant are rows of the Stop List's second level now, no pattern hides them");
 }
 
 bool SamplerEngine::isIgnoredFolderName(const juce::String& folderName) const

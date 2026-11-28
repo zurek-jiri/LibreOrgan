@@ -50,6 +50,19 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
     sits, so it is given the neighbouring division as a guess to correct in
     the Stop List.
   - The load box has the tick *Recorded tremulants* after the perspectives.
+  - **For an organ made before:** Configuration Editor > Noises >
+    *Recorded tremulants of a Hauptwerk definition* adds them to the loaded
+    organ - each recording under the row that plays its stop's folder
+    (wherever that row stands now), the tremulant rates as the definition has
+    them, each recording with its stop's voicing moved by the definition's
+    level difference. Only the recordings are read; nothing else of the
+    configuration is touched. (It takes the place of *Noises of a Hauptwerk
+    definition*, no longer needed.)
+- **Ignored patterns hold no tremulant patterns any more.** The defaults are
+  "output", "Traktur", "mustr"; "trem", "\*_tr", "\*trrp" and their like are
+  taken out of every list that brings them (an older configuration, this
+  computer's Patterns.json). Folders of tremulant recordings and of a
+  definition's tremulant waveforms are left out of the scans by what they are.
 - **Release starts in the phase of its attack** (Advanced global audio, off by
   default): the release begins up to one period later, in phase with the pipe
   it fades into.

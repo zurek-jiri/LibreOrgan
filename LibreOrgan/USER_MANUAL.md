@@ -399,9 +399,9 @@ renamed in the Stop List gets its line at once.
 Folders matching *One-shot stops (folder contains)* ("Chiff", "Chimes",
 "Tubular", "Celesta", "Harp", "Glockenspiel") play once from start to end
 whenever the key is released - chiffs, percussion, bells. Folders matching
-*Ignored folders (folder contains)* ("trem", "\*_tr", "output", "Traktur", "mustr") are not loaded
+*Ignored folders (folder contains)* ("output", "Traktur", "mustr") are not loaded
 as stops; a folder named after its sibling with "tr"/"trem" appended is a
-[recorded tremulant](#recorded-tremulants) of that stop. A pattern without a star matches anywhere in the name, "\*x"
+[recorded tremulant](#recorded-tremulants) of that stop - no pattern is needed for it. A pattern without a star matches anywhere in the name, "\*x"
 the end of it, "x\*" its start.
 
 ### Sample archives (RAR)
@@ -1533,11 +1533,9 @@ them through a route of their own, **Noises**: a row of Audio routing like a
 perspective, with its own cable, volume and effects.
 
 - **Where they come from.** An organ made from a Hauptwerk definition takes its
-  noises with it. An organ you already have gets them by
-  [Noises of a Hauptwerk definition](#noises-of-a-hauptwerk-definition) -
-  nothing else of the configuration is touched. Without a definition,
+  noises with it. For an organ you already have,
   [Noises of a folder](#noises-of-a-folder) reads a folder of noises by the
-  names of its folders.
+  names of its folders - nothing else of the configuration is touched.
 - **Keys.** The noise of the key that is played; a key without a recording
   takes its neighbour's. With several variants of one key they alternate.
   See [Key noises follow the couplers](#key-noises-follow-the-couplers).
@@ -2312,8 +2310,10 @@ pattern without a star matches anywhere, "\*x" the end, "x\*" the start.
 
 ### Ignored folders (folder contains)
 
-Folders whose name matches are not loaded. Defaults: "trem", "\*_tr",
-"output", "Traktur", "mustr". Changed with an organ loaded, the next *Apply and reload* takes the
+Folders whose name matches are not loaded. Defaults: "output", "Traktur",
+"mustr". A pattern for tremulant recordings ("trem", "\*_tr" of older
+configurations) is taken out of the list by itself: those folders are
+[recorded tremulants](#recorded-tremulants) now. Changed with an organ loaded, the next *Apply and reload* takes the
 matching folders out of their rows.
 
 ### Perspective prefixes
@@ -2535,15 +2535,19 @@ On: every division a coupler reaches adds the noise of its own key.
 Opens [The Noises window](#the-noises-window), as the top bar's Noises button
 does.
 
-### Noises of a Hauptwerk definition
+### Recorded tremulants of a Hauptwerk definition
 
-Adds the noises of the organ's Hauptwerk definition to the loaded organ.
-LibreOrgan Sampler does not load the definition: as with the pipes, it is read
-for where the samples lie and what they belong to - here a key, a drawknob, a
-coupler, a running tremulant or a button of its own. A drawknob's noise finds its stop by the
-sample folder the stop plays, so renamed and rearranged stops keep theirs.
-Stops, transmissions, voicing and the grid stay as they are. Save the
-configuration afterwards.
+For an organ made before recorded tremulants were read: adds the
+[recorded tremulants](#recorded-tremulants) of the organ's Hauptwerk
+definition to the loaded organ. LibreOrgan Sampler does not load the
+definition: as with the pipes, it is read for where the sample folders lie and
+what they belong to - here the stop each recording belongs to, its tremulant
+and that tremulant's speed. A recording finds its stop by the sample folder
+the stop plays, so renamed and rearranged stops get theirs. The tremulant
+rates are set as the definition has them; each recording takes its stop's
+voicing with the definition's level difference. Stops, transmissions, the
+stops' voicing and the grid stay as they are; only the recordings are read.
+Save the configuration afterwards.
 
 ### Noises of a folder
 

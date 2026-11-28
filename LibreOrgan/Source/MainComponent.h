@@ -267,6 +267,9 @@ private:
     void setNoisesVolume(double db);
     void removeNoises();
     void addNoisesFromDefinition(const juce::File& odfFile);
+    // 0.9.150, temporary: the recorded tremulants of the organ's Hauptwerk definition into the LOADED organ.
+    void addTremulantsFromDefinition(const juce::File& odfFile);
+    void addTremulantsOfPlan(std::shared_ptr<HauptwerkOdf> odf, std::shared_ptr<HauptwerkOdf::Plan> plan, const juce::File& odfFile);
     juce::var noisesVarFromFolder(const juce::File& folder, juce::String& summary) const;
     void addNoisesFromFolder(const juce::File& folder);
     void showNoisesWindow(bool bringToFront = true);   // false: its content rebuilt where it stands (another dialog changed it - the user stays in that one)

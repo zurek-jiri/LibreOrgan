@@ -7014,6 +7014,34 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   without an alternate and the tremmed ranks nobody names; odf_rows_of.py <odf> <name part>: the raw Rank / Stop /
   StopRank rows). LESSON: when a count says "N tremmed ranks skipped" after the new rule, LOOK at what they are
   before calling it "the definition's choice" - I told him "Billerbeck has recordings for Direct and Diffuse only".
+  THE SAME DAY, HIS ORDERS ("trem tr* a všecko mělo zmizet z Ignored patterns, protože to je teď prostě mylné";
+  "doplň funkci A místo noises, dočasně. Na github to nedávej ... opravit již zadanou definici Tremulant Rate ...
+  vyřadit z Ignored patterns vše, co se týká tremulantů ... Já to pak zkontroluju, přeuložím a znova vydám"):
+  (1) IGNORED PATTERNS: defaults {"output", "Traktur", "mustr"}; `SamplerEngine::isTremulantPattern(p)` (letters /
+  digits of the pattern: "tr", "trem...", "tr" + a division mark rp rw bw hw ow uw sw go gt pos ped pd pe rec ch so
+  ech bp, "tr" + 1-2 digits) - `setIgnoredPatterns` DROPS such a pattern whoever brings it (file, Patterns.json,
+  dialog; logged "Ignored patterns: X taken out"), rememberPatterns filters this computer's Patterns.json. What the
+  patterns hid is left out of every tree scan by what it IS: `isTremmedVariantFolder` = a folder named "trem" (a
+  definition's tremulant waveforms), named like its sibling / parent + tr / trem / trrp (`namedLikeWithTremulantMark`),
+  or lying under such a folder inside the scanned tree ("pipe/OWTR/..." beside "pipe/OW"). (2) TEMPORARY FUNCTION
+  (remove it when he says his configurations are saved anew): Configuration Editor > Noises > "Recorded tremulants
+  of a Hauptwerk definition: Add..." in the place of "Noises of a Hauptwerk definition" (that row is gone;
+  addNoisesFromDefinition and ORGAN_TEST_NOISE_ODF stay in the code, unreachable from the GUI):
+  `addTremulantsFromDefinition(odf)` (parse + plan on a thread) -> `addTremulantsOfPlan`: every recording rank ->
+  its plain rank's folder -> the row that plays that PLACE (usedFolderPlaces: any division, any name) and the
+  perspective label it plays it under -> a new row of the second level after that row (name = row + the folder's
+  suffix, sampleOffset of the row, tremmedManual = the plan's tremulant division); the recording's tree = the
+  deepest pool tree holding it, else the plan's tree joins the pool; EVERY division's tremulant rate := the plan's
+  (the old imports were 10 % fast), recordedHz + tick + targets for the ones with recordings; reloadDivisions (the
+  organ's samples adopted, only the recordings read); then (runWhenLoaded) each recording's voicing = its stop's
+  dB and per-key dB + the definition's level difference of the two folders of the same perspective (median ->
+  stop dB, rest per key). Hook act ORGAN_TEST_TREMMED "<s>|definition|0|<odf>". RUN (%TEMP%\odftools\craft_old.py
+  makes an "old" Altenbruch SemiDry configuration: no recordings, rates x 1.1, old patterns): 47 of 47 added,
+  rates P. 5.28 -> 4.80, I. 7.04 -> 6.40 ..., 7.3 GB of recordings read while "35 rank(s) kept their samples".
+  EXPORT with recordings (ORGAN_SAVE_PORTABLE): the README counts the stops as before (recordings are no stops:
+  37 rows), the json carries the 47 "tremmed" rows, clean ignored patterns, the rates / recorded rates / targets;
+  the robot's validate (README split out of the zip first: %TEMP%\odftools\zip_without_readme.py) fails only for
+  the organ's name the hook never asks.
   WHAT EXISTS: table entry
   `tremmedManual` (JSON "tremmed": N, child always true; bound to the nearest non-tremmed row ABOVE - by position, no
   id), engine `Stop::tremmedOfPtr / tremmedManual / tremmedAlternates` set by MainComponent::applyStopGroups ->

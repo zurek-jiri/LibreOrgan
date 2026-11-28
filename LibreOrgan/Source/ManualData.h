@@ -407,9 +407,9 @@ static const char* const kManualText_part1 =
     ;
 static const char* const kManualText_part2 =
     "whenever the key is released - chiffs, percussion, bells. Folders matching\n"
-    "*Ignored folders (folder contains)* (\"trem\", \"\\*_tr\", \"output\", \"Traktur\", \"mustr\") are not loaded\n"
+    "*Ignored folders (folder contains)* (\"output\", \"Traktur\", \"mustr\") are not loaded\n"
     "as stops; a folder named after its sibling with \"tr\"/\"trem\" appended is a\n"
-    "[recorded tremulant](#recorded-tremulants) of that stop. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
+    "[recorded tremulant](#recorded-tremulants) of that stop - no pattern is needed for it. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
     "the end of it, \"x\\*\" its start.\n"
     "\n"
     "### Sample archives (RAR)\n"
@@ -1551,11 +1551,9 @@ static const char* const kManualText_part7 =
     "perspective, with its own cable, volume and effects.\n"
     "\n"
     "- **Where they come from.** An organ made from a Hauptwerk definition takes its\n"
-    "  noises with it. An organ you already have gets them by\n"
-    "  [Noises of a Hauptwerk definition](#noises-of-a-hauptwerk-definition) -\n"
-    "  nothing else of the configuration is touched. Without a definition,\n"
+    "  noises with it. For an organ you already have,\n"
     "  [Noises of a folder](#noises-of-a-folder) reads a folder of noises by the\n"
-    "  names of its folders.\n"
+    "  names of its folders - nothing else of the configuration is touched.\n"
     "- **Keys.** The noise of the key that is played; a key without a recording\n"
     "  takes its neighbour's. With several variants of one key they alternate.\n"
     "  See [Key noises follow the couplers](#key-noises-follow-the-couplers).\n"
@@ -1616,10 +1614,10 @@ static const char* const kManualText_part7 =
     "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
     "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
     "is on. Merging another organ adds its noises; only what the loaded organ\n"
-    ;
-static const char* const kManualText_part8 =
     "already has is left out.\n"
     "\n"
+    ;
+static const char* const kManualText_part8 =
     "Nothing clicks while an organ loads.\n"
     "\n"
     "---\n"
@@ -1818,10 +1816,10 @@ static const char* const kManualText_part8 =
     "\n"
     "### Measure the maximum polyphony\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
     "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
+    ;
+static const char* const kManualText_part9 =
     "struck on every division faster and wider until the voices stop rising, the\n"
     "target raised in steps and held four seconds each, the first breakup\n"
     "narrowed down by keys, rate and stops. *Maximum polyphony* is set to the\n"
@@ -2020,10 +2018,10 @@ static const char* const kManualText_part9 =
     "or two longer on a large organ.\n"
     "\n"
     "### Retune pipes off by more than\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
+    ;
+static const char* const kManualText_part10 =
     "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
     "says so. Travels with the organ. An attack - the plain one or a velocity\n"
     "layer - plays as it is recorded; a release whose recorded pitch differs from\n"
@@ -2222,10 +2220,10 @@ static const char* const kManualText_part10 =
     "\n"
     "### Combinations hold the voicing of the stops\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "Off by default: a piston switches on and off, as on an organ. On: a piston\n"
     "also stores and recalls the voicing of every stop and transmission - stop\n"
+    ;
+static const char* const kManualText_part11 =
     "volume, attack gain and time, random tuning, release crossfade, the\n"
     "perspective boxes, volume / treble / attack per key - so one piston can change\n"
     "the colour and the strength of the same stops, which no pipe organ can. A\n"
@@ -2338,8 +2336,10 @@ static const char* const kManualText_part11 =
     "\n"
     "### Ignored folders (folder contains)\n"
     "\n"
-    "Folders whose name matches are not loaded. Defaults: \"trem\", \"\\*_tr\",\n"
-    "\"output\", \"Traktur\", \"mustr\". Changed with an organ loaded, the next *Apply and reload* takes the\n"
+    "Folders whose name matches are not loaded. Defaults: \"output\", \"Traktur\",\n"
+    "\"mustr\". A pattern for tremulant recordings (\"trem\", \"\\*_tr\" of older\n"
+    "configurations) is taken out of the list by itself: those folders are\n"
+    "[recorded tremulants](#recorded-tremulants) now. Changed with an organ loaded, the next *Apply and reload* takes the\n"
     "matching folders out of their rows.\n"
     "\n"
     "### Perspective prefixes\n"
@@ -2563,15 +2563,19 @@ static const char* const kManualText_part12 =
     "Opens [The Noises window](#the-noises-window), as the top bar's Noises button\n"
     "does.\n"
     "\n"
-    "### Noises of a Hauptwerk definition\n"
+    "### Recorded tremulants of a Hauptwerk definition\n"
     "\n"
-    "Adds the noises of the organ's Hauptwerk definition to the loaded organ.\n"
-    "LibreOrgan Sampler does not load the definition: as with the pipes, it is read\n"
-    "for where the samples lie and what they belong to - here a key, a drawknob, a\n"
-    "coupler, a running tremulant or a button of its own. A drawknob's noise finds its stop by the\n"
-    "sample folder the stop plays, so renamed and rearranged stops keep theirs.\n"
-    "Stops, transmissions, voicing and the grid stay as they are. Save the\n"
-    "configuration afterwards.\n"
+    "For an organ made before recorded tremulants were read: adds the\n"
+    "[recorded tremulants](#recorded-tremulants) of the organ's Hauptwerk\n"
+    "definition to the loaded organ. LibreOrgan Sampler does not load the\n"
+    "definition: as with the pipes, it is read for where the sample folders lie and\n"
+    "what they belong to - here the stop each recording belongs to, its tremulant\n"
+    "and that tremulant's speed. A recording finds its stop by the sample folder\n"
+    "the stop plays, so renamed and rearranged stops get theirs. The tremulant\n"
+    "rates are set as the definition has them; each recording takes its stop's\n"
+    "voicing with the definition's level difference. Stops, transmissions, the\n"
+    "stops' voicing and the grid stay as they are; only the recordings are read.\n"
+    "Save the configuration afterwards.\n"
     "\n"
     "### Noises of a folder\n"
     "\n"
@@ -2622,12 +2626,12 @@ static const char* const kManualText_part12 =
     "files of your own, if you have any. Then it opens the GitHub form in your\n"
     "browser with its fields filled in and the folder beside it.\n"
     "\n"
+    ;
+static const char* const kManualText_part13 =
     "**Drag `logs.zip` into the field \"Logs\" and submit.** That drag is the one\n"
     "step no program can do for you (GitHub takes files only that way); without\n"
     "the zip a report gives nothing to work from. A free GitHub account is\n"
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
-    ;
-static const char* const kManualText_part13 =
     "*Open the GitHub form* in the program's message opens the form again.\n"
     "\n"
     "## 9.4 Free software, licences, platforms\n"
@@ -2824,12 +2828,12 @@ static const char* const kManualText_part13 =
     "(and the gate agrees) or when it carries a perspective word (dir, dif, rea,\n"
     "far, near, close, dry, wet, front, ab, ortf ...); a lone head such as \"HW_\"\n"
     "or \"Ped_\" is a division mark and never becomes a perspective.\n"
+    ;
+static const char* const kManualText_part14 =
     "\n"
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
-    ;
-static const char* const kManualText_part14 =
     "the memory and stops when any sign says it is short: less free than the\n"
     "reserve (512 MB or a sixteenth of the installed memory, 2 GB at the most), the\n"
     "program's footprint within the system's share (up to 16 GB installed: 1.5 GB\n"
@@ -3026,12 +3030,12 @@ static const char* const kManualText_part14 =
     "hardly the reading.\n"
     "\n"
     "## 10.13 Files written by the program\n"
+    ;
+static const char* const kManualText_part15 =
     "\n"
     "In the settings folder ([Where the files are](#14-where-the-files-are)): `settings.json` (this\n"
     "computer: devices, MIDI, the editor's machine settings, the last\n"
     "configuration) with `settings-<date>.json` snapshots; `Locations.txt`;\n"
-    ;
-static const char* const kManualText_part15 =
     "`Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);\n"
     "`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;\n"
     "`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*\n"

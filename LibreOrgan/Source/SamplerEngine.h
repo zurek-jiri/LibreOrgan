@@ -1841,7 +1841,7 @@ public:
     static std::vector<juce::String> defaultOneShotPatterns() { return { "Chiff", "Chimes", "Tubular", "Celesta", "Harp", "Glockenspiel" }; }
     // Folders a tree scan never loads: "trem" anywhere, names ending in "_tr", and "output" (the summed/harmonic renderings some sets keep under a rank, "outputsum"/"outputharm").
     // 0.9.35 (the user): "Traktur" (the action-noise folders "Traktura - manual HW - on") and "mustr" (a producer's sample folders) too.
-    static std::vector<juce::String> defaultIgnoredPatterns() { return { "trem", "*_tr", "output", "Traktur", "mustr" }; }
+    static std::vector<juce::String> defaultIgnoredPatterns() { return { "output", "Traktur", "mustr" }; }   // 0.9.150: no "trem", "*_tr" (see isTremulantPattern)
     // Folder-name patterns: no star = anywhere in the name, "*x" = the name ends
     // in x, "x*" = it starts with x; case-insensitive, underscores count.
     static bool folderNameMatchesPattern(const juce::String& folderName, const juce::String& pattern);
@@ -1851,6 +1851,7 @@ public:
     void updateOneShotFlags();
     const std::vector<juce::String>& getOneShotPatterns() const { return oneShotPatterns; }
     void setIgnoredPatterns(const std::vector<juce::String>& patterns);
+    static bool isTremulantPattern(const juce::String& pattern);   // 0.9.150: "trem", "*_tr", "*trrp" ... - never kept in the list
     const std::vector<juce::String>& getIgnoredPatterns() const { return ignoredPatterns; }
     bool isIgnoredFolderName(const juce::String& folderName) const;
     void setPerspectivePatterns(const std::vector<juce::String>& patterns) { perspectivePatterns = patterns; }
