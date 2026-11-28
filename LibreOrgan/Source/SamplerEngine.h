@@ -164,6 +164,7 @@ struct Stop
     juce::String name;      // from the folder: the stop's identity in every saved state
     juce::String alias;     // shown instead of the name when set (voicing "Alias")
     bool showRankCount = true;   // a stop folder's button shows its rank count "[II]" (voicing, 0.8.146)
+    bool showFootage = true;     // 0.9.153: the button shows a footage (voicing row "Footage"); off = the name alone, on its transmissions too
     // The stop's TRANSPOSITION (0.8.158; "Files vs keys" in 0.8.155-0.8.157): the
     // sample files' numbers minus the keys they land on, semitones. The files
     // placed by their numbers are "the original" - they sound at the footage the

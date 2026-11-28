@@ -297,9 +297,9 @@ Tick **Portable configuration (to share with others)** in the Save box. The
 export holds the organ alone - folders, Stop List, voicing, IR reverbs,
 couplers, combinations, crescendo, temperaments - and nothing of your computer
 (no MIDI or audio devices; every route plays through the default device on the
-other computer). It never touches your ordinary configuration: it writes
-`<name>.portable.json`, `<name>.portable.zip` (the json with its README - the
-one file to upload) and `<name>.portable.README.md` into the `Publish`
+other computer). It never touches your ordinary configuration: it writes one
+file, `<name>.portable.zip` (the configuration and its README inside - the
+file to upload; *Load Configuration* opens it too), into the `Publish`
 subfolder. The save asks once for the organ, the samples' producer, the link
 and your name; the README is written by the program.
 
@@ -478,18 +478,47 @@ combination files (their own folder, `Documents\LibreOrgan\LibreCombinations`;
 the file last used with an organ is read again when the organ loads), and
 the crescendo.
 
-- Click a piston to recall its registration: what is on and what is off
-  (stops, transmissions, extensions, couplers, tremulants, Unison Off) and
-  nothing else - unless you choose more in the Configuration Editor
-  ([the voicing](#combinations-hold-the-voicing-of-the-stops),
-  [the top row's sliders](#combinations-hold-the-top-rows-sliders)). With *Set* on, a click stores the current
-  registration in the piston, and *<<* / *>>* store it in the previous / next
-  piston and go there.
-- A piston that holds a registration is a darker grey (a taught crescendo
+- Click a piston to recall its combination; with *Set* on, a click stores
+  what is on now in the piston, and *<<* / *>>* store it in the previous /
+  next piston and go there.
+- A piston that holds a combination is a darker grey (a taught crescendo
   step the same). The piston in use is orange; other pistons holding the
-  same registration are a lighter dark grey.
+  same combination are a lighter dark grey.
 - *<<*, *>>*, the bank buttons and every piston are MIDI-learnable
   (right-click). Combinations are part of the configuration.
+
+### How a combination works
+
+- **A combination is the list of what is on** - stops, transmissions,
+  extensions, the buttons of noises, couplers, tremulants. It lists nothing
+  that is off.
+- **A recall switches on what the combination lists and everything else
+  off** - also a stop that was loaded into the organ after the combination
+  was stored. Only the difference is switched: what stays on sounds on.
+- **The piston is orange** while exactly the listed things are on.
+- **Never part of a combination:** the blower, and a recording with a
+  tremulant (it goes with its stop's button).
+- **An empty combination** - never stored, stored with nothing on, or none of
+  its stops is in the organ - does what
+  [An empty piston switches everything off](#an-empty-piston-switches-everything-off) says.
+- **Stops that are not in the organ now** (a perspective or a package not
+  loaded, a folder taken away, a combinations file of another organ) wait in
+  the combination and play again when they are back; the piston's tooltip
+  names them. Storing the piston anew drops them.
+- **A stop is found** by its division and its name. A stop dragged to another
+  division or renamed takes its combinations along; one that stands only once
+  in the organ is found by its name alone.
+- **What a combination holds** is your choice in the Configuration Editor
+  (Console > Combinations): the [noise buttons](#combinations-hold-the-noise-buttons),
+  the [couplers](#combinations-hold-the-couplers) and the
+  [tremulants](#combinations-hold-the-tremulants) (on by default); the
+  [voicing](#combinations-hold-the-voicing-of-the-stops), the
+  [top row's sliders](#combinations-hold-the-top-rows-sliders), the
+  [swell positions](#combinations-hold-the-swell-positions), the
+  [tremulants' rate and depth](#combinations-hold-the-tremulants-rate-and-depth)
+  and the [temperament](#combinations-hold-the-temperament) (off by
+  default). A group that is switched off is neither stored nor changed, and
+  a combination changes a group only when it was stored with it.
 
 ## 2.3 The crescendo
 
@@ -656,6 +685,12 @@ to show that instead (an alias without a footage gets the stop's footage
 appended; a footage typed into the alias is kept as typed, on a transmission
 too). The alias is only a caption: saved states, combinations and MIDI
 bindings use the stop's real name.
+
+### Footage
+
+On (default): the button shows a footage - the one typed into the alias,
+else the one measured from the pipes. Off: the name alone, on this stop's
+button and on its transmissions (bells, a carillon, effects).
 
 ### One-shot
 
@@ -2217,25 +2252,55 @@ so a brief overlap does not make the solo stop jump.
 
 Off by default. On: the configuration used last time opens at the start.
 
+### Combinations hold the noise buttons
+
+On by default: the buttons of noises (zimbelstern, birds, bell) are stored
+and switched like stops. Off: a combination leaves them alone. The blower is
+never part of a combination ([How a combination works](#how-a-combination-works)).
+
+### Combinations hold the couplers
+
+On by default. Off: a combination leaves the couplers alone.
+
+### Combinations hold the tremulants
+
+On by default. Off: a combination leaves the tremulants alone.
+
 ### Combinations hold the voicing of the stops
 
-Off by default: a piston switches on and off, as on an organ. On: a piston
-also stores and recalls the voicing of every stop and transmission - stop
-volume, attack gain and time, random tuning, release crossfade, the
-perspective boxes, volume / treble / attack per key - so one piston can change
+Off by default: a combination switches on and off, as on an organ. On: it
+also stores and recalls the voicing of the stops and transmissions that are
+on in it - stop volume, attack gain and time, random tuning, release
+crossfade, the perspective boxes, volume / treble / attack per key, and the
+voicing of their recordings with a tremulant - so one combination can change
 the colour and the strength of the same stops, which no pipe organ can. A
-piston stored while this was off holds no voicing and changes none.
+combination stored while this was off holds no voicing and changes none.
 
 ### Combinations hold the top row's sliders
 
-Off by default. On: a piston also stores and recalls the global sliders -
-master volume, pitch, the fades, release scaling, cutting and "played from",
-attack minimum time and delay.
+Off by default. On: a combination also stores and recalls the global
+sliders - master volume, pitch, the fades, release scaling, cutting and
+"played from", attack minimum time and delay.
+
+### Combinations hold the swell positions
+
+Off by default. On: a combination also stores and recalls the position of
+every division's swell.
+
+### Combinations hold the tremulants' rate and depth
+
+Off by default. On: a combination also stores and recalls the rate and the
+depth of every division's tremulant.
+
+### Combinations hold the temperament
+
+Off by default. On: a combination also stores and recalls the target
+temperament.
 
 ### An empty piston switches everything off
 
-Off by default: a piston that holds nothing changes nothing. On: it is a
-general cancel, like *X*.
+A combination with nothing on is empty. Off by default: an empty one changes
+nothing. On: it is a general cancel, like *X* (the blower runs on).
 
 ### Show the Tutti button
 

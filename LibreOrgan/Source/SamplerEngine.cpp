@@ -13977,6 +13977,9 @@ juce::String romanNumeral(int n)
 
 juce::String Stop::displayName() const
 {
+    // 0.9.153 (the user: "jak donutit label rejstříku, aby byl bez stopáže"): the voicing row's "Footage" switched
+    // off - the name alone, a footage typed in the name or the alias left out too (bells, a carillon, effects).
+    if (!showFootage) return SamplerEngine::nameWithoutFootage(alias.isNotEmpty() ? alias : name);
     // An alias gets its foot mark like a name ("I. Quintadeen 8" reads "I. Quintadeen 8'").
     const juce::String base = footageDisplayName(SamplerEngine::ungluedFootageName(alias.isNotEmpty() ? alias : name));   // "Quinta3" reads "Quinta 2 2/3'" (0.9.63)
     int written = 0;
@@ -14065,6 +14068,12 @@ juce::String SamplerEngine::transmissionCaption(const Stop* stop, const Stop::Tr
     // footage keeps it as typed (the user's rule); one without gets the
     // transmission's sounding footage like every other caption (the grid button
     // did so, the Stop List rows showed the bare alias - "P. Mixtur" without the 2').
+    if (stop != nullptr && !stop->showFootage)   // 0.9.153: its stop shows no footage - nor does it, unless its own alias has one typed
+    {
+        int typed = 0;
+        if (t.alias.isNotEmpty()) return (footageFromName(t.alias, typed) ? footageDisplayName(t.alias) : t.alias) + transmissionSuffix(stop, t);
+        return stop->displayName() + transmissionSuffix(stop, t);
+    }
     if (t.alias.isNotEmpty())
     {
         int written = 0;

@@ -1839,8 +1839,7 @@ MainComponent::MainComponent()
     for (int i = 0; i < maxPistons; ++i)
     {
         auto* button = new LeftOnlyTextButton(juce::String(i));
-        button->setTooltip("Piston " + juce::String(i) + ": click recalls its registration (stops, transmissions, couplers, tremulants); "
-            "with Set on, a click stores the current registration in it. Right-click: MIDI learn.");
+        button->setTooltip(pistonBaseTooltip(i));
         button->onClick = [this, i] { pressPiston(i); };
         button->setColour(juce::TextButton::buttonOnColourId, onColour());
         pistonButtons.add(button);
@@ -9389,14 +9388,15 @@ void MainComponent::showPublishWindow(const juce::File& folder, const juce::File
 {
     // The issue form of the configurations (organ_configuration.yml) with its title
     // and Organ field filled in; the folder with the zip and the README beside it.
+    juce::ignoreUnused(readme);   // 0.9.153: the export is the one zip, no README beside it
     const juce::String organ = publicationOrgan.isNotEmpty() ? publicationOrgan : zip.getFileNameWithoutExtension();
     const juce::URL url = juce::URL("https://github.com/zurek-jiri/LibreOrgan/issues/new")
         .withParameter("template", "organ_configuration.yml")
         .withParameter("title", "[Configuration] " + organ)
         .withParameter("organ", organ + (publicationProducer.isNotEmpty() ? " - " + publicationProducer : juce::String()));
     showAfterReport(url, folder, "Publish the configuration",
-        "Ready to publish: " + zip.getFileName() + " (the configuration and its README inside) in the folder " + folder.getFileName()
-        + " of your LibreOrgans folder; " + readme.getFileName() + " beside it is for reading.\nThe folder opens in the file manager, the GitHub form in the browser - drag the zip into \"Files\", "
+        "Ready to publish: " + zip.getFileName() + " (the configuration and its README inside - the one file of the export) in the folder " + folder.getFileName()
+        + " of your LibreOrgans folder.\nThe folder opens in the file manager, the GitHub form in the browser - drag the zip into \"Files\", "
           "tick the box, then \"Submit new issue\".\nAsked to sign in first? Press \"Publish on GitHub\" again afterwards.",
         "Publish on GitHub", "Open the folder");
     CrashHandler::note("Publish window shown for " + zip.getFullPathName() + (launch ? "" : " (nothing launched: a test)"));
@@ -14310,6 +14310,7 @@ namespace
             st->setProperty("perspective", stopObj.getProperty("perspective", ""));
             st->setProperty("primaryManual", stopObj.getProperty("primaryManual", 0));
             st->setProperty("enabled", (bool)stopObj.getProperty("enabled", true));
+            if (stopObj.getProperty("noise", "").toString().isNotEmpty()) st->setProperty("noise", stopObj.getProperty("noise", ""));   // 0.9.153: the button of a noise, by the noise's key
             if (stopObj.getProperty("voicing", juce::var()).isObject()) st->setProperty("voicing", stopObj.getProperty("voicing", juce::var()));   // 0.9.119: stored with the option on
             if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
             {
@@ -14515,6 +14516,7 @@ void MainComponent::allStopsAndCouplersOff()
 {
     for (auto* stop : engine.getStops())
     {
+        if (stop->tremmedManual >= 0) continue;   // 0.9.153: a recording with a tremulant goes with its stop's button
         engine.setStopEnabled(stop, false);
         for (int index = 0; index < (int)stop->transmissions.size(); ++index)
             engine.setTransmissionEnabled(stop, index, false);
@@ -15550,6 +15552,7 @@ void MainComponent::saveVoicingToFile(const juce::File& file)
                 stopObj->setProperty("perspective", stop->perspective);
                 stopObj->setProperty("alias", stop->alias);
                 if (!stop->showRankCount) stopObj->setProperty("showRankCount", false);
+                if (!stop->showFootage) stopObj->setProperty("showFootage", false);   // 0.9.153
                 if (stop->oneShotManual >= 0) stopObj->setProperty("oneShot", stop->oneShotManual == 1);   // the voicing's own switch (0.8.158)
                 if (stop->releaseCrossfade != 1.0f) stopObj->setProperty("releaseCrossfade", (double)stop->releaseCrossfade);   // the release crossfade multiplier (0.9.62)
                 stopObj->setProperty(juce::Identifier("globalDb"), stop->db);
@@ -15734,6 +15737,7 @@ void MainComponent::loadVoicingFromFile(const juce::File& file)
                         stop->attackDelayMs = stopObj->hasProperty("attackDelayMs") ? juce::jlimit(0.0f, 500.0f, (float)(double)stopObj->getProperty("attackDelayMs")) : 0.0f;   // 0.9.77
                         stop->alias = stopObj->getProperty("alias").toString();
                         stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
+                        stop->showFootage = !stopObj->hasProperty("showFootage") || (bool)stopObj->getProperty("showFootage");   // 0.9.153
                         engine.setStopOneShot(stop, stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1);
                         engine.setStopReleaseCrossfade(stop, stopObj->hasProperty("releaseCrossfade") ? (float)(double)stopObj->getProperty("releaseCrossfade") : 1.0f);   // 0.9.62
                         engine.setStopRandomPitchError(stop, randomPitchErrorCents, true);
@@ -15894,6 +15898,12 @@ juce::var MainComponent::combinationsToVar() const
         scene->setProperty("tremulants", memory.tremulantData);
         if (memory.globalSliders.isObject()) scene->setProperty("sliders", memory.globalSliders);   // 0.9.119
         if (memory.noiseUnits.isArray()) scene->setProperty("noiseUnits", memory.noiseUnits);       // 0.9.127
+        // 0.9.153: only what is ON is listed - what a combination does not list is OFF. "holds" = the groups of
+        // controls it was stored with (a group it does not hold is left alone at a recall).
+        scene->setProperty("holds", holdsOf(memory));
+        if (memory.swell.isObject()) scene->setProperty("swell", memory.swell);
+        if (memory.tremulantSettings.isArray()) scene->setProperty("tremulantSettings", memory.tremulantSettings);
+        if (memory.temperament.toString().isNotEmpty()) scene->setProperty("temperament", memory.temperament);
         scenes.add(juce::var(scene.get()));
     }
 
@@ -15957,8 +15967,40 @@ bool MainComponent::combinationsFromVar(const juce::var& parsed)
             for (const auto& item : *tremulantsArray.getArray())
                 if (item.isObject()) memory.tremulantData.add(item);
         if (!memory.stopData.isEmpty() || !memory.couplerData.isEmpty())
-            combinations[combinationKey(bank, piston)] = onOffSlot(memory);   // 0.9.118: an older file's master volume and voicing figures are left out
+        {
+            // 0.9.118: an older file's master volume and voicing figures are left out. 0.9.153: and everything that
+            // is OFF - a combination is the set of what is on; one with nothing on is an empty one (not kept).
+            const bool older = !scene.hasProperty("holds");
+            const bool hadTremulants = !memory.tremulantData.isEmpty();
+            auto slot = onOffSlot(memory);
+            auto keepOn = [](juce::Array<juce::var>& list, bool stops)
+            {
+                for (int k = list.size(); --k >= 0;)
+                {
+                    const auto& item = list.getReference(k);
+                    bool on = (bool)item.getProperty("enabled", false);
+                    if (!on && stops) on = !storedTransmissionsOn(item).empty();
+                    if (!on) list.remove(k);
+                }
+            };
+            keepOn(slot.stopData, true);
+            keepOn(slot.couplerData, false);
+            keepOn(slot.tremulantData, false);
+            if (older)
+            {
+                slot.holds = combStops | combNoise | combCouplers | combVoicing | (hadTremulants ? combTremulants : 0) | (slot.globalSliders.isObject() ? combSliders : 0);
+                for (auto& item : slot.stopData)   // the perspective of an older entry was a relic of the stop's first rank
+                    if (auto* object = item.getDynamicObject()) object->removeProperty("perspective");
+            }
+            else slot.holds = (int)scene.getProperty("holds", combStops) | combStops;
+            slot.swell = scene.getProperty("swell", juce::var());
+            slot.tremulantSettings = scene.getProperty("tremulantSettings", juce::var());
+            slot.temperament = scene.getProperty("temperament", juce::var());
+            if (!slot.stopData.isEmpty() || !slot.couplerData.isEmpty() || !slot.tremulantData.isEmpty())
+                combinations[combinationKey(bank, piston)] = std::move(slot);
+        }
     }
+    combinationsNotHereNoted.clear();
     return true;
 }
 
@@ -16024,6 +16066,7 @@ void MainComponent::loadRememberedCombinationsFile()
         pistonCountBox.setSelectedId(pistonCount + 1, juce::dontSendNotification);
         updateCombinationControls();
         CrashHandler::note("Combinations file read again with the organ: " + file.getFullPathName());
+        noteCombinationItemsNotHere("the file " + file.getFileName(), true);   // 0.9.153
     }
     else noteMessage("Combinations file", "The combinations file last used with this organ could not be read: " + file.getFullPathName());
 }
@@ -16130,6 +16173,7 @@ void MainComponent::chooseCombinationsFileToLoad()
                 juce::dontSendNotification);
             safeThis->updateCombinationControls();
             safeThis->saveMemories();
+            safeThis->noteCombinationItemsNotHere("the file " + file.getFileName(), true);   // 0.9.153
             safeThis->resized();
         });
 }
@@ -16236,14 +16280,14 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
                 if (base.endsWithIgnoreCase(".portable")) base = base.dropLastCharacters(9);
                 const auto publish = folder.getChildFile("Publish");
                 publish.createDirectory();
-                start = publish.getChildFile(base + ".portable.json");
+                start = publish.getChildFile(base + ".portable.zip");   // 0.9.153: the export is the one zip
             }
             else
                 start = safeThis->currentConfigurationFile != juce::File() && safeThis->currentConfigurationFile.getParentDirectory() == folder
                     ? safeThis->currentConfigurationFile
                     : folder.getChildFile(safeThis->currentConfigurationFile != juce::File() ? safeThis->currentConfigurationFile.getFileName() : juce::String("Organ configuration.json"));
             safeThis->configurationFileChooser = std::make_unique<juce::FileChooser>(
-                "Save portable organ configuration", start, "*.json");
+                "Save portable organ configuration", start, portable ? "*.zip" : "*.json");
             safeThis->configurationFileChooser->launchAsync(
                 juce::FileBrowserComponent::saveMode
                     | juce::FileBrowserComponent::canSelectFiles
@@ -16253,7 +16297,8 @@ void MainComponent::chooseConfigurationToSave(std::function<void(bool saved)> th
                     if (safeThis == nullptr) return;
                     auto file = chooser.getResult();
                     if (file == juce::File()) { if (then) then(false); return; }
-                    if (!file.hasFileExtension("json")) file = file.withFileExtension("json");
+                    if (portable) { if (file.hasFileExtension("zip")) file = file.withFileExtension("json"); }   // the name alone counts: the export writes <name>.portable.zip
+                    else if (!file.hasFileExtension("json")) file = file.withFileExtension("json");
                     safeThis->publicationDetailsAsked = true;   // given in the box above (0.8.181)
                     safeThis->savePortableConfiguration(file, withMidi, portable);
                     safeThis->publicationDetailsAsked = false;
@@ -17205,7 +17250,7 @@ namespace
             "divisionScreen", "dialogBounds", "uiScalePercent", "copyCacheFolder", "copyCacheEnabled",
             "renderThreads", "renderThreadPreset", "renderThreadsWasapi", "showUnusableAudioDevices", "showDirectAlsaDevices", "configEditorCollapsed", "configurationFile",
             "loadLastConfigurationAtStartup", "maxPolyphony", "measurementShareLimit", "irProcessing", "irLightAuto", "unpackArchiveShownOnce", "renderThreadPresetChosen",
-            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "hideTopRows", "topRowsInOneRow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize", "defaultCard" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
+            "renderKernel", "sincKernelFromHz", "configurationsFolder", "recordingsFolder", "sampleLocations", "guidedTourDismissed", "consoleGlow", "hideTopRows", "topRowsInOneRow", "pluginFolders", "headerButtonOrder", "manualFontScale", "treeRelativePaths", "outputDiscontinuityDetector", "combinationsFiles", "loadLastCombinationsFile", "showTuttiButton", "emptyPistonCancels", "combinationsHoldVoicing", "combinationsHoldSliders", "combinationsHoldNoise", "combinationsHoldCouplers", "combinationsHoldTremulants", "combinationsHoldSwell", "combinationsHoldTremulantSettings", "combinationsHoldTemperament", "organMemory", "organPolyphony", "audioRoutingCardCells", "audioRoutingExpanded", "audioRoutingButtonSize", "defaultCard" };   // 0.8.146: sampleStorageFloat, resampleOnLoad, storageSampleRate, releaseHalfRate, compressSamples travel with the organ (askLoadOptions)
         return keys;
     }
 }
@@ -17817,7 +17862,8 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                     // hint for the load, like a tree's, tried first and searched by its
                     // tail under the sample locations when it is gone.
                 }
-        CrashHandler::note("Portable configuration saved (no MIDI, no audio devices, no machine settings): " + target.getFullPathName());
+        CrashHandler::note("Portable configuration made (no MIDI, no audio devices, no machine settings): " + target.getFileName()
+            + (publishFiles ? " - it goes into the export's zip" : " in " + target.getParentDirectory().getFullPathName()));
     }
     else
     {
@@ -17874,6 +17920,44 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
                 }
     }
 
+    if (portable && publishFiles)
+    {
+        // 0.9.153 (the user: "nepřeju si, aby export portable zapisoval json i readme zvlášť. Nechť zapíše pouze
+        // zip"): the export is ONE file in the Publish folder, <name>.portable.zip, with the .json and the README
+        // inside (built in the memory, as the report's zip is). Load Configuration reads the zip; the publishing
+        // robot takes the README out of it. The texts keep the line ends the loose files had.
+        const auto zip = target.getSiblingFile(target.getFileNameWithoutExtension() + ".zip");
+        const auto readmeName = target.getFileNameWithoutExtension() + ".README.md";
+        auto withFileLineEnds = [](const juce::String& text) { return text.replace("\r\n", "\n").replace("\n", "\r\n"); };
+        const auto jsonText = withFileLineEnds(juce::JSON::toString(configuration, true));
+        const auto readmeText = withFileLineEnds(configurationReadme(configuration, target));
+        juce::ZipFile::Builder builder;
+        const auto now = juce::Time::getCurrentTime();
+        builder.addEntry(new juce::MemoryInputStream(jsonText.toRawUTF8(), jsonText.getNumBytesAsUTF8(), true), 9, target.getFileName(), now);
+        builder.addEntry(new juce::MemoryInputStream(readmeText.toRawUTF8(), readmeText.getNumBytesAsUTF8(), true), 9, readmeName, now);
+        bool written = false;
+        if (auto stream = std::unique_ptr<juce::FileOutputStream>(zip.createOutputStream()); stream != nullptr && stream->openedOk())
+        {
+            stream->setPosition(0);
+            stream->truncate();
+            written = builder.writeToStream(*stream, nullptr);
+        }
+        if (!written)
+        {
+            queueNotice(juce::MessageBoxIconType::WarningIcon, "Save Configuration", "The configuration's zip could not be written: " + zip.getFullPathName());
+            return;
+        }
+        // The loose files of an export made by an older version (the .json, its .bak, the README) would lie out
+        // of date beside the new zip: they go to the recycle bin.
+        for (const auto& stale : { target, target.getSiblingFile(target.getFileName() + ".bak"), target.getSiblingFile(readmeName) })
+            if (stale.existsAsFile()) { stale.moveToTrash(); CrashHandler::note("Export: the loose file of an older export moved to the recycle bin: " + stale.getFileName()); }
+        CrashHandler::note("Configuration exported as one zip (the .json and the README inside): " + zip.getFullPathName());
+        // The export leaves the open file as it is (0.8.194); the window after it
+        // opens the Publish folder and the GitHub form, like the one after a report.
+        if (std::getenv("ORGAN_SAVE_PORTABLE") == nullptr) showPublishWindow(target.getParentDirectory(), zip, zip, true);
+        else if (std::getenv("ORGAN_TEST_PUBLISH_WINDOW") != nullptr) showPublishWindow(target.getParentDirectory(), zip, zip, false);
+        return;
+    }
     // The file being overwritten survives as "<name>.json.bak" (one generation).
     if (target.existsAsFile()) target.copyFileTo(target.getSiblingFile(target.getFileName() + ".bak"));
     if (!target.replaceWithText(juce::JSON::toString(configuration, true)))
@@ -17881,34 +17965,6 @@ void MainComponent::savePortableConfiguration(const juce::File& file, bool inclu
             "Save Configuration", "The configuration file could not be written.");
     else
     {
-        if (portable && publishFiles)
-        {
-            // For publishing in the project's LibreOrgans folder: the .json
-            // zipped (a zip is downloaded from GitHub, a .json opens as text) and
-            // the README, ready but for the organ, the samples and the author.
-            const auto zip = target.getSiblingFile(target.getFileNameWithoutExtension() + ".zip");
-            const auto readme = target.getSiblingFile(target.getFileNameWithoutExtension() + ".README.md");
-            readme.replaceWithText(configurationReadme(configuration, target));
-            {
-                // The README goes INTO the zip as well (0.8.213): the upload is the one zip,
-                // the robot takes the README out of it (the README beside it stays for reading).
-                juce::ZipFile::Builder builder;
-                builder.addFile(target, 9, target.getFileName());
-                builder.addFile(readme, 9, readme.getFileName());
-                if (auto stream = std::unique_ptr<juce::FileOutputStream>(zip.createOutputStream()); stream != nullptr && stream->openedOk())
-                {
-                    stream->setPosition(0);
-                    stream->truncate();
-                    builder.writeToStream(*stream, nullptr);
-                }
-            }
-            CrashHandler::note("Configuration zip (the .json and the README inside) and README written: " + zip.getFullPathName() + ", " + readme.getFullPathName());
-            // The export leaves the open file as it is (0.8.194); the window after it
-            // opens the Publish folder and the GitHub form, like the one after a report.
-            if (std::getenv("ORGAN_SAVE_PORTABLE") == nullptr) showPublishWindow(target.getParentDirectory(), zip, readme, true);
-            else if (std::getenv("ORGAN_TEST_PUBLISH_WINDOW") != nullptr) showPublishWindow(target.getParentDirectory(), zip, readme, false);
-            return;
-        }
         lastSettingsDirectory = file.getParentDirectory();
         saveLastDirectory();
         setCurrentConfigurationName(file.getFileNameWithoutExtension());
@@ -21232,7 +21288,12 @@ void MainComponent::beginStartupFolderLoading()
                 compileDoneMs = juce::Time::getMillisecondCounterHiRes();   // 0.9.39: the loader's release is timed against this (#172/#173: 16-55 s on the two-core laptops)
                 {   // 0.9.79 (#232): the combinations file last used with this organ, on top of the configuration's own
                     juce::Component::SafePointer<MainComponent> safeThis(this);
-                    juce::Timer::callAfterDelay(400, [safeThis] { if (safeThis != nullptr) safeThis->loadRememberedCombinationsFile(); });
+                    juce::Timer::callAfterDelay(400, [safeThis]
+                    {
+                        if (safeThis == nullptr) return;
+                        safeThis->loadRememberedCombinationsFile();
+                        safeThis->noteCombinationItemsNotHere("after the load", false);   // 0.9.153: one log line on what the combinations name and the organ lacks
+                    });
                 }
                 if (!pendingMergeTransmissions.empty())   // 0.9.28: the transmissions a merge owes the divisions whose rows it replaced
                 {
@@ -25850,6 +25911,7 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
     {
         const juce::String oldName = entry.name;
         entry.name = uniqueStopBuildName(to.entries, entry.name, nullptr);
+        entry.noteFormerAddress(source, oldName);   // 0.9.153: an older combinations file still finds it
         renamed.push_back({ oldName, entry.name });
         for (const auto& [perspective, ref] : entry.folders)   // the pool is global: the references stay valid
         {
@@ -25866,6 +25928,7 @@ void MainComponent::moveStopToDivision(Stop* stop, int targetManual)
     if (voicer)
         for (size_t k = 0; k < renamed.size(); ++k)
             voicer->stopMovedToDivision(source, renamed[k].first, targetManual, renamed[k].second, k == 0);
+    for (const auto& [oldName, newName] : renamed) retargetRegistrationMemories(source, oldName, targetManual, newName);   // 0.9.153: the combinations and the crescendo follow too
     // In place: the stops of the block (a folder with its children) change
     // division with their samples and copies; the new division's routes for
     // their perspectives are opened if it lacks them.
@@ -26015,7 +26078,12 @@ void MainComponent::indentStopUnder(Stop* stop, Stop* master)
     size_t after = masterIndex + 1;
     while (after < to.size() && to[after].child) ++after;
     entry.child = true;
-    if (source != target) entry.name = uniqueStopBuildName(to, entry.name, nullptr);
+    if (source != target)
+    {
+        entry.name = uniqueStopBuildName(to, entry.name, nullptr);
+        entry.noteFormerAddress(source, stop->name);   // 0.9.153
+        retargetRegistrationMemories(source, stop->name, target, entry.name);
+    }
     to.insert(to.begin() + (long)after, entry);
     CrashHandler::note("Stop \"" + stop->name + "\" indented under \"" + master->name + "\" (arrange mode)");
     // In place: the engine stop moves to the master's division when needed (its
@@ -26501,7 +26569,12 @@ void MainComponent::mergeStopFolderInto(Stop* folder, Stop* target)
         if (k == 0 && entry.folders.empty()) { removed = entry.name; continue; }   // the empty folder button: nothing left for it
         entry.child = true;
         const juce::String oldName = entry.name;
-        if (source != dest) entry.name = uniqueStopBuildName(to, entry.name, nullptr);
+        if (source != dest)
+        {
+            entry.name = uniqueStopBuildName(to, entry.name, nullptr);
+            entry.noteFormerAddress(source, oldName);   // 0.9.153
+            retargetRegistrationMemories(source, oldName, dest, entry.name);
+        }
         renamed.push_back({ oldName, entry.name });
         moved.push_back(entry);
     }
@@ -27522,6 +27595,7 @@ juce::var MainComponent::stopBuildToVar(const ManualConfig::StopBuild& build)
         item->setProperty("customName", entry.customName);
         item->setProperty("child", entry.child);
         if (entry.noiseKey.isNotEmpty()) item->setProperty("noise", entry.noiseKey);   // 0.9.132: the row is a noise's button
+        if (!entry.formerKeys.isEmpty()) item->setProperty("former", juce::var(entry.formerKeys));   // 0.9.153: where the row stood before
         if (entry.tremmedManual >= 0) item->setProperty("tremmed", entry.tremmedManual);   // 0.9.150: a recording with the tremulant of that division
         if (entry.sampleOffsetSet || entry.sampleOffset != 0) item->setProperty("sampleOffset", entry.sampleOffset);   // present = known (0.8.158)
         juce::Array<juce::var> folders;
@@ -27564,6 +27638,8 @@ MainComponent::ManualConfig::StopBuild MainComponent::stopBuildFromVar(const juc
             entry.customName = item.getProperty("customName", false);
             entry.child = item.getProperty("child", false);
             entry.noiseKey = item.getProperty("noise", "").toString();   // 0.9.132
+            if (const auto* formerList = item.getProperty("former", juce::var()).getArray())   // 0.9.153
+                for (const auto& formerKey : *formerList) entry.formerKeys.addIfNotAlreadyThere(formerKey.toString());
             if (item.hasProperty("tremmed"))   // 0.9.150: the second level - always a nested row
             {
                 entry.tremmedManual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)item.getProperty("tremmed", 0));
@@ -28522,12 +28598,14 @@ void MainComponent::showStopBuildingDialog(int)
             const auto trimmed = text.trim();
             if (trimmed == entry->name) return;   // untouched: the automatic/custom state stays as it is
             const auto automatic = automaticName(rows[row]->manual, *entry);
+            const juce::String nameBefore = entry->name;
             if (trimmed.isEmpty() || stopBuildKey(trimmed) == stopBuildKey(automatic))
             {
                 entry->customName = false;
                 if (automatic.isNotEmpty()) entry->name = automatic;
             }
             else { entry->customName = true; entry->name = trimmed; }
+            if (entry->name != nameBefore) entry->noteFormerAddress(rows[row]->manual, nameBefore);   // 0.9.153: the combinations find the renamed stop
         }
         // Children of a row (the indented rows right below it in the same division).
         std::vector<const Build::Entry*> childrenOf(int manual, const Build::Entry& entry) const
@@ -28660,6 +28738,7 @@ void MainComponent::showStopBuildingDialog(int)
                     std::map<juce::String, Build::FolderRef> moved;
                     for (const auto& [perspective, ref] : entry.folders) moved[perspective] = refFor(m2, resolve(m1, ref));
                     entry.folders = moved;
+                    entry.noteFormerAddress(m1, entry.name);   // 0.9.153: the combinations find the stop in its new division
                     entry.name = uniqueStopBuildName(drafts[(size_t)m2].entries, entry.name, nullptr);
                 }
                 block.front().child = false;
@@ -30535,6 +30614,12 @@ void MainComponent::loadSettings()
     emptyPistonCancels = parsed.getProperty("emptyPistonCancels", false);
     combinationsHoldVoicing = parsed.getProperty("combinationsHoldVoicing", false);
     combinationsHoldSliders = parsed.getProperty("combinationsHoldSliders", false);
+    combinationsHoldNoise = parsed.getProperty("combinationsHoldNoise", true);                         // 0.9.153: the groups a combination holds
+    combinationsHoldCouplers = parsed.getProperty("combinationsHoldCouplers", true);
+    combinationsHoldTremulants = parsed.getProperty("combinationsHoldTremulants", true);
+    combinationsHoldSwell = parsed.getProperty("combinationsHoldSwell", false);
+    combinationsHoldTremulantSettings = parsed.getProperty("combinationsHoldTremulantSettings", false);
+    combinationsHoldTemperament = parsed.getProperty("combinationsHoldTemperament", false);
     combinationsFiles.clear();
     if (auto* files = parsed.getProperty("combinationsFiles", juce::var()).getDynamicObject())
         for (const auto& prop : files->getProperties()) combinationsFiles[prop.name.toString()] = prop.value.toString();
@@ -31534,6 +31619,12 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("emptyPistonCancels", emptyPistonCancels);
     obj->setProperty("combinationsHoldVoicing", combinationsHoldVoicing);
     obj->setProperty("combinationsHoldSliders", combinationsHoldSliders);
+    obj->setProperty("combinationsHoldNoise", combinationsHoldNoise);   // 0.9.153
+    obj->setProperty("combinationsHoldCouplers", combinationsHoldCouplers);
+    obj->setProperty("combinationsHoldTremulants", combinationsHoldTremulants);
+    obj->setProperty("combinationsHoldSwell", combinationsHoldSwell);
+    obj->setProperty("combinationsHoldTremulantSettings", combinationsHoldTremulantSettings);
+    obj->setProperty("combinationsHoldTemperament", combinationsHoldTemperament);
     {
         juce::DynamicObject::Ptr files = new juce::DynamicObject();
         for (const auto& [configuration, file] : combinationsFiles) files->setProperty(juce::Identifier(configuration), file);
@@ -32696,6 +32787,7 @@ MemorySlot MainComponent::captureCurrentState() const
         const juce::ScopedLock engineLock(engine.getLock());
         for (auto* s : engine.getStops())
         {
+            if (s->tremmedManual >= 0) continue;   // 0.9.153: a recording with a tremulant has no on / off of its own - it goes with its stop's button
             juce::DynamicObject::Ptr st = new juce::DynamicObject();
             st->setProperty("name", s->name);
             st->setProperty("perspective", s->perspective);
@@ -32734,12 +32826,46 @@ MemorySlot MainComponent::captureCurrentState() const
 void MainComponent::storeCombination(int piston)
 {
     if (piston < 0 || piston >= pistonCount) return;
-    auto slot = onOffSlot(captureCurrentState());   // 0.9.118: ON / OFF alone ...
-    if (combinationsHoldVoicing) addVoicingToSlot(slot);   // 0.9.119: ... unless Console > Combinations says more
-    if (combinationsHoldVoicing) slot.noiseUnits = noiseUnitsVoicingNow();   // 0.9.127: the noises' volumes are voicing too
-    if (combinationsHoldSliders) slot.globalSliders = globalSlidersNow();
-    combinations[combinationKey(currentBank, piston)] = std::move(slot);
+    // 0.9.153: what is ON, of the groups Console > Combinations names - nothing else. With nothing on the
+    // combination is EMPTY: it is taken away (an empty one does what the Editor's switch says).
+    const int groups = combinationGroupsNow();
+    const auto live = combinationLive();
+    auto slot = captureCombination(groups, live);
     activePiston = piston;
+    if (slot.stopData.isEmpty() && slot.couplerData.isEmpty() && slot.tremulantData.isEmpty())
+    {
+        combinations.erase(combinationKey(currentBank, piston));
+        CrashHandler::note("Combination " + juce::String(currentBank * 10 + piston) + " stored with nothing on: it is empty now");
+        saveMemories();
+        updateCombinationLights();
+        return;
+    }
+    if ((groups & combVoicing) != 0) { addVoicingToSlot(slot); slot.noiseUnits = noiseUnitsVoicingNow(); }   // 0.9.119 / 0.9.127: of what is on
+    if ((groups & combSliders) != 0) slot.globalSliders = globalSlidersNow();
+    if ((groups & combSwell) != 0)
+    {
+        juce::DynamicObject::Ptr positions = new juce::DynamicObject();
+        for (int manual = 0; manual <= manualCount; ++manual)
+            positions->setProperty(juce::Identifier("d" + juce::String(manual)), (double)expressionTargetPositions[(size_t)manual].load(std::memory_order_relaxed));
+        slot.swell = juce::var(positions.get());
+    }
+    if ((groups & combTremulantSettings) != 0)
+    {
+        juce::Array<juce::var> list;
+        for (int manual = 0; manual <= manualCount; ++manual)
+        {
+            juce::DynamicObject::Ptr item = new juce::DynamicObject();
+            item->setProperty("manual", manual);
+            item->setProperty("rateHz", (double)manualConfigs[(size_t)manual].tremulantRateHz);
+            item->setProperty("depthCents", (double)manualConfigs[(size_t)manual].tremulantDepthCents);
+            list.add(juce::var(item.get()));
+        }
+        slot.tremulantSettings = list;
+    }
+    if ((groups & combTemperament) != 0) slot.temperament = selectedTemperamentName;
+    CrashHandler::note("Combination " + juce::String(currentBank * 10 + piston) + " stored: " + juce::String(slot.stopData.size()) + " stop(s) with something on, "
+        + juce::String(slot.couplerData.size()) + " coupler(s), " + juce::String(slot.tremulantData.size()) + " tremulant(s)");
+    combinations[combinationKey(currentBank, piston)] = std::move(slot);
 
     saveMemories();
     updateCombinationLights();
@@ -32748,24 +32874,109 @@ void MainComponent::storeCombination(int piston)
 void MainComponent::restoreCombination(int piston)
 {
     if (piston < 0 || piston >= pistonCount) return;
+    activePiston = piston;
     const auto found = combinations.find(combinationKey(currentBank, piston));
-    if (found == combinations.end())
+    const auto live = combinationLive();
+    // 0.9.153: a group counts when the combination was stored with it AND Console > Combinations still names it.
+    const int groups = found != combinations.end() ? (holdsOf(found->second) & combinationGroupsNow()) : 0;
+    juce::StringArray notHere;
+    const auto wanted = found != combinations.end() ? combinationOnSet(found->second, live, groups, &notHere) : std::set<std::string>();
+    const juce::String number(currentBank * 10 + piston);
+    if (wanted.empty())
     {
-        activePiston = piston;
-        if (emptyPistonCancels)   // 0.9.119: a piston that holds nothing = general cancel (the X button), when chosen so
-        {
-            CrashHandler::note("Piston " + juce::String(piston) + " holds nothing: everything switched off (general cancel)");
-            disableAllStops();
-        }
+        // Empty: never stored, or nothing of it is in the organ now. 0.9.119: a general cancel (the X button) when chosen so.
+        CrashHandler::note("Combination " + number + (found == combinations.end() ? " holds nothing" : " holds nothing that is in the organ now (" + juce::String(notHere.size()) + " item(s) wait)")
+            + (emptyPistonCancels ? ": everything switched off (general cancel)" : ": nothing changes"));
+        if (emptyPistonCancels) disableAllStops();
         updateCombinationLights();
         return;
     }
-    applyRegistrationState(found->second, false, true);   // 0.9.118: a piston switches on and off - no master volume, no voicing
-    if (combinationsHoldVoicing) applySlotVoicing(found->second);   // 0.9.119: what the piston was stored with, when the option is on
-    if (combinationsHoldVoicing) applyNoiseUnitsVoicing(found->second.noiseUnits);   // 0.9.127
-    if (combinationsHoldSliders) applySlotSliders(found->second);
-    activePiston = piston;
-    if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
+    const auto& slot = found->second;
+    // The difference alone is switched (as the crescendo does): what is on and not in the combination goes
+    // off - a stop loaded after it was stored too -, what it has and is off goes on. What stays, sounds on.
+    int switchedOff = 0, switchedOn = 0;
+    bool couplersChanged = false, tremulantsChanged = false;
+    auto switchItem = [&](const std::string& key, bool on)
+    {
+        const juce::String text(key);
+        const int first = text.indexOfChar('|');
+        const auto kind = text.substring(0, first);
+        if (kind == "coupler")
+        {
+            const juce::ScopedLock lock(couplerLock);
+            if (auto* coupler = findCoupler(text.substring(first + 1))) { coupler->enabled = on; couplersChanged = true; }
+            return;
+        }
+        if (kind == "trem")
+        {
+            const int manual = text.substring(first + 1).getIntValue();
+            if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+            auto& config = manualConfigs[(size_t)manual];
+            if (config.tremulantEnabled == on) return;
+            config.tremulantEnabled = on;
+            engine.setManualTremulant(manual, on, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+            tremulantsChanged = true;
+            return;
+        }
+        const int second = text.indexOfChar(first + 1, '|');
+        const int manual = text.substring(first + 1, second).getIntValue();
+        const int idAt = kind == "trans" ? text.lastIndexOf("|id") : -1;
+        const auto name = idAt > second ? text.substring(second + 1, idAt) : text.substring(second + 1);
+        for (const auto& item : live.stops)
+        {
+            if (item.manual != manual || item.name != name) continue;
+            if (kind == "trans")
+            {
+                const int index = item.stop->transmissionIndexOfId(text.substring(idAt + 3).getIntValue());
+                if (index >= 0) engine.setTransmissionEnabled(item.stop, index, on);
+            }
+            else engine.setStopEnabled(item.stop, on);
+            return;
+        }
+    };
+    for (const auto& key : live.on)
+        if ((groupOfCombinationKey(key) & groups) != 0 && wanted.count(key) == 0) { switchItem(key, false); ++switchedOff; }
+    for (const auto& key : wanted)
+        if (live.on.count(key) == 0) { switchItem(key, true); ++switchedOn; }
+    if (couplersChanged)
+    {
+        const juce::ScopedLock lock(couplerLock);
+        for (int source = 0; source <= manualCount; ++source) recomputeCouplersForSource(source);
+    }
+    refreshCouplerRailState();
+    if (tremulantsChanged) saveSettings();
+    const bool voicingApplied = (groups & combVoicing) != 0;
+    if (voicingApplied) { applySlotVoicing(slot); applyNoiseUnitsVoicing(slot.noiseUnits); }   // 0.9.119 / 0.9.127
+    if ((groups & combSliders) != 0) applySlotSliders(slot);
+    if ((groups & combSwell) != 0)
+        if (auto* positions = slot.swell.getDynamicObject())
+            for (const auto& prop : positions->getProperties())
+                setExpressionTarget(prop.name.toString().substring(1).getIntValue(), (float)(double)prop.value);
+    bool settingsChanged = false;
+    if ((groups & combTremulantSettings) != 0)
+        if (const auto* list = slot.tremulantSettings.getArray())
+            for (const auto& item : *list)
+            {
+                const int manual = (int)item.getProperty("manual", -1);
+                if (manual < 0 || manual > manualCount) continue;
+                auto& config = manualConfigs[(size_t)manual];
+                const float rate = (float)(double)item.getProperty("rateHz", (double)config.tremulantRateHz);
+                const float depth = (float)(double)item.getProperty("depthCents", (double)config.tremulantDepthCents);
+                if (std::abs(rate - (float)config.tremulantRateHz) < 0.0005f && std::abs(depth - (float)config.tremulantDepthCents) < 0.0005f) continue;
+                config.tremulantRateHz = rate;
+                config.tremulantDepthCents = depth;
+                engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                settingsChanged = true;
+            }
+    if (settingsChanged) { syncTremulantRecorded(); saveSettings(); refreshConfigurationEditor(); }
+    if ((groups & combTemperament) != 0 && slot.temperament.toString().isNotEmpty()
+        && !slot.temperament.toString().equalsIgnoreCase(selectedTemperamentName))
+        selectTemperament(slot.temperament.toString());
+    CrashHandler::note("Combination " + number + " recalled: " + juce::String(switchedOn) + " switched on, " + juce::String(switchedOff) + " switched off, "
+        + juce::String((int)wanted.size()) + " on in all" + (notHere.isEmpty() ? juce::String() : "; " + juce::String(notHere.size()) + " item(s) of it are not in the organ now: " + notHere.joinIntoString(", ").substring(0, 160)));
+    // The grid is built anew only where more than a button's lamp changed (a tremulant's button, voicing figures);
+    // a plain recall refreshes the lamps (the whole grid was rebuilt at every recall before).
+    if (voicer) { if (tremulantsChanged || voicingApplied || settingsChanged) voicer->rebuildUI(stopsContent, stopsViewport); else voicer->updateStopStates(); }
     updateCombinationLights();
 }
 
@@ -32838,6 +33049,25 @@ void MainComponent::addVoicingToSlot(MemorySlot& slot)
         voicing->setProperty("keyTone", sparseKeys(keyTone));
         voicing->setProperty("keyAttackMs", sparseKeys(stop->attackKeyMs));
         voicing->setProperty("attackRandomize", stop->attackRandomize);
+        if (!stop->tremmedAlternates.empty())   // 0.9.153: its recordings with a tremulant go with the stop's button - their own voicing too
+        {
+            juce::Array<juce::var> recordings;
+            for (const auto* recording : stop->tremmedAlternates)
+            {
+                juce::DynamicObject::Ptr r = new juce::DynamicObject();
+                r->setProperty("name", recording->name);
+                r->setProperty("db", recording->db);
+                r->setProperty("releaseCrossfade", (double)recording->releaseCrossfade);
+                std::array<float, 128> recordingDb{}, recordingTone{};
+                for (const int note : recording->voicedNotes())
+                    if (note >= 0 && note < 128) { recordingDb[(size_t)note] = recording->getNoteDb(note); recordingTone[(size_t)note] = recording->getNoteToneDb(note); }
+                r->setProperty("keyDb", sparseKeys(recordingDb));
+                r->setProperty("keyTone", sparseKeys(recordingTone));
+                r->setProperty("keyAttackMs", sparseKeys(recording->attackKeyMs));
+                recordings.add(juce::var(r.get()));
+            }
+            voicing->setProperty("recordings", recordings);
+        }
         entry->setProperty("voicing", juce::var(voicing.get()));
         // The transmission entries stand in the stop's own order (the slot was captured just now).
         if (auto* list = entry->getProperty("transmissions").getArray())
@@ -32887,6 +33117,19 @@ void MainComponent::applySlotVoicing(const MemorySlot& slot)
             stop->attackKeyMs = keysOf(voicing.getProperty("keyAttackMs", juce::var()));
             stop->attackRandomize = (bool)voicing.getProperty("attackRandomize", true);
         }
+        if (const auto* recordings = voicing.getProperty("recordings", juce::var()).getArray())   // 0.9.153: its recordings with a tremulant
+            for (const auto& r : *recordings)
+                for (auto* recording : stop->tremmedAlternates)
+                {
+                    if (recording->name != r.getProperty("name", "").toString()) continue;
+                    recording->setDb((float)(double)r.getProperty("db", 0.0));
+                    engine.setStopReleaseCrossfade(recording, (float)(double)r.getProperty("releaseCrossfade", 1.0));
+                    const auto recordingDb = keysOf(r.getProperty("keyDb", juce::var())), recordingTone = keysOf(r.getProperty("keyTone", juce::var()));
+                    const juce::ScopedLock sl(engine.getLock());
+                    for (const int note : recording->voicedNotes())
+                        if (note >= 0 && note < 128) { recording->setNoteDb(note, recordingDb[(size_t)note]); recording->setNoteToneDb(note, recordingTone[(size_t)note]); }
+                    recording->attackKeyMs = keysOf(r.getProperty("keyAttackMs", juce::var()));
+                }
         // The transmissions: each stored entry finds its transmission by the id, an entry without one by its place.
         if (const auto* list = stopObj.getProperty("transmissions", juce::var()).getArray())
         {
@@ -32956,7 +33199,7 @@ void MainComponent::applyRegistrationState(const MemorySlot& memory, bool includ
             if (stop->name == name && stop->primaryManual == savedManual
                 && (savedPerspective.isEmpty()
                     || stop->perspective.equalsIgnoreCase(savedPerspective))) { target = stop; break; }
-        if (target != nullptr)
+        if (target != nullptr && target->tremmedManual < 0)   // 0.9.153: never a recording with a tremulant (an older registration lists them)
         {
             const bool shouldBeEnabled = stopObj.getProperty("enabled", true);
             if (!onOffOnly)   // 0.9.118: a combination carries none of these
@@ -33039,90 +33282,304 @@ void MainComponent::pressPiston(int piston)
         restoreCombination(piston);
 }
 
-bool MainComponent::memoryMatchesCurrent(const MemorySlot& memory) const
+// 0.9.153 COMBINATIONS AS SETS OF WHAT IS ON. Before, a combination listed every stop of the engine with on / off,
+// a recall touched only the stops it listed (a stop loaded later stayed as it was) and the lamp wanted the very
+// same number of stops - it went dark for good with any change of the organ (#342: an older combinations file in
+// an organ that had gained the button of a noise).
+int MainComponent::combinationGroupsNow() const
 {
-    struct CurrentStopState
+    return combStops | (combinationsHoldNoise ? combNoise : 0) | (combinationsHoldCouplers ? combCouplers : 0)
+        | (combinationsHoldTremulants ? combTremulants : 0) | (combinationsHoldVoicing ? combVoicing : 0)
+        | (combinationsHoldSliders ? combSliders : 0) | (combinationsHoldSwell ? combSwell : 0)
+        | (combinationsHoldTremulantSettings ? combTremulantSettings : 0) | (combinationsHoldTemperament ? combTemperament : 0);
+}
+
+int MainComponent::holdsOf(const MemorySlot& slot)
+{
+    if (slot.holds >= 0) return slot.holds | combStops;
+    // A combination of an older file: stops (the noises' buttons were among them) and couplers always, the
+    // tremulants when it carried them, the voicing and the sliders when their figures are there.
+    int holds = combStops | combNoise | combCouplers | combVoicing;
+    if (!slot.tremulantData.isEmpty()) holds |= combTremulants;
+    if (slot.globalSliders.isObject()) holds |= combSliders;
+    return holds;
+}
+
+int MainComponent::groupOfCombinationKey(const std::string& key)
+{
+    if (key.compare(0, 6, "noise|") == 0) return combNoise;
+    if (key.compare(0, 8, "coupler|") == 0) return combCouplers;
+    if (key.compare(0, 5, "trem|") == 0) return combTremulants;
+    return combStops;   // "stop|", "trans|"
+}
+
+MainComponent::CombinationLive MainComponent::combinationLive() const
+{
+    CombinationLive live;
     {
-        juce::String name, perspective;
-        int primaryManual = 0;
-        bool enabled = false;
-        std::vector<StoredTransmission> transmissions;   // every transmission: id, division, ordinal (0.9.7: a stored entry is matched by id, an older one by division and ordinal)
-        std::vector<bool> transmissionOn;
-    };
-    std::vector<CurrentStopState> currentStops;
-    {
+        // The lock only for the copy: the matching of names follows without it (a lamp must never hold the audio up).
         const juce::ScopedLock engineLock(engine.getLock());
-        currentStops.reserve((size_t)engine.getStops().size());
+        live.stops.reserve((size_t)engine.getStops().size());
         for (auto* stop : engine.getStops())
         {
-            CurrentStopState state{ stop->name, stop->perspective, stop->primaryManual, stop->enabled, {}, {} };
-            for (int index = 0; index < (int)stop->transmissions.size(); ++index)
+            // A recording with a tremulant goes with its stop's button; the blower is no registration.
+            if (stop->tremmedManual >= 0 || stop->noiseButton == 2) { live.leftOut.insert(juce::String(stop->primaryManual) + "|" + stop->name); continue; }
+            CombinationLive::LiveStop item;
+            item.stop = stop;
+            item.name = stop->name;
+            item.noiseKey = stop->noiseButton != 0 ? stop->noiseKey : juce::String();
+            item.manual = stop->primaryManual;
+            item.noise = stop->noiseButton != 0;
+            const auto base = juce::String(item.manual) + "|" + item.name;
+            if (stop->enabled) live.on.insert(((item.noise ? "noise|" : "stop|") + base).toStdString());
+            for (const auto& t : stop->transmissions)
             {
-                const auto& t = stop->transmissions[(size_t)index];
-                state.transmissions.push_back({ t.id, t.manual, stop->transmissionOrdinal(index) });
-                state.transmissionOn.push_back(t.enabled);
+                item.transmissions.push_back({ t.id, t.manual });
+                if (t.enabled && !item.noise) live.on.insert(("trans|" + base + "|id" + juce::String(t.id)).toStdString());
             }
-            currentStops.push_back(std::move(state));
+            live.stops.push_back(std::move(item));
         }
     }
-    if (memory.stopData.size() != (int)currentStops.size()) return false;
-
-    // Do all JSON/string matching after releasing the audio-engine lock. This
-    // GUI lamp calculation must never hold up a small ASIO render deadline.
-    for (const auto& stop : currentStops)
+    for (int manual = 0; manual <= manualCount; ++manual)
     {
-        juce::var saved;
-        for (const auto& item : memory.stopData)
-            if (item.getProperty("name", "").toString() == stop.name
-                && (int)item.getProperty("primaryManual", 0) == stop.primaryManual
-                && (item.getProperty("perspective", "").toString().isEmpty()
-                    || item.getProperty("perspective", "").toString()
-                        .equalsIgnoreCase(stop.perspective)))
-            { saved = item; break; }
-        if (!saved.isObject() || (bool)saved.getProperty("enabled", true) != stop.enabled) return false;
-        // The stored "on" entries resolved to positions in the current list must be exactly the positions on now.
-        std::vector<bool> savedOn(stop.transmissions.size(), false);
-        for (const auto& stored : storedTransmissionsOn(saved))
-        {
-            int position = -1;
-            for (size_t i = 0; i < stop.transmissions.size() && position < 0; ++i)
-                if (stored.id > 0 ? stop.transmissions[i].id == stored.id
-                                  : (stop.transmissions[i].manual == stored.manual && stop.transmissions[i].ordinal == stored.ordinal))
-                    position = (int)i;
-            if (position < 0) return false;   // a transmission the memory switches on is gone
-            savedOn[(size_t)position] = true;
-        }
-        if (savedOn != stop.transmissionOn) return false;
+        if (manualConfigs[(size_t)manual].tremulantEnabled) live.on.insert("trem|" + std::to_string(manual));
+        for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
+            for (const auto& formerKey : entry.formerKeys)
+                live.former[formerKey] = { manual, entry.name };
     }
-    for (const auto& state : memory.tremulantData)
-        if (state.isObject())
-        {
-            const int manual = (int)state.getProperty("manual", -1);
-            if (manual < 0 || manual >= SamplerEngine::maxManuals) continue;
-            if (manualConfigs[(size_t)manual].tremulantEnabled != (bool)state.getProperty("enabled", false))
-                return false;
-        }
     const juce::ScopedLock couplerStateLock(couplerLock);
-    for (const auto& state : memory.couplerData)
-        if (state.isObject())
+    for (const auto& coupler : couplers)
+    {
+        live.couplerIds.insert(coupler.id);
+        if (coupler.enabled) live.on.insert(("coupler|" + coupler.id).toStdString());
+    }
+    return live;
+}
+
+// What the combination wants on, as keys of what is in the organ NOW. An item whose stop is not here (a perspective
+// or a package not loaded, a folder taken away, another organ's file) is named in 'notHere' and waits in the
+// combination untouched. A stop is found by: the noise's key (a noise's button), its division and name, an address
+// the row had before (a drag to another division, a rename), a name that stands ONCE in the whole organ.
+std::set<std::string> MainComponent::combinationOnSet(const MemorySlot& slot, const CombinationLive& live, int groups, juce::StringArray* notHere) const
+{
+    std::set<std::string> keys;
+    auto at = [&live](int manual, const juce::String& name) -> const CombinationLive::LiveStop*
+    {
+        for (const auto& item : live.stops) if (item.manual == manual && item.name == name) return &item;
+        return nullptr;
+    };
+    for (const auto& stopObj : slot.stopData)
+    {
+        if (!stopObj.isObject()) continue;
+        const bool stopOn = (bool)stopObj.getProperty("enabled", false);
+        const auto transmissionsOn = storedTransmissionsOn(stopObj);
+        if (!stopOn && transmissionsOn.empty()) continue;
+        const auto name = stopObj.getProperty("name", "").toString();
+        const int manual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)stopObj.getProperty("primaryManual", 0));
+        const auto noiseKey = stopObj.getProperty("noise", "").toString();
+        const CombinationLive::LiveStop* found = nullptr;
+        if (noiseKey.isNotEmpty())
+            for (const auto& item : live.stops) if (item.noiseKey == noiseKey) { found = &item; break; }
+        if (found == nullptr) found = at(manual, name);
+        if (found == nullptr && live.leftOut.count(juce::String(manual) + "|" + name) != 0) continue;   // the blower, a recording: never part of a combination
+        if (found == nullptr)
+            if (const auto former = live.former.find(juce::String(manual) + "|" + name); former != live.former.end())
+                found = at(former->second.first, former->second.second);
+        if (found == nullptr)
         {
-            const auto id = state.getProperty("id", "").toString();
-            bool current = false;
-            for (const auto& coupler : couplers)
-                if (coupler.id == id) { current = coupler.enabled; break; }
-            if (current != (bool)state.getProperty("enabled", false)) return false;
+            const CombinationLive::LiveStop* only = nullptr;
+            int count = 0;
+            for (const auto& item : live.stops) if (item.name == name) { only = &item; ++count; }
+            if (count == 1) found = only;
         }
-    return true;
+        if (found == nullptr) { if (notHere != nullptr) notHere->add(name); continue; }
+        const int group = found->noise ? combNoise : combStops;
+        if ((group & groups) == 0) continue;
+        const auto base = juce::String(found->manual) + "|" + found->name;
+        if (stopOn) keys.insert(((found->noise ? "noise|" : "stop|") + base).toStdString());
+        if (found->noise) continue;
+        for (const auto& stored : transmissionsOn)
+        {
+            int id = 0;
+            if (stored.id > 0) { for (const auto& t : found->transmissions) if (t.id == stored.id) id = t.id; }
+            else
+            {
+                int ordinal = 0;   // an entry of an older file: the place among the transmissions into that division
+                for (const auto& t : found->transmissions)
+                    if (t.manual == stored.manual) { if (ordinal == stored.ordinal) { id = t.id; break; } ++ordinal; }
+            }
+            if (id > 0) keys.insert(("trans|" + base + "|id" + juce::String(id)).toStdString());
+            else if (notHere != nullptr) notHere->add(name + " (transmission)");
+        }
+    }
+    if ((groups & combCouplers) != 0)
+        for (const auto& state : slot.couplerData)
+            if (state.isObject() && (bool)state.getProperty("enabled", false))
+            {
+                const auto id = state.getProperty("id", "").toString();
+                if (live.couplerIds.count(id) != 0) keys.insert(("coupler|" + id).toStdString());
+                else if (notHere != nullptr) notHere->add("coupler " + id);
+            }
+    if ((groups & combTremulants) != 0)
+        for (const auto& state : slot.tremulantData)
+            if (state.isObject() && (bool)state.getProperty("enabled", false))
+            {
+                const int manual = (int)state.getProperty("manual", -1);
+                if (manual >= 0 && manual <= manualCount) keys.insert("trem|" + std::to_string(manual));
+            }
+    return keys;
+}
+
+// The combination of what is on now: an entry per stop with something on (the stop itself or a transmission of
+// it), the couplers and the tremulants that are on - and the groups it was stored with.
+MemorySlot MainComponent::captureCombination(int groups, const CombinationLive& live) const
+{
+    MemorySlot slot;
+    slot.holds = groups | combStops;
+    for (const auto& item : live.stops)
+    {
+        const juce::ScopedLock engineLock(engine.getLock());   // per stop, never around the couplers' lock below
+        if (item.noise && (groups & combNoise) == 0) continue;
+        const auto* stop = item.stop;
+        juce::Array<juce::var> transmissions;
+        if (!item.noise)
+            for (const auto& t : stop->transmissions)
+                if (t.enabled)
+                {
+                    juce::DynamicObject::Ptr entry = new juce::DynamicObject();
+                    entry->setProperty("id", t.id);
+                    entry->setProperty("manual", t.manual);
+                    entry->setProperty("enabled", true);
+                    transmissions.add(juce::var(entry.get()));
+                }
+        if (!stop->enabled && transmissions.isEmpty()) continue;
+        juce::DynamicObject::Ptr st = new juce::DynamicObject();
+        st->setProperty("name", item.name);
+        st->setProperty("primaryManual", item.manual);
+        st->setProperty("enabled", stop->enabled);
+        if (item.noiseKey.isNotEmpty()) st->setProperty("noise", item.noiseKey);
+        if (!transmissions.isEmpty()) st->setProperty("transmissions", transmissions);
+        slot.stopData.add(juce::var(st.get()));
+    }
+    if ((groups & combCouplers) != 0)
+    {
+        const juce::ScopedLock couplerStateLock(couplerLock);
+        for (const auto& coupler : couplers)
+            if (coupler.enabled)
+            {
+                juce::DynamicObject::Ptr state = new juce::DynamicObject();
+                state->setProperty("id", coupler.id);
+                state->setProperty("enabled", true);
+                slot.couplerData.add(juce::var(state.get()));
+            }
+    }
+    if ((groups & combTremulants) != 0)
+        for (int manual = 0; manual <= manualCount; ++manual)
+            if (manualConfigs[(size_t)manual].tremulantEnabled)
+            {
+                juce::DynamicObject::Ptr state = new juce::DynamicObject();
+                state->setProperty("manual", manual);
+                state->setProperty("enabled", true);
+                slot.tremulantData.add(juce::var(state.get()));
+            }
+    return slot;
+}
+
+// A stop changed its division or its name in place (a drag on the grid, an indent, a merge of stop folders): the
+// combinations and the crescendo steps name it by its new address from now on.
+void MainComponent::retargetRegistrationMemories(int fromManual, const juce::String& oldName, int toManual, const juce::String& newName)
+{
+    if (fromManual == toManual && oldName == newName) return;
+    int changed = 0;
+    auto retarget = [&](juce::Array<juce::var>& stopData)
+    {
+        for (auto& item : stopData)
+            if (auto* object = item.getDynamicObject())
+                if (object->getProperty("name").toString() == oldName && (int)object->getProperty("primaryManual") == fromManual)
+                {
+                    object->setProperty("name", newName);
+                    object->setProperty("primaryManual", toManual);
+                    ++changed;
+                }
+    };
+    for (auto& entry : combinations) retarget(entry.second.stopData);
+    for (auto& step : crescendoSteps) retarget(step.stopData);
+    retarget(crescendoRestore.stopData);
+    if (changed > 0)
+    {
+        CrashHandler::note("Combinations and crescendo: " + juce::String(changed) + " entr" + (changed == 1 ? "y" : "ies") + " of \"" + oldName + "\" (division "
+            + juce::String(fromManual) + ") follow it as \"" + newName + "\" (division " + juce::String(toManual) + ")");
+        saveMemories();
+    }
+}
+
+// After a load: how many items of the combinations name nothing that is in the organ - one line in the log,
+// a Messages note when a combinations FILE was read (the reader knows at once that it belongs to another organ).
+void MainComponent::noteCombinationItemsNotHere(const juce::String& why, bool message)
+{
+    const auto live = combinationLive();
+    if (live.stops.empty()) return;
+    juce::StringArray names;
+    int withItems = 0;
+    for (const auto& entry : combinations)
+    {
+        juce::StringArray notHere;
+        combinationOnSet(entry.second, live, holdsOf(entry.second), &notHere);
+        if (!notHere.isEmpty()) ++withItems;
+        for (const auto& name : notHere) names.addIfNotAlreadyThere(name);
+    }
+    const auto text = juce::String((int)combinations.size()) + " combination(s)" + (names.isEmpty() ? juce::String(", every item of them is in the organ")
+        : ", " + juce::String(withItems) + " of them with item(s) that are not in the organ now (" + juce::String(names.size()) + "): " + names.joinIntoString(", ").substring(0, 300));
+    if (text == combinationsNotHereNoted) return;
+    combinationsNotHereNoted = text;
+    CrashHandler::note("Combinations (" + why + "): " + text);
+    if (message && !names.isEmpty())
+        noteMessage("Combinations", juce::String(names.size()) + " stop(s) or coupler(s) of the combinations are not in the organ now - they wait in the combinations and play again when they are back: "
+            + names.joinIntoString(", ").substring(0, 300));
+}
+
+bool MainComponent::memoryMatchesCurrent(const MemorySlot& memory) const
+{
+    const auto live = combinationLive();
+    const int groups = holdsOf(memory) & combinationGroupsNow();
+    const auto wanted = combinationOnSet(memory, live, groups);
+    if (wanted.empty()) return false;
+    std::set<std::string> now;
+    for (const auto& key : live.on) if ((groupOfCombinationKey(key) & groups) != 0) now.insert(key);
+    return now == wanted;
 }
 
 void MainComponent::updateCombinationLights()
 {
-    std::array<bool, maxPistons> matchesByPiston{};
+    // 0.9.153: what is on now is read ONCE; a combination is lit when the set of what is on equals its own set
+    // (of the groups it holds, of the items that are in the organ now) - what is off plays no part.
+    std::array<bool, maxPistons> matchesByPiston{}, filledByPiston{};
+    std::array<juce::String, maxPistons> pistonNotes;
     int firstMatch = -1;
+    const auto live = combinationLive();
+    const int groupsNow = combinationGroupsNow();
     for (int piston = 0; piston < pistonCount; ++piston)
     {
         const auto found = combinations.find(combinationKey(currentBank, piston));
-        const bool matches = found != combinations.end() && memoryMatchesCurrent(found->second);
+        bool matches = false;
+        if (found != combinations.end())
+        {
+            const int groups = holdsOf(found->second) & groupsNow;
+            juce::StringArray notHere;
+            const auto wanted = combinationOnSet(found->second, live, groups, &notHere);
+            filledByPiston[(size_t)piston] = !wanted.empty();
+            if (!wanted.empty())
+            {
+                size_t onNow = 0;
+                bool same = true;
+                for (const auto& key : live.on)
+                    if ((groupOfCombinationKey(key) & groups) != 0) { ++onNow; if (wanted.count(key) == 0) { same = false; break; } }
+                matches = same && onNow == wanted.size();
+            }
+            pistonNotes[(size_t)piston] = "\nIt holds " + juce::String((int)wanted.size()) + " item(s) that are on"
+                + (notHere.isEmpty() ? juce::String() : "; " + juce::String(notHere.size()) + " more are not in the organ now and wait: " + notHere.joinIntoString(", ").substring(0, 200)) + ".";
+        }
+        else pistonNotes[(size_t)piston] = "\nEmpty.";
         matchesByPiston[(size_t)piston] = matches;
         if (matches && firstMatch < 0)
             firstMatch = piston;
@@ -33139,7 +33596,11 @@ void MainComponent::updateCombinationLights()
             // A stored combination with nothing on is painted as an empty one (0.8.250, the
             // user: "when a combination has nothing in it, the plain grey, not the shade of
             // the same registration"); it still works as a cancel piston when pressed.
-            const bool filled = found != combinations.end() && !registrationOnSet(found->second).empty();
+            const bool filled = found != combinations.end() && filledByPiston[(size_t)piston];
+            {
+                const auto tip = pistonBaseTooltip(piston) + pistonNotes[(size_t)piston];
+                if (button->getTooltip() != tip) button->setTooltip(tip);
+            }
             const auto ordinaryOffColour = getLookAndFeel().findColour(
                 juce::TextButton::buttonColourId);
             // A filled piston: the button grey darkened (UIControls.h filledColour, the same
@@ -36952,6 +37413,7 @@ void MainComponent::enableAllStops()
     for (auto* s : engine.getStops())
     {
         if (s->noiseButton != 0) continue;   // Tutti is the pipes: no zimbelstern, no birds
+        if (s->tremmedManual >= 0) continue; // 0.9.153: a recording with a tremulant goes with its stop's button
         engine.setStopEnabled(s, true);
         for (int index = 0; index < (int)s->transmissions.size(); ++index)
             engine.setTransmissionEnabled(s, index, true);
@@ -36966,6 +37428,7 @@ void MainComponent::disableAllStops()
     for (auto* s : engine.getStops())
     {
         if (s->noiseButton == 2) continue;   // the blower runs on: the general cancel is the registration's
+        if (s->tremmedManual >= 0) continue; // 0.9.153: a recording with a tremulant goes with its stop's button
         engine.setStopEnabled(s, false);
         for (int index = 0; index < (int)s->transmissions.size(); ++index)
             engine.setTransmissionEnabled(s, index, false);
@@ -39217,20 +39680,41 @@ void MainComponent::showConfigurationEditor()
                 addCombo("Combination pistons", pistons, o.pistonCount, [&o](int index)
                 { o.pistonCountBox.setSelectedId(index + 1, juce::sendNotification); }, o.pistonCountBox.getTooltip());
             }
+            // 0.9.153: the groups of controls a combination holds. The stops, transmissions and extensions always;
+            // a group that is off is neither stored nor switched nor compared for the lamp.
+            addToggle("Combinations hold the noise buttons", o.combinationsHoldNoise, [&o](bool state)
+                { o.combinationsHoldNoise = state; o.saveSettings(); o.updateCombinationLights(); },
+                "On (default): the buttons of noises (zimbelstern, birds, bell) are stored and switched like stops. Off: a combination "
+                "leaves them alone. The blower is never part of a combination.");
+            addToggle("Combinations hold the couplers", o.combinationsHoldCouplers, [&o](bool state)
+                { o.combinationsHoldCouplers = state; o.saveSettings(); o.updateCombinationLights(); },
+                "On (default): the couplers that are on are stored, every other coupler goes off at a recall. Off: a combination leaves the couplers alone.");
+            addToggle("Combinations hold the tremulants", o.combinationsHoldTremulants, [&o](bool state)
+                { o.combinationsHoldTremulants = state; o.saveSettings(); o.updateCombinationLights(); },
+                "On (default): the tremulants that are on are stored, the others go off at a recall. Off: a combination leaves the tremulants alone.");
             addToggle("Combinations hold the voicing of the stops", o.combinationsHoldVoicing, [&o](bool state)
                 { o.combinationsHoldVoicing = state; o.saveSettings(); },
-                "Off (default): a piston switches stops, transmissions, couplers and tremulants on and off, as on an organ. "
-                "On: a piston also stores and recalls the voicing of every stop and transmission - stop volume, attack gain and time, "
-                "random tuning, release crossfade, the perspective boxes, volume / treble / attack per key. One piston can then change "
-                "the colour and the strength of the same stops. Pistons stored while this was off hold no voicing and change none.");
+                "Off (default): a combination switches on and off, as on an organ. On: it also stores and recalls the voicing of the stops "
+                "and transmissions that are on in it - stop volume, attack gain and time, random tuning, release crossfade, the perspective "
+                "boxes, volume / treble / attack per key, and the voicing of their recordings with a tremulant. One combination can then "
+                "change the colour and the strength of the same stops.");
             addToggle("Combinations hold the top row's sliders", o.combinationsHoldSliders, [&o](bool state)
                 { o.combinationsHoldSliders = state; o.saveSettings(); },
-                "On: a piston also stores and recalls the global sliders - master volume, pitch, the sustain and release fades, "
-                "release scaling, release cutting, release played from, attack minimum time and delay. Off (default): a piston never touches them.");
+                "On: a combination also stores and recalls the global sliders - master volume, pitch, the sustain and release fades, "
+                "release scaling, release cutting, release played from, attack minimum time and delay. Off (default): it never touches them.");
+            addToggle("Combinations hold the swell positions", o.combinationsHoldSwell, [&o](bool state)
+                { o.combinationsHoldSwell = state; o.saveSettings(); },
+                "On: a combination also stores and recalls the position of every division's swell. Off (default): it never moves a swell.");
+            addToggle("Combinations hold the tremulants' rate and depth", o.combinationsHoldTremulantSettings, [&o](bool state)
+                { o.combinationsHoldTremulantSettings = state; o.saveSettings(); },
+                "On: a combination also stores and recalls the rate and the depth of every division's tremulant. Off (default): it never changes them.");
+            addToggle("Combinations hold the temperament", o.combinationsHoldTemperament, [&o](bool state)
+                { o.combinationsHoldTemperament = state; o.saveSettings(); },
+                "On: a combination also stores and recalls the selected temperament. Off (default): it never changes it.");
             addToggle("An empty piston switches everything off", o.emptyPistonCancels, [&o](bool state)
                 { o.emptyPistonCancels = state; o.saveSettings(); },
-                "On: a piston that holds nothing acts as a general cancel (every stop, transmission, coupler and tremulant off), as on "
-                "many organs. Off (default): an empty piston changes nothing.");
+                "A combination with nothing on is empty. On: an empty one acts as a general cancel (every stop, transmission, coupler "
+                "and tremulant off; the blower runs on), as on many organs. Off (default): it changes nothing.");
             addToggle("Show the Tutti button", o.showTuttiButton, [&o](bool state)
                 { o.showTuttiButton = state; o.saveSettings(); o.resized(); },
                 "The Tutti button of the combination row (every stop on). Hidden, its MIDI assignment still works.");

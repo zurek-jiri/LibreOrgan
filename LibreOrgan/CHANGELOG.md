@@ -12,6 +12,41 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.153] - 2026-11-28
+
+### Changed
+- **Combinations are the list of what is on** (#342: no piston lit orange once an
+  organ had gained a row - the button of a noise, a stop folder, a recording -
+  because the lamp wanted the same number of stops as when the piston was stored).
+  A combination now lists what is on and nothing else; a recall switches on what
+  it lists and everything else off, also a stop loaded into the organ after it
+  was stored, and only the difference is switched; the piston is orange while
+  exactly the listed things are on. The blower and the recordings with a
+  tremulant are never part of a combination (Tutti and the general cancel leave
+  the recordings alone too). A combination with nothing on is empty. Stops that
+  are not in the organ now wait in the combination and are named in the piston's
+  tooltip and, after a combinations file is read, in the Messages. A stop
+  dragged to another division or renamed takes its combinations and crescendo
+  steps along; a row remembers where it stood, so an older combinations file
+  finds it. Older combination files are read as before.
+- A recall no longer builds the whole grid anew (only the lamps change), and
+  storing and recalling are written to the activity log.
+- The portable export writes ONE file into the Publish folder,
+  `<name>.portable.zip`, with the configuration and its README inside (no loose
+  `.json` and README beside it; the loose files of an older export go to the
+  recycle bin).
+
+### Added
+- Configuration Editor > Console > Combinations: what a combination holds -
+  the noise buttons, the couplers, the tremulants (on by default), the swell
+  positions, the tremulants' rate and depth, the temperament (off by default),
+  beside the voicing and the top row's sliders. A group that is off is neither
+  stored nor changed nor compared for the lamp; a combination changes a group
+  only when it was stored with it. The voicing a combination holds is that of
+  the stops that are on in it, with their recordings with a tremulant.
+- Voicing row: **Footage** - off, the button shows the name alone (on the
+  stop's transmissions too).
+
 ## [0.9.152] - 2026-11-28
 
 ### Fixed

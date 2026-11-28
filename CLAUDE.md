@@ -7216,6 +7216,48 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the Save chooser of an export proposes the .zip; showPublishWindow / its texts, the manual and the site follow;
   Load Configuration reads the zip already (0.8.195). The hook ORGAN_SAVE_PORTABLE and my test scripts read the
   json out of the zip from then on.
+  0.9.153 (28 Nov 2026 night; his word: "ano, ano, ano ... Dej tam i polohy žaluzií jako volbu, rychlost a hloubku
+  tremulantů a temperaturu taky. Jako volbu! ... dej koncízně do manuálu ... Pásztorovi pak odpověz, až tohle bude na
+  gitHubu, kam to ihned dej"): COMBINATIONS = SETS OF WHAT IS ON. MainComponent: `CombinationGroup` bits (combStops
+  always, combNoise, combCouplers, combTremulants [on by default], combVoicing, combSliders, combSwell,
+  combTremulantSettings, combTemperament [off]) = machine keys `combinationsHold*` + Editor toggles "Combinations
+  hold the ..." (Console > Combinations; a manual ### per label); `MemorySlot::holds` (-1 = an older slot:
+  `holdsOf`), `.swell` {"d<division>": position; stored from expressionTargetPositions, recalled by
+  setExpressionTarget}, `.tremulantSettings`, `.temperament`; `combinationLive()` (ONE copy of the engine's stops
+  under the lock: no recording, no blower `noiseButton == 2` - they go into `leftOut`; `on` = the keys of what is
+  on: "stop|<m>|<name>", "noise|<m>|<name>", "trans|<m>|<name>|id<N>", "coupler|<id>", "trem|<m>"; `former` from
+  the rows' `Entry::formerKeys`), `combinationOnSet(slot, live, groups, &notHere)` (an entry is found by its
+  "noise" key, division + name, a former address, a name standing ONCE in the organ; else it is named in notHere
+  and WAITS in the slot), `captureCombination` (entries only for stops with something on, ON couplers / tremulants;
+  entry "noise": the noise's key), storeCombination (nothing on = the slot ERASED), restoreCombination (groups =
+  holdsOf(slot) & combinationGroupsNow(); the difference alone switched; empty or nothing of it here =
+  emptyPistonCancels ? disableAllStops : nothing; `voicer->updateStopStates()` instead of rebuildUI unless a
+  tremulant / voicing / tremulant settings changed), updateCombinationLights (live read once; lit = the ON set of
+  the slot's groups equals its set; `filled` = something of it is here; piston tooltip = pistonBaseTooltip + "It
+  holds N item(s) ...; K more are not in the organ now and wait: ..."), combinationsFromVar (OFF entries dropped at
+  reading, an older scene's "perspective" removed, slots with nothing on not kept), combinationsToVar ("holds" +
+  the new payloads), `retargetRegistrationMemories(from, old, to, new)` (combinations, crescendoSteps,
+  crescendoRestore) at the three in-place moves (moveStopToDivision, indentStopUnder, mergeStopFolder) with
+  `Entry::noteFormerAddress` (JSON "former" on the stopBuild entry; also at the Stop List dialog's rename and
+  cross-division move), `noteCombinationItemsNotHere(why, message)` (log after every load; Messages after a
+  combinations FILE). captureCurrentState / applyRegistrationState / Tutti / X / allStopsAndCouplersOff skip
+  `tremmedManual >= 0`. addVoicingToSlot / applySlotVoicing carry "recordings" (the stop's tremmedAlternates: db,
+  releaseCrossfade, per-key rows) in the stop's voicing; the voicing is that of the ON entries alone. EXPORT:
+  one zip built in the memory (json all on one line as ever, README with CRLF), stale loose files of the same name
+  moveToTrash, chooser *.zip. FOOTAGE: `Stop::showFootage` (voicing state "showFootage": false in the FOUR places),
+  `Stop::displayName` returns nameWithoutFootage(alias or name) when off, transmissionCaption follows,
+  `StopRow::footageToggle` ("Footage", Control::footage in the walk right after the alias, stops with pipes only;
+  F1 "Footage"). TESTS (Rural copy F:\Suchy_rejstrik\Kobrle\Rural_t0153.json made by %TEMP%\odftools\craft_combo.py:
+  an OLD-format combination 1 that lists 14 of 15 stops + a ghost stop + coupler 1-2-8; test_0127b.ps1 now copies
+  memories_after.json): old combination lit orange (pictured), "1 item(s) of it are not in the organ now: TA -
+  ghost stop", Tutti then recall "25 switched off", a stop dragged to the pedal by ORGAN_TEST_DROP "follow it"
+  + lit, coupler and tremulant stored / cancelled / recalled, storing with nothing on = "it is empty now", the
+  stored file holds ON entries only (holds 15 / 31), export = the zip alone (robot's validate: only the unnamed
+  organ of the hook), the Footage row pictured and 59 widths clean. TEST ARTEFACT: ORGAN_TEST_MOUSE "<stop or
+  coupler>|click" now puts the grid / the coupler row into ARRANGE mode instead of toggling (a press without its
+  release) - use Tutti / X, ORGAN_TEST_TREMMED "trem", or a crafted combination to change states. NOT run: a real
+  mouse, recall of swell positions and the temperament, the Stop List's rename / division move carrying a
+  combination (former key), a combinations file of another organ, hold-voicing with recordings, Linux / macOS.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division

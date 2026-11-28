@@ -303,9 +303,9 @@ static const char* const kManualText_part1 =
     "export holds the organ alone - folders, Stop List, voicing, IR reverbs,\n"
     "couplers, combinations, crescendo, temperaments - and nothing of your computer\n"
     "(no MIDI or audio devices; every route plays through the default device on the\n"
-    "other computer). It never touches your ordinary configuration: it writes\n"
-    "`<name>.portable.json`, `<name>.portable.zip` (the json with its README - the\n"
-    "one file to upload) and `<name>.portable.README.md` into the `Publish`\n"
+    "other computer). It never touches your ordinary configuration: it writes one\n"
+    "file, `<name>.portable.zip` (the configuration and its README inside - the\n"
+    "file to upload; *Load Configuration* opens it too), into the `Publish`\n"
     "subfolder. The save asks once for the organ, the samples' producer, the link\n"
     "and your name; the README is written by the program.\n"
     "\n"
@@ -486,18 +486,47 @@ static const char* const kManualText_part2 =
     "the file last used with an organ is read again when the organ loads), and\n"
     "the crescendo.\n"
     "\n"
-    "- Click a piston to recall its registration: what is on and what is off\n"
-    "  (stops, transmissions, extensions, couplers, tremulants, Unison Off) and\n"
-    "  nothing else - unless you choose more in the Configuration Editor\n"
-    "  ([the voicing](#combinations-hold-the-voicing-of-the-stops),\n"
-    "  [the top row's sliders](#combinations-hold-the-top-rows-sliders)). With *Set* on, a click stores the current\n"
-    "  registration in the piston, and *<<* / *>>* store it in the previous / next\n"
-    "  piston and go there.\n"
-    "- A piston that holds a registration is a darker grey (a taught crescendo\n"
+    "- Click a piston to recall its combination; with *Set* on, a click stores\n"
+    "  what is on now in the piston, and *<<* / *>>* store it in the previous /\n"
+    "  next piston and go there.\n"
+    "- A piston that holds a combination is a darker grey (a taught crescendo\n"
     "  step the same). The piston in use is orange; other pistons holding the\n"
-    "  same registration are a lighter dark grey.\n"
+    "  same combination are a lighter dark grey.\n"
     "- *<<*, *>>*, the bank buttons and every piston are MIDI-learnable\n"
     "  (right-click). Combinations are part of the configuration.\n"
+    "\n"
+    "### How a combination works\n"
+    "\n"
+    "- **A combination is the list of what is on** - stops, transmissions,\n"
+    "  extensions, the buttons of noises, couplers, tremulants. It lists nothing\n"
+    "  that is off.\n"
+    "- **A recall switches on what the combination lists and everything else\n"
+    "  off** - also a stop that was loaded into the organ after the combination\n"
+    "  was stored. Only the difference is switched: what stays on sounds on.\n"
+    "- **The piston is orange** while exactly the listed things are on.\n"
+    "- **Never part of a combination:** the blower, and a recording with a\n"
+    "  tremulant (it goes with its stop's button).\n"
+    "- **An empty combination** - never stored, stored with nothing on, or none of\n"
+    "  its stops is in the organ - does what\n"
+    "  [An empty piston switches everything off](#an-empty-piston-switches-everything-off) says.\n"
+    "- **Stops that are not in the organ now** (a perspective or a package not\n"
+    "  loaded, a folder taken away, a combinations file of another organ) wait in\n"
+    "  the combination and play again when they are back; the piston's tooltip\n"
+    "  names them. Storing the piston anew drops them.\n"
+    "- **A stop is found** by its division and its name. A stop dragged to another\n"
+    "  division or renamed takes its combinations along; one that stands only once\n"
+    "  in the organ is found by its name alone.\n"
+    "- **What a combination holds** is your choice in the Configuration Editor\n"
+    "  (Console > Combinations): the [noise buttons](#combinations-hold-the-noise-buttons),\n"
+    "  the [couplers](#combinations-hold-the-couplers) and the\n"
+    "  [tremulants](#combinations-hold-the-tremulants) (on by default); the\n"
+    "  [voicing](#combinations-hold-the-voicing-of-the-stops), the\n"
+    "  [top row's sliders](#combinations-hold-the-top-rows-sliders), the\n"
+    "  [swell positions](#combinations-hold-the-swell-positions), the\n"
+    "  [tremulants' rate and depth](#combinations-hold-the-tremulants-rate-and-depth)\n"
+    "  and the [temperament](#combinations-hold-the-temperament) (off by\n"
+    "  default). A group that is switched off is neither stored nor changed, and\n"
+    "  a combination changes a group only when it was stored with it.\n"
     "\n"
     "## 2.3 The crescendo\n"
     "\n"
@@ -577,6 +606,8 @@ static const char* const kManualText_part2 =
     "the right-click menu of its header, moves the division there. *Interface\n"
     "size* is the program's own scale over the system's display scale, estimated\n"
     "at the first start for Full HD, 4K and Retina screens alike. Every dialog\n"
+    ;
+static const char* const kManualText_part3 =
     "scrolls when the window is smaller than its content.\n"
     "\n"
     "---\n"
@@ -606,8 +637,6 @@ static const char* const kManualText_part2 =
     "workspace and choose *Enter arrange mode*: every stop and transmission can\n"
     "be dragged to another cell or into another division. A click on empty\n"
     "workspace ends the mode. The same menu's *Grid upside down* reverses the\n"
-    ;
-static const char* const kManualText_part3 =
     "rows of that division (the last row first, the columns stay).\n"
     "\n"
     "- Dragging a stop into another division moves it there with its voicing and\n"
@@ -666,6 +695,12 @@ static const char* const kManualText_part3 =
     "appended; a footage typed into the alias is kept as typed, on a transmission\n"
     "too). The alias is only a caption: saved states, combinations and MIDI\n"
     "bindings use the stop's real name.\n"
+    "\n"
+    "### Footage\n"
+    "\n"
+    "On (default): the button shows a footage - the one typed into the alias,\n"
+    "else the one measured from the pipes. Off: the name alone, on this stop's\n"
+    "button and on its transmissions (bells, a carillon, effects).\n"
     "\n"
     "### One-shot\n"
     "\n"
@@ -773,6 +808,8 @@ static const char* const kManualText_part3 =
     "\n"
     "A transmission is an extra button that plays the pipes of another stop, on\n"
     "any division (its own included). Made in the Stop List (the *Transmissions*\n"
+    ;
+static const char* const kManualText_part4 =
     "cell) or on the grid (a right-button or Shift drag in arrange mode). Its\n"
     "voicing row has its own **Transposition** (-24 to +24, a pure interval each:\n"
     "-12 makes a 16' extension of an 8' stop, +12 a 4' one; the caption follows),\n"
@@ -808,8 +845,6 @@ static const char* const kManualText_part3 =
     "### Fine-tuned mixtures\n"
     "\n"
     "Some sample sets carry their compound stops (mixtures, a Sesquialtera, a\n"
-    ;
-static const char* const kManualText_part4 =
     "Siebenquart) twice: the original recording as the layer \"_070\" and a\n"
     "resynthesised version, its ranks tuned pure, as the plain files. A velocity\n"
     "layer was the only place Hauptwerk offered for a second version of a pipe, so\n"
@@ -975,6 +1010,8 @@ static const char* const kManualText_part4 =
     "Editor ([Division sections](#86-division-sections-pedal-manual-i--manual-vii)); the dialog adds the keyboard drawing. The\n"
     "sound cards, channels and effects are in [Audio routing](#audio-routing) -\n"
     "the *Audio routing...* button at the bottom opens it.\n"
+    ;
+static const char* const kManualText_part5 =
     "\n"
     "## 5.1 Keyboard, MIDI and compass\n"
     "\n"
@@ -1010,8 +1047,6 @@ static const char* const kManualText_part4 =
     "### The tremulant\n"
     "\n"
     "The *Tremulant* button in the division header is registration like a stop: it\n"
-    ;
-static const char* const kManualText_part5 =
     "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
     "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation), [Tremulant pitch drop](#tremulant-pitch-drop) (a running tremulant takes wind:\n"
@@ -1177,6 +1212,8 @@ static const char* const kManualText_part5 =
     "route works like a card of this program's own. Through the Windows sound\n"
     "system the blocks come in bursts - it plays, with about half the polyphony;\n"
     "the [measurement](#measure-the-maximum-polyphony) says so in its report.\n"
+    ;
+static const char* const kManualText_part6 =
     "On Linux no extra driver is needed: a program running on JACK (REAPER) is\n"
     "itself a card among the PipeWire cards, its inputs are that card's outputs,\n"
     "and the buffer is the one set in this program's Buffer box; REAPER shows a\n"
@@ -1212,8 +1249,6 @@ static const char* const kManualText_part5 =
     "effects of that **route** (a division row: \"Effects: I. Front\") or of the\n"
     "whole **perspective** (\"Effects: Front\"). On the left stands the chain in the\n"
     "order the engine applies it - *Division volume* (a route's only), *Volume*,\n"
-    ;
-static const char* const kManualText_part6 =
     "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
     "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
     "the module you looked at last.\n"
@@ -1379,6 +1414,8 @@ static const char* const kManualText_part6 =
     "(the time is split between threads) and different latencies per division.\n"
     "The highest polyphony: one ASIO driver, all routes on it.\n"
     "\n"
+    ;
+static const char* const kManualText_part7 =
     "### Audio on Linux\n"
     "\n"
     "Every current distribution runs PipeWire, which reduces every card to a\n"
@@ -1414,8 +1451,6 @@ static const char* const kManualText_part6 =
     "leaves it, within two seconds. An organ without cables of its own (a\n"
     "published configuration, a new organ) plays into the card the system plays\n"
     "through - the output chosen in the desktop's sound settings. Beside the\n"
-    ;
-static const char* const kManualText_part7 =
     "cards stands the system's default output (under ALSA), which is PipeWire\n"
     "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
@@ -1581,6 +1616,8 @@ static const char* const kManualText_part7 =
     "  once, whole, instead of the loop) and *Release xfade* where the loop has a\n"
     "  release. A release may be the end of the looped file itself: it then plays\n"
     "  from the file's last marker. Volume, perspective boxes and One-shot are the\n"
+    ;
+static const char* const kManualText_part8 =
     "  same values as in the Noises window.\n"
     "  A noise's button has no pipes: it takes no folders and has no\n"
     "  transmissions (the Stop List shows its row as *Noise*); stops can be\n"
@@ -1616,8 +1653,6 @@ static const char* const kManualText_part7 =
     "  noises and added.\n"
     "- Below, on one row with the **?** (this chapter): [Noises on](#noises-on), the volume of all\n"
     "  ([Noises volume](#noises-volume)),\n"
-    ;
-static const char* const kManualText_part8 =
     "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
     "  *Free drawknob noises: a random one at every press* (instead of each\n"
     "  button keeping its own) and *Add folder...*\n"
@@ -1783,6 +1818,8 @@ static const char* const kManualText_part8 =
     "Messages say how much was packed. With packing *Off*, a load the memory\n"
     "stopped offers the same in its box: *Pack what is needed and load the rest*.\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "### Sample rate on loading\n"
     "\n"
     "*Resample everything to 48 kHz* (default): every file converted once with a\n"
@@ -1818,8 +1855,6 @@ static const char* const kManualText_part8 =
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
     "### Measurement limit of DSP power\n"
-    ;
-static const char* const kManualText_part9 =
     "\n"
     "How much of its period the longest callback of the busiest device may take\n"
     "before the measurement counts a level as broken (60 to 100 %, default 85).\n"
@@ -1985,6 +2020,8 @@ static const char* const kManualText_part9 =
     "\n"
     "A tremulant switched while keys are held: the stops with\n"
     "[recorded tremulants](#recorded-tremulants) cross over between the plain\n"
+    ;
+static const char* const kManualText_part10 =
     "samples and the recording in this time (default 180 ms, up to 1 s), in phase,\n"
     "without striking the notes again. Travels with the organ.\n"
     "\n"
@@ -2020,8 +2057,6 @@ static const char* const kManualText_part9 =
     "### Key velocity: treble cut opens over\n"
     "\n"
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
-    ;
-static const char* const kManualText_part10 =
     "default 180).\n"
     "\n"
     "### Velocity layers: an unticked _128 never plays\n"
@@ -2187,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "### Filled pipes: keep the generated copies on disk (cache)\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "On by default: the copies are written to files and read back at the next\n"
     "load - seconds instead of minutes. [The cache](#73-the-cache).\n"
     "\n"
@@ -2222,8 +2259,6 @@ static const char* const kManualText_part10 =
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
     "### Program windows\n"
-    ;
-static const char* const kManualText_part11 =
     "\n"
     "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
@@ -2243,25 +2278,55 @@ static const char* const kManualText_part11 =
     "\n"
     "Off by default. On: the configuration used last time opens at the start.\n"
     "\n"
+    "### Combinations hold the noise buttons\n"
+    "\n"
+    "On by default: the buttons of noises (zimbelstern, birds, bell) are stored\n"
+    "and switched like stops. Off: a combination leaves them alone. The blower is\n"
+    "never part of a combination ([How a combination works](#how-a-combination-works)).\n"
+    "\n"
+    "### Combinations hold the couplers\n"
+    "\n"
+    "On by default. Off: a combination leaves the couplers alone.\n"
+    "\n"
+    "### Combinations hold the tremulants\n"
+    "\n"
+    "On by default. Off: a combination leaves the tremulants alone.\n"
+    "\n"
     "### Combinations hold the voicing of the stops\n"
     "\n"
-    "Off by default: a piston switches on and off, as on an organ. On: a piston\n"
-    "also stores and recalls the voicing of every stop and transmission - stop\n"
-    "volume, attack gain and time, random tuning, release crossfade, the\n"
-    "perspective boxes, volume / treble / attack per key - so one piston can change\n"
+    "Off by default: a combination switches on and off, as on an organ. On: it\n"
+    "also stores and recalls the voicing of the stops and transmissions that are\n"
+    "on in it - stop volume, attack gain and time, random tuning, release\n"
+    "crossfade, the perspective boxes, volume / treble / attack per key, and the\n"
+    "voicing of their recordings with a tremulant - so one combination can change\n"
     "the colour and the strength of the same stops, which no pipe organ can. A\n"
-    "piston stored while this was off holds no voicing and changes none.\n"
+    "combination stored while this was off holds no voicing and changes none.\n"
     "\n"
     "### Combinations hold the top row's sliders\n"
     "\n"
-    "Off by default. On: a piston also stores and recalls the global sliders -\n"
-    "master volume, pitch, the fades, release scaling, cutting and \"played from\",\n"
-    "attack minimum time and delay.\n"
+    "Off by default. On: a combination also stores and recalls the global\n"
+    "sliders - master volume, pitch, the fades, release scaling, cutting and\n"
+    "\"played from\", attack minimum time and delay.\n"
+    "\n"
+    "### Combinations hold the swell positions\n"
+    "\n"
+    "Off by default. On: a combination also stores and recalls the position of\n"
+    "every division's swell.\n"
+    "\n"
+    "### Combinations hold the tremulants' rate and depth\n"
+    "\n"
+    "Off by default. On: a combination also stores and recalls the rate and the\n"
+    "depth of every division's tremulant.\n"
+    "\n"
+    "### Combinations hold the temperament\n"
+    "\n"
+    "Off by default. On: a combination also stores and recalls the target\n"
+    "temperament.\n"
     "\n"
     "### An empty piston switches everything off\n"
     "\n"
-    "Off by default: a piston that holds nothing changes nothing. On: it is a\n"
-    "general cancel, like *X*.\n"
+    "A combination with nothing on is empty. Off by default: an empty one changes\n"
+    "nothing. On: it is a general cancel, like *X* (the blower runs on).\n"
     "\n"
     "### Show the Tutti button\n"
     "\n"
@@ -2359,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "### Ignored folders (folder contains)\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "Folders whose name matches are not loaded. Defaults: \"output\", \"Traktur\",\n"
     "\"mustr\". A pattern for tremulant recordings (\"trem\", \"\\*_tr\" of older\n"
     "configurations) is taken out of the list by itself: those folders are\n"
@@ -2424,8 +2491,6 @@ static const char* const kManualText_part11 =
     "### Bass octave layout follows MIDI transposition\n"
     "\n"
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
-    ;
-static const char* const kManualText_part12 =
     "On: it moves with the MIDI transposition and sits on the keys that play the\n"
     "division's lowest octave. No difference with the *Standard* layout or a\n"
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
@@ -2561,6 +2626,8 @@ static const char* const kManualText_part12 =
     "\n"
     "Scans the refused files again and gives each 60 seconds - for a plug-in that\n"
     "is merely slow at its first start (a licence check, a large collection in\n"
+    ;
+static const char* const kManualText_part13 =
     "one file).\n"
     "\n"
     "### Plug-in folders (one per line)\n"
@@ -2626,8 +2693,6 @@ static const char* const kManualText_part12 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
-    ;
-static const char* const kManualText_part13 =
     "you with a box: the texts are collected quietly under **Messages** in the\n"
     "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
@@ -2763,6 +2828,8 @@ static const char* const kManualText_part13 =
     "it. Then come the configuration's own folder, the lines the program remembered\n"
     "by itself (it writes only **under** the marker and never changes yours) and\n"
     "the drives - among these the fastest source wins, whatever their order in the\n"
+    ;
+static const char* const kManualText_part14 =
     "file: unpacked folders on NVMe, then archives on NVMe, then archives on\n"
     "another SSD, then unpacked folders there, a hard disk, a network folder (on a\n"
     "computer with few cores unpacked folders come before archives - see\n"
@@ -2828,8 +2895,6 @@ static const char* const kManualText_part13 =
     "\"Principal32\" when \"Re_\" is the Rear prefix; a division mark like \"Ped_\"\n"
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
     "caption's footage is the sounding one). A configuration whose rows an older\n"
-    ;
-static const char* const kManualText_part14 =
     "import named with the prefix is renamed the same way when it loads, every\n"
     "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
@@ -2965,6 +3030,8 @@ static const char* const kManualText_part14 =
     "\n"
     "## 10.9 Retune buses and the full kernel\n"
     "\n"
+    ;
+static const char* const kManualText_part15 =
     "A pipe is retuned by its own recorded deviation (its rank's smpl pitches),\n"
     "the temperament of the played key, the random detune, wind and tremulant,\n"
     "and the transposition of its transmission - every pipe and every rank for\n"
@@ -3030,8 +3097,6 @@ static const char* const kManualText_part14 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
-    ;
-static const char* const kManualText_part15 =
     "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
     "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"

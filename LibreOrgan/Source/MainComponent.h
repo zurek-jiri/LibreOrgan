@@ -24,6 +24,12 @@ struct MemorySlot
     juce::Array<juce::var> tremulantData; // { manual, enabled } per division
     juce::var globalSliders;              // 0.9.119: { name: value } of the top row's sliders - a piston stored with that option on
     juce::var noiseUnits;                 // 0.9.127: the noises' units (on, volume, per perspective) - a piston stored with "hold the voicing" on
+    // 0.9.153: a COMBINATION holds what is ON, group by group (MainComponent::CombinationGroup bits). -1 = a
+    // combination of an older file: the groups are told from what it carries (MainComponent::holdsOf).
+    int holds = -1;
+    juce::var swell;                      // 0.9.153: { division: position } - stored with "hold the swell positions"
+    juce::var tremulantSettings;          // 0.9.153: [{ manual, rateHz, depthCents }] - stored with "hold the tremulants' rate and depth"
+    juce::var temperament;                // 0.9.153: the selected temperament's name - stored with "hold the temperament"
 };
 
 // A step of "Compiling the Stop List" in the loading dialog: its text, the
@@ -195,6 +201,14 @@ private:
     bool emptyPistonCancels = false;        // a piston that holds nothing switches everything off (general cancel); off: it changes nothing
     bool combinationsHoldVoicing = false;   // a piston stores and recalls the voicing of every stop and transmission as well
     bool combinationsHoldSliders = false;   // ... and the top row's sliders (master volume, pitch, the fades ...)
+    // 0.9.153: the groups of controls a combination holds (Console > Combinations). The stops, transmissions and
+    // extensions always; a group that is off is neither stored nor switched nor compared for the lamp.
+    bool combinationsHoldNoise = true;              // the buttons of noises (never the blower)
+    bool combinationsHoldCouplers = true;
+    bool combinationsHoldTremulants = true;         // the divisions' tremulants on / off
+    bool combinationsHoldSwell = false;             // the swell positions
+    bool combinationsHoldTremulantSettings = false; // the tremulants' rate and depth
+    bool combinationsHoldTemperament = false;       // the selected temperament
     void rememberCombinationsFile(const juce::File& file);
     void loadRememberedCombinationsFile();
     bool stopListHintShown = false;        // the Stop List's own sheen and arrow: the first opening of the session only (0.8.176)
@@ -615,6 +629,15 @@ private:
                 // is the BUTTON OF A NOISE - the key of that noise's button in the noises' model (never a guess from
                 // the row's name or its empty folders). Saved as "noise"; set when the Noises put the button on the grid.
                 juce::String noiseKey;
+                // 0.9.153: where the row stood before ("<division>|<name>": a drag to another division, a rename, a
+                // name taken there) - a combination stored before still finds its stop. Saved as "former".
+                juce::StringArray formerKeys;
+                void noteFormerAddress(int manual, const juce::String& oldName)
+                {
+                    const auto key = juce::String(manual) + "|" + oldName;
+                    if (oldName.isNotEmpty() && !formerKeys.contains(key)) formerKeys.add(key);
+                    while (formerKeys.size() > 12) formerKeys.remove(0);
+                }
                 bool child = false;                           // indented under the previous non-child row (stop folder)
                 // 0.9.150 RECORDED TREMULANTS: a row of the SECOND level - the folders hold the same pipes recorded
                 // with a tremulant running. It belongs to the nearest row above that is no such recording, sounds
@@ -1963,6 +1986,44 @@ private:
     MemorySlot captureCurrentState() const;
     bool memoryMatchesCurrent(const MemorySlot& memory) const;
     static int combinationKey(int bank, int piston) { return bank * maxPistons + piston; }
+    // 0.9.153 COMBINATIONS AS SETS OF WHAT IS ON (the user's rules: a combination remembers only what is on; a
+    // recall switches everything else off, also a stop loaded later; the lamp = the two sets are equal; a
+    // recording with a tremulant is never an item; the blower is left out wholly; only an empty one is "all off
+    // or nothing"). Item keys: "stop|<division>|<name>", "noise|<division>|<name>" (a noise's button),
+    // "trans|<division>|<name>|id<N>", "coupler|<id>", "trem|<division>".
+    enum CombinationGroup { combStops = 1, combNoise = 2, combCouplers = 4, combTremulants = 8, combVoicing = 16,
+                            combSliders = 32, combSwell = 64, combTremulantSettings = 128, combTemperament = 256 };
+    struct CombinationLive
+    {
+        struct LiveStop
+        {
+            Stop* stop = nullptr;
+            juce::String name, noiseKey;
+            int manual = 0;
+            bool noise = false;
+            struct Trans { int id = 0, manual = 0; };
+            std::vector<Trans> transmissions;   // in the stop's own order
+        };
+        std::vector<LiveStop> stops;            // what a combination may hold (no recording, no blower)
+        std::set<juce::String> leftOut;         // "<division>|<name>" of the recordings and the blower: an entry naming one is passed over
+        std::map<juce::String, std::pair<int, juce::String>> former;   // "<division>|<name>" a row had before -> where it is now
+        std::set<juce::String> couplerIds;
+        std::set<std::string> on;               // what is on now
+    };
+    CombinationLive combinationLive() const;
+    int combinationGroupsNow() const;
+    static int holdsOf(const MemorySlot& slot);
+    static int groupOfCombinationKey(const std::string& key);
+    std::set<std::string> combinationOnSet(const MemorySlot& slot, const CombinationLive& live, int groups, juce::StringArray* notHere = nullptr) const;
+    MemorySlot captureCombination(int groups, const CombinationLive& live) const;
+    void retargetRegistrationMemories(int fromManual, const juce::String& oldName, int toManual, const juce::String& newName);
+    void noteCombinationItemsNotHere(const juce::String& why, bool message);
+    static juce::String pistonBaseTooltip(int piston)
+    {
+        return "Piston " + juce::String(piston) + ": a click switches on what it holds and everything else off; "
+            "with Set on, a click stores what is on now in it. Right-click: MIDI learn.";
+    }
+    juce::String combinationsNotHereNoted;
     void timerCallback() override;
     void mouseDown(const juce::MouseEvent& event) override;
     void showMidiLearnMenu(const juce::String& target);

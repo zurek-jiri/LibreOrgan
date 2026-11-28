@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Save the organ with *Portable configuration (to share with others)* ticked: LibreOrgan Sampler writes `<name>.zip` (the configuration
-        and its README inside) and `<name>.README.md` beside it for reading, asking you once for the organ, the producer of the samples,
+        Save the organ with *Portable configuration (to share with others)* ticked: LibreOrgan Sampler writes one file, `<name>.zip` (the configuration
+        and its README inside), asking you once for the organ, the producer of the samples,
         **the link to the page where the sample folders are bought or downloaded** and your name. Then attach the zip below.
         A robot checks it (a real organ configuration of LibreOrgan Sampler, saved with the organ loaded, and the README written for it),
         puts them into the repository as a pull request and answers here; the maintainer merges it and the organ

@@ -221,7 +221,7 @@ public:
     // below. ONE walk decides the lines for the owner's height (expandedHeightFor) and for the
     // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
     // return value is the bottom of the control lines (the key headers follow it).
-    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox, info, tremmedBox };
+    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox, info, tremmedBox, footage };
     static constexpr int compactLineStep = 27, compactSliderLineStep = 36, compactVelocityLineHeight = 30, compactPitchLineHeight = 19;
     // 0.9.134 THE WIDTH OF AN OPEN VOICING (the user: "nesmí to být širší než nejširší rozbalená sekce vertikálních
     // sliderů ... když budou všecky per key řádky sbalené, tak to taky musí být ultra úzké"): with a per-key row
@@ -283,6 +283,7 @@ public:
         // The user's order (4 Nov 2026): Transposition, Alias, One-shot, then the perspective boxes, the rest.
         if (!container) item(Control::transposition, 0, 362, 250);   // label 100 + 4 + box 250 + 8
         item(Control::alias, 0, 244, 150);   // label 46 + 2 + box 190 + 6
+        if (!trsm && !container) item(Control::footage, 0, 92, 92);   // 0.9.153: "Footage" - the button with or without a footage (it belongs to the caption, like the alias)
         if (!trsm && (!container || (noise && stop->noiseHeld))) item(Control::oneShot, 0, 96, 96);
         if (!trsm && (!container || (noise && stop->noiseHeld && stop->noiseRelease))) item(Control::releaseFade, 0, 150, 150);   // 0.9.62: the Release crossfade box
         if (trsm)
@@ -477,6 +478,7 @@ private:
     juce::ComboBox aliasBox;
     void aliasChanged();
     juce::ToggleButton rankCountToggle;   // a stop folder's "[II]" on its button (0.8.146; shown on stop folders only)
+    juce::ToggleButton footageToggle;     // 0.9.153: the button's caption with a footage (on) or the name alone (stops with pipes)
     juce::ToggleButton oneShotToggle;     // the stop plays each sample once through (0.8.158; overrides the One-shot Patterns)
     juce::ComboBox releaseFadeBox;        // the stop's multiplier of the global sustain-release crossfade (0.9.62; items x0.5 .. x10, id = factor x 10)
     bool tremmedPressed = false;          // 0.9.150: the button of a recording was pressed (its click acts at the release)

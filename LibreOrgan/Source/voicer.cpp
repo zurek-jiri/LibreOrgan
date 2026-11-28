@@ -301,6 +301,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         chapter(shiftBox, "Transposition"); chapter(transpositionLabel, "Transposition");
         chapter(aliasBox, "Alias"); chapter(aliasLabel, "Alias");
         chapter(oneShotToggle, "One-shot"); chapter(rankCountToggle, "Rank count"); chapter(releaseFadeBox, "Release crossfade");
+        chapter(footageToggle, "Footage");   // 0.9.153
         chapter(globalSlider, trsm ? "Transmissions and extensions" : "Stop volume"); chapter(globalLabel, trsm ? "Transmissions and extensions" : "Stop volume");
         chapter(gainSlider, "Attack Gain and Attack Time"); chapter(gainLabel, "Attack Gain and Attack Time");
         chapter(attackSlider, "Attack Gain and Attack Time"); chapter(attackLabel, "Attack Gain and Attack Time");
@@ -559,6 +560,19 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         if (this->relayout) this->relayout(this->stop);
     };
     addAndMakeVisible(rankCountToggle);
+    // 0.9.153 (the user: how to make a stop's label show no footage): on = as ever (the footage typed in the alias,
+    // else the measured one); off = the name alone, on the stop's button and on its transmissions.
+    footageToggle.setButtonText("Footage");
+    footageToggle.setToggleState(this->stop->showFootage, juce::dontSendNotification);
+    footageToggle.setTooltip("On: the button shows a footage - the one typed in the alias, else the one measured from the pipes. "
+        "Off: the name alone, on this stop's button and on its transmissions (bells, a carillon, effects).");
+    footageToggle.onClick = [this]
+    {
+        this->stop->showFootage = footageToggle.getToggleState();
+        stopButton.setButtonText(caption());
+        if (this->relayout) this->relayout(this->stop);
+    };
+    addAndMakeVisible(footageToggle);
     // One-shot (0.8.158): the stop plays each sample once through, whenever the
     // key goes up (chimes, harp). The switch starts as the One-shot Patterns say
     // and overrides them once touched.
@@ -1184,6 +1198,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     sourceLabel.setVisible(transmissionControls);
     aliasLabel.setVisible(showVoicing && !tremmedRow());
     aliasBox.setVisible(showVoicing && !tremmedRow());
+    footageToggle.setVisible(showVoicing && !isTransmission() && !stop->container && !tremmedRow());   // 0.9.153: stops with pipes (the walk places it there)
     // The rank-count switch only where the button can show a count (0.8.158): a
     // stop folder, or a stop with items indented under it.
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
@@ -1868,6 +1883,7 @@ void StopRow::resized()
                         diapasonLabel.setTooltip({});
                         break;
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
+                    case Control::footage: footageToggle.setBounds(x, y, 88, 23); break;   // 0.9.153
                     case Control::tremmedBox: tremmedLabel.setBounds(x, y, 96, 23); tremmedBox.setBounds(x + 100, y, juce::jmax(60, w - 108), 23); break;   // 0.9.150
                     case Control::slider:
                     {
@@ -4892,6 +4908,7 @@ juce::var Voicer::createState() const
         stopObj->setProperty("perspective", stop->perspective);
         stopObj->setProperty("alias", stop->alias);
         if (!stop->showRankCount) stopObj->setProperty("showRankCount", false);   // a stop folder's "[II]" switched off (0.8.146)
+        if (!stop->showFootage) stopObj->setProperty("showFootage", false);       // 0.9.153: the button without a footage
         if (stop->oneShotManual >= 0) stopObj->setProperty("oneShot", stop->oneShotManual == 1);   // 0.9.118: the row's One-shot switch (it was in the Save Voicing file alone)
         if (stop->releaseCrossfade != 1.0f) stopObj->setProperty("releaseCrossfade", (double)stop->releaseCrossfade);   // 0.9.118: the row's Release xfade
         stopObj->setProperty(juce::Identifier("globalDb"), stop->db);
@@ -5261,6 +5278,7 @@ void Voicer::loadState(const juce::File& file)
                 stop->attackDelayMs = stopObj->hasProperty("attackDelayMs") ? juce::jlimit(0.0f, 500.0f, (float)(double)stopObj->getProperty("attackDelayMs")) : 0.0f;   // 0.9.77
                 stop->alias = stopObj->getProperty("alias").toString();
                 stop->showRankCount = !stopObj->hasProperty("showRankCount") || (bool)stopObj->getProperty("showRankCount");
+                stop->showFootage = !stopObj->hasProperty("showFootage") || (bool)stopObj->getProperty("showFootage");   // 0.9.153
                 {   // 0.9.118: the row's One-shot switch and Release xfade (absent = by the patterns / x1)
                     const int oneShot = stopObj->hasProperty("oneShot") ? ((bool)stopObj->getProperty("oneShot") ? 1 : 0) : -1;
                     if (oneShot != stop->oneShotManual) engine.setStopOneShot(stop, oneShot);

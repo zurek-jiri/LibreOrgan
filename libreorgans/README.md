@@ -69,9 +69,8 @@ only - no MIDI devices, no audio devices or channels, nothing of your
 computer (the manual chapter of the same name explains it). LibreOrgan Sampler
 writes it as an export into the `Publish` subfolder of your configurations
 folder (your ordinary configuration stays untouched):
-`<name>.portable.json`, `<name>.portable.zip` (the configuration and its
-README zipped for the upload) and `<name>.portable.README.md`, the README
-for reading - the perspectives,
+one file, `<name>.portable.zip`, with the configuration and its README
+inside - the perspectives,
 the folders the configuration expects, the routes, the RAM, the version and
 the Stop List in the order of your grid. The save asks you once for what the
 README cannot know - the organ, the producer of the samples, the link to the
