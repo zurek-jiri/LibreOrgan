@@ -184,6 +184,9 @@ namespace
 juce::String StopRow::caption() const
 {
     if (auto* t = transmission()) return Voicer::transmissionLabel(stop, transmissionIndex);
+    // 0.9.150: a recording with a tremulant names the division whose tremulant plays it, and says when it is not in the memory.
+    if (tremmedRow())
+        return "Tremmed " + divisionNames[juce::jlimit(0, 7, stop->tremmedManual)].replace("Pedal", "P.") + (SamplerEngine::stopHoldsSamples(stop) ? "" : "  (not loaded)");
     // A stop folder shows how many ranks sound with it (a Roman numeral: the
     // children, plus the master itself when it has pipes of its own).
     if (childrenGetter)
@@ -393,6 +396,8 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     {
         if (stop->container && stop->noiseButton != 0)
             origText = "Noise (no pipes)";
+        else if (stop->container && stop->tremmedManual >= 0)   // 0.9.150
+            origText = "Not in the memory - click its button to load it.";
         else if (stop->container)
             origText = juce::String("Stop folder (no pipes of its own). Each subordinate stop in its branch is voiced separately below ")
                 + juce::String(juce::CharPointer_UTF8("\xe2\x86\x93"));
@@ -574,6 +579,47 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
             if (id > 0 && releaseCrossfadeRequest) releaseCrossfadeRequest(this->stop, (float)id / 10.0f);
         };
         addAndMakeVisible(releaseFadeBox);
+    }
+    // 0.9.150: a recording with a tremulant - the division whose tremulant plays it (the Stop List's box, the same value).
+    // On a stop folder's ordinary child the same box reads "no": choosing a division there makes the child the
+    // recording of the row above it (the grid's way to the second level; the Stop List has the drag).
+    if (tremmedRow() || tremmedCandidate())
+    {
+        tremmedLabel.setText("Tremmed by", juce::dontSendNotification);
+        tremmedLabel.setJustificationType(juce::Justification::centredRight);
+        addAndMakeVisible(tremmedLabel);
+        if (!tremmedRow()) tremmedBox.addItem("no (an ordinary stop)", 100);
+        for (int manual = 0; manual <= juce::jmin(activeManualCount, SamplerEngine::maxManuals - 1); ++manual)
+            tremmedBox.addItem("tremulant of " + divisionNames[manual], manual + 1);
+        if (this->stop->tremmedManual > activeManualCount) tremmedBox.addItem("tremulant of " + divisionNames[juce::jlimit(0, 7, this->stop->tremmedManual)], this->stop->tremmedManual + 1);
+        if (tremmedRow()) tremmedBox.addItem("no (an ordinary stop)", 100);
+        tremmedBox.setSelectedId(tremmedRow() ? this->stop->tremmedManual + 1 : 100, juce::dontSendNotification);
+        const juce::String tip = tremmedRow()
+            ? "These are the stop's pipes recorded with a tremulant running. They sound instead of the stop while the tremulant of this division shakes the keys' "
+              "division and is set to its recorded samples (the tick \"Recorded tremulant\" beside the tremulant's rate); otherwise the stop plays with the tremulant model."
+            : "Are these the pipes of the stop above, recorded with a tremulant running? Choose the division whose tremulant plays them: this row then sounds instead "
+              "of that stop while the tremulant runs, and is no stop of the folder any more (no transmissions, no alias). The Stop List shows it on its second level.";
+        tremmedBox.setTooltip(tip);
+        tremmedLabel.setTooltip(tip);
+        tremmedBox.getProperties().set("manualChapter", "Recorded tremulants");
+        tremmedBox.onChange = [this]
+        {
+            const int id = tremmedBox.getSelectedId();
+            const int wanted = id == 100 ? -1 : id - 1;
+            if (id > 0 && wanted != this->stop->tremmedManual && tremmedDivisionRequest)
+            {
+                const auto request = tremmedDivisionRequest;   // the request rebuilds the rows
+                Stop* const target = this->stop;
+                juce::MessageManager::callAsync([request, target, wanted] { request(target, wanted); });
+            }
+        };
+        addAndMakeVisible(tremmedBox);
+    }
+    if (tremmedRow())
+    {
+        stopButton.setTooltip("A recording of the stop above with a tremulant running. Click: its samples into the memory, or out of it (the stop then plays with the tremulant model). "
+            "It is not a stop: no place in combinations, crescendo or Tutti.");
+        stopButton.getProperties().set("manualChapter", "Recorded tremulants");
     }
 
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
@@ -1103,7 +1149,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
         for (auto* label : attackNameLabels) label->setVisible(showAttackRow);
         for (auto* label : attackNumLabels) label->setVisible(showAttackRow);
     }
-    const bool stopControls = withPipes && !isTransmission();     // pipe properties: the stop's own row only
+    // 0.9.150: a recording with a tremulant has only what belongs to its own samples (its division box, the release
+    // crossfade, its volume and the per-key rows) - the pipe properties are its stop's.
+    const bool tremmedControls = showVoicing && tremmedRow();
+    tremmedLabel.setVisible(tremmedControls || (showVoicing && tremmedCandidate()));
+    tremmedBox.setVisible(tremmedControls || (showVoicing && tremmedCandidate()));
+    const bool stopControls = withPipes && !isTransmission() && !tremmedRow();     // pipe properties: the stop's own row only
     const bool transmissionControls = showVoicing && isTransmission();
     transmissionLabel.setVisible(stopControls);
     // 0.9.129: the button of a noise has its perspectives' switches (the Noises window's), One-shot when it
@@ -1113,12 +1164,12 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     for (auto* button : rankButtons) button->setVisible(stopControls || noiseRow);
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
         transmissionBoxes[(size_t)manual].setVisible(stopControls && manual < activeManualCount);
-    diapasonLabel.setVisible(showVoicing && !isTransmission());
+    diapasonLabel.setVisible(showVoicing && !isTransmission() && (!tremmedRow() || stop->container));   // a recording: only the line that says it is not in the memory
     transpositionLabel.setVisible(transmissionControls || stopControls);
     shiftBox.setVisible(transmissionControls || stopControls);
     sourceLabel.setVisible(transmissionControls);
-    aliasLabel.setVisible(showVoicing);
-    aliasBox.setVisible(showVoicing);
+    aliasLabel.setVisible(showVoicing && !tremmedRow());
+    aliasBox.setVisible(showVoicing && !tremmedRow());
     // The rank-count switch only where the button can show a count (0.8.158): a
     // stop folder, or a stop with items indented under it.
     rankCountToggle.setVisible(showVoicing && !isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
@@ -1127,7 +1178,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     // 0.9.146 (the user asked for it back): on a noise's button too, when its noise loops - the same value as the
     // box in the Noises window's unfolded row (0.9.130 had taken it off the row).
     oneShotToggle.setVisible(stopControls || (noiseRow && stop->noiseHeld));
-    releaseFadeBox.setVisible(stopControls || (noiseRow && stop->noiseHeld && stop->noiseRelease));
+    releaseFadeBox.setVisible(stopControls || (noiseRow && stop->noiseHeld && stop->noiseRelease) || (tremmedControls && withPipes));
     // 0.9.127: the button of a noise (blower, zimbelstern ...) has no pipes, but its Stop volume is the noise's
     // volume - the same value the Noises window shows (one value, two ways to it).
     const bool noiseVolume = showVoicing && !isTransmission() && stop->container && stop->noiseButton != 0;
@@ -1137,7 +1188,7 @@ StopRow::StopRow(Stop* stop, SamplerEngine& engine, int noteMin, int noteMax, in
     attackDelaySlider.setVisible(false); attackDelayLabel.setVisible(false);   // 0.9.79: replaced by the "Attack per key" row (#228)
     randomPitchSlider.setVisible(stopControls); randomPitchLabel.setVisible(stopControls);
     undulationSlider.setVisible(stopControls); undulationLabel.setVisible(stopControls);
-    formantSlider.setVisible(withPipes); formantLabel.setVisible(withPipes);   // stops and transmissions alike
+    formantSlider.setVisible(withPipes && !tremmedRow()); formantLabel.setVisible(withPipes && !tremmedRow());   // stops and transmissions alike (a recording is never filled: no formants)
     for (auto* slider : keySliders) slider->setVisible(showVolumeRow);
     for (auto* label : noteNameLabels) label->setVisible(showVolumeRow);
     for (auto* label : midiNumLabels) label->setVisible(showVolumeRow);
@@ -1282,6 +1333,13 @@ void StopRow::mouseDown(const juce::MouseEvent& event)
         else toFront(false);
         return;
     }
+    if (tremmedRow() && event.eventComponent == &stopButton)
+    {
+        // 0.9.150: the button of a recording with a tremulant puts its samples into the memory or gives the memory
+        // back - on a plain click (the release over the button), never by a swipe, never by MIDI, no arrange mode.
+        if (event.mods.isLeftButtonDown()) tremmedPressed = true;
+        return;
+    }
     if (event.eventComponent == &stopButton && event.mods.isPopupMenu() && midiLearnCallback)
     {
         if (auto* t = transmission())
@@ -1403,6 +1461,18 @@ void StopRow::mouseUp(const juce::MouseEvent& event)
     {
         keySliderPaintActive = false;
         lastPaintedKeySlider = -1;
+        return;
+    }
+    if (tremmedPressed)
+    {
+        tremmedPressed = false;
+        if (event.eventComponent == &stopButton && stopButton.getLocalBounds().contains(event.getPosition()) && tremmedLoadRequest)
+        {
+            const auto request = tremmedLoadRequest;   // the request rebuilds the rows: nothing of this row is touched after it
+            Stop* const target = stop;
+            const bool load = !routeEnabled();
+            request(target, load);
+        }
         return;
     }
     if (arrangeDragging)
@@ -1710,6 +1780,7 @@ void StopRow::refreshEnabledColour()
 
 void StopRow::applyStopState(bool enabled)
 {
+    if (tremmedRow()) return;   // 0.9.150: a recording has no on / off of its own - its button is its place in the memory (mouseUp)
     if (routeEnabled() == enabled) return;
     if (isTransmission()) engine.setTransmissionEnabled(stop, transmissionIndex, enabled);
     else
@@ -1742,7 +1813,8 @@ void StopRow::resized()
     // A stop folder with pipes of its own: its voicing steps right of the tree
     // lines that join its children to it.
     const int inset = (!isTransmission() && ((childrenGetter && !childrenGetter(stop).empty())
-        || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty()))) ? 26 : 0;
+        || (childTransmissionsGetter && !childTransmissionsGetter(stop).empty())
+        || !stop->tremmedAlternates.empty())) ? 26 : 0;   // 0.9.150: its recordings with a tremulant hang on the tree lines too
     int keyAreaTop = 0;
     if (isExpanded())
     {   // 0.9.149: a stop folder without pipes and a noise's button too (they had one line that never wrapped).
@@ -1782,6 +1854,7 @@ void StopRow::resized()
                         diapasonLabel.setTooltip({});
                         break;
                     case Control::rankCount: rankCountToggle.setBounds(x, y, 140, 23); break;
+                    case Control::tremmedBox: tremmedLabel.setBounds(x, y, 96, 23); tremmedBox.setBounds(x + 100, y, juce::jmax(60, w - 108), 23); break;   // 0.9.150
                     case Control::slider:
                     {
                         // The order of the full layout: global, [formant], gain, attack, random pitch, undulation, [formant].
@@ -2532,9 +2605,14 @@ void Voicer::rebuildUI(juce::Component& container, juce::Viewport& viewport)
                         // expansion lands while ORGAN_TEST_RECORD holds its key.
                         const int delayMs = parts.size() >= 3 ? parts[2].getIntValue() : 0;
                         Stop* target = r->getStop();
-                        juce::Timer::callAfterDelay(juce::jmax(1, delayMs), [this, target, name = parts[1]]
+                        // A fourth field (0.9.150): a row nested under it (a child, a recorded tremulant) opened too.
+                        const juce::String nested = parts.size() >= 4 ? parts[3] : juce::String();
+                        juce::Timer::callAfterDelay(juce::jmax(1, delayMs), [this, target, nested, name = parts[1]]
                         {
                             target->voicingExpanded = true;
+                            if (nested.isNotEmpty())
+                                for (auto* other : engine.getStops())
+                                    if (other != target && other->primaryManual == target->primaryManual && other->name.startsWith(nested)) { other->voicingExpanded = true; other->volumeKeysExpanded = true; break; }
                             CrashHandler::note("ORGAN_TEST_EXPAND: " + name);
                             if (uiContainer != nullptr && uiViewport != nullptr) rebuildUI(*uiContainer, *uiViewport);
                         });
@@ -3436,7 +3514,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
         {
             if (stop == nullptr) continue;
             // A row of a stop folder's own pipes steps right of the tree lines (26 px); a child's row is indented.
-            const int extra = 26 + (stop->groupMaster.isNotEmpty() ? 30 : 0);
+            const int extra = 26 + (stop->groupMaster.isNotEmpty() ? 30 : 0) + (stop->tremmedManual >= 0 ? 28 : 0);   // 0.9.150: a recording with a tremulant stands a level deeper
             if (stop->primaryManual == manual && stop->voicingExpanded && !stop->container && !StopRow::keyRowsFolded(stop, -1))
             {
                 int first = compass.first, last = compass.second;   // the row's keys: the compass and every key the folder holds
@@ -3585,6 +3663,8 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
             row->oneShotRequest = [this](Stop* target, bool on) { if (oneShotRequest) oneShotRequest(target, on); };
             row->noisePerspectiveRequest = [this](Stop* target, const juce::String& perspective, bool on) { if (noisePerspectiveRequest) noisePerspectiveRequest(target, perspective, on); };
             row->releaseCrossfadeRequest = [this](Stop* target, float factor) { if (releaseCrossfadeRequest) releaseCrossfadeRequest(target, factor); };
+            row->tremmedLoadRequest = [this](Stop* target, bool load) { if (tremmedLoadRequest) tremmedLoadRequest(target, load); };   // 0.9.150
+            row->tremmedDivisionRequest = [this](Stop* target, int division) { if (tremmedDivisionRequest) tremmedDivisionRequest(target, division); };
             row->setTransmissionRemover([this](Stop* target, int index) { removeTransmission(target, index); });
             row->setChildrenGetter([this](const Stop* master) { return groupChildren(master); },
                 [this](const Stop* master) { return groupChildTransmissions(master); });
@@ -3810,19 +3890,28 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                     {
                         // Indented, joined to the master by tree lines (a trunk down the
                         // left, a branch to every child), like a folder tree.
-                        const auto children = groupChildren(item->stop);
+                        const auto children = nestedRows(item->stop);   // 0.9.150: the children and, a level deeper, the recordings with a tremulant
                         const auto childTransmissions = groupChildTransmissions(item->stop);
                         // The trunk starts right under the master's button and runs to the last branch.
                         const int indent = 28, branchTop = masterTop + stopRowTopHeight;
                         std::vector<int> branchTicks;
-                        for (auto* child : children)
+                        // Per tick: the level (1 = a branch of the trunk; 2 = a longer branch - of the trunk for the
+                        // button's own recordings, of a second trunk under the child for a child's) and where that
+                        // second trunk starts (the child's tick, -1 = none).
+                        std::vector<std::pair<int, int>> branchKinds;
+                        std::vector<int> tickOfRow;
+                        for (const auto& nested : children)
                         {
-                            const int childHeight = child->voicingExpanded ? StopRow::expandedHeightFor(child, -1, juce::jmax(220, columnWidth - indent)) : stopRowTopHeight;
+                            auto* child = nested.stop;
+                            const int rowIndent = indent * nested.level;
+                            const int childHeight = child->voicingExpanded ? StopRow::expandedHeightFor(child, -1, juce::jmax(220, columnWidth - rowIndent)) : stopRowTopHeight;
                             auto childRow = makeStopRow(child, child->name, -1);
-                            childRow->setBounds(x + indent, cursor, juce::jmax(220, columnWidth - indent), childHeight);
+                            childRow->setBounds(x + rowIndent, cursor, juce::jmax(220, columnWidth - rowIndent), childHeight);
                             container.addAndMakeVisible(childRow.get());
                             stopRows.add(std::move(childRow));
                             branchTicks.push_back(cursor - branchTop + 25);   // the centre of the child's button
+                            branchKinds.push_back({ nested.level, nested.parent >= 0 && nested.parent < (int)tickOfRow.size() ? tickOfRow[(size_t)nested.parent] : -1 });
+                            tickOfRow.push_back(branchTicks.back());
                             cursor += childHeight + margin;
                         }
                         // Transmissions indented under the master: the same, with their own voicing rows.
@@ -3835,6 +3924,7 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                             container.addAndMakeVisible(childRow.get());
                             stopRows.add(std::move(childRow));
                             branchTicks.push_back(cursor - branchTop + 25);
+                            branchKinds.push_back({ 1, -1 });
                             cursor += childHeight + margin;
                         }
                         if (!children.empty() || !childTransmissions.empty())
@@ -3842,21 +3932,38 @@ bool Voicer::layoutScreen(int screen, juce::Component& container, juce::Viewport
                             struct BranchLines final : public juce::Component
                             {
                                 std::vector<int> ticks;
+                                std::vector<std::pair<int, int>> kinds;   // 0.9.150: (level, the tick the second trunk starts at or -1)
                                 int trunkX = 12, indent = 28;
                                 void paint(juce::Graphics& g) override
                                 {
                                     g.setColour(juce::Colours::white.withAlpha(0.5f));
-                                    const int trunkEnd = ticks.empty() ? 0 : ticks.back();
+                                    // The trunk runs to the last row that hangs on it (a child's recordings hang on the child's own).
+                                    int trunkEnd = 0;
+                                    for (size_t i = 0; i < ticks.size(); ++i)
+                                        if (i >= kinds.size() || kinds[i].second < 0) trunkEnd = ticks[i];
                                     g.fillRect(trunkX, 0, 2, trunkEnd + 1);
-                                    // The branch runs up to the button's edge (the row starts at 'indent', its button 5 px in).
-                                    for (const int y : ticks) g.fillRect(trunkX, y, indent + 4 - trunkX, 2);
+                                    for (size_t i = 0; i < ticks.size(); ++i)
+                                    {
+                                        const int y = ticks[i];
+                                        const int level = i < kinds.size() ? kinds[i].first : 1;
+                                        const int from = i < kinds.size() ? kinds[i].second : -1;
+                                        // The branch runs up to the button's edge (the row starts at its indent, its button 5 px in).
+                                        if (from >= 0)
+                                        {
+                                            const int subTrunk = trunkX + indent;
+                                            g.fillRect(subTrunk, from + 25, 2, juce::jmax(1, y - from - 25 + 1));
+                                            g.fillRect(subTrunk, y, indent * level + 4 - subTrunk, 2);
+                                        }
+                                        else g.fillRect(trunkX, y, indent * level + 4 - trunkX, 2);
+                                    }
                                 }
                             };
                             auto lines = std::make_unique<BranchLines>();
                             lines->ticks = branchTicks;
+                            lines->kinds = branchKinds;
                             lines->indent = indent;
                             lines->setInterceptsMouseClicks(false, false);
-                            lines->setBounds(x, branchTop, indent + 6, juce::jmax(1, branchTicks.back() + 2));
+                            lines->setBounds(x, branchTop, indent * 2 + 6, juce::jmax(1, branchTicks.back() + 2));
                             container.addAndMakeVisible(lines.get());
                             lines->toBack();   // under the master's band, which is transparent there anyway
                             sectionDividers.add(std::move(lines));
@@ -5357,9 +5464,31 @@ std::vector<Stop*> Voicer::groupChildren(const Stop* master) const
     std::vector<Stop*> children;
     if (master == nullptr || master->groupMaster.isNotEmpty()) return children;   // one level only
     for (auto* stop : engine.getStops())
-        if (stop != master && stop->primaryManual == master->primaryManual && stop->groupMaster == master->name)
+        if (stop != master && stop->primaryManual == master->primaryManual && stop->groupMaster == master->name
+            && stop->tremmedManual < 0)   // 0.9.150: a recording with a tremulant is no rank of the folder - it stands under its own stop (nestedRows)
             children.push_back(stop);
     return children;
+}
+
+// 0.9.150: the rows that stand under a button's open voicing, in the tree's order - the button's own recordings with a
+// tremulant (level 2, parent -1), then every child (level 1) followed by its recordings (level 2, parent = the child's
+// place in the list).
+std::vector<Voicer::NestedRow> Voicer::nestedRows(const Stop* master) const
+{
+    std::vector<NestedRow> rows;
+    if (master == nullptr || master->groupMaster.isNotEmpty()) return rows;
+    for (auto* recording : master->tremmedAlternates) rows.push_back({ recording, 2, -1 });
+    for (auto* child : groupChildren(master))
+    {
+        const int place = (int)rows.size();
+        rows.push_back({ child, 1, -1 });
+        for (auto* recording : child->tremmedAlternates) rows.push_back({ recording, 2, place });
+    }
+    // A recording whose stop is not there (its row stands under nothing that plays): shown all the same, so it can be seen and moved.
+    for (auto* stop : engine.getStops())
+        if (stop != master && stop->primaryManual == master->primaryManual && stop->groupMaster == master->name && stop->tremmedManual >= 0 && stop->tremmedOfPtr == nullptr)
+            rows.push_back({ stop, 2, -1 });
+    return rows;
 }
 
 std::vector<std::pair<Stop*, int>> Voicer::groupChildTransmissions(const Stop* master) const

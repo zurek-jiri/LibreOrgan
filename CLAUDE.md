@@ -6931,6 +6931,155 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   configuration key of the perspectives left out (their folders stay in the table, no route, the Stop List column says
   "not loaded"); the definition chooser would have to parse every definition (seconds each) - not there.
 
+- RECORDED TREMULANTS (28 Nov 2026, the user asked for a DESIGN, nothing coded - wait for his answers). FACTS READ:
+  StopRank m = SwitchIDToSwitchToAlternateRank, n = RetriggerNotesWhenSwitching (Y), p = AlternateRankID; Tremulant
+  c = ControllingSwitchID, d = FrequencyWhenEngagedHz, e = FrequencyWhenDisengagedHz (1.2 x d in his sets), f/g start /
+  stop rate %. OUR IMPORT IS WRONG THERE: HauptwerkOdf.cpp ~614 reads d/e as "ModRateHz_Min/Max" and takes the MIDDLE =
+  10 % too fast (Kiedrich 5.28 for 4.8, Stralsund UW 5.94 for 5.4) - d alone is the rate. MEASURED (%TEMP%\odftools\
+  trem_lfo.py: the envelope's peak 2-12 Hz in the sustain; a tremmed file 19-83 x the band median, a plain one 4-6 x;
+  the script sometimes reads the octave 2f): Stralsund OWTR 4.47-4.52 Hz (definition 4.5), UWTR 5.37-5.44 (5.4),
+  Altenbruch "...tr" 4.84-4.86 (4.8), "...trrp" 6.25-6.49 (6.4); the loops are whole numbers of tremulant periods.
+  Stralsund St. Jakobi: 72 of 153 StopRank rows have an alternate, one per perspective, folders in the sibling TREES
+  pipe/OWTR and pipe/UWTR (<stop>/<prefix><stop>_tr), the switch "spinac real.Tremulantu" = the tremulant's slider
+  under the condition " Tremulant Selection (real/artif". Altenbruch (SemiDry Extended): general "Tremulant" 4.8 Hz =
+  alternate ranks "...tr" on HW / BW / Pedal; RW's own "Tremulant RW" 6.4 Hz = alternate "...trrp" on the RW stops; the
+  general one on RW = 12 hidden stops "R. X (Tremmed)" (ranks "...tr") swapped with the plain stops through the
+  "DrawInter ..." condition switches driven by "Slider Tremulant" (19018). A "trem" SUBFOLDER inside a plain rank
+  folder (24 files) = Hauptwerk's tremulant WAVEFORMS (TremulantWaveform, 870 of them in Stralsund), never recordings.
+  Tools: %TEMP%\odftools\odf_trem.py <compacted odf> [stop filter] (tremulants, alternate rows, their switches),
+  odf_fields_all.py <dump.xml> <tables> (field letters over the whole dump, any case). The design proposed to him:
+  an ALTERNATING ROW under the row it replaces (flag + "by the tremulant of division N / own"), no grid button, the
+  parent's voicing + a trim of its own, chosen at the voice start by tremulantDriverOf (own first), crossfade when the
+  tremulant is switched under held keys, the model silent for those voices; the recorded rate fixed (rate moved =
+  the model plays; time-stretched copies as a second phase); a load-box tick for the memory.
+  HIS DECISIONS (28 Nov, second round; picture F:\temp\navrh9_tremmed.png by %TEMP%\mock_tremmed.py): the tremmed
+  recording is a row of the SECOND level (first level = an ordinary child) with FULL voicing of its own (the
+  definition's per-pipe levels imported into it), flagged by the NUMBER of the division whose tremulant starts it
+  (no "own"; normal rows: off); the Transmissions field reads "Tremmed" (as "Noise"), a tremmed row has no
+  transmissions - moving a stop with transmissions to that level says they will be deleted; switching it OFF =
+  the model plays AND its samples leave the RAM (his main point), not part of pistons / crescendo / Tutti; crossfade
+  at a tremulant switch under held keys = a setting, default 300 ms, up to 1 s, phase-aware (NOTE: our attack ->
+  release crossfade has NO phase alignment today - none found in SamplerEngine.cpp, told him); the model acts a
+  little on the releases of a tremmed rank (the model gives detached releases 60 % of its depth today:
+  ctx.tremPitchCentsRelease); the general tremulant sits on a division it shakes that has no other tremulant, the
+  first of several; rate: step 1 ONLY (recorded rate fixed; the rate moved = the model plays; a simple way back -
+  a tick "Recorded tremulant (N Hz)" in the Tremulant settings); time-stretched copies REFUSED; load box tick
+  "Recorded tremulants" after the last perspective, ticked by default; the tremulant-rate fix of the import in the
+  same build. NEW TO-DO of the same message: after a Hauptwerk import the SELECTED temperament must be set to the
+  detected one (today only the BASE is set: "Base temperament set from the samples", MainComponent.cpp ~13540 - the
+  selected stays what it was and the organ is retuned; Kiedrich 28 Nov 08:04, he set it by hand at 08:35).
+  THIRD ROUND (28 Nov): the "Recorded tremulant" tick goes into EVERY place the tremulant is set - Divisions dialog,
+  right-click Tremulant settings, the Editor's division section (as the 0.9.88 target boxes) - his rule again: "Nikdy
+  nezapomeň na všechna místa, kde se věc dá nastavit ... Vždy znej celý kontext"; the tree lines of the picture
+  (box-drawing lines before an indented name) also for ORDINARY child rows of the Stop List and for the nested rows
+  of an unfolded voicing (level 1 and level 2 told apart by the tree); NO question at the indent to level 2 - the
+  division combo is just made orange; only existing transmissions bring a warning; the voicing of a tremmed row is
+  REDUCED: its own Stop volume, Volume / Treble / Attack per key and Release xfade (other samples: nothing of these
+  can be the parent's) - no alias, no transmissions, the rest from the parent; general tremulant placement and the
+  second-level indent under a plain stop CONFIRMED. CHECKED for him: startReleaseSamples (SamplerEngine.cpp ~7603-7628)
+  starts a release at frame 0 (or "Release played from") - NO phase alignment with the sounding attack; he thought
+  it was there (from the pre-AI program); he hears nothing wrong - not to be added unless he says. FX: no "set for
+  all perspectives" exists in EffectsDialog.h (gone with the audio tabs in 0.9.89; LINKED works across the DIVISIONS
+  of one perspective only) - he wants it back per module (IR too), the auxiliary never touched: proposed, his word.
+  FOURTH ROUND = GO ("udělej to", 28 Nov): 0.9.150 IN WORK, everything in ONE build, the release marked as the
+  MILESTONE "sampled tremulants support" (CHANGELOG heading + release body; no token for a GitHub milestone object).
+  Added by him: the box-drawing characters (│ ├ └ ─) for the tree on the grid's nested rows and in the Stop List (normal
+  children too); the attack -> release PHASE ALIGNMENT as a config option in Advanced global audio (default OFF, he
+  hears nothing wrong; "pozor na regresy, hlavně polyfonie"); "Set for all perspectives" per Fx module back (IR too,
+  never the auxiliary). IMPLEMENTATION DESIGN (keep to it after a context loss): table entry fields `tremmed` (bool,
+  with child = true ALWAYS so every "nested row" rule applies) + `tremulantManual` (division number), JSON "tremmed":
+  N on the stopBuild entry; a tremmed entry belongs to the nearest non-tremmed entry above; engine Stop::tremmedOfPtr
+  (parent) / tremmedManual / parent's tremmedAlternates, set in MainComponent::applyStopGroups; the engine's route
+  helpers (forEachRoute, own-button tests) answer for a tremmed stop with its PARENT's routes and enabled state;
+  startNote gates per pipe (`variantSounds`: the tremulant driving the division where the key is, its `recorded`
+  flag, the alternate loaded and holding the pipe - no fills in a tremmed stop); Voice::recordedTrem = the model
+  off for the sustain, on the detached release at the setting's share; a tremulant switch under held keys = the
+  wrong variant's voices faded (CmdRelease with the crossfade ms, no release sample), their speaking bits cleared,
+  startNote run again in "swap" mode (voices start at the first loop's start with the fade-in); the phase is set
+  at the route's TAKE of the new voice (renderRoute, single-threaded per route: the partner voice's pos is stable
+  there) from a Goertzel at the fundamental over two periods - Voice::alignPartner / alignPartnerOrder / alignPhase /
+  alignPeriod / alignFreqA; fades are linear = right for phase-aligned signals. OFF = unloaded (FolderRef::unloaded).
+  ALSO SEEN: the load box's "Perspectives to load" (askLoadOptions ~16828) orders by the var's pattern lines and puts
+  the names without a line after them in table order (alphabet: Diffuse, Direct, Rear) - not by defaultPerspectiveRank.
+  0.9.150 BUILT AND RUN ON WINDOWS (28 Nov 2026; LOCAL, push and tag wait for his word; the release is to be marked
+  "MILESTONE: sampled tremulants support" - the CHANGELOG heading, and build.yml's release step: `case "$tag" in
+  v0.9.150) milestone=...` gives the release the title "v0.9.150 - milestone: ..." and a first line of the notes; no
+  GitHub milestone OBJECT (no token), and the next version's release replaces this one unless `keep` names it).
+  WHAT EXISTS: table entry
+  `tremmedManual` (JSON "tremmed": N, child always true; bound to the nearest non-tremmed row ABOVE - by position, no
+  id), engine `Stop::tremmedOfPtr / tremmedManual / tremmedAlternates` set by MainComponent::applyStopGroups ->
+  `engine.tremmedStopsChanged()`; `routeOwner / buttonOn` (a recording answers with its PARENT's routes and on/off);
+  `recordedDriverOf(manual)` (tremulantDriverOf when that tremulant is ON and `TremParams::recorded`);
+  `variantSounds(stop, manual, pipe)` (stop level) and `variantRankSounds(stop, rank, manual, pipe)` +
+  `coveredByRecording` - PER PERSPECTIVE: a plain rank is silent only where the running tremulant's recording has
+  the pipe in the SAME perspective (Billerbeck's definition has recordings for Direct and Diffuse and none for Rear:
+  Rear goes on with the model; my first build silenced the whole stop - found by the 25-organ compare, not by the
+  first test: Altenbruch SemiDry has ONE perspective); `Voice::recordedTrem` (no model on the sustain; the detached
+  release takes `tremmedReleaseModelPercent` / 60 of the model); `swapTremulantVariants()` from processPending when
+  `tremSwapPending` (set by setManualTremulant / Targets / Recorded, tremmedStopsChanged): wrong-variant voices
+  CmdRelease with `tremulantSwapMs`, speaking bits cleared, startNote again in `swapMode` (start at the first loop's
+  start, fade-in = the same ms, no attack delay / cut), phase by `prepareAlignment` + `alignAtTake` (Goertzel at the
+  fundamental over two periods, at the route's take); the same alignment for attack -> release behind the option
+  "Release starts in the phase of its attack" (`releasePhaseAlign`, default off). Per division
+  `tremulantRecordedHz` (0 = unknown: measured by `engine.recordedTremulantHz(stop)` in `syncTremulantRecorded`) and
+  `tremulantRecorded` (the tick; unticked by itself when the rate differs by > 0.011 Hz) - the tick is in the
+  Divisions dialog (under Tremulant Rate, always visible), the right-click Tremulant settings (FeatureContent is a
+  Timer now) and the Editor's division section ("Tremulant: recorded samples"), shown while
+  `anyTremmedRows(manual)`. Stop List: `GridArea::treeLines` (the tree is DRAWN as lines, not font glyphs), level 2 =
+  2 x indent, the Transmissions field reads "Tremmed" + a division combo (testName "tremmed <row>", orange until
+  touched: `tremmedFresh`), `makeTremmedRow`, `moveEntry` moves a stop with its recordings. Voicer: `nestedRows(master)`
+  {stop, level, parent}, a recording's button "Tremmed <division>" (click = `tremmedLoadRequest` =
+  `setTremmedRowLoaded`: unload = the folders' `unloaded` flags + reloadDivisions(..., nothingToRead = true) -
+  MEASURED 170 ms, no loading window, the stop keeps an empty container so its row stays), reduced voicing (Stop
+  volume, per-key rows, Release xfade), "Tremmed by: no" combo on ordinary children with pipes
+  (`tremmedDivisionRequest` -> `setTremmedRowDivision`; transmissions warned and removed). Load box:
+  `PerspectiveTicks::recordedTremulants` ("To load: [x] Recorded tremulants", `setTremmedRowsLoadedInVar`,
+  transient "recordedTremulantsChoice"; the perspectives ordered by pattern line else defaultPerspectiveRank).
+  Folder way: `engine.tremmedFoldersOf(tree)` (a sibling folder named like the stop's + tr / trem [+ digits or a
+  <= 3-letter tag that is a word of the name]; or the same folder under an ancestor's sibling with the mark - OWTR
+  beside OW; names only, the ignored patterns are NOT consulted and their defaults were not changed) used by
+  extendStopBuildWithTree; a stop with TWO recordings made there (Altenbruch rw: "...TR" + "...trRP") = two
+  tremulants: the lettered mark keeps the division's own, the other gets the NEIGHBOURING division as a guess
+  (Messages says so; it plays once that tremulant's targets name the division) - the first build gave both the
+  same tremulant = both sounding at once; the engine now lets only the FIRST recording of a (stop, tremulant,
+  perspective, pipe) sound. Run: 002068/pipes/rw dropped on I. of an empty console -> 24 rows of the second
+  level, I. measured 6.40 Hz, II. 4.85 Hz. IMPORT (HauptwerkOdf): StopRank m / p -> `Rank::alternateOfRankId / tremulantId`
+  (`tremulantsBehind(switch)` BFS; hidden "(Tremmed)" stops matched to the plain stop by name, then Levenshtein <= 2),
+  `PlanStop::tremmed` {tremulantId, tremulantDivision, rankIds}, `PlanDivision::tremulantId / tremulantTargetMask /
+  tremulantHasRecordings`; a tremulant sits on its one division, a general one on the first MANUAL it shakes that
+  is not taken; Tremulant rate = d (FrequencyWhenEngagedHz) alone - EVERY imported tremulant is ~9 % slower than
+  before (Caen 5.61 -> 5.10, Doksy 5.98 -> 5.20, Bedos 4.29 -> 3.90: right, the old value was the mean of d and
+  e); a recording's tree = as far above its folder as the stop's tree is above the stop's, but never a folder that
+  holds another tree (Doesburg "002294/IVTrem/Re_echoburdonTr" lies flat: the first build made the whole package a
+  tree); recordings stay out of the route-volume median; `selectDetectedTemperament` (the SELECTED temperament = the
+  detected one once after an import). Effects: `setEffectModuleForAllPerspectives` + "Set for all perspectives"
+  (testName "ALL <module>"; never the auxiliary nor "Noises"). The load-time migration
+  renameRowsWithoutPerspectivePrefixes renames a recording's row with its stop's (its customName flag is ignored
+  for rows with "tremmed"). HOOKS: `ORGAN_TEST_TREMMED="<s>|trem|<division>|<0/1>^<s>|recorded|<division>|<0/1>^
+  <s>|rate|<division>|<Hz>^<s>|load|<division>|<row part>|<0/1>^<s>|division|<division>|<row part>|<N or -1>^
+  <s>|fxall|<perspective>|<module>^<s>|state|0"` (every act logs polyphony, the tremulants and the recordings),
+  ORGAN_TEST_OPEN "<s>|divisions|<division>" and "<s>|effects|<division or -1>|<perspective>",
+  ORGAN_TEST_EDITOR_SECTION=<row label> (scrolls to a ROW when no section is named so), ORGAN_TEST_EXPAND 4th
+  field = a nested row opened too. Analysis: %TEMP%\odftools\swap_check.py <wav> [switch seconds] (level per
+  second, modulation rate, the 10 ms levels around a switch). MEASURED (Altenbruch SemiDry Extended imported by
+  the hook, 16-bit, 10.7 GB, 47 recordings; key 60 of RW Gedackt 8 held 18 s through ASIO): plain -> own tremulant
+  (6.3-6.35 Hz in the envelope) -> plain -> the general one (4.76-4.83 Hz), level within 1 dB through every
+  crossfade, 0 discontinuities, polyphony 1 throughout; with a crafted second perspective that has no recording
+  (%TEMP%\odftools\craft_partial.py) polyphony stays 2 and the level constant. `hw_compare2.ps1 -Old 0.9.149`: 9
+  organs identical, 16 differ ONLY by the tremulant rate, the TREMMED blocks, the recordings' trees and the
+  notes (filter in the session: lines not matching "TREMMED by|rank N of N|tremulant N sits here|keys ..., tremulant").
+  TEST LESSON: a saved import is RENAMED at its load (row names lose the perspective prefix: "02-suchy_RP_Gedackt8" ->
+  "RP_Gedackt8") - a hook that names a stop by its prefix must use the name AFTER the rename (a silent recording
+  and "1 stop(s) on" was this); and the first test organ of a feature with perspectives must HAVE several.
+  NOT DONE / DIFFERENT FROM WHAT I TOLD HIM (say so): the tree is drawn lines, not the box characters as glyphs; the
+  model on a recording's release is not phase-locked to the recorded tremulant; recognition from folders is by
+  NAME alone (the level-envelope test only measures the rate); a recording's transposition is copied from its
+  stop when the row is made (no follow-up when the stop's is detected later); GLOBAL RESET does not reset the three
+  new settings; a recording dragged alone to another division becomes an ordinary row. NOT RUN: a real mouse in
+  the Stop List (indent to level 2, the combo), the folder way on a tree without a definition, a multi-perspective
+  organ with recordings loaded whole (Stralsund / Altenbruch Surround), the release-phase option by ear, Linux /
+  macOS (not compiled).
+
 ## Pending for the next Linux session (delete when done)
 - LESSON 0.8.147: the two
   checkouts are two git repositories on the SAME sources - after a Linux session the Windows checkout `F:` is behind

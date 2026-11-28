@@ -12,6 +12,59 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.150] - 2026-11-28 - MILESTONE: sampled tremulants support
+
+### Added
+- **Recorded (sampled) tremulants.** Many sample folders hold a stop's pipes a
+  second time, recorded with the tremulant running. Such a recording is now a
+  row of the Stop List's **second level** under its stop (indented twice;
+  "Tremmed" and the division whose tremulant plays it where other rows have
+  their transmissions). While that tremulant runs and its tick *Recorded
+  tremulant (N Hz)* is on, the recording sounds instead of the stop - through
+  the stop's button, its transmissions and the couplers, key by key and
+  perspective by perspective (a key or a perspective without a recorded file
+  plays the plain pipe with the tremulant model). A stop may have several, one
+  per tremulant (its own division's first).
+  - The tick stands beside the tremulant's rate in the Divisions dialog, the
+    right-click Tremulant settings and the Configuration Editor; the rate is
+    set to the recorded speed, moving it unticks (the model plays), ticking
+    brings it back.
+  - In the stop's open voicing the recording is a row of its own (a tree shows
+    the levels) with its own stop volume, volume / treble / attack per key and
+    release crossfade; its button puts the samples into the memory or gives it
+    back. No place in combinations, crescendo or Tutti, no alias, no
+    transmissions.
+  - A tremulant switched under held keys crosses the pipes over in phase
+    (*Recorded tremulant: crossfade*, 300 ms, up to 1 s); the release of a
+    recording gets a share of the model (*Recorded tremulant: model on its
+    releases*, 40 %).
+  - A Hauptwerk definition's alternate ranks and hidden "(Tremmed)" stops are
+    read as these rows, with their tremulant, its division (a general
+    tremulant sits on the first division it shakes that has no other, the
+    others are its targets) and the per-pipe levels; without a definition the
+    folder names decide ("tr" / "trem" + a tag appended, a tree "OWTR" beside
+    "OW") and the speed is measured in the samples. A stop with two such
+    recordings has two tremulants: the folders do not say where the second
+    sits, so it is given the neighbouring division as a guess to correct in
+    the Stop List.
+  - The load box has the tick *Recorded tremulants* after the perspectives.
+- **Release starts in the phase of its attack** (Advanced global audio, off by
+  default): the release begins up to one period later, in phase with the pipe
+  it fades into.
+- **Set for all perspectives** in a module's header of a perspective's Effects
+  dialog: the module copied to every other perspective, never the auxiliary.
+- The tree of a stop folder (lines to its children) in the Stop List.
+
+### Fixed
+- **A Hauptwerk definition's tremulant speed was 10 % too fast**: the two
+  figures are the frequency when engaged and when disengaged - the middle of
+  them was taken for the rate.
+- **The temperament of an imported organ**: the temperament found in the
+  samples became the base one only; the selected one stayed, so the organ was
+  retuned. It is selected too now.
+- **The load box ordered the perspectives by the alphabet** when the file gave
+  them no pattern line (Diffuse, Direct, Rear).
+
 ## [0.9.149] - 2026-11-27
 
 ### Fixed

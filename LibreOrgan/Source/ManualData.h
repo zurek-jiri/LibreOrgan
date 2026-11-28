@@ -407,9 +407,9 @@ static const char* const kManualText_part1 =
     ;
 static const char* const kManualText_part2 =
     "whenever the key is released - chiffs, percussion, bells. Folders matching\n"
-    "*Ignored folders (folder contains)* (\"trem\", \"\\*_tr\", \"output\", \"Traktur\", \"mustr\") are not loaded;\n"
-    "tremmed recordings named after their sibling with \"tr\"/\"trem\" appended are\n"
-    "skipped as well. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
+    "*Ignored folders (folder contains)* (\"trem\", \"\\*_tr\", \"output\", \"Traktur\", \"mustr\") are not loaded\n"
+    "as stops; a folder named after its sibling with \"tr\"/\"trem\" appended is a\n"
+    "[recorded tremulant](#recorded-tremulants) of that stop. A pattern without a star matches anywhere in the name, \"\\*x\"\n"
     "the end of it, \"x\\*\" its start.\n"
     "\n"
     "### Sample archives (RAR)\n"
@@ -878,7 +878,9 @@ static const char* const kManualText_part4 =
     "- **Stop folders:** drag a name a little to the **right** and the row is\n"
     "  indented under the row above: it becomes that stop's child and sounds with\n"
     "  it - that is a stop folder (\"Cornet [III]\"). Drag it **left** to take it\n"
-    "  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
+    "  out again. A tree shows the levels. Dragged right once more the row goes to\n"
+    "  the second level: the [recorded tremulant](#recorded-tremulants) of the row\n"
+    "  above it. (On the grid: [Arranging the grid](#32-arranging-the-grid).)\n"
     "- **Folder cells:** click a cell to choose one of the free folders of all\n"
     "  loaded trees (a folder serves one cell only); the x beside a cell frees its\n"
     "  folder; a cell dragged onto another takes or swaps. The path shows in a\n"
@@ -1008,10 +1010,10 @@ static const char* const kManualText_part4 =
     "### The tremulant\n"
     "\n"
     "The *Tremulant* button in the division header is registration like a stop: it\n"
-    "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
-    "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     ;
 static const char* const kManualText_part5 =
+    "sits in combinations and crescendo steps and is MIDI-learnable (right-click:\n"
+    "*Learn*, *Clear MIDI assignment*, *Tremulant settings...*). Its settings per\n"
     "division: [Tremulant rate](#tremulant-rate), [Tremulant depth](#tremulant-depth) (the pitch modulation) and [Tremulant phase drift between ranks](#tremulant-phase-drift-between-ranks) (0 = every stop dips at once,\n"
     "a large value lets a full registration shimmer); for every division: [Tremulant: volume change per cent of pitch](#tremulant-volume-change-per-cent-of-pitch) (how\n"
     "much the level follows the pitch), [Tremulant: harmonic filter](#tremulant-harmonic-filter) and [Tremulant: harmonic filter phase](#tremulant-harmonic-filter-phase) (the tone breathes with the\n"
@@ -1022,6 +1024,49 @@ static const char* const kManualText_part5 =
     "Tremulant settings of the right-click, the Configuration Editor) - its own\n"
     "division always; a division shaken by another's tremulant follows its rate,\n"
     "depth and phase while its own tremulant is off.\n"
+    "\n"
+    "### Recorded tremulants\n"
+    "\n"
+    "Many sample folders hold the pipes of a stop a second time, recorded with the\n"
+    "tremulant running (folders named like the stop's with \"tr\" or \"trem\"\n"
+    "appended, or the same folder in a tree \"OWTR\" beside \"OW\"). Such a recording\n"
+    "is a row of the **second level** of [The Stop List](#4-the-stop-list): it\n"
+    "stands under its stop, indented twice, with *Tremmed* and the division whose\n"
+    "tremulant plays it where other rows have their transmissions. While that\n"
+    "tremulant runs and its tick *Recorded tremulant (N Hz)* is on, the recording\n"
+    "sounds instead of the stop - through the stop's button, its transmissions and\n"
+    "the couplers; the tremulant model is silent for it. A key or a perspective\n"
+    "the recording has no files for plays the plain pipe with the model.\n"
+    "\n"
+    "- **The tick** stands beside the tremulant's rate in the Divisions dialog, in\n"
+    "  the right-click *Tremulant settings...* and in the Configuration Editor\n"
+    "  ([Tremulant: recorded samples](#tremulant-recorded-samples)). The rate is\n"
+    "  set to the speed of the recording. Move the rate and the tick goes: the\n"
+    "  model plays every stop. Tick it again and the rate is back.\n"
+    "- **In the voicing** of the stop the recording is a row of its own under it\n"
+    "  (a tree shows the levels) with its own stop volume, volume, treble and\n"
+    "  attack per key and release crossfade. Its button puts its samples into the\n"
+    "  memory or gives the memory back - off, the stop plays with the model. It is\n"
+    "  no stop: no place in combinations, crescendo or Tutti, no alias, no\n"
+    "  transmissions.\n"
+    "- **Made by hand:** in the Stop List drag the name of the folder's row right\n"
+    "  twice (once = a stop folder's child, twice = the recording of the row above\n"
+    "  it); on the grid indent the stop under its stop and choose the division in\n"
+    "  its *Tremmed by* box. Transmissions of a stop moved there are deleted - the\n"
+    "  program asks first.\n"
+    "- A tremulant switched under held keys crosses the pipes over in phase\n"
+    "  ([Recorded tremulant: crossfade](#recorded-tremulant-crossfade)); the\n"
+    "  release of a recording gets a share of the model\n"
+    "  ([Recorded tremulant: model on its releases](#recorded-tremulant-model-on-its-releases)).\n"
+    "- The load box has the tick *Recorded tremulants* after the perspectives:\n"
+    "  unticked they are not loaded.\n"
+    "\n"
+    "From a Hauptwerk definition the program reads here - as for the pipes - only\n"
+    "where these sample folders lie and what they belong to (the stop, the\n"
+    "tremulant and its speed); the definition itself is not loaded. Without one\n"
+    "the names of the folders decide and the speed is measured in the samples; a\n"
+    "stop with two recordings has two tremulants, and where the second one sits is\n"
+    "a guess - set its division in the Stop List.\n"
     "\n"
     "### The wind model\n"
     "\n"
@@ -1167,12 +1212,16 @@ static const char* const kManualText_part5 =
     "sliders. The order of *Volume*, *Channel separation* and *Equalizer* is\n"
     "yours: hold a module down for two seconds - or right-click the chain and\n"
     "choose *Arrange the chain* - then drag a framed module to its place and\n"
+    ;
+static const char* const kManualText_part6 =
     "click anywhere else to finish. *Division volume* stays first\n"
     "and the *IR reverb* last; the order belongs to the perspective and all its\n"
     "routes share it. *Reset* in a module's header and *Reset all\n"
     "effects* at the top put things back: a route's module is LINKED to the\n"
     "perspective again, a perspective's module goes to its default and every route\n"
-    "of it follows it again (the fx button turns grey).\n"
+    "of it follows it again (the fx button turns grey). *Set for all perspectives*\n"
+    "in a module's header of a perspective's dialog copies that module to every\n"
+    "other perspective - never to the auxiliary.\n"
     "\n"
     "### LINKED\n"
     "\n"
@@ -1212,8 +1261,6 @@ static const char* const kManualText_part5 =
     "\n"
     "*Load IR...* (WAV, AIFF or FLAC; mono, stereo or true stereo with four\n"
     "channels; the chooser starts where an IR was chosen last), *Clear*, the\n"
-    ;
-static const char* const kManualText_part6 =
     "dry/wet ratio, and the shaping of the wet signal: high and low cut (they grow\n"
     "with the dry/wet ratio - nothing is cut at 0 % wet), pre-delay, wet volume,\n"
     "decay (the IR shortened) and fade-out (the shortened IR dies away over that\n"
@@ -1367,6 +1414,8 @@ static const char* const kManualText_part6 =
     "**A Linux without PipeWire** (plain ALSA, PulseAudio, a JACK server of its\n"
     "own) keeps the ALSA list of the cards: a card another program holds is left\n"
     "out, *List unusable devices too* beside the list shows it dimmed, and a cable\n"
+    ;
+static const char* const kManualText_part7 =
     "dropped on it waits until the card is free.\n"
     "\n"
     "### Audio on macOS\n"
@@ -1414,8 +1463,6 @@ static const char* const kManualText_part6 =
     "by something else on the computer. What the measurement sees and what it\n"
     "cannot: [The polyphony measurement](#108-the-polyphony-measurement).\n"
     "\n"
-    ;
-static const char* const kManualText_part7 =
     "---\n"
     "\n"
     "# 6. Playing\n"
@@ -1569,6 +1616,8 @@ static const char* const kManualText_part7 =
     "Save Voicing and Load Voicing carry these switches and volumes; so do the\n"
     "combinations when [Combinations hold the voicing of the stops](#combinations-hold-the-voicing-of-the-stops)\n"
     "is on. Merging another organ adds its noises; only what the loaded organ\n"
+    ;
+static const char* const kManualText_part8 =
     "already has is left out.\n"
     "\n"
     "Nothing clicks while an organ loads.\n"
@@ -1616,8 +1665,6 @@ static const char* const kManualText_part7 =
     "  downwards can fray the attack: lower the attack stretch or use the plain\n"
     "  pitch shift for such a stop.\n"
     "- **Phase vocoder**: keeps every length and loop point; excellent within an\n"
-    ;
-static const char* const kManualText_part8 =
     "  octave, but it wobbles slightly upwards, loses body two octaves away and\n"
     "  often breaks the loops (*Filled pipes: loop crossfade* hides the seam).\n"
     "\n"
@@ -1771,6 +1818,8 @@ static const char* const kManualText_part8 =
     "\n"
     "### Measure the maximum polyphony\n"
     "\n"
+    ;
+static const char* const kManualText_part9 =
     "*Measure Polyphony* runs the procedure above with the loaded organ and its audio\n"
     "routes as they are: the sound turned down to -52 dB, every stop engaged, keys\n"
     "struck on every division faster and wider until the voices stop rising, the\n"
@@ -1818,8 +1867,6 @@ static const char* const kManualText_part8 =
     "as much per octave (138 ms on the small c, 172 on the C of an 8' rank, 215\n"
     "on a 16' C, 269 on a 32' C), because a big pipe cannot stop as fast.\n"
     "\n"
-    ;
-static const char* const kManualText_part9 =
     "### Release sample fade-in\n"
     "\n"
     "How long the release sample fades in (default 110 ms), scaled by pitch like\n"
@@ -1973,6 +2020,8 @@ static const char* const kManualText_part9 =
     "or two longer on a large organ.\n"
     "\n"
     "### Retune pipes off by more than\n"
+    ;
+static const char* const kManualText_part10 =
     "\n"
     "A pipe further off its own rank's tuning than this is pulled to its key even\n"
     "with *Equal at 440 Hz* off (default 50 cents, 0 = never); the key's tooltip\n"
@@ -2020,8 +2069,6 @@ static const char* const kManualText_part9 =
     "A sounding pipe pulls a starting one only when the pure interval with it lies\n"
     "within this of where the starting pipe would otherwise settle (default\n"
     "14 cents); pipes further apart stay apart. Travels with the organ.\n"
-    ;
-static const char* const kManualText_part10 =
     "\n"
     "### Attack cut fade-in\n"
     "\n"
@@ -2038,6 +2085,25 @@ static const char* const kManualText_part10 =
     "once). The time is for the sounding c1; a deeper pipe takes 1.5 times as long\n"
     "per octave below it. Perspectives, attack settings and random tuning apply\n"
     "from the next key. Travels with the organ.\n"
+    "\n"
+    "### Release starts in the phase of its attack\n"
+    "\n"
+    "Off by default. On: a release sample starts up to one period of its\n"
+    "fundamental later, where it is in phase with the sounding pipe it fades into -\n"
+    "the two cannot cancel each other during the crossfade. Travels with the organ.\n"
+    "\n"
+    "### Recorded tremulant: crossfade\n"
+    "\n"
+    "A tremulant switched while keys are held: the stops with\n"
+    "[recorded tremulants](#recorded-tremulants) cross over between the plain\n"
+    "samples and the recording in this time (default 300 ms, up to 1 s), in phase,\n"
+    "without striking the notes again. Travels with the organ.\n"
+    "\n"
+    "### Recorded tremulant: model on its releases\n"
+    "\n"
+    "The release of a sample recorded with a tremulant is often flat: this share\n"
+    "of the tremulant model's depth moves it (default 40 %; an ordinary release\n"
+    "gets 60 %; 0 = as recorded). Travels with the organ.\n"
     "\n"
     "### Filled pipes: resampling quality\n"
     "\n"
@@ -2156,6 +2222,8 @@ static const char* const kManualText_part10 =
     "\n"
     "### Combinations hold the voicing of the stops\n"
     "\n"
+    ;
+static const char* const kManualText_part11 =
     "Off by default: a piston switches on and off, as on an organ. On: a piston\n"
     "also stores and recalls the voicing of every stop and transmission - stop\n"
     "volume, attack gain and time, random tuning, release crossfade, the\n"
@@ -2222,8 +2290,6 @@ static const char* const kManualText_part10 =
     "folder and archive you ever chose, counted after the button. *Add folder...*\n"
     "adds one.\n"
     "\n"
-    ;
-static const char* const kManualText_part11 =
     "### Sample and IR locations: the file\n"
     "\n"
     "*Show* opens `Locations.txt` (one path per line; edit it with any text\n"
@@ -2358,6 +2424,8 @@ static const char* const kManualText_part11 =
     "\n"
     "The controller learned for the swell (right-click the swell bar). Information.\n"
     "\n"
+    ;
+static const char* const kManualText_part12 =
     "### Swell: maximum attenuation when closed\n"
     "\n"
     "How much quieter the division is with the box closed (0 to 60 dB, default\n"
@@ -2386,6 +2454,14 @@ static const char* const kManualText_part11 =
     "### Tremulant rate\n"
     "\n"
     "2 to 11 Hz (default 4.4).\n"
+    "\n"
+    "### Tremulant: recorded samples\n"
+    "\n"
+    "The tick *Recorded tremulant (N Hz)* of the division's tremulant - see\n"
+    "[Recorded tremulants](#recorded-tremulants). On: the stops recorded with this\n"
+    "tremulant play their recordings and the rate stands at the recorded speed.\n"
+    "Moving the rate switches it off (the model plays); switching it on brings the\n"
+    "rate back.\n"
     "\n"
     "### Tremulant depth\n"
     "\n"
@@ -2424,8 +2500,6 @@ static const char* const kManualText_part11 =
     "depth - the bellows has its end positions.\n"
     "\n"
     "### Wind: sag settling lag\n"
-    ;
-static const char* const kManualText_part12 =
     "\n"
     "How long the pressure takes to settle after stops or keys change (100 to 400\n"
     "ms, default 255).\n"
@@ -2552,6 +2626,8 @@ static const char* const kManualText_part12 =
     "step no program can do for you (GitHub takes files only that way); without\n"
     "the zip a report gives nothing to work from. A free GitHub account is\n"
     "needed; the report is public. If GitHub lands elsewhere after the sign-in,\n"
+    ;
+static const char* const kManualText_part13 =
     "*Open the GitHub form* in the program's message opens the form again.\n"
     "\n"
     "## 9.4 Free software, licences, platforms\n"
@@ -2602,9 +2678,10 @@ static const char* const kManualText_part12 =
     "\"Zimbel3\") is no such mark. A mutation written without spaces (\"Nasard 223\",\n"
     "\"Terz 135\") is read as 2 2/3', 1 3/5'; the organ builders' shorthand \"3\",\n"
     "\"6\", \"12\", \"1 1/2\" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after\n"
-    "its sibling or parent with \"tr\" or \"trem\" appended is the tremmed recording\n"
-    "and is skipped by every scan; a folder a Stop List row names explicitly is\n"
-    "loaded whatever its name.\n"
+    "its sibling or parent with \"tr\" or \"trem\" appended is the tremmed recording:\n"
+    "no stop of its own in any scan, but a row of the second level under its stop\n"
+    "([Recorded tremulants](#recorded-tremulants)); a folder a Stop List row names\n"
+    "explicitly is loaded whatever its name.\n"
     "\n"
     "The transposition a folder gets by itself: the mode of (recorded pitch - file\n"
     "number) over the pipes against the footage in the folder's name, when three\n"
@@ -2626,8 +2703,6 @@ static const char* const kManualText_part12 =
     "## 10.3 Where the program looks for folders\n"
     "\n"
     "A configuration names its trees relative to its library root\n"
-    ;
-static const char* const kManualText_part13 =
     "(`OrganInstallationPackages/003135/pipe/HW` with the root's name) and an IR by\n"
     "its path inside the library or by its full path. At a load each is looked for\n"
     "at the path it had; then under every sample location:\n"
@@ -2753,6 +2828,8 @@ static const char* const kManualText_part13 =
     "## 10.6 Memory and the loading stop\n"
     "\n"
     "Before every stop (and every 32 files inside a large one) the loader looks at\n"
+    ;
+static const char* const kManualText_part14 =
     "the memory and stops when any sign says it is short: less free than the\n"
     "reserve (512 MB or a sixteenth of the installed memory, 2 GB at the most), the\n"
     "program's footprint within the system's share (up to 16 GB installed: 1.5 GB\n"
@@ -2828,8 +2905,6 @@ static const char* const kManualText_part13 =
     "a fixed part per block and a part per voice, and the device thread's own\n"
     "profile: own render, waiting for the lanes, mixing, IR hand-over,\n"
     "bookkeeping, the longest route callback of the run and the latest a lane\n"
-    ;
-static const char* const kManualText_part14 =
     "joined a job. On Linux the CPU governor, on Windows the power plan.\n"
     "\n"
     "What moves the figure: the buffer size first (two cores: 1000 voices at\n"
@@ -2955,6 +3030,8 @@ static const char* const kManualText_part14 =
     "In the settings folder ([Where the files are](#14-where-the-files-are)): `settings.json` (this\n"
     "computer: devices, MIDI, the editor's machine settings, the last\n"
     "configuration) with `settings-<date>.json` snapshots; `Locations.txt`;\n"
+    ;
+static const char* const kManualText_part15 =
     "`Patterns.json`; `ArchiveIndex/`; `FilledPipesCache/` (or the folder chosen);\n"
     "`CrashLogs/activity.log` and `crash-<date>.txt`; `Reports/`;\n"
     "`ImportReports/`; `Shutdown rescue configuration.json` after *Shut down PC*\n"
@@ -2968,5 +3045,5 @@ static const char* const kManualText_part14 =
     "Voicing* exchange it as a file.\n"
     "\n"
     ;
-static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10, kManualText_part11, kManualText_part12, kManualText_part13, kManualText_part14 };
-static const int kManualTextPartCount = 15;
+static const char* const kManualTextParts[] = { kManualText_part0, kManualText_part1, kManualText_part2, kManualText_part3, kManualText_part4, kManualText_part5, kManualText_part6, kManualText_part7, kManualText_part8, kManualText_part9, kManualText_part10, kManualText_part11, kManualText_part12, kManualText_part13, kManualText_part14, kManualText_part15 };
+static const int kManualTextPartCount = 16;

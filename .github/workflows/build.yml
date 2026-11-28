@@ -247,7 +247,17 @@ jobs:
             echo "an earlier attempt's release $old goes first"
             gh release delete "$old" --repo "$GITHUB_REPOSITORY" --yes || true
           done
-          if ! out=$(gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$tag" --notes-file notes.md 2>&1); then
+          # A milestone release says so in its title and at the top of its notes (0.9.150, the user: "na githubu by se
+          # to pak mělo označit jako milestone").
+          title="$tag"
+          milestone=""
+          case "$tag" in v0.9.150) milestone="sampled tremulants support" ;; esac
+          if [ -n "$milestone" ]; then
+            title="$tag - milestone: $milestone"
+            { printf '**Milestone: %s.** Stops that were recorded with their tremulant running play those recordings while the tremulant is on.\n\n' "$milestone"; cat notes.md; } > notes-with-milestone.md
+            mv notes-with-milestone.md notes.md
+          fi
+          if ! out=$(gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$title" --notes-file notes.md 2>&1); then
             echo "$out"
             echo "::error title=Release::$(echo "$out" | tail -n 3 | tr '\n' ' ' | cut -c1-400)"
             exit 1

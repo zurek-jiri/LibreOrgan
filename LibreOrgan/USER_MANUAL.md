@@ -399,9 +399,9 @@ renamed in the Stop List gets its line at once.
 Folders matching *One-shot stops (folder contains)* ("Chiff", "Chimes",
 "Tubular", "Celesta", "Harp", "Glockenspiel") play once from start to end
 whenever the key is released - chiffs, percussion, bells. Folders matching
-*Ignored folders (folder contains)* ("trem", "\*_tr", "output", "Traktur", "mustr") are not loaded;
-tremmed recordings named after their sibling with "tr"/"trem" appended are
-skipped as well. A pattern without a star matches anywhere in the name, "\*x"
+*Ignored folders (folder contains)* ("trem", "\*_tr", "output", "Traktur", "mustr") are not loaded
+as stops; a folder named after its sibling with "tr"/"trem" appended is a
+[recorded tremulant](#recorded-tremulants) of that stop. A pattern without a star matches anywhere in the name, "\*x"
 the end of it, "x\*" its start.
 
 ### Sample archives (RAR)
@@ -866,7 +866,9 @@ can be done here as well, and this is where the organ is built from folders.
 - **Stop folders:** drag a name a little to the **right** and the row is
   indented under the row above: it becomes that stop's child and sounds with
   it - that is a stop folder ("Cornet [III]"). Drag it **left** to take it
-  out again. One level only. (On the grid: [Arranging the grid](#32-arranging-the-grid).)
+  out again. A tree shows the levels. Dragged right once more the row goes to
+  the second level: the [recorded tremulant](#recorded-tremulants) of the row
+  above it. (On the grid: [Arranging the grid](#32-arranging-the-grid).)
 - **Folder cells:** click a cell to choose one of the free folders of all
   loaded trees (a folder serves one cell only); the x beside a cell frees its
   folder; a cell dragged onto another takes or swaps. The path shows in a
@@ -1008,6 +1010,49 @@ divisions: tick them under *Tremulant also shakes* (the Divisions dialog, the
 Tremulant settings of the right-click, the Configuration Editor) - its own
 division always; a division shaken by another's tremulant follows its rate,
 depth and phase while its own tremulant is off.
+
+### Recorded tremulants
+
+Many sample folders hold the pipes of a stop a second time, recorded with the
+tremulant running (folders named like the stop's with "tr" or "trem"
+appended, or the same folder in a tree "OWTR" beside "OW"). Such a recording
+is a row of the **second level** of [The Stop List](#4-the-stop-list): it
+stands under its stop, indented twice, with *Tremmed* and the division whose
+tremulant plays it where other rows have their transmissions. While that
+tremulant runs and its tick *Recorded tremulant (N Hz)* is on, the recording
+sounds instead of the stop - through the stop's button, its transmissions and
+the couplers; the tremulant model is silent for it. A key or a perspective
+the recording has no files for plays the plain pipe with the model.
+
+- **The tick** stands beside the tremulant's rate in the Divisions dialog, in
+  the right-click *Tremulant settings...* and in the Configuration Editor
+  ([Tremulant: recorded samples](#tremulant-recorded-samples)). The rate is
+  set to the speed of the recording. Move the rate and the tick goes: the
+  model plays every stop. Tick it again and the rate is back.
+- **In the voicing** of the stop the recording is a row of its own under it
+  (a tree shows the levels) with its own stop volume, volume, treble and
+  attack per key and release crossfade. Its button puts its samples into the
+  memory or gives the memory back - off, the stop plays with the model. It is
+  no stop: no place in combinations, crescendo or Tutti, no alias, no
+  transmissions.
+- **Made by hand:** in the Stop List drag the name of the folder's row right
+  twice (once = a stop folder's child, twice = the recording of the row above
+  it); on the grid indent the stop under its stop and choose the division in
+  its *Tremmed by* box. Transmissions of a stop moved there are deleted - the
+  program asks first.
+- A tremulant switched under held keys crosses the pipes over in phase
+  ([Recorded tremulant: crossfade](#recorded-tremulant-crossfade)); the
+  release of a recording gets a share of the model
+  ([Recorded tremulant: model on its releases](#recorded-tremulant-model-on-its-releases)).
+- The load box has the tick *Recorded tremulants* after the perspectives:
+  unticked they are not loaded.
+
+From a Hauptwerk definition the program reads here - as for the pipes - only
+where these sample folders lie and what they belong to (the stop, the
+tremulant and its speed); the definition itself is not loaded. Without one
+the names of the folders decide and the speed is measured in the samples; a
+stop with two recordings has two tremulants, and where the second one sits is
+a guess - set its division in the Stop List.
 
 ### The wind model
 
@@ -1158,7 +1203,9 @@ and the *IR reverb* last; the order belongs to the perspective and all its
 routes share it. *Reset* in a module's header and *Reset all
 effects* at the top put things back: a route's module is LINKED to the
 perspective again, a perspective's module goes to its default and every route
-of it follows it again (the fx button turns grey).
+of it follows it again (the fx button turns grey). *Set for all perspectives*
+in a module's header of a perspective's dialog copies that module to every
+other perspective - never to the auxiliary.
 
 ### LINKED
 
@@ -2015,6 +2062,25 @@ once). The time is for the sounding c1; a deeper pipe takes 1.5 times as long
 per octave below it. Perspectives, attack settings and random tuning apply
 from the next key. Travels with the organ.
 
+### Release starts in the phase of its attack
+
+Off by default. On: a release sample starts up to one period of its
+fundamental later, where it is in phase with the sounding pipe it fades into -
+the two cannot cancel each other during the crossfade. Travels with the organ.
+
+### Recorded tremulant: crossfade
+
+A tremulant switched while keys are held: the stops with
+[recorded tremulants](#recorded-tremulants) cross over between the plain
+samples and the recording in this time (default 300 ms, up to 1 s), in phase,
+without striking the notes again. Travels with the organ.
+
+### Recorded tremulant: model on its releases
+
+The release of a sample recorded with a tremulant is often flat: this share
+of the tremulant model's depth moves it (default 40 %; an ordinary release
+gets 60 %; 0 = as recorded). Travels with the organ.
+
 ### Filled pipes: resampling quality
 
 How a neighbour's sample is played at another pitch while no copy exists:
@@ -2361,6 +2427,14 @@ pitch sounding together pull each other into tune a little, as on one chest.
 
 2 to 11 Hz (default 4.4).
 
+### Tremulant: recorded samples
+
+The tick *Recorded tremulant (N Hz)* of the division's tremulant - see
+[Recorded tremulants](#recorded-tremulants). On: the stops recorded with this
+tremulant play their recordings and the rate stands at the recorded speed.
+Moving the rate switches it off (the model plays); switching it on brings the
+rate back.
+
 ### Tremulant depth
 
 The pitch modulation, 0 to 50 cents (default 6); the strength wanders between
@@ -2574,9 +2648,10 @@ L or R right after the footage or at the end ("AB_quintaton16L" +
 "Zimbel3") is no such mark. A mutation written without spaces ("Nasard 223",
 "Terz 135") is read as 2 2/3', 1 3/5'; the organ builders' shorthand "3",
 "6", "12", "1 1/2" means 2 2/3', 5 1/3', 10 2/3', 1 1/3'. A folder named after
-its sibling or parent with "tr" or "trem" appended is the tremmed recording
-and is skipped by every scan; a folder a Stop List row names explicitly is
-loaded whatever its name.
+its sibling or parent with "tr" or "trem" appended is the tremmed recording:
+no stop of its own in any scan, but a row of the second level under its stop
+([Recorded tremulants](#recorded-tremulants)); a folder a Stop List row names
+explicitly is loaded whatever its name.
 
 The transposition a folder gets by itself: the mode of (recorded pitch - file
 number) over the pipes against the footage in the folder's name, when three

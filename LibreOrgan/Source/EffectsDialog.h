@@ -494,6 +494,7 @@ private:
         juce::TextButton linkedButton{ "LINKED" };
         juce::TextButton openButton{ "Open a route set apart..." };
         juce::TextButton resetButton{ "Reset" };   // 0.9.90: this module to the default
+        juce::TextButton allButton{ "Set for all perspectives" };   // 0.9.150: a perspective's module copied to every other perspective (never the auxiliary)
         RightClickButton onButton;                  // 0.9.101: ON / OFF of the module (the same switch as in the chain)
         void resized() override
         {
@@ -503,6 +504,7 @@ private:
             if (linkedButton.isVisible()) linkedButton.setBounds(r.removeFromLeft(90).reduced(0, 3));
             resetButton.setBounds(r.removeFromRight(70).reduced(0, 3));
             r.removeFromRight(8);
+            if (allButton.isVisible()) { allButton.setBounds(r.removeFromRight(178).reduced(0, 3)); r.removeFromRight(8); }
             if (openButton.isVisible()) openButton.setBounds(r.removeFromRight(200).reduced(0, 3));
             info.setBounds(r.reduced(8, 0));
         }
@@ -556,6 +558,20 @@ private:
             });
         };
         h->addChildComponent(h->openButton);
+        // 0.9.150 (the user): "Set for all perspectives" in a PERSPECTIVE's dialog - this module's values and its ON / OFF
+        // go to every other perspective of the organ, never to the auxiliary; each hands them on to its linked routes.
+        h->allButton.setVisible(manual < 0 && !divisionVolume && !perspective.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName()));
+        h->allButton.setTooltip("Copies this module - its values and its ON / OFF - to every other perspective of the organ (their linked routes follow). "
+            "The auxiliary is never touched. A route set apart keeps its own values.");
+        h->allButton.getProperties().set("manualChapter", "Effects");
+        h->allButton.getProperties().set("testName", "ALL " + moduleName);
+        h->allButton.onClick = [this, m, h]
+        {
+            const auto names = owner.setEffectModuleForAllPerspectives(perspective, m);
+            h->info.setText(names.isEmpty() ? juce::String("there is no other perspective") : "set for " + names.joinIntoString(", "), juce::dontSendNotification);
+            refresh();
+        };
+        h->addChildComponent(h->allButton);
         // 0.9.90: Reset - a route's module LINKED again (the division volume: 0 dB), a perspective's module to its default.
         h->resetButton.setTooltip(divisionVolume ? "The division volume back to 0 dB"
             : manual >= 0 ? "This module LINKED to the perspective again (the route's own values are dropped)" : "This module to its default; every route of the perspective follows it again");

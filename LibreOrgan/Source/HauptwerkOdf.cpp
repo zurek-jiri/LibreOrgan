@@ -434,7 +434,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
     struct PipeRow { int rankId = 0, note = 60, palletSwitch = 0; };   // palletSwitch (0.9.127): a pipe with a pallet switch of its own is a NOISE
     std::map<int, PipeRow> pipes;                     // PipeID
     std::vector<int> pipeOrder;
-    struct StopRankRow { int stopId = 0, rankId = 0, alternateRankId = 0, firstNote = 0, count = 0, increment = 0; };
+    struct StopRankRow { int stopId = 0, rankId = 0, alternateRankId = 0, firstNote = 0, count = 0, increment = 0; int alternateSwitchId = 0; };   // alternateSwitchId (0.9.150): the switch that changes over to the alternate (tremmed) rank
     std::vector<StopRankRow> stopRanks;
     std::map<int, std::vector<int>> keyboardNotes;    // KeyboardID -> notes of its KeyboardKey rows
     // The way from a key to a division: KeyboardKey.SwitchID -> SwitchLinkage
@@ -610,9 +610,12 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
                 t.id = row.integer("TremulantID", "a");
                 t.name = row.text("Name", "b");
                 t.switchId = row.integer("ControllingSwitchID", "c");
-                // The speed wanders between a minimum and a maximum (Hz): the middle is the rate.
-                const float lowHz = row.number("ModRateHz_Min", "d", 0.0f), highHz = row.number("ModRateHz_Max", "e", 0.0f);
-                t.rateHz = lowHz > 0.0f && highHz > 0.0f ? 0.5f * (lowHz + highHz) : juce::jmax(lowHz, highHz);
+                // 0.9.150: the two figures are FrequencyWhenEngagedHz (d) and FrequencyWhenDisengagedHz (e, 1.2 x d in
+                // the sets seen) - the first IS the tremulant's speed, and the speed its tremmed samples were recorded at
+                // (measured: Stralsund 4.5 / 5.4 Hz, Altenbruch 4.8 / 6.4 Hz). The middle of the two, taken since 0.8.128
+                // for "a range the speed wanders in", was 10 % too fast.
+                const float engagedHz = row.number("FrequencyWhenEngagedHz", "d", 0.0f), otherHz = row.number("FrequencyWhenDisengagedHz", "e", 0.0f);
+                t.rateHz = engagedHz > 0.0f ? engagedHz : otherHz;
                 if (t.id > 0) odf.tremulants.push_back(t);
             }
         }
@@ -665,6 +668,7 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
             while (scanner.nextRow(row))
             {
                 StopRankRow r; r.stopId = row.integer("StopID", "a"); r.rankId = row.integer("RankID", "d"); r.alternateRankId = row.integer("AlternateRankID", "p");
+                r.alternateSwitchId = row.integer("SwitchIDToSwitchToAlternateRank", "m");
                 // The key mapping of the row: the first key, how many keys, the
                 // semitones from the key to the pipe (an extension borrows another
                 // stop's rank with 12 or -12 here).
@@ -1037,6 +1041,123 @@ HauptwerkOdf HauptwerkOdf::parse(const juce::File& file, const std::function<boo
         if (std::find(stop->second.rankIds.begin(), stop->second.rankIds.end(), sr.rankId) == stop->second.rankIds.end())
             stop->second.rankIds.push_back(sr.rankId);
         stop->second.rankUses.push_back({ sr.rankId, sr.firstNote, sr.count, sr.increment });
+    }
+    // 0.9.150 THE TREMMED RECORDINGS: which rank is the recording of which, and which tremulant changes over to it.
+    {
+        // The tremulant behind a switch: the switch itself or what leads to it through the linkages (sources and
+        // condition switches alike: Stralsund's "spinac real.Tremulantu" hangs on the tremulant's slider, the
+        // "DrawInter ..." condition of Altenbruch's hidden stops on "Slider Tremulant"), the nearest one.
+        auto tremulantsBehind = [&](int switchId)
+        {
+            std::vector<int> hits;   // the tremulants at the nearest hop that has any
+            std::vector<int> frontier{ switchId };
+            std::set<int> seen{ switchId };
+            for (int hop = 0; hop <= 6 && !frontier.empty(); ++hop)
+            {
+                for (const int s : frontier)
+                    for (const auto& t : odf.tremulants)
+                        if (t.switchId == s && s > 0 && std::find(hits.begin(), hits.end(), t.id) == hits.end()) hits.push_back(t.id);
+                if (!hits.empty()) return hits;
+                std::vector<int> next;
+                for (const int s : frontier)
+                    if (const auto found = backLinks.find(s); found != backLinks.end())
+                        for (const auto& link : found->second)
+                            for (const int from : { link.source, link.condition })
+                                if (from > 0 && seen.insert(from).second) next.push_back(from);
+                frontier.swap(next);
+            }
+            return hits;
+        };
+        for (const auto& sr : stopRanks)
+        {
+            if (sr.alternateRankId <= 0) continue;
+            const auto alternate = odf.ranks.find(sr.alternateRankId);
+            if (alternate == odf.ranks.end() || sr.alternateRankId == sr.rankId) continue;
+            alternate->second.alternateOfRankId = sr.rankId;
+            const auto behind = tremulantsBehind(sr.alternateSwitchId);
+            alternate->second.tremulantId = behind.empty() ? 0 : behind.front();
+        }
+        // A second tremulant on a stop cannot be written as an alternate rank (Hauptwerk has one per row): his sets
+        // use a hidden stop "X (Tremmed)" beside the stop "X", swapped with it by condition switches. Its ranks are
+        // the recordings of X's ranks of the same perspective.
+        auto plainName = [](const juce::String& name)
+        {
+            const int at = name.toLowerCase().indexOf("(trem");
+            return (at > 0 ? name.substring(0, at) : name).trim().toLowerCase();
+        };
+        auto headOf = [](const juce::String& rankName)
+        {
+            return rankName.contains(":") ? rankName.upToFirstOccurrenceOf(":", false, false).trim().toLowerCase() : juce::String();
+        };
+        for (const auto& [id, helper] : odf.stops)
+        {
+            if (!helper.name.toLowerCase().contains("(trem")) continue;
+            const HauptwerkOdf::Stop* plain = nullptr;
+            for (const auto& [otherId, other] : odf.stops)
+                if (otherId != id && other.divisionId == helper.divisionId && !other.name.toLowerCase().contains("(trem") && plainName(other.name) == plainName(helper.name)) { plain = &other; break; }
+            if (plain == nullptr)
+            {
+                // The two names are typed by hand and differ now and then ("R. Octava 4 (Tremmed)" beside "R. Octav 4",
+                // "R. Nassat 3" beside "R. Nasat 3"): the one stop of the division within two letters of it.
+                auto lettersOf = [](const juce::String& text)
+                {
+                    juce::String s;
+                    for (int i = 0; i < text.length(); ++i) if (juce::CharacterFunctions::isLetterOrDigit(text[i])) s << juce::String::charToString(text[i]);
+                    return s;
+                };
+                auto distance = [](const juce::String& a, const juce::String& b)
+                {
+                    std::vector<int> row((size_t)b.length() + 1);
+                    for (int j = 0; j <= b.length(); ++j) row[(size_t)j] = j;
+                    for (int i = 1; i <= a.length(); ++i)
+                    {
+                        int diagonal = row[0];
+                        row[0] = i;
+                        for (int j = 1; j <= b.length(); ++j)
+                        {
+                            const int above = row[(size_t)j];
+                            row[(size_t)j] = juce::jmin(juce::jmin(row[(size_t)j] + 1, row[(size_t)j - 1] + 1), diagonal + (a[i - 1] == b[j - 1] ? 0 : 1));
+                            diagonal = above;
+                        }
+                    }
+                    return row[(size_t)b.length()];
+                };
+                const auto mine = lettersOf(plainName(helper.name));
+                int best = 3, bestCount = 0;
+                for (const auto& [otherId, other] : odf.stops)
+                {
+                    if (otherId == id || other.divisionId != helper.divisionId || other.name.toLowerCase().contains("(trem")) continue;
+                    const int d = distance(mine, lettersOf(plainName(other.name)));
+                    if (d < best) { best = d; bestCount = 1; plain = &other; }
+                    else if (d == best) ++bestCount;
+                }
+                if (best > 2 || bestCount != 1) plain = nullptr;
+            }
+            if (plain == nullptr || plain->rankIds.empty()) continue;
+            // Its tremulant: the one behind its drawing, and not the one the plain stop's own alternate rank has (that
+            // is the division's own tremulant; this hidden stop exists for the OTHER one).
+            std::set<int> taken;
+            for (const auto& sr : stopRanks)
+                if (sr.stopId == plain->id && sr.alternateRankId > 0)
+                    if (const auto a = odf.ranks.find(sr.alternateRankId); a != odf.ranks.end() && a->second.tremulantId > 0) taken.insert(a->second.tremulantId);
+            int tremulant = 0;
+            const auto behind = tremulantsBehind(helper.switchId);
+            for (const int candidate : behind) if (taken.count(candidate) == 0) { tremulant = candidate; break; }
+            if (tremulant == 0 && !behind.empty()) tremulant = behind.front();
+            if (tremulant == 0)   // not found through the switches: the one other tremulant of the definition
+                for (const auto& t : odf.tremulants) if (taken.count(t.id) == 0) { tremulant = t.id; break; }
+            for (const int rankId : helper.rankIds)
+            {
+                const auto rank = odf.ranks.find(rankId);
+                if (rank == odf.ranks.end() || rank->second.alternateOfRankId > 0) continue;
+                int of = plain->rankIds.size() == 1 ? plain->rankIds.front() : 0;
+                for (const int plainRank : plain->rankIds)
+                    if (const auto p = odf.ranks.find(plainRank); p != odf.ranks.end() && headOf(p->second.name) == headOf(rank->second.name)) { of = plainRank; break; }
+                if (of <= 0 || of == rankId) continue;
+                rank->second.alternateOfRankId = of;
+                rank->second.tremulantId = tremulant;
+            }
+        }
     }
     for (auto& [id, rank] : odf.ranks)
     {
@@ -1894,7 +2015,18 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
             for (const auto& [owner, shifts] : borrowed) if (stops.count(owner) > 0) from.add(stops.at(owner).name);
             result.notes.add("\"" + stop.name + "\" has ranks of its own and borrows keys of " + from.joinIntoString(", ") + " in Hauptwerk: its own ranks are loaded, the filled pipes cover the rest");
         }
-        if (rankFolders.empty()) { ++result.stopsWithoutSamples; result.notes.add("\"" + stop.name + "\" has no usable pipes (tremmed, noise or missing samples): left out"); continue; }
+        if (rankFolders.empty())
+        {
+            // 0.9.150: a hidden stop whose ranks are the tremmed recordings of another stop's (Altenbruch's "R. X
+            // (Tremmed)") is no stop of ours and no loss - its ranks stand under that stop as its recordings.
+            bool recordingsOnly = !stop.rankIds.empty();
+            for (const int rankId : stop.rankIds)
+                if (const auto r = ranks.find(rankId); r == ranks.end() || r->second.alternateOfRankId <= 0) recordingsOnly = false;
+            if (recordingsOnly) continue;
+            ++result.stopsWithoutSamples;
+            result.notes.add("\"" + stop.name + "\" has no usable pipes (tremmed, noise or missing samples): left out");
+            continue;
+        }
         PlanStop planStop;
         planStop.stopId = id; planStop.name = StopNames::capitaliseAfterDivisionPrefix(stop.name); planStop.rankIds = rankIds;
         // The files' numbers against the keys, from the stop's ranks (0.8.155).
@@ -2301,11 +2433,123 @@ HauptwerkOdf::Plan HauptwerkOdf::plan(const juce::File& hauptwerkRoot) const
                 + (noisePipesUnused > 0 ? ", " + juce::String(noisePipesUnused) + " noise pipe(s) nothing drives left out" : juce::String())
                 + (noisePipesEncrypted > 0 ? ", " + juce::String(noisePipesEncrypted) + " with encrypted files left out" : juce::String()));
     }
+    // 0.9.150 THE RECORDED TREMULANTS: the ranks that are a stop's pipes recorded with a tremulant running go to
+    // that stop (they become rows of the Stop List's second level), and every tremulant that has such recordings
+    // gets ONE division of ours: its own when it shakes one division; a general one the first division it shakes
+    // that has no other tremulant (the first manual before the pedal), with the others as its targets.
+    std::set<int> tremmedTaken;   // the tremmed ranks that found their stop (not "left out" in the message)
+    {
+        std::map<int, std::vector<int>> recordingsOf;   // a plain rank -> its recordings
+        for (const auto& [id, rank] : ranks)
+            if (rank.alternateOfRankId > 0 && !rank.noise && rank.folder != juce::File()) recordingsOf[rank.alternateOfRankId].push_back(id);
+        std::map<int, std::set<int>> shaken;            // tremulant -> our divisions that hold recordings played by it
+        auto attach = [&](PlanStop& stop, int divisionIndex)
+        {
+            for (const int rankId : stop.rankIds)
+                if (const auto found = recordingsOf.find(rankId); found != recordingsOf.end())
+                    for (const int recording : found->second)
+                    {
+                        const int tremulant = ranks.at(recording).tremulantId;
+                        auto slot = std::find_if(stop.tremmed.begin(), stop.tremmed.end(), [tremulant](const PlanStop::Tremmed& t) { return t.tremulantId == tremulant; });
+                        if (slot == stop.tremmed.end()) { stop.tremmed.push_back({ tremulant, -1, {} }); slot = stop.tremmed.end() - 1; }
+                        slot->rankIds.push_back(recording);
+                        shaken[tremulant].insert(divisionIndex);
+                        tremmedTaken.insert(recording);
+                        // Its folder tree: a recording may lie in a tree of its own beside the stop's (Stralsund:
+                        // "pipe/OWTR" beside "pipe/OW") - as far above its folder as the stop's tree is above the stop's.
+                        const auto& plainRank = ranks.at(rankId);
+                        const auto& recorded = ranks.at(recording);
+                        bool inTree = false;
+                        juce::File plainTree;
+                        for (const auto& tree : result.allTrees)
+                        {
+                            if (recorded.folder == tree || recorded.folder.isAChildOf(tree)) inTree = true;
+                            if (plainTree == juce::File() && (plainRank.folder == tree || plainRank.folder.isAChildOf(tree))) plainTree = tree;
+                        }
+                        if (!inTree && plainTree != juce::File())
+                        {
+                            int depth = 0;
+                            for (auto f = plainRank.folder; f != plainTree && depth < 12; f = f.getParentDirectory()) ++depth;
+                            auto tree = recorded.folder;
+                            std::vector<juce::File> chain { tree };   // the folder and the folders above it, nearest first
+                            for (int k = 0; k < depth; ++k) { tree = tree.getParentDirectory(); chain.push_back(tree); }
+                            // Recordings lying flat ("002294/IVTrem/Re_echoburdonTr" beside "002294/IV/echoburdon/02-Re_...",
+                            // Doesburg): that far up is the package itself, with the stops' trees inside it - a tree never
+                            // holds another tree, so the nearest folder below that holds none is taken.
+                            auto holdsATree = [&](const juce::File& folder)
+                            {
+                                for (const auto& other : result.allTrees) if (other == folder || other.isAChildOf(folder)) return true;
+                                return false;
+                            };
+                            for (int k = (int)chain.size() - 1; k > 0 && holdsATree(tree); --k) tree = chain[(size_t)(k - 1)];
+                            result.allTrees.push_back(tree);
+                            result.divisions[(size_t)divisionIndex].trees.push_back(tree);
+                        }
+                    }
+        };
+        for (size_t d = 0; d < result.divisions.size(); ++d)
+            for (auto& stop : result.divisions[d].stops)
+            {
+                if (stop.extensionOfStopId > 0) continue;
+                attach(stop, (int)d);
+                for (auto& child : stop.children) attach(child, (int)d);
+            }
+        if (!shaken.empty())
+        {
+            auto coveredBy = [&](const Tremulant& t)
+            {
+                std::set<int> covered = shaken[t.id];
+                for (size_t d = 0; d < result.divisions.size(); ++d)
+                    for (const int divisionId : result.divisions[d].divisionIds)
+                        if (t.divisionIds.count(divisionId) > 0) covered.insert((int)d);
+                return covered;
+            };
+            std::map<int, int> ownerOf;   // tremulant -> the division of ours it sits on
+            std::set<int> owned;
+            for (int pass = 0; pass < 2; ++pass)
+                for (const auto& t : tremulants)
+                {
+                    if (shaken.count(t.id) == 0 || ownerOf.count(t.id) > 0) continue;
+                    const auto covered = coveredBy(t);
+                    if (covered.empty() || (pass == 0 && covered.size() != 1)) continue;
+                    int owner = -1;
+                    for (const int d : covered) if (d >= 1 && owned.count(d) == 0) { owner = d; break; }   // a manual first
+                    if (owner < 0) for (const int d : covered) if (owned.count(d) == 0) { owner = d; break; }
+                    if (owner < 0) owner = *covered.begin();   // every division it shakes has a tremulant of its own already: it shares the first
+                    ownerOf[t.id] = owner;
+                    owned.insert(owner);
+                    auto& division = result.divisions[(size_t)owner];
+                    division.tremulantId = t.id;
+                    division.tremulantHasRecordings = true;
+                    if (t.rateHz > 0.0f) division.tremulantRateHz = t.rateHz;
+                    for (const int d : covered) if (d != owner) division.tremulantTargetMask |= 1 << d;
+                    if (covered.size() > 1)
+                        result.notes.add("Tremulant \"" + t.name + "\" (" + juce::String(t.rateHz, 1) + " Hz) shakes " + juce::String((int)covered.size())
+                            + " divisions: it sits on \"" + division.name + "\", the others are its targets.");
+                }
+            int rows = 0;
+            for (size_t d = 0; d < result.divisions.size(); ++d)
+            {
+                auto settle = [&](PlanStop& stop)
+                {
+                    for (auto& t : stop.tremmed)
+                    {
+                        const auto owner = ownerOf.find(t.tremulantId);
+                        t.tremulantDivision = owner != ownerOf.end() ? owner->second : (int)d;   // not found through the switches: the division's own
+                        ++rows;
+                    }
+                };
+                for (auto& stop : result.divisions[d].stops) { settle(stop); for (auto& child : stop.children) settle(child); }
+            }
+            result.notes.add("Recorded tremulants: " + juce::String(rows) + " stop(s) have their pipes recorded with a tremulant running - rows of the Stop List's second level; "
+                "while that tremulant runs at its recorded speed they sound instead of the plain pipes with the tremulant model.");
+        }
+    }
     // What the whole definition holds besides (for the message): the tremmed
-    // ranks (alternate ranks of the stops, never listed under them) and the noises.
+    // ranks no stop took (alternate ranks of the stops, never listed under them) and the noises.
     for (const auto& [id, rank] : ranks)
     {
-        if (rank.tremmed) ++result.skippedTremmedRanks;
+        if (rank.tremmed) { if (tremmedTaken.count(id) == 0) ++result.skippedTremmedRanks; }
         else if (rank.noise) ++result.skippedNoiseRanks;
     }
 

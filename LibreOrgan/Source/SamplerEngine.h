@@ -190,6 +190,17 @@ struct Stop
     Stop* groupMasterPtr = nullptr;
     int groupChildOrdinal = 0;  // a stop folder's child: its number among the children (1, 2 ...), for the tremulant phase drift; 0 otherwise
     bool container = false;     // a stop folder's master without samples of its own (only its children sound)
+    // 0.9.150 RECORDED TREMULANTS: a row of the SECOND level of the Stop List - the same pipes recorded with a
+    // tremulant running. It sounds INSTEAD of the stop it stands under (tremmedOfPtr, the nearest row above that is
+    // no such recording) while the tremulant of division 'tremmedManual' shakes the division where the key is played
+    // and that tremulant plays its recording (SamplerEngine::setManualTremulantRecorded); the tremulant model is
+    // silent for its sustain. It has no button, no routes and no transmissions of its own: it sounds through its
+    // parent's (the engine's route helpers answer with the parent's), key by key - a key it has no sample for plays
+    // the parent's pipe with the model (a recording is never filled from a neighbour: that would change its speed).
+    // Set by the owner under the control lock (MainComponent::applyStopGroups).
+    Stop* tremmedOfPtr = nullptr;
+    int tremmedManual = -1;                  // -1 = an ordinary stop
+    std::vector<Stop*> tremmedAlternates;    // the parent's side: its recordings
     // 0.9.127: the button of a NOISE of its own on the grid (blower, zimbelstern, rossignol, calcant ...): a stop
     // without pipes whose switch starts and ends that noise (set by MainComponent::syncNoiseButtonStops after every
     // load). 1 = an effect; 2 = one that runs from the load on (the blower): the general cancel leaves it alone.
@@ -957,6 +968,12 @@ public:
         int sampleOffset = 0;
         bool sampleOffsetSet = false;   // the row carries the offset (a definition or the user); unset: the loader finds it from the smpl pitches (0.8.158)
         juce::String component;         // "L" / "R": one half of a stereo stop ("quintaton16L" beside "quintaton16R"), both ranks of one stop (0.8.160)
+        int tremmedManual = -1;         // 0.9.150: a recording with a tremulant (the Stop List's second level): the division whose tremulant plays it; -1 = an ordinary stop
+        // 0.9.150, the scan only: this folder is the tremmed recording of the stop folder 'tremmedOf' (a sibling named
+        // like it with "tr", "trem", "_tr" + a tag appended, or the same folder in a sibling tree "OWTR" beside "OW");
+        // 'tremmedTag' is what follows the mark ("", "2", "rp" ...).
+        juce::File tremmedOf;
+        juce::String tremmedTag;
     };
     // 'replacing': divisions whose stops the commit replaces with the loaded
     // ones (their old stops stay until then and lend their samples and copies
@@ -966,6 +983,12 @@ public:
         const std::vector<FolderAssignment>* map = nullptr, const std::set<int>* replacing = nullptr);
     // Every folder of the tree that holds numbered samples (release and ignored folders aside).
     std::vector<juce::File> listSampleFolders(const juce::File& tree) const;
+    // 0.9.150: the folders of a tree that are a stop's pipes recorded with a tremulant running, told by their names
+    // ('of' = the stop folder they belong to, 'tag' = what follows the tremulant mark, 'suffix' = what the name adds
+    // to the stop folder's), and the tremulant's speed measured in a loaded stop's samples (0 = none found).
+    struct TremmedFolder { juce::File folder, of; juce::String tag, suffix; };
+    std::vector<TremmedFolder> tremmedFoldersOf(const juce::File& tree) const;
+    float recordedTremulantHz(const Stop* stop) const;
     // What the automatic rules make of a tree: one assignment per sample folder,
     // in the order the folders are loaded. learnPerspectives stores perspective
     // prefixes the tree reveals (as loading does); false only looks.
@@ -1065,6 +1088,13 @@ public:
     void setCouplingMaxCents(float cents) { couplingMaxCents.store(juce::jlimit(0.0f, 50.0f, cents), std::memory_order_relaxed); }   // 0.9.60
     void setAttackCutFadeMs(float ms) { attackCutFadeMs.store(juce::jlimit(6.0f, 150.0f, ms), std::memory_order_relaxed); }   // 0.9.80
     void setVoicingGlideMs(float ms) { voicingGlideMs.store(juce::jlimit(0.0f, 2000.0f, ms), std::memory_order_relaxed); }   // 0.9.122
+    // 0.9.150 recorded tremulants: the crossfade between a stop and its recording when the tremulant is switched
+    // under held keys (0-1000 ms), the share of the tremulant MODEL on the release of a recording (per cent of the
+    // model's full depth; an ordinary release gets 60), and the option that starts a release sample in the phase of
+    // the attack it follows.
+    void setTremulantSwapMs(float ms) { tremulantSwapMs.store(juce::jlimit(0.0f, 1000.0f, ms), std::memory_order_relaxed); }
+    void setTremmedReleaseModelPercent(float percent) { tremmedReleaseModelPercent.store(juce::jlimit(0.0f, 100.0f, percent), std::memory_order_relaxed); }
+    void setReleasePhaseAlign(bool on) { releasePhaseAlign.store(on, std::memory_order_relaxed); }
     float getMistuneCorrectCents() const noexcept { return mistuneCorrectCents.load(std::memory_order_relaxed); }
     // 0.9.142: what a release is tuned to its attack by, where the two smpl chunks are off the sound -
     // 0 the rank loudest in the release, 1 the rank loudest in the attack, 2 the smpl chunks alone. New releases take it.
@@ -1436,6 +1466,14 @@ public:
         float rankDriftDegrees);
     // 0.9.88: the other divisions this division's tremulant shakes as well (bit = division index; its own is implied).
     void setManualTremulantTargets(int manualIndex, int targetMask);
+    // 0.9.150: this division's tremulant plays the RECORDED samples of the stops that have them (their rows of the
+    // second level) instead of the model; false = the model on the plain pipes for every stop. Switching it (or the
+    // tremulant itself) under held keys crossfades the sounding pipes over.
+    void setManualTremulantRecorded(int manualIndex, bool recorded);
+    // The rows of the second level changed (MainComponent::applyStopGroups): held keys are looked at again.
+    void tremmedStopsChanged();
+    // A stop that holds samples of its own or in a perspective rank (a recording that is not loaded holds none).
+    static bool stopHoldsSamples(const Stop* stop) noexcept;
     std::vector<juce::String> getPerspectivesForManual(int manualIndex) const;
     // 0.9.87 (#238): the perspectives the division's Stop List table names (folders under a label), set by
     // MainComponent at every route rebuild - a perspective whose ranks a cancelled or memory-limited load left out
@@ -1885,6 +1923,9 @@ private:
     std::atomic<float> couplingMaxCents{ 14.0f };     // 0.9.60: a partner whose pure interval lies further than this from the pipe's base does not pull (nor is pulled)
     std::atomic<float> attackCutFadeMs{ 20.0f };      // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0), 6-150 ms
     std::atomic<float> voicingGlideMs{ 150.0f };      // 0.9.122: a sounding pipe's glide to a changed stop / key volume, 0-2000 ms
+    std::atomic<float> tremulantSwapMs{ 300.0f };     // 0.9.150
+    std::atomic<float> tremmedReleaseModelPercent{ 40.0f };
+    std::atomic<bool> releasePhaseAlign{ false };
     std::atomic<float> windMaxEffect{ 1.0f };    // wind model strength 0..1
     std::atomic<int> fillGroupSize{ 12 };
     std::atomic<int> transposeQuality{ 2 };

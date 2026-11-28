@@ -219,6 +219,19 @@ public:
                 if (d.tremulantRateHz > 0.0f) report << ", tremulant " << juce::String(d.tremulantRateHz, 2) << " Hz";
                 report << "\n";
                 for (const auto& t : d.trees) report << "      tree " << t.getFullPathName() << "\n";
+                // 0.9.150: the recordings with a tremulant of a stop (rows of the Stop List's second level)
+                auto printTremmed = [&](const HauptwerkOdf::PlanStop& s, const char* pad)
+                {
+                    for (const auto& t : s.tremmed)
+                    {
+                        report << pad << "TREMMED by the tremulant of division " << t.tremulantDivision << " (definition's tremulant " << t.tremulantId << "):\n";
+                        for (const int rankId : t.rankIds)
+                            if (const auto it = odf.ranks.find(rankId); it != odf.ranks.end())
+                                report << pad << "    rank " << rankId << " of " << it->second.alternateOfRankId << " " << it->second.folder.getFullPathName() << "\n";
+                    }
+                };
+                if (d.tremulantId > 0)
+                    report << "      tremulant " << d.tremulantId << " sits here, " << juce::String(d.tremulantRateHz, 2) << " Hz, target mask " << d.tremulantTargetMask << "\n";
                 for (const auto& stop : d.stops)
                 {
                     report << "      stop " << stop.name << " ->";
@@ -238,11 +251,13 @@ public:
                         for (int rankId : child.rankIds)
                             if (const auto it = odf.ranks.find(rankId); it != odf.ranks.end())
                                 report << "              rank " << rankId << " [" << it->second.perspective << "] " << it->second.folder.getFullPathName() << "\n";
+                        printTremmed(child, "              ");
                     }
                     if (!stop.children.empty()) continue;
                     for (int rankId : stop.rankIds)
                         if (const auto it = odf.ranks.find(rankId); it != odf.ranks.end())
                             report << "          rank " << rankId << " [" << it->second.perspective << "] " << it->second.folder.getFullPathName() << "\n";
+                    printTremmed(stop, "          ");
                 }
             }
             for (const auto& p : plan.perspectivePatterns) report << "  perspective pattern: " << p << "\n";

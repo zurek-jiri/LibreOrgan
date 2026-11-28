@@ -2123,6 +2123,9 @@ MainComponent::MainComponent()
     {
         if (stop != nullptr && stop->noiseKey.isNotEmpty()) setNoiseUnitPerspectiveOn("button|" + stop->noiseKey.toLowerCase(), perspective, on);
     };
+    // 0.9.150: the button of a recording with a tremulant (into the memory / out of it) and its division box.
+    voicer->tremmedLoadRequest = [this](Stop* stop, bool load) { if (engine.getStops().contains(stop)) setTremmedRowLoaded(stop->primaryManual, stop->name, load); };
+    voicer->tremmedDivisionRequest = [this](Stop* stop, int division) { if (engine.getStops().contains(stop)) setTremmedRowDivision(stop->primaryManual, stop->name, division); };
     voicer->releaseCrossfadeRequest = [this](Stop* stop, float factor)
     {
         // The voicing's Release crossfade multiplier (0.9.62): kept in the voicing state, new releases take it.
@@ -2718,6 +2721,68 @@ MainComponent::MainComponent()
     }
     // ORGAN_TEST_FLIP="<division>|<seconds>" (tests, 0.9.27): the division's grid turned upside down (the
     // right-click menu item) after the delay; the cells are read from the saved voicing afterwards.
+    // ORGAN_TEST_TREMMED="<seconds>|<act>|...^..." (tests, 0.9.150): trem|<division>|<0 or 1> = that division's
+    // tremulant on / off; recorded|<division>|<0 or 1> = its tick "Recorded tremulant"; rate|<division>|<Hz>;
+    // load|<division>|<row name part>|<0 or 1> = a recording into / out of the memory; division|<division>|<row name
+    // part>|<tremulant's division or -1>; fxall|<perspective>|<volume|separation|eq|ir>; state = the recordings logged.
+    if (const char* env = std::getenv("ORGAN_TEST_TREMMED"))
+    {
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        for (const auto& step : juce::StringArray::fromTokens(juce::String::fromUTF8(env), "^", ""))
+        {
+            const auto parts = juce::StringArray::fromTokens(step, "|", "");
+            if (parts.size() < 2) continue;
+            juce::Timer::callAfterDelay(juce::jmax(1, parts[0].getIntValue()) * 1000, [safeThis, parts]
+            {
+                if (safeThis == nullptr) return;
+                auto& o = *safeThis;
+                const auto act = parts[1];
+                const int division = juce::jlimit(0, SamplerEngine::maxManuals - 1, parts[2].getIntValue());
+                auto rowNamed = [&o, division](const juce::String& part) -> juce::String
+                {
+                    for (const auto& entry : o.manualConfigs[(size_t)division].stopBuild.entries)
+                        if (!entry.isTransmission() && entry.name.containsIgnoreCase(part)) return entry.name;
+                    return {};
+                };
+                if (act == "trem")
+                {
+                    auto& config = o.manualConfigs[(size_t)division];
+                    config.tremulantEnabled = parts[3].getIntValue() != 0;
+                    o.engine.setManualTremulant(division, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                    if (o.voicer) o.voicer->updateStopStates();
+                    CrashHandler::note("ORGAN_TEST_TREMMED: tremulant of division " + juce::String(division) + (config.tremulantEnabled ? " ON" : " off"));
+                }
+                else if (act == "recorded") o.setTremulantRecorded(division, parts[3].getIntValue() != 0);
+                else if (act == "rate")
+                {
+                    auto& config = o.manualConfigs[(size_t)division];
+                    config.tremulantRateHz = juce::jlimit(2.0f, 11.0f, parts[3].getFloatValue());
+                    o.engine.setManualTremulant(division, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                    o.syncTremulantRecorded();
+                }
+                else if (act == "load") o.setTremmedRowLoaded(division, rowNamed(parts[3]), parts[4].getIntValue() != 0);
+                else if (act == "division") o.setTremmedRowDivision(division, rowNamed(parts[3]), parts[4].getIntValue());
+                else if (act == "fxall")
+                {
+                    const auto module = parts[3] == "volume" ? EffectModule::Volume : parts[3] == "separation" ? EffectModule::Separation : parts[3] == "eq" ? EffectModule::Eq : EffectModule::Ir;
+                    o.setEffectModuleForAllPerspectives(parts[2], module);
+                }
+                juce::StringArray lines;
+                for (const auto* stop : o.engine.getStops())
+                    if (stop->tremmedManual >= 0)
+                        lines.add("\"" + stop->name + "\" (division " + juce::String(stop->primaryManual) + ") by the tremulant of " + juce::String(stop->tremmedManual)
+                            + (stop->tremmedOfPtr != nullptr ? " of \"" + stop->tremmedOfPtr->name + "\"" : juce::String(" UNBOUND"))
+                            + (SamplerEngine::stopHoldsSamples(stop) ? ", in the memory" : ", not loaded") + ", " + juce::String((int)stop->ranks.size() + 1) + " perspective(s), "
+                            + juce::String((int)stop->transmissions.size()) + " transmission(s)");
+                juce::String tremulants;
+                for (int m = 0; m <= o.manualCount; ++m)
+                    tremulants << " [" << m << ": " << (o.manualConfigs[(size_t)m].tremulantEnabled ? "on" : "off") << " " << juce::String(o.manualConfigs[(size_t)m].tremulantRateHz, 2) << " Hz, recorded "
+                               << juce::String(o.manualConfigs[(size_t)m].tremulantRecordedHz, 2) << (o.manualConfigs[(size_t)m].tremulantRecorded ? " ticked" : " unticked") << ", targets " << (int)o.manualConfigs[(size_t)m].tremulantTargetMask << "]";
+                CrashHandler::note("ORGAN_TEST_TREMMED " + parts.joinIntoString("|") + ": polyphony " + juce::String(o.engine.getCurrentPolyphony()) + "; tremulants" + tremulants
+                    + "; " + juce::String(lines.size()) + " recording(s)" + (lines.isEmpty() ? juce::String() : ": " + lines.joinIntoString(" ; ").substring(0, 1800)));
+            });
+        }
+    }
     if (const char* env = std::getenv("ORGAN_TEST_FLIP"))
     {
         const auto spec = juce::String::fromUTF8(env);
@@ -3234,6 +3299,8 @@ MainComponent::MainComponent()
                 CrashHandler::note("ORGAN_TEST_OPEN: " + parts[1]);
                 if (parts[1] == "crescendo") safeThis->showCrescendoDialog();
                 else if (parts[1] == "reverb") safeThis->showReverbToneDialog(manual, "default");
+                else if (parts[1] == "divisions") safeThis->showKeyboardsDialog(manual);                       // 0.9.150: one division's dialog
+                else if (parts[1] == "effects") safeThis->showEffectsDialog(parts.size() >= 4 ? parts[3] : juce::String("default"), manual);   // manual -1 = the perspective's
                 else safeThis->showFeatureSettings(manual, parts[1]);
             });
         }
@@ -6807,6 +6874,38 @@ void MainComponent::copyEffectModule(const PerspectiveEffects& p, ManualConfig::
         case EffectModule::Eq: c.eq = p.eq; break;
         default: c.reverbIrPath = p.reverbIrPath; c.reverbWet = p.reverbWet; c.reverbTone = p.reverbTone; break;
     }
+}
+// 0.9.150 (the user: "nemáme ve Fx tlačítko set for all perspectives u jednotlivých modulů ... auxiliary by set for all
+// nemělo zasáhnout nikdy"): one module of a perspective - its values and its ON / OFF - copied to every other
+// perspective of the organ (never the auxiliary, never the noises' own route); each of them hands it on to its linked
+// routes as if it had been set there. Returns the perspectives it was set for.
+juce::StringArray MainComponent::setEffectModuleForAllPerspectives(const juce::String& perspective, EffectModule module)
+{
+    const PerspectiveEffects source = effectsOfPerspective(perspective);
+    juce::StringArray names;
+    for (int manual = 0; manual <= juce::jmin(manualCount, SamplerEngine::maxManuals - 1); ++manual)
+        for (const auto& name : engine.getPerspectivesForManual(manual))
+            if (!name.equalsIgnoreCase(perspective) && !name.equalsIgnoreCase(SamplerEngine::auxiliaryPerspectiveName())
+                && !name.equalsIgnoreCase(SamplerEngine::noisesPerspectiveName())) names.addIfNotAlreadyThere(name, true);
+    for (const auto& name : names)
+    {
+        auto& target = effectsOfPerspective(name);
+        effectSwitchOf(target.on, module) = effectSwitchOf(const_cast<ManualConfig::EffectSwitches&>(source.on), module);
+        switch (module)
+        {
+            case EffectModule::Volume: target.volumeDb = source.volumeDb; break;
+            case EffectModule::Separation: target.channelSeparation = source.channelSeparation; break;
+            case EffectModule::Eq: target.eq = source.eq; break;
+            default: target.reverbIrPath = source.reverbIrPath; target.reverbWet = source.reverbWet; target.reverbTone = source.reverbTone; break;
+        }
+        perspectiveEffectChanged(name, module);
+        for (int manual = 0; manual <= juce::jmin(manualCount, SamplerEngine::maxManuals - 1); ++manual) applyRouteSwitches(manual, name);
+    }
+    CrashHandler::note("Effects: " + juce::String(effectModuleName(module)) + " of the perspective " + perspective + " set for all perspectives ("
+        + (names.isEmpty() ? juce::String("there is no other") : names.joinIntoString(", ")) + "; never the auxiliary)");
+    configurationDirty = true;
+    saveSettings();
+    return names;
 }
 bool MainComponent::effectModuleAgrees(const PerspectiveEffects& p, const ManualConfig::PerspectiveAudioConfig& c, EffectModule m)
 {
@@ -12647,6 +12746,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                         this->owner.engine.setManualTremulant(manual, config.tremulantEnabled,
                             config.tremulantRateHz, config.tremulantDepthCents,
                             config.tremulantRankDriftDegrees);
+                        this->owner.syncTremulantRecorded();   // 0.9.150: a rate moved off the recorded one - the model plays, the tick goes
                         this->owner.saveSettings();
                     };
                     label.setText(text, juce::dontSendNotification);
@@ -12667,6 +12767,19 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 setupTremulantSlider(tremulantRankDriftSliders[(size_t)manual],
                     tremulantRankDriftLabels[(size_t)manual], "Trem. rank drift", 0.0, 360.0,
                     defaultTremulantRankDrift, " deg", "tremulantRankDrift");
+                // 0.9.150: the tick "Recorded tremulant (N Hz)" right under the rate (shown while the organ holds stops
+                // recorded with this tremulant): ticked = the rate stands at the recorded one and those stops play their
+                // recordings; moving the rate unticks (the model plays); ticking brings the rate back.
+                {
+                    auto& tick = tremulantRecordedButtons[(size_t)manual];
+                    tick.setColour(juce::ToggleButton::textColourId, onColour());
+                    tick.setTooltip("The stops recorded with this tremulant running (the rows of the Stop List's second level) play their RECORDED samples while it is on - "
+                        "at the speed they were recorded at, which the rate is set to. Move the rate and the tick goes: the tremulant model plays every stop instead. "
+                        "Tick it again and the rate returns to the recorded one.");
+                    tick.getProperties().set("manualChapter", "Recorded tremulants");
+                    tick.onClick = [this, manual] { this->owner.setTremulantRecorded(manual, tremulantRecordedButtons[(size_t)manual].getToggleState()); };
+                    addChildComponent(tick);
+                }
                 // 0.9.88 (the user): which OTHER divisions this tremulant shakes too - like the wind's targets; the own
                 // division is implied (its box ticked and disabled).
                 tremulantTargetLabels[(size_t)manual].setText("Tremulant also shakes:", juce::dontSendNotification);
@@ -12926,6 +13039,8 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     attenuationSliders[(size_t)manual]);
                 placeSetting(settingsArea, tremulantRateLabels[(size_t)manual],
                     tremulantRateSliders[(size_t)manual]);
+                if (tremulantRecordedButtons[(size_t)manual].isVisible())   // 0.9.150: the tick belongs to the rate
+                    tremulantRecordedButtons[(size_t)manual].setBounds(settingsArea.removeFromTop(24));
                 tremulantGroupHeaders[(size_t)manual].setBounds(settingsArea.removeFromTop(26));
                 if (owner.divisionTremulantExpanded)
                 {
@@ -13017,6 +13132,7 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
         std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> windTargetButtons;
         std::array<std::array<juce::ToggleButton, SamplerEngine::maxManuals>, SamplerEngine::maxManuals> tremulantTargetButtons;   // 0.9.88
         std::array<juce::Label, SamplerEngine::maxManuals> tremulantTargetLabels;
+        std::array<juce::ToggleButton, SamplerEngine::maxManuals> tremulantRecordedButtons;   // 0.9.150: "Recorded tremulant (N Hz)" under the rate
         std::array<SectionHeaderLabel, SamplerEngine::maxManuals> tremulantGroupHeaders, windGroupHeaders;   // "+ Tremulant" / "+ Wind model"
         // "Stop pool": which stops of the division are shown on the stop grid.
         struct StopPoolPanel final : public juce::Component
@@ -13199,6 +13315,13 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     juce::dontSendNotification);
                 tremulantRateSliders[(size_t)manual].setValue(config.tremulantRateHz,
                     juce::dontSendNotification);
+                {   // 0.9.150: the tick follows the model (the right-click dialog and the Editor set it too); it comes and goes with the recordings
+                    auto& tick = tremulantRecordedButtons[(size_t)manual];
+                    const bool shown = tremulantRateSliders[(size_t)manual].isVisible() && owner.anyTremmedRows(manual);
+                    tick.setButtonText(owner.tremulantRecordedText(manual));
+                    tick.setToggleState(config.tremulantRecorded, juce::dontSendNotification);
+                    if (tick.isVisible() != shown) { tick.setVisible(shown); resized(); }
+                }
                 tremulantDepthSliders[(size_t)manual].setValue(config.tremulantDepthCents,
                     juce::dontSendNotification);
                 tremulantRankDriftSliders[(size_t)manual].setValue(config.tremulantRankDriftDegrees,
@@ -13483,6 +13606,8 @@ juce::String MainComponent::describeRecordedTemperament(const Stop* stop, juce::
 
 void MainComponent::autoDetectBaseTemperament()
 {
+    // 0.9.150: the import's wish (select what is found) holds for the load it started - whatever this call finds.
+    struct ClearWish { bool& wish; ~ClearWish() { wish = false; } } clearWish{ selectDetectedTemperament };
     // Vote over all ranks with usable data; act only on a clear majority.
     std::map<std::pair<juce::String, int>, int> votes;
     int total = 0;
@@ -13533,13 +13658,24 @@ void MainComponent::autoDetectBaseTemperament()
     if (winnerVotes * 3 < total * 2) return;   // ranks disagree: leave the base temperament alone
     const int index = findTemperament(winner.first);
     if (index < 0) return;
+    // 0.9.150: an organ just made from a Hauptwerk definition sounds as recorded - its temperament is the selected
+    // one as well (once; the user's later choice stands).
+    auto selectIt = [this, &winner]
+    {
+        if (!selectDetectedTemperament) return;
+        selectDetectedTemperament = false;
+        if (selectedTemperamentName.equalsIgnoreCase(winner.first)) return;
+        CrashHandler::note("Temperament of the imported organ: " + winner.first + " selected (it was " + selectedTemperamentName + ") - the organ sounds as recorded");
+        selectTemperament(winner.first);
+    };
     const bool sameName = baseTemperamentName.equalsIgnoreCase(winner.first);
     const bool sameRotation = temperaments[(size_t)index].rotation == winner.second;
-    if (sameName && sameRotation) return;
+    if (sameName && sameRotation) { selectIt(); return; }
     temperaments[(size_t)index].rotation = winner.second;
     CrashHandler::note("Base temperament set from the samples: " + winner.first + " (rotation "
         + juce::String(winner.second) + "), " + juce::String(winnerVotes) + " of " + juce::String(total) + " ranks");
     setBaseTemperament(winner.first);
+    selectIt();
 }
 
 void MainComponent::applyTemperamentTuning()
@@ -16388,6 +16524,12 @@ void MainComponent::copyLoadOptions(const juce::var& from, juce::var& to)
     // 0.9.134: ... and its choice of the perspectives to load (the box set it on the var it was shown for).
     auto namesOf = [&from](const char* key) { juce::StringArray names; if (const auto* list = from.getProperty(key, juce::var()).getArray()) for (const auto& n : *list) names.add(n.toString()); return names; };
     setPerspectivesUnloadedInVar(to, namesOf("perspectivesOffChoice"), namesOf("perspectivesOnChoice"));
+    if (from.hasProperty("recordedTremulantsChoice"))   // 0.9.150: the box's tick "Recorded tremulants"
+    {
+        const bool load = (int)from.getProperty("recordedTremulantsChoice", 1) != 0;
+        setTremmedRowsLoadedInVar(to, load);
+        if (load) setPerspectivesUnloadedInVar(to, namesOf("perspectivesOffChoice"), {});
+    }
 }
 
 // 0.9.134 (#265): "not loaded" is a property of every folder of the Stop List tables ("unloaded": true on the
@@ -16799,11 +16941,21 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
     {
         juce::Label caption;
         juce::OwnedArray<juce::ToggleButton> boxes;
+        // 0.9.150 (the user: on the perspectives' line, after the last one, ticked by default): the stops recorded
+        // with a tremulant running - unticked they are not loaded and the tremulant model plays.
+        std::unique_ptr<juce::ToggleButton> recordedTremulants;
+        std::vector<juce::ToggleButton*> inOrder() const
+        {
+            std::vector<juce::ToggleButton*> all;
+            for (auto* box : boxes) all.push_back(box);
+            if (recordedTremulants != nullptr) all.push_back(recordedTremulants.get());
+            return all;
+        }
         void resized() override
         {
             caption.setBounds(0, 0, 168, 24);
             int x = 172, y = 0;
-            for (auto* box : boxes)
+            for (auto* box : inOrder())
             {
                 const int width = 34 + (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), box->getButtonText()));
                 if (x + width > getWidth() && x > 172) { x = 172; y += 26; }
@@ -16814,7 +16966,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
         int heightFor(int width)
         {
             int x = 172, y = 0;
-            for (auto* box : boxes)
+            for (auto* box : inOrder())
             {
                 const int w = 34 + (int)std::ceil(juce::GlyphArrangement::getStringWidth(juce::Font(juce::FontOptions(15.0f)), box->getButtonText()));
                 if (x + w > width && x > 172) { x = 172; y += 26; }
@@ -16839,18 +16991,50 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
                                     names.addIfNotAlreadyThere(name, true);
                                     if (!(bool)folder.getProperty("unloaded", false)) wanted.addIfNotAlreadyThere(name, true);
                                 }
+        // 0.9.150 (the user: "v load dialogu nesprávně řadí perspektivy"): the order every other place has - the file's
+        // pattern lines in their order, a perspective WITHOUT a line at its default place among them (Dry, Semi-Dry,
+        // Front, default, Direct, Diffuse, Distant, the others, Rear). Before, the perspectives without a line came
+        // after the listed ones in the table's order = by the alphabet (Diffuse, Direct, Rear: a definition whose
+        // perspectives are packages gives no line at all).
+        auto placeOf = [&order](const juce::String& name)
+        {
+            for (int i = 0; i < order.size(); ++i) if (order[i].equalsIgnoreCase(name)) return i * 32 + 16;
+            const int rank = SamplerEngine::defaultPerspectiveRank(name);
+            int slot = order.size();
+            for (int i = 0; i < order.size(); ++i) if (SamplerEngine::defaultPerspectiveRank(order[i]) > rank) { slot = i; break; }
+            return slot * 32 + rank;
+        };
+        std::vector<juce::String> sortedNames;
+        for (const auto& name : names) sortedNames.push_back(name);
+        std::stable_sort(sortedNames.begin(), sortedNames.end(), [&placeOf](const juce::String& a, const juce::String& b)
+        {
+            const int pa = placeOf(a), pb = placeOf(b);
+            return pa != pb ? pa < pb : a.compareNatural(b) < 0;
+        });
         juce::StringArray sorted;
-        for (const auto& name : order) if (names.contains(name, true) && !sorted.contains(name, true)) sorted.add(name);
-        for (const auto& name : names) if (!sorted.contains(name, true)) sorted.add(name);
+        for (const auto& name : sortedNames) sorted.add(name);
         juce::StringArray off;
         for (const auto& name : names) if (!wanted.contains(name, true)) off.add(name);
-        if (sorted.size() >= 2)
+        bool tremmedToLoad = false;
+        const bool hasTremmed = varHasTremmedRows(configuration, &tremmedToLoad);
+        if (sorted.size() >= 2 || hasTremmed)
         {
             ticks = std::make_shared<PerspectiveTicks>();
-            ticks->caption.setText("Perspectives to load:", juce::dontSendNotification);
+            ticks->caption.setText(sorted.size() >= 2 ? "Perspectives to load:" : "To load:", juce::dontSendNotification);
             ticks->caption.setFont(juce::Font(juce::FontOptions(15.0f)));
             ticks->caption.setBorderSize(juce::BorderSize<int>(0));
             ticks->addAndMakeVisible(ticks->caption);
+            if (hasTremmed)
+            {
+                ticks->recordedTremulants = std::make_unique<juce::ToggleButton>("Recorded tremulants");
+                ticks->recordedTremulants->setColour(juce::ToggleButton::textColourId, onColour());
+                ticks->recordedTremulants->setToggleState(tremmedToLoad, juce::dontSendNotification);
+                ticks->recordedTremulants->getProperties().set("tickedAtFirst", tremmedToLoad);
+                ticks->recordedTremulants->setTooltip("The stops recorded with a tremulant running. Ticked: they are loaded and sound while that tremulant runs at its recorded speed. "
+                    "Unticked: they are not loaded - less memory, and the tremulant model plays (each can be loaded later in the voicing of its stop or in the Stop List).");
+                ticks->addAndMakeVisible(*ticks->recordedTremulants);
+            }
+            if (sorted.size() >= 2)
             for (const auto& name : sorted)
             {
                 auto* box = ticks->boxes.add(new juce::ToggleButton(name));
@@ -16890,6 +17074,16 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
                 auto listOf = [](const juce::StringArray& names) { juce::Array<juce::var> list; for (const auto& n : names) list.add(n); return list; };
                 r->setProperty("perspectivesOffChoice", listOf(off));   // for the var loaded instead of this one (keepExisting) and for a merge
                 r->setProperty("perspectivesOnChoice", listOf(on));
+                // 0.9.150: the tick "Recorded tremulants" - only a CHANGED tick acts (single recordings switched off
+                // in a voicing keep their state while it stays as it came); what it loads still obeys the perspectives.
+                if (auto* recorded = ticks->recordedTremulants.get())
+                    if (recorded->getToggleState() != (bool)recorded->getProperties()["tickedAtFirst"])
+                    {
+                        setTremmedRowsLoadedInVar(configuration, recorded->getToggleState());
+                        if (recorded->getToggleState()) setPerspectivesUnloadedInVar(configuration, notLoaded, {});
+                        r->setProperty("recordedTremulantsChoice", recorded->getToggleState() ? 1 : 0);
+                        CrashHandler::note("Load Configuration \"" + what + "\": the recorded tremulants are " + (recorded->getToggleState() ? "loaded" : "NOT loaded (the tremulant model plays)"));
+                    }
                 if (!notLoaded.isEmpty()) CrashHandler::note("Load Configuration \"" + what + "\": perspective(s) NOT loaded - " + notLoaded.joinIntoString(", "));
             }
         const int storage = box->getComboBoxComponent("storage")->getSelectedItemIndex();
@@ -16925,6 +17119,7 @@ void MainComponent::askLoadOptions(juce::var configuration, const juce::String& 
             // organ travel with it - a definition is read anew on the merge path, so the var of this box is not its var.
             choice->setProperty("perspectivesOffChoice", configuration.getProperty("perspectivesOffChoice", juce::var()));
             choice->setProperty("perspectivesOnChoice", configuration.getProperty("perspectivesOnChoice", juce::var()));
+            if (configuration.hasProperty("recordedTremulantsChoice")) choice->setProperty("recordedTremulantsChoice", configuration.getProperty("recordedTremulantsChoice", juce::var()));   // 0.9.150
             o.mergeStorageChoice = juce::var(choice.get());
             if (packing == 2 && !o.compressSamples && !o.compressAutomatic)
             {
@@ -17892,6 +18087,13 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                 // The definition's tremulant speed on this division (its switch
                 // stays off: the tremulant is played as ever, at that rate).
                 if (division.tremulantRateHz > 0.0f) item->setProperty("tremulantRateHz", juce::jlimit(0.5f, 12.0f, division.tremulantRateHz));
+                // 0.9.150: a tremulant with recorded samples - the rate they were recorded at (the tick "Recorded
+                // tremulant" stands on it) and the other divisions it shakes.
+                if (division.tremulantHasRecordings)
+                {
+                    if (division.tremulantRateHz > 0.0f) item->setProperty("tremulantRecordedHz", juce::jlimit(0.5f, 12.0f, division.tremulantRateHz));
+                    if (division.tremulantTargetMask != 0) item->setProperty("tremulantTargetMask", division.tremulantTargetMask & ~(1 << (int)i));
+                }
                 // The Stop List table of the division (stop building): every ODF stop
                 // as a row with one folder per perspective - rank folders from several
                 // packages become the perspectives of ONE stop (without the table the
@@ -17969,6 +18171,58 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                         }
                         return folders;
                     };
+                    // 0.9.150: the rows of the SECOND level under a row - its pipes recorded with a tremulant running
+                    // (the definition's alternate ranks; the ranks of a hidden "(Tremmed)" stop), one row per tremulant,
+                    // a folder per perspective. Named as the disk names them: the row's name with what the recording's
+                    // folder adds to the plain one ("_tr", "trrp"); the transposition is the stop's.
+                    auto tremmedRowsOf = [&](const HauptwerkOdf::PlanStop& plain, const juce::String& plainRowName)
+                    {
+                        juce::Array<juce::var> rows;
+                        for (const auto& recording : plain.tremmed)
+                        {
+                            juce::Array<juce::var> folders;
+                            juce::StringArray labelsDone;
+                            juce::String suffix;
+                            for (const int rankId : recording.rankIds)
+                            {
+                                const auto rankIt = odf->ranks.find(rankId);
+                                if (rankIt == odf->ranks.end() || rankIt->second.folder == juce::File()) continue;
+                                const auto& rank = rankIt->second;
+                                const auto plainRank = odf->ranks.find(rank.alternateOfRankId);
+                                const juce::String perspective = plainRank != odf->ranks.end() ? plainRank->second.perspective : rank.perspective;
+                                const juce::String label = perspective.isNotEmpty() ? perspective : juce::String("default");
+                                if (labelsDone.contains(label)) continue;
+                                int treeIndex = -1;
+                                for (size_t t = 0; t < plan.allTrees.size(); ++t)
+                                    if (rank.folder == plan.allTrees[t] || rank.folder.isAChildOf(plan.allTrees[t])) { treeIndex = (int)t; break; }
+                                if (treeIndex < 0) continue;
+                                juce::DynamicObject::Ptr folder = new juce::DynamicObject();
+                                folder->setProperty("perspective", label);
+                                folder->setProperty("tree", treeIndex);
+                                folder->setProperty("path", slashes(rank.folder.getRelativePathFrom(plan.allTrees[(size_t)treeIndex])));
+                                folders.add(juce::var(folder.get()));
+                                labelsDone.add(label);
+                                if (suffix.isEmpty() && plainRank != odf->ranks.end())
+                                {
+                                    const auto mine = rank.folder.getFileName(), theirs = plainRank->second.folder.getFileName();
+                                    if (mine.length() > theirs.length() && mine.substring(0, theirs.length()).equalsIgnoreCase(theirs)) suffix = mine.substring(theirs.length());
+                                }
+                            }
+                            if (folders.isEmpty()) continue;
+                            juce::DynamicObject::Ptr entry = new juce::DynamicObject();
+                            juce::String name = plainRowName + (suffix.isNotEmpty() ? suffix : juce::String(" tremmed"));
+                            for (const auto& done : rows) if (done.getProperty("name", "").toString().equalsIgnoreCase(name)) name << " (" << juce::String(rows.size() + 1) << ")";
+                            entry->setProperty("name", name);
+                            entry->setProperty("alias", juce::String());
+                            entry->setProperty("customName", true);
+                            entry->setProperty("child", true);
+                            entry->setProperty("tremmed", juce::jlimit(0, SamplerEngine::maxManuals - 1, recording.tremulantDivision >= 0 ? recording.tremulantDivision : (int)i));
+                            entry->setProperty("sampleOffset", plain.sampleOffset);
+                            entry->setProperty("folders", folders);
+                            rows.add(juce::var(entry.get()));
+                        }
+                        return rows;
+                    };
                     const auto row = rowOfStop.find(stop.stopId);
                     if (!stop.children.empty())
                     {
@@ -17991,6 +18245,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                             entry->setProperty("sampleOffset", child.sampleOffset);   // always: the definition's offset rules, the loader never guesses one (0.8.158)
                             entry->setProperty("folders", folders);
                             childEntries.add(juce::var(entry.get()));
+                            for (const auto& recording : tremmedRowsOf(child, entry->getProperty("name").toString())) childEntries.add(recording);   // 0.9.150
                         }
                         if (childEntries.isEmpty()) continue;
                         juce::DynamicObject::Ptr master = new juce::DynamicObject();
@@ -18017,6 +18272,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     entry->setProperty("sampleOffset", stop.sampleOffset);   // always: the definition's offset rules (0.8.158)
                     entry->setProperty("folders", folders);
                     entries.add(juce::var(entry.get()));
+                    for (const auto& recording : tremmedRowsOf(stop, entry->getProperty("name").toString())) entries.add(recording);   // 0.9.150: its recordings with a tremulant
                 }
                 // The perspectives in the order of the patterns (Direct, Diffuse, Rear ...), "default" last.
                 juce::Array<juce::var> perspectiveList;
@@ -18212,7 +18468,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
             for (const auto& p : plan.perspectivePatterns) names.add(p.upToFirstOccurrenceOf(";", false, false));
             summary << "\nPerspectives: " << names.joinIntoString(", ");
         }
-        if (plan.skippedTremmedRanks > 0) summary << "\nTremmed ranks left out: " << plan.skippedTremmedRanks << " (LibreOrgan Sampler has its own tremulant).";
+        if (plan.skippedTremmedRanks > 0) summary << "\nTremmed ranks left out: " << plan.skippedTremmedRanks << " (no stop of the definition they could be the recording of; LibreOrgan Sampler's tremulant model plays).";
         if (plan.skippedNoiseRanks > 0) summary << "\nNoise ranks left out: " << plan.skippedNoiseRanks << ".";
         if (plan.extensions > 0) summary << "\nExtensions/transmissions (stops playing another stop's ranks, shifted): " << plan.extensions << " - made as transmissions once the stops are loaded.";
         if (crescendoStepsMade > 0) summary << "\nGeneral crescendo: " << (int)plan.crescendo.size() << " stage(s) of the definition as " << crescendoStepsMade << " step(s) of ours (stops and couplers).";
@@ -18232,7 +18488,9 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
                     tremulants.add((i == 0 ? juce::String("P.") : romanNumeral((int)i) + ".") + " " + plan.divisions[i].name + " " + juce::String(juce::jlimit(0.5f, 12.0f, plan.divisions[i].tremulantRateHz), 2) + " Hz");
             summary << "\nTremulants: " << (tremulants.isEmpty()
                 ? juce::String("none found in the definition - every division keeps LibreOrgan Sampler's own tremulant at its default rate.")
-                : tremulants.joinIntoString(", ") + " - the definition's speed is set as the division's tremulant rate (Divisions dialog); its tremmed ranks are left out, LibreOrgan Sampler's tremulant plays the plain ranks.");
+                : tremulants.joinIntoString(", ") + " - the definition's speed is set as the division's tremulant rate (Divisions dialog). Stops whose pipes are recorded with the "
+                  "tremulant running play those recordings while it runs at that speed (the Stop List's second level; the tick \"Recorded tremulant\" beside the rate); "
+                  "every other stop plays with LibreOrgan Sampler's tremulant model.");
         }
         if (plan.stopsWithoutSamples > 0) summary << "\nStops without playable pipes (couplers, tremulants, toys): " << plan.stopsWithoutSamples << ".";
         for (const auto& note : plan.notes) summary << "\n" << note;
@@ -18256,6 +18514,7 @@ void MainComponent::importHauptwerkOdf(const juce::File& odfFile, bool mergeInto
         }
         safeThis->hauptwerkImport = odf;
         safeThis->suppressPortableNotice = true;   // made here and now: no "from another computer" notice, the import's own report follows
+        safeThis->selectDetectedTemperament = true;   // 0.9.150: the temperament found in its samples is selected at the end of the load
         const juce::File configurationFile = plan.configurationFile;
         safeThis->askLoadOptions(configuration, configurationFile.getFileNameWithoutExtension(), [safeThis, odf, odfFile, configurationFile, summary](juce::var chosen)
         {
@@ -18346,7 +18605,8 @@ void MainComponent::applyHauptwerkVoicing(std::shared_ptr<HauptwerkOdf> odf, con
                     for (auto it = levels.begin(); it != levels.end();) it = stop->hasNoteInAnyRank(it->first) ? std::next(it) : levels.erase(it);
                     if (levels.empty()) return;
                     auto& bucket = routeLevels[{ stop->primaryManual, perspective.isEmpty() ? juce::String("default") : perspective }];
-                    for (const auto& [note, db] : levels) bucket.push_back(db);
+                    if (stop->tremmedManual < 0)   // 0.9.150: a recording with a tremulant does not move its route's volume (its own levels go to its own voicing)
+                        for (const auto& [note, db] : levels) bucket.push_back(db);
                     entry.parts.push_back({ perspective.isEmpty() ? juce::String("default") : perspective, std::move(levels) });
                 };
                 addPart(stop->perspective, stop->folder);
@@ -19939,7 +20199,9 @@ juce::StringArray MainComponent::renameRowsWithoutPerspectivePrefixes(juce::var 
         for (auto& item : *entries)
         {
             auto* obj = item.getDynamicObject();
-            if (obj == nullptr || (bool)obj->getProperty("customName")) continue;   // a typed name is the user's
+            // A typed name is the user's. 0.9.150: a recorded tremulant's row is named after its stop's row by the
+            // program (its name is kept "custom" only so that no scan renames it) - it follows its stop here.
+            if (obj == nullptr || ((bool)obj->getProperty("customName") && !obj->hasProperty("tremmed"))) continue;
             auto* folders = obj->getProperty("folders").getArray();
             if (folders == nullptr || folders->isEmpty()) continue;   // a stop folder's own row: named by the user or after its children
             const auto name = obj->getProperty("name").toString();
@@ -22056,19 +22318,38 @@ std::shared_ptr<std::vector<SamplerEngine::FolderAssignment>> MainComponent::sto
             if (tree.isNotEmpty()) map->push_back({ juce::File(tree), entry.name, "default", true, true, manual });
             continue;
         }
+        const size_t before = map->size();
         for (const auto& [perspective, ref] : entry.folders)
         {
             if (ref.unloaded) continue;   // 0.9.134 (#265): a folder left out of the load - it waits in the table
             const auto folder = resolveStopBuildFolder(manual, ref);
             if (folder == juce::File()) continue;
             map->push_back({ folder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
+            map->back().tremmedManual = entry.tremmedManual;   // 0.9.150
             for (const auto& more : ref.morePaths)   // the other halves of a stereo stop: ranks of the same perspective (0.8.160)
             {
                 ManualConfig::StopBuild::FolderRef half = ref;
                 half.relativePath = more;
                 half.morePaths.clear();
                 const auto halfFolder = resolveStopBuildFolder(manual, half);
-                if (halfFolder != juce::File()) map->push_back({ halfFolder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
+                if (halfFolder != juce::File())
+                {
+                    map->push_back({ halfFolder, entry.name, perspective, true, false, manual, entry.sampleOffset, entry.sampleOffsetSet });
+                    map->back().tremmedManual = entry.tremmedManual;
+                }
+            }
+        }
+        if (entry.isTremmed() && map->size() == before)
+        {
+            // 0.9.150: a recording with a tremulant that is NOT in the memory (switched off = its samples given back)
+            // keeps an empty stop, so its row stays in the voicing of its stop and can be switched on again there.
+            juce::String tree;
+            for (const auto& candidate : trees) if (SampleFiles::isDirectory(juce::File(candidate))) { tree = candidate; break; }
+            if (tree.isEmpty()) for (const auto& candidate : sampleTrees) if (SampleFiles::isDirectory(juce::File(candidate))) { tree = candidate; break; }
+            if (tree.isNotEmpty())
+            {
+                map->push_back({ juce::File(tree), entry.name, "default", true, true, manual });
+                map->back().tremmedManual = entry.tremmedManual;
             }
         }
     }
@@ -24562,6 +24843,7 @@ MainComponent::ManualConfig::StopBuild MainComponent::deriveStopBuildFromEngine(
         entry.name = stop->name;
         entry.alias = stop->alias;
         entry.child = stop->groupMaster.isNotEmpty();
+        if (stop->tremmedManual >= 0 && stop->tremmedOfPtr != nullptr) { entry.tremmedManual = stop->tremmedManual; entry.child = true; }   // 0.9.150: a recording with a tremulant stays one
         entry.noiseKey = stop->noiseKey;   // 0.9.132: a noise's button stays one in a table made from the stops
         entry.sampleOffset = stop->sampleOffset;
         entry.sampleOffsetSet = stop->sampleOffsetSet;
@@ -25247,6 +25529,95 @@ void MainComponent::extendStopBuildWithTree(int manual, const juce::File& tree, 
             target = &build.entries.back();
         }
         target->folders[perspective] = { treeIndex, slashes(assignment.folder.getRelativePathFrom(tree)) };
+    }
+    // 0.9.150 RECORDED TREMULANTS without a definition: the folders of the tree that are a stop's pipes recorded
+    // with a tremulant running (named like the stop folder + "tr" / "trem" [+ a tag], or the same folder in a tree
+    // "OWTR" beside "OW") become rows of the second level under the row that plays that stop folder, a row per tag,
+    // the perspective of the stop's folder. Played by the division's own tremulant until the user says otherwise.
+    {
+        int rowsMade = 0, foldersPlaced = 0;
+        juce::StringArray tags;
+        std::map<juce::String, juce::String> tagOfRow;   // the rows made here (comparable name) -> their mark
+        for (const auto& recording : engine.tremmedFoldersOf(tree))
+        {
+            if (used.count(recording.folder.getFullPathName().toLowerCase()) > 0) continue;
+            const auto place = recording.of.getFullPathName().toLowerCase();
+            size_t parentRow = build.entries.size();
+            juce::String label;
+            for (size_t r = 0; r < build.entries.size() && parentRow == build.entries.size(); ++r)
+            {
+                if (build.entries[r].isTremmed() || build.entries[r].isTransmission()) continue;
+                for (const auto& [perspective, ref] : build.entries[r].folders)
+                    if (resolveStopBuildFolder(manual, ref).getFullPathName().toLowerCase() == place) { parentRow = r; label = perspective; break; }
+            }
+            if (parentRow == build.entries.size()) continue;   // its stop is no row of this division
+            const juce::String name = build.entries[parentRow].name + recording.suffix;
+            const int offset = build.entries[parentRow].sampleOffset;
+            const bool offsetSet = build.entries[parentRow].sampleOffsetSet;
+            size_t at = parentRow + 1, row = build.entries.size();
+            while (at < build.entries.size() && build.entries[at].isTremmed())
+            {
+                if (stopBuildKey(build.entries[at].name) == stopBuildKey(name)) row = at;
+                ++at;
+            }
+            if (row == build.entries.size())
+            {
+                ManualConfig::StopBuild::Entry entry;
+                entry.name = uniqueStopBuildName(build.entries, name, nullptr);
+                entry.customName = true;
+                entry.child = true;
+                entry.tremmedManual = manual;
+                entry.sampleOffset = offset;
+                entry.sampleOffsetSet = offsetSet;
+                tagOfRow[stopBuildKey(entry.name)] = recording.tag;
+                build.entries.insert(build.entries.begin() + (long)at, entry);
+                row = at;
+                ++rowsMade;
+                if (recording.tag.isNotEmpty()) tags.addIfNotAlreadyThere(recording.tag);
+            }
+            if (build.entries[row].folders.count(label) == 0)
+            {
+                build.entries[row].folders[label] = { treeIndex, slashes(recording.folder.getRelativePathFrom(tree)) };
+                ++foldersPlaced;
+            }
+        }
+        // A stop with TWO recordings made here was recorded with two tremulants (Altenbruch's "...TR" by the general
+        // one and "...trRP" by the division's own) - one tremulant never plays both. The folders do not say which
+        // division the second tremulant sits on: the recording marked with letters (the division's mark) keeps this
+        // division's, a numbered one ("tr2") is the second; the other gets the neighbouring division as a guess the
+        // user corrects in the Stop List.
+        int secondTremulants = 0;
+        const int otherDivision = manual + 1 <= juce::jmin(manualCount, SamplerEngine::maxManuals - 1) ? manual + 1 : manual >= 2 ? manual - 1 : manual;
+        for (size_t r = 0; r < build.entries.size(); ++r)
+        {
+            if (build.entries[r].isTremmed()) continue;
+            std::vector<size_t> made;
+            for (size_t k = r + 1; k < build.entries.size() && build.entries[k].isTremmed(); ++k)
+                if (build.entries[k].tremmedManual == manual && tagOfRow.count(stopBuildKey(build.entries[k].name)) > 0) made.push_back(k);
+            if (made.size() < 2 || otherDivision == manual) continue;
+            auto lettered = [&](size_t k) { return tagOfRow[stopBuildKey(build.entries[k].name)].containsAnyOf("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"); };
+            auto plain = [&](size_t k) { return tagOfRow[stopBuildKey(build.entries[k].name)].isEmpty(); };
+            size_t own = made.front();
+            bool found = false;
+            for (const auto k : made) if (lettered(k)) { own = k; found = true; break; }
+            if (!found) for (const auto k : made) if (plain(k)) { own = k; break; }
+            for (const auto k : made) if (k != own) { build.entries[k].tremmedManual = otherDivision; ++secondTremulants; }
+        }
+        if (rowsMade > 0 || foldersPlaced > 0)
+        {
+            const auto numeral = [](int division) { return division == 0 ? juce::String("the pedal") : "division " + juce::String(division); };
+            CrashHandler::note("Load folder: " + juce::String(foldersPlaced) + " folder(s) of " + tree.getFullPathName() + " are stops recorded with a tremulant running - "
+                + juce::String(rowsMade) + " row(s) of the second level made under their stops (division " + juce::String(manual) + "'s own tremulant plays them"
+                + (tags.isEmpty() ? juce::String() : "; marks after the tremulant's: " + tags.joinIntoString(", "))
+                + (secondTremulants > 0 ? "; " + juce::String(secondTremulants) + " second recording(s) of a stop given the tremulant of " + numeral(otherDivision) + " - a guess" : juce::String()) + ")");
+            queueNotice(juce::MessageBoxIconType::InfoIcon, "Recorded tremulants",
+                juce::String(rowsMade) + " stop(s) of " + tree.getFileName() + " have their pipes recorded with a tremulant running too: they stand under their stops on the Stop List's "
+                "second level and sound instead of them while the tremulant runs at its recorded speed (the tick \"Recorded tremulant\" beside the tremulant's rate)."
+                + (secondTremulants > 0 ? " " + juce::String(secondTremulants) + " stop(s) have two recordings - two tremulants: one is given this division's tremulant, the other the tremulant of "
+                        + numeral(otherDivision) + ", which plays it once that tremulant also shakes this division (Tremulant settings: \"Also shakes divisions\"). "
+                          "That is a guess: set the right division in the Stop List (the box beside \"Tremmed\")."
+                    : tags.isEmpty() ? juce::String() : " Some carry a mark of their own (" + tags.joinIntoString(", ") + "): a second tremulant - set the division whose tremulant plays them in the Stop List."));
+        }
     }
     if (!alreadyLoaded.isEmpty())
     {
@@ -26198,30 +26569,317 @@ void MainComponent::applyStopGroups()
     // above it in the same division. The engine routes a child through its
     // master's transmissions, so the pointer is set under the control lock.
     const juce::ScopedLock lock(engine.getLock());
-    for (auto* stop : engine.getStops()) { stop->groupMaster = {}; stop->groupMasterPtr = nullptr; stop->groupChildOrdinal = 0; }
+    for (auto* stop : engine.getStops())
+    {
+        stop->groupMaster = {}; stop->groupMasterPtr = nullptr; stop->groupChildOrdinal = 0;
+        stop->tremmedOfPtr = nullptr; stop->tremmedAlternates.clear();   // 0.9.150 (tremmedManual is the stop's own, from its row at the load)
+    }
+    std::vector<std::pair<int, juce::String>> strays;   // 0.9.150: recordings with a tremulant that still carry transmissions
     for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
     {
         const auto& build = manualConfigs[(size_t)manual].stopBuild;
         if (!build.active) continue;
+        auto stopOf = [&](const juce::String& name) -> Stop*
+        {
+            Stop* found = nullptr;
+            for (auto* stop : engine.getStops())
+                if (stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(name)) found = stop;
+            return found;
+        };
         juce::String master;
         int childOrdinal = 0;   // the children of one folder count 1, 2 ...: each gets its own tremulant phase, like the ranks of a stop
+        Stop* plain = nullptr;  // 0.9.150: the last row that is no recording - the recordings below it are its own
         for (const auto& entry : build.entries)
         {
-            if (!entry.child) { master = entry.name; childOrdinal = 0; continue; }
+            if (entry.isTransmission()) continue;
+            if (!entry.child) { master = entry.name; childOrdinal = 0; plain = stopOf(entry.name); continue; }
             if (master.isEmpty()) continue;
+            Stop* masterStop = stopOf(master);
+            if (entry.isTremmed())
+            {
+                // A row of the second level: nested under the button of its stop like any child, and bound to the
+                // stop it replaces while its tremulant runs.
+                Stop* recording = stopOf(entry.name);
+                if (recording == nullptr || recording == masterStop || recording == plain) continue;
+                recording->groupMaster = master;
+                recording->groupMasterPtr = masterStop;
+                if (!recording->transmissions.empty()) strays.push_back({ manual, recording->name });   // it has none: they go (below)
+                recording->tremmedManual = entry.tremmedManual;
+                for (auto& rank : recording->ranks) rank->tremmedManual = entry.tremmedManual;
+                if (plain != nullptr && !plain->container)
+                {
+                    recording->tremmedOfPtr = plain;
+                    recording->groupChildOrdinal = plain->groupChildOrdinal;
+                    plain->tremmedAlternates.push_back(recording);
+                }
+                continue;
+            }
             ++childOrdinal;
-            Stop* masterStop = nullptr;
-            for (auto* stop : engine.getStops())
-                if (stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(master)) masterStop = stop;
             for (auto* stop : engine.getStops())
                 if (stop->primaryManual == manual && stopBuildKey(stop->name) == stopBuildKey(entry.name) && stop != masterStop)
                 {
                     stop->groupMaster = master;
                     stop->groupMasterPtr = masterStop;
                     stop->groupChildOrdinal = childOrdinal;   // the tremulant phase: the master 0, its children 1, 2 ... (x rank drift)
+                    stop->tremmedManual = -1;
+                    for (auto& rank : stop->ranks) rank->tremmedManual = -1;
+                    plain = stop;
                 }
         }
     }
+    engine.tremmedStopsChanged();
+    if (!strays.empty())
+    {
+        // A recording with a tremulant sounds through its stop's routes: transmissions of its own (it was a stop
+        // once) are taken off, after this call (the removal rebuilds the grid).
+        juce::Component::SafePointer<MainComponent> safeThis(this);
+        juce::MessageManager::callAsync([safeThis, strays]
+        {
+            if (safeThis == nullptr || safeThis->voicer == nullptr) return;
+            for (const auto& [manual, name] : strays)
+                for (auto* stop : safeThis->engine.getStops())
+                    if (stop->primaryManual == manual && stop->name == name && stop->tremmedManual >= 0 && !stop->transmissions.empty())
+                    {
+                        const int count = (int)stop->transmissions.size();
+                        for (int t = count - 1; t >= 0; --t) safeThis->voicer->removeTransmission(stop, t);
+                        CrashHandler::note("Recorded tremulant: \"" + name + "\" (division " + juce::String(manual) + ") had " + juce::String(count) + " transmission(s) - a recording has none, they were removed");
+                    }
+        });
+    }
+}
+
+//==============================================================================
+// 0.9.150 RECORDED TREMULANTS. A row of the Stop List's second level holds the pipes of the row above it recorded
+// with a tremulant running; "tremmed": <division> names the tremulant that plays it. Off = not in the memory (the
+// row's folders carry "unloaded"), and then the stop plays with the tremulant model.
+bool MainComponent::anyTremmedRows(int tremulantManual) const
+{
+    for (int manual = 0; manual <= juce::jmin(manualCount, SamplerEngine::maxManuals - 1); ++manual)
+        if (manualConfigs[(size_t)manual].stopBuild.active)
+            for (const auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
+                if (entry.isTremmed() && (tremulantManual < 0 || entry.tremmedManual == tremulantManual)) return true;
+    return false;
+}
+
+bool MainComponent::tremmedRowsLoaded(int tremulantManual) const
+{
+    for (const auto* stop : engine.getStops())
+        if (stop->tremmedManual == tremulantManual && stop->tremmedOfPtr != nullptr && SamplerEngine::stopHoldsSamples(stop)) return true;
+    return false;
+}
+
+juce::String MainComponent::tremulantRecordedText(int manual) const
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return {};
+    const float hz = manualConfigs[(size_t)manual].tremulantRecordedHz;
+    return hz > 0.0f ? "Recorded tremulant (" + juce::String(hz, 1) + " Hz)" : juce::String("Recorded tremulant");
+}
+
+void MainComponent::setTremulantRecorded(int manual, bool recorded)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    auto& config = manualConfigs[(size_t)manual];
+    config.tremulantRecorded = recorded;
+    if (recorded && config.tremulantRecordedHz > 0.0f && std::abs(config.tremulantRateHz - config.tremulantRecordedHz) > 0.011f)
+    {
+        // The way back: the rate returns to the one the samples were recorded at.
+        config.tremulantRateHz = config.tremulantRecordedHz;
+        engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+    }
+    CrashHandler::note("Tremulant of division " + juce::String(manual) + ": " + (recorded ? "its recorded samples (" + juce::String(config.tremulantRateHz, 2) + " Hz)" : juce::String("the model")));
+    configurationDirty = true;
+    syncTremulantRecorded();
+    saveSettings();
+}
+
+void MainComponent::syncTremulantRecorded()
+{
+    for (int manual = 0; manual < SamplerEngine::maxManuals; ++manual)
+    {
+        auto& config = manualConfigs[(size_t)manual];
+        if (config.tremulantRecordedHz <= 0.0f && activeFolderLoader == nullptr)
+        {
+            // No definition gave the speed of this tremulant's recordings: it is measured in the samples once they
+            // are in the memory (the level envelope of up to three stops), and the tremulant's rate is set to it.
+            std::vector<const Stop*> recordings;
+            for (const auto* stop : engine.getStops())
+                if (stop->tremmedManual == manual && stop->tremmedOfPtr != nullptr && SamplerEngine::stopHoldsSamples(stop)) recordings.push_back(stop);
+            static std::array<size_t, SamplerEngine::maxManuals> tried{};   // measured with this many recordings loaded (a failure is not repeated every second)
+            if (!recordings.empty() && tried[(size_t)manual] != recordings.size())
+            {
+                tried[(size_t)manual] = recordings.size();
+                std::vector<float> found;
+                for (size_t r = 0; r < recordings.size() && found.size() < 3; r += juce::jmax((size_t)1, recordings.size() / 3))
+                    if (const float hz = engine.recordedTremulantHz(recordings[r]); hz > 0.0f) found.push_back(hz);
+                if (!found.empty())
+                {
+                    std::sort(found.begin(), found.end());
+                    config.tremulantRecordedHz = juce::jlimit(2.0f, 11.0f, (float)juce::roundToInt(found[found.size() / 2] * 20.0f) / 20.0f);
+                    if (config.tremulantRecorded)
+                    {
+                        config.tremulantRateHz = config.tremulantRecordedHz;
+                        engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz, config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                    }
+                    CrashHandler::note("Tremulant of division " + juce::String(manual) + ": its recorded samples run at " + juce::String(config.tremulantRecordedHz, 2)
+                        + " Hz (measured in " + juce::String((int)found.size()) + " stop(s)) - the tremulant's rate is set to it");
+                    noteMessage("Recorded tremulants", "The tremulant recorded in the samples of division " + juce::String(manual == 0 ? "P." : romanNumeral(manual) + ".")
+                        + " runs at " + juce::String(config.tremulantRecordedHz, 2) + " Hz (measured): the tremulant's rate is set to it.");
+                    saveSettings();
+                }
+                else CrashHandler::note("Tremulant of division " + juce::String(manual) + ": no tremulant could be measured in its " + juce::String((int)recordings.size()) + " recording(s)");
+            }
+            if (recordings.empty()) tried[(size_t)manual] = 0;
+        }
+        if (config.tremulantRecorded && config.tremulantRecordedHz > 0.0f && std::abs(config.tremulantRateHz - config.tremulantRecordedHz) > 0.011f
+            && anyTremmedRows(manual))
+        {
+            // The rate was moved (a slider, MIDI, the Editor): the recording cannot follow - the model plays.
+            config.tremulantRecorded = false;
+            CrashHandler::note("Tremulant of division " + juce::String(manual) + ": the rate " + juce::String(config.tremulantRateHz, 2) + " Hz is not the recorded "
+                + juce::String(config.tremulantRecordedHz, 2) + " Hz - the model plays (\"Recorded tremulant\" unticked)");
+            configurationDirty = true;
+            saveSettings();
+        }
+        engine.setManualTremulantRecorded(manual, config.tremulantRecorded);
+    }
+}
+
+void MainComponent::setTremmedRowDivision(int manual, const juce::String& name, int division)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals) return;
+    if (activeFolderLoader != nullptr) return;
+    auto& entries = manualConfigs[(size_t)manual].stopBuild.entries;
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+        auto& entry = entries[i];
+        if (entry.isTransmission() || stopBuildKey(entry.name) != stopBuildKey(name)) continue;
+        if (entry.isTremmed() && division >= 0)
+        {
+            entry.tremmedManual = juce::jlimit(0, juce::jmin(manualCount, SamplerEngine::maxManuals - 1), division);
+            CrashHandler::note("Recorded tremulant: \"" + entry.name + "\" (division " + juce::String(manual) + ") is played by the tremulant of division " + juce::String(entry.tremmedManual));
+            applyStopGroups();
+            configurationDirty = true;
+            saveSettings();
+            if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
+            return;
+        }
+        if (entry.isTremmed())
+        {
+            // "No": an ordinary row of the stop folder again (its samples are kept; the fills of a stop come with the reload).
+            entry.tremmedManual = -1;
+            CrashHandler::note("Recorded tremulant: \"" + entry.name + "\" (division " + juce::String(manual) + ") is an ordinary stop of its folder again");
+            configurationDirty = true;
+            saveSettings();
+            reloadDivisions({ manual });
+            return;
+        }
+        if (division < 0 || !entry.child || entry.folders.empty() || entry.noiseKey.isNotEmpty()) return;
+        // An indented stop becomes the recording of the row above it (the nearest one that is no recording).
+        size_t parent = i;
+        while (parent > 0 && entries[parent - 1].isTremmed()) --parent;
+        if (parent == 0 || entries[parent - 1].folders.empty() || entries[parent - 1].noiseKey.isNotEmpty())
+        {
+            noteMessage("Recorded tremulant", "\"" + entry.name + "\" stands under no stop with sample folders: the second level is for the recording of the stop right above it. "
+                "Put it under its stop in the Stop List first.");
+            if (voicer) voicer->rebuildUI(stopsContent, stopsViewport);
+            return;
+        }
+        Stop* stop = nullptr;
+        for (auto* candidate : engine.getStops())
+            if (candidate->primaryManual == manual && stopBuildKey(candidate->name) == stopBuildKey(name)) stop = candidate;
+        const juce::String key = stopBuildKey(name);
+        const int wanted = juce::jlimit(0, juce::jmin(manualCount, SamplerEngine::maxManuals - 1), division);
+        auto make = [this, manual, key, wanted]
+        {
+            for (auto& e : manualConfigs[(size_t)manual].stopBuild.entries)
+                if (!e.isTransmission() && stopBuildKey(e.name) == key)
+                {
+                    e.tremmedManual = wanted;
+                    e.child = true;
+                    e.alias.clear();
+                    for (auto* s : engine.getStops())
+                        if (s->primaryManual == manual && stopBuildKey(s->name) == key && voicer)
+                            for (int t = (int)s->transmissions.size() - 1; t >= 0; --t) voicer->removeTransmission(s, t);
+                    CrashHandler::note("Recorded tremulant: \"" + e.name + "\" (division " + juce::String(manual) + ") is the recording of the row above it, played by the tremulant of division " + juce::String(wanted));
+                    configurationDirty = true;
+                    saveSettings();
+                    reloadDivisions({ manual });
+                    return;
+                }
+        };
+        if (stop != nullptr && !stop->transmissions.empty())
+        {
+            juce::Component::SafePointer<MainComponent> safeThis(this);
+            juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "Recording with a tremulant",
+                "\"" + stop->displayName() + "\" has " + juce::String((int)stop->transmissions.size())
+                + " transmission(s).\n\nA recording with a tremulant has no transmissions: making the stop one deletes all of them. Go on?",
+                "Delete them", "Cancel", this, juce::ModalCallbackFunction::create([safeThis, make](int result)
+                {
+                    if (safeThis == nullptr) return;
+                    if (result != 0) make();
+                    else if (safeThis->voicer) safeThis->voicer->rebuildUI(safeThis->stopsContent, safeThis->stopsViewport);
+                }));
+            return;
+        }
+        make();
+        return;
+    }
+}
+
+void MainComponent::setTremmedRowLoaded(int manual, const juce::String& name, bool load)
+{
+    if (manual < 0 || manual >= SamplerEngine::maxManuals || activeFolderLoader != nullptr) return;
+    for (auto& entry : manualConfigs[(size_t)manual].stopBuild.entries)
+        if (entry.isTremmed() && stopBuildKey(entry.name) == stopBuildKey(name))
+        {
+            bool changed = false;
+            for (auto& [perspective, ref] : entry.folders)
+                if (ref.unloaded == load) { ref.unloaded = !load; changed = true; }
+            if (!changed) return;
+            CrashHandler::note("Recorded tremulant: \"" + entry.name + "\" (division " + juce::String(manual) + ") " + (load ? "into the memory" : "out of the memory - its stop plays with the tremulant model"));
+            configurationDirty = true;
+            saveSettings();
+            // Out of the memory: nothing is read (the division's other stops keep their samples, no loading
+            // window); into it: only this row's folders are read, the rest is adopted.
+            reloadDivisions({ manual }, {}, !load);
+            return;
+        }
+}
+
+// A configuration that is about to be loaded (the load box's tick "Recorded tremulants"): every folder of every
+// recording with a tremulant is to be loaded, or waits in the table ("unloaded").
+void MainComponent::setTremmedRowsLoadedInVar(juce::var& configuration, bool load)
+{
+    if (auto* divisions = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+        for (auto& division : *divisions)
+            if (auto* entries = division.getProperty("stopBuild", juce::var()).getProperty("entries", juce::var()).getArray())
+                for (auto& entry : *entries)
+                    if (entry.hasProperty("tremmed"))
+                        if (auto* folders = entry.getProperty("folders", juce::var()).getArray())
+                            for (auto& folder : *folders)
+                                if (auto* object = folder.getDynamicObject())
+                                {
+                                    if (load) object->removeProperty("unloaded");
+                                    else object->setProperty("unloaded", true);
+                                }
+}
+
+bool MainComponent::varHasTremmedRows(const juce::var& configuration, bool* anyToLoad)
+{
+    bool any = false;
+    if (anyToLoad != nullptr) *anyToLoad = false;
+    if (const auto* divisions = configuration.getProperty("manualKeyboards", juce::var()).getArray())
+        for (const auto& division : *divisions)
+            if (const auto* entries = division.getProperty("stopBuild", juce::var()).getProperty("entries", juce::var()).getArray())
+                for (const auto& entry : *entries)
+                    if (entry.hasProperty("tremmed"))
+                    {
+                        any = true;
+                        if (anyToLoad != nullptr)
+                            if (const auto* folders = entry.getProperty("folders", juce::var()).getArray())
+                                for (const auto& folder : *folders) if (!(bool)folder.getProperty("unloaded", false)) *anyToLoad = true;
+                    }
+    return any;
 }
 
 void MainComponent::resetStopBuild(int manual)
@@ -26652,6 +27310,7 @@ juce::var MainComponent::stopBuildToVar(const ManualConfig::StopBuild& build)
         item->setProperty("customName", entry.customName);
         item->setProperty("child", entry.child);
         if (entry.noiseKey.isNotEmpty()) item->setProperty("noise", entry.noiseKey);   // 0.9.132: the row is a noise's button
+        if (entry.tremmedManual >= 0) item->setProperty("tremmed", entry.tremmedManual);   // 0.9.150: a recording with the tremulant of that division
         if (entry.sampleOffsetSet || entry.sampleOffset != 0) item->setProperty("sampleOffset", entry.sampleOffset);   // present = known (0.8.158)
         juce::Array<juce::var> folders;
         for (const auto& [perspective, ref] : entry.folders)
@@ -26693,6 +27352,11 @@ MainComponent::ManualConfig::StopBuild MainComponent::stopBuildFromVar(const juc
             entry.customName = item.getProperty("customName", false);
             entry.child = item.getProperty("child", false);
             entry.noiseKey = item.getProperty("noise", "").toString();   // 0.9.132
+            if (item.hasProperty("tremmed"))   // 0.9.150: the second level - always a nested row
+            {
+                entry.tremmedManual = juce::jlimit(0, SamplerEngine::maxManuals - 1, (int)item.getProperty("tremmed", 0));
+                entry.child = true;
+            }
             entry.sampleOffset = juce::jlimit(-48, 48, (int)item.getProperty("sampleOffset", 0));
             entry.sampleOffsetSet = item.hasProperty("sampleOffset");
             if (auto* folders = item.getProperty("folders", juce::var()).getArray())
@@ -27127,8 +27791,13 @@ void MainComponent::showStopBuildingDialog(int)
             juce::Rectangle<int> dragSource;       // the cell the dragged folder leaves (empty = none)
             float phase = 0.0f;                    // marching border animation
             std::function<int(int)> markerYFor;
+            // 0.9.150: the tree of the indented rows (a child under its stop folder, a recording with a tremulant
+            // under its stop) - the lines of the box-drawing characters, drawn (set by layoutGrid).
+            std::vector<juce::Rectangle<int>> treeLines;
             void paint(juce::Graphics& g) override
             {
+                g.setColour(juce::Colours::white.withAlpha(0.5f));
+                for (const auto& line : treeLines) g.fillRect(line);
                 if (columnMarkerX >= 0) ArrangeFrame::landingLine(g, { columnMarkerX - 1, 0, 3, getHeight() });
                 if (insertMarker >= 0 && markerYFor) ArrangeFrame::landingLine(g, { 0, markerYFor(insertMarker) - 2, getWidth(), 3 });
                 // The cell a folder leaves (fainter) and the cell it would land in: the frame of every arrange mode.
@@ -27155,6 +27824,7 @@ void MainComponent::showStopBuildingDialog(int)
             std::unique_ptr<juce::TextEditor> alias;
             std::unique_ptr<juce::TextEditor> offset;   // "Files vs keys": the files' numbers minus the keys (0.8.155)
             std::unique_ptr<juce::TextButton> transmissions;
+            std::unique_ptr<juce::ComboBox> tremmedBox;   // 0.9.150: a recording with a tremulant - the division whose tremulant plays it (beside "Tremmed")
             std::vector<Cell> cells;
         };
         // A perspective's column header: double-click renames, a drag left or right reorders the perspectives (0.8.231).
@@ -27276,6 +27946,7 @@ void MainComponent::showStopBuildingDialog(int)
                     if (j >= before.size()) return false;
                     const auto& b = before[j++];
                     if (a.alias != b.alias || a.customName != b.customName || a.child != b.child || a.sampleOffset != b.sampleOffset || a.sampleOffsetSet != b.sampleOffsetSet) return false;
+                    if (a.tremmedManual != b.tremmedManual) return false;   // 0.9.150: a level changed - the ordinary reload
                     for (const auto& [perspective, ref] : a.folders)
                     {
                         if (ref.unloaded) continue;   // not wanted in the memory: nothing to read
@@ -27322,7 +27993,7 @@ void MainComponent::showStopBuildingDialog(int)
             auto sameEntry = [](const Build::Entry& a, const Build::Entry& b)
             {
                 if (a.name != b.name || a.alias != b.alias || a.customName != b.customName || a.child != b.child || a.folders.size() != b.folders.size()
-                    || a.sampleOffset != b.sampleOffset || a.sampleOffsetSet != b.sampleOffsetSet) return false;
+                    || a.sampleOffset != b.sampleOffset || a.sampleOffsetSet != b.sampleOffsetSet || a.tremmedManual != b.tremmedManual) return false;
                 for (const auto& [perspective, ref] : a.folders)
                 {
                     const auto found = b.folders.find(perspective);
@@ -27451,6 +28122,7 @@ void MainComponent::showStopBuildingDialog(int)
         std::set<int> orderChanged;   // divisions whose rows were dragged
         std::pair<int, int> recentlyAdded{ -1, -1 };      // (division, index) of the row just added: shown orange until the next action
         std::set<std::pair<int, int>> dropCandidates;     // rows Apply would drop: shown orange while the question is open
+        std::set<std::pair<int, juce::String>> tremmedFresh;   // 0.9.150: rows just made recordings with a tremulant (division, name key): their division box is orange until it is looked at
 
         static const juce::String* shortNames() { static const juce::String names[8]{ "P.", "I.", "II.", "III.", "IV.", "V.", "VI.", "VII." }; return names; }
         static const juce::String* longNames() { static const juce::String names[8]{ "Pedal", "Manual I", "Manual II", "Manual III", "Manual IV", "Manual V", "Manual VI", "Manual VII" }; return names; }
@@ -27755,6 +28427,14 @@ void MainComponent::showStopBuildingDialog(int)
             size_t count = 1;
             if (!source[i1].child)
                 while (i1 + count < source.size() && source[i1 + count].child) ++count;
+            else if (!source[i1].isTremmed())   // 0.9.150: a child travels with its recordings with a tremulant (the rows of the second level under it)
+                while (i1 + count < source.size() && source[i1 + count].isTremmed()) ++count;
+            // ... and nothing is dropped between a stop and its recordings: they would belong to the newcomer.
+            if (!source[i1].isTremmed())
+            {
+                auto& where = drafts[(size_t)m2].entries;
+                while (p2 < where.size() && where[p2].isTremmed() && !(m1 == m2 && p2 >= i1 && p2 < i1 + count)) ++p2;
+            }
             if (m1 == m2 && p2 > i1 && p2 <= i1 + count) return;   // dropped onto its own block
             std::vector<Build::Entry> block(source.begin() + (long)i1, source.begin() + (long)(i1 + count));
             source.erase(source.begin() + (long)i1, source.begin() + (long)(i1 + count));
@@ -27771,6 +28451,7 @@ void MainComponent::showStopBuildingDialog(int)
                     entry.name = uniqueStopBuildName(drafts[(size_t)m2].entries, entry.name, nullptr);
                 }
                 block.front().child = false;
+                block.front().tremmedManual = -1;   // 0.9.150: a recording moved alone into another division is a row of its own there (indent it again under its stop)
             }
             auto& target = drafts[(size_t)m2].entries;
             p2 = juce::jmin(p2, target.size());
@@ -27945,8 +28626,12 @@ void MainComponent::showStopBuildingDialog(int)
                 const int target = rowIndexForScreenPoint(screen, true);
                 const bool sameRow = target == (int)i || target == (int)i + 1;
                 const auto* entry = entryOf(i);
-                int shift = entry != nullptr && entry->child ? (int)indent : 0;
-                if (sameRow && std::abs(dx) >= sidewaysDrag) shift = dx > 0 && i > 0 ? (int)indent : 0;
+                // 0.9.150: three places - on its own, indented (a stop folder's child), indented twice (a recording
+                // with a tremulant of the row above); every drag of the name goes one place right or left.
+                int level = entry == nullptr ? 0 : entry->isTremmed() ? 2 : entry->child ? 1 : 0;
+                if (sameRow && std::abs(dx) >= sidewaysDrag && entry != nullptr)
+                    level = dx > 0 ? (i > 0 ? juce::jmin(entry->isTransmission() ? 1 : 2, level + 1) : level) : juce::jmax(0, level - 1);
+                const int shift = level * (int)indent;
                 const int nameX = removeWidth + divisionWidth + transmissionWidth;
                 auto& cell = *rows[i]->name;
                 cell.setBounds(nameX + shift, cell.getY(), nameWidth - 6 - shift, cell.getHeight());
@@ -27967,6 +28652,19 @@ void MainComponent::showStopBuildingDialog(int)
                     // Sideways: indent under the row above, or stand alone again. A row
                     // above in another division takes the stop into that division first.
                     auto* entry = entryOf(i);
+                    // 0.9.150: the second level. A recording with a tremulant goes back to an ordinary indented row
+                    // (left); an indented stop dragged right once more becomes the recording of the row above it.
+                    if (entry != nullptr && entry->isTremmed())
+                    {
+                        if (dx < 0) { entry->tremmedManual = -1; orderChanged.insert(rows[i]->manual); }
+                        rebuildGrid();
+                        return;
+                    }
+                    if (entry != nullptr && dx > 0 && entry->child && !entry->isTransmission())
+                    {
+                        makeTremmedRow(i);
+                        return;
+                    }
                     if (entry != nullptr)
                     {
                         // The stop folder this row would join: the nearest non-indented row above.
@@ -28032,7 +28730,12 @@ void MainComponent::showStopBuildingDialog(int)
                 updateApplyState();
             };
             grid.addAndMakeVisible(*row->alias);
-            if (!transmission && !entry.folders.empty())
+            if (entry.isTremmed())
+            {   // 0.9.150: no alias (it has no button) and no transposition of its own (its stop's)
+                row->alias->setEnabled(false);
+                row->alias->setTooltip("A recording with a tremulant has no alias: it has no button of its own.");
+            }
+            if (!transmission && !entry.folders.empty() && !entry.isTremmed())
             {
                 // "Transp." (0.8.158): the stop's own transposition in semitones.
                 row->offset = std::make_unique<juce::TextEditor>();
@@ -28109,11 +28812,57 @@ void MainComponent::showStopBuildingDialog(int)
                 rows.push_back(std::move(row));
                 return;
             }
+            if (entry.isTremmed())
+            {
+                // 0.9.150 (the user): a recording with a tremulant - "Tremmed" where the transmissions are (it has
+                // none) and the division whose tremulant plays it; the box is orange until it has been looked at.
+                const juce::String tip = "A recording of the stop above with a tremulant running (the second level). It sounds instead of that stop while the tremulant of the "
+                    "division chosen here shakes the keys' division and is set to its recorded samples; otherwise the stop plays with the tremulant model. "
+                    "It has no transmissions, no alias and no button of its own. Its switch beside the folder: left = in the memory, middle = not loaded.";
+                row->transmissions = std::make_unique<juce::TextButton>("Tremmed");
+                row->transmissions->setColour(juce::TextButton::textColourOffId, onColour());
+                row->transmissions->setTooltip(tip);
+                row->transmissions->getProperties().set("manualChapter", "Recorded tremulants");
+                grid.addAndMakeVisible(*row->transmissions);
+                row->tremmedBox = std::make_unique<juce::ComboBox>();
+                for (int division = 0; division <= juce::jmin(owner.manualCount, kDivisions - 1); ++division)
+                    row->tremmedBox->addItem(shortNames()[division], division + 1);
+                if (entry.tremmedManual > owner.manualCount) row->tremmedBox->addItem(shortNames()[juce::jlimit(0, 7, entry.tremmedManual)], entry.tremmedManual + 1);
+                row->tremmedBox->setSelectedId(entry.tremmedManual + 1, juce::dontSendNotification);
+                row->tremmedBox->setTooltip("The division whose tremulant plays this recording. " + tip);
+                row->tremmedBox->getProperties().set("manualChapter", "Recorded tremulants");
+                row->tremmedBox->getProperties().set("testName", "tremmed " + entry.name);
+                const bool fresh = tremmedFresh.count({ manual, stopBuildKey(entry.name) }) != 0;
+                if (fresh)
+                {
+                    row->tremmedBox->setColour(juce::ComboBox::outlineColourId, onColour());
+                    row->tremmedBox->setColour(juce::ComboBox::textColourId, onColour());
+                    row->tremmedBox->setColour(juce::ComboBox::arrowColourId, onColour());
+                }
+                row->tremmedBox->onChange = [this, i]
+                {
+                    if (i >= rows.size() || rows[i]->tremmedBox == nullptr) return;
+                    if (auto* e = entryOf(i))
+                    {
+                        const int id = rows[i]->tremmedBox->getSelectedId();
+                        if (id > 0) e->tremmedManual = id - 1;
+                        tremmedFresh.erase({ rows[i]->manual, stopBuildKey(e->name) });
+                        auto& box = *rows[i]->tremmedBox;
+                        box.removeColour(juce::ComboBox::outlineColourId); box.removeColour(juce::ComboBox::textColourId); box.removeColour(juce::ComboBox::arrowColourId);
+                        box.repaint();
+                    }
+                    updateApplyState();
+                };
+                grid.addAndMakeVisible(*row->tremmedBox);
+            }
+            else
+            {
             row->transmissions = std::make_unique<juce::TextButton>(transmissionsText(manual, entry));
             row->transmissions->setTooltip("Transmissions: extra buttons of this stop in other divisions (or its own). Click "
                 "to add or remove one; transposition and voicing of each are in its own voicing row.");
             row->transmissions->onClick = [this, i] { transmissionsMenu(i); };
             grid.addAndMakeVisible(*row->transmissions);
+            }
             for (size_t p = 0; p < perspectives.size(); ++p)
             {
                 const auto& perspective = perspectives[p];
@@ -28235,13 +28984,66 @@ void MainComponent::showStopBuildingDialog(int)
                 x += cellWidth;
             }
             int y = headerHeight;
+            // 0.9.150: the tree. Level 1 = a stop folder's child, level 2 = a recording with a tremulant; a branch
+            // from the trunk of its level to the name, the trunk running on while a later row of the block hangs on it.
+            grid.treeLines.clear();
+            auto levelOf = [this](size_t r)
+            {
+                const auto& e = drafts[(size_t)rows[r]->manual].entries[rows[r]->index];
+                return e.isTremmed() ? 2 : e.child ? 1 : 0;
+            };
+            for (size_t r = 0; r < rows.size(); ++r)
+            {
+                const int level = levelOf(r);
+                if (level == 0) continue;
+                const int nameX = removeWidth + divisionWidth + transmissionWidth;
+                const int rowTop = (int)headerHeight + (int)r * (int)rowHeight, mid = rowTop + (int)rowHeight / 2;
+                // Does a later row of this block hang on the trunk of 'trunkLevel' (before the block or the parent ends)?
+                auto continues = [&](int trunkLevel)
+                {
+                    for (size_t later = r + 1; later < rows.size(); ++later)
+                    {
+                        if (rows[later]->manual != rows[r]->manual) return false;
+                        const int l = levelOf(later);
+                        if (trunkLevel == 1) { if (l == 0) return false; if (l == 1) return true; }
+                        else { if (l != 2) return false; return true; }
+                    }
+                    return false;
+                };
+                // A recording directly under a plain stop (no child level between): its trunk is the first one.
+                bool underChild = false;
+                if (level == 2)
+                    for (size_t above = r; above-- > 0;)
+                    {
+                        if (rows[above]->manual != rows[r]->manual) break;
+                        const int l = levelOf(above);
+                        if (l == 2) continue;
+                        underChild = l == 1;
+                        break;
+                    }
+                const int trunk = nameX + 10 + (level == 2 && underChild ? (int)indent : 0);
+                const int nameLeft = nameX + level * (int)indent;
+                grid.treeLines.push_back({ trunk, mid, nameLeft - trunk - 2, 2 });                                             // the branch
+                // On the first trunk (a child, or a recording of the folder's own stop) every later row of the block
+                // hangs too; on a child's own trunk only its further recordings.
+                const bool nextIsRecording = r + 1 < rows.size() && rows[r + 1]->manual == rows[r]->manual && levelOf(r + 1) == 2;
+                const bool goesOn = level == 2 && underChild ? continues(2) : (continues(1) || (level == 2 && nextIsRecording));
+                grid.treeLines.push_back({ trunk, rowTop, 2, goesOn ? (int)rowHeight : mid - rowTop + 2 });   // the trunk
+                if (level == 2 && underChild && continues(1)) grid.treeLines.push_back({ nameX + 10, rowTop, 2, (int)rowHeight });   // the folder's trunk passes by
+            }
             for (auto& row : rows)
             {
                 const auto& entry = drafts[(size_t)row->manual].entries[row->index];
-                const int shift = entry.child ? (int)indent : 0;   // an indented row: the stop folder's child
+                const int shift = entry.isTremmed() ? 2 * (int)indent : entry.child ? (int)indent : 0;   // an indented row: the stop folder's child; twice: a recording with a tremulant
                 x = 0;
                 row->remove->setBounds(x + 2, y + 4, removeWidth - 4, rowHeight - 8); x += removeWidth;
                 row->division->setBounds(x, y + 3, divisionWidth - 6, rowHeight - 6); x += divisionWidth;
+                if (row->tremmedBox != nullptr)
+                {
+                    row->transmissions->setBounds(x, y + 2, 92, rowHeight - 4);
+                    row->tremmedBox->setBounds(x + 96, y + 3, transmissionWidth - 6 - 96, rowHeight - 6);
+                }
+                else
                 row->transmissions->setBounds(x, y + 2, transmissionWidth - 6, rowHeight - 4); x += transmissionWidth;
                 row->name->setBounds(x + shift, y + 2, nameWidth - 6 - shift, rowHeight - 4); x += nameWidth;
                 row->alias->setBounds(x, y + 2, aliasWidth - 6, rowHeight - 4); x += aliasWidth;
@@ -28259,6 +29061,51 @@ void MainComponent::showStopBuildingDialog(int)
             }
         }
 
+        // 0.9.150: row i (an indented stop) becomes the recording with a tremulant of the row above it - the second
+        // level. Nothing is asked (the division box is preset to the row's own division and orange until it has been
+        // looked at); only a stop that has transmissions is named first: a recording has none, they would go.
+        void makeTremmedRow(size_t i)
+        {
+            auto* entry = entryOf(i);
+            if (entry == nullptr || i == 0) return;
+            const int manual = rows[i]->manual;
+            int parentRow = (int)i - 1;   // the stop it would belong to: the nearest row above that is no recording
+            while (parentRow >= 0 && rows[(size_t)parentRow]->manual == manual && entryOf((size_t)parentRow) != nullptr && entryOf((size_t)parentRow)->isTremmed()) --parentRow;
+            const auto* parent = parentRow >= 0 && rows[(size_t)parentRow]->manual == manual ? entryOf((size_t)parentRow) : nullptr;
+            if (parent == nullptr || parent->isTransmission() || parent->folders.empty() || isNoiseEntry(*parent) || entry->folders.empty() || isNoiseEntry(*entry))
+            {
+                showBriefMessage("A recording with a tremulant stands under its stop",
+                    "The second level is for the folders of a stop recorded with a tremulant running: \"" + entry->name + "\" would stand under "
+                    + (parent != nullptr ? "\"" + parent->name + "\"" : juce::String("nothing")) + ", and both rows must hold sample folders.");
+                rebuildGrid();
+                return;
+            }
+            const juce::String name = entry->name;
+            const size_t index = rows[i]->index;
+            auto make = [this, manual, index, name]
+            {
+                auto& entries = drafts[(size_t)manual].entries;
+                if (index >= entries.size() || entries[index].name != name) return;
+                entries[index].tremmedManual = manual;
+                entries[index].child = true;
+                entries[index].alias.clear();
+                tremmedFresh.insert({ manual, stopBuildKey(name) });
+                orderChanged.insert(manual);
+                rebuildGrid();
+            };
+            if (auto* stop = liveStop(manual, name); stop != nullptr && !stop->transmissions.empty())
+            {
+                juce::Component::SafePointer<StopListDialog> safeThis(this);
+                juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "Recording with a tremulant",
+                    "\"" + name + "\" has " + juce::String((int)stop->transmissions.size()) + " transmission(s) (" + transmissionsText(manual, *entry)
+                    + ").\n\nA recording with a tremulant has no transmissions: moving the stop to this level deletes all of them. Move it anyway?",
+                    "Move and delete them", "Cancel", this,
+                    juce::ModalCallbackFunction::create([safeThis, make](int result) { if (safeThis == nullptr) return; if (result != 0) make(); else safeThis->rebuildGrid(); }));
+                return;
+            }
+            make();
+        }
+
         void removeRow(size_t i)
         {
             commitEditors();
@@ -28271,7 +29118,8 @@ void MainComponent::showStopBuildingDialog(int)
             {
                 const auto& entries = drafts[(size_t)manual].entries;
                 juce::StringArray names;
-                for (size_t j = index + 1; j < entries.size() && entries[j].child; ++j) names.add(entries[j].name);
+                for (size_t j = index + 1; j < entries.size() && entries[j].child; ++j)
+                    if (!entries[j].isTremmed()) names.add(entries[j].name);   // 0.9.150: its recordings with a tremulant go with it (below)
                 if (!names.isEmpty())
                 {
                     queueNotice(juce::MessageBoxIconType::WarningIcon, "Stop folder not empty",
@@ -28283,7 +29131,14 @@ void MainComponent::showStopBuildingDialog(int)
             auto doRemove = [this, manual, index]
             {
                 auto& entries = drafts[(size_t)manual].entries;
-                if (index < entries.size()) entries.erase(entries.begin() + (long)index);
+                if (index < entries.size())
+                {
+                    // 0.9.150: a stop goes with its recordings with a tremulant (left behind they would belong to the row above).
+                    size_t count = 1;
+                    if (!entries[index].isTremmed())
+                        while (index + count < entries.size() && entries[index + count].isTremmed()) ++count;
+                    entries.erase(entries.begin() + (long)index, entries.begin() + (long)(index + count));
+                }
                 rebuildGrid();
             };
             juce::String warning;
@@ -29055,6 +29910,14 @@ void MainComponent::swapDivisionStops(int a, int b)
             if (m != a && m != b) manualConfigs[(size_t)m].tremulantTargetMask = (uint8_t)swapMaskBits(manualConfigs[(size_t)m].tremulantTargetMask, a, b);
             engine.setManualTremulantTargets(m, manualConfigs[(size_t)m].tremulantTargetMask);
         }
+        // 0.9.150: the recorded tremulant goes with its division, and every recording that names one of the two
+        // divisions' tremulants names the other now.
+        std::swap(ca.tremulantRecordedHz, cb.tremulantRecordedHz);
+        std::swap(ca.tremulantRecorded, cb.tremulantRecorded);
+        for (int m = 0; m < SamplerEngine::maxManuals; ++m)
+            for (auto& entry : manualConfigs[(size_t)m].stopBuild.entries)
+                if (entry.tremmedManual == a) entry.tremmedManual = b;
+                else if (entry.tremmedManual == b) entry.tremmedManual = a;
         std::swap(ca.allowRandomTuningError, cb.allowRandomTuningError);
         std::swap(ca.allowPipeCoupling, cb.allowPipeCoupling);
         std::swap(ca.divisionVolumeDb, cb.divisionVolumeDb);
@@ -29386,6 +30249,12 @@ void MainComponent::loadSettings()
     engine.setAttackCutFadeMs(attackCutFadeMs);
     voicingGlideMs = juce::jlimit(0.0f, 2000.0f, (float)(double)parsed.getProperty("voicingGlideMs", 150.0));   // 0.9.122
     engine.setVoicingGlideMs(voicingGlideMs);
+    tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)(double)parsed.getProperty("tremulantSwapMs", 300.0));   // 0.9.150
+    engine.setTremulantSwapMs(tremulantSwapMs);
+    tremmedReleaseModelPercent = juce::jlimit(0.0f, 100.0f, (float)(double)parsed.getProperty("tremmedReleaseModelPercent", 40.0));
+    engine.setTremmedReleaseModelPercent(tremmedReleaseModelPercent);
+    releasePhaseAlign = (bool)parsed.getProperty("releasePhaseAlign", false);
+    engine.setReleasePhaseAlign(releasePhaseAlign);
     if (auto* publication = parsed.getProperty("publication", juce::var()).getDynamicObject())   // 0.8.179: the README's details travel with the organ
     {
         publicationOrgan = publication->getProperty("organ").toString();
@@ -29787,6 +30656,10 @@ void MainComponent::loadSettings()
                 "windTargetMask", manualConfigs[(size_t)i].windTargetMask);
             manualConfigs[(size_t)i].tremulantTargetMask = (uint8_t)((int)item.getProperty("tremulantTargetMask", 0) & ~(1 << i));   // 0.9.88
             engine.setManualTremulantTargets(i, manualConfigs[(size_t)i].tremulantTargetMask);
+            // 0.9.150: the rate the tremmed samples were recorded at and the tick "Recorded tremulant" (a file without them: unknown rate, ticked).
+            manualConfigs[(size_t)i].tremulantRecordedHz = juce::jlimit(0.0f, 20.0f, (float)(double)item.getProperty("tremulantRecordedHz", 0.0));
+            manualConfigs[(size_t)i].tremulantRecorded = (bool)item.getProperty("tremulantRecorded", true);
+            engine.setManualTremulantRecorded(i, manualConfigs[(size_t)i].tremulantRecorded);
             engine.setWindModel(i, manualConfigs[(size_t)i].windDepthCents,
                 manualConfigs[(size_t)i].windFrequencyHz,
                 manualConfigs[(size_t)i].windOscillations,
@@ -30393,6 +31266,9 @@ void MainComponent::saveSettingsNow()
     obj->setProperty("couplingMaxCents", couplingMaxCents);   // 0.9.60
     obj->setProperty("attackCutFadeMs", attackCutFadeMs);     // 0.9.80
     obj->setProperty("voicingGlideMs", voicingGlideMs);       // 0.9.122
+    obj->setProperty("tremulantSwapMs", tremulantSwapMs);     // 0.9.150
+    obj->setProperty("tremmedReleaseModelPercent", tremmedReleaseModelPercent);
+    obj->setProperty("releasePhaseAlign", releasePhaseAlign);
     {
         auto* publication = new juce::DynamicObject();   // 0.8.179: what the published README says, asked at the portable save
         publication->setProperty("organ", publicationOrgan);
@@ -30669,6 +31545,8 @@ void MainComponent::saveSettingsNow()
         item->setProperty("windSmoothingMs", config.windSmoothingMs);
         item->setProperty("windTargetMask", (int)config.windTargetMask);
         item->setProperty("tremulantTargetMask", (int)config.tremulantTargetMask);   // 0.9.88
+        if (config.tremulantRecordedHz > 0.0f) item->setProperty("tremulantRecordedHz", config.tremulantRecordedHz);   // 0.9.150
+        if (!config.tremulantRecorded) item->setProperty("tremulantRecorded", false);
         const int audioManual = manualsArray.size();
         auto* manager = manualAsioHost[(size_t)audioManual] != nullptr
             ? manualAsioHost[(size_t)audioManual]
@@ -32406,6 +33284,7 @@ void MainComponent::timerCallback()
     updateMissingTreeNotices();
     logRamAfterLoadIfDue();
     noisesTick();   // 0.9.127
+    syncTremulantRecorded();   // 0.9.150: a tremulant rate moved away from the recorded one unticks "Recorded tremulant"
     watchMemoryAfterLoad();
     // 0.9.123 (the user: quietly, a line in the Messages): the copies of filled pipes
     // the memory did not let be built - said once per stop and load, no box. Those
@@ -32894,9 +33773,32 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         double value, defaultValue;
         std::function<void(double)> apply;
     };
-    class FeatureContent final : public juce::Component
+    class FeatureContent final : public juce::Component, private juce::Timer
     {
     public:
+        // 0.9.150: a tick on a row of its own under the sliders (the tremulant's "Recorded tremulant (N Hz)") - the same
+        // value as in the Divisions dialog and the Editor; it and the first slider (the rate) follow the model.
+        void setTick(std::function<juce::String()> text, const juce::String& tip, const juce::String& chapter, std::function<bool()> get,
+                     std::function<void(bool)> set, std::function<double()> firstSlider)
+        {
+            hasTick = true;
+            tickText = std::move(text); tickGet = std::move(get); firstSliderValue = std::move(firstSlider);
+            tick.setColour(juce::ToggleButton::textColourId, onColour());
+            tick.setTooltip(tip);
+            tick.getProperties().set("manualChapter", chapter);
+            tick.onClick = [this, set] { if (set) set(tick.getToggleState()); timerCallback(); };
+            addAndMakeVisible(tick);
+            timerCallback();
+            startTimerHz(5);
+        }
+        void timerCallback() override
+        {
+            if (!hasTick) return;
+            if (tickText) tick.setButtonText(tickText());
+            if (tickGet) tick.setToggleState(tickGet(), juce::dontSendNotification);
+            if (firstSliderValue && !sliders.empty() && !sliders.front()->isMouseButtonDown() && std::abs(sliders.front()->getValue() - firstSliderValue()) > 1.0e-6)
+                sliders.front()->setValue(firstSliderValue(), juce::dontSendNotification);
+        }
         FeatureContent(MainComponent& ownerIn, const juce::String& noteText, std::vector<Row> rows) : owner(ownerIn)
         {
             note.setText(noteText, juce::dontSendNotification);
@@ -32990,7 +33892,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 addChildComponent(button);
             }
         }
-        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36 + (hasBoxes ? 36 : 0) + 40; }   // + the Close row (0.9.105)
+        int neededHeight() const { return 24 + 70 + (int)sliders.size() * 36 + (hasBoxes ? 36 : 0) + (hasTick ? 30 : 0) + 40; }   // + the Close row (0.9.105)
         void resized() override
         {
             auto area = getLocalBounds().reduced(12);
@@ -33001,6 +33903,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
                 auto row = area.removeFromTop(36);
                 labels[i]->setBounds(row.removeFromLeft(260));
                 sliders[i]->setBounds(row.reduced(0, 4));
+                if (i == 0 && hasTick) tick.setBounds(area.removeFromTop(30).withTrimmedLeft(260).reduced(0, 3));   // 0.9.150: right under the rate
             }
             if (hasBoxes)
             {
@@ -33018,6 +33921,11 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         bool hasBoxes = false;
         juce::Label boxesLabel;
         std::array<juce::ToggleButton, SamplerEngine::maxManuals> boxes;
+        bool hasTick = false;   // 0.9.150
+        juce::ToggleButton tick;
+        std::function<juce::String()> tickText;
+        std::function<bool()> tickGet;
+        std::function<double()> firstSliderValue;
         DialogCloseButton closeButton;
     };
 
@@ -33058,6 +33966,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         {
             auto& c = manualConfigs[(size_t)m];
             engine.setManualTremulant(m, c.tremulantEnabled, c.tremulantRateHz, c.tremulantDepthCents, c.tremulantRankDriftDegrees);
+            syncTremulantRecorded();   // 0.9.150
             saveSettings();
         };
         rows.push_back({ "Rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, 4.4,
@@ -33113,6 +34022,12 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
         content->setTargetBoxes("Also shakes divisions", "The other divisions this tremulant shakes as well (one tremulant device for several divisions); its own always.",
             m, manualCount + 1, [this, m] { return manualConfigs[(size_t)m].tremulantTargetMask; },
             [this, m](uint8_t mask) { manualConfigs[(size_t)m].tremulantTargetMask = mask; engine.setManualTremulantTargets(m, mask); configurationDirty = true; saveSettings(); });
+    if (feature == "tremulant" && anyTremmedRows(m))   // 0.9.150: the stops recorded with this tremulant play their recordings - the same tick as in the Divisions dialog and the Editor
+        content->setTick([this, m] { return tremulantRecordedText(m); },
+            "The stops recorded with this tremulant running (the rows of the Stop List's second level) play their RECORDED samples while it is on - at the speed they were "
+            "recorded at, which the rate is set to. Move the rate and the tick goes: the tremulant model plays every stop instead. Tick it again and the rate returns to the recorded one.",
+            "Recorded tremulants", [this, m] { return manualConfigs[(size_t)m].tremulantRecorded; },
+            [this, m](bool on) { setTremulantRecorded(m, on); }, [this, m] { return (double)manualConfigs[(size_t)m].tremulantRateHz; });
     const int height = content->neededHeight();
     content->setSize(700, height);
     // Modeless (0.8.239): the rows act at once; the Configuration Editor is refreshed when the window closes.
@@ -36648,7 +37563,11 @@ void MainComponent::showConfigurationEditor()
                 {
                     if (safeThis == nullptr) return;
                     for (const auto& row : safeThis->rows)
-                        if (row.header && row.title == title && row.label != nullptr) { safeThis->viewport.setViewPosition(0, row.label->getY()); break; }
+                        if (row.header && row.title == title && row.label != nullptr) { safeThis->viewport.setViewPosition(0, row.label->getY()); return; }
+                    // 0.9.150 (tests): no section of that name - the row whose label reads so (a picture of a row deep in a section).
+                    for (const auto& row : safeThis->rows)
+                        if (auto* text = dynamic_cast<juce::Label*>(row.label.get()); text != nullptr && ! row.header && text->getText() == title && text->isVisible())
+                        { safeThis->viewport.setViewPosition(0, juce::jmax(0, text->getY() - 200)); return; }
                 });
             }
             openFolder.setButtonText("Show settings.json");
@@ -37532,6 +38451,37 @@ void MainComponent::showConfigurationEditor()
                 "moved - glides to the new level over this time (default 150 ms; 0 = at once). The time is for the sounding c1; "
                 "a deeper pipe takes 1.5 times as long per octave below it (a fast change thumps in the bass). Perspectives, "
                 "attack settings and random tuning apply from the next key. Travels with the organ.");
+            // 0.9.150 (the user): the release in the phase of its attack - an option, off by default.
+            addToggle("Release starts in the phase of its attack", o.releasePhaseAlign, [&o](bool state)
+                {
+                    o.releasePhaseAlign = state;
+                    o.engine.setReleasePhaseAlign(state);
+                    o.saveSettings();
+                },
+                "On: a release sample starts up to one period of its fundamental later, where it is in phase with the sounding pipe it fades into - "
+                "the two cannot cancel each other during the crossfade. Off (default): the release starts at its beginning. Travels with the organ; the next key releases follow it.",
+                "Release starts in the phase of its attack");
+            // 0.9.150: the recorded tremulants (the tick itself is beside every tremulant's rate).
+            addSlider("Recorded tremulant: crossfade", 0.0, 1000.0, 10.0, " ms", o.tremulantSwapMs, 300.0,
+                [&o](double value)
+                {
+                    o.tremulantSwapMs = juce::jlimit(0.0f, 1000.0f, (float)value);
+                    o.engine.setTremulantSwapMs(o.tremulantSwapMs);
+                    o.saveSettings();
+                },
+                "A tremulant switched on or off while keys are held: the stops that have their pipes recorded with that tremulant cross over between the "
+                "plain samples and the recorded ones in this time (default 300 ms, up to 1 s), in phase, without striking the notes again. Travels with the organ.",
+                "Recorded tremulant: crossfade");
+            addSlider("Recorded tremulant: model on its releases", 0.0, 100.0, 1.0, " %", o.tremmedReleaseModelPercent, 40.0,
+                [&o](double value)
+                {
+                    o.tremmedReleaseModelPercent = juce::jlimit(0.0f, 100.0f, (float)value);
+                    o.engine.setTremmedReleaseModelPercent(o.tremmedReleaseModelPercent);
+                    o.saveSettings();
+                },
+                "The release of a sample recorded with a tremulant is often flat. This share of the tremulant model's depth moves it (an ordinary release gets 60 %; "
+                "default 40 %, 0 = the release as recorded). The sustain of such a sample is never touched by the model. Travels with the organ.",
+                "Recorded tremulant: model on its releases");
 
             // --- Filled pipes (0.8.228: a subsection of its own, the combos, the sliders, the switches, the cache)
             addSection("Filled pipes", true, true, 2);
@@ -38209,11 +39159,23 @@ void MainComponent::showConfigurationEditor()
                 {
                     o.engine.setManualTremulant(manual, config.tremulantEnabled, config.tremulantRateHz,
                         config.tremulantDepthCents, config.tremulantRankDriftDegrees);
+                    o.syncTremulantRecorded();   // 0.9.150
                     o.saveSettings();
                 };
                 // (No tremulant on/off here: that is registration, like a stop, not a setting.)
                 addSlider("Tremulant rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, 4.4,
                     [&config, applyTremulant](double value) { config.tremulantRateHz = (float)value; applyTremulant(); });
+                // 0.9.150: the same tick as under the rate in the Divisions dialog and in the right-click Tremulant settings.
+                addToggle("Tremulant: recorded samples", config.tremulantRecorded, [&o, manual](bool state)
+                    {
+                        o.setTremulantRecorded(manual, state);
+                        juce::Component::SafePointer<MainComponent> safe(&o);
+                        juce::MessageManager::callAsync([safe] { if (safe != nullptr) safe->refreshConfigurationEditor(); });   // the rate above went back to the recorded one
+                    },
+                    "The stops recorded with this tremulant running (the rows of the Stop List's second level) play their recorded samples while it is on, "
+                    "at the speed they were recorded at (" + (config.tremulantRecordedHz > 0.0f ? juce::String(config.tremulantRecordedHz, 2) + " Hz" : juce::String("not known yet"))
+                    + "): the rate is set to it. Move the rate and this goes off - the tremulant model plays every stop. No such stops in the organ: it does nothing.",
+                    "Tremulant: recorded samples");
                 addSlider("Tremulant depth", 0.0, 50.0, 0.1, " cents", config.tremulantDepthCents, 6.0,
                     [&config, applyTremulant](double value) { config.tremulantDepthCents = (float)value; applyTremulant(); });
                 addSlider("Tremulant phase drift between ranks", 0.0, 360.0, 1.0, " deg", config.tremulantRankDriftDegrees, 260.0,

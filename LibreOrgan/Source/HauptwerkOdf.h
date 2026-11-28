@@ -27,8 +27,10 @@
 // package 3136); the packages live in OrganInstallationPackages/<id as six
 // digits> beside the OrganDefinitions folder - the Hauptwerk standard layout.
 // Encrypted samples (.hbw/.hbx) cannot be played and make the import refuse.
-// Tremmed samples (alternate "tremmed" ranks, the "trem" folders, further
-// pipe layers) are left out: LibreOrgan Sampler has its own tremulant.
+// Tremmed samples: the alternate ranks of the stops (and the ranks of hidden
+// "(Tremmed)" stops) are the stops' recordings with a tremulant running - rows
+// of the Stop List's second level (0.9.150); the "trem" folders (Hauptwerk's
+// tremulant waveforms) and further pipe layers are left out.
 struct HauptwerkOdf
 {
     struct Pipe
@@ -43,6 +45,10 @@ struct HauptwerkOdf
         int id = 0;
         juce::String name;
         bool tremmed = false;           // an alternate (tremulant) rank, or named "(tremmed)"
+        // 0.9.150: the rank whose pipes this one holds recorded with a tremulant running (a StopRank row's alternate
+        // rank, or the rank of a hidden "X (Tremmed)" stop beside the stop X), and the tremulant that changes over
+        // to it (by the switch linkages; 0 = not found).
+        int alternateOfRankId = 0, tremulantId = 0;
         bool oneShot = false;           // its pipes have no release samples at all (chimes, harp, carillon): a one-shot stop
         bool noise = false;             // key/stop action noises, blower, tremulant noise: no stop of ours
         juce::String perspective;       // "Direct", "Diffuse", "Rear", "Front" ... from the name; empty when the name says nothing
@@ -201,6 +207,11 @@ struct HauptwerkOdf
         // them. Ranks of different perspectives stay ONE stop with one folder
         // per perspective, as ever.
         std::vector<PlanStop> children;
+        // 0.9.150: the recordings of this stop's ranks with a tremulant running (alternate ranks, the ranks of a
+        // hidden "(Tremmed)" stop), one per tremulant: the ranks (their folders and perspectives as for the stop's
+        // own) and the division of OURS whose tremulant plays them. They become rows of the second level.
+        struct Tremmed { int tremulantId = 0, tremulantDivision = -1; std::vector<int> rankIds; };
+        std::vector<Tremmed> tremmed;
     };
     struct PlanDivision
     {
@@ -208,6 +219,11 @@ struct HauptwerkOdf
         int divisionId = 0, lowNote = 36, highNote = 96;
         std::vector<int> divisionIds;                // every ODF division the keyboard plays (the primary first)
         float tremulantRateHz = 0.0f;                // the speed of the definition's tremulant on this division (0: none)
+        // 0.9.150: the definition's tremulant that sits on this division (0: none) - a division's own one, or a
+        // general one put on the first division it shakes that has no other - and the OTHER divisions of ours it
+        // shakes too (bit = our division index).
+        int tremulantId = 0, tremulantTargetMask = 0;
+        bool tremulantHasRecordings = false;         // stops with recordings played by it exist
         std::vector<juce::File> trees;               // the folders holding the stop folders, the main one first
         std::vector<PlanStop> stops;
     };

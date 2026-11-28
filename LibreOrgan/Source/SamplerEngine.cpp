@@ -1493,6 +1493,15 @@ namespace
         uint8_t windPitchVar = 0, windGainVar = 0, tremBucket = 0;
         bool detachedRelease = false, loopEnabled = true, couplingUsed = false, startFrozen = false;
         bool noise = false;   // 0.9.127: a NOISE (key action, drawknob, blower ...): the file as it is - no tuning, wind, tremulant, swell or dynamic tone
+        bool recordedTrem = false;   // 0.9.150: a sample recorded with the tremulant running - the model leaves its sustain alone (its release gets a share)
+        // 0.9.150 PHASE ALIGNMENT at the take (renderRoute): this voice follows 'alignPartner' (a voice of the same
+        // route that fades out while this one fades in - the plain pipe and its tremmed recording at a tremulant
+        // switch, an attack and its release). The control thread measured this sample's fundamental phase at its
+        // start position (alignPhase, radians; alignPeriod = frames of one period); the route's render thread reads
+        // the partner's phase where it stands at that block and moves this voice's start by less than one period.
+        uint32_t alignPartner = 0xffffffffu;
+        uint64_t alignPartnerOrder = 0;
+        float alignPhase = 0.0f, alignPeriod = 0.0f, alignFreqA = 0.0f;   // alignFreqA: the partner's fundamental in cycles per frame of ITS sample
         float velocityGain = 1.0f;        // always 1: organ keys do not play softer when struck gently (see 'velocity')
         uint8_t velocity = 127;           // the key velocity: picks the velocity layer (and its release), scales the start fade-in
         float coupledPitchCents = 0.0f;
@@ -1596,6 +1605,7 @@ namespace
         float tremGain[kTremBuckets]{};
         float tremPitchCentsRelease[kTremBuckets]{};
         float tremGainRelease[kTremBuckets]{};
+        float tremRecordedRelease = 0.667f;   // 0.9.150: the release of a sample recorded with the tremulant - its share of the release figures above
         float exprGain = 1.0f;
         float divisionGain = 1.0f;
         float releaseScale = 1.0f;
@@ -3733,10 +3743,18 @@ namespace
             windGain = windDb != 0.0f ? fastDbToGain(windDb * v.windKeyScale) : 1.0f;   // the pipe's share of the sag (0.9.67)
         }
         v.lastWindGain = windGain;
-        if (c.tremActive)
+        if (c.tremActive && !(v.recordedTrem && !v.detachedRelease))   // 0.9.150: a sample recorded with the tremulant - the model leaves its sustain alone
         {
             const int b = v.tremBucket & (kTremBuckets - 1);
-            if (v.detachedRelease) { tremPitch = c.tremPitchCentsRelease[b]; tremGain = c.tremGainRelease[b]; }
+            if (v.detachedRelease)
+            {
+                tremPitch = c.tremPitchCentsRelease[b]; tremGain = c.tremGainRelease[b];
+                if (v.recordedTrem)   // its release (often flat in the recording) gets the setting's share of the model
+                {
+                    tremPitch *= c.tremRecordedRelease;
+                    tremGain = 1.0f + (tremGain - 1.0f) * c.tremRecordedRelease;
+                }
+            }
             else { tremPitch = c.tremPitchCents[b]; tremGain = c.tremGain[b]; }
         }
         if (v.noise) { randomCents = windPitch = tremPitch = 0.0f; windGain = tremGain = 1.0f; v.lastWindGain = 1.0f; }   // 0.9.127
@@ -3842,10 +3860,10 @@ namespace
                 mix += c.shelfSwell * juce::jlimit(0.0f, 1.0f, 8.6859f * fastNegLn(juce::jmax(0.001f, expr)) / c.exprMaxDb);
             if (c.windMaxDb > 0.01f && windGain < 0.9999f)
                 mix += c.shelfWind * juce::jlimit(0.0f, 1.0f, 8.6859f * fastNegLn(juce::jmax(0.001f, windGain)) / c.windMaxDb);
-            if (c.tremActive)
+            if (c.tremActive && !(v.recordedTrem && !v.detachedRelease))
             {
                 const int b = v.tremBucket & (kTremBuckets - 1);
-                mix += c.shelfTrem * (v.detachedRelease ? c.tremShelfRelease[b] : c.tremShelf[b]);
+                mix += c.shelfTrem * (v.detachedRelease ? c.tremShelfRelease[b] * (v.recordedTrem ? c.tremRecordedRelease : 1.0f) : c.tremShelf[b]);
             }
             shelfTarget = juce::jmin(0.7488f, mix);   // 1 - 10^(-12/20)
         }
@@ -4783,6 +4801,7 @@ struct SamplerEngine::Impl
         std::atomic<bool> enabled{ false };
         std::atomic<float> rateHz{ 4.4f }, depthCents{ 6.0f }, rankDriftDegrees{ 260.0f };
         std::atomic<uint8_t> targetMask{ 0 };   // 0.9.88: the OTHER divisions this tremulant shakes too (bit = division; the own one always)
+        std::atomic<bool> recorded{ false };    // 0.9.150: it plays the stops' RECORDED samples (their rows of the second level) where they exist
     };
     // The tremulant that moves a division's pipes: its own when on, else the first division whose tremulant is on
     // and names it among its targets (one device shaking several divisions - the same rate, the same nominal phase).
@@ -4825,6 +4844,7 @@ struct SamplerEngine::Impl
         bool preShifted;             // the attack played a pitch-shifted copy (its shiftCents lack the semitones)
         float layerCents;            // 0.9.137: the sounding attack's own offset (the release is tuned to THIS attack)
         uint8_t attackLayer;         // 0.9.142: which attack sounded (0 plain, 1 + i velocity layer i)
+        uint32_t voice;              // 0.9.150: the attack voice itself (the release may start in its phase)
     };
     std::vector<ReleasePitch> releasePitches;
     struct ReleaseTarget { Stop* stop; int pipe; int keyNote; };
@@ -5244,6 +5264,7 @@ struct SamplerEngine::Impl
         w.sourceKey = v.sourceKey; w.manual = v.manual; w.note = v.note; w.keyNote = v.keyNote;
         w.sampleNote = v.sampleNote; w.shift = v.shift; w.cubic = v.cubic; w.fullKernel = v.fullKernel;
         w.windPitchVar = v.windPitchVar; w.windGainVar = v.windGainVar; w.tremBucket = v.tremBucket;
+        w.recordedTrem = v.recordedTrem;   // 0.9.150
         w.detachedRelease = v.detachedRelease; w.loopEnabled = v.loopEnabled; w.couplingUsed = v.couplingUsed;
         w.startFrozen = v.startFrozen;
         w.velocityGain = v.velocityGain; w.velocity = v.velocity; w.coupledPitchCents = v.coupledPitchCents;
@@ -5265,6 +5286,7 @@ struct SamplerEngine::Impl
         w.releaseFadeMsRequested.store(v.releaseFadeMsRequested.load(std::memory_order_relaxed), std::memory_order_relaxed);
         w.frozenExprRequested.store(v.frozenExprRequested.load(std::memory_order_relaxed), std::memory_order_relaxed);
         w.ctlReleasing = v.ctlReleasing;
+        if (swapMode) w.pos = v.pos;   // 0.9.150: a voice started in its sustain at a tremulant switch - the copy too
         if (v.fadingOut)   // release cutting already started on the original
         {
             w.fadingOut = true;
@@ -5947,6 +5969,7 @@ struct SamplerEngine::Impl
         v.ctlReleasing = v.ctlStolen = false;
         v.detachedRelease = false; v.loopEnabled = true; v.couplingUsed = false; v.startFrozen = false;
         v.noise = false;
+        v.recordedTrem = false; v.alignPartner = 0xffffffffu;   // 0.9.150
         v.layerCents = 0.0f; v.attackLayerCents = 0.0f; v.attackLayerIndex = 0;
         v.windFrozen = false; v.frozenWindPitch = 0.0f; v.frozenWindGain = v.lastWindGain = v.initialWindGain = 1.0f;
         v.curWindGain.store(1.0f, std::memory_order_relaxed);
@@ -6682,16 +6705,96 @@ struct SamplerEngine::Impl
     // stop's pipe K + shift. Keys without a division (-1) play every stop unshifted.
     // The transmissions a stop sounds through: its own and, for a stop folder's
     // child, those of its master (the folder is transmitted as a whole).
-    template <typename Fn> static void forEachRoute(const Stop* stop, Fn&& fn)
+    // 0.9.150: a recording with a tremulant (a row of the second level) has no button and no transmissions of its
+    // own - it sounds through the routes of the stop it stands under, so every route question is its parent's.
+    static const Stop* routeOwner(const Stop* stop) noexcept { return stop->tremmedOfPtr != nullptr ? stop->tremmedOfPtr : stop; }
+    static bool buttonOn(const Stop* stop) noexcept { return routeOwner(stop)->enabled; }
+    static bool pipeOff(const Stop* stop, int pipe) noexcept
     {
+        return stop->pipeDisabled.test((size_t)pipe) || (stop->tremmedOfPtr != nullptr && stop->tremmedOfPtr->pipeDisabled.test((size_t)pipe));
+    }
+    template <typename Fn> static void forEachRoute(const Stop* stopIn, Fn&& fn)
+    {
+        const Stop* stop = routeOwner(stopIn);
         for (const auto& t : stop->transmissions) fn(t);
         if (stop->groupMasterPtr != nullptr)
             for (const auto& t : stop->groupMasterPtr->transmissions) fn(t);
     }
 
+    // The tremulant that plays its RECORDINGS for a key of this division: the one shaking the division (its own
+    // first, else another division's that names it) when it is on and set to its recorded samples; -1 = the model.
+    int recordedDriverOf(int manualIndex) const noexcept
+    {
+        if (manualIndex < 0 || manualIndex >= maxManuals) return -1;
+        const int driver = tremulantDriverOf(manualIndex);
+        const auto& t = trem[(size_t)driver];
+        return t.enabled.load(std::memory_order_relaxed) && t.recorded.load(std::memory_order_relaxed) ? driver : -1;
+    }
+    static bool recordingHolds(const Stop* recording, int pipe) noexcept { return !recording->samplesUnloaded && recording->hasNoteInAnyRank(pipe); }
+    // Does THIS variant of a pipe sound for a key of the division - the plain stop, or its recording with the
+    // tremulant that runs there? Stops without recordings: always.
+    bool variantSounds(const Stop* stop, int manualIndex, int pipe) const noexcept
+    {
+        if (stop->tremmedOfPtr == nullptr && stop->tremmedAlternates.empty()) return true;
+        const int driver = recordedDriverOf(manualIndex);
+        if (stop->tremmedOfPtr != nullptr) return driver >= 0 && stop->tremmedManual == driver && recordingHolds(stop, pipe);
+        if (driver < 0) return true;
+        // The plain stop still sounds while one of its perspectives has no recording of the pipe (Billerbeck: the
+        // definition has recordings for Direct and Diffuse, none for Rear - Rear goes on with the model).
+        bool anyRank = false;
+        auto open = [&](const Stop* rank)
+        {
+            if (rank->sourceNoteFor(pipe) < 0) return false;
+            anyRank = true;
+            return !coveredByRecording(stop, rank, driver, pipe);
+        };
+        if (open(stop)) return true;
+        for (const auto& rank : stop->ranks) if (open(rank.get())) return true;
+        if (anyRank) return false;
+        for (const auto* alternate : stop->tremmedAlternates)
+            if (alternate->tremmedManual == driver && recordingHolds(alternate, pipe)) return false;
+        return true;
+    }
+    // Has the recording played by 'driver' this pipe in the PERSPECTIVE of the plain rank?
+    static bool coveredByRecording(const Stop* plain, const Stop* plainRank, int driver, int pipe) noexcept
+    {
+        for (const auto* alternate : plain->tremmedAlternates)
+        {
+            if (alternate->tremmedManual != driver || alternate->samplesUnloaded) continue;
+            auto same = [&](const Stop* rank) { return rank->hasNote(pipe) && rank->perspective.equalsIgnoreCase(plainRank->perspective); };
+            if (same(alternate)) return true;
+            for (const auto& rank : alternate->ranks) if (same(rank.get())) return true;
+        }
+        return false;
+    }
+    // The same question for ONE perspective rank of a stop: the plain rank is silent only where the running
+    // tremulant's recording has this pipe in the same perspective; a recording plays the files it has.
+    bool variantRankSounds(const Stop* stop, const Stop* rank, int manualIndex, int pipe) const noexcept
+    {
+        if (stop->tremmedOfPtr == nullptr && stop->tremmedAlternates.empty()) return true;
+        const int driver = recordedDriverOf(manualIndex);
+        if (stop->tremmedOfPtr != nullptr)
+        {
+            if (driver < 0 || stop->tremmedManual != driver || stop->samplesUnloaded || !rank->hasNote(pipe)) return false;
+            // Two recordings of one stop given the SAME tremulant (rows made from folders, the division not set
+            // yet): the first of them plays, never both.
+            for (const auto* earlier : stop->tremmedOfPtr->tremmedAlternates)
+            {
+                if (earlier == stop) break;
+                if (earlier->tremmedManual != driver || earlier->samplesUnloaded) continue;
+                auto same = [&](const Stop* r) { return r->hasNote(pipe) && r->perspective.equalsIgnoreCase(rank->perspective); };
+                bool covers = same(earlier);
+                for (const auto& r : earlier->ranks) covers = covers || same(r.get());
+                if (covers) return false;
+            }
+            return true;
+        }
+        return driver < 0 || !coveredByRecording(stop, rank, driver, pipe);
+    }
+
     bool stopAssignedToManual(const Stop* stop, int manualIndex) const noexcept
     {
-        if (manualIndex < 0 || (stop->primaryManual == manualIndex && stop->enabled)) return true;
+        if (manualIndex < 0 || (stop->primaryManual == manualIndex && buttonOn(stop))) return true;
         bool assigned = false;
         forEachRoute(stop, [&](const Stop::Transmission& t) { if (t.enabled && t.manual == manualIndex) assigned = true; });
         return assigned;
@@ -6711,7 +6814,7 @@ struct SamplerEngine::Impl
             stop->shiftHistory |= 1ull << (shift + kMaxShift);
         };
         if (manualIndex < 0) { add(0); return count; }
-        if (stop->primaryManual == manualIndex && stop->enabled) add(0);
+        if (stop->primaryManual == manualIndex && buttonOn(stop)) add(0);
         forEachRoute(stop, [&](const Stop::Transmission& t)
         {
             if (t.enabled && t.manual == manualIndex) add(juce::jlimit(-kMaxShift, kMaxShift, t.shift));
@@ -6725,8 +6828,8 @@ struct SamplerEngine::Impl
     // half its compass while its transmission still plays the whole of it.
     bool routeAllowsKey(Stop* stop, int manualIndex, int shift, int key, int pipe) noexcept
     {
-        if (manualIndex < 0) return !stop->pipeDisabled.test((size_t)pipe);
-        if (shift == 0 && stop->primaryManual == manualIndex && stop->enabled && !stop->pipeDisabled.test((size_t)pipe)) return true;
+        if (manualIndex < 0) return !pipeOff(stop, pipe);
+        if (shift == 0 && stop->primaryManual == manualIndex && buttonOn(stop) && !pipeOff(stop, pipe)) return true;
         bool allowed = false;
         forEachRoute(stop, [&](const Stop::Transmission& t)
         {
@@ -6746,7 +6849,7 @@ struct SamplerEngine::Impl
     {
         const float parent = stop->getNoteAttackMs(pipe);
         if (manualIndex < 0) return parent;
-        if (shift == 0 && stop->primaryManual == manualIndex && stop->enabled && !stop->pipeDisabled.test((size_t)pipe)) return parent;
+        if (shift == 0 && stop->primaryManual == manualIndex && buttonOn(stop) && !pipeOff(stop, pipe)) return parent;
         bool found = false;
         float own = 0.0f;
         forEachRoute(stop, [&](const Stop::Transmission& t)
@@ -6778,7 +6881,7 @@ struct SamplerEngine::Impl
     bool pipeStillHeld(const Stop* stop, int pipe) const noexcept
     {
         if (heldVelocity[(size_t)makeSourceKey(pipe, -1)] >= 0) return true;
-        if (stop->enabled && keyHeldInCompass(pipe, stop->primaryManual)) return true;
+        if (buttonOn(stop) && keyHeldInCompass(pipe, stop->primaryManual)) return true;
         bool held = false;
         forEachRoute(stop, [&](const Stop::Transmission& t) { if (t.enabled && keyHeldInCompass(pipe - t.shift, t.manual)) held = true; });
         return held;
@@ -6807,7 +6910,7 @@ struct SamplerEngine::Impl
     {
         float best = -1.0f;
         if (heldVelocity[(size_t)makeSourceKey(pipe, -1)] >= 0) best = 1.0f;
-        if (stop->enabled && keyHeldInCompass(pipe, stop->primaryManual)) best = juce::jmax(best, 1.0f);
+        if (buttonOn(stop) && keyHeldInCompass(pipe, stop->primaryManual)) best = juce::jmax(best, 1.0f);
         forEachRoute(stop, [&](const Stop::Transmission& t)
         {
             const int key = pipe - t.shift;
@@ -6834,7 +6937,7 @@ struct SamplerEngine::Impl
         bool any = false;
         float best = -100.0f;
         if (heldVelocity[(size_t)makeSourceKey(pipe, -1)] >= 0
-            || (stop->enabled && keyHeldInCompass(pipe, stop->primaryManual)))
+            || (buttonOn(stop) && keyHeldInCompass(pipe, stop->primaryManual)))
         {
             best = stop->getNoteToneDb(pipe);
             any = true;
@@ -7003,7 +7106,7 @@ struct SamplerEngine::Impl
         // the compass plays the pipe the folder has there (six-octave folders).
         int engagedStopCount = 0;
         for (auto* candidate : owner.stops)
-            if (stopAssignedToManual(candidate, manualIndex)) ++engagedStopCount;
+            if (candidate->tremmedOfPtr == nullptr && stopAssignedToManual(candidate, manualIndex)) ++engagedStopCount;   // a recording is its parent stop, not one more
 
         bool consonantPairHeld = false;
         {
@@ -7034,6 +7137,8 @@ struct SamplerEngine::Impl
         {
             ++stopIndex;
             if (stop->reloading.load(std::memory_order_acquire)) continue;   // its samples are being replaced (0.8.160)
+            if (swapMode && stop->tremmedOfPtr == nullptr && stop->tremmedAlternates.empty()) continue;   // 0.9.150: a tremulant switch concerns the stops with recordings alone
+            if (stop->tremmedManual >= 0 && stop->tremmedOfPtr == nullptr) continue;   // a recording not linked to its stop (yet): it never sounds by itself
             const int shiftCount = collectRouteShifts(stop, manualIndex, shifts);
             if (shiftCount == 0) continue;
             // 0.9.77: the stop's own "Attack delay" (voicing) counts from the key's real start (after the global
@@ -7060,9 +7165,11 @@ struct SamplerEngine::Impl
                 const int pipe = midiNote + shift;
                 if (pipe < 0 || pipe >= 128) continue;
                 if (!routeAllowsKey(stop, manualIndex, shift, midiNote, pipe)) continue;   // switched off in the voicing of every route with this shift
+                // 0.9.150: the plain pipe OR its recording with the tremulant that runs here - never both.
+                if (!variantSounds(stop, manualIndex, pipe)) continue;
                 const float attackKeyMs = routeAttackMs(stop, manualIndex, shift, midiNote, pipe);
                 double attackCutMs = 0.0;   // the cut of this pipe on this key (the startRank lambda below reads it)
-                if (attackKeyMs != 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys)
+                if (attackKeyMs != 0.0f && sourceKey >= 0 && sourceKey < kSourceKeys && !swapMode)   // a tremulant switch starts in the sustain: no delay, no cut
                 {
                     const double share = stop->attackRandomize ? 0.3 + 0.7 * std::fmod(keyDelayRandom[(size_t)sourceKey] + (double)stopIndex * 0.6180339887 + (double)shift * 0.2360679775 + 8.0, 1.0) : 1.0;
                     if (attackKeyMs < 0.0f) attackCutMs = -(double)attackKeyMs * share;
@@ -7126,6 +7233,8 @@ struct SamplerEngine::Impl
                     // neighbouring pipe, transposed (see computeFilledPipes).
                     const int sampleNote = rank->sourceNoteFor(pipe);
                     if (sampleNote < 0) return;
+                    if (stop->tremmedOfPtr != nullptr && !rank->hasNote(pipe)) return;   // 0.9.150: a recording plays its own files alone
+                    if (!variantRankSounds(stop, rank, manualIndex, pipe)) return;       // ... and a plain perspective only where the recording has none
                     // A filled pipe transposed upwards plays the anti-alias copy of
                     // its source when one has been built (quality 2).
                     const int quality = owner.transposeQuality.load(std::memory_order_relaxed);
@@ -7356,6 +7465,30 @@ struct SamplerEngine::Impl
                     v.attackHold = (uint32_t)juce::jmax(0.0, stop->attackMs * 0.001 * rate);
                     v.attackFade = (uint32_t)juce::jmax(0.0, stop->attackFadeoutMs * 0.001 * rate);
                     v.attackActive = (v.attackHold > 0 || v.attackFade > 0) && std::abs(v.attackBoost - 1.0f) > 1.0e-6f;
+                    v.recordedTrem = stop->tremmedOfPtr != nullptr;   // 0.9.150: the tremulant is in the recording
+                    if (swapMode)
+                    {
+                        // 0.9.150: the tremulant was switched under a held key - this variant takes over from the
+                        // other one in its SUSTAIN (the start of its first loop) with the crossfade's fade-in, in
+                        // the phase of the voice it replaces (set when the route takes the voice).
+                        int64_t start = juce::jmin(sampleToPlay->numFrames / 2, (int64_t)(0.25 * sampleToPlay->sampleRate));
+                        if (!sampleToPlay->loops.empty())
+                        {
+                            start = sampleToPlay->loops.front().start;
+                            for (const auto& loop : sampleToPlay->loops) start = juce::jmin(start, loop.start);
+                        }
+                        start = juce::jlimit((int64_t)0, juce::jmax((int64_t)0, sampleToPlay->numFrames - 2), start);
+                        v.pos = (uint64_t)start << 32;
+                        v.fadeInTotal = v.fadeInRemaining = (uint32_t)juce::jmax(1.0, (double)swapFadeMs * 0.001 * rate);
+                        v.attackActive = false;
+                        v.attackToneDb = 0.0f; v.attackToneStepPerFrame = 0.0f;
+                        for (const auto& partner : swapPartners)
+                            if (partner.parent == routeOwner(stop) && partner.pipe == pipe && partner.routeIndex == routeIndex)
+                            {
+                                prepareAlignment(v, partner.voice, start);
+                                break;
+                            }
+                    }
                     v.releaseFadeMsRequested.store(releaseFadeOut, std::memory_order_relaxed);
                     uint32_t windHash = (uint32_t)pipe * 0x9e3779b9u;
                     windHash ^= stop->folderHash;   // 0.9.66: the STOP's hash, not the perspective rank's - every perspective of the pipe sags alike
@@ -7508,7 +7641,7 @@ struct SamplerEngine::Impl
                                 v.curWindGain.load(std::memory_order_relaxed),
                                 v.note, v.keyNote, v.sampleNote, v.shift, v.shiftCents.load(std::memory_order_relaxed),
                                 v.routeGainTarget.load(std::memory_order_relaxed),
-                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted, v.layerCents, v.attackLayerIndex });
+                                v.toneTarget.load(std::memory_order_relaxed), v.toneStartHz, v.velocity, v.preShifted, v.layerCents, v.attackLayerIndex, (uint32_t)i });
                         const int vm = v.manual;
                         v.frozenExprRequested.store(vm >= 0 && vm < maxManuals ? releaseGains[(size_t)vm] : 1.0f, std::memory_order_relaxed);
                         v.releaseFadeMsRequested.store(releaseFadeOut * fadeScale(v.rank != nullptr ? v.rank : v.stop, v.note)
@@ -7560,10 +7693,12 @@ struct SamplerEngine::Impl
             float toneDb = stop->getNoteToneDb(pipe);
             float toneStart = SamplerEngine::toneStartHzFor(rank, sampleNote, owner.toneStartHz.load(std::memory_order_relaxed));
             int attackVelocity = 127, soundingAttackLayer = 0;
+            uint32_t attackVoice = 0xffffffffu;   // 0.9.150
             bool attackFound = false, attackPreShifted = false;
             for (const auto& sounding : releasePitches)
                 if (sounding.stop == stop && sounding.rank == rank && (int)sounding.note == pipe)
                 {
+                    attackVoice = sounding.voice;
                     attackVelocity = sounding.velocity;
                     attackPreShifted = sounding.preShifted;
                     releasePitchCents = sounding.cents;
@@ -7627,7 +7762,13 @@ struct SamplerEngine::Impl
                         (double)owner.transposeReleaseTrimMs.load(std::memory_order_relaxed) * 0.001 * releaseSample->sampleRate));
                 if (skip > 0.0) v.pos = (uint64_t)skip << 32;
                 if (releasePreShifted && owner.transposeReleaseLevelMatch.load(std::memory_order_relaxed)) routeGain *= releaseSample->releaseLevelGain;
+                // 0.9.150, the option "Release starts in the phase of its attack" (off by default): the release
+                // begins up to one period of its fundamental later, where it is in phase with the attack it fades
+                // into (set when the route takes the voice).
+                if (attackFound && owner.releasePhaseAlign.load(std::memory_order_relaxed))
+                    prepareAlignment(v, attackVoice, (int64_t)skip);
             }
+            v.recordedTrem = stop->tremmedOfPtr != nullptr;   // 0.9.150: the model's share on the release of a recording
             v.sourceKey = (int16_t)sourceKey;
             v.manual = (int8_t)expressionManual;
             v.note = (uint8_t)pipe;
@@ -7704,8 +7845,155 @@ struct SamplerEngine::Impl
             releaseRank(stop->ranks[(size_t)rank].get(), rank + 1);
     }
 
+    //--------------------------------------------------------------------------
+    // 0.9.150 RECORDED TREMULANTS: the switch under held keys, and the phase of a voice that takes over from another.
+    struct SwapPartner { const Stop* parent; int pipe; int routeIndex; uint32_t voice; double startMs; };
+    std::vector<SwapPartner> swapPartners;
+    bool swapMode = false;            // startNote runs for a tremulant switch: the stops with recordings alone, in their sustain
+    float swapFadeMs = 300.0f;
+    std::atomic<bool> tremSwapPending{ false };
+
+    static double fundamentalHz(const Sample& s) noexcept
+    {
+        return std::isfinite(s.smplPitch) ? 440.0 * std::pow(2.0, ((double)s.smplPitch - 69.0) / 12.0) : 0.0;
+    }
+
+    // The phase (radians) of the component at 'cyclesPerFrame' as it stands at frame 'at' of the sample's first
+    // channel, read from two periods there (one for the deepest pipes); false when it cannot be told. Real-time
+    // safe: stack buffers, decode16 / decode32 (packed samples alike).
+    static bool fundamentalPhaseAt(const Sample& s, int64_t at, double cyclesPerFrame, float& phaseOut) noexcept
+    {
+        if (!(cyclesPerFrame > 1.0e-5) || cyclesPerFrame > 0.25 || s.numChannels <= 0) return false;
+        constexpr int kMax = 4096;
+        int window = (int)std::llround(2.0 / cyclesPerFrame);
+        if (window > kMax) window = (int)std::llround(1.0 / cyclesPerFrame);
+        if (window > kMax || window < 16 || s.numFrames < (int64_t)window) return false;
+        const int64_t from = juce::jlimit((int64_t)0, s.numFrames - (int64_t)window, at);
+        float x[kMax];
+        if (s.storesFloat) s.decode32(0, from, from + window, x);
+        else
+        {
+            int16_t raw[kMax];
+            s.decode16(0, from, from + window, raw);
+            for (int i = 0; i < window; ++i) x[i] = (float)raw[i];
+        }
+        const double w = juce::MathConstants<double>::twoPi * cyclesPerFrame;
+        const double cw = std::cos(w), sw = std::sin(w);
+        double c = 1.0, s1 = 0.0, re = 0.0, im = 0.0;
+        for (int i = 0; i < window; ++i)
+        {
+            re += (double)x[i] * c;
+            im -= (double)x[i] * s1;
+            const double next = c * cw - s1 * sw;
+            s1 = s1 * cw + c * sw;
+            c = next;
+        }
+        if (re * re + im * im < 1.0e-12) return false;
+        // x[n] ~ A cos(w n + phi) counted from 'from': phi = atan2(im, re); at 'at' it has advanced by w (at - from).
+        phaseOut = (float)std::fmod(std::atan2(im, re) + w * (double)(at - from), juce::MathConstants<double>::twoPi);
+        return true;
+    }
+
+    // Control thread: 'v' (not published yet, starting at 'startFrame' of its sample) is to follow the sounding
+    // voice 'partnerIndex' in phase. Nothing is set when a pitch is unknown.
+    void prepareAlignment(Voice& v, uint32_t partnerIndex, int64_t startFrame) noexcept
+    {
+        if (partnerIndex >= (uint32_t)poolSize) return;
+        const Voice& p = voices[partnerIndex];
+        if (p.sample == nullptr || v.sample == nullptr) return;
+        const double hzA = fundamentalHz(*p.sample), hzB = fundamentalHz(*v.sample);
+        if (hzA <= 0.0 || hzB <= 0.0) return;
+        float phase = 0.0f;
+        if (!fundamentalPhaseAt(*v.sample, startFrame, hzB / v.sample->sampleRate, phase)) return;
+        v.alignPartner = partnerIndex;
+        v.alignPartnerOrder = p.creationOrder;
+        v.alignPhase = phase;
+        v.alignPeriod = (float)(v.sample->sampleRate / hzB);
+        v.alignFreqA = (float)(hzA / p.sample->sampleRate);
+    }
+
+    // The route's render thread, when it takes a new voice (no voice of this route is being rendered then, so the
+    // partner stands still): the new voice starts up to one period later, where its fundamental has the partner's
+    // phase - the two fade into each other without cancelling.
+    void alignAtTake(Voice& v) noexcept
+    {
+        const uint32_t index = v.alignPartner;
+        v.alignPartner = 0xffffffffu;
+        if (index >= (uint32_t)poolSize || v.sample == nullptr) return;
+        const Voice& p = voices[index];
+        if (p.state.load(std::memory_order_acquire) != VoiceActive || p.creationOrder != v.alignPartnerOrder
+            || p.sample == nullptr || p.routeIndex != v.routeIndex) return;
+        float phaseA = 0.0f;
+        if (!fundamentalPhaseAt(*p.sample, (int64_t)(p.pos >> 32), (double)v.alignFreqA, phaseA)) return;
+        double turns = ((double)phaseA - (double)v.alignPhase) / juce::MathConstants<double>::twoPi;
+        turns -= std::floor(turns);
+        const double skip = turns * (double)v.alignPeriod;
+        if ((double)(v.pos >> 32) + skip < (double)v.sample->numFrames - 2.0)
+            v.pos += (uint64_t)(skip * 4294967296.0);
+    }
+
+    // A tremulant was switched (or set to / from its recordings), or the rows of the second level changed: every
+    // sounding pipe whose variant is no longer the right one fades out over the crossfade time, without a release
+    // sample, and the held keys are run again for the stops with recordings - the right variant starts in its
+    // sustain with the same fade-in (startNote's swapMode).
+    void swapTremulantVariants()
+    {
+        bool any = false;
+        for (const auto* stop : owner.stops) if (stop->tremmedOfPtr != nullptr) { any = true; break; }
+        if (!any) return;
+        const float fadeMs = juce::jmax(1.0f, owner.tremulantSwapMs.load(std::memory_order_relaxed));
+        swapPartners.clear();
+        if (swapPartners.capacity() < 1024) swapPartners.reserve(1024);
+        bool changed = false;
+        for (const uint32_t idx : controlActive)
+        {
+            Voice& v = voices[idx];
+            if (v.stop == nullptr || v.rank == nullptr || v.noise || v.detachedRelease || v.ctlReleasing || v.sourceKey < 0) continue;
+            if (v.stop->tremmedOfPtr == nullptr && v.stop->tremmedAlternates.empty()) continue;
+            if (variantRankSounds(v.stop, v.rank, keyManual(v.sourceKey), v.note)) continue;
+            const bool mainVoice = v.manual >= 0 && v.routeIndex == v.rank->routeByManual[(size_t)v.manual];   // not the auxiliary route's copy
+            if (mainVoice && swapPartners.size() < swapPartners.capacity())
+                swapPartners.push_back({ routeOwner(v.stop), (int)v.note, v.routeIndex, idx, v.stop->pipeStartMs[(size_t)v.note] });
+            v.releaseFadeMsRequested.store(fadeMs, std::memory_order_relaxed);
+            v.ctlReleasing = true;
+            refreshStealable(v);
+            sendCommand(v, CmdRelease);
+            v.rank->speaking.reset((size_t)v.note);
+            v.stop->speaking.reset((size_t)v.note);
+            changed = true;
+        }
+        if (!changed) return;
+        swapMode = true;
+        swapFadeMs = fadeMs;
+        for (int key = 0; key < kSourceKeys; ++key)
+            if (heldVelocity[(size_t)key] >= 0 && noteSoundStartMs[(size_t)key] >= 0.0)
+                startNote(keyNote(key), heldVelocity[(size_t)key], keyManual(key), key);
+        swapMode = false;
+        // The pipe has sounded since its first variant started: the release samples are chosen by that time.
+        auto speaks = [](const Stop* stop, int pipe)
+        {
+            bool on = stop->speaking.test((size_t)pipe);
+            for (const auto& rank : stop->ranks) on = on || rank->speaking.test((size_t)pipe);
+            return on;
+        };
+        for (const auto& partner : swapPartners)
+        {
+            auto settle = [&](Stop* stop)
+            {
+                if (!speaks(stop, partner.pipe)) stop->pipeStartMs[(size_t)partner.pipe] = -1.0;
+                else if (partner.startMs >= 0.0) stop->pipeStartMs[(size_t)partner.pipe] = partner.startMs;
+            };
+            auto* parent = const_cast<Stop*>(partner.parent);
+            settle(parent);
+            for (auto* recording : parent->tremmedAlternates) settle(recording);
+        }
+        swapPartners.clear();
+        owner.storePolyphony((int)controlActive.size());
+    }
+
     void processPending(double now, int64_t deadlineTicks)
     {
+        if (tremSwapPending.exchange(false, std::memory_order_acq_rel)) swapTremulantVariants();   // 0.9.150
         const float minimumMs = owner.attackMinimumMs.load(std::memory_order_relaxed);
         for (int key = 0; key < kSourceKeys; ++key)
         {
@@ -8044,6 +8332,9 @@ struct SamplerEngine::Impl
             route.tremPhase -= std::floor(route.tremPhase);
         }
         ctx.tremActive = std::abs(depth) > 1.0e-5f;
+        // 0.9.150: an ordinary release gets 60 % of the model's depth (below); the release of a recording the
+        // setting's share of the FULL depth (40 % by default), i.e. that share / 0.6 of the release figures.
+        ctx.tremRecordedRelease = juce::jlimit(0.0f, 1.667f, owner.tremmedReleaseModelPercent.load(std::memory_order_relaxed) / 60.0f);
         if (ctx.tremActive)
         {
             constexpr float pitchPhaseOffsetTurns = 20.0f / 360.0f;
@@ -8166,6 +8457,7 @@ struct SamplerEngine::Impl
                 ++head;
                 if (idx < (uint32_t)poolSize && route.active.size() < route.active.capacity())
                 {
+                    if (voices[idx].alignPartner != 0xffffffffu) alignAtTake(voices[idx]);   // 0.9.150: it takes over from a sounding voice - in its phase
                     voices[idx].state.store(VoiceActive, std::memory_order_release);
                     route.active.push_back(idx);
                     ++added;
@@ -12623,6 +12915,14 @@ void SamplerEngine::buildAntiAliasCopies(Stop* stop, bool background)
 void SamplerEngine::refillStopPipes(Stop* stop, bool keepExisting)
 {
     if (stop == nullptr) return;
+    if (stop->tremmedManual >= 0)
+    {
+        // 0.9.150: a recording with a tremulant is never filled from a neighbour (resampling would change the
+        // tremulant's speed) - a key it has no sample for plays the plain pipe with the tremulant model.
+        stop->filled.reset(); stop->fillOffset.fill(0);
+        for (auto& rank : stop->ranks) { rank->filled.reset(); rank->fillOffset.fill(0); }
+        return;
+    }
     // The pipes the stop's routes can ask for: the compass of its own division
     // and of every division it is transmitted into, shifted by the transposition.
     int needLow = 128, needHigh = -1;
@@ -12809,6 +13109,7 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
     {
         const juce::ScopedLock sl(controlLock);
         impl->noiseTrigger("tremulantRun", juce::String(manualIndex), enabled, manualIndex);
+        impl->tremSwapPending.store(true, std::memory_order_release);   // 0.9.150: held pipes with a recording cross over
     }
     t.rateHz.store(juce::jlimit(2.0f, 11.0f, rateHz));
     t.depthCents.store(juce::jlimit(0.0f, 50.0f, depthCents));
@@ -12818,7 +13119,26 @@ void SamplerEngine::setManualTremulant(int manualIndex, bool enabled, float rate
 void SamplerEngine::setManualTremulantTargets(int manualIndex, int targetMask)
 {
     if (manualIndex < 0 || manualIndex >= maxManuals) return;
-    impl->trem[(size_t)manualIndex].targetMask.store((uint8_t)(targetMask & ~(1 << manualIndex) & 0xff));
+    const uint8_t mask = (uint8_t)(targetMask & ~(1 << manualIndex) & 0xff);
+    if (impl->trem[(size_t)manualIndex].targetMask.exchange(mask) != mask) impl->tremSwapPending.store(true, std::memory_order_release);   // 0.9.150
+}
+
+void SamplerEngine::setManualTremulantRecorded(int manualIndex, bool recorded)
+{
+    if (manualIndex < 0 || manualIndex >= maxManuals) return;
+    if (impl->trem[(size_t)manualIndex].recorded.exchange(recorded) != recorded) impl->tremSwapPending.store(true, std::memory_order_release);
+}
+
+void SamplerEngine::tremmedStopsChanged()
+{
+    impl->tremSwapPending.store(true, std::memory_order_release);
+}
+
+bool SamplerEngine::stopHoldsSamples(const Stop* stop) noexcept
+{
+    if (stop == nullptr || stop->samplesUnloaded) return false;
+    for (int note = 0; note < 128; ++note) if (stop->hasNoteInAnyRank(note)) return true;
+    return false;
 }
 
 //------------------------------------------------------------------------------
@@ -12929,6 +13249,7 @@ void SamplerEngine::setStopEnabled(Stop* stop, bool enabled)
         // Closing the stop: its pipes that no key holds through another route
         // (a transmission, a coupler) are released; the others keep sounding.
         impl->releaseUnheldPipes(stop);
+        for (auto* recording : stop->tremmedAlternates) impl->releaseUnheldPipes(recording);   // 0.9.150: its recordings sound through its button
         return;
     }
 
@@ -12982,8 +13303,9 @@ void SamplerEngine::setTransmissionEnabled(Stop* stop, int index, bool enabled)
         // get their normal release. A stop folder's children went through this
         // transmission as well.
         impl->releaseUnheldPipes(stop);
+        for (auto* recording : stop->tremmedAlternates) impl->releaseUnheldPipes(recording);   // 0.9.150
         for (auto* child : stops)
-            if (child->groupMasterPtr == stop) impl->releaseUnheldPipes(child);
+            if (child->groupMasterPtr == stop && child->tremmedOfPtr != stop) impl->releaseUnheldPipes(child);
         return;
     }
     const int manualIndex = transmission.manual;
@@ -14835,6 +15157,182 @@ std::vector<juce::File> SamplerEngine::listSampleFolders(const juce::File& tree)
     return result;
 }
 
+// 0.9.150 RECORDED TREMULANTS, without a definition: the folders of a tree that hold a stop's pipes recorded with a
+// tremulant running, by their names - a sibling named like the stop folder with "tr" / "trem" (and a tag: a digit
+// for a second tremulant, or a mark the name itself carries, "rp") appended, or the same folder under a sibling of
+// one of its parents named so ("OWTR" beside "OW"). The ordinary scans leave such folders out; this list is what
+// the Stop List makes rows of the second level from. Folders named "trem" (a definition's tremulant waveforms) and
+// release folders never count.
+std::vector<SamplerEngine::TremmedFolder> SamplerEngine::tremmedFoldersOf(const juce::File& tree) const
+{
+    std::vector<TremmedFolder> result;
+    const auto all = subdirectoriesRecursive(tree);
+    std::vector<juce::File> stopFolders;
+    std::set<juce::String> keys;
+    for (const auto& folder : all)
+    {
+        const auto name = folder.getFileName();
+        if (name.startsWithIgnoreCase("rel") || name.equalsIgnoreCase("trem") || !folderHasNumberedSamples(folder)) continue;
+        stopFolders.push_back(folder);
+        keys.insert(folder.getFullPathName().toLowerCase());
+    }
+    // What a name adds to its base: a tremulant mark and a tag? The tag: nothing, digits, or up to three letters
+    // that stand as a word of their own in the base name ("rp" of "02-suchy_rp_gedackt8trrp" - never the "av" of a
+    // "Flute4trav" beside a "Flute4").
+    auto markOf = [](const juce::String& rest, const juce::String& base, juce::String& tag)
+    {
+        auto r = rest.trimCharactersAtStart("-_ ");
+        if (r.startsWith("trem")) r = r.substring(4);
+        else if (r.startsWith("tr")) r = r.substring(2);
+        else return false;
+        r = r.trimCharactersAtStart("-_ ");
+        if (r.length() > 3) return false;
+        bool digits = true;
+        for (int i = 0; i < r.length(); ++i)
+        {
+            if (!juce::CharacterFunctions::isLetterOrDigit(r[i])) return false;
+            digits = digits && juce::CharacterFunctions::isDigit(r[i]);
+        }
+        if (r.isNotEmpty() && !digits)
+        {
+            juce::StringArray words;
+            juce::String word;
+            for (int i = 0; i <= base.length(); ++i)
+            {
+                if (i < base.length() && juce::CharacterFunctions::isLetter(base[i])) word << juce::String::charToString(base[i]);
+                else { if (word.isNotEmpty()) words.add(word); word.clear(); }
+            }
+            if (!words.contains(r)) return false;
+        }
+        tag = r;
+        return true;
+    };
+    for (const auto& folder : stopFolders)
+    {
+        const auto name = folder.getFileName().toLowerCase();
+        juce::File of;
+        juce::String ofTag;
+        int ofLength = 0;
+        // A sibling this name continues with a tremulant mark: the longest such sibling.
+        for (const auto& other : stopFolders)
+        {
+            if (other == folder || other.getParentDirectory() != folder.getParentDirectory()) continue;
+            const auto base = other.getFileName().toLowerCase();
+            if (base.length() >= name.length() || base.length() <= ofLength || !name.startsWith(base)) continue;
+            juce::String tag;
+            if (markOf(name.substring(base.length()), base, tag)) { of = other; ofTag = tag; ofLength = base.length(); }
+        }
+        // The same folder under a sibling of one of its parents that lacks the mark ("pipe/OWTR/x/y_tr" beside "pipe/OW/x/y").
+        if (of == juce::File())
+            for (auto above = folder.getParentDirectory(); of == juce::File() && above != tree && above.isAChildOf(tree); above = above.getParentDirectory())
+            {
+                const auto aboveName = above.getFileName().toLowerCase();
+                for (const auto& sibling : all)
+                {
+                    if (sibling == above || sibling.getParentDirectory() != above.getParentDirectory()) continue;
+                    const auto siblingName = sibling.getFileName().toLowerCase();
+                    juce::String tag;
+                    if (siblingName.length() >= aboveName.length() || !aboveName.startsWith(siblingName) || !markOf(aboveName.substring(siblingName.length()), siblingName, tag)) continue;
+                    const auto relative = folder.getRelativePathFrom(above);
+                    juce::Array<juce::File> candidates;
+                    candidates.add(sibling.getChildFile(relative));
+                    for (const char* mark : { "_trem", "trem", "_tr", "tr" })   // the folder itself may carry the mark too
+                        if (name.endsWith(mark)) candidates.add(sibling.getChildFile(relative).getSiblingFile(folder.getFileName().dropLastCharacters((int)std::strlen(mark))));
+                    for (const auto& candidate : candidates)
+                        if (keys.count(candidate.getFullPathName().toLowerCase()) > 0)
+                        {
+                            for (const auto& real : stopFolders) if (real.getFullPathName().equalsIgnoreCase(candidate.getFullPathName())) of = real;
+                            ofTag = tag;
+                            break;
+                        }
+                    if (of != juce::File()) break;
+                }
+            }
+        if (of == juce::File()) continue;
+        const auto ofName = of.getFileName();
+        const juce::String suffix = folder.getFileName().length() > ofName.length() && folder.getFileName().substring(0, ofName.length()).equalsIgnoreCase(ofName)
+            ? folder.getFileName().substring(ofName.length()) : juce::String(" tremmed");
+        result.push_back({ folder, of, ofTag, suffix });
+    }
+    return result;
+}
+
+// The speed of the tremulant in a stop's recorded samples: the peak of the level envelope's spectrum between 2 and
+// 12 Hz in the sustain of up to three of its pipes (a tremmed pipe: 19 to 83 times the band's median; a plain one 4
+// to 6), the median of what was found; 0 when nothing stands out. Reads whole samples: never on an audio thread.
+float SamplerEngine::recordedTremulantHz(const Stop* stop) const
+{
+    if (stop == nullptr) return 0.0f;
+    std::vector<const Sample*> picks;
+    {
+        const juce::ScopedLock sl(controlLock);
+        std::vector<const Sample*> every;
+        auto collect = [&](const Stop* rank)
+        {
+            for (int note = 0; note < 128; ++note)
+                if (!rank->samplesByNote[(size_t)note].empty() && rank->samplesByNote[(size_t)note].front() != nullptr) every.push_back(rank->samplesByNote[(size_t)note].front().get());
+        };
+        collect(stop);
+        if (every.empty()) for (const auto& rank : stop->ranks) { collect(rank.get()); if (!every.empty()) break; }
+        for (const double share : { 0.3, 0.5, 0.7 })
+            if (!every.empty()) picks.push_back(every[(size_t)juce::jlimit(0, (int)every.size() - 1, (int)(share * (double)every.size()))]);
+    }
+    std::vector<float> found;
+    for (const auto* sample : picks)
+    {
+        const double rate = sample->sampleRate;
+        const int64_t from = juce::jmin((int64_t)(0.6 * rate), sample->numFrames / 4);
+        const int64_t to = juce::jmin(sample->numFrames, from + (int64_t)(7.0 * rate));
+        const int hop = juce::jmax(1, (int)(rate / 200.0));   // the envelope at 200 values a second
+        const int count = (int)((to - from) / hop) - 2;
+        if (count < 300) continue;   // under a second and a half of sustain
+        std::vector<float> channel((size_t)(to - from));
+        if (sample->storesFloat) sample->decode32(0, from, to, channel.data());
+        else
+        {
+            std::vector<int16_t> raw((size_t)(to - from));
+            sample->decode16(0, from, to, raw.data());
+            for (size_t i = 0; i < raw.size(); ++i) channel[i] = (float)raw[i];
+        }
+        std::vector<float> envelope((size_t)count);
+        double mean = 0.0;
+        for (int k = 0; k < count; ++k)
+        {
+            double energy = 0.0;
+            const float* x = channel.data() + (size_t)k * (size_t)hop;
+            for (int i = 0; i < 2 * hop; ++i) energy += (double)x[i] * (double)x[i];
+            envelope[(size_t)k] = 10.0f * (float)std::log10(energy / (double)(2 * hop) + 1.0e-12);
+            mean += envelope[(size_t)k];
+        }
+        mean /= (double)count;
+        const int order = 12, size = 1 << order;   // 0.05 Hz a bin at 200 values a second
+        std::vector<float> spectrum((size_t)size * 2, 0.0f);
+        const int used = juce::jmin(count, size);
+        for (int k = 0; k < used; ++k)
+            spectrum[(size_t)k] = (envelope[(size_t)k] - (float)mean) * (0.5f - 0.5f * std::cos(juce::MathConstants<float>::twoPi * (float)k / (float)(used - 1)));
+        juce::dsp::FFT fft(order);
+        fft.performFrequencyOnlyForwardTransform(spectrum.data());
+        const double binHz = 200.0 / (double)size;
+        const int low = (int)(2.0 / binHz), high = (int)(12.0 / binHz);
+        int peak = low;
+        std::vector<float> band;
+        for (int bin = low; bin <= high; ++bin) { band.push_back(spectrum[(size_t)bin]); if (spectrum[(size_t)bin] > spectrum[(size_t)peak]) peak = bin; }
+        std::nth_element(band.begin(), band.begin() + (long)band.size() / 2, band.end());
+        const float median = band[band.size() / 2];
+        if (spectrum[(size_t)peak] < 10.0f * juce::jmax(1.0e-9f, median)) continue;   // nothing periodic in the level: no tremulant in it
+        // The envelope of a tremulant is no sine: its octave may stand higher than the rate itself - the half counts
+        // when it stands out too.
+        if (const int half = peak / 2; half >= low && spectrum[(size_t)half] > 0.4f * spectrum[(size_t)peak]
+            && spectrum[(size_t)half] >= spectrum[(size_t)half - 1] && spectrum[(size_t)half] >= spectrum[(size_t)half + 1]) peak = half;
+        const float a = spectrum[(size_t)peak - 1], b = spectrum[(size_t)peak], c = spectrum[(size_t)peak + 1];
+        const float shift = (a - 2.0f * b + c) != 0.0f ? 0.5f * (a - c) / (a - 2.0f * b + c) : 0.0f;
+        found.push_back((float)(((double)peak + (double)juce::jlimit(-0.5f, 0.5f, shift)) * binHz));
+    }
+    if (found.empty()) return 0.0f;
+    std::sort(found.begin(), found.end());
+    return found[found.size() / 2];
+}
+
 std::vector<SamplerEngine::FolderAssignment> SamplerEngine::scanTreeAssignments(const juce::File& topFolder, bool learnPerspectives)
 {
     std::vector<juce::String> perspectives = perspectivePatterns;
@@ -15351,6 +15849,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 // No samples: the stop only carries its children (and their transmissions).
                 auto empty = std::make_unique<Stop>(stopName, juce::File());
                 empty->container = true;
+                empty->tremmedManual = assignment.tremmedManual;   // 0.9.150: a recording that is not in the memory keeps its (empty) stop
                 empty->perspective = "default";
                 empty->primaryManual = groupManual;
                 empty->folderHash = (uint32_t)stopName.hashCode();
@@ -15367,6 +15866,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                     rank->perspective = assignment.perspective;
                     rank->sampleOffset = assignment.sampleOffset;
                     rank->sampleOffsetSet = assignment.sampleOffsetSet;
+                    rank->tremmedManual = assignment.tremmedManual;   // 0.9.150: a recording with a tremulant (never filled from its neighbours)
                     loadRank(rank.get(), stopFolder, groupManual);
                     if (!found->second->sampleOffsetDetected && rank->sampleOffsetDetected) { found->second->sampleOffset = rank->sampleOffset; found->second->sampleOffsetDetected = true; found->second->sampleOffsetSet = true; }
                     found->second->isOneShot = found->second->isOneShot || rank->isOneShot;
@@ -15377,6 +15877,7 @@ void SamplerEngine::loadManualFolder(const juce::File& topFolder, int manualInde
                 mainStop->perspective = assignment.perspective;
                 mainStop->sampleOffset = assignment.sampleOffset;
                 mainStop->sampleOffsetSet = assignment.sampleOffsetSet;
+                mainStop->tremmedManual = assignment.tremmedManual;   // 0.9.150
                 loadRank(mainStop.get(), stopFolder, groupManual);
                 perspectiveStops[groupKey] = mainStop.get();
                 newStops.add(mainStop.release());
@@ -15671,6 +16172,12 @@ void SamplerEngine::removeStop(Stop* stop)
         impl->resetAllVoicesUnsafe();
         // A stop folder's children lose their master pointer (the GUI re-groups them).
         for (auto* other : stops) if (other->groupMasterPtr == stop) other->groupMasterPtr = nullptr;
+        // 0.9.150: a recording loses its parent, a parent its recording (the GUI links them anew).
+        for (auto* other : stops)
+        {
+            if (other->tremmedOfPtr == stop) other->tremmedOfPtr = nullptr;
+            other->tremmedAlternates.erase(std::remove(other->tremmedAlternates.begin(), other->tremmedAlternates.end(), stop), other->tremmedAlternates.end());
+        }
         const int index = stops.indexOf(stop);
         if (index < 0) { impl->resume(); return; }
         CrashHandler::note("Stop removed: " + stop->name + " (division " + juce::String(stop->primaryManual) + ")");

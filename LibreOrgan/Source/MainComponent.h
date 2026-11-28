@@ -573,6 +573,12 @@ private:
         float windSmoothingMs = 170.0f;
         uint8_t windTargetMask = 0;
         uint8_t tremulantTargetMask = 0;   // 0.9.88: the OTHER divisions this tremulant shakes (bit = division); travels with the organ
+        // 0.9.150 RECORDED TREMULANTS: the rate the organ's tremmed samples were recorded at (a definition's
+        // "frequency when engaged", else measured from the files; 0 = not known) and the tick "Recorded tremulant":
+        // the rate stands at the recorded one and the stops with a recording play it instead of the model. A rate
+        // moved away unticks; ticking sets the rate back. Both travel with the organ.
+        float tremulantRecordedHz = 0.0f;
+        bool tremulantRecorded = true;
         // Compass of the division (MIDI keys): the per-key voicing sliders cover it.
         // Pedal defaults to 36-67 (set in the constructor), manuals to 36-96.
         int compassLow = 36, compassHigh = 96;
@@ -599,6 +605,13 @@ private:
                 // the row's name or its empty folders). Saved as "noise"; set when the Noises put the button on the grid.
                 juce::String noiseKey;
                 bool child = false;                           // indented under the previous non-child row (stop folder)
+                // 0.9.150 RECORDED TREMULANTS: a row of the SECOND level - the folders hold the same pipes recorded
+                // with a tremulant running. It belongs to the nearest row above that is no such recording, sounds
+                // instead of it while the tremulant of division 'tremmedManual' shakes the keys' division, has no
+                // button, no alias and no transmissions. 'child' is ALWAYS true with it (every rule for nested rows
+                // holds). Saved as "tremmed": <division>; -1 = an ordinary row. Its own flag - never a guess.
+                int tremmedManual = -1;
+                bool isTremmed() const noexcept { return tremmedManual >= 0 && trSource.isEmpty(); }
                 int sampleOffset = 0;                         // the stop's transposition: the files' numbers minus the keys they land on (0.8.155; Stop List "Transp.")
                 bool sampleOffsetSet = false;                 // known ("sampleOffset" in the file: a definition, the user, or found before); unset: the loader finds it from the smpl pitches (0.8.158)
                 std::map<juce::String, FolderRef> folders;    // perspective -> folder
@@ -704,6 +717,7 @@ private:
     static SamplerEngine::EqSettings eqFromVar(const juce::var& v);
     void chooseReverbIrForPerspective(const juce::String& perspective);                        // the file dialog for a perspective's IR (every linked route takes it)
     void perspectiveEffectChanged(const juce::String& perspective, EffectModule module);        // copied into every linked route of it, applied, saved
+    juce::StringArray setEffectModuleForAllPerspectives(const juce::String& perspective, EffectModule module);   // 0.9.150: this module to every other perspective (never the auxiliary)
     void setRouteEffectLinked(int manual, const juce::String& perspective, EffectModule module, bool linked);   // on = the perspective's values taken
     bool routeEffectLinked(int manual, const juce::String& perspective, EffectModule module) const;
     void unlinkRouteEffect(int manual, const juce::String& perspective, EffectModule module);   // a change of the route's own control (MIDI) ends the link
@@ -959,6 +973,16 @@ private:
     void applyTransmissionPlan(std::vector<TransmissionEdit>& plan);
     bool stopListShowTransmissions = false;   // Stop List: transmissions listed as rows
     void applyStopGroups();   // Stop::groupMaster of every stop from the tables' indented rows
+    // 0.9.150 RECORDED TREMULANTS (rows of the Stop List's second level; Stop::tremmedManual in the engine):
+    void setTremmedRowLoaded(int manual, const juce::String& name, bool load);     // its samples into the memory / out of it (the voicing row's button; the row's "unloaded" flags)
+    void setTremmedRowDivision(int manual, const juce::String& name, int division);   // the division whose tremulant plays it
+    bool anyTremmedRows(int tremulantManual = -1) const;                            // a recording played by this division's tremulant (-1: by any) is in the tables
+    bool tremmedRowsLoaded(int tremulantManual) const;                              // ... and in the memory
+    static void setTremmedRowsLoadedInVar(juce::var& configuration, bool load);    // the load box's tick "Recorded tremulants": every folder of every recording of a configuration var
+    static bool varHasTremmedRows(const juce::var& configuration, bool* anyToLoad = nullptr);
+    void setTremulantRecorded(int manual, bool recorded);                           // the tick "Recorded tremulant (N Hz)": the rate back to the recorded one
+    void syncTremulantRecorded();                                                   // the ticks to the engine (a rate that left the recorded one unticks)
+    juce::String tremulantRecordedText(int manual) const;                           // "Recorded tremulant (4.8 Hz)" or the reason it cannot be ticked
     void reloadDivisionTrees(int manual);   // unloads the division and loads its trees again (with the map when active)
     // onlyTree: load just that pool tree into the divisions (nothing is unloaded first).
     void reloadDivisions(const std::vector<int>& manuals, const juce::String& onlyTree = {}, bool nothingToRead = false);
@@ -1595,6 +1619,11 @@ private:
     float couplingMaxCents = 14.0f;      // 0.9.60: the farthest pitch offset the coupling pulls together (pipes further apart stay apart); travels with the organ
     float attackCutFadeMs = 20.0f;       // 0.9.80: the fade-in of a cut attack ("Attack per key" < 0); travels with the organ
     float voicingGlideMs = 150.0f;       // 0.9.122: a sounding pipe's glide to a changed stop / key volume; travels with the organ
+    // 0.9.150 (all three travel with the organ): the crossfade between a stop and its recording with a tremulant when
+    // the tremulant is switched under held keys, the tremulant model's share on the release of such a recording, and
+    // the option that starts a release in the phase of its attack.
+    float tremulantSwapMs = 300.0f, tremmedReleaseModelPercent = 40.0f;
+    bool releasePhaseAlign = false;
     // What the published README says about the organ (0.8.179): asked once at the portable
     // save, kept in the configuration ("publication") - no "(fill in: ...)" places any more.
     juce::String publicationOrgan, publicationProducer, publicationProduct, publicationLink, publicationAuthor;
@@ -1861,6 +1890,10 @@ private:
     // what to set on this computer (MIDI, audio tabs, measure, save).
     bool portableNoticePending = false;
     bool suppressPortableNotice = false;   // set by the Hauptwerk import: its configuration is made here, no "from another computer" notice
+    // 0.9.150 (the user: "po načtení HW ODF by ladění výchozí se mělo shodovat s laděním zjištěným"): set by the
+    // Hauptwerk import - the temperament found in the samples becomes the SELECTED one too at the end of that load
+    // (the base alone was set: the organ was retuned to whatever had been selected before).
+    bool selectDetectedTemperament = false;
     void showPortableNoticeIfDue();
     // 0.8.217: every plain message box (OK alone) of ours goes through ONE queue and
     // is shown only when no alert box is up - not over the load box, the loading

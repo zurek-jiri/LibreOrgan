@@ -388,6 +388,12 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         const auto off = namesOf("perspectivesOffChoice"), on = namesOf("perspectivesOnChoice");
         setPerspectivesUnloadedInVar(added, off, on);
         if (!off.isEmpty()) CrashHandler::note("Merge: perspective(s) of the added organ NOT loaded - " + off.joinIntoString(", "));
+        if (mergeStorageChoice.hasProperty("recordedTremulantsChoice"))   // 0.9.150: the box's tick "Recorded tremulants" for the added organ
+        {
+            const bool load = (int)mergeStorageChoice.getProperty("recordedTremulantsChoice", 1) != 0;
+            setTremmedRowsLoadedInVar(added, load);
+            if (load) setPerspectivesUnloadedInVar(added, off, {});
+        }
     }
     mergeStorageChoice = juce::var();
     const auto storageFlag = [&storageSource](const char* key, bool fallback) { return storageSource.hasProperty(key) ? (bool)storageSource.getProperty(key, fallback) : fallback; };

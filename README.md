@@ -14,7 +14,7 @@ folder per stop, its pipes as WAV files - and turns any number of such folders i
 an organ with up to seven manuals and a pedal: massive polyphony, per-key
 voicing, divisions and microphone perspectives with independent audio routes on
 any number of sound cards, IR reverb per route, wind and tremulant models,
-temperaments, transmissions with transposition (extensions), velocity layers,
+recorded tremulants, temperaments, transmissions with transposition (extensions), velocity layers,
 general crescendo and combinations. No organ definition file is needed: you load
 the folders, the program proposes the organ, you shape it and save it as a
 configuration. LibreOrgan Sampler does not load Hauptwerk organ definitions - it has

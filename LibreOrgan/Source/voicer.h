@@ -33,7 +33,16 @@ public:
             ? &stop->transmissions[(size_t)transmissionIndex] : nullptr;
     }
     bool isExpanded() const noexcept { auto* t = transmission(); return t != nullptr ? t->voicingExpanded : stop->voicingExpanded; }
-    bool routeEnabled() const noexcept { auto* t = transmission(); return t != nullptr ? t->enabled : stop->enabled; }
+    // 0.9.150: a recording with a tremulant (the second level) is "on" while its samples are in the memory.
+    bool tremmedRow() const noexcept { return transmissionIndex < 0 && stop->tremmedManual >= 0; }
+    // ... and a stop folder's ordinary child with pipes can be made one (its "Tremmed by" box reads "no").
+    static bool canBecomeTremmed(const Stop* stop) noexcept { return stop->tremmedManual < 0 && stop->groupMaster.isNotEmpty() && !stop->container && stop->noiseButton == 0; }
+    bool tremmedCandidate() const noexcept { return transmissionIndex < 0 && canBecomeTremmed(stop); }
+    bool routeEnabled() const noexcept
+    {
+        if (tremmedRow()) return SamplerEngine::stopHoldsSamples(stop);
+        auto* t = transmission(); return t != nullptr ? t->enabled : stop->enabled;
+    }
     int divisionIndex() const noexcept { auto* t = transmission(); return t != nullptr ? t->manual : stop->primaryManual; }
     int pipeForKey(int note) const noexcept { auto* t = transmission(); return t != nullptr ? note + t->shift : note; }
     juce::String caption() const;   // button text: alias or the automatic name
@@ -72,6 +81,10 @@ public:
     std::function<void(Stop*, int)> transpositionRequest;
     // 0.9.129: a perspective box of a noise's button (the perspective's switch of the Noises window).
     std::function<void(Stop*, const juce::String&, bool)> noisePerspectiveRequest;
+    // 0.9.150: a recording with a tremulant - its button (load into the memory / give the memory back) and the
+    // division whose tremulant plays it (the same value as the Stop List's box).
+    std::function<void(Stop*, bool)> tremmedLoadRequest;
+    std::function<void(Stop*, int)> tremmedDivisionRequest;
     // The One-shot switch of a stop (0.8.158): on/off, overriding the One-shot Patterns.
     std::function<void(Stop*, bool)> oneShotRequest;
     // The Release crossfade multiplier of a stop (0.9.62): x the global fade-out and fade-in.
@@ -208,7 +221,7 @@ public:
     // below. ONE walk decides the lines for the owner's height (expandedHeightFor) and for the
     // bounds (resized): put(control, index, x, y, width) is called for every control in turn; the
     // return value is the bottom of the control lines (the key headers follow it).
-    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox, info };
+    enum class Control { transposition, oneShot, releaseFade, source, ranksLabel, rankBox, diapason, alias, rankCount, slider, velocityLabel, velocityBox, info, tremmedBox };
     static constexpr int compactLineStep = 27, compactSliderLineStep = 36, compactVelocityLineHeight = 30, compactPitchLineHeight = 19;
     // 0.9.134 THE WIDTH OF AN OPEN VOICING (the user: "nesmí to být širší než nejširší rozbalená sekce vertikálních
     // sliderů ... když budou všecky per key řádky sbalené, tak to taky musí být ultra úzké"): with a per-key row
@@ -252,6 +265,21 @@ public:
             put(c, index, x, y, w);
             x += w;
         };
+        if (!trsm && stop->tremmedManual >= 0)
+        {
+            // 0.9.150: a recording with a tremulant (the second level) - what belongs to its OWN samples and nothing
+            // else: the division whose tremulant plays it, the release crossfade, its volume (the three per-key rows
+            // follow below). No alias, no transposition, no perspective boxes: those are its stop's. One that is not
+            // in the memory has the division box and a line of text.
+            item(Control::tremmedBox, 0, 262, 200);
+            if (!stop->container) item(Control::releaseFade, 0, 150, 150);
+            else item(Control::info, 0, 380, 120);
+            y += compactLineStep;
+            if (stop->container) return juce::jmax(y, underButton);
+            const int sy = juce::jmax(y + 2, underButton);
+            put(Control::slider, 0, sx0, sy, juce::jmin((int)stopVolumeSliderWidth, right - sx0));
+            return sy + compactSliderLineStep;
+        }
         // The user's order (4 Nov 2026): Transposition, Alias, One-shot, then the perspective boxes, the rest.
         if (!container) item(Control::transposition, 0, 362, 250);   // label 100 + 4 + box 250 + 8
         item(Control::alias, 0, 244, 150);   // label 46 + 2 + box 190 + 6
@@ -278,6 +306,7 @@ public:
             }
         }
         if (!trsm && folder) item(Control::rankCount, 0, 146, 146);
+        if (!trsm && canBecomeTremmed(stop)) item(Control::tremmedBox, 0, 262, 200);   // 0.9.150: a child with pipes - "Tremmed by: no" (the way to the second level)
         if (noise) item(Control::info, 0, 130, 100);   // "Noise (no pipes)"
         y += compactLineStep;
         if (!trsm && !noise)
@@ -346,7 +375,7 @@ public:
         }
         // 0.9.134: ONE layout for every open voicing - the wrapping walk - whether its per-key rows are folded or not
         // (the second, "full" layout put everything on two lines of some 1300 px over a row of keys of 750).
-        const int inset = folder ? 26 : 0;
+        const int inset = folder || (transmissionIndex < 0 && !stop->tremmedAlternates.empty()) ? 26 : 0;   // 0.9.150: its recordings hang on the tree lines too
         const int bottom = compactControlsLayout(stop, transmissionIndex, rowWidth, folder, inset, [](Control, int, int, int, int) {});
         return bottom + 4 + keyAreaHeight(volume, tone, attackRow, attack) + 4;
     }
@@ -450,6 +479,9 @@ private:
     juce::ToggleButton rankCountToggle;   // a stop folder's "[II]" on its button (0.8.146; shown on stop folders only)
     juce::ToggleButton oneShotToggle;     // the stop plays each sample once through (0.8.158; overrides the One-shot Patterns)
     juce::ComboBox releaseFadeBox;        // the stop's multiplier of the global sustain-release crossfade (0.9.62; items x0.5 .. x10, id = factor x 10)
+    bool tremmedPressed = false;          // 0.9.150: the button of a recording was pressed (its click acts at the release)
+    juce::Label tremmedLabel;             // 0.9.150: "Tremulant of" + the division whose tremulant plays this recording
+    juce::ComboBox tremmedBox;
     juce::Label ranksLabel;
     juce::OwnedArray<juce::ToggleButton> rankButtons;
     // Velocity layers ("_070" files): one tick box per layer of the stop; unticked,
@@ -628,6 +660,8 @@ public:
     void flipDivisionUpsideDown(int manual);
     // Stop folders (Stop List): the stops indented under this master (same division).
     std::vector<Stop*> groupChildren(const Stop* master) const;
+    struct NestedRow { Stop* stop; int level; int parent; };   // 0.9.150: level 1 a child, 2 a recording with a tremulant (parent: its child's place, -1 = the button's own)
+    std::vector<NestedRow> nestedRows(const Stop* master) const;
     // ... and the transmissions indented under it (received in the master's division).
     std::vector<std::pair<Stop*, int>> groupChildTransmissions(const Stop* master) const;
     // The grid cell (column, row) an item of a division was placed in, if any.
@@ -691,6 +725,8 @@ public:
     std::function<void(int manual, int column, int row)> newStopFolderRequest;
     std::function<void(Stop*, int)> transpositionRequest;   // a stop's Transposition chosen in its voicing (0.8.158)
     std::function<void(Stop*, const juce::String&, bool)> noisePerspectiveRequest;   // 0.9.129: a noise button's perspective box (the Noises window's switch)
+    std::function<void(Stop*, bool)> tremmedLoadRequest;       // 0.9.150: a recording with a tremulant into the memory / out of it
+    std::function<void(Stop*, int)> tremmedDivisionRequest;    // ... and the division whose tremulant plays it
     std::function<void(Stop*, bool)> oneShotRequest;        // a stop's One-shot switch (0.8.158)
     std::function<void(Stop*, float)> releaseCrossfadeRequest;   // a stop's Release crossfade multiplier (0.9.62)
     // Arrange mode: a stop folder dropped under a stop (after the question was
