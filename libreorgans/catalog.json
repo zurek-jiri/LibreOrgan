@@ -751,18 +751,18 @@
    "title": "Doesburg, Martinikerk, Walcker",
    "folder": "doesburg-martinikerk-walcker",
    "zip": "Doesburg Martinikerk Walcker.portable.zip",
-   "zipBytes": 42362,
+   "zipBytes": 41424,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/doesburg-martinikerk-walcker/Doesburg%20Martinikerk%20Walcker.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/doesburg-martinikerk-walcker/README.md",
    "divisions": 5,
-   "stops": 77,
+   "stops": 76,
    "routes": [
     "Dry",
     "Diffuse",
     "Rear"
    ],
-   "ramBytes": 8685577441,
-   "published": "2026-11-27",
+   "ramBytes": 9827539268,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/netherlands/doesburg-martinikerk-walcker-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -780,7 +780,11 @@
     "002293/III",
     "002294/III",
     "002293/IV",
-    "002294/IV"
+    "002294/IV",
+    "002294/II_Pos_tr",
+    "002292/II_Pos_tr",
+    "002294/III_tr",
+    "002294/IVTrem"
    ],
    "fingerprints": {
     "002293/Ped": "Bomb32/00-dr_Bombardon32|38|-1229858263889804706|-454444350956727262;harmon16/00-dr_HarmonicaBas16|44|-3701810547003649319|1604981850312309146;tuba8/00-dr_Tuba8|41|6651014941063048997|-3263529959110417919",
@@ -795,7 +799,11 @@
     "002293/III": "Aeoline/00-dr_Aeolina|78|3203121126385843190|4789655665402873139;KoncFl/00-dr_konzertFlote|77|7414623056950738558|-8931635466424854551;voxcoel/00-dr_voxcelestis8|64|-1306312031843742213|6625695192308610999",
     "002294/III": "Aeoline/01-AB_Aeolina|75|6530549933237131246|-7106674762965339524;KoncFl/01-AB_konzertFlote|80|-6860669236868195322|-7391224695240982831;voxcoel/02-Re_voxcelestis8|63|6863642563275639355|1461749857397536841",
     "002293/IV": "echoburdon/00-dr_echoburdon|76|-3855006750298642932|-8131009609742239134;nachthorn/00-dr_NachtHorn8|76|2038733575266372582|2281641246733426896;voxhumana/00-dr_VoxHumana|104|-1768105228949092053|4549900378613832112",
-    "002294/IV": "echoburdon/01-AB_echoburdon|73|4629556678930884417|1972270679182201201;nachthorn/02-Re_NachtHorn8|73|4629556678930884417|-1278073021176990107;voxhumana/02-Re_voxhumana|73|4629556678930884417|-1018550750168397113"
+    "002294/IV": "echoburdon/01-AB_echoburdon|73|4629556678930884417|1972270679182201201;nachthorn/02-Re_NachtHorn8|73|4629556678930884417|-1278073021176990107;voxhumana/02-Re_voxhumana|73|4629556678930884417|-1018550750168397113",
+    "002294/II_Pos_tr": "basson/01-AB_basson16_Tr|74|7794343770498392685|8178910695161702409;nazard/01-AB_Nasard_Tr|61|-3214504480266863554|3489640806761773216;TrumpHarmon/02-Re_trphrm_Tr|75|8430382571384119280|8448529860561178984",
+    "002292/II_Pos_tr": "Cello/01-AB_cello_Tr|73|4629556678930884417|9116133775221590731;FluteHarm/01-AB_fluteharm8tr|73|4629556678930884417|-4413876923618573689;orchHoboe/02-Re_ohoboe8_Tr|74|2067932683462803553|-7503541519416597237",
+    "002294/III_tr": "clarinetTr/01-AB_clarinette_TR|73|4629556678930884417|7496813252331428969;geigenTr/02-Re_GeigenPrTR|73|4629556678930884417|-7633430312679330420;koncflTR/02-Re_KonzertflTR|73|4629556678930884417|8173728353416328627",
+    "002294/IVTrem": "AB_echoburdonTR|73|4629556678930884417|4977564102308284268;Re_echoburdonTr|73|4629556678930884417|-7832716200991683812;Re_voxHumanaTR|73|4629556678930884417|8023974364167492365"
    },
    "featured": false
   },
@@ -880,7 +888,7 @@
    "title": "Este, St. Maria delle Grazie, Mascioni",
    "folder": "este-st-maria-delle-grazie-mascioni-organ",
    "zip": "Este St. Maria Mascioni.portable.zip",
-   "zipBytes": 28552,
+   "zipBytes": 29803,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/este-st-maria-delle-grazie-mascioni-organ/Este%20St.%20Maria%20Mascioni.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/este-st-maria-delle-grazie-mascioni-organ/README.md",
    "divisions": 3,
@@ -891,8 +899,8 @@
     "Distant",
     "Rear"
    ],
-   "ramBytes": 7932115498,
-   "published": "2026-11-27",
+   "ramBytes": 9768987024,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -910,8 +918,8 @@
     "002710/pipes/PE": "Princip8/02-dirMk22-Ped_Principale8|32|-3002984437492593449|-7567732399650722643;Tromba16/02-dirMk22-Ped_Tromba16|40|-1865349774560884653|-363629792426661212;Trombina/05-rearSenn-HW_Trombina4|32|-3002984437492593449|-4082939509930422392",
     "002709/pipes/GO": "dulci8/02-dirMk22-GO_Dulciana8|61|-3214504480266863554|-1650499220000074771;PR8/02-dirMk22-GO_Princ8|63|3564305211584189642|7840866202477122295;unda/05-rearSenn-GO_UndaMaris8|49|1050596355787253606|7688594377165467754",
     "002710/pipes/GO": "fl4/02-dirMk22-HW_Flauto4|61|-3214504480266863554|2530672846784763116;sesqui/04-distMk2H-HW_Sesquialt|122|8186839971980444306|-1363081747891933390;tro8/05-rearSenn-GO_Tromb8|61|-3214504480266863554|158007480965033535",
-    "002710/pipes/SW": "clarinetto/02-dirMk22-SW_Clarineto8|70|-6425686443722103399|-688202093892892541;coroviole/04-distMk2H-SW_CoroViole|49|5529348152500528388|1229023156537115572;ripieno/05-rearSenn-SW_Ripieno|122|8186839971980444306|-2059010077945423671",
-    "002709/pipes/SW": "bordone8/02-dirMk22-SW_Bordone8|70|-6425686443722103399|638277500898799859;principal8/02-dirMk22-SW_Principal|70|-6425686443722103399|8280791401148596177;viola8/05-rearSenn-SW_Viola8|70|-6425686443722103399|8973357244914795866"
+    "002710/pipes/SW": "clarinetto/02-dirMk22-SW_Clarineto8|70|-6425686443722103399|-688202093892892541;CoroViole_Tr/02-dirMk22-SW_CoroViole_TR|49|1050596355787253606|3194211028040140322;ripieno_Tr/05-rearSenn-SW_Ripieno_TR|61|-3214504480266863554|1434742839002897642",
+    "002709/pipes/SW": "bordone8/02-dirMk22-SW_Bordone8|70|-6425686443722103399|638277500898799859;principal8/02-dirMk22-SW_Principal|70|-6425686443722103399|8280791401148596177;viola8_Tr/05-rearSenn-SW_Viola8_Tr|70|-6425686443722103399|-4598178783613712922"
    },
    "featured": false
   },
@@ -947,7 +955,7 @@
    "title": "Frankfurt (Oder), Sauer op. 2025",
    "folder": "frankfurt-oder-sauer-op-2025",
    "zip": "Frankfurt (Oder) Sauer op. 2025.portable.zip",
-   "zipBytes": 21176,
+   "zipBytes": 24225,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/frankfurt-oder-sauer-op-2025/Frankfurt%20%28Oder%29%20Sauer%20op.%202025.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/frankfurt-oder-sauer-op-2025/README.md",
    "divisions": 4,
@@ -958,8 +966,8 @@
     "Diffuse",
     "Rear"
    ],
-   "ramBytes": 11511362344,
-   "published": "2026-11-27",
+   "ramBytes": 16260251560,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html",
    "rootName": "OrganInstallationPackages",
@@ -976,7 +984,16 @@
     "002704/pipes/HW",
     "002705/pipes/SW",
     "002706/pipes/SW",
-    "002704/pipes/SW"
+    "002704/pipes/SW",
+    "002704/pipes/Pos_TREM",
+    "002705/pipes/Pos_TREM",
+    "002706/pipes/Pos_TREM",
+    "002704/pipes/HW_TREM",
+    "002705/pipes/HW_TREM",
+    "002706/pipes/HW_TREM",
+    "002705/pipes/SW_TREM",
+    "002706/pipes/SW_TREM",
+    "002704/pipes/SW_TREM"
    ],
    "fingerprints": {
     "002705/pipes/Ped": "Ped_bombarda8/02-MK8diff-Ped_bombarda8|59|1434735153577695074|-6162900762522089331;Ped_posaune16/02-MK8diff-Ped_posaune16|62|1498474209313380349|-9039903286746871086;sub32/08-rear-Ped_Subbass16|13|3613034041713606384|-7687619913684827197",
@@ -990,7 +1007,16 @@
     "002704/pipes/HW": "HW_Mixt/02-MK8diff-HW_Mixt|122|-3751559248329642328|-563090915874398778;HW_Oktave4/06-suchy-HW_Oktave4|61|3257789663153676937|8253989515867036933;HW_Principal8/08-rear-HW_Principal8|90|3015775630047921590|-7324681440526319484",
     "002705/pipes/SW": "SW_bordun16/02-MK8diff-SW_bordun16|61|3257789663153676937|-8658674893462574593;SW_Quintan/02-MK8diff-SW_Quintan|118|-4929605499729835850|-8972940906801299219;SW_Waldfl2/08-rear-SW_Waldfl2|61|3257789663153676937|-2243630386267690679",
     "002706/pipes/SW": "SW_bordun16/06-suchy-SW_bordun16|61|3257789663153676937|-8658674893462574593;SW_Quintan/06-suchy-SW_Quintan|118|-4929605499729835850|-834751950023965492;SW_Waldfl2/06-suchy-SW_Waldfl2|61|3257789663153676937|6462687136034456387",
-    "002704/pipes/SW": "SW_Oboe8/02-MK8diff-SW_Oboe8|61|3257789663153676937|-7423516317789090151;SW_rohrgedackt8/02-MK8diff-SW_rohrgedackt8|61|3257789663153676937|-9202016406565943318;SW_rohrgedackt8/08-rear-SW_rohrgedackt8|61|3257789663153676937|7037530821598955179"
+    "002704/pipes/SW": "SW_Oboe8/02-MK8diff-SW_Oboe8|61|3257789663153676937|-7423516317789090151;SW_rohrgedackt8/02-MK8diff-SW_rohrgedackt8|61|3257789663153676937|-9202016406565943318;SW_rohrgedackt8/08-rear-SW_rohrgedackt8|61|3257789663153676937|7037530821598955179",
+    "002704/pipes/Pos_TREM": "Pos_Gemsh1/02-MK8diff-Pos_Gemsh1|61|3257789663153676937|6208558689721977664;Pos_Quinte1/02-MK8diff-Pos_Quinte1|61|3257789663153676937|-6352505948725179974;Pos_Terz1/08-rear-Pos_Terz1|61|3257789663153676937|1565433871787892286",
+    "002705/pipes/Pos_TREM": "Pos_HolzRegal/02-MK8diff-Pos_HolzRegal|61|3257789663153676937|3028529452314994072;Pos_Quintad8/02-MK8diff-Pos_Quintad8|61|3257789663153676937|-8638729558001546025;Pos_Scharff4/08-rear-Pos_Scharff4|61|3257789663153676937|2717470181714567434",
+    "002706/pipes/Pos_TREM": "Pos_HolzRegal/06-suchy-Pos_HolzRegal|61|3257789663153676937|-6080183232632774178;Pos_Quintad8/06-suchy-Pos_Quintad8|61|3257789663153676937|-8638729558001546025;Pos_Scharff4/06-suchy-Pos_Scharff4|61|3257789663153676937|2717470181714567434",
+    "002704/pipes/HW_TREM": "HW_Mixt/02-MK8diff-HW_Mixt|61|3257789663153676937|-5287483018338609604;HW_Oktave4/06-suchy-HW_Oktave4|61|3257789663153676937|-910406328748312781;HW_Principal8/08-rear-HW_Principal8|61|3257789663153676937|8705445661095546273",
+    "002705/pipes/HW_TREM": "HW_Blockfl2/02-MK8diff-HW_Blockfl2|61|3257789663153676937|-8196571842873593986;HW_Kleinged4/03-Mk2Hdiff-HW_Kleinged4|61|3257789663153676937|-2350802483851590579;HW_Zimbel3/08-rear-HW_Zimbel3|61|3257789663153676937|-6633133299489688648",
+    "002706/pipes/HW_TREM": "HW_Blockfl2/06-suchy-HW_Blockfl2|61|3257789663153676937|-6335538468175959771;HW_Kleinged4/06-suchy-HW_Kleinged4|61|3257789663153676937|5810189152826634794;HW_Zimbel3/06-suchy-HW_Zimbel3|61|3257789663153676937|-6633133299489688648",
+    "002705/pipes/SW_TREM": "SW_bordun16/02-MK8diff-SW_bordun16|61|3257789663153676937|3377070434387680870;SW_Octavlein/03-Mk2Hdiff-SW_Octavlein|61|3257789663153676937|-9007854862379814201;SW_Waldfl2/08-rear-SW_Waldfl2|61|3257789663153676937|-5827639411725168369",
+    "002706/pipes/SW_TREM": "SW_bordun16/06-suchy-SW_bordun16|61|3257789663153676937|-4251357300697630255;SW_Octavlein/06-suchy-SW_Octavlein|61|3257789663153676937|-9007854862379814201;SW_Waldfl2/06-suchy-SW_Waldfl2|61|3257789663153676937|7837794361324441780",
+    "002704/pipes/SW_TREM": "SW_Oboe8/02-MK8diff-SW_Oboe8|61|3257789663153676937|6824530751464170955;SW_rohrgedackt8/02-MK8diff-SW_rohrgedackt8|61|3257789663153676937|-3017289122285941937;SW_rohrgedackt8/08-rear-SW_rohrgedackt8|61|3257789663153676937|-6642605181527491004"
    },
    "featured": false
   },

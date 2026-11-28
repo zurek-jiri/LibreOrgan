@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Este, St. Maria delle Grazie, Mascioni Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html](https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html); the folders `002709` and `002710` (as they come, or in their RAR archives); perspectives Direct (`02-dirMk22-SW`), Diffuse (`03-difMk2S-SW`), Distant (`04-distMk2H-SW`) and Rear (`05-rearSenn-SW`). LibreOrgan Sampler 0.9.148 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html](https://www.sonusparadisi.cz/en/organs/italy/este-st-maria-delle-grazie-mascioni-organ.html); the folders `002709` and `002710` (as they come, or in their RAR archives); perspectives Direct (`02-dirMk22-SW`), Diffuse (`03-difMk2S-SW`), Distant (`04-distMk2H-SW`) and Rear (`05-rearSenn-SW`). LibreOrgan Sampler 0.9.152 or later.
 - **Expects:** library root of any name, holding the trees `002709/pipes/GO`, `002709/pipes/PE`, `002709/pipes/SW`, `002710/pipes/GO`, `002710/pipes/PE` and `002710/pipes/SW`.
-- **Audio layout:** every division has the routes direct; auxiliary, diffuse, distant and rear (unused).
+- **Audio layout:** every division has the routes direct, diffuse, distant and rear; auxiliary (unused).
 - **RAM:**
-  - **7.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **8.8 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **74 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.148.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **9.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **11 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **91 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -57,4 +57,4 @@ Put `Este St. Maria Mascioni.portable.json` into your LibreOrgans folder (Config
 |  | GO Ripieno 1' |  |
 |  | GO Tromba 8' |  |
 
-<!-- published by @zurekjiri (issue #314, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #352, 2026-11-28) -->

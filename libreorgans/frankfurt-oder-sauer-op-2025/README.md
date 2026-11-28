@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Frankfurt (Oder), Sauer op. 2025.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html](https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html); the folders `002704`, `002705` and `002706` (as they come, or in their RAR archives); perspectives Dry (`recsuchy`), Direct (`02-Dry`), Diffuse (`04-AB`) and Rear (`rea22`). LibreOrgan Sampler 0.9.148 or later.
-- **Expects:** library root of any name, holding the trees `002704/pipes/HW`, `002704/pipes/Ped`, `002704/pipes/Pos`, `002704/pipes/SW`, `002705/pipes/HW`, `002705/pipes/Ped`, `002705/pipes/Pos`, `002705/pipes/SW`, `002706/pipes/HW`, `002706/pipes/Ped`, `002706/pipes/Pos` and `002706/pipes/SW`.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html](https://www.sonusparadisi.cz/en/organs/germany/frankfurt-oder-sauer-op-2025.html); the folders `002704`, `002705` and `002706` (as they come, or in their RAR archives); perspectives Dry (`recsuchy`), Direct (`02-Dry`), Diffuse (`04-AB`) and Rear (`rea22`). LibreOrgan Sampler 0.9.152 or later.
+- **Expects:** library root of any name, holding the trees `002704/pipes/HW`, `002704/pipes/HW_TREM`, `002704/pipes/Ped`, `002704/pipes/Pos`, `002704/pipes/Pos_TREM`, `002704/pipes/SW`, `002704/pipes/SW_TREM`, `002705/pipes/HW`, `002705/pipes/HW_TREM`, `002705/pipes/Ped`, `002705/pipes/Pos`, `002705/pipes/Pos_TREM`, `002705/pipes/SW`, `002705/pipes/SW_TREM`, `002706/pipes/HW`, `002706/pipes/HW_TREM`, `002706/pipes/Ped`, `002706/pipes/Pos`, `002706/pipes/Pos_TREM`, `002706/pipes/SW` and `002706/pipes/SW_TREM`.
 - **Audio layout:** every division has the routes dry, direct, diffuse, rear and noises; auxiliary (unused).
 - **RAM:**
-  - **11 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **13 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **107 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.148.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **15 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **19 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **151 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,19 +33,28 @@ Put `Frankfurt (Oder) Sauer op. 2025.portable.json` into your LibreOrgans folder
 <a sample location>\
 ├── 002704\
 │   ├── pipes\HW\
+│   ├── pipes\HW_TREM\
 │   ├── pipes\Ped\
 │   ├── pipes\Pos\
-│   └── pipes\SW\
+│   ├── pipes\Pos_TREM\
+│   ├── pipes\SW\
+│   └── pipes\SW_TREM\
 ├── 002705\
 │   ├── pipes\HW\
+│   ├── pipes\HW_TREM\
 │   ├── pipes\Ped\
 │   ├── pipes\Pos\
-│   └── pipes\SW\
+│   ├── pipes\Pos_TREM\
+│   ├── pipes\SW\
+│   └── pipes\SW_TREM\
 └── 002706\
     ├── pipes\HW\
+    ├── pipes\HW_TREM\
     ├── pipes\Ped\
     ├── pipes\Pos\
-    └── pipes\SW\
+    ├── pipes\Pos_TREM\
+    ├── pipes\SW\
+    └── pipes\SW_TREM\
 ```
 
 ## Stop List
@@ -69,4 +78,4 @@ Put `Frankfurt (Oder) Sauer op. 2025.portable.json` into your LibreOrgans folder
 | Blower On/Off |  |  | SW Oboe 8' |
 |  |  |  | SW Helltrompete 4' |
 
-<!-- published by @zurekjiri (issue #318, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #354, 2026-11-28) -->
