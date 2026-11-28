@@ -568,6 +568,13 @@ private:
         bool tremulantEnabled = false;
         float tremulantRateHz = 4.4f;
         float tremulantDepthCents = 6.0f;
+        float tremulantDefaultHz = 0.0f;         // 0.9.150: the speed a Hauptwerk definition gives this tremulant (0 = none known) - the rate's default
+        // The default of the tremulant's rate (double click, the bar's fill, a reset): the definition's speed when
+        // there is one, else the speed of its recordings, else the program's own figure.
+        double tremulantRateDefault(double fallback) const noexcept
+        {
+            return tremulantDefaultHz > 0.0f ? (double)tremulantDefaultHz : tremulantRecordedHz > 0.0f ? (double)tremulantRecordedHz : fallback;
+        }
         float tremulantPitchDropCents = -1.0f;   // 0.9.150: the whole pitch while the tremulant runs (-20..0 cents): it takes wind
         float tremulantRankDriftDegrees = 260.0f;
         float windDepthCents = 15.0f;   // 0.9.75: 15 cents (the pedal's profile 20)

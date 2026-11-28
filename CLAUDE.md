@@ -7108,6 +7108,15 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   file, not in the settings). NOT run: a real mouse on the Tremmed button, an organ with several perspectives
   (Stralsund: the in-place load of 2-4 ranks), a click during "(loading)" (ignored by the code), the automatic
   packing with an in-place load, Linux / macOS.
+  THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
+  nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
+  "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
+  whose definition has a tremulant, and by addTremulantsOfPlan; swapped, in the merge's key list) and
+  `ManualConfig::tremulantRateDefault(fallback)` = the definition's speed, else tremulantRecordedHz, else the
+  program's figure - the ONE source of the default in the Divisions dialog (setup + the 10 Hz refresh), the
+  Tremulant settings row, the Editor row and applyDefaultTremulantProfile. An organ imported before has no key
+  until its definition is read again (the temporary function sets it). A measured speed that is no multiple of
+  0.1 Hz: a double click snaps to the slider's step and the tick goes - the tick brings the exact speed back.
   THE SAME DAY, HIS ORDERS ("trem tr* a všecko mělo zmizet z Ignored patterns, protože to je teď prostě mylné";
   "doplň funkci A místo noises, dočasně. Na github to nedávej ... opravit již zadanou definici Tremulant Rate ...
   vyřadit z Ignored patterns vše, co se týká tremulantů ... Já to pak zkontroluju, přeuložím a znova vydám"):

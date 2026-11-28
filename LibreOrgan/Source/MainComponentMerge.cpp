@@ -862,7 +862,7 @@ void MainComponent::mergeConfiguration(juce::var added, const juce::File& addedF
         {
             // An empty division takes the added division's compass, volume, wind, tremulant and swell settings.
             for (const auto& key : { "compassLow", "compassHigh", "divisionVolumeDb", "allowRandomTuningError", "allowPipeCoupling", "tremulantEnabled", "tremulantRateHz",
-                "tremulantDepthCents", "tremulantPitchDropCents", "tremulantRankDriftDegrees", "windDepthCents", "windFrequencyHz", "windOscillations", "windOscillationStrength", "windSmoothingMs",
+                "tremulantDepthCents", "tremulantPitchDropCents", "tremulantDefaultHz", "tremulantRankDriftDegrees", "windDepthCents", "windFrequencyHz", "windOscillations", "windOscillationStrength", "windSmoothingMs",
                 "windTargetMask", "bassOctaveLayout", "midiTranspose", "disableVelocity", "expressionMaxAttenuationDb", "expressionInertiaMs" })
                 if (addedItem.hasProperty(key)) baseItem->setProperty(key, addedItem.getProperty(key, juce::var()));
             if (addedMidi)
