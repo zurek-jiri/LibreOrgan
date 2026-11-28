@@ -1228,7 +1228,7 @@
    "title": "Stralsund, St. Jakobi, Kr. Wegscheider",
    "folder": "stralsund-st-jakobi-kr-wegscheider",
    "zip": "Stralsund St. Jakobi Wegscheider.portable.zip",
-   "zipBytes": 34972,
+   "zipBytes": 35942,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/Stralsund%20St.%20Jakobi%20Wegscheider.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/stralsund-st-jakobi-kr-wegscheider/README.md",
    "divisions": 4,
@@ -1238,8 +1238,8 @@
     "Diffuse",
     "Rear"
    ],
-   "ramBytes": 8703242278,
-   "published": "2026-11-27",
+   "ramBytes": 10442099485,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -1252,7 +1252,11 @@
     "003135/pipe/UW",
     "003135/pipe/HW",
     "003136/pipe/OW",
-    "003135/pipe/OW"
+    "003135/pipe/OW",
+    "003136/pipe/UWTR",
+    "003135/pipe/UWTR",
+    "003136/pipe/OWTR",
+    "003135/pipe/OWTR"
    ],
    "fingerprints": {
     "003136/pipe/PE": "Ped_BassFloete8/03-rearMk4-Ped_BassFloete8|30|1258451224502848254|3416255761592295126;Ped_Offenbass16/03-rearMk4-Ped_Offenbass16|30|1258451224502848254|-4338485838068086297;Ped_Trompete8/03-rearMk4-Ped_Trompete8|30|1258451224502848254|-4449795462772234687",
@@ -1262,7 +1266,11 @@
     "003135/pipe/UW": "UW_Fugara4/01-dirMk2H-UW_Fugara4|56|-6106681042705135255|-3381252938184944114;UW_Octave4/01-dirMk2H-UW_Octave4|56|-6106681042705135255|-7891016135066782989;UW_Traversflote4/02-difMk2H-UW_Traversflote4|56|-6106681042705135255|-6652213949551963373",
     "003135/pipe/HW": "HW_Cornet/01-dirMk2H-HW_Cornet|64|5922565650106697622|-1769403125192998236;HW_Principal16/01-dirMk2H-HW_Principal16|56|-6106681042705135255|7576549659253415322;HW_Zimbel/02-difMk2H-HW_Zimbel|112|3977333010851121122|-6749363680887186636",
     "003136/pipe/OW": "OW_Flote8/03-rearMk4-OW_Flote8|56|-6106681042705135255|2373357091852134545;OW_Principal8/03-rearMk4-OW_Principal8|56|-6106681042705135255|2243273510976152048;OW_VoxHumana8/03-rearMk4-OW_VoxHumana8|56|-6106681042705135255|5183974125221577997",
-    "003135/pipe/OW": "OW_Flote8/01-dirMk2H-OW_Flote8|56|-6106681042705135255|-3652315646863877890;OW_Principal8/01-dirMk2H-OW_Principal8|56|-6106681042705135255|4608843964601525924;OW_VoxHumana8/02-difMk2H-OW_VoxHumana8|56|-6106681042705135255|1322400117461499712"
+    "003135/pipe/OW": "OW_Flote8/01-dirMk2H-OW_Flote8|56|-6106681042705135255|-3652315646863877890;OW_Principal8/01-dirMk2H-OW_Principal8|56|-6106681042705135255|4608843964601525924;OW_VoxHumana8/02-difMk2H-OW_VoxHumana8|56|-6106681042705135255|1322400117461499712",
+    "003136/pipe/UWTR": "UW_Fugara4/03-rearMk4-UW_Fugara4_tr|56|-6106681042705135255|5510502106971901486;UW_Octave4/03-rearMk4-UW_Octave4_tr|56|-6106681042705135255|5015091241726430700;UW_Traversflote4/03-rearMk4-UW_Traversflote4_tr|56|-6106681042705135255|-5472882973830192557",
+    "003135/pipe/UWTR": "UW_Fugara4/01-dirMk2H-UW_Fugara4_tr|56|-6106681042705135255|4657826320803144768;UW_Octave4/01-dirMk2H-UW_Octave4_tr|56|-6106681042705135255|-2579284343536780122;UW_Traversflote4/02-difMk2H-UW_Traversflote4_tr|56|-6106681042705135255|-4709463837569408831",
+    "003136/pipe/OWTR": "OW_Flote8/03-rearMk4-OW_Flote8_tr|56|-6106681042705135255|-6892388166120565342;OW_Principal8/03-rearMk4-OW_Principal8_tr|56|-6106681042705135255|-3829422156785060177;OW_VoxHumana8/03-rearMk4-OW_VoxHumana8_tr|56|-6106681042705135255|-5994510267453772350",
+    "003135/pipe/OWTR": "OW_Flote8/01-dirMk2H-OW_Flote8_tr|56|-6106681042705135255|-4164193502280759160;OW_Principal8/01-dirMk2H-OW_Principal8_tr|56|-6106681042705135255|-6487521292775583562;OW_VoxHumana8/02-difMk2H-OW_VoxHumana8_tr|56|-6106681042705135255|6266264867257267840"
    },
    "featured": true
   },
