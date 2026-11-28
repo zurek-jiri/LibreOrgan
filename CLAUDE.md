@@ -7189,6 +7189,33 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   pitch and a stop folder show the bare name); proposed a voicing-row tick "Footage in the caption" like "Rank
   count [II]", not coded. Tools: %TEMP%\odftools\issue_settings.py <settings.json>, combo_check.py <json or zip>
   (a file's stored combinations against its rows).
+  COMBINATIONS - HIS RULES (28 Nov 2026 night; he REFUSED my "match only the stops the combination knows": "ne, to
+  prostě není správně ... kombinace jsme měli navržené blbě, musíš je promyslet znova, aby to bylo blbuvzdorné"):
+  a combination remembers ONLY WHAT IS ON; a recall switches EVERYTHING ELSE OFF (any stop, also one loaded later);
+  the lamp = the ON set now equals the stored one exactly (what is off does not matter); a recorded tremulant (the
+  second nested level) is NEVER an item of a combination - it goes with its stop's button (its VOICING may ride in
+  the stop's entry when the voicing group is held); noises without a button never; THE BLOWER IS LEFT OUT WHOLLY
+  (stored, switched, compared: never); only a wholly EMPTY combination is "all off or nothing" by the Editor's
+  setting; the user may choose which GROUPS of controls a combination holds (today: voicing, top row sliders - to
+  be widened); the design must survive a changing disposition (stops loaded to an organ, moved, taken away) so that
+  the combinations "pokud možno stále nějak fungovaly". FACTS READ FOR THE DESIGN: captureCurrentState takes every
+  engine stop (recordings, blower too); applyRegistrationState touches only the stops a slot names; the crescendo
+  ALREADY works with ON sets (registrationOnSet / setRegistrationItem / isRegistrationItemOn, the difference
+  alone is switched); moveStopToDivision / indentStopUnder / mergeStopFolder carry the grid cell and the voicing
+  (voicer->stopMovedToDivision, three call sites) but NOT the combinations, crescendo steps or the registration
+  (swapDivisionStops and the load-time prefix rename do); a row renamed or moved in the Stop List dialog carries
+  nothing; restoreCombination calls voicer->rebuildUI (the whole grid at every recall); nothing of a store / recall
+  is logged; Tutti / X / recall flip a recording's own meaningless `enabled`. The design was PROPOSED to him
+  (ON sets per group with a "holds" list in every combination, dormant items kept, identity = noise key, else
+  division + name, carried at in-place moves, former addresses kept in the row, one guess by a name unique in the
+  organ); NOT coded - wait for his word and his answers.
+  TO-DO OF THE SAME EVENING (his order, goes into the SAME build as the combinations): "nepřeju si, aby export
+  portable zapisoval json i readme zvlášť. Nechť zapíše pouze zip" - the portable EXPORT (savePortableConfiguration,
+  the `portable && publishFiles` branch ~17884) writes ONE file into Publish, `<base>.portable.zip` (the .json and
+  the README inside, built from memory as the report's zip is - no loose .portable.json, no .README.md, no .bak);
+  the Save chooser of an export proposes the .zip; showPublishWindow / its texts, the manual and the site follow;
+  Load Configuration reads the zip already (0.8.195). The hook ORGAN_SAVE_PORTABLE and my test scripts read the
+  json out of the zip from then on.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
