@@ -19182,9 +19182,17 @@ namespace
     // listed once per load: the probe of the Hauptwerk layout asks for them per tree.
     // 0.9.33: the search runs on the loading window's thread - the caches are locked and copied out.
     std::mutex gFolderCacheLock;
+    std::map<juce::String, std::pair<double, std::vector<juce::File>>> gDriveChildrenCache, gLocationChildrenCache;
+    // (a disk was mounted: what the caches say about its folders is no longer true)
+    void forgetFolderCaches()
+    {
+        const std::lock_guard<std::mutex> lock(gFolderCacheLock);
+        gDriveChildrenCache.clear();
+        gLocationChildrenCache.clear();
+    }
     std::vector<juce::File> driveChildren(const juce::File& root)
     {
-        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;
+        auto& cache = gDriveChildrenCache;
         const std::lock_guard<std::mutex> lock(gFolderCacheLock);
         const double now = juce::Time::getMillisecondCounterHiRes();
         auto& slot = cache[root.getFullPathName()];
@@ -19211,7 +19219,7 @@ namespace
     // load (0.8.202): the candidates of every tree ask for them.
     std::vector<juce::File> locationChildren(const juce::File& folder)
     {
-        static std::map<juce::String, std::pair<double, std::vector<juce::File>>> cache;
+        auto& cache = gLocationChildrenCache;
         const std::lock_guard<std::mutex> lock(gFolderCacheLock);
         const double now = juce::Time::getMillisecondCounterHiRes();
         auto& slot = cache[folder.getFullPathName()];
@@ -19764,7 +19772,9 @@ namespace
         return out;
     }
 
-    bool mountLinuxDiskFor(const juce::String& path, const std::function<void(const juce::String&)>& status = {})
+    // The mount folder a path names (/run/media/<user>/<label> or /media/<label>) and the disk's label; false for
+    // any other path.
+    bool linuxMountRootOf(const juce::String& path, juce::String& mountRoot, juce::String& label)
     {
         juce::StringArray parts;
         parts.addTokens(path, "/", "");
@@ -19773,13 +19783,25 @@ namespace
         if (parts.size() >= 3 && parts[0] == "run" && parts[1] == "media") labelIndex = 3 <= parts.size() - 1 ? 3 : -1;   // /run/media/<user>/<label>
         if (parts.size() >= 2 && parts[0] == "media") labelIndex = 1;                                                       // /media/<label>
         if (labelIndex < 0 || labelIndex >= parts.size()) return false;
-        juce::String mountRoot;
+        mountRoot.clear();
         for (int i = 0; i <= labelIndex; ++i) mountRoot << "/" << parts[i];
+        label = parts[labelIndex];
+        return true;
+    }
+
+    // 0.9.155: `again` = a label whose mount FAILED before in this session is tried once more (the catalog's Refresh);
+    // one mount at a time (the load's search and the catalog's look run on threads of their own); the tool is
+    // started with posix_spawn, not a fork (0.9.113); a mount empties the folder caches.
+    bool mountLinuxDiskFor(const juce::String& path, const std::function<void(const juce::String&)>& status = {}, bool again = false)
+    {
+        juce::String mountRoot, label;
+        if (!linuxMountRootOf(path, mountRoot, label)) return false;
+        static std::mutex oneAtATime;
+        const std::lock_guard<std::mutex> lock(oneAtATime);
         if (juce::File(mountRoot).isDirectory()) return false;   // mounted (or a plain folder) already
-        static juce::StringArray tried;
-        const auto label = parts[labelIndex];
-        if (tried.contains(label)) return false;
-        tried.add(label);
+        static juce::StringArray failed;
+        if (failed.contains(label) && !again) return false;
+        failed.addIfNotAlreadyThere(label);
         juce::File device;
         for (const auto& link : juce::File("/dev/disk/by-label").findChildFiles(juce::File::findFilesAndDirectories, false))
             if (unescapeUdevName(link.getFileName()) == label) { device = link; break; }
@@ -19789,16 +19811,11 @@ namespace
             return false;
         }
         if (status) status("Mounting the disk \"" + label + "\" ...");
-        juce::ChildProcess process;
-        juce::StringArray command { "udisksctl", "mount", "-b", device.getFullPathName() };
-        if (!process.start(command))
-        {
-            CrashHandler::note("Disk \"" + label + "\" (" + device.getFullPathName() + "): udisksctl could not be started - not mounted");
-            return false;
-        }
-        process.waitForProcessToFinish(60000);
-        const auto output = process.readAllProcessOutput().trim();
+        juce::String output;
+        runSystemTool({ "udisksctl", "mount", "-b", device.getFullPathName() }, &output, 60000);
+        output = output.trim();
         const bool mounted = juce::File(mountRoot).isDirectory();
+        if (mounted) { failed.removeString(label); forgetFolderCaches(); }
         CrashHandler::note("Disk \"" + label + "\" (" + device.getFullPathName() + ") for " + path + ": " + (mounted ? "mounted" : "NOT mounted")
             + (output.isNotEmpty() ? " - " + output.replaceCharacters("\r\n", "  ") : juce::String()));
         return mounted;
@@ -19871,10 +19888,34 @@ namespace
                 + (started ? (point.isNotEmpty() ? "mounted at " + point : "NOT mounted - " + output) : juce::String("udisksctl could not be started - not mounted")));
         }
         if (!skipped.isEmpty()) CrashHandler::note("Disks left unmounted (not for data): " + skipped.joinIntoString(", "));
+        if (!mounted.isEmpty()) forgetFolderCaches();
         return mounted;
     }
 }
 #endif
+
+// 0.9.155 (the user, 28 Nov 2026, Linux: the Organ catalog said "No" for organs whose disk was not mounted - only a
+// load mounted it): the disks the lines of Locations.txt name (yours and the program's; an archive's line too) are
+// mounted before the catalog looks for the samples - those disks alone, never every data disk as a load with missing
+// trees does. Called on the catalog's thread. Returns the labels of the disks that are still not there.
+juce::StringArray MainComponent::catalogMountDisks(bool again, const std::function<void(const juce::String&)>& status)
+{
+    juce::StringArray missing;
+#if JUCE_LINUX
+    juce::StringArray places(gSampleLocations);
+    for (const auto& entry : gUserLocations) places.addIfNotAlreadyThere(entry.path);
+    for (const auto& place : places)
+    {
+        juce::String mountRoot, label;
+        if (!linuxMountRootOf(place, mountRoot, label) || pathIsForbidden(juce::File(place))) continue;   // (a "!" place is never read: its disk is left alone)
+        mountLinuxDiskFor(place, status, again);
+        if (!juce::File(mountRoot).isDirectory()) missing.addIfNotAlreadyThere(label);
+    }
+#else
+    juce::ignoreUnused(again, status);
+#endif
+    return missing;
+}
 
 void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration,
     const juce::File& configurationFile, const juce::File& selectedLibraryRoot, std::function<void()> afterwards)
@@ -19886,7 +19927,14 @@ void MainComponent::resolveAndApplyPortableConfiguration(juce::var configuration
     // and the search runs on its thread, saying what it does ("Searching for the sample folders", "Mounting the
     // disk ..."); the organ is applied when it ends - the same lookups again on the message thread, answered by
     // the system's directory cache in no time.
-    if (!searchingSampleFolders) readLocationsFile({});   // 0.9.136: Locations.txt as it stands now (the user's order and his "!" lines rule this search)
+    // 0.9.136: Locations.txt as it stands now (the user's order and his "!" lines rule this search). 0.9.155: the
+    // Organ catalog's look reads the same lists on its thread - it is ended first; one that does not end in time
+    // (it is mounting a disk) leaves the lists as they are.
+    if (!searchingSampleFolders)
+    {
+        if (OrganCatalogContent::stopLooksForALoad()) readLocationsFile({});
+        else CrashHandler::note("Load Configuration: the Organ catalog is still looking at the disks - Locations.txt is taken as it was read last");
+    }
     if (searchingSampleFolders) { CrashHandler::note("Load Configuration: " + configurationFile.getFullPathName() + " ignored - the sample folders of another load are being searched"); return; }
     searchingSampleFolders = true;
     setLookupMemo(true);   // the search's answers serve the apply

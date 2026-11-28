@@ -7269,7 +7269,11 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   tremulants of a Hauptwerk definition" and its manual heading are GONE (Configuration Editor > Noises: Noises on,
   Noises volume, Key noises follow the couplers, Noises window, Noises of a folder, Noises of this organ - pictured);
   addTremulantsFromDefinition and the hook act ORGAN_TEST_TREMMED "definition" stay in the code for tests, like
-  addNoisesFromDefinition / ORGAN_TEST_NOISE_ODF.
+  addNoisesFromDefinition / ORGAN_TEST_NOISE_ODF. RELEASED: commit 40f3605 + the merge 62ab5c7 (6 more commits of
+  his publishes), tag v0.9.154 on 62ab5c7, CI green on all five at the first attempt, five archives; the releases
+  on GitHub are v0.9.154 and v0.9.149 (v0.9.153 went with its release job), Intel mac "late symbols: 0", the
+  Windows exe on system DLLs only, the CI exe deployed as C:\LibreOrgan\LibreOrgan_0.9.154.exe. The reply drafts
+  for pasztor63 name 0.9.154.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
@@ -7393,6 +7397,37 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   the Stop List (indent to level 2, the combo), the folder way on a tree without a definition, a multi-perspective
   organ with recordings loaded whole (Stralsund / Altenbruch Surround), the release-phase option by ear, Linux /
   macOS (not compiled).
+  0.9.155 (28 Nov 2026 evening, LINUX session; the user: the Organ catalog shows the organs as not present because it
+  does not mount the disks of Locations.txt - "Mělo by si to namountovat automaticky při otevření katalogu"):
+  `MainComponent::catalogMountDisks(again, status)` (static, after the Linux mount namespace; the lines of
+  gSampleLocations + gUserLocations that lie under /run/media/<user>/<label> or /media/<label>, a "!" place left
+  alone; ONLY those disks, never mountUnmountedDataDisks) is called first on the catalog's look thread
+  (OrganCatalog.h lookForSamples); returns the labels still not there -> the status line "The disk "X" of
+  Locations.txt could not be mounted - the organs on it show as not here."; Refresh sets `mountAgain` (a label whose
+  mount FAILED is tried again; `mountLinuxDiskFor(path, status, again)` keeps the failed labels, one mount at a time
+  under a mutex, `runSystemTool` = posix_spawn instead of juce::ChildProcess, `forgetFolderCaches()` after a mount -
+  the 30 s caches of driveChildren / locationChildren are namespace globals now). Locations.txt is read anew when
+  the catalog looks. MY FAULT ON THE WAY: polkit - I told him a password dialog would come (pkaction's implicit
+  `auth_admin_keep`) and offered an A/B choice; he: "nikdy to žádný heslo nechtělo! ... Přečti si kód!" - Ubuntu's
+  /usr/share/polkit-1/rules.d/com.ubuntu.desktop.rules answers YES for filesystem-mount-system to an active local
+  user of group sudo. RULE: polkit = the RULES files decide, pkaction's "implicit" is only the default; and what he
+  has seen with his eyes at every load outranks my reading of a default. A CRASH I MADE AND FOUND BY THE SECOND TEST
+  (crash-20261128-201150: juce::File::parseAbsolutePath <- catalogTreesHere on the look thread): the first build
+  called readLocationsFile({}) at EVERY lookForSamples - the look of the cached catalog was still reading
+  gSampleLocations / gUserLocations when the catalog of the internet came 0.3 s later and the message thread rewrote
+  them. Now `OrganCatalogContent::looksRunning()` (a process-wide count of look threads): the file is read only when
+  it is 0; and a LOAD's own readLocationsFile (resolveAndApplyPortableConfiguration; the same race existed since
+  0.9.145) first calls `OrganCatalogContent::stopLooksForALoad()` (`looksStopped()` epoch: every look ends at its next
+  organ and sets lookWanted; waits 3 s at most, else the lists stay as read last, logged). RULE: gSampleLocations /
+  gUserLocations / gForbiddenLocations are read by threads (the load's search, the catalog's look) - never rewrite
+  them on the message thread while such a thread may run; a test of a threaded path is run more than once and with
+  the second trigger (cache + internet) present. RUN (~/tools/test_0155.sh <seconds> <Locations file or -> ENV...: the
+  local build on an EMPTY console, no load - test_0136.sh's Rural load would mount the disk itself; sda2 "Hauptwerk"
+  unmounted by `udisksctl unmount -b /dev/sda2` before): "Disk "Hauptwerk" ... mounted" 1 s after the catalog opened,
+  no password, "the samples of 32 of 32 organ(s)"; a line /run/media/doma/NoSuchDisk/Samples -> the status line
+  pictured, no crash; a Rural load with the catalog open. NOT run: Refresh's second try (no disk that fails once and
+  mounts later), a load that really overlaps a running look (the look ended 1 s before the load began), a real mouse,
+  another distribution (a password may come there). No Projucer resave (Linux): the VS2026 files say 0.9.154.
 
 ## Pending for the next Linux session (delete when done)
 - LESSON 0.8.147: the two

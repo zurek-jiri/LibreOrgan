@@ -2055,6 +2055,7 @@ private:
     void loadFromCatalogArchive(const juce::File& archive, const juce::String& organ);
     static int catalogTreesHere(const juce::File& configurationFile, const juce::String& rootName, const juce::String& rootRelative,
         const juce::StringArray& trees, const juce::StringPairArray& fingerprints);
+    static juce::StringArray catalogMountDisks(bool again, const std::function<void(const juce::String&)>& status);   // 0.9.155 (Linux): the disks of Locations.txt
     void startRouteTestTone(int manual, const juce::String& perspective);
     void setCouplerEnabled(const juce::String& id, bool enabled);
     void routeKeyboardNote(int manual, int note, int velocity, bool isOn);

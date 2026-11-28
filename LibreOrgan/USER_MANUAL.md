@@ -146,7 +146,7 @@ archive you did not choose.
 when you open it in the file manager (`/run/media/...`) is not there after a
 reboot. Give it a permanent mount ("Mount at system startup" in the desktop's
 Disks & Devices settings, or `/etc/fstab`) and point the locations there. If a
-remembered location does lie under `/run/media` and is missing at a load, the
+remembered location does lie under `/run/media` and is missing at a load or when the Organ catalog opens, the
 program mounts the disk by its label itself; when folders are still missing, it
 mounts every data disk that is not mounted and looks again (the loading window
 says so).

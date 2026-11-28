@@ -316,7 +316,7 @@ public:
         addAndMakeVisible(readmeButton);
         refreshButton.setButtonText("Refresh");
         refreshButton.setTooltip("Reads the catalog from the internet again and looks for the samples on this computer again.");
-        refreshButton.onClick = [this] { fetchCatalog(); };
+        refreshButton.onClick = [this] { mountAgain = true; fetchCatalog(); };   // (a disk whose mount failed is tried again)
         addAndMakeVisible(refreshButton);
         cancelButton.setButtonText("Cancel the download");
         cancelButton.setTooltip("Stops the download that runs; nothing of it is kept.");
@@ -692,14 +692,34 @@ private:
                                             + cacheFile.getLastModificationTime().toString(true, true, false) + " is shown."
                                         : "The catalog could not be read from the internet: " + why + ".", juce::dontSendNotification);
             CrashHandler::note("Organ catalog: not read from " + OrganCatalog::catalogLink() + " - " + why);
+            if (catalogShown && mountAgain) lookForSamples();   // (Refresh without the internet still looks at the disks again)
         }
     }
 
     // ---- the samples on this computer: the search a load does, on a thread, quietly ----
+    static std::atomic<int>& looksRunning() { static std::atomic<int> running{ 0 }; return running; }   // (the looks at work, of every catalog window there was)
+    static std::atomic<int>& looksStopped() { static std::atomic<int> stops{ 0 }; return stops; }
+    // A load is about to read Locations.txt anew (message thread): every look ends at its next organ; true when none
+    // is left at work (waited for 3 s at most - a look that is mounting a disk may take longer).
+public:
+    static bool stopLooksForALoad()
+    {
+        if (looksRunning().load() == 0) return true;
+        ++looksStopped();
+        for (int i = 0; i < 600 && looksRunning().load() > 0; ++i) juce::Thread::sleep(5);
+        return looksRunning().load() == 0;
+    }
+private:
     void lookForSamples()
     {
         if (owner.activeFolderLoader != nullptr || owner.searchingSampleFolders) { lookWanted = true; return; }   // (the search's caches are a load's just now)
         lookWanted = false;
+        // 0.9.155: Locations.txt as it stands now - but only while NO look runs: a look's thread reads the lists the
+        // file is read into (the first build read it at every look and the look of the cached catalog, still at
+        // work when the catalog of the internet came, crashed in them).
+        if (looksRunning().load() == 0) owner.readLocationsFile({});
+        const bool again = mountAgain;
+        mountAgain = false;
         struct Ask { juce::String folder, rootName, rootRelative; juce::StringArray trees; juce::StringPairArray fingerprints; };
         std::vector<Ask> asks;
         for (const auto& e : all) asks.push_back({ e.folder, e.rootName, e.rootRelative, e.trees, e.fingerprints });
@@ -708,12 +728,29 @@ private:
         const auto beside = owner.configurationsDirectory().getChildFile("catalog.json");   // (where the configuration would stand)
         juce::Component::SafePointer<OrganCatalogContent> safe(this);
         auto counter = lookCounter;
-        juce::Thread::launch([asks = std::move(asks), generation, beside, safe, counter]
+        ++looksRunning();
+        const int stopped = looksStopped().load();
+        juce::Thread::launch([asks = std::move(asks), generation, beside, safe, counter, again, stopped]
         {
+            struct Running { ~Running() { --looksRunning(); } } running;
+            // 0.9.155 (Linux): the disks the lines of Locations.txt name are mounted first - a load did that, the
+            // catalog said "No" for every organ of a disk that was not mounted.
+            const auto disksMissing = MainComponent::catalogMountDisks(again, [safe, generation](const juce::String& text)
+            {
+                juce::MessageManager::callAsync([safe, generation, text]
+                {
+                    if (safe != nullptr && safe->lookGeneration == generation) safe->status.setText(text, juce::dontSendNotification);
+                });
+            });
             const double began = juce::Time::getMillisecondCounterHiRes();
             for (const auto& ask : asks)
             {
                 if (counter->load() != generation) return;   // the window went, or a newer look began
+                if (looksStopped().load() != stopped)        // a load began: it reads Locations.txt anew - the look ends and comes again after it
+                {
+                    juce::MessageManager::callAsync([safe] { if (safe != nullptr) safe->lookWanted = true; });
+                    return;
+                }
                 const int here = MainComponent::catalogTreesHere(beside, ask.rootName, ask.rootRelative, ask.trees, ask.fingerprints);
                 juce::MessageManager::callAsync([safe, generation, folder = ask.folder, here]
                 {
@@ -723,11 +760,18 @@ private:
                 });
             }
             const int ms = juce::roundToInt(juce::Time::getMillisecondCounterHiRes() - began);
-            juce::MessageManager::callAsync([safe, generation, ms, count = (int)asks.size()]
+            juce::MessageManager::callAsync([safe, generation, ms, count = (int)asks.size(), disksMissing]
             {
                 if (safe == nullptr || safe->lookGeneration != generation) return;
                 int here = 0;
                 for (const auto& e : safe->all) if (e.treesHere >= e.trees.size() && !e.trees.isEmpty()) ++here;
+                if (!disksMissing.isEmpty())
+                {
+                    safe->status.setText("The disk \"" + disksMissing.joinIntoString("\", \"") + "\" of Locations.txt could not be mounted - the organs on it show as not here.", juce::dontSendNotification);
+                    CrashHandler::note("Organ catalog: disk(s) of Locations.txt not mounted - " + disksMissing.joinIntoString(", "));
+                }
+                else if (safe->status.getText().startsWith("Mounting the disk"))
+                    safe->status.setText(juce::String(count) + " organs in the catalog.", juce::dontSendNotification);
                 CrashHandler::note("Organ catalog: the samples of " + juce::String(here) + " of " + juce::String(count) + " organ(s) are on this computer (looked in " + juce::String(ms) + " ms)");
             });
         });
@@ -850,7 +894,7 @@ private:
     juce::File cacheFolder, cacheFile;
     std::vector<OrganCatalog::Entry> all;
     std::vector<int> shown;
-    bool catalogShown = false, lookWanted = false;
+    bool catalogShown = false, lookWanted = false, mountAgain = false;
     int lookGeneration = 0;
     // (the look's thread reads this to learn that it is stale - the window may be gone by then)
     std::shared_ptr<std::atomic<int>> lookCounter = std::make_shared<std::atomic<int>>(0);

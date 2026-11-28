@@ -12,6 +12,14 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.155] - 2026-11-28
+
+### Fixed
+- Linux: the Organ catalog said "No" under "Samples on this computer" for every organ on a disk that was not
+  mounted - only a load mounted the disks. Opening the catalog (and Refresh) now mounts the disks the lines of
+  Locations.txt name, then looks; a disk that cannot be mounted is named in the catalog's status line. The file is
+  read anew when the catalog opens.
+
 ## [0.9.154] - 2026-11-28
 
 ### Removed
