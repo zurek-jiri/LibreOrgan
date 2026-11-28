@@ -255,7 +255,9 @@ jobs:
           echo "$out"
       # 0.9.101 (the user: "na GitHubu tentokrát nechej i starou verzi, kdyby tato s VST kulhala ... pak ji časem zase
       # zrušíme"): a release named in `keep` below stays beside the current one. 28 Nov 2026 (the user deleted
-      # v0.9.100 by hand: "Nebudeme to držet"): `keep` is empty - one release again.
+      # v0.9.100 by hand: "Nebudeme to držet"): `keep` is empty - one release again. 28 Nov 2026 evening (0.9.152,
+      # the recorded tremulants; the user: "tentokrát zachovej i stávající verzi. Tu vymažeme až někdy"):
+      # v0.9.149 stays beside the current release until he says to drop it (then keep="").
       # ONE current release only (0.9.80: the previous version kept since 0.9.77 pushed the Rural Organ
       # demo release down the page - GitHub sorts releases by date, nothing can be pinned); every older
       # v* release (and its tag) is deleted; the Rural Organ demo release is kept.
@@ -264,7 +266,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="${GITHUB_REF_NAME}"
-          keep=""
+          keep="v0.9.149"
           # Newest first; each tag once (a release listed twice made the second delete fail on the tag
           # already gone, 0.8.154); a release or tag gone by then is no failure.
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName' | awk '!seen[$0]++'); do
