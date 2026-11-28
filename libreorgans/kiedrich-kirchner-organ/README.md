@@ -15,13 +15,13 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Kiedrich, Kirchner Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html](https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html); the folders `001841`, `001842`, `001843` and `001844` (as they come, or in their RAR archives); perspectives Direct (`02-Dry`), Diffuse (`04-AB`) and Rear (`rea22`). LibreOrgan Sampler 0.9.149 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html](https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html); the folders `001841`, `001842`, `001843` and `001844` (as they come, or in their RAR archives); perspectives Direct (`02-Dry`), Diffuse (`04-AB`) and Rear (`rea22`). LibreOrgan Sampler 0.9.152 or later.
 - **Expects:** library root of any name, holding the trees `001841/pipes/ab`, `001841/pipes/ort`, `001841/pipes/rea`, `001842/pipes/ab`, `001843/pipes/ort` and `001844/pipes/rea`.
 - **Audio layout:** every division has the routes direct, diffuse, rear and noises; auxiliary (unused).
 - **RAM:**
-  - **2.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **19 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
-- **Saved with:** LibreOrgan Sampler 0.9.149.
+  - **3.5 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **31 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
 - **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
@@ -55,4 +55,4 @@ Put `Kiedrich Kirchner Organ.portable.json` into your LibreOrgans folder (Config
 | Sup. Octav 2' |  | Mixtur 4fach 1 1/3' |
 | Calcant |  | Cymb. 2fach 1/2' |
 
-<!-- published by @zurekjiri (issue #330, 2026-11-28) -->
+<!-- published by @zurekjiri (issue #358, 2026-11-28) -->

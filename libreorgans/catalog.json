@@ -1050,7 +1050,7 @@
    "title": "Hildesheim, St. Andreas, Beckerath",
    "folder": "hildesheim-st-andreas-beckerath-organ",
    "zip": "Hildesheim St. Andreas Beckerath.portable.zip",
-   "zipBytes": 14824,
+   "zipBytes": 18278,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/hildesheim-st-andreas-beckerath-organ/Hildesheim%20St.%20Andreas%20Beckerath.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/hildesheim-st-andreas-beckerath-organ/README.md",
    "divisions": 5,
@@ -1060,8 +1060,8 @@
     "Diffuse",
     "Rear"
    ],
-   "ramBytes": 12827985918,
-   "published": "2026-11-27",
+   "ramBytes": 17757732198,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/hildesheim-st-andreas-beckerath-1966.html",
    "rootName": "OrganInstallationPackages",
@@ -1075,7 +1075,12 @@
     "002719/pipes/2HW",
     "002719/pipes/3OW",
     "002718/pipes/3OW",
-    "002719/pipes/4BW"
+    "002719/pipes/4BW",
+    "002718/pipes/1RWTR",
+    "002719/pipes/1RWTR",
+    "002719/pipes/3OWTR",
+    "002718/pipes/3OWTR",
+    "002719/pipes/4BWTR"
    ],
    "fingerprints": {
     "002719/pipes/PED": "holzflote8/02dif-PE_holzflote8|32|-5415162768870310507|-5757131102983445698;prinzipal32/03dis-PE_prinzipal32|64|-9220924314636996050|-421200215453580331;zink2/04rea-PE_zink2|32|-5415162768870310507|6686337187767692302",
@@ -1086,7 +1091,12 @@
     "002719/pipes/2HW": "Glocken/02dif-HW_Glocken|49|1050596355787253606|-7398824212289872347;quinte223/03dis-HW_quinte223|58|2069031852030565633|-8210079976041005381;trompete4/04rea-HW_trompete4|58|2069031852030565633|84229159049391410",
     "002719/pipes/3OW": "EnglisHorn16/02dif-OB_EnglisHorn16|58|2069031852030565633|-9040693972739530846;Quintadena16/02dif-OB_Quintadena16|58|2069031852030565633|6049592932317526845;violprinz8/04rea-OB_violprinz8|58|2069031852030565633|7173432120471038854",
     "002718/pipes/3OW": "hohlflote2/02dif-OB_hohlflote2|58|2069031852030565633|-8162753681019784278;HolzFl8/03dis-OB_HolzFl8|58|2069031852030565633|-219574182743638333;rohrflote4/04rea-OB_rohrflote4|58|2069031852030565633|-3318833315149076982",
-    "002719/pipes/4BW": "gemsquinte113/02dif-BR_gemsquinte113|58|2069031852030565633|-5279318439295126855;Schalmei4/03dis-BW_Schalmei4|58|2069031852030565633|1654601809887508725;waldflote2/04rea-BR_waldflote2|102|-2561644247250595481|1045305621171765086"
+    "002719/pipes/4BW": "gemsquinte113/02dif-BR_gemsquinte113|58|2069031852030565633|-5279318439295126855;Schalmei4/03dis-BW_Schalmei4|58|2069031852030565633|1654601809887508725;waldflote2/04rea-BR_waldflote2|102|-2561644247250595481|1045305621171765086",
+    "002718/pipes/1RWTR": "Dulzian16/02dif-RW_Dulzian16_tr|58|2069031852030565633|8882725661275212684;Principal8/03dis-RW_Principal8_TR|58|2069031852030565633|246192313755202647;Scharfmixt1/04rea-rw_Scharfmixt1_tr|58|2069031852030565633|-6550740414283149811",
+    "002719/pipes/1RWTR": "Barpfeife8/02dif-RW_Barpfeife8_tr|58|2069031852030565633|-3176971885895885866;Quint113/02dif-RW_Quint113_tr|58|2069031852030565633|4216325423965048595;Sesquialtera2/04rea-RW_Sesquialtera2_tr|58|2069031852030565633|3735760794624848753",
+    "002719/pipes/3OWTR": "EnglisHorn16/02dif-OB_EnglisHorn16_tr|58|2069031852030565633|-2240418248432835774;Quintadena16/02dif-OB_Quintadena16_tr|58|2069031852030565633|6239758299852062333;violprinz8/04rea-OB_violprinz8_tr|58|2069031852030565633|-903345268182653334",
+    "002718/pipes/3OWTR": "hohlflote2/02dif-OB_hohlflote2_tr|58|2069031852030565633|-3407705242530300389;HolzFl8/03dis-OB_HolzFl8_tr|58|2069031852030565633|-750449373820615927;rohrflote4/04rea-OB_rohrflote4_tr|58|2069031852030565633|-5092074973061340095",
+    "002719/pipes/4BWTR": "gemsquinte113/02dif-BR_gemsquinte113_tr|58|2069031852030565633|-1440280444532756019;Schalmei4/03dis-BW_Schalmei4_tr|58|2069031852030565633|5069699010645222222;waldflote2/04rea-BR_waldflote2_tr|58|2069031852030565633|5310444093627071376"
    },
    "featured": false
   },
@@ -1150,7 +1160,7 @@
    "title": "Kiedrich, Kirchner",
    "folder": "kiedrich-kirchner-organ",
    "zip": "Kiedrich Kirchner Organ.portable.zip",
-   "zipBytes": 9894,
+   "zipBytes": 10971,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/kiedrich-kirchner-organ/Kiedrich%20Kirchner%20Organ.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/kiedrich-kirchner-organ/README.md",
    "divisions": 3,
@@ -1160,7 +1170,7 @@
     "Diffuse",
     "Rear"
    ],
-   "ramBytes": 2566963401,
+   "ramBytes": 3792503685,
    "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/kiedrich-virtual-organ-model.html",
@@ -1175,12 +1185,12 @@
     "001841/pipes/rea"
    ],
    "fingerprints": {
-    "001842/pipes/ab": "AB_Gedackt16|59|-4816215372071306920|5896217866636058816;AB_Ped_Subbas16-01|38|5824714789289438144|1010412263721532732;AB_superoctave2|51|-8180673374606790391|1324689878192097085",
-    "001843/pipes/ort": "ORTF_Gedackt16|59|-4816215372071306920|4506567245036321012;ORTF_Ped_Subbas16-01|38|5824714789289438144|-5397036823308557144;ORTF_superoctave2|51|-8180673374606790391|5457436561735570431",
-    "001844/pipes/rea": "Rea_Gedackt16|59|-4816215372071306920|-5352275865407580585;Rea_Ped_Subbas16-01|38|5824714789289438144|1010412263721532732;Rea_superoctave2|51|-8180673374606790391|3781692412912616012",
-    "001841/pipes/ab": "AB_flotengedack4|100|1869877021311057704|1683813783260282165;AB_Principal8|92|4694104230839687301|-830088480040261432",
-    "001841/pipes/ort": "ORTF_flotengedack4|100|1869877021311057704|323760278102856711;ORTF_Principal8|92|4694104230839687301|-5172306266511075541",
-    "001841/pipes/rea": "Rea_flotengedack4|100|1869877021311057704|-8147507808772022373;Rea_Principal8|92|4694104230839687301|2256761692509629614"
+    "001842/pipes/ab": "AB_Gedackt16|59|-4816215372071306920|5896217866636058816;AB_Ped_SuperOct|26|-4345023876056094321|3271161320276399344;AB_superoctave2_tr|49|1050596355787253606|4891746682759004033",
+    "001843/pipes/ort": "ORTF_Gedackt16|59|-4816215372071306920|4506567245036321012;ORTF_Ped_SuperOct|26|-4345023876056094321|3271161320276399344;ORTF_superoctave2_tr|49|1050596355787253606|4143758574026087146",
+    "001844/pipes/rea": "Rea_Gedackt16|59|-4816215372071306920|-5352275865407580585;Rea_Ped_SuperOct|26|-4345023876056094321|3271161320276399344;Rea_superoctave2_tr|49|1050596355787253606|-2152408932388320334",
+    "001841/pipes/ab": "AB_flotengedack4|100|1869877021311057704|1683813783260282165;AB_Principal8|92|4694104230839687301|-830088480040261432;AB_Principal8_tr|49|1050596355787253606|-889545193132517773",
+    "001841/pipes/ort": "ORTF_flotengedack4|100|1869877021311057704|323760278102856711;ORTF_Principal8|92|4694104230839687301|-5172306266511075541;ORTF_Principal8_tr|49|1050596355787253606|-7143939337085409878",
+    "001841/pipes/rea": "Rea_flotengedack4|100|1869877021311057704|-8147507808772022373;Rea_Principal8|92|4694104230839687301|2256761692509629614;Rea_Principal8_tr|49|1050596355787253606|1507246643221290811"
    },
    "featured": false
   },
