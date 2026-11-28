@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Billerbeck Dom, Fleiter organ, as recorded by Sonus Paradisi in 4 perspectives, Dry, Direct, Diffuse and Rear, each on its own audio route: 6 divisions and 85 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Billerbeck Dom, Fleiter organ, as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Dry and Rear, each on its own audio route: 6 divisions and 84 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,14 +15,14 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Billerbeck Dom, Fleiter organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/billerbeck-dom-fleiter-organ.html](https://www.sonusparadisi.cz/en/organs/germany/billerbeck-dom-fleiter-organ.html); the folders `002283`, `002284`, `002285` and `002286` (as they come, or in their RAR archives); perspectives Dry, Direct (`03-difMk22`), Diffuse (`04-distMk2H`) and Rear (`05-rearMK4`). LibreOrgan Sampler 0.9.147 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/billerbeck-dom-fleiter-organ.html](https://www.sonusparadisi.cz/en/organs/germany/billerbeck-dom-fleiter-organ.html); the folders `002283`, `002284`, `002285` and `002286` (as they come, or in their RAR archives); perspectives Diffuse (`04-distMk2H`), Direct (`03-difMk22`), Dry (`06-suchy`) and Rear (`05-rearMK4`). LibreOrgan Sampler 0.9.151 or later.
 - **Expects:** library root of any name, holding the trees `002283/Cham`, `002283/HW`, `002283/Ped`, `002283/Pos`, `002283/Schw`, `002284/Car`, `002284/Cham`, `002284/HW`, `002284/Ped`, `002284/Pos`, `002284/Schw`, `002285/Car`, `002285/Cham`, `002285/HW`, `002285/Ped`, `002285/Pos`, `002285/Schw`, `002286/Cham`, `002286/HW`, `002286/Ped`, `002286/Pos` and `002286/Schw`.
-- **Audio layout:** every division has the routes dry, direct, diffuse, rear and noises; auxiliary (unused).
+- **Audio layout:** every division has the routes diffuse, direct, dry and rear; auxiliary (unused).
 - **RAM:**
-  - **15 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
-  - **150 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **20 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *measured*
+  - **204 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.151.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -84,6 +84,5 @@ Put `Fleiter Billerbeck 8 chan..portable.json` into your LibreOrgans folder (Con
 | P. Trompetenbass 8' |  |  | 3. Carillon 2 2/3' |  |  |
 | P. Clarion 4' |  |  |  |  |  |
 | 5. Tuba 2' (Trsm.) |  |  |  |  |  |
-| Blower On/Off |  |  |  |  |  |
 
-<!-- published by @zurekjiri (issue #291, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #344, 2026-11-28) -->

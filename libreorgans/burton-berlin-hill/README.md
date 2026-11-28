@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Burton-Berlin, Hill, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 49 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Burton-Berlin, Hill, as recorded by Sonus Paradisi in 3 perspectives, Direct, Diffuse and Rear, each on its own audio route: 4 divisions and 48 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Burton-Berlin, Hill.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html](https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html); the folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` (as they come, or in their RAR archives); perspectives Direct (`ORTF`), Diffuse (`AB`) and Rear (`Re`). LibreOrgan Sampler 0.9.147 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html](https://www.sonusparadisi.cz/en/organs/england/william-hill-english-organ-model.html); the folders `002261`, `002262`, `002263`, `002264`, `002265` and `002266` (as they come, or in their RAR archives); perspectives Direct (`02-MK8diff`), Diffuse (`03-Mk2Hdiff`) and Rear (`08-rear`). LibreOrgan Sampler 0.9.152 or later.
 - **Expects:** library root of any name, holding the trees `002261/pipes`, `002262/pipes`, `002263/pipes`, `002264/pipes`, `002265/pipes` and `002266/pipes`.
-- **Audio layout:** every division has the routes direct, diffuse, rear and noises; auxiliary (unused).
+- **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **5.0 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **8.2 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **50 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **6.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **11 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **66 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.152.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -60,8 +60,8 @@ Put `Hill Burton-Berlin Surround.portable.json` into your LibreOrgans folder (Co
 | PED. Bourdon 16' | CH. Viola d Orchestre 8' | GT. Open Diapason 8' | SW. Vox Angelica 8' |
 | PED. Resultantbass 32' | CH. Gedact 8' | GT. Small Open Diapason 8' | SW. Voix Celeste 8' |
 | PED. Violone 16' | CH. Aeoline 8' | GT. Bourdon 16' | SW. Open Diapason 8' |
-| Blower On/Off |  | GT. Stopped Diapason 8' | SW. Salicional 8' |
+|  |  | GT. Stopped Diapason 8' | SW. Salicional 8' |
 |  |  |  | SW. Bourdon 16' |
 |  |  |  | SW. Rohrflote 8' |
 
-<!-- published by @zurekjiri (issue #297, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #346, 2026-11-28) -->
