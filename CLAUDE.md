@@ -7163,6 +7163,32 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   (Altenbruch, one perspective): recording sounding, the stop's Front off -> silence, on -> the recording back,
   0 discontinuities. NOT run: an organ with several perspectives (one of them off), the velocity-layer boxes, attack
   gain, the transposition following, by ear.
+  v0.9.152 PUSHED (28 Nov 2026 evening, his word: "dej na github, ale tentokrát zachovej i stávající verzi. Tu
+  vymažeme až někdy"): build.yml `keep="v0.9.149"` (the release before the recorded tremulants STAYS beside the
+  new one until he says to drop it - then keep=""), origin's 10 commits (his re-published configurations) merged
+  (93dac10), main pushed, tag v0.9.152 on the merge in its own step. 0.9.150 and 0.9.151 were never pushed or
+  released (local numbers of deployed builds). The temporary Editor function "Recorded tremulants of a Hauptwerk
+  definition" is still in (remove it on his word). RESULT: CI run 46162869140 green on all five at the first
+  attempt, five archives, v0.9.149 still beside it, Intel mac "late symbols: 0", the Windows exe on system DLLs
+  only; C:\LibreOrgan\LibreOrgan_0.9.152.exe is the LOCAL build (his program ran - the CI exe not copied).
+  #342 (pasztor63, 0.9.149: "the combination buttons do not indicate the active state in orange") - THE CAUSE, read
+  from his logs.zip (settings.json "combinationsFiles": for the published "Fleiter Billerbeck 8 chan..json" he
+  loaded his OLD file "PA new  Fleiter, Billerbeck, 8 chan. combinations.json", then saved the organ as "PA OK3
+  ..."; his old organs had no noises): `memoryMatchesCurrent` (MainComponent.cpp ~33042) answers false whenever the
+  piston's entry count differs from the ENGINE's stop count (`memory.stopData.size() != currentStops.size()`) or an
+  engine stop has no entry - the new organ has one stop more (the noise's button "Blower On/Off"), so no piston
+  stored before can ever be the lit one; the pistons still switch what they know by name. The same for every organ
+  that gains or loses a row after its pistons were stored (a noise's button, a stop folder, a merged organ, the 45
+  recordings of 0.9.150+: captureCurrentState takes EVERY engine stop, recordings and noise buttons too). The size
+  check is old; noise buttons (0.9.127) made it bite. PROPOSED to him, NOT coded (his word): the match looks only
+  at stops the piston has an entry for (no size check; an entry without a stop is passed over), recordings out of
+  captureCurrentState / Tutti / X (his design: not part of pistons; their own `enabled` flips click a drawknob
+  noise - seen in the code, not run), and his decision whether a piston may switch the blower (`noiseButton == 2`;
+  X and the crescendo already leave it). FOOTAGE OFF (his question the same evening): there is NO way today -
+  `Stop::displayName` appends the measured footage to every caption without one (only a stop without a measured
+  pitch and a stop folder show the bare name); proposed a voicing-row tick "Footage in the caption" like "Rank
+  count [II]", not coded. Tools: %TEMP%\odftools\issue_settings.py <settings.json>, combo_check.py <json or zip>
+  (a file's stored combinations against its rows).
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division
