@@ -68,7 +68,7 @@
    "title": "Altenbruch, Klapmeyer",
    "folder": "altenbruch-klapmeyer-organ",
    "zip": "Altenbruch SemiDry Extended.portable.zip",
-   "zipBytes": 13432,
+   "zipBytes": 15360,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/altenbruch-klapmeyer-organ/Altenbruch%20SemiDry%20Extended.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/altenbruch-klapmeyer-organ/README.md",
    "divisions": 4,
@@ -76,8 +76,8 @@
    "routes": [
     "default"
    ],
-   "ramBytes": 2226268297,
-   "published": "2026-11-27",
+   "ramBytes": 2894078530,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html",
    "rootName": "OrganInstallationPackages",
@@ -89,10 +89,10 @@
     "002067/pipes/bw"
    ],
    "fingerprints": {
-    "002067/pipes/pedal": "02-suchy_Ped_Cornet2|53|6836119747608926150|6747948327621745869;02-suchy_Ped_Posaun16|52|-7261564461342355512|-5517537970562451103;02-suchy_Ped_Untersatz16|54|1620364564650446936|-3361627200446966656",
-    "002068/pipes/rw": "02-suchy_RP_BlockFl2|51|7975772664345070257|3990145932348643661;02-suchy_RP_Oct2|51|7975772664345070257|-8667398300248126056;02-suchy_RP_Sexqulalt|51|7975772664345070257|5203816120984423294",
-    "002067/pipes/hw": "02-suchy_HW_Cimbel|52|-3289324765102597476|25390066727909564;02-suchy_HW_Principal8|96|-1482183970239751251|2118602620383966606;02-suchy_HW_Waldfl2|51|7975772664345070257|-4460082927507975655",
-    "002067/pipes/bw": "02-suchy_BWclosed_Gedackt4|52|4784386290214276969|4418939530280360353;02-suchy_BWclosed_OCTAV2|54|5677540936768792355|1883170329911808701;02-suchy_BWclosed_Scharff|51|7975772664345070257|8245338577502588151"
+    "002067/pipes/pedal": "02-suchy_Ped_Cornet2|53|6836119747608926150|6747948327621745869;02-suchy_Ped_Posaun16|52|-7261564461342355512|-5517537970562451103;02-suchy_Ped_Untersatz16TR|27|3211590219194293413|6057588908466323876",
+    "002068/pipes/rw": "02-suchy_RP_BlockFl2|51|7975772664345070257|3990145932348643661;02-suchy_RP_Oct2|51|7975772664345070257|-8667398300248126056;02-suchy_RP_SexqulaltTRRP|51|7975772664345070257|-6927373107726396264",
+    "002067/pipes/hw": "02-suchy_HW_Cimbel|52|-3289324765102597476|25390066727909564;02-suchy_HW_Principal8TR|51|7975772664345070257|6329876343596380115;02-suchy_HW_Waldfl2TR|51|7975772664345070257|2431354239852285529",
+    "002067/pipes/bw": "02-suchy_BWclosed_Gedackt4|52|4784386290214276969|4418939530280360353;02-suchy_BWclosed_OCTAV2|54|5677540936768792355|1883170329911808701;02-suchy_BWclosed_ScharffTR|51|7975772664345070257|-4521506325875007222"
    },
    "featured": false
   },
@@ -100,19 +100,19 @@
    "title": "Arnstadt, Wender (Bach Organ)",
    "folder": "arnstadt-wender-bach-organ",
    "zip": "Arnstadt Wender (Bach Organ).portable.zip",
-   "zipBytes": 21414,
+   "zipBytes": 10949,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/arnstadt-wender-bach-organ/Arnstadt%20Wender%20%28Bach%20Organ%29.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/arnstadt-wender-bach-organ/README.md",
    "divisions": 3,
-   "stops": 26,
+   "stops": 21,
    "routes": [
-    "Direct",
     "Diffuse",
+    "Direct",
     "Distant",
     "Rear"
    ],
-   "ramBytes": 4767150362,
-   "published": "2026-11-27",
+   "ramBytes": 7098085711,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -123,7 +123,13 @@
     "002310/pipes/Arnstadt2nocUW-Brust",
     "002701/pipes/Arnstadt2nocUW-Brust",
     "002701/pipes/Arnstadt1noc_OW-Haupt",
-    "002310/pipes/Arnstadt1noc_OW-Haupt"
+    "002310/pipes/Arnstadt1noc_OW-Haupt",
+    "002310/pipes/Arnstadt2nocPed_TREM",
+    "002701/pipes/Arnstadt2nocPed_TREM",
+    "002701/pipes/Arnstadt2nocUW-Brust_TREM",
+    "002310/pipes/Arnstadt2nocUW-Brust_TREM",
+    "002310/pipes/Arnstadt1noc_OW-Haupt_TREM",
+    "002701/pipes/Arnstadt1noc_OW-Haupt_TREM"
    ],
    "fingerprints": {
     "002701/pipes/Arnstadt2nocPed": "PE_cornet/01-dir-PE_cornet|30|1258451224502848254|-8010813787396328885;PE_posaune/04-MK2HAB-PE_posaune|52|-6083685958347957469|7338413957480215542;PE_principal8/05-Rear-PE_principal8|51|6520188727662867822|-3615292977541568529",
@@ -131,7 +137,13 @@
     "002310/pipes/Arnstadt2nocUW-Brust": "BP_Nachthorn4/01-dir-BP_Nachthorn4|54|6249838454941355396|7884601380789795269;BP_Sesquialt/01-dir-BP_Sesquialt|108|-9051793743838340864|-2938611940688524658;BP_Stillged8/05-Rear-BP_Stillged8|54|6249838454941355396|3345673207937752812",
     "002701/pipes/Arnstadt2nocUW-Brust": "BP_Mixtur/01-dir-BP_Mixtur|107|-8862349056578134283|4456962412018632336;BP_Princ4/04-MK2HAB-BP_Princ4|54|6249838454941355396|404555428064032132;BP_Spitzfl4/05-Rear-BP_Spitzfl4|54|6249838454941355396|17772348275310258",
     "002701/pipes/Arnstadt1noc_OW-Haupt": "HW-Gamba8/01-dir-HW-Gamba8|54|6249838454941355396|-5259020505645053093;HW_Quinta/01-dir-HW_Quinta|54|6249838454941355396|-5185120656329500564;HW_Trump/05-Rear-HW_Trump8|54|6249838454941355396|-5611618615925213958",
-    "002310/pipes/Arnstadt1noc_OW-Haupt": "HWGemshorn8/01-dir-HWGemshorn8|54|6249838454941355396|2614355209202640264;HW_Mixt/01-dir-HW_Mixt|108|-9051793743838340864|-4338253976611293591;HW_Octava4/05-Rear-HW_Octava4|54|6249838454941355396|-8980095488132000997"
+    "002310/pipes/Arnstadt1noc_OW-Haupt": "HWGemshorn8/01-dir-HWGemshorn8|54|6249838454941355396|2614355209202640264;HW_Mixt/01-dir-HW_Mixt|108|-9051793743838340864|-4338253976611293591;HW_Octava4/05-Rear-HW_Octava4|54|6249838454941355396|-8980095488132000997",
+    "002310/pipes/Arnstadt2nocPed_TREM": "PE_Subbass16/01-dir-PE_Subbass16|30|1258451224502848254|8148411889589668595;PE_Subbass16/04-MK2HAB-PE_Subbass16|30|1258451224502848254|2230685790891283044;PE_Subbass16/05-Rear-PE_Subbass16|30|1258451224502848254|-4518669300106350073",
+    "002701/pipes/Arnstadt2nocPed_TREM": "PE_cornet/01-dir-PE_cornet|30|1258451224502848254|-378599900616379160;PE_posaune/04-MK2HAB-PE_posaune|30|1258451224502848254|5343639719194439931;PE_principal8/05-Rear-PE_principal8|30|1258451224502848254|5231042048072203094",
+    "002701/pipes/Arnstadt2nocUW-Brust_TREM": "BP_Mixtur/01-dir-BP_Mixtur|54|6249838454941355396|-8190824191190793203;BP_Princ4/04-MK2HAB-BP_Princ4|54|6249838454941355396|7371694871199534562;BP_Spitzfl4/05-Rear-BP_Spitzfl4|54|6249838454941355396|-4407649077294133306",
+    "002310/pipes/Arnstadt2nocUW-Brust_TREM": "BP_Nachthorn4/01-dir-BP_Nachthorn4|54|6249838454941355396|3242247718733902080;BP_Sesquialt/01-dir-BP_Sesquialt|54|6249838454941355396|2165995361434263573;BP_Stillged8/05-Rear-BP_Stillged8|54|6249838454941355396|5010250055468640349",
+    "002310/pipes/Arnstadt1noc_OW-Haupt_TREM": "HWGemshorn8/01-dir-HWGemshorn8|54|6249838454941355396|-8836634510587327951;HW_Mixt/01-dir-HW_Mixt|54|6249838454941355396|1449068186830199602;HW_Octava4/05-Rear-HW_Octava4|54|6249838454941355396|-912878769114202870",
+    "002701/pipes/Arnstadt1noc_OW-Haupt_TREM": "HW-Gamba8/01-dir-HW-Gamba8|54|6249838454941355396|4192455659466455052;HW_Quinta/01-dir-HW_Quinta|54|6249838454941355396|7913400776130458024;HW_Trump/05-Rear-HW_Trump8|54|6249838454941355396|-2523065327858041881"
    },
    "featured": false
   },
@@ -139,19 +151,19 @@
    "title": "Ashton, Albion Church, Lewis",
    "folder": "ashton-albion-church-lewis-organ",
    "zip": "Ashton Albion Church Lewis.portable.zip",
-   "zipBytes": 13153,
+   "zipBytes": 14910,
    "url": "https://raw.githubusercontent.com/zurek-jiri/LibreOrgan/main/libreorgans/ashton-albion-church-lewis-organ/Ashton%20Albion%20Church%20Lewis.portable.zip",
    "readme": "https://github.com/zurek-jiri/LibreOrgan/blob/main/libreorgans/ashton-albion-church-lewis-organ/README.md",
    "divisions": 5,
    "stops": 48,
    "routes": [
-    "Direct",
     "Diffuse",
+    "Direct",
     "Distant",
     "Rear"
    ],
-   "ramBytes": 10293022459,
-   "published": "2026-11-27",
+   "ramBytes": 14480172282,
+   "published": "2026-11-28",
    "producer": "Sonus Paradisi",
    "link": "https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html",
    "rootName": "OrganInstallationPackages",
@@ -165,7 +177,11 @@
     "002735/pipes/SW",
     "002736/pipes/SW",
     "002735/pipes/SO",
-    "002736/pipes/SO"
+    "002736/pipes/SO",
+    "002736/pipes/SWTR",
+    "002735/pipes/SWTR",
+    "002736/pipes/SOTR",
+    "002735/pipes/SOTR"
    ],
    "fingerprints": {
     "002735/pipes/PE": "PED_Akustik/02-dir22-PED_Akustik_ATT_SE_SUMEM|32|-5415162768870310507|-261846616453293305;PED_OpenWood2/03-dif22-PED_OpenWood2_ATT_SE_SUMEM|32|-5415162768870310507|-8898103257928241147;PED_Violone16/04-dis2h-PED_Violone16_ATT_SE_SUMEM|32|-5415162768870310507|8533050273023482929",
@@ -176,7 +192,11 @@
     "002735/pipes/SW": "SW_Burdon16/02-dir22-SW_Burdon16_ATT_SE_SUMEM|61|3257789663153676937|3655165374269181155;SW_GeigenPrinc4/03-dif22-SW_GeigenPrinc4_ATT_SE_SUMEM|61|3257789663153676937|-6313853445283585307;SW_VoixCel8/04-dis2h-SW_VoixCel8_ATT_SE_SUMEM|49|-1130905564982386941|-8904064498886301720",
     "002736/pipes/SW": "SW_Burdon16/05-reaSen-SW_Burdon16_ATT_SE_SUMEM|61|3257789663153676937|2420734591558347741;SW_GeigenPrinc4/05-reaSen-SW_GeigenPrinc4_ATT_SE_SUMEM|61|3257789663153676937|-7511892723855733007;SW_VoixCel8/05-reaSen-SW_VoixCel8_ATT_SE_SUMEM|49|-1130905564982386941|-3205817156002727557",
     "002735/pipes/SO": "SO_Clarinet8/02-dir22-SO_Clarinet8_ATT_SE_SUMEM|61|3257789663153676937|3026412277151110100;SO_FlHarm8/03-dif22-SO_FlHarm8_ATT_SE_SUMEM|61|3257789663153676937|-6325262314098578580;SO_VoxHum8/04-dis2h-SO_VoxHum8_ATT_SE_SUMEM|61|3257789663153676937|8670060853542864496",
-    "002736/pipes/SO": "SO_Clarinet8/05-reaSen-SO_Clarinet8_ATT_SE_SUMEM|61|3257789663153676937|-2522141535366232370;SO_FlHarm8/05-reaSen-SO_FlHarm8_ATT_SE_SUMEM|61|3257789663153676937|3299845140501430760;SO_VoxHum8/05-reaSen-SO_VoxHum8_ATT_SE_SUMEM|61|3257789663153676937|-7851180316961196347"
+    "002736/pipes/SO": "SO_Clarinet8/05-reaSen-SO_Clarinet8_ATT_SE_SUMEM|61|3257789663153676937|-2522141535366232370;SO_FlHarm8/05-reaSen-SO_FlHarm8_ATT_SE_SUMEM|61|3257789663153676937|3299845140501430760;SO_VoxHum8/05-reaSen-SO_VoxHum8_ATT_SE_SUMEM|61|3257789663153676937|-7851180316961196347",
+    "002736/pipes/SWTR": "SW_Burdon16/05-reaSen-SW_Burdon16_ATT_SE_SUMEM|61|3257789663153676937|6056460935107911097;SW_GeigenPrinc4/05-reaSen-SW_GeigenPrinc4_ATT_SE_SUMEM|61|3257789663153676937|1725752865751766049;SW_VoixCel8/05-reaSen-SW_VoixCel8_ATT_SE_SUMEM|49|-1130905564982386941|7018184354443698341",
+    "002735/pipes/SWTR": "SW_Burdon16/02-dir22-SW_Burdon16_ATT_SE_SUMEM|61|3257789663153676937|-5297473941241873590;SW_GeigenPrinc4/03-dif22-SW_GeigenPrinc4_ATT_SE_SUMEM|61|3257789663153676937|1725752865751766049;SW_VoixCel8/04-dis2h-SW_VoixCel8_ATT_SE_SUMEM|49|-1130905564982386941|-3042467689292321553",
+    "002736/pipes/SOTR": "SO_Clarinet8/05-reaSen-SO_Clarinet8_ATT_SE_SUMEM|61|3257789663153676937|-9189870755216702714;SO_FlHarm8/05-reaSen-SO_FlHarm8_ATT_SE_SUMEM|61|3257789663153676937|7633828865339225372;SO_VoxHum8/05-reaSen-SO_VoxHum8_ATT_SE_SUMEM|61|3257789663153676937|8890932591256109770",
+    "002735/pipes/SOTR": "SO_Clarinet8/02-dir22-SO_Clarinet8_ATT_SE_SUMEM|61|3257789663153676937|-9189870755216702714;SO_FlHarm8/02-dir22-SO_FlHarm8_ATT_SE_SUMEM|61|3257789663153676937|-2791904427481692403;SO_VoxHum8/04-dis2h-SO_VoxHum8_ATT_SE_SUMEM|61|3257789663153676937|-957488890590594418"
    },
    "featured": false
   },
