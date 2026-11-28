@@ -28,7 +28,8 @@ title shows the version. Released executables are named `LibreOrgan_<version>.ex
   - The tick stands beside the tremulant's rate in the Divisions dialog, the
     right-click Tremulant settings and the Configuration Editor; the rate is
     set to the recorded speed, moving it unticks (the model plays), ticking
-    brings it back.
+    brings it back. The recorded speed is also the rate's default (double
+    click, reset).
   - In the stop's open voicing the recording is a row of its own (a tree shows
     the levels) with its own stop volume, volume / treble / attack per key and
     release crossfade; its button puts the samples into the memory or gives it

@@ -1296,7 +1296,7 @@ void MainComponent::applyDefaultTremulantProfile(int manualIndex)
     static constexpr float depths[8] { 6.0f, 8.0f, 8.0f,10.0f, 6.0f,18.0f,10.0f, 8.0f };
     auto& config = manualConfigs[(size_t)manualIndex];
     config.tremulantEnabled = false;
-    config.tremulantRateHz = rates[manualIndex];
+    config.tremulantRateHz = config.tremulantRecordedHz > 0.0f ? config.tremulantRecordedHz : rates[manualIndex];   // 0.9.150: a tremulant with recordings - its own speed is the default
     config.tremulantDepthCents = depths[manualIndex];
     config.tremulantRankDriftDegrees = 260.0f;
     engine.setManualTremulant(manualIndex, false,
@@ -12765,7 +12765,9 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                 };
                 setupTremulantSlider(tremulantRateSliders[(size_t)manual],
                     tremulantRateLabels[(size_t)manual], "Tremulant Rate", 2.0, 11.0,
-                    defaultTremulantRate[manual], " Hz", "tremulantRate");
+                    // 0.9.150 (the user: "Defaulty se musí takto nastavit"): a tremulant with recordings has ITS speed as the default
+                    this->owner.manualConfigs[(size_t)manual].tremulantRecordedHz > 0.0f ? (double)this->owner.manualConfigs[(size_t)manual].tremulantRecordedHz : defaultTremulantRate[manual],
+                    " Hz", "tremulantRate");
                 setupTremulantSlider(tremulantDepthSliders[(size_t)manual],
                     tremulantDepthLabels[(size_t)manual], "Tremulant Depth", 0.0, 50.0,
                     defaultTremulantDepth[manual], " cents", "tremulantDepth");
@@ -13327,6 +13329,11 @@ void MainComponent::showKeyboardsDialog(int onlyManual)
                     juce::dontSendNotification);
                 tremulantRateSliders[(size_t)manual].setValue(config.tremulantRateHz,
                     juce::dontSendNotification);
+                if (config.tremulantRecordedHz > 0.0f && std::abs(tremulantRateSliders[(size_t)manual].getDoubleClickReturnValue() - (double)config.tremulantRecordedHz) > 0.001)
+                {   // the recorded speed became known (or changed) while the dialog is open: it is the default
+                    tremulantRateSliders[(size_t)manual].setDoubleClickReturnValue(true, (double)config.tremulantRecordedHz);
+                    tremulantRateSliders[(size_t)manual].repaint();
+                }
                 {   // 0.9.150: the tick follows the model (the right-click dialog and the Editor set it too); it comes and goes with the recordings
                     auto& tick = tremulantRecordedButtons[(size_t)manual];
                     const bool shown = tremulantRateSliders[(size_t)manual].isVisible() && owner.anyTremmedRows(manual);
@@ -34110,7 +34117,7 @@ void MainComponent::showFeatureSettings(int manualIndex, const juce::String& fea
             syncTremulantRecorded();   // 0.9.150
             saveSettings();
         };
-        rows.push_back({ "Rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, 4.4,
+        rows.push_back({ "Rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, config.tremulantRecordedHz > 0.0f ? (double)config.tremulantRecordedHz : 4.4,   // 0.9.150: the recorded speed is the default
             [this, m, applyTremulant](double value) { manualConfigs[(size_t)m].tremulantRateHz = (float)value; applyTremulant(); } });
         rows.push_back({ "Depth", 0.0, 50.0, 0.1, " cents", config.tremulantDepthCents, 6.0,
             [this, m, applyTremulant](double value) { manualConfigs[(size_t)m].tremulantDepthCents = (float)value; applyTremulant(); } });
@@ -39356,7 +39363,7 @@ void MainComponent::showConfigurationEditor()
                     o.saveSettings();
                 };
                 // (No tremulant on/off here: that is registration, like a stop, not a setting.)
-                addSlider("Tremulant rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, 4.4,
+                addSlider("Tremulant rate", 2.0, 11.0, 0.1, " Hz", config.tremulantRateHz, config.tremulantRecordedHz > 0.0f ? (double)config.tremulantRecordedHz : 4.4,   // 0.9.150: the recorded speed is the default
                     [&config, applyTremulant](double value) { config.tremulantRateHz = (float)value; applyTremulant(); });
                 // 0.9.150: the same tick as under the rate in the Divisions dialog and in the right-click Tremulant settings.
                 addToggle("Tremulant: recorded samples", config.tremulantRecorded, [&o, manual](bool state)
