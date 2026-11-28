@@ -22,7 +22,7 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | Organ ▲[▼](INDEX-organ-desc.md) | Divisions [▲](INDEX-divisions-asc.md)[▼](INDEX-divisions-desc.md) | Stops [▲](INDEX-stops-asc.md)[▼](INDEX-stops-desc.md) | RAM [▲](INDEX-ram-asc.md)[▼](INDEX-ram-desc.md) | Routes [▲](INDEX-routes-asc.md)[▼](INDEX-routes-desc.md) | Published [▲](INDEX-published-asc.md)[▼](INDEX-published-desc.md) | Remove |
 |---|---:|---:|---:|---|---|---|
 | [Rural Organ - the demo](rural-organ/README.md) | 3 | 24 | 1.2 GB | default, auxiliary | - |  |
-| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 76 | 8.1 GB | Direct, Diffuse, Rear | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20stralsund-st-jakobi-kr-wegscheider&organ=stralsund-st-jakobi-kr-wegscheider&name=stralsund-st-jakobi-kr-wegscheider) |
+| [Stralsund, St. Jakobi, Kr. Wegscheider](stralsund-st-jakobi-kr-wegscheider/README.md) | 4 | 76 | 9.7 GB | Direct, Diffuse, Rear | 2026-11-28 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20stralsund-st-jakobi-kr-wegscheider&organ=stralsund-st-jakobi-kr-wegscheider&name=stralsund-st-jakobi-kr-wegscheider) |
 
 ## All the others
 
@@ -57,6 +57,6 @@ on every change; do not edit by hand. How to use and publish one: [README.md](RE
 | [Hradec Kralove, St. Maria, Streussel](hradec-kralove-st-maria-streussel-organ/README.md) | 3 | 34 | 1.5 GB | default | 2026-11-05 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20hradec-kralove-st-maria-streussel-organ&organ=hradec-kralove-st-maria-streussel-organ&name=hradec-kralove-st-maria-streussel-organ) |
 | [Kdousov, Casparides](kdousov-casparides-organ/README.md) | 3 | 17 | 2.7 GB | default | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20kdousov-casparides-organ&organ=kdousov-casparides-organ&name=kdousov-casparides-organ) |
 | [Kiedrich, Kirchner](kiedrich-kirchner-organ/README.md) | 3 | 22 | 3.5 GB | Direct, Diffuse, Rear | 2026-11-28 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20kiedrich-kirchner-organ&organ=kiedrich-kirchner-organ&name=kiedrich-kirchner-organ) |
-| [Yokota Centennial (G. Silbermann)](yokota-centennial-g-silbermann/README.md) | 3 | 41 | 4.2 GB | Direct, Diffuse, Rear | 2026-11-27 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20yokota-centennial-g-silbermann&organ=yokota-centennial-g-silbermann&name=yokota-centennial-g-silbermann) |
+| [Yokota Centennial (G. Silbermann)](yokota-centennial-g-silbermann/README.md) | 3 | 41 | 6.8 GB | Direct, Diffuse, Rear | 2026-11-28 | [remove](https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration_remove.yml&title=%5BRemove%20configuration%5D%20yokota-centennial-g-silbermann&organ=yokota-centennial-g-silbermann&name=yokota-centennial-g-silbermann) |
 
 32 configuration(s).

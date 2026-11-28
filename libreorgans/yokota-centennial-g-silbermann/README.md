@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Yokota Centennial (G. Silbermann).
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/u-s-a/yokota-centennial-organ-of-chico-state-university.html](https://www.sonusparadisi.cz/en/organs/u-s-a/yokota-centennial-organ-of-chico-state-university.html); the folders `002267`, `002268`, `002269`, `002270`, `002271` and `002272` (as they come, or in their RAR archives); perspectives Direct (`02_suchy`), Diffuse (`04_abblizko`) and Rear (`06_rea`). LibreOrgan Sampler 0.9.149 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/u-s-a/yokota-centennial-organ-of-chico-state-university.html](https://www.sonusparadisi.cz/en/organs/u-s-a/yokota-centennial-organ-of-chico-state-university.html); the folders `002267`, `002268`, `002269`, `002270`, `002271` and `002272` (as they come, or in their RAR archives); perspectives Direct (`02_suchy`), Diffuse (`04_abblizko`) and Rear (`06_rea`). LibreOrgan Sampler 0.9.153 or later.
 - **Expects:** library root of any name, holding the trees `002267/pipes`, `002268/pipes`, `002269/pipes`, `002270/pipes`, `002271/pipes` and `002272/pipes`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **4.2 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **5.2 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
-  - **42 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.149.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **6.8 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **8.7 GB** - 16-bit, 48 kHz, releases at half the rate, packed; *measured*
+  - **68 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.153.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -65,4 +65,4 @@ Put `Yokota Centennial (G. Silbermann).portable.json` into your LibreOrgans fold
 |  | HW Trompete 8' | OW Trompette 8' |
 |  | Glockenspiel 2' | OW Vox humana 8' |
 
-<!-- published by @zurekjiri (issue #326, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #362, 2026-11-28) -->

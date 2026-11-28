@@ -15,14 +15,14 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Stralsund, St. Jakobi, Kr. Wegscheider.
-- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.9.149 or later.
-- **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/PE`, `003135/pipe/UW`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/PE` and `003136/pipe/UW`.
+- **Samples:** Sonus Paradisi, 003135, 003136 - [https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html](https://www.sonusparadisi.cz/en/organs/germany/stralsund-st-jakobi-wegscheider-organ.html); the folders `003135` and `003136` (as they come, or in their RAR archives); perspectives Direct (`01-dirMk2H`), Diffuse (`02-difMk2H`) and Rear (`03-rearMk4`). LibreOrgan Sampler 0.9.153 or later.
+- **Expects:** library root of any name, holding the trees `003135/pipe/HW`, `003135/pipe/OW`, `003135/pipe/OWTR`, `003135/pipe/PE`, `003135/pipe/UW`, `003135/pipe/UWTR`, `003136/pipe/HW`, `003136/pipe/OW`, `003136/pipe/OWTR`, `003136/pipe/PE`, `003136/pipe/UW` and `003136/pipe/UWTR`.
 - **Audio layout:** every division has the routes direct, diffuse and rear; auxiliary (unused).
 - **RAM:**
-  - **8.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **86 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
-- **Saved with:** LibreOrgan Sampler 0.9.149.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **9.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **100 GB** - 32-bit float, 48 kHz, full releases, packed only as far as the memory asked; *measured*
+- **Saved with:** LibreOrgan Sampler 0.9.153.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,13 +33,17 @@ Put `Stralsund St. Jakobi Wegscheider.portable.json` into your LibreOrgans folde
 ├── 003135\
 │   ├── pipe\HW\
 │   ├── pipe\OW\
+│   ├── pipe\OWTR\
 │   ├── pipe\PE\
-│   └── pipe\UW\
+│   ├── pipe\UW\
+│   └── pipe\UWTR\
 └── 003136\
     ├── pipe\HW\
     ├── pipe\OW\
+    ├── pipe\OWTR\
     ├── pipe\PE\
-    └── pipe\UW\
+    ├── pipe\UW\
+    └── pipe\UWTR\
 ```
 
 ## Stop List
@@ -68,4 +72,4 @@ Put `Stralsund St. Jakobi Wegscheider.portable.json` into your LibreOrgans folde
 | Calcant |  | HW Tromp 4' (Ext.) |  |
 | Blower On/Off |  |  |  |
 
-<!-- published by @zurekjiri (issue #328, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #360, 2026-11-28) -->
