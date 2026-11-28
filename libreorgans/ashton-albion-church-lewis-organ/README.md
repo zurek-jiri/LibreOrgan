@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Ashton, Albion Church, Lewis Organ, as recorded by Sonus Paradisi in 4 perspectives, Direct, Diffuse, Distant and Rear, each on its own audio route: 5 divisions and 48 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Ashton, Albion Church, Lewis Organ, as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Distant and Rear, each on its own audio route: 5 divisions and 48 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Ashton, Albion Church, Lewis Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html](https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html); the folders `002735` and `002736` (as they come, or in their RAR archives); perspectives Direct (`04-direct`), Diffuse (`02-diffuse`), Distant (`04-MK2HAB`) and Rear (`07-rear`). LibreOrgan Sampler 0.9.147 or later.
-- **Expects:** library root of any name, holding the trees `002735/pipes/CH`, `002735/pipes/GT`, `002735/pipes/PE`, `002735/pipes/SO`, `002735/pipes/SW`, `002736/pipes/CH`, `002736/pipes/PE`, `002736/pipes/SO` and `002736/pipes/SW`.
-- **Audio layout:** every division has the routes direct, diffuse, distant and rear; auxiliary (unused).
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html](https://www.sonusparadisi.cz/en/organs/england/ashton-lewis-organ.html); the folders `002735` and `002736` (as they come, or in their RAR archives); perspectives Diffuse (`02-diffuse`), Direct (`04-direct`), Distant (`04-MK2HAB`) and Rear (`07-rear`). LibreOrgan Sampler 0.9.150 or later.
+- **Expects:** library root of any name, holding the trees `002735/pipes/CH`, `002735/pipes/GT`, `002735/pipes/PE`, `002735/pipes/SO`, `002735/pipes/SOTR`, `002735/pipes/SW`, `002735/pipes/SWTR`, `002736/pipes/CH`, `002736/pipes/PE`, `002736/pipes/SO`, `002736/pipes/SOTR`, `002736/pipes/SW` and `002736/pipes/SWTR`.
+- **Audio layout:** every division has the routes diffuse, direct, distant and rear; auxiliary (unused).
 - **RAM:**
-  - **9.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **13 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **96 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **13 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **19 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **135 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.150.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -36,12 +36,16 @@ Put `Ashton Albion Church Lewis.portable.json` into your LibreOrgans folder (Con
 │   ├── pipes\GT\
 │   ├── pipes\PE\
 │   ├── pipes\SO\
-│   └── pipes\SW\
+│   ├── pipes\SOTR\
+│   ├── pipes\SW\
+│   └── pipes\SWTR\
 └── 002736\
     ├── pipes\CH\
     ├── pipes\PE\
     ├── pipes\SO\
-    └── pipes\SW\
+    ├── pipes\SOTR\
+    ├── pipes\SW\
+    └── pipes\SWTR\
 ```
 
 ## Stop List
@@ -62,4 +66,4 @@ Put `Ashton Albion Church Lewis.portable.json` into your LibreOrgans folder (Con
 |  |  | 2. I open diapason 8' | 3. Gaigen diapason 8' |  |
 |  |  |  | 3. Lieblich bourdon 16' |  |
 
-<!-- published by @zurekjiri (issue #287, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #336, 2026-11-28) -->

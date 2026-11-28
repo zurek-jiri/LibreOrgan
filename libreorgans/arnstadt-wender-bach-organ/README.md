@@ -3,7 +3,7 @@
 <!-- Written by LibreOrgan Sampler. To publish it: attach the zip beside this README (it holds the configuration and this README) to the form (a free GitHub account):
      https://github.com/zurek-jiri/LibreOrgan/issues/new?template=organ_configuration.yml -->
 
-A complete LibreOrgan Sampler configuration of Arnstadt, Wender (Bach Organ), as recorded by Sonus Paradisi in 4 perspectives, Direct, Diffuse, Distant and Rear, each on its own audio route: 3 divisions and 26 rows in the Stop List, transmissions and
+A complete LibreOrgan Sampler configuration of Arnstadt, Wender (Bach Organ), as recorded by Sonus Paradisi in 4 perspectives, Diffuse, Direct, Distant and Rear, each on its own audio route: 3 divisions and 21 rows in the Stop List, transmissions and
 extensions included (only the rows nested in stop folders are not counted). Whoever owns
 the recordings loads the whole instrument in a single step.
 
@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Arnstadt, Wender (Bach Organ).
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html](https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html); the folders `002310` and `002701` (as they come, or in their RAR archives); perspectives Direct (`02-direct`), Diffuse (`03-Diffuse2S`), Distant (`06-far`) and Rear (`04-DiffuseSen`). LibreOrgan Sampler 0.9.147 or later.
-- **Expects:** library root of any name, holding the trees `002310/pipes/Arnstadt1noc_OW-Haupt`, `002310/pipes/Arnstadt2nocPed`, `002310/pipes/Arnstadt2nocUW-Brust`, `002701/pipes/Arnstadt1noc_OW-Haupt`, `002701/pipes/Arnstadt2nocPed` and `002701/pipes/Arnstadt2nocUW-Brust`.
-- **Audio layout:** every division has the routes direct, diffuse, distant and rear; auxiliary (unused).
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html](https://www.sonusparadisi.cz/en/organs/germany/arnstadt-bach-organ.html); the folders `002310` and `002701` (as they come, or in their RAR archives); perspectives Diffuse (`03-Mk2Hdiff`), Direct (`02-MK8diff`), Distant (`04-distMk2H`) and Rear (`08-rear`). LibreOrgan Sampler 0.9.150 or later.
+- **Expects:** library root of any name, holding the trees `002310/pipes/Arnstadt1noc_OW-Haupt`, `002310/pipes/Arnstadt1noc_OW-Haupt_TREM`, `002310/pipes/Arnstadt2nocPed`, `002310/pipes/Arnstadt2nocPed_TREM`, `002310/pipes/Arnstadt2nocUW-Brust`, `002310/pipes/Arnstadt2nocUW-Brust_TREM`, `002701/pipes/Arnstadt1noc_OW-Haupt`, `002701/pipes/Arnstadt1noc_OW-Haupt_TREM`, `002701/pipes/Arnstadt2nocPed`, `002701/pipes/Arnstadt2nocPed_TREM`, `002701/pipes/Arnstadt2nocUW-Brust` and `002701/pipes/Arnstadt2nocUW-Brust_TREM`.
+- **Audio layout:** every division has the routes diffuse, direct, distant and rear; auxiliary (unused).
 - **RAM:**
-  - **4.4 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **6.6 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **44 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.147.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **6.6 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **10 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
+  - **66 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.150.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -33,12 +33,18 @@ Put `Arnstadt Wender (Bach Organ).portable.json` into your LibreOrgans folder (C
 <a sample location>\
 ├── 002310\
 │   ├── pipes\Arnstadt1noc_OW-Haupt\
+│   ├── pipes\Arnstadt1noc_OW-Haupt_TREM\
 │   ├── pipes\Arnstadt2nocPed\
-│   └── pipes\Arnstadt2nocUW-Brust\
+│   ├── pipes\Arnstadt2nocPed_TREM\
+│   ├── pipes\Arnstadt2nocUW-Brust\
+│   └── pipes\Arnstadt2nocUW-Brust_TREM\
 └── 002701\
     ├── pipes\Arnstadt1noc_OW-Haupt\
+    ├── pipes\Arnstadt1noc_OW-Haupt_TREM\
     ├── pipes\Arnstadt2nocPed\
-    └── pipes\Arnstadt2nocUW-Brust\
+    ├── pipes\Arnstadt2nocPed_TREM\
+    ├── pipes\Arnstadt2nocUW-Brust\
+    └── pipes\Arnstadt2nocUW-Brust_TREM\
 ```
 
 ## Stop List
@@ -49,13 +55,11 @@ Put `Arnstadt Wender (Bach Organ).portable.json` into your LibreOrgans folder (C
 | ped Posaunen bass 16' | BP Principal 4' | OW Quintadena 8' |
 | Ped Principal bass 8' | BP Spitzflote 4' | OW Quinta 5 1/3' |
 | ped Cornet bass 2' | BP Quinte 2 2/3' | OW Gross gedakt 8' |
-| Blower On/Off | BP Nachthorn 4' | OW Octava 4' |
-| calcant | BP Mixtur 3fach 2' | OW Gemshorn 8' |
-| vogelsang | BP Sesquialtera doppelt 1 3/5' | OW Mixtur 4fach 2' |
+|  | BP Nachthorn 4' | OW Octava 4' |
+|  | BP Mixtur 3fach 2' | OW Gemshorn 8' |
+|  | BP Sesquialtera doppelt 1 3/5' | OW Mixtur 4fach 2' |
 |  |  | OW Viol di gamb 8' |
 |  |  | OW Cymbel doppelt 1' |
 |  |  | OW Trompet 8' |
-|  |  | OW glocken C |
-|  |  | OW glocken G |
 
-<!-- published by @zurekjiri (issue #285, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #334, 2026-11-28) -->

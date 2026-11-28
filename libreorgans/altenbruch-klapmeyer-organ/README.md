@@ -15,15 +15,15 @@ the recordings themselves are the property of their producer and are obtained fr
 ## The configuration
 
 - **Organ:** Altenbruch, Klapmeyer Organ.
-- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html](https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html); the folders `002067` and `002068` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.9.146 or later.
+- **Samples:** Sonus Paradisi - [https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html](https://www.sonusparadisi.cz/en/organs/germany/klapmeyer-organ-altenbruch.html); the folders `002067` and `002068` (as they come, or in their RAR archives); perspectives default. LibreOrgan Sampler 0.9.150 or later.
 - **Expects:** library root of any name, holding the trees `002067/pipes/bw`, `002067/pipes/hw`, `002067/pipes/pedal` and `002068/pipes/rw`.
 - **Audio layout:** every division has the routes default and noises; auxiliary (unused).
 - **RAM:**
-  - **2.1 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
-  - **2.9 GB** - 16-bit, 48 kHz, full releases, packed; *measured*
-  - **21 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
-- **Saved with:** LibreOrgan Sampler 0.9.146.
-- **Author:** Jiri Zurek, 27 November 2026.
+  - **2.7 GB** - 16-bit, 32 kHz, releases at half the rate, packed; *estimated*
+  - **11 GB** - 16-bit, 48 kHz, full releases, no packing; *measured*
+  - **27 GB** - 32-bit float, the files' own rate, full releases, no packing; *estimated*
+- **Saved with:** LibreOrgan Sampler 0.9.150.
+- **Author:** Jiri Zurek, 28 November 2026.
 
 ## Where to put the file
 
@@ -56,4 +56,4 @@ Put `Altenbruch SemiDry Extended.portable.json` into your LibreOrgans folder (Co
 |  | R. Dulcian 16' |  |  |
 |  | R. Kromhorn 8' |  |  |
 
-<!-- published by @zurekjiri (issue #273, 2026-11-27) -->
+<!-- published by @zurekjiri (issue #332, 2026-11-28) -->
