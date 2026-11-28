@@ -1048,7 +1048,9 @@ static const char* const kManualText_part5 =
     "  model plays every stop. Tick it again and the rate is back.\n"
     "- **In the voicing** of the stop the recording is a row of its own under it\n"
     "  (a tree shows the levels) with its own stop volume, volume, treble and\n"
-    "  attack per key and release crossfade. Its button puts its samples into the\n"
+    "  attack per key and release crossfade - everything else is its stop's\n"
+    "  (perspective and velocity-layer boxes, attack gain and time, random pitch\n"
+    "  error, one-shot, transposition). Its button puts its samples into the\n"
     "  memory or gives the memory back - off, the stop plays with the model;\n"
     "  nothing else of the organ is loaded or built anew for it. It is\n"
     "  no stop: no place in combinations, crescendo or Tutti, no alias, no\n"
@@ -1210,10 +1212,10 @@ static const char* const kManualText_part5 =
     "effects of that **route** (a division row: \"Effects: I. Front\") or of the\n"
     "whole **perspective** (\"Effects: Front\"). On the left stands the chain in the\n"
     "order the engine applies it - *Division volume* (a route's only), *Volume*,\n"
-    "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
-    "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
     ;
 static const char* const kManualText_part6 =
+    "*Channel separation*, *Equalizer*, *IR reverb* - on the right the module you\n"
+    "chose. Every slider has MIDI learn (right-click) and F1. The dialog opens on\n"
     "the module you looked at last.\n"
     "\n"
     "Before every module's name stands its switch, **ON** or **OFF** (the same\n"
@@ -1412,10 +1414,10 @@ static const char* const kManualText_part6 =
     "leaves it, within two seconds. An organ without cables of its own (a\n"
     "published configuration, a new organ) plays into the card the system plays\n"
     "through - the output chosen in the desktop's sound settings. Beside the\n"
-    "cards stands the system's default output (under ALSA), which is PipeWire\n"
-    "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     ;
 static const char* const kManualText_part7 =
+    "cards stands the system's default output (under ALSA), which is PipeWire\n"
+    "too. A configuration saved on a card's direct ALSA device moves to the same\n"
     "card's PipeWire entry by itself. MIDI devices are never listed among the\n"
     "sound cards. The cards' direct ALSA devices stay hidden: the unfolded *ALSA*\n"
     "section has the tick box *Show the cards' direct ALSA devices* for the rare\n"
@@ -1614,10 +1616,10 @@ static const char* const kManualText_part7 =
     "  noises and added.\n"
     "- Below, on one row with the **?** (this chapter): [Noises on](#noises-on), the volume of all\n"
     "  ([Noises volume](#noises-volume)),\n"
-    "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
-    "  *Free drawknob noises: a random one at every press* (instead of each\n"
     ;
 static const char* const kManualText_part8 =
+    "  [Key noises follow the couplers](#key-noises-follow-the-couplers),\n"
+    "  *Free drawknob noises: a random one at every press* (instead of each\n"
     "  button keeping its own) and *Add folder...*\n"
     "  ([Noises of a folder](#noises-of-a-folder)), which adds to the noises the\n"
     "  organ has.\n"
@@ -1816,10 +1818,10 @@ static const char* const kManualText_part8 =
     "*DSP* and *PEAK*, note the peak when the sound breaks, enter a little less.\n"
     "\n"
     "### Measurement limit of DSP power\n"
-    "\n"
-    "How much of its period the longest callback of the busiest device may take\n"
     ;
 static const char* const kManualText_part9 =
+    "\n"
+    "How much of its period the longest callback of the busiest device may take\n"
     "before the measurement counts a level as broken (60 to 100 %, default 85).\n"
     "85 leaves headroom for what the computer does besides; 100 counts a level\n"
     "as broken only when the driver really called late - the limit it finds breaks\n"
@@ -2018,10 +2020,10 @@ static const char* const kManualText_part9 =
     "### Key velocity: treble cut opens over\n"
     "\n"
     "How long that cut takes to open after the key goes down (5 to 1000 ms,\n"
-    "default 180).\n"
-    "\n"
     ;
 static const char* const kManualText_part10 =
+    "default 180).\n"
+    "\n"
     "### Velocity layers: an unticked _128 never plays\n"
     "\n"
     "Off by default: with nothing ticked in a stop's velocity boxes the plain\n"
@@ -2220,10 +2222,10 @@ static const char* const kManualText_part10 =
     "The number of pistons in the combination row (0 to 10).\n"
     "\n"
     "### Program windows\n"
-    "\n"
-    "*One window* or *Two windows* ([Two program windows, screens, small\n"
     ;
 static const char* const kManualText_part11 =
+    "\n"
+    "*One window* or *Two windows* ([Two program windows, screens, small\n"
     "screens](#26-two-program-windows-screens-small-screens)).\n"
     "\n"
     "### Melody/bass couplers: new extreme key only\n"
@@ -2422,10 +2424,10 @@ static const char* const kManualText_part11 =
     "### Bass octave layout follows MIDI transposition\n"
     "\n"
     "Off: the layout sits on the keys MIDI 36 to 44 as the keyboard sends them.\n"
-    "On: it moves with the MIDI transposition and sits on the keys that play the\n"
-    "division's lowest octave. No difference with the *Standard* layout or a\n"
     ;
 static const char* const kManualText_part12 =
+    "On: it moves with the MIDI transposition and sits on the keys that play the\n"
+    "division's lowest octave. No difference with the *Standard* layout or a\n"
     "transposition of 0; the keyboard drawing of the Divisions dialog shows where\n"
     "the layout sits.\n"
     "\n"
@@ -2624,10 +2626,10 @@ static const char* const kManualText_part12 =
     "\n"
     "What the program has to tell after an action - a tree found, folders\n"
     "replaced, what a merge did, what the load left out - no longer interrupts\n"
-    "you with a box: the texts are collected quietly under **Messages** in the\n"
-    "*About & licences...* window (the entry above the manual), and a button\n"
     ;
 static const char* const kManualText_part13 =
+    "you with a box: the texts are collected quietly under **Messages** in the\n"
+    "*About & licences...* window (the entry above the manual), and a button\n"
     "*Messages: N new* in the top bar opens that entry while some are unread. Questions,\n"
     "warnings and the polyphony report still come as boxes.\n"
     "\n"
@@ -2826,10 +2828,10 @@ static const char* const kManualText_part13 =
     "\"Principal32\" when \"Re_\" is the Rear prefix; a division mark like \"Ped_\"\n"
     "stays); the Hauptwerk stop name becomes the alias, without its footage (the\n"
     "caption's footage is the sounding one). A configuration whose rows an older\n"
-    "import named with the prefix is renamed the same way when it loads, every\n"
-    "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     ;
 static const char* const kManualText_part14 =
+    "import named with the prefix is renamed the same way when it loads, every\n"
+    "reference along (voicing, grid, combinations, crescendo, MIDI); a note in\n"
     "Messages says so, and Save Configuration keeps the new names. A capital follows a division mark\n"
     "(\"P. Trombone 16\", \"G.O. Trompette 8\", \"ped subbass\" -> \"Ped Subbass\").\n"
     "Transpositions come from the definition's pipe notes against the file names\n"
@@ -3028,10 +3030,10 @@ static const char* const kManualText_part14 =
     "The program keeps its own index of every archive you choose (a walk of the\n"
     "headers, cached under `ArchiveIndex` in the settings folder, keyed by the\n"
     "first volume's size and date; a minute for 18 000 headers on a hard disk,\n"
-    "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
-    "is read straight from the volumes; a packed one is unpacked from its own\n"
     ;
 static const char* const kManualText_part15 =
+    "seconds on an SSD): the files with their volumes and pieces. A stored file\n"
+    "is read straight from the volumes; a packed one is unpacked from its own\n"
     "bytes alone, so the loader reads files in parallel (100-120 MB/s per thread\n"
     "packed, 1 GB/s stored); a solid archive is read in sequence. RAR 4 and RAR 5,\n"
     "multi-volume sets (.partNN, .r00), recovery records, unicode names;\n"

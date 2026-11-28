@@ -12,6 +12,17 @@ The version lives in one place per artefact and must be changed together:
 and the `JUCE_APP_VERSION` defines in `LibreOrgan_App.vcxproj`. The window
 title shows the version. Released executables are named `LibreOrgan_<version>.exe`.
 
+## [0.9.152] - 2026-11-28
+
+### Fixed
+- **A recorded tremulant follows its stop in everything it has no control
+  for.** A recording's own voicing holds its stop volume, its per-key rows and
+  its release crossfade; the rest is now its stop's: the perspective boxes (a
+  perspective switched off silences the recording's too, at once), the
+  velocity-layer boxes, attack gain and time, the random pitch error of each
+  pipe, one-shot, the 440 Hz switch, the undulation and the transposition.
+  Before, the recording used hidden settings of its own.
+
 ## [0.9.151] - 2026-11-28
 
 ### Fixed

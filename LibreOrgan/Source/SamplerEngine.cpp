@@ -529,7 +529,9 @@ namespace
     float effectiveRandomCents(const Stop* stop, const Stop* rank, int sampleNote, int pipe)
     {
         if (stop == nullptr || rank == nullptr || pipe < 0 || pipe >= 128 || sampleNote < 0 || sampleNote >= 128) return 0.0f;
-        const float r = stop->randomPitchByNote[(size_t)pipe];
+        // 0.9.151: a recording with a tremulant takes the random detune of its STOP's pipe (the stop's "Random pitch
+        // error" - a recording has none of its own): the same pipe keeps its detune through a tremulant switch.
+        const float r = (stop->tremmedOfPtr != nullptr ? stop->tremmedOfPtr : stop)->randomPitchByNote[(size_t)pipe];
         const float e = stop->tuneTo440 ? 0.0f : rank->rankDeviationCents[(size_t)sampleNote] + rank->mistuneCents[(size_t)sampleNote];
         if (std::abs(r) <= std::abs(e)) return 0.0f;
         const float add = std::abs(r) - std::abs(e);
@@ -6745,6 +6747,23 @@ struct SamplerEngine::Impl
     // own - it sounds through the routes of the stop it stands under, so every route question is its parent's.
     static const Stop* routeOwner(const Stop* stop) noexcept { return stop->tremmedOfPtr != nullptr ? stop->tremmedOfPtr : stop; }
     static bool buttonOn(const Stop* stop) noexcept { return routeOwner(stop)->enabled; }
+    // 0.9.151 (the user: "musí reagovat na to, co není v jeho vlastním voicingu"): a recording with a tremulant has
+    // a voicing of its own for its stop volume, its per-key rows and its release crossfade ONLY - everything else
+    // is its stop's: the perspective boxes, the velocity-layer boxes, attack gain / time, the random detune of each
+    // pipe, one-shot (routeOwner(stop)->...). Its perspective sounds while the SAME perspective of its stop is on.
+    static const Stop* rankOfPerspective(const Stop* stop, const juce::String& perspective) noexcept
+    {
+        if (stop->perspective.equalsIgnoreCase(perspective)) return stop;
+        for (const auto& rank : stop->ranks) if (rank->perspective.equalsIgnoreCase(perspective)) return rank.get();
+        return nullptr;
+    }
+    static bool perspectiveOn(const Stop* stop, const Stop* rank) noexcept
+    {
+        if (!rank->rankEnabled) return false;
+        if (stop->tremmedOfPtr == nullptr) return true;
+        const Stop* parentRank = rankOfPerspective(stop->tremmedOfPtr, rank->perspective);
+        return parentRank == nullptr || parentRank->rankEnabled;
+    }
     static bool pipeOff(const Stop* stop, int pipe) noexcept
     {
         return stop->pipeDisabled.test((size_t)pipe) || (stop->tremmedOfPtr != nullptr && stop->tremmedOfPtr->pipeDisabled.test((size_t)pipe));
@@ -7280,7 +7299,7 @@ struct SamplerEngine::Impl
 
                 auto startRank = [&](Stop* rank, int rankOrdinal)
                 {
-                    if (!rank->rankEnabled) return;
+                    if (!perspectiveOn(stop, rank)) return;   // a recording: its stop's perspective box too
                     if (rank->speaking.test((size_t)pipe)) return;
                     // A pipe the rank does not have plays the sample of a
                     // neighbouring pipe, transposed (see computeFilledPipes).
@@ -7304,7 +7323,7 @@ struct SamplerEngine::Impl
                     // Velocity layers ("_070" files): the lowest enabled layer covering this
                     // velocity decides - its copy for a filled pipe, else its sample; no
                     // layer -> the plain samples (and their copies).
-                    if (auto* layer = rank->velocityLayerFor(sampleNote, velocity, stop->velocityLayerDisabled))
+                    if (auto* layer = rank->velocityLayerFor(sampleNote, velocity, routeOwner(stop)->velocityLayerDisabled))
                     {
                         if (wantsCopy) { sampleToPlay = layer->nextAliasFree(pipe); preShifted = pitchShiftMethod && sampleToPlay != nullptr; }
                         if (sampleToPlay == nullptr) sampleToPlay = Stop::pickRoundRobin(layer->samplesByNote, layer->nextSampleIndex, sampleNote);
@@ -7358,7 +7377,7 @@ struct SamplerEngine::Impl
                     if (preShifted) { v.fillGain = 1.0f; v.toneOffset = 0.0f; }
                     else setFillCompensation(v, pipe, sampleNote);
                     v.detachedRelease = false;
-                    v.loopEnabled = !stop->isOneShot;
+                    v.loopEnabled = !routeOwner(stop)->isOneShot;
                     v.velocityGain = 1.0f;   // never softer for a gentle key: that is a piano, not an organ
                     v.velocity = (uint8_t)juce::jlimit(1, 127, velocity);
                     // 0.9.55 (the user): the random detune counts the detune the RECORDING already has for the
@@ -7514,9 +7533,9 @@ struct SamplerEngine::Impl
                             if (fade > v.fadeInTotal) { v.fadeInTotal = v.fadeInRemaining = fade; }
                         }
                     }
-                    v.attackBoost = juce::Decibels::decibelsToGain(stop->gainDb);
-                    v.attackHold = (uint32_t)juce::jmax(0.0, stop->attackMs * 0.001 * rate);
-                    v.attackFade = (uint32_t)juce::jmax(0.0, stop->attackFadeoutMs * 0.001 * rate);
+                    v.attackBoost = juce::Decibels::decibelsToGain(routeOwner(stop)->gainDb);   // attack gain / time: a recording takes its stop's
+                    v.attackHold = (uint32_t)juce::jmax(0.0, routeOwner(stop)->attackMs * 0.001 * rate);
+                    v.attackFade = (uint32_t)juce::jmax(0.0, routeOwner(stop)->attackFadeoutMs * 0.001 * rate);
                     v.attackActive = (v.attackHold > 0 || v.attackFade > 0) && std::abs(v.attackBoost - 1.0f) > 1.0e-6f;
                     v.recordedTrem = stop->tremmedOfPtr != nullptr;   // 0.9.150: the tremulant is in the recording
                     if (swapMode)
@@ -7626,7 +7645,7 @@ struct SamplerEngine::Impl
             int shiftCount;
             if (manualIndex < 0) { shifts[0] = 0; shiftCount = 1; }
             else shiftCount = collectRouteShifts(stop, manualIndex, shifts);
-            if (stop->isOneShot && updateNoteBookkeeping)
+            if (routeOwner(stop)->isOneShot && updateNoteBookkeeping)
             {
                 // The pipe is free for the next strike (0.8.183: 0.8.158 left the speaking
                 // bit set, so a chime struck twice was silent the second time until the
@@ -7738,7 +7757,7 @@ struct SamplerEngine::Impl
 
         auto releaseRank = [&](Stop* rank, int rankOrdinal)
         {
-            if (!rank->rankEnabled) return;
+            if (!perspectiveOn(stop, rank)) return;
             // The release follows its attack: same key, same shift, same
             // resampling of a pipe beyond the compass.
             float releasePitchCents = 0.0f, releaseWindGain = 1.0f, shiftCents = 0.0f, routeGain = 1.0f, soundingAttackLayerCents = 0.0f;
@@ -7778,7 +7797,7 @@ struct SamplerEngine::Impl
             bool releasePreShifted = false;
             float releaseLayerCents = 0.0f;   // 0.9.134: the release by its own smpl chunk
             const Stop::ReleaseLayer* releaseLayer = nullptr;   // 0.9.142: the layer that plays (its measured shifts)
-            const Sample* releaseSample = rank->getNextReleaseSample(sampleNote, pipeSoundingTimeMs, attackVelocity, &stop->velocityLayerDisabled,
+            const Sample* releaseSample = rank->getNextReleaseSample(sampleNote, pipeSoundingTimeMs, attackVelocity, &routeOwner(stop)->velocityLayerDisabled,
                 pitchShiftMethod && pipe != sampleNote ? pipe : -1, &releasePreShifted, &releaseLayerCents, &releaseLayer);
             if (releaseSample == nullptr) return;
             shiftCents = fullShiftCents - (releasePreShifted ? 100.0f * (float)(pipe - sampleNote) : 0.0f);
@@ -7871,9 +7890,9 @@ struct SamplerEngine::Impl
             v.couplingTotalSamples = 1;
             v.fadeInTotal = (uint32_t)juce::jmax(0.0, releaseFadeIn * fadeScale(rank, pipe) * stop->releaseCrossfade * 0.001 * rate);   // x the voicing's multiplier (0.9.62)
             v.fadeInRemaining = v.fadeInTotal;
-            v.attackBoost = juce::Decibels::decibelsToGain(stop->gainDb);
-            v.attackHold = (uint32_t)juce::jmax(0.0, stop->attackMs * 0.001 * rate);
-            v.attackFade = (uint32_t)juce::jmax(0.0, stop->attackFadeoutMs * 0.001 * rate);
+            v.attackBoost = juce::Decibels::decibelsToGain(routeOwner(stop)->gainDb);
+            v.attackHold = (uint32_t)juce::jmax(0.0, routeOwner(stop)->attackMs * 0.001 * rate);
+            v.attackFade = (uint32_t)juce::jmax(0.0, routeOwner(stop)->attackFadeoutMs * 0.001 * rate);
             v.attackActive = (v.attackHold > 0 || v.attackFade > 0) && std::abs(v.attackBoost - 1.0f) > 1.0e-6f;
             v.releaseFadeMsRequested.store(releaseFadeOut, std::memory_order_relaxed);
             v.windPitchVar = v.windGainVar = 0;
@@ -10091,12 +10110,12 @@ void SamplerEngine::setStopRandomPitchError(Stop* stop, float cents, bool regene
     for (const uint32_t idx : impl->controlActive)
     {
         Voice& v = impl->voices[idx];
-        if (v.stop == stop && !v.detachedRelease)
+        if (v.stop != nullptr && (v.stop == stop || v.stop->tremmedOfPtr == stop) && !v.detachedRelease)   // ... and the sounding recordings of the stop
         {
             int refNote = -1;
-            const Stop* refRank = referenceRankFor(stop, v.note, refNote);   // 0.9.66: the same value for every perspective of the pipe
+            const Stop* refRank = referenceRankFor(v.stop, v.note, refNote);   // 0.9.66: the same value for every perspective of the pipe
             if (refNote < 0) { refRank = v.rank; refNote = v.sampleNote; }
-            v.randomPitchCents.store(effectiveRandomCents(stop, refRank, refNote, v.note), std::memory_order_relaxed);
+            v.randomPitchCents.store(effectiveRandomCents(v.stop, refRank, refNote, v.note), std::memory_order_relaxed);
         }
     }
 }
@@ -13541,6 +13560,18 @@ void SamplerEngine::setRankEnabled(Stop* logicalStop, Stop* rank, bool enabled)
             Voice& v = impl->voices[idx];
             if (v.stop == logicalStop && v.rank == rank) impl->sendCommand(v, CmdKill);
         }
+        // 0.9.151: the recordings of the stop follow its perspective boxes - the same perspective of each falls
+        // silent with it (and comes back with the held keys below).
+        for (auto* recording : logicalStop->tremmedAlternates)
+            if (const Stop* same = Impl::rankOfPerspective(recording, rank->perspective))
+            {
+                const_cast<Stop*>(same)->speaking.reset();
+                for (const uint32_t idx : impl->controlActive)
+                {
+                    Voice& v = impl->voices[idx];
+                    if (v.stop == recording && v.rank == same) impl->sendCommand(v, CmdKill);
+                }
+            }
         return;
     }
     if (!logicalStop->enabled) return;
@@ -16934,6 +16965,8 @@ void SamplerEngine::setStopSampleOffset(Stop* stop, int offset)
         stop->sampleOffsetSet = true;
         for (auto& rank : stop->ranks) { rank->sampleOffset = offset; rank->sampleOffsetSet = true; }
     }
+    // 0.9.151: a recording with a tremulant that is not in the memory takes the number alone (its button loads it later).
+    if (stop->tremmedOfPtr != nullptr && !stopSamplesInMemory(stop)) return;
     CrashHandler::note("Transposition of \"" + stop->name + "\" set to " + juce::String(offset) + ": its samples are loaded again on their keys");
     reloadStopSamples(stop, true);
 }
@@ -17128,6 +17161,7 @@ void SamplerEngine::setStopTuneTo440(Stop* stop, bool enabled)
     const juce::ScopedLock sl(controlLock);
     stop->tuneTo440 = enabled;
     for (auto& rank : stop->ranks) rank->tuneTo440 = enabled;
+    for (auto* recording : stop->tremmedAlternates) setStopTuneTo440(recording, enabled);   // 0.9.151: its recordings with a tremulant go with it
     // Pipes already sounding (and their releases) follow at once; the render
     // interpolates the increment across the block, so there is no click.
     for (const uint32_t idx : impl->controlActive)
@@ -17152,6 +17186,7 @@ void SamplerEngine::setStopUndulation(Stop* stop, float beatsAtA1)
     const float ratio = undulationBeatRatio.load(std::memory_order_relaxed);
     computeUndulationTable(stop, beatsAtA1, ratio);
     for (auto& rank : stop->ranks) computeUndulationTable(rank.get(), beatsAtA1, ratio);
+    for (auto* recording : stop->tremmedAlternates) setStopUndulation(recording, beatsAtA1);   // 0.9.151: its recordings with a tremulant go with it
     for (const uint32_t idx : impl->controlActive)
     {
         auto& v = impl->voices[idx];

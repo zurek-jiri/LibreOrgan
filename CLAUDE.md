@@ -7144,6 +7144,25 @@ efreshArchiveSearchFolders turns a FOLDER line into the lines of its archives on
   taken by a hook load (acts must fall inside the recording: record 45-52 s, acts from second 52). VERSION LESSON
   (he: "a proč nezvedáš čísla verzí? 150 už jsme měli"): I deployed four builds as 0.9.150 because nothing was
   pushed - WRONG: every exe put into C:\LibreOrgan is a delivered build = a new number, pushed or not.
+  0.9.152 (28 Nov 2026, the user: "Tremulant nahraný nereaguje na vypínání perspektiv nadřízeného rejstříku. Musí
+  reagovat na to, co není v jeho vlastním voicingu"): the recording's Stop carried HIDDEN settings of its own that
+  the engine read (rankEnabled, velocityLayerDisabled, gainDb / attackMs / attackFadeoutMs, randomPitchByNote,
+  isOneShot, tuneTo440, undulation, sampleOffset) while its voicing row shows stop volume, the per-key rows and the
+  release crossfade alone - my 0.9.150 comment "the pipe properties are its stop's" was true of the ROW, not of the
+  engine. NOW THE RULE: A RECORDING'S OWN = db, per-key volume / treble / attack, releaseCrossfade; EVERYTHING ELSE
+  IS READ FROM ITS STOP: `Impl::perspectiveOn(stop, rank)` (startRank + releaseRank: the rank's own flag AND the
+  stop's rank of the SAME perspective, `rankOfPerspective`), `routeOwner(stop)->velocityLayerDisabled / gainDb /
+  attackMs / attackFadeoutMs / isOneShot`, `effectiveRandomCents` takes the STOP's randomPitchByNote (the same pipe
+  keeps its detune through a tremulant switch; setStopRandomPitchError updates the sounding recordings too),
+  `setRankEnabled` kills / restarts the recordings' voices of that perspective with the stop's, setStopTuneTo440 and
+  setStopUndulation go on to `tremmedAlternates`, applyStopGroups carries tuneTo440 and the undulation over at the
+  binding (the voicing state sets them before the groups exist), MainComponent::setStopSampleOffset gives the
+  transposition to the recordings (table rows + engine; a recording not in the memory takes the number without a
+  load). A NEW per-stop setting the engine reads must be asked: the recording's own, or its stop's? - and then read
+  through routeOwner. Hook act ORGAN_TEST_TREMMED "<s>|rank|<division>|<stop part>|<perspective>|<0/1>". MEASURED
+  (Altenbruch, one perspective): recording sounding, the stop's Front off -> silence, on -> the recording back,
+  0 discontinuities. NOT run: an organ with several perspectives (one of them off), the velocity-layer boxes, attack
+  gain, the transposition following, by ear.
   THE RATE'S DEFAULT (the user on Bellevue's Recit: default 4.4 against the real 4.0 - "Defaulty se musí takto
   nastavit", then "tremulant vždy z definice, pokud existuje"): `ManualConfig::tremulantDefaultHz` (division key
   "tremulantDefaultHz", absent = none; written by the Hauptwerk import beside "tremulantRateHz" for EVERY division

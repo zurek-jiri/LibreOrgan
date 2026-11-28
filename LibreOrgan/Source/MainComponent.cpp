@@ -2762,6 +2762,19 @@ MainComponent::MainComponent()
                 }
                 else if (act == "definition") o.addTremulantsFromDefinition(juce::File(parts[3]));   // "<s>|definition|0|<odf>": the Editor's temporary "Recorded tremulants of a Hauptwerk definition"
                 else if (act == "load") o.setTremmedRowLoaded(division, rowNamed(parts[3]), parts[4].getIntValue() != 0);
+                else if (act == "rank")   // "<s>|rank|<division>|<stop name part>|<perspective>|<0 or 1>": a perspective box of a stop (not a recording), as the voicing does
+                {
+                    for (auto* stop : o.engine.getStops())
+                        if (stop->primaryManual == division && stop->tremmedOfPtr == nullptr && !stop->container && stop->name.containsIgnoreCase(parts[3]))
+                        {
+                            Stop* rank = stop->perspective.equalsIgnoreCase(parts[4]) ? stop : nullptr;
+                            for (auto& r : stop->ranks) if (r->perspective.equalsIgnoreCase(parts[4])) rank = r.get();
+                            if (rank != nullptr) o.engine.setRankEnabled(stop, rank, parts[5].getIntValue() != 0);
+                            CrashHandler::note("ORGAN_TEST_TREMMED: perspective " + parts[4] + " of \"" + stop->name + "\" " + (rank == nullptr ? "NOT FOUND" : parts[5].getIntValue() != 0 ? "on" : "off"));
+                            break;
+                        }
+                    if (o.voicer) o.voicer->updateStopStates();
+                }
                 else if (act == "division") o.setTremmedRowDivision(division, rowNamed(parts[3]), parts[4].getIntValue());
                 else if (act == "fxall")
                 {
@@ -26034,6 +26047,14 @@ void MainComponent::setStopSampleOffset(Stop* stop, int offset)
     for (auto& entry : config.stopBuild.entries)
         if (!entry.isTransmission() && stopBuildKey(entry.name) == stopBuildKey(stop->name)) { entry.sampleOffset = offset; entry.sampleOffsetSet = true; }
     engine.setStopSampleOffset(stop, offset);
+    // 0.9.151: the stop's recordings with a tremulant are the same pipes on the same file numbers - the transposition
+    // is the stop's, they have no box of their own (the user: what is not in its own voicing is its stop's).
+    for (auto* recording : std::vector<Stop*>(stop->tremmedAlternates))
+    {
+        for (auto& entry : config.stopBuild.entries)
+            if (entry.isTremmed() && stopBuildKey(entry.name) == stopBuildKey(recording->name)) { entry.sampleOffset = offset; entry.sampleOffsetSet = true; }
+        engine.setStopSampleOffset(recording, offset);
+    }
     configurationDirty = true;
     finishInPlaceStopEdit({ manual });
 }
@@ -26654,6 +26675,11 @@ void MainComponent::applyStopGroups()
                     recording->tremmedOfPtr = plain;
                     recording->groupChildOrdinal = plain->groupChildOrdinal;
                     plain->tremmedAlternates.push_back(recording);
+                    // 0.9.151: what a recording has no control for is its stop's (the engine reads the perspective and
+                    // velocity-layer boxes, attack gain / time, the random detune and one-shot from the stop itself);
+                    // the two tuning settings that live in tables of the ranks are carried over here.
+                    if (recording->tuneTo440 != plain->tuneTo440) { recording->tuneTo440 = plain->tuneTo440; for (auto& rank : recording->ranks) rank->tuneTo440 = plain->tuneTo440; }
+                    if (std::abs(recording->undulationBeats - plain->undulationBeats) > 1.0e-4f) engine.setStopUndulation(recording, plain->undulationBeats);
                 }
                 continue;
             }

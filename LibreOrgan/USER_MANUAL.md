@@ -1034,7 +1034,9 @@ keyboard plays the pipes - a transmission trembles with its home division.
   model plays every stop. Tick it again and the rate is back.
 - **In the voicing** of the stop the recording is a row of its own under it
   (a tree shows the levels) with its own stop volume, volume, treble and
-  attack per key and release crossfade. Its button puts its samples into the
+  attack per key and release crossfade - everything else is its stop's
+  (perspective and velocity-layer boxes, attack gain and time, random pitch
+  error, one-shot, transposition). Its button puts its samples into the
   memory or gives the memory back - off, the stop plays with the model;
   nothing else of the organ is loaded or built anew for it. It is
   no stop: no place in combinations, crescendo or Tutti, no alias, no
